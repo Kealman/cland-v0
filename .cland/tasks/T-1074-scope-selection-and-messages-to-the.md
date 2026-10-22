@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-831
 branch: t/T-1074-scope-selection-and-messages-to-the
 created: 2026-10-21T17:32:16.621Z
-updated: 2026-10-22T05:12:24.962Z
+updated: 2026-10-22T05:28:54.990Z
 ---
 
 ## Summary
@@ -34,16 +34,19 @@ E-416 (§3.4, v0.1.2 §3.8; tracer step 3).
 
 - [x] C1. Three selected rows and `m` deliver one message to General naming the three items by display id, as a fake Coordinator receives it (Web test with the fake harness).
   - verified: rev-23 [reviewer] · run rev-20261022-1074-final · 2026-10-22T04:46:07.982Z · commit 497ea2384373957475e0486c87d552a2564269ad
-  - done: impl-1074 · 2026-10-22T04:53:47.110Z
   - verified: rev-23 [reviewer] · run rev-20261022-1074-merged-final · 2026-10-22T05:12:24.748Z · commit c2267513dee9b428ee0f00183613e9e5587bf4e0
+  - done: impl-1074 · 2026-10-22T05:17:45.413Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1074-graph-merged-final · 2026-10-22T05:28:54.805Z · commit c208460d31cae81cdf691591b415b9b54601e8f0
 - [x] C2. `M` on an item without a topic creates its topic and sends there (Web test).
   - verified: rev-23 [reviewer] · run rev-20261022-1074-final · 2026-10-22T04:46:07.982Z · commit 497ea2384373957475e0486c87d552a2564269ad
-  - done: impl-1074 · 2026-10-22T04:53:47.193Z
   - verified: rev-23 [reviewer] · run rev-20261022-1074-merged-final · 2026-10-22T05:12:24.748Z · commit c2267513dee9b428ee0f00183613e9e5587bf4e0
+  - done: impl-1074 · 2026-10-22T05:17:45.489Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1074-graph-merged-final · 2026-10-22T05:28:54.805Z · commit c208460d31cae81cdf691591b415b9b54601e8f0
 - [x] C3. `s`, the breadcrumbs, `␣␣` and item-id links behave as described (Web test).
   - verified: rev-23 [reviewer] · run rev-20261022-1074-final · 2026-10-22T04:46:07.982Z · commit 497ea2384373957475e0486c87d552a2564269ad
-  - done: impl-1074 · 2026-10-22T04:53:47.273Z
   - verified: rev-23 [reviewer] · run rev-20261022-1074-merged-final · 2026-10-22T05:12:24.748Z · commit c2267513dee9b428ee0f00183613e9e5587bf4e0
+  - done: impl-1074 · 2026-10-22T05:17:45.659Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1074-graph-merged-final · 2026-10-22T05:28:54.805Z · commit c208460d31cae81cdf691591b415b9b54601e8f0
 
 ## Comments
 
@@ -161,5 +164,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final merged-head evidence clear; A-8943 audits original A-8942/363790e4 against source/delta-clear A-8927/A-8931. Independent census2404 ordinary passes,365file passes,zero fail/cancel/skip. T1/all hub+NeovimT2/actualWeb exit0; all6 Actions including M3/M4 and all3 Board criterion children pass. Board parent5.474s under dated9.7s allowance, not5s/4s budget pass. Deferred local Darwin Actions6/6 A-8940 and Board4/4 A-8941 after quiet lift also pass with teardown. C1–C3 verified. Host1dd0f4c reused; lint/duration/ratchet report-only,10missing baselines. No T3/T4/load/QA claim; Coordinator joint postlanding cover pair/stage QAs separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-23 · 2026-10-22T05:19:01.736Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1074-graph-merge-delta
+commit: c208460d31cae81cdf691591b415b9b54601e8f0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Graph/dev merge delta source clear; A-8951. Coordinator16457447 authorization confirmed. Conflict docs preserve both test families; ItemsView retains Graph enable/render, Tree reveal and navigation invalidation. Shared Graph selection/scope/back/marks integrate through existing dispatcher/preferences. Board/M1–M4 source preserved unchanged; geometry and allowance blobs identical. Original red A-8946 and local Actions7/7/Board4/4/Graph4/4/check A-8947–A-8950 inspected; lint report-only, no configured pass inferred. No findings. C1–C3 unverified pending exact-head mode-free receipt; prior c2267513 pass historical, integrated covers/stage QAs separate.
+
+### rev-23 · 2026-10-22T05:28:54.805Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1074-graph-merged-final
+commit: c208460d31cae81cdf691591b415b9b54601e8f0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final Graph-merged evidence clear; A-8953 audits original A-8952/033cceae against source-clear A-8951. Census2409 ordinary tests/366files pass,zero fail/cancel/skip; T1/all hub+NeovimT2/actualWeb exit0. All7 Actions pass incl Graph and M1–M4; all Board/Graph criterion children pass. Local Actions7/7/Board4/4/Graph4/4/check A-8947–50 retained. C1–C3 verified. Board5.842s under approved9.7s allowance; Graph4.227s and Web40.26s report-only reference overages,not enforcing-budget passes. Host568e9696 reused,lint/duration/ratchet report-only,11missing baselines; no T3/T4/load/QA claim. Joint integrated covers/stage QAs separate.
 
 Criteria: C1 verified, C2 verified, C3 verified.
