@@ -3,7 +3,7 @@ id: T-1117
 kind: task
 title: The human's message kinds and Withdraw in the hub
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T16:08:35.428Z
+updated: 2026-10-22T16:17:30.716Z
 ---
 
 ## Summary
@@ -51,6 +51,7 @@ The human's `topic.send` takes an optional kind, `message` by default, `decision
   - verified: rev-32 [reviewer] · run rev-20261022-1117-source-2 · 2026-10-22T15:42:06.382Z · commit 74e5f348ca0cc7196f2b413282f6f20cdc418925
   - verified: rev-32 [reviewer] · run rev-20261022-1117-source-3 · 2026-10-22T16:02:24.554Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
   - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-delta · 2026-10-22T16:12:30.101Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
 
 ## Comments
 
@@ -132,3 +133,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear A-9278: fresh same-head run1cbd8ffb/A-9275 exits0 on local Darwin arm64 automatic capacity fallback, Node24.21.0/Neovim0.12.5. Host T0 check, T1, all-T2 hub+Neovim, Web complete; aggregate2457 pass/0fail/0skip. Eleven new identities each have completed5/5 load receipts. C1 kind/history/peer delta, C2 Question wait/addressee plus retained handover status wait, C3 busy withdrawal/late ack/progress/next-turn and Store reopen, C4 injected/agent/other-sender/submission/broadcast refusal, C5 recorded Neovim glyph/colour/old-stage rejection pass. C6 docs carried from same-head source A-9272. Generic budgets, lint and T3 ratchet report-only; zero lint refusals. No Linux/T3/T4 or integrated full-suite pass claimed. Prior red/capacity receipts remain historical. All criteria verified, no remaining findings; inherited affected/after-stage QA remains separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-32 · 2026-10-22T16:12:30.101Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261022-1117-delta
+commit: 29230d6bb984a483052bdedcf166dbee096f7e64
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized dev merge delta source clear, A-9282; Coordinator920f0293 confirmed in item history. Both-parent/base audit:15 T-1117-only files retain old blobs;37 incoming-only files retain dev blobs. Eleven shared paths preserve independent withdrawal/approval/wire/docs/test/recording changes. Sessions adds approval callbacks, Store only inbox outcome typing; withdrawal state/fence/wait and regression assertions remain. Manual implement skill resolution retains all parent guidance and metadata.changes entries, with no fresh guidance. git diff --check clean. C6 docs verified at merged head; C1–C5 await fresh configured same-head evidence. Prior A-9275/A-9278 are previous-head evidence; A-9280 merged-tree targeted/check narrative is supplemental. No runtime/Linux/full-suite green claimed.
+
+Criteria: C6 verified.

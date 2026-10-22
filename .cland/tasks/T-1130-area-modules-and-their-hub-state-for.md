@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-857
 branch: t/T-1130-area-modules-and-their-hub-state-for
 created: 2026-10-22T15:16:14.835Z
-updated: 2026-10-22T16:02:54.028Z
+updated: 2026-10-22T16:14:21.543Z
 ---
 
 ## Summary
@@ -40,3 +40,9 @@ Inbox, Topics and Events stay as they are; E-417 owns them and may adopt the sam
 - [ ] C2. A pushed `verification.queue`, `account` or `artifact` frame updates the client in place, and no `session.list`, `account.list` or `artifact.list` request follows it on the socket (Web test).
 - [ ] C3. After a hub restart the Sessions and Accounts areas show the new hub's rows without a page reload and keep none from before the drop (Web test).
 - [ ] C4. `web/README.md` describes the area modules, their slots and the hub state each area reads (docs).
+
+## Comments
+
+### impl-1130 · 2026-10-22T16:14:21.543Z
+
+Implemented area Pane/Page/Drawer modules with separate empty Sessions board components and per-area key contexts. Connection retains full Sessions/Accounts/Artifacts state and applies replacement deltas without inventory rereads. TDD evidence: slot test first failed at the missing Sessions module; callback tests failed on missing archived count, unchanged account view, stale session inventory, absent capability read and stale visibility projection before their changes. Six T1 callback cases and all three real-hub Web criterion cases now pass in the working tree on local macOS arm64; full typecheck/regression checks in progress. Full queued verification waits for clear source review.
