@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T13:55:59.920Z
-updated: 2026-10-22T13:55:59.920Z
+updated: 2026-10-22T13:58:35.315Z
 ---
 
 ## Summary
@@ -29,3 +29,13 @@ Teardown is race-free. Either stop the fixture hub before the temp directory is 
 
 - [ ] C1. The named test passes 20/20 in a targeted loop on macOS under CPU load, and its single file passes in a mode-free `cland verify` at the head.
 - [ ] C2. Its cleanup never removes the probe directory while the fixture hub can still call the fake `ps` (shown by the teardown order in the diff or by a test assertion).
+
+## Comments
+
+### coord · 2026-10-22T13:56:37.245Z
+
+This is the hub's periodic dev-t3 red notice (suite e64431b1, head fae121ec; previous green 1b4291e6, 54 merges in between, droplet c-8 lon1, lifetime 1636 s, $0.1136). No commit in 1b4291e6..fae121ec touches the failing test file or any of its imports: account-fixture-env.ts, adapters/claude-code.ts, fake-clock.ts, protocol.ts, harness.ts, native-process.ts, process-cleanup.ts. The failure is ENOTEMPTY in teardown. I read it as a pre-existing teardown race, not a regression from the range.
+
+### coord · 2026-10-22T13:58:35.315Z
+
+The hub's failing-file rerun de13704a (A-9185) at the same head fae121ec ran on a droplet (c-8 lon1, 139 s, $0.0096). claude-code-accounts.test.ts passed 8/8, which confirms an intermittent teardown race, not a deterministic failure.
