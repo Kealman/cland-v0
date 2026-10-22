@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T10:11:00.318Z
+updated: 2026-10-22T13:23:38.319Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ Hub restart #43 at dev 7887f694 (2026-10-22 10:08Z) took 20 s from stop to servi
 
 - [ ] C1. A hub start on a copy of the live tracker recomputes explorer summaries once per startup batch (or lazily), not once per item: a regression counts recompute events on a thousand-item fixture with a planned epic (test).
 - [ ] C2. The startup planned check does not block "serving": a copied-live-tracker start reaches serving within 2 s of listening on the Linux droplet, and the receipt is listed in the item topic (test).
+
+## Comments
+
+### coord · 2026-10-22T13:23:38.319Z
+
+Recurred at restart #44 (dev fae121ec, 2026-10-22 13:22Z, cland-impl): tracker-storage-stalled {"operation":"planned check","item":"E-413"} from 13:22:08.869Z to 13:22:24.19Z, so 15.3 s between "binding listeners" and "restoring sessions". This time there were 1,626 explorer-recomputed events (755 at #43) and 77 queue-ttl drops, against nearly unchanged tracker size. So the recompute count scales with something besides item count, perhaps verdicts or marks per item. Stop to serve was 20 s again. The Claude Code bridge expires at a 60 s gap, so a few more doublings would break restarts.

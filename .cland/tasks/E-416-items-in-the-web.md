@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-830
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-22T10:22:03.157Z
+updated: 2026-10-22T13:36:47.456Z
 ---
 
 ## Summary
@@ -244,3 +244,76 @@ T4 repetitions were skipped by the load gate; its 10 files ran in base phase onl
 Rule proposal: real-browser help acceptance must demonstrate that the final row is visibly reachable at the unchanged window size; accessibility counts alone are insufficient. This run establishes both.
 
 Evidence: A-9085 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9085-e-416-views-and-messages-at-7887f694-24-pass-final-help-row-visible/report.md
+
+### qa-676 · 2026-10-22T13:36:47.456Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s3-2026-10-22-1
+commit: fae121eca210c1385acac6e9b1e30c89c5e8f469
+stage: plan and edits
+stage_hash: 2adbddb318afb7170589c8b378fc98c43d4eb7664a55d52871c5f03880a714cd
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# E-416 stage “plan and edits” — QA clear
+
+Run: `qa-s3-2026-10-22-1`. Tested commit: `fae121eca210c1385acac6e9b1e30c89c5e8f469`.
+Request: `da87febe-9de1-46c0-98b8-8bc3c2dd5904`, topic-830. Brief: `qa/briefs/E-416-stage-3.md` at that commit; affected, after-stage. Stage members T-1077 and T-1078 are both merged/done. The first two stages are closed; the stage cover is complete at verification tree `88cf98d0372e397bd63410e1409aaa75528eb63c`.
+
+All 22 scoped cases PASS. Thirteen targeted files ran serially on local macOS arm64 with Node v24.21.0: 69 tests, 69 passed, zero failures/cancelled/skipped/todo. Web behavior used Chrome Headless Shell with fixture-owned sealed scratch hubs; real-browser checks used native computer use in the existing Chrome cland QA profile, anonymous on the allowed local page, without resizing, zooming, changing layout or settings. Source stamp `2e0b568b9e2effa9ea7ed972d535d5a22cc7915845d27a0cc9e224a71a908c29` matches the live edge, root bundle and detached build; hub-code diff is empty.
+
+## Case table
+
+| Case | Result | Observation |
+|---|---|---|
+| E416S3-00 | PASS | HEAD=dev=S; clean detached tree; both landings and required files present. System TMPDIR retained; full fixtureEnvironment applied after overlays: 37 inherited names removed, credential-prefix count 0 before scratch launch. |
+| E416S3-01 | PASS | Sealed npm run build --workspace web exit 0; source stamp 2e0b568b9e2effa9ea7ed972d535d5a22cc7915845d27a0cc9e224a71a908c29; index, one JS and one CSS asset; tracked changes 0. |
+| E416S3-02 | PASS | plan.test.ts 4/4; C1 human approval and CLI receipt, closed member by-id summaries, discussion routing and Plan facts. Screenshot inspected. Owned census 1/0. |
+| E416S3-03 | PASS | C2 passed: shared mark advances on entry, visit highlights preserved, subsequent visit consumes changes. CSS watch token at ItemsPlan.module.css:11,23. |
+| E416S3-04 | PASS | C3 passed: approval absent/inert at 1279 and 390, restored at 1280; desktop human approval succeeds. |
+| E416S3-05 | PASS | item-criteria.test.ts 4/4: add/edit/remove preserve stable ids, removed id never reused, invalid prefix retains draft, external update preserves another draft, legacy rows readonly until assignment. Owned census 1/0. |
+| E416S3-06 | PASS | Criteria C2 passed: exactly one done frame attributed to human without as field; disabled done action; CLI readback. |
+| E416S3-07 | PASS | Criteria C3 passed: other fields readonly, e outside criteria inert; screenshot shows one-line C1/C2/C3 fields and human done attribution. |
+| E416S3-08 | PASS | Read/write frame inventory matches brief; task.plan only show/approve; discussion to lead exactly once; criterion ops add/edit/remove/done; no as; both tooltips present. |
+| E416S3-09 | PASS | Board 4/4, graph 4/4, item actions 7/7; Plan enabled; all nine owned fixture census lines after 0. |
+| E416S3-10 | PASS | Items 8/8, card 6/6, order 1/1, folds 6/6; all 13 owned fixture census lines after 0. |
+| E416S3-11 | PASS | Shell 9/9, palette 11/11, connection 4/4; all 33 help rows exercised at 1280 x 720 and 1024 x 600, physical Cyrillic chords, reconnect/build guard; four censuses after 0. |
+| E416S3-12 | PASS | Token guard clean exit 0; two planted values rejected exit 1 at ItemsPlan.module.css:30 and ItemCriteria.module.css:9; both restored; changed paths 0. |
+| E416S3-13 | PASS | web-keymap.test.ts 1/1; key listeners only keyboard.ts; codes keymap/keyboard; preference storage interface-state, reload guard connection; no changed manifest/lock. |
+| E416S3-14 | PASS | Typecheck/tier lint exit 0; colour/contrast/hooks guards pass. Web plan/criteria/palette and T1 keymap classifications correct. Allowances 8.2/17.3/7.5 s, E-880, added 2026-10-22/expires 2026-10-29; duration lines report-only, no timing pass asserted. |
+| E416S3-15 | PASS | 23 present checks 1, two absent checks 0,16 README key rows. Read surrounding Tree/Views/Plan and criteria docs; no contradiction found. |
+| E416S3-16 | PASS | Committed stage brief QA lint passes, exit 0. |
+| E416S3-17 | PASS | Printed plan: first two stages closed; plan and edits has T-1077 and T-1078, both merged/done. Stage cover complete at tree 88cf98d0372e397bd63410e1409aaa75528eb63c; Linux A-9163 and macOS A-9168 green, Web executed. |
+| E416S3-21 | PASS | Native Chrome cland QA anonymous Offline; index/stamp 200; live/root/tested source digests equal, hub-code diff 0 bytes. Tree pressed; Board/Graph/Plan enabled; one Items breadcrumb, three folded roots, no card. |
+| E416S3-22 | PASS | Native Plan empty heading correct; a/d inert; reload preserves Plan. Isolated second client starts Tree with items-record-before null, writes only its own {"view":"tree"}; Plan no buttons, no writes/alerts;1279 help 15,1280/1440 help 16; off-origin 0; owned census after 0. |
+| E416S3-23 | PASS | Native Plan help 16 rows, one Esc, shared 14 plus Approve a and Discuss d; no Tree keys. Scroll screenshot shows final Discuss plan with Lead d fully visible; Escape closes. |
+| E416S3-24 | PASS | Native Tree help 33 entries, Edit criteria e follows Message item topic; no Plan actions, one Esc. Final Enter row fully visible after scroll. Root e/a/d inert; Escape focuses Items rail. Inbox/Tree/folds/filters restored, own tab closed. |
+
+## Findings, ranked by severity
+
+High: none. Medium: none. Low: none. No product fix, probe correction or repeat was needed. The intentional colour plants failed as expected, were restored, and are not product failures. Browser screenshots substantiate final-row reachability rather than relying solely on AX counts. Plan help showed the desktop 16-row variant; no CSS width was directly measured in native Chrome. The isolated client explicitly checked 1440, 1279 and 1280 px.
+
+## Scope and marks
+
+Signed-in real Chrome checks are out of scope because there is no human grant. No live approval, discussion, criteria edit, cookie minting or sign-in occurred. The brief assigns these behaviors to sealed fixture tests with CLI readbacks, which passed. Phone behavior and the 1279/1280 boundary are proven in fixtures; native window size/zoom remained unchanged. This is a stage verdict, not an epic DoD verdict; no epic criterion marks are submitted.
+
+## Stage-cover receipts
+
+These are the Coordinator's existing stage runs at the full tested SHA, not new QA suites. Both executed check plus T1, T2, T3, T4 base and Web. T4 load repetitions were skipped; they are not claimed as run or passed. Projection and report-only budget output is not an enforced timing pass.
+
+- Linux: `fbbc8898-9835-4498-9ff9-a9fb995e6287`, merged [A-9163](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9163-suite-fbbc8898-9835-4498-9ff9-a9fb995e6287-all-at-fae121e.log), shards [A-9164](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9164-suite-fbbc8898-9835-4498-9ff9-a9fb995e6287-shard-1-at-fae121e.log) and [A-9165](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9165-suite-fbbc8898-9835-4498-9ff9-a9fb995e6287-shard-2-at-fae121e.log). Droplet Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, two shards, workers 2. Exit 0: 3742 total, 3734 passed, 8 skipped, 0 failed/cancelled/todo. Web: 13 files, 29 reported tests, executed. Shard 1 machine cland-v0-f7c170fd (c-8 lon1): admission-to-remote-finish 1128.10 s, lifetime 1122 s, cost $0.0780, collection 29.77 s. Shard 2 cland-v0-3ce8249e (c-8 lon1): 1025.10 s, lifetime 1018 s, cost $0.0707, collection 27.14 s. Merged measured overall wall 1158.36 s, total cost $0.1486 (hub rounding retained).
+- macOS: `1077c4a3-d20c-4cf7-b56a-3e94955a7df7`, [A-9168](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9168-suite-1077c4a3-d20c-4cf7-b56a-3e94955a7df7-all-at-fae121e.log). Local darwin arm64, Node v24.21.0, Neovim v0.12.5, workers 2. Exit 0: 3742/3742 passed, none skipped/failed/cancelled/todo. Web: 13 files, 29 reported tests, executed. Reported phase elapsed durations T1 31 s, T2 177 s, T3 921 s, T4 48 s, Web 27 s. No consolidated total-wall/cost field in the cited local receipt; neither is represented as zero. Queue timestamp 13:01:16.218Z to artifact creation 13:21:40.127Z is 1223.909 s of receipt turnaround, not an execution-only wall measurement.
+
+Both report 132 test-lint findings in 59 files and two missing duration baselines in report-only mode. T3 projected wall exceeds its report-only budget. Linux Web measured phase wall 44.916 s exceeds the report-only 40 s budget; local Web phase wall 24.947 s. Existing dated allowances at S: Plan 8.2 s, criteria 17.3 s, palette scroll 7.5 s, owner E-880, added 2026-10-22, expires 2026-10-29. This stage makes no performance pass claim from these lines. Full original receipts are in cover-receipts.json and the linked immutable logs.
+
+## Isolation, cleanup and evidence
+
+Full fixtureEnvironment applied after overlays, scratch HOME/XDG/Git, inherited Git overrides removed, system TMPDIR retained; credential-prefix count 0 before launching any scratch process. Native browser kept normal HOME/keychain solely for the granted page. Fixture outputs contain 28 owned browser census lines after 0 and scratch hubs stopped; the independent second client also reports after 0. Final pid/ppid/pgid/basename census confirms all 29 owned groups absent. Scratch root removed; plants restored; detached HEAD and dev still equal S, tracked changes 0. Native tab closed after restoring Inbox, Tree view, folded roots, Done shown, Archive hidden and the original rail state; the original New Tab remains.
+
+The evidence directory retains exact commands, stdout/TAP logs, screenshots, AX captures, test-summary.txt, cleanup.txt and 22 recorder lines. Generated environment exports are not published. No fixes or live tracker data mutations were made by test commands.
+
+Rule proposal sent to Coordinator: conditional shared shortcuts should pair positive fixture receipts with inert checks in the wrong view, without a selected item, and below their action-width boundary.
+
+Durable evidence: A-9175 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9175-e-416-plan-and-edits-at-fae121ec-22-pass-plan-and-criteria-receipts/report.md
