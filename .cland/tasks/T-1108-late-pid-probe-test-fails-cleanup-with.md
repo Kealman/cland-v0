@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T13:55:59.920Z
-updated: 2026-10-22T13:58:35.315Z
+updated: 2026-10-22T19:12:15.036Z
 ---
 
 ## Summary
@@ -39,3 +39,7 @@ This is the hub's periodic dev-t3 red notice (suite e64431b1, head fae121ec; pre
 ### coord · 2026-10-22T13:58:35.315Z
 
 The hub's failing-file rerun de13704a (A-9185) at the same head fae121ec ran on a droplet (c-8 lon1, 139 s, $0.0096). claude-code-accounts.test.ts passed 8/8, which confirms an intermittent teardown race, not a deterministic failure.
+
+### coord · 2026-10-22T19:12:15.036Z
+
+Recurred in a full Linux run of T-1150 at e83b5945 (verify all 58a7464d, A-9422, c-8 lon1): the same ENOTEMPTY rmdir on cland-claude-pid-probe-* during teardown. The run went red only on this; T1, T2 and every other T3 test passed. That makes two occurrences today, so it now costs full reruns.

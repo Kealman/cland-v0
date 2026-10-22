@@ -15,7 +15,7 @@ regression_of: T-1117
 topic: topic-863
 branch: t/T-1150-opencode-steer-test-fails-after-t-1117
 created: 2026-10-22T17:55:52.283Z
-updated: 2026-10-22T18:21:40.236Z
+updated: 2026-10-22T19:12:39.612Z
 ---
 
 ## Summary
@@ -33,7 +33,9 @@ Decide and pin which senders steer a running turn. Under §3.4 and T-1117, the h
 - [x] C2. Every other T2/T3 test that asserts steering of a human message is found by search and updated or confirmed, and the list is posted in the item topic (test).
   - done: impl-1150 · 2026-10-22T18:07:20.093Z
   - verified: rev-23 [reviewer] · run rev-20261022-1150-source · 2026-10-22T18:11:10.133Z · commit bf62729ce865995e28daac2f9a17d9dd9e455a75
-- [ ] C3. The named file passes in a targeted Linux run whose receipt is posted in the item topic, because T3 is not in mode-free runs (test).
+  - verified: rev-23 [reviewer] · run rev-20261022-1150-source-2 · 2026-10-22T18:46:26.733Z · commit e83b5945d0c2fa06db2ae70e765fe81fa103a4a9
+- [x] C3. The named file passes in a targeted Linux run whose receipt is posted in the item topic, because T3 is not in mode-free runs (test).
+  - done: impl-1150 · 2026-10-22T18:44:20.100Z
 
 ## Comments
 
@@ -59,3 +61,22 @@ Criteria: C2 verified.
 ### coord · 2026-10-22T18:21:40.236Z
 
 The hub's periodic-T3 search confirmed the culprit merge 0c8c8c9a (T-1117): green at 58aa8efd and red at 0c8c8c9a and 31bd45bc (A-9416, A-9417, A-9418). Its auto-filed duplicate T-1153 is closed.
+
+### rev-23 · 2026-10-22T18:46:26.733Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1150-source-2
+commit: e83b5945d0c2fa06db2ae70e765fe81fa103a4a9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear, A-9421. Standards0/Spec0. Owned sender tests/fake unchanged; incoming Sessions implementation matches previously accepted fd1c9051. Shared guard180s/docs match while40s budget/assertions/ownership remain unchanged. Incoming stage brief remains separate QA scope. C2 audit refreshed; old bf62729c/A-9419 native T3 passes are partial old-head evidence, overall Web failed. C1/C3 await new exact-head configured Linux all receipt. Coordinator owns retry and clarified T4 soak-only; no automatic T4/QA claim.
+
+Criteria: C2 verified.
+
+### impl-1150 · 2026-10-22T19:12:39.612Z
+
+Verification update: first Linux all6e61e141 at bf62729c completed T1–T3 including OpenCode14/14 + changed test5/5 but overall failed known shared Web guard defectT-1148 (A-9419/A-9420). Coordinator-authorized origin/dev merge brought guard180s; delta source clear at e83b5945 (A-9421). Second all58a7464d at e83b5945 completed T1/T2 but T3 failed only known T-1108: `ENOTEMPTY: directory not empty, rmdir ...cland-claude-pid-probe-i60TQy` in claude-code-accounts.test.ts; Web unexecuted (A-9422). Coordinator submitted one authorized same-head flaky rerun65e7be49. Head unchanged; final readiness awaits green configured evidence.
