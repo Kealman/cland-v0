@@ -289,9 +289,20 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io, star
     // a UI spawned this hub as its child: stdout carries frames only, and the parent leaving stops the hub
     createStdioEdge({ input: process.stdin, output: process.stdout, dispatcher: daemon.hub.dispatcher, log, onEnd: () => void daemon.stop() });
   }
+  let signalTimer: NodeJS.Timeout | undefined;
   const onSignal = (signal: NodeJS.Signals) => {
+    // Signals are an exit request even if a shutdown dependency never settles.
+    // Do not reset the deadline on a second signal or wait for log I/O here.
+    if (signalTimer) return;
+    signalTimer = setTimeout(() => {
+      io.err('cland: signal shutdown deadline expired; exiting with code 1 before cleanup completed\n');
+      process.exit(1);
+    }, 2000);
     log({ event: 'signal', signal });
-    void daemon.stop();
+    void daemon.stop().then(() => process.exit(daemon.storageAbandoned ? 1 : 0), error => {
+      io.err(`cland: signal shutdown failed: ${error instanceof Error ? error.message : String(error)}\n`);
+      process.exit(1);
+    });
   };
   process.on('SIGTERM', onSignal);
   process.on('SIGINT', onSignal);

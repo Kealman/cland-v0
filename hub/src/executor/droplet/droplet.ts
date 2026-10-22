@@ -1,4 +1,4 @@
-import { boundedProvider, within } from './deadline.ts';
+import { abortable, boundedProvider, within } from './deadline.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import { processHost, type DropletDependencies } from './dependencies.ts';
 import { acquireLockWithRetry } from '../../hub/lock.ts';
@@ -12,7 +12,7 @@ import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError, apiTimeoutMs } from './api.ts';
 import { accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
-import { pause, testTiming } from './watchdog.ts';
+import { testTiming } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
@@ -35,6 +35,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   #prepareWork: Promise<void> | null = null;
   #prepareAbort: AbortController | null = null;
   #closing = false;
+  readonly #abort = new AbortController();
   #sweepState: 'idle' | 'reconciling' | 'sweeping' | 'deferred' = 'idle';
   #taggedDroplets: number | null = null;
   #keyWork: Promise<PrepareKey> | null = null;
@@ -44,9 +45,13 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   readonly clock: Clock;
   readonly dependencies: DropletDependencies;
   readonly projectConfig: (() => ProjectConfig) | undefined;
-  constructor(root: string, store?: Store, log: LogFn = () => {}, env: NodeJS.ProcessEnv = process.env, projectConfig?: () => ProjectConfig, dependencies: DropletDependencies = {}) { this.clock = dependencies.clock ?? realClock; this.dependencies = { ...dependencies, api: boundedProvider(dependencies.api ?? new DigitalOceanApi(env, this.clock), this.clock, apiTimeoutMs(env)) }; this.projectConfig = projectConfig; this.root = realpathSync(root); this.store = store; this.logger = log; this.#env = env; }
+  constructor(root: string, store?: Store, log: LogFn = () => {}, env: NodeJS.ProcessEnv = process.env, projectConfig?: () => ProjectConfig, dependencies: DropletDependencies = {}) { this.clock = dependencies.clock ?? realClock; this.dependencies = { ...dependencies, api: boundedProvider(dependencies.api ?? new DigitalOceanApi(env, this.clock, undefined, this.#abort.signal), this.clock, apiTimeoutMs(env), undefined, this.#abort.signal) }; this.projectConfig = projectConfig; this.root = realpathSync(root); this.store = store; this.logger = log; this.#env = env; }
 
-  #wait(ms: number): Promise<void> { return this.dependencies.wait?.(ms) ?? pause(ms, this.clock); }
+  async #wait(ms: number): Promise<void> {
+    let timer: ReturnType<Clock['setTimeout']> | undefined;
+    try { await abortable(this.dependencies.wait?.(ms) ?? new Promise<void>(resolve => { timer = this.clock.setTimeout(resolve, ms); }), this.#abort.signal); }
+    finally { this.clock.clearTimeout(timer); }
+  }
 
   async #config() {
     if (this.projectConfig) return this.projectConfig();
@@ -60,6 +65,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const path = join(this.root, '.cland/run/executor/budget.lock');
     const lock = await acquireLockWithRetry(path, deadline, { clock: this.clock, wait: this.dependencies.wait, ...(this.dependencies.processes ? { processes: this.dependencies.processes } : {}) });
     try {
+      this.#abort.signal.throwIfAborted();
       if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
       await this.#save(lease);
     } finally { await lock.release(); }
@@ -156,6 +162,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   }
 
   async acquire(run: Pick<RunRef, 'id' | 'size'>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig): Promise<DropletLease> {
+    this.#abort.signal.throwIfAborted();
     const config = snapshotConfig ?? await this.#config();
     const runDeadline = Date.parse(deadline);
     if (!Number.isFinite(runDeadline) || runDeadline <= this.clock.now().getTime()) throw new Error('droplet acquisition deadline reached');
@@ -166,7 +173,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     try {
       lease.snapshot = snapshot;
       await this.#save(lease);
-      await waitForMachine(this.root, lease, snapshot.key, undefined, undefined, this.#env, this.dependencies);
+      await waitForMachine(this.root, lease, snapshot.key, undefined, this.#abort.signal, this.#env, { ...this.dependencies, wait: ms => this.#wait(ms) });
       return lease;
     }
     catch (error) { await this.release(lease); throw error; }
@@ -277,6 +284,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
 
   async close(): Promise<void> {
     this.#closing = true; this.#prepareAbort?.abort();
+    this.#abort.abort(new Error('hub is stopping; executor lease retained for reconciliation'));
     await this.#prepareWork;
   }
 
@@ -298,6 +306,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       await this.#save(lease);
     });
     if (lease.state === 'released') { await settleSpend(lease, this.#env, this.dependencies.processes); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
+    if (this.#closing) return { lifetimeMs: null, costUsd: null };
     const limit = Math.min(deadline, this.clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000, this.#env));
     if (limit <= this.clock.now().getTime()) return { lifetimeMs: null, costUsd: null };
     let cause: { status?: number; id?: string; message: string } | undefined;
@@ -320,6 +329,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         // Retain the first accepted DELETE across short attempts and restarts.
         await this.#save(lease);
       } catch (error) {
+        if (this.#closing) break;
         if (error instanceof DropletIdentityMismatch || error instanceof DropletDeletionTimeout) lease.attention = error.attention;
         cause = error instanceof DigitalOceanError ? { status: error.status, id: error.id, message: error.message }
           : { message: error instanceof Error ? error.message : 'resource cleanup failed' };

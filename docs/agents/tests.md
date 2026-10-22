@@ -1841,6 +1841,16 @@ storage operation queue. After its entry receipt, it requires an idle operation
 queue, an abandonment event with `operations: []`, a durable `stopped` receipt,
 exit code 1 and a reaped hub PID. The normal-stop case retains exit code 0 and
 asserts that no abandonment event was recorded.
+Provisioning shutdown uses the fake DigitalOcean HTTP API: hold create after its
+durable lease is armed, observe `stopped` and OS exit within an unscaled three
+seconds of `hub.stop`, then release the late create and confirm reconciliation
+deletes the owned resource while preserving a foreign-tagged one. Separate
+SIGTERM cases retain that exit bound, including a native socket-close callback
+held through the CLI's two-second signal deadline (exit 1 with incomplete cleanup).
+`executor-safety-component.test.ts` covers detached create replies after store
+closure and interrupted provider cleanup on fake time at T2. Preparation's
+restart test waits for the durable released lease before its empty-resource
+assertions; the outcome notice alone is not a deletion receipt.
 The CLI diagnostic case keeps a fully stopped process alive deliberately and
 advances only its stop deadline after the shutdown receipt. It expects exit 1
 and `stopped, lock released, process still alive`, with no signal after lock

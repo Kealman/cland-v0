@@ -26,7 +26,8 @@ export class DigitalOceanApi {
   readonly #env: NodeJS.ProcessEnv;
   readonly #clock: Clock;
   readonly #callProvider: ProviderCall | undefined;
-  constructor(env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, callProvider?: ProviderCall) { this.#callProvider = callProvider; this.#clock = clock; this.#env = env; }
+  readonly #signal: AbortSignal | undefined;
+  constructor(env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, callProvider?: ProviderCall, signal?: AbortSignal) { this.#callProvider = callProvider; this.#clock = clock; this.#env = env; this.#signal = signal; }
   async #call<T>(method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
     const token = this.#env.DIGITALOCEAN_TOKEN;
     if (!token) throw new Error('DIGITALOCEAN_TOKEN is required');
@@ -41,7 +42,7 @@ export class DigitalOceanApi {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), timeout);
     timer.unref();
-    const { signal } = controller;
+    const signal = this.#signal ? AbortSignal.any([controller.signal, this.#signal]) : controller.signal;
     try {
       const response = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal, redirect: 'error' });
       if (response.status === 204) return undefined as T;
@@ -54,6 +55,7 @@ export class DigitalOceanApi {
       if (!response.ok) throw new DigitalOceanError(response.status, redact(value.id), redact(value.message));
       return value as T;
     } catch (error) {
+      this.#signal?.throwIfAborted();
       if (error instanceof DigitalOceanError) throw error;
       if (signal.aborted && remaining <= transportTimeout) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
       throw new DigitalOceanError(0, 'transport', 'request failed or exceeded its time bound');

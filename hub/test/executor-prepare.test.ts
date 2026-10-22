@@ -12,6 +12,7 @@ import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import type { TestContext } from 'node:test';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { readLeases } from '../src/executor/droplet/lease.ts';
 import { DropletRun } from '../src/executor/droplet/run.ts';
 import { prepareKey, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
@@ -301,5 +302,9 @@ test('hub stop cancels and drains preparation before closing its store and prese
   const next = await connectUi(t, restarted.discovery);
   const history = (await next.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
   assert.equal(history.messages.filter(message => message.text.startsWith('snapshot prepare failed:')).length, 1);
+  await eventually('restart confirms deferred builder release', async () => {
+    const leases = await readLeases(root);
+    return leases.length && leases.every(lease => lease.state === 'released') ? true : undefined;
+  }, 10000);
   assert.deepEqual(api.droplets, []); assert.deepEqual(api.images, []);
 });

@@ -1909,7 +1909,7 @@ as not set up; malformed roles do not block open, and the hub reports them as us
 | `cland hub stop` | An accepted stop writes `.cland/run/hub-stop.json` before closing connections, then refreshes its ten-second grace period on shutdown. Autostart checks it again inside the startup lock; expired markers do not delay recovery. A crash writes no marker. Asks the hub to stop over its socket and waits up to ten seconds for the process to exit. If that process held the lock before acknowledging stop, then released it but remains alive, reports `stopped, lock released, process still alive` with its pid and exits 1, leaving the process and any successor's files alone. When the socket does not answer it sends SIGTERM, but only to the process holding the project's lock (pid and start time match); a `hub.json` naming any other process is removed and that process left alone. A hub that died without cleaning up has its `hub.json` removed, and its socket file unless another hub holds the lock by now. |
 | `cland hub unmute <a> <b>` | Lifts the loop breaker's mute of two sessions (by name) on the running hub, and clears their count; Agents records it. |
 | `cland hub journal` | Prints `.cland/journal.jsonl`, oldest first, one record per line (`<ts>  <event>  key=value …`). `--since <ISO date \| 30s \| 10m \| 2h \| 1d>`, `--kind <event>[,<event>…]`, `--json` for the lines as they are. Reads the file: no hub needed. |
-| `cland hub serve` | The hub in the foreground, logging JSON lines to stderr. This is what `start` runs. SIGTERM and SIGINT stop it gracefully. |
+| `cland hub serve` | The hub in the foreground, logging JSON lines to stderr. This is what `start` runs. SIGTERM and SIGINT request cleanup and exit after it finishes; if cleanup remains incomplete after two seconds, the process reports the deadline on stderr and exits 1. Repeated signals keep the first deadline. |
 | `cland hub serve --stdio` | The same, and also the UI's frames on stdin and stdout for the parent that spawned it (`--transport stdio` works too). Stdout carries frames only; the hub stops when stdin ends. It is still the project's hub: it binds the socket and writes `hub.json`, so sessions find it. When either listener cannot bind (a sandbox that forbids it, spec 4.2), it logs `listen-failed`, closes the other and goes on over stdio alone (below). |
 | `cland hub serve --stdio --no-listen` | Stdio alone: binds nothing. |
 | `cland hub audit` | The audit records in `.cland/log/hub.log`, oldest first; `--session <name>`, `--since <ISO time or 30m, 2h, 1d>`, `--json`. Reads the file: no hub needs to run. See Roles, The audit log. |
@@ -2972,8 +2972,16 @@ reports `prepare: not set`). It powers off before snapshotting,
 polls actions under a twenty-minute bound, transfers to configured regions and
 tags the image `cland` and `cland-p-<hash>`, then releases the builder.
 
-Preparation owns its promise through shutdown: stopping the hub cancels machine
-work and drains release and the outcome notice before closing the database.
+Stopping the hub interrupts provider waits, acquisition polling and preparation
+machine work. Suite launches keep their durable acquisition attempt rather than
+falling back locally during shutdown. Unanswered creates keep their original
+name, tags and unfinished create marker in `lease.json`; cleanup remains
+`releasing` with unknown lifetime and cost until deletion is confirmed. The hub
+drains these local ownership writes and preparation's outcome notice, logs
+`stopped` and exits without waiting for provider completion. The detached watchdog
+and the next hub's reconciliation retain responsibility for late resources;
+only resources matching the lease's own name and tags are deleted. Preparation
+also retains snapshot-recovery records for restart.
 Before submitting a snapshot action it saves image-recovery ownership under
 `.cland/run/executor/snapshot-recovery/`. Restart and the lease retry timer retain
 that ownership through late actions, delayed catalogues and refused image

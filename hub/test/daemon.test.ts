@@ -1,6 +1,6 @@
 // T3: daemon lifecycle regressions: competing startup locks, signals, crash recovery and endpoint identity.
 // The curated start/discovery/stop/restart/sweep flow lives in scenarios/hub-lifecycle.test.ts.
-import { onCleanup, ownProcess } from './process-cleanup.ts';
+import { cleanupProcesses, onCleanup, ownProcess } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn, spawnSync } from 'node:child_process';
@@ -16,6 +16,95 @@ import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, 
 import { NO_PS } from './native-process.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { askHubFrame } from '../src/cli/socket-client.ts';
+import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
+import { preparedDropletFixture } from './droplet-fixture.ts';
+import { syntheticProviderEnvironment } from './synthetic-provider.ts';
+import { readLeases } from '../src/executor/droplet/lease.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+
+for (const action of ['hub stop', 'SIGTERM', 'SIGTERM with stalled socket close'] as const) test(`${action} during an in-flight droplet create retains ownership and reaps the hub within three seconds`, async t => {
+  const root = await tempProject(t);
+  const api = await fakeDigitalOcean('cland-test-shutdown');
+  await preparedDropletFixture(root, api);
+  const stalled = action === 'SIGTERM with stalled socket close';
+  const preload = join(root, '.cland/stalled-close.mjs');
+  if (stalled) await writeFile(preload, `
+    import net from 'node:net';
+    import { writeFileSync } from 'node:fs';
+    net.Server.prototype.close = function() {
+      writeFileSync(${JSON.stringify(join(root, '.cland/close-entered'))}, 'socket close entered');
+      return this;
+    };
+  `);
+  const env = syntheticProviderEnvironment(fixtureEnvironment(join(root, '.cland/fixture'), process.env, {
+    TMPDIR: tmpdir(), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
+    ...(stalled ? { NODE_OPTIONS: `--import=${pathToFileURL(preload).href}` } : {}),
+  }), { token: 'cland-test-shutdown', endpoint: api.url });
+  const entered = Promise.withResolvers<void>();
+  const create = Promise.withResolvers<void>();
+  api.beforeCreate(async () => { entered.resolve(); await create.promise; });
+  const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
+  const exited = new Promise<number | null>(resolve => child.once('exit', resolve));
+  onCleanup(t, async () => {
+    if (child.exitCode === null) child.kill('SIGKILL');
+    await exited;
+    create.resolve();
+    if (api.requests.some(r => r.method === 'POST' && r.path === '/v2/droplets')) await eventually('late fake create settled before removing its files', () => api.droplets.length ? true : undefined, 5000);
+    await cleanupProcesses(root, [], undefined, undefined, []);
+    await api.close();
+  });
+  let output = '';
+  child.stdout.on('data', data => { output += data; });
+  child.stderr.on('data', data => { output += data; });
+  await eventually('hub serve startup before provisioning', () => {
+    assert.equal(child.exitCode, null, output);
+    return output.includes('hub serving') ? true : undefined;
+  }, 10000);
+  const discovery = await readDiscovery(root);
+  await askHubFrame(discovery, { type: 'suite.start', mode: 'auto', cwd: root, report: 'general', executor: 'droplet' }, 5000, env);
+  await eventually('fake provider create entered', () => api.requests.some(r => r.method === 'POST' && r.path === '/v2/droplets') ? true : undefined, 10000);
+  await entered.promise;
+  const [lease] = await readLeases(root);
+  assert.ok(lease?.createStarted);
+  assert.equal(lease.resource, null);
+  assert.deepEqual(lease.tags.slice(0, 1), ['cland']);
+  const stopped = stalled ? eventually('native socket close entered during provisioning shutdown', async () => readFile(join(root, '.cland/close-entered'), 'utf8'), 3000)
+    : eventually('durable stopped receipt during provisioning', async () =>
+      (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).includes('"event":"stopped"') ? true : undefined, 3000);
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const completed = Promise.all([stopped, exited]);
+    const bounded = Promise.race([completed, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${action} did not reap provisioning hub within three seconds: ${output.slice(-1500)}`)), 3000); // lint-allow-wall-clock: C1/C2 bound end-to-end real hub shutdown, including its durable boundary and OS exit.
+    })]);
+    if (action === 'hub stop') await askHubFrame(discovery, { type: 'hub.stop' }, 3000, env);
+    else assert.equal(child.kill('SIGTERM'), true);
+    const [, code] = await bounded;
+    assert.equal(code, stalled ? 1 : 0, output);
+    if (stalled) assert.match(output, /signal shutdown deadline expired/);
+  } finally { clearTimeout(timer); }
+  assert.equal(pidAlive(child.pid!), false);
+  const [retained] = await readLeases(root);
+  assert.equal(retained?.lease, lease.lease);
+  assert.notEqual(retained?.state, 'released', 'an unanswered create remains owned for reconciliation');
+  assert.equal(retained?.createFinished, undefined);
+  assert.deepEqual(retained?.tags, lease.tags);
+  // A provider can finish after the old process has exited. Reconciliation owns
+  // that resource by its original name and tags, without touching a foreign one.
+  create.resolve();
+  await eventually('late fake create completed after hub exit', () => api.droplets.length ? true : undefined, 5000);
+  assert.deepEqual(api.droplets[0]!.tags, lease.tags);
+  const foreign = { ...api.droplets[0]!, id: 9000, tags: ['human'] };
+  api.droplets.push(foreign);
+  const recovery = new DropletExecutor(root, undefined, () => {}, env);
+  try { await recovery.reconcile(true); }
+  finally { await recovery.close(); }
+  assert.deepEqual(api.droplets, [foreign]);
+  assert.deepEqual(api.keys, []);
+  assert.equal((await readLeases(root))[0]?.state, 'released');
+  assert.ok(!api.requests.some(r => r.method === 'DELETE' && r.path === '/v2/droplets/9000'));
+});
 
 test('hub serve exits fatally after abandoning a background drain with no pending operations', async t => {
   const root = await tempProject(t);

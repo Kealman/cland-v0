@@ -15,7 +15,7 @@ import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef } from '../src/executor/executor.ts';
 import { warningSeverity } from '../src/hub/visibility.ts';
 import type { HubStatus } from '../src/protocol.ts';
-import { projectTag } from '../src/executor/droplet/droplet.ts';
+import { DropletExecutor, projectTag } from '../src/executor/droplet/droplet.ts';
 import { readLeases, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 
 async function lease(root: string): Promise<{ value: DropletLease; path: string }> {
@@ -45,6 +45,61 @@ async function finish(f: Awaited<ReturnType<typeof fixture>>, id: string) {
   await receipt('remote completion collected', f.verificationSettled());
   return f.result(id);
 }
+
+test('stopping during create detaches the provider reply and retains the tagged lease for restart', async t => {
+  const f = await fixture(t, { machine: 'scripted' });
+  const entered = Promise.withResolvers<void>();
+  const gate = Promise.withResolvers<void>();
+  f.api.beforeCreate(async () => { entered.resolve(); await gate.promise; });
+  onCleanup(t, () => gate.resolve());
+  const job = await f.launch();
+  await receipt('provider entered create', entered.promise);
+  await receipt('hub stopped without provider reply', f.stop().then(() => {}));
+  const [retained] = await readLeases(f.root);
+  assert.equal(retained?.run, job.id);
+  assert.equal(retained.state, 'releasing');
+  assert.equal(retained.resource, null);
+  assert.ok(retained.createStarted);
+  assert.equal(retained.createFinished, undefined);
+  gate.resolve();
+  await eventually('late provider resource exists', () => f.api.droplets.length ? true : undefined);
+  assert.deepEqual(await readLeases(f.root), [retained], 'the detached reply cannot publish an active lease after store closure');
+  assert.equal(f.machine.calls.filter(call => call.step === 'start').length, 0);
+  const recovery = new DropletExecutor(f.root, undefined, () => {}, f.env, undefined, f.dependencies);
+  try { await receipt('restart release confirmed', recovery.reconcile(true)); }
+  finally { await recovery.close(); }
+  assert.equal((await readLeases(f.root))[0]?.state, 'released');
+  assert.deepEqual(f.api.droplets, []);
+  assert.deepEqual(f.api.keys, []);
+});
+
+test('stopping during provider cleanup keeps release unconfirmed until restart observes deletion', async t => {
+  const f = await fixture(t, { machine: 'scripted' });
+  const job = await f.launch();
+  await receipt('remote start persisted', f.machine.started(job.id));
+  await receipt('remote admission settled', f.verificationSettled());
+  const entered = Promise.withResolvers<void>();
+  const gate = Promise.withResolvers<void>();
+  f.api.beforeDropletList(async () => { entered.resolve(); await gate.promise; });
+  onCleanup(t, () => gate.resolve());
+  f.machine.finish(job.id);
+  await f.clock.advance(1000);
+  await receipt('provider cleanup entered', entered.promise);
+  await receipt('hub stopped during provider cleanup', f.stop().then(() => {}));
+  const [retained] = await readLeases(f.root);
+  assert.equal(retained?.run, job.id);
+  assert.equal(retained.state, 'releasing');
+  assert.equal(retained.released, undefined);
+  assert.equal(retained.costUsd, undefined);
+  assert.equal(f.api.droplets.length, 1);
+  gate.resolve();
+  const recovery = new DropletExecutor(f.root, undefined, () => {}, f.env, undefined, f.dependencies);
+  try { await receipt('restart provider deletion confirmed', recovery.reconcile(true)); }
+  finally { await recovery.close(); }
+  assert.equal((await readLeases(f.root))[0]?.state, 'released');
+  assert.deepEqual(f.api.droplets, []);
+  assert.deepEqual(f.api.keys, []);
+});
 
 async function sameNameCase(t: TestContext, failBeforeRelease = false) {
   const state = await tempProject(t, 'key-host-state-');

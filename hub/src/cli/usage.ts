@@ -75,8 +75,10 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
   hub reload      validate and reload config.toml and roles.toml (also SIGHUP)
   hub status      show the running hub (including web edge availability), then connected sessions (--json for JSON; --history includes full suite/cover history and harness rows)
   hub stop        stop the project's hub
+                  interrupt provisioning and retain unresolved executor leases for restart reconciliation
                   an acknowledged stop with a released lock but live pid reports it and exits 1; the pid is left running
   hub serve       run the hub in the foreground (what start runs)
+                  SIGTERM/SIGINT allow two seconds for cleanup, then exit 1 if it is incomplete
                   --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;
                     when the listeners cannot bind (a sandbox), it goes on over stdio alone
                   --stdio --no-listen: stdio alone, binding nothing
