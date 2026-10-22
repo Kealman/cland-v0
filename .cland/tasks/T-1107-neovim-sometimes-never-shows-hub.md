@@ -2,8 +2,8 @@
 id: T-1107
 kind: task
 title: "Neovim sometimes never shows hub: connected when ui.json is unreadable, after T-1054's mark import"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1054
 topic: topic-847
 branch: t/T-1107-neovim-sometimes-never-shows-hub
 created: 2026-10-22T12:32:29.333Z
-updated: 2026-10-22T12:56:00.806Z
+updated: 2026-10-22T13:00:44.332Z
+closed: 2026-10-22T13:00:44.332Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final pre-merge C1/C2 clear at unchanged d4c958ad0be95ab271427b8feeffb78192e51930/tree 1769703de3169b89c72ac9b635fb0b046992c3ff. A-9156/b1a98719 original records and hub passed state checked: aggregate/T1/all-T2 both packages/Web exit 0; 2445 ordinary test and 375 file passes plus 5 load test/file passes, no failures/skips/cancellations. New regression ordinary line 11969 1.629189259 s, five unique load finishes 11957/11999/12046/12082/12152 max 1.963116876 s and explicit 5/5 at 12155. C1/source and A-9153 20 committed-head local macOS ui.test full-file samples remain accepted. Revised C2 native Linux ui.test T3 explicitly deferred to post-landing stage covers, not a passing T3 claim. Linux c-8 lon1 workers 2/Web 4, 515 s/$0.0357, host 88cf98d0 reused/not repeated remotely; generic lint/duration/ratchet report-only, 2 missing baselines. No enforcing tier-budget/T4/QA claim, no findings. Coordinator owns landing and replacement stage covers.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T13:00:44.332Z
+
+Merged 31ee7e8aa0003f89e31adaeda06a075c5f47a750 onto dev.
