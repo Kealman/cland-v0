@@ -48,6 +48,7 @@ for (const [source, definitions] of sources) {
     test(`${source} ${role}: shipped clause wording`, () => {
       const clause = definition.clause;
       assert.match(clause, /Never move an OpenCode session out of its item's worktree/, `${source} ${role}: worktree guardrail`);
+      assert.ok(clause.includes('a declined ask is a decision and never consent'), `${source} ${role}: declined decision`);
       if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
       else assert.match(clause, /naming its size \(XS, S, M, L or XL\) and category/);
       if (role === 'coordinator') assert.match(trackerProcedures, /The explorer's messages come from the human in General or the item's topic: the text, then `from the explorer · scope …` and one line per item \(id · kind · status · container · rank · title\)\. Act on them through the tracker\./);

@@ -1663,7 +1663,7 @@ export class Dispatcher {
           case 'hygiene.unmute':
             return answer(core.unmute(frame.a, frame.b));
           case 'topic.answer':
-            return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name));
+            return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason));
           case 'events.list': {
             const resumed = this.#guard.resumer(frame.type);
             return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter ?? eventsFilter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));

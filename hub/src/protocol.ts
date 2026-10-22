@@ -704,7 +704,7 @@ export type ClientRequest =
   | { type: 'hygiene.unmute'; id: string; a: string; b: string }
 
   /** The human answers an ask with an option (1-based) or a free text: `{ message: TopicMessage, outcomes }`. */
-  | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string; as?: { name: string; sessionId?: string; shell?: boolean } }
+  | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string; declined?: boolean; reason?: string; as?: { name: string; sessionId?: string; shell?: boolean } }
   /** The inbox: `Inbox`. */
   | { type: 'inbox.list'; id: string; archive?: boolean }
   /** Human-only row actions, returning Inbox. */
@@ -1038,7 +1038,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'worktree.prune':
       return (f.items === undefined || (Array.isArray(f.items) && f.items.every((i) => typeof i === 'string'))) && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'topic.answer':
-      return typeof f.ask === 'string' && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string') && (f.as === undefined || isObject(f.as) && typeof f.as.name === 'string' && (f.as.sessionId === undefined || typeof f.as.sessionId === 'string') && (f.as.shell === undefined || typeof f.as.shell === 'boolean'));
+      return typeof f.ask === 'string' && (f.declined === undefined || typeof f.declined === 'boolean') && (f.reason === undefined || typeof f.reason === 'string') && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string') && (f.as === undefined || isObject(f.as) && typeof f.as.name === 'string' && (f.as.sessionId === undefined || typeof f.as.sessionId === 'string') && (f.as.shell === undefined || typeof f.as.shell === 'boolean'));
     case 'role.launch':
       return typeof f.role === 'string' && isObject(f.fields) && Object.values(f.fields).every(value => typeof value === 'string');
     case 'role.set':

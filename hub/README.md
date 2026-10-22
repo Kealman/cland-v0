@@ -698,6 +698,7 @@ An **ask** is a question the Coordinator puts to the human inside a topic (spec 
 - **The card.** A question (one message, at most the hygiene's size), at most 9 options (one line of at most 200 characters each; the keys 1-9 answer them), `free` true unless given false; options or a free answer are needed. Not in Agents. The result is `{"ask":"<message id>","topic":{"id","title"}}`.
 - **Waiting.** An open ask makes its topic `waiting for human` (a `topic` event) and keeps it so: a plain human message, an agent's message, anything but the answer, `resolve` or a close leaves the status there. Several asks may be open in one topic.
 - **The answer.** `topic.answer {ask, option?, text?}` (UI): option `n` (1-based) sends that option's text, else `text` is the free answer (refused when the ask takes options only). It is the human's message in the ask's topic, carrying `answerTo` (the ask's id), addressed to the session that asked (or, when that session has since handed over the role it asked as, to the role: its new holder inherits the ask, which `role.state` lists under `asks`) and delivered like any human message (the spoke shows `answer_to` on the channel event). The ask is `answered` with the answer's id and the option; when no ask in the topic stays open the topic waits for the agent (the human spoke last). An ask that is not open takes no answer.
+- **Declining.** The human frame `topic.answer {ask, declined: true, reason: "<reason>"}` answers with `declined: <reason>`, delivered to the asker with `answerTo` as above. The trimmed reason must be non-empty; an option or free `text` cannot accompany it. Declining also works for options-only asks. The ask's state is `answered`, its outcome is `declined`, and the topic stays open for another ask. A declined ask is a decision and never consent; there is no separate “ask me later”. A lead returning the unchanged declined answer with `ask.answer` preserves the upstream declined outcome on the original ask. The frame accepts the same optional stand-in `as` attribution as other answers.
 - **Withdrawn and cancelled.** `resolve` (the Coordinator's tool or the human's `topic.resolve`) withdraws the topic's open asks; when the human withdrew them, each asker gets a hub note in the topic (a notice of kind `ask-closed`, through `noticeInTopic`). Closing the topic (`topic.close`) or its bound item cancels its open asks, and each asker gets a hub note (`cland hub: your ask "…" was cancelled: T-1 was closed`). A note does not reopen the topic.
 - **Events.** The `message` event of an ask carries `message.ask` (`AskCard`, below); every change of an ask's state is an `ask` event, `{"type":"ask","topic","ask":"<id>","card":AskCard}`. `topic.history` returns each ask with its card and each answer with `answerTo`. The log and the journal record `ask`, `ask-answered`, `ask-withdrawn`, `ask-cancelled`; Agents records none of it (asks and answers are the human's, not agent-to-agent traffic).
 
@@ -714,13 +715,13 @@ self-declared stand-in name, or the answering agent's name; forwarded decisions
 preserve a recorded stand-in. `at` is the answer time. The outcome is stored on
 the ask, independently of the reply message, and survives hub restarts. Existing
 `answer`, `option` and attribution fields stay available. Legacy rows without a
-stored outcome omit it. The outcome union also reserves
-`{status: "declined", reason: "<reason>", by, at}` for declining; this slice does
-not add a decline action.
+stored outcome omit it. A declined outcome is
+`{status: "declined", reason: "<trimmed full reason>", by, at}`; it omits `text`
+and `option` and retains the reason independently of its delivery message.
 
 A human ask records its inbox wait atomically at creation, even before a client
 or journal projection first reads the inbox. When an answered ask leaves the inbox, its `InboxDeparture` has
-`reason: "answered"` and the same `outcome`. The next coalesced `inbox` event
+`reason: "answered"` (or `"declined"` for a declined outcome) and the same `outcome`. The next coalesced `inbox` event
 includes `inbox.departures`, the rows settled since the preceding publication,
 so clients can fold a row in place with its answer before archiving it. Explicit
 `inbox.list` reads do not consume these pending departures. Subsequent events
@@ -1868,7 +1869,7 @@ read. See `nvim/README.md`, “Hub data” and snapshot replay, for the client c
 | `{"type":"topic.read","id":…,"topic":…,"upTo":"<message id>"}` | `{"topic":Topic}` with its `unread`; without `upTo`, up to the latest message |
 | `{"type":"topic.rename","id":…,"topic":…,"title":…}` | `{"topic":Topic}`; refused for General and Agents |
 | `{"type":"topic.delete","id":…,"topic":…}` | `{"deleted":id}`; refused for General and Agents |
-| `{"type":"topic.answer","id":…,"ask":…,"option"?:n,"text"?:…}`, `inbox.list`, `inbox.decline`, `inbox.read` | Under Asks and the inbox above |
+| `{"type":"topic.answer","id":…,"ask":…,"option"?:n,"text"?:…,"declined"?:true,"reason"?:…}`, `inbox.list`, `inbox.decline`, `inbox.read` | Under Asks and the inbox above |
 | `{"type":"events.list","id":…, "before"?:"<cursor>", "limit"?:200, "filter"?:{kinds?, warnings?, subject?, muted?}}` | `{rows: EventRow[], before: string|null, more: boolean}`; newest first, at most 200, with an exclusive cursor for the next older page |
 | `{"type":"subscribe","id":…}` | `{"subscribed":true}`; events follow on this connection until it closes |
 | `{"type":"hygiene.unmute","id":…,"a":"<session>","b":"<session>"}` | `{"lifted":bool,"pair":[a,b]}`: the loop breaker's mute of the pair lifted (false when none ran); refused for a name the hub never knew |

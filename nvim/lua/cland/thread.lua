@@ -331,8 +331,12 @@ function Thread:_build(m, prev, answer)
       }
     end
     local card = type(mm.ask) == 'table' and mm.ask or nil
+    local declined = card and type(card.outcome) == 'table' and card.outcome.status == 'declined'
+    if declined then
+      put('  declined: ' .. tostring(card.outcome.reason):gsub('[\r\n]+', ' '), 'ClandDim')
+    end
     if card then
-      local st = card.state == 'open' and card.to and { card.forwarded and 'forwarded' or ('waiting for ' .. card.to), 'ClandDim' } or require('cland.ask_card').STATE[card.state] or { tostring(card.state), 'ClandDim' }
+      local st = declined and { 'declined', 'ClandDim' } or card.state == 'open' and card.to and { card.forwarded and 'forwarded' or ('waiting for ' .. card.to), 'ClandDim' } or require('cland.ask_card').STATE[card.state] or { tostring(card.state), 'ClandDim' }
       hmarks[#hmarks + 1] = { col = 0, opts = { virt_text = { { 'ask · ' .. st[1] .. ' ', st[2] } }, virt_text_pos = 'eol_right_align', hl_mode = 'combine', priority = 130 } }
     end
     b.heads[mm.id] = #b.lines
@@ -349,15 +353,17 @@ function Thread:_build(m, prev, answer)
       -- the ask's card, as today (#33): the question, the numbered options, the state; the answer beneath
       local open = card.state == 'open' and not card.to
       local ask = { id = mm.id, topic = mm.topic or self.topic.id, question = mm.text, options = card.options or {}, free = card.free }
-      for _, l in ipairs(require('cland.ask_card').lines(card, mm.text)) do
-        local marks = {
-          { col = 0, opts = { line_hl_group = 'ClandAsk', priority = 50 } },
-          { col = 1, opts = { end_col = 4, hl_group = l[4], priority = 120 } },
-        }
-        if l[2] then
-          marks[#marks + 1] = { col = 5, opts = { end_col = #l[1], hl_group = l[2], priority = 120 } }
+      if not declined then
+        for _, l in ipairs(require('cland.ask_card').lines(card, mm.text)) do
+          local marks = {
+            { col = 0, opts = { line_hl_group = 'ClandAsk', priority = 50 } },
+            { col = 1, opts = { end_col = 4, hl_group = l[4], priority = 120 } },
+          }
+          if l[2] then
+            marks[#marks + 1] = { col = 5, opts = { end_col = #l[1], hl_group = l[2], priority = 120 } }
+          end
+          add(l[1], { group = group, ask = open and ask or nil }, marks)
         end
-        add(l[1], { group = group, ask = open and ask or nil }, marks)
       end
       for _, a in ipairs(mm.artifacts or {}) do chip(a) end
       local following = self:_chip(mm)
@@ -367,8 +373,10 @@ function Thread:_build(m, prev, answer)
       end
       if answer then
         b.msgs[#b.msgs + 1] = answer
-        add('', {})
-        message(answer)
+        if not declined then
+          add('', {})
+          message(answer)
+        end
       end
       return
     end

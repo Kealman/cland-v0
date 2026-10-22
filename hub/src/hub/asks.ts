@@ -76,6 +76,8 @@ export class Asks {
   /** Called with the recorded answer inside its message transaction, before any delivery. */
   recordAnswer(message: Message): void {
     if (!message.answerTo) return;
+    const incoming = this.#port.store.ask(message.answerTo);
+    const upstream = incoming?.forwarded ? this.#port.store.ask(incoming.forwarded)?.outcome : undefined;
     const attribution: AnswerAttribution | undefined = message.answered_as ? {
       answered_as: message.answered_as,
       ...(message.answered_by ? { answered_by: message.answered_by } : {}),
@@ -83,7 +85,9 @@ export class Asks {
     } : undefined;
     this.#port.store.closeAsk(message.answerTo, 'answered', message.ts, {
       id: message.id,
-      outcome: { status: 'answered', text: message.text, by: message.answered_as === 'human' ? 'human' : message.answered_by ?? message.from, at: message.ts },
+      outcome: upstream?.status === 'declined' && message.text === `declined: ${upstream.reason}`
+        ? upstream
+        : { status: 'answered', text: message.text, by: message.answered_as === 'human' ? 'human' : message.answered_by ?? message.from, at: message.ts },
       ...(attribution ? { attribution } : {}),
     });
   }
@@ -207,14 +211,19 @@ export class Asks {
    * carrying `answer_to`, addressed to the session that asked; the ask is answered. With no other ask open the topic
    * no longer waits for the human: the human spoke last, so it waits for the agent.
    */
-  answer(id: string, option?: number, text?: string, standIn?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+  answer(id: string, option?: number, text?: string, standIn?: string, declined = false, reason?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
     const p = this.#port;
     const a = p.store.ask(id);
     if (!a) throw new TopicRefusal(`no ask "${id}"`);
     if (a.state !== 'open') throw new TopicRefusal(`the ask is ${a.state}: "${a.question}" takes no answer any more`);
     if (a.to !== undefined) throw new TopicRefusal('this ask waits for an agent; only its receiving lead may answer it');
     let body: string;
-    if (option !== undefined) {
+    if (declined) {
+      const why = typeof reason === 'string' ? reason.trim() : '';
+      if (!why) throw new TopicRefusal('declining an ask needs a reason');
+      if (option !== undefined || text !== undefined) throw new TopicRefusal('a declined answer takes a reason, not an option or text');
+      body = `declined: ${why}`;
+    } else if (option !== undefined) {
       if (!Number.isInteger(option) || option < 1 || option > a.options.length) {
         throw new TopicRefusal(a.options.length ? `option ${option} is not one of 1-${a.options.length}` : 'this ask has no options: answer it with a text');
       }
@@ -233,7 +242,9 @@ export class Asks {
     const at = p.now().toISOString();
     p.store.closeAsk(a.id, 'answered', at, {
       id: '', attribution,
-      outcome: { status: 'answered', text: body, by: standIn ?? 'human', at, ...(option !== undefined ? { option } : {}) },
+      outcome: declined
+        ? { status: 'declined', reason: reason?.trim() ?? '', by: standIn ?? 'human', at }
+        : { status: 'answered', text: body, by: standIn ?? 'human', at, ...(option !== undefined ? { option } : {}) },
       ...(option !== undefined ? { option } : {}),
     });
     let sent: { message: TopicMessage; outcomes: SendOutcome[] };

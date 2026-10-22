@@ -309,8 +309,8 @@ export class InboxBoard {
     for (const row of p.store.inboxWaits()) {
       let reason: InboxDeparture['reason'] | undefined;
       if (row.kind === 'ask') {
-        const state = p.store.ask(row.id)?.state;
-        if (state && state !== 'open') reason = state;
+        const ask = p.store.ask(row.id);
+        if (ask && ask.state !== 'open') reason = ask.outcome?.status === 'declined' ? 'declined' : ask.state;
       } else if (row.kind === 'approval') {
         const proc = this.#processes?.().find(s => s.sessionId === row.id);
         if ((proc?.state ?? p.stateOf(row.id)) !== 'waiting for approval') reason = 'approved';

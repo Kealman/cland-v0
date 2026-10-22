@@ -539,6 +539,7 @@
     "nvim/test/crew.test.ts": "T2",
     "nvim/test/criteria-component.test.ts": "T2",
     "nvim/test/criteria.test.ts": "T3",
+    "nvim/test/declined-ask-component.test.ts": "T2",
     "nvim/test/events-quiet.test.ts": "T2",
     "nvim/test/events.test.ts": "T2",
     "nvim/test/explorer-card-component.test.ts": "T2",
