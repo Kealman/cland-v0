@@ -2,8 +2,8 @@
 id: T-1102
 kind: task
 title: The web picks an unversioned release as the current release
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1071
 topic: topic-842
 branch: t/T-1102-the-web-picks-an-unversioned-release-as
 created: 2026-10-22T09:25:03.407Z
-updated: 2026-10-22T09:42:07.317Z
+updated: 2026-10-22T09:47:14.509Z
+closed: 2026-10-22T09:47:14.509Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear: original A-9073 / 0287fb1b matches accepted source; independently audited2435 ordinary passes/373 file passes and both owned T1 identities five unique load passes plus explicit5/5 (10 total). Max load0.004067197s/0.001948334s. Existing copied-tracker Web case with scratch R-1100/Tree/Board/Graph checks passes at24.457822814s; duration overage retained, not a fast-budget claim. Actual Linux T1/all-T2/Web pass; hostd99af874 reused; report-only diagnostics/seven missing baselines retained. C1/C2 verified; no T3/T4/stage/QA claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T09:47:14.509Z
+
+Merged e003eb69d7e5cf71c78b513b26ea9671693e0e03 onto dev.
