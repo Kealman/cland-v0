@@ -3,7 +3,7 @@ id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-837
 branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-22T06:53:22.937Z
+updated: 2026-10-22T06:59:34.374Z
 ---
 
 ## Summary
@@ -32,15 +32,16 @@ A run is consecutive agent-to-agent messages with nothing between them that neve
 ## Acceptance criteria
 
 - [x] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
-  - done: impl-1056 · 2026-10-22T06:48:21.430Z
+  - done: impl-1056 · 2026-10-22T06:58:07.248Z
 - [x] C2. A fifth message updates the same run id in a delta, without a history re-read (test).
-  - done: impl-1056 · 2026-10-22T06:48:21.512Z
-- [ ] C3. An ask, a verdict, an answer, or a message to or from the human or an Aide ends a run, and the next agent message starts a new one (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T06:53:22.937Z · note Pruning an unrelated older row rebuilds a retained Aide boundary with current recipient roles and can fold it (M1; A-8984).
+  - done: impl-1056 · 2026-10-22T06:58:07.318Z
+- [x] C3. An ask, a verdict, an answer, or a message to or from the human or an Aide ends a run, and the next agent message starts a new one (test).
+  - done: impl-1056 · 2026-10-22T06:58:07.482Z
 - [x] C4. A history page that starts mid-run carries that run's id and its full fold line (test).
-  - done: impl-1056 · 2026-10-22T06:48:21.687Z
+  - done: impl-1056 · 2026-10-22T06:58:07.553Z
 - [x] C5. `hub/README.md` describes runs and fold lines.
-  - done: impl-1056 · 2026-10-22T06:48:21.859Z
+  - done: impl-1056 · 2026-10-22T06:58:07.628Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1056-source-2 · 2026-10-22T06:59:34.374Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
 
 ## Comments
 
@@ -62,3 +63,22 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Full source not clear; fixed base689b6f95, A-8984. Spec M1 retention clears stored membership then reclassifies retained Aide recipients using current roles; test currently prunes the boundary too. M2 queued verifier assignment rewrites persisted recipients without updating derived run names; assigned message delta/history can contradict foldLine. No separate standards/lows; ordinary facts, mid-run byte pages, append/rollback/legacy paths otherwise sound. C3 failed,all C1–C5 unverified pending correction and source re-review before mode-free verify. A-8977 local summary supporting only,no independently inspected suite/raw runtime proof; no Reviewer test execution. After-stage QA separate.
 
 Criteria: C3 failed (Pruning an unrelated older row rebuilds a retained Aide boundary with current recipient roles and can fold it (M1; A-8984).).
+
+### impl-1056 · 2026-10-22T06:58:07.188Z
+
+Fixed source review A-8984 M1/M2 at e15737c55b0b7372a1761517cdca8bf0946a03da, pushed; no dev merge. M1 regression now retains former-Aide boundary while pruning an older unrelated row, then reopens (red actual run:first, expected undefined). Per-message run_eligible survives derived retention rebuild. M2 real queued-review assignment regression failed stale participants [impl,reviewer,rev] versus [impl,rev]; assignment now recomposes only the affected run, preserving id/firstSeq/count/latest tail. T2 file 5/5 at 0.831s; T1 3/3 at 0.316s; existing verifier-routing 11/11 at 1.646s locally on Darwin arm64. Root typecheck and static/lint pass; existing 132 findings/59 files remain report-only, 0 refusals. A-8984 criteria failure addressed; fresh source review requested before verification.
+
+### rev-23 · 2026-10-22T06:59:34.374Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1056-source-2
+commit: e15737c55b0b7372a1761517cdca8bf0946a03da
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source clear; A-8989 re-audits M1/M2 over A-8984/fixed689b6f95. Per-message eligibility survives retention; queued assignment refreshes only affected run facts from durable recipients, preserving id/count/tail. Corrected Store retention/reopen and public queued-assignment tests cover both exact gaps. A-8987 captured M2 red/T2 5/5/T1 3/3 local green inspected; M1 red excerpt labelled partial, verifier/typecheck/lint summarized only. No findings; C5 docs source-verified. C1–C4 pending fresh exact-head configured mode-free receipt, no Linux/load/T3/T4/QA pass inferred. After-stage QA separate.
+
+Criteria: C5 verified.

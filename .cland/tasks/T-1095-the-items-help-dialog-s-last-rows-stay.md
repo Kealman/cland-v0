@@ -2,8 +2,8 @@
 id: T-1095
 kind: task
 title: The Items help dialog's last rows stay below the window after T-1074's keys
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1074
 topic: topic-838
 branch: t/T-1095-the-items-help-dialog-s-last-rows-stay
 created: 2026-10-22T06:41:51.812Z
-updated: 2026-10-22T06:56:08.768Z
+updated: 2026-10-22T07:00:55.703Z
+closed: 2026-10-22T07:00:55.703Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-8986 audits unchanged reviewed head and A-8983/run47bcfb0a exit0. Both actual viewport subcases pass (1280×720 1.049460575s; 1024×600 1.117506465s; parent2.537756788s), establishing C1 with source-reviewed all32/native-scroll/final-row/bounds assertions. Original host npm run check includes passing typecheck/colour/contrast/build/static checks, establishing C2; remote host gate aee32111 reused, not repeated. 791 passes, no fail/cancel/skip; actual T1/Web complete, web-only T2 phase has no T2 tests. Linux x64 c8lon1 droplet,170s/$0.0118; generic lint/budget/ratchet report-only. No broadT2/T3/T4/load-repetition/stageQA claim. Standards0;Spec0.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T07:00:55.703Z
+
+Merged 9fea59efea7b784ac2f1666d538c537ef12fb420 onto dev.
