@@ -3,7 +3,7 @@ id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-837
 branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-22T08:19:01.290Z
+updated: 2026-10-22T08:29:09.667Z
 ---
 
 ## Summary
@@ -33,21 +33,26 @@ A run is consecutive agent-to-agent messages with nothing between them that neve
 
 - [x] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
   - done: impl-1056 · 2026-10-22T08:17:56.716Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1056-final-2 · 2026-10-22T08:29:09.526Z · commit 35323740a1e649c7561494159f5af834ab4b95da
 - [x] C2. A fifth message updates the same run id in a delta, without a history re-read (test).
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - done: impl-1056 · 2026-10-22T08:17:56.794Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1056-final-2 · 2026-10-22T08:29:09.526Z · commit 35323740a1e649c7561494159f5af834ab4b95da
 - [x] C3. An ask, a verdict, an answer, or a message to or from the human or an Aide ends a run, and the next agent message starts a new one (test).
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - done: impl-1056 · 2026-10-22T08:17:56.965Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1056-final-2 · 2026-10-22T08:29:09.526Z · commit 35323740a1e649c7561494159f5af834ab4b95da
 - [x] C4. A history page that starts mid-run carries that run's id and its full fold line (test).
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - done: impl-1056 · 2026-10-22T08:17:57.038Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1056-final-2 · 2026-10-22T08:29:09.526Z · commit 35323740a1e649c7561494159f5af834ab4b95da
 - [x] C5. `hub/README.md` describes runs and fold lines.
   - verified: rev-23 [reviewer] · run rev-20261022-1056-source-2 · 2026-10-22T06:59:34.374Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - verified: rev-26 [reviewer] · run rev-20261022-1056-source-3 · 2026-10-22T07:29:18.071Z · commit 4176f40d140331375fe06563af0d652cdcace94a
   - done: impl-1056 · 2026-10-22T08:17:57.115Z
   - verified: rev-26 [reviewer] · run rev-20261022-1056-source-4 · 2026-10-22T08:19:01.290Z · commit 35323740a1e649c7561494159f5af834ab4b95da
+  - verified: rev-26 [reviewer] · run rev-20261022-1056-final-2 · 2026-10-22T08:29:09.526Z · commit 35323740a1e649c7561494159f5af834ab4b95da
 
 ## Comments
 
@@ -164,3 +169,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Shared-fix delta source clear; A-9048 independently matches donor e2233f5e/pick patch-id1a8fd0fa under Coordinator d4096542. Only authorized palette test/duration files change. Native scrollend observer precedes keys, bounded completion preserves exact all32-row PageDown-only traversal, End last-row/Home top and viewport assertions. Matching7.5s identity allowance datedOct22–29,E-880,~1.5x measured Linux4.979509666s; no production/run-test/doc changes. C5 source reverified; C1–C4 await fresh mode-free configured execution. A-9047 local browser attempt unavailable: actual missing playwright-core setup error, no assertions/pass; summarized typecheck/static/lint success not a configured receipt. Donor passes not this-head proof. A-9018 remains failed; no runtime exception/T3/T4/full-lifecycle/stageQA claim. Standards0;Spec0.
 
 Criteria: C5 verified.
+
+### impl-1056 · 2026-10-22T08:28:47.896Z
+
+Green exact-head configured run d53099cb-8d25-46e8-a46a-45ef589d8834 (A-9054) at35323740a1e649c7561494159f5af834ab4b95da. Linux x64 6.8.0-142-generic c-8 lon1 droplet, Nodev24.21.0/Neovimv0.12.5, lifetime508s/$0.0353. T1 exit0(54s), fallback allhub/NeovimT2 exit0(329s), actualWeb exit0(43s), base2429/2429/no failure/cancellation/skip. Original log confirms all8 owned run identities5/5 load passes; no owned tier-mismatch line. Shared fixed palette identity passed at4.545798689s under7.5s dated allowance (not a4sWebtier budget pass). Hostgate98805da1 reused, not repeated; generic lint132/59,tier/duration/ratchet diagnostics report-only and5missing baseline projections retained. T3/T4/stageQA not claimed. Head unchanged; awaiting Reviewer's final evidence settlement, claim retained.
+
+### rev-26 · 2026-10-22T08:29:09.526Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1056-final-2
+commit: 35323740a1e649c7561494159f5af834ab4b95da
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-9055 audits original A-9054/d53099cb at source-clear35323740.2429ordinary tests/371files+40scopedload tests/files pass,zero fail/cancel/skip. All8 run identities have base+5/5 explicit load proofs(max0.502511s),establishing C1–C4 and prior retention/assignment fixes; C5 source docs current. Former blocker palette now passes both viewport cases and parent4.545799s within posted7.5s allowance; no Web load claim. T1/all hub+NeovimT2/actualWeb exit0,Linuxc8lon1 Node24.21/Neovim0.12.5,workers2(Web4),508s/$0.0353. Host98805da1 reused not repeated; genericlint132/59,0refusals,tier/duration/ratchet report-only,5missing baselines retained. A-9018 stays historical failed; local missing-playwright setup not a pass. No T3/T4/full-lifecycle/stageQA claim. Standards0;Spec0.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

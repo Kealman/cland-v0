@@ -3,7 +3,7 @@ id: T-1096
 kind: task
 title: doctor-cli fails on a droplet shard that never builds the web bundle
 state: open
-status: ready
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-839
 branch: t/T-1096-doctor-cli-fails-on-a-droplet-shard-that
 created: 2026-10-22T07:20:08.870Z
-updated: 2026-10-22T08:27:22.001Z
+updated: 2026-10-22T08:28:52.773Z
 ---
 
 ## Summary
