@@ -11,16 +11,16 @@ import { onCleanup } from '../../hub/test/process-cleanup.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { startClient } from './harness.ts';
 
-import { STARTUP_MS, STARTUP_REQUESTS, type StartupMeasurement } from '../../test-support/startup-budget.ts';
+import { STARTUP_MS, STARTUP_REQUESTS, assertStartupItems, type StartupItem, type StartupMeasurement } from '../../test-support/startup-budget.ts';
 export { STARTUP_MS, FIRST_PAYLOAD_BYTES, STARTUP_REPLY_BYTES, STARTUP_TOTAL_BYTES, STARTUP_REQUESTS, enforceStartupBudget, type StartupMeasurement } from '../../test-support/startup-budget.ts';
 const SETUP_MS = 10_000;
-export type TrackerFixture = { bodies: Map<string, string>; open: string[]; total: number; row: { id: string; title: string } };
+export type TrackerFixture = { bodies: Map<string, string>; open: string[]; items: StartupItem[]; total: number; row: { id: string; title: string } };
 
 /** Generate realistic Markdown only in the disposable tracker, never in the repository. */
 export async function generateStartupTracker(root: string): Promise<TrackerFixture> {
   const dir = join(root, '.cland/tasks');
   await mkdir(dir, { recursive: true });
-  const bodies = new Map<string, string>(), open: string[] = [];
+  const bodies = new Map<string, string>(), open: string[] = [], items: StartupItem[] = [];
   const at = '2026-10-01T12:00:00.000Z';
   for (let n = 1; n <= 1000; n++) {
     const id = n === 1 ? 'R-1' : n === 2 ? 'E-2' : `T-${n}`;
@@ -29,29 +29,32 @@ export async function generateStartupTracker(root: string): Promise<TrackerFixtu
       + '## Acceptance criteria\n\n- [ ] C1. Open items render from the first summary payload.\n- [ ] C2. Sessions remain visible while tracker data arrives.\n';
     bodies.set(id, body);
     if (n <= 200) open.push(id);
+    const membership = { id, kind: n === 1 ? 'release' : n === 2 ? 'epic' : 'task', state: n <= 200 ? 'open' : 'closed' } as const;
+    items.push(membership);
     await writeFile(join(dir, `${id}-startup.md`), serializeItem({
-      fm: { id, kind: n === 1 ? 'release' : n === 2 ? 'epic' : 'task',
+      fm: { ...membership,
         title: n === 1 ? 'Startup tracker' : n === 2 ? 'Summary performance' : `Keep item ${n} responsive`,
-        state: n <= 200 ? 'open' : 'closed', ...(n > 2 ? { status: n <= 200 ? 'planned' : 'done', size: 'S' } as const : {}),
+        ...(n > 2 ? { status: n <= 200 ? 'planned' : 'done', size: 'S' } as const : {}),
         labels: ['workbench'], assignee: null, parent: n === 1 ? null : n === 2 ? 'R-1' : 'E-2',
         blocked_by: [], topic: null, branch: null, created: at, updated: at },
       body, comments: [{ author: 'implementer', at, text: 'Source review checks the rendered receipt and the response size before verification.' }],
     }));
   }
-  return { bodies, open, total: 1000, row: { id: 'E-2', title: 'Summary performance' } };
+  return { bodies, open, items, total: 1000, row: { id: 'E-2', title: 'Summary performance' } };
 }
 
 /** C4 copies item files only. No live config, database, discovery, account or run state is used. */
 export async function copyStartupTracker(source: string, root: string): Promise<TrackerFixture> {
   const dir = join(root, '.cland/tasks');
   await mkdir(dir, { recursive: true });
-  const bodies = new Map<string, string>(), open: string[] = [];
+  const bodies = new Map<string, string>(), open: string[] = [], items: StartupItem[] = [];
   let row: TrackerFixture['row'] | undefined;
   for (const name of await readdir(source)) {
     if (!/^[A-Z]-\d+.*\.md$/i.test(name)) continue;
     const text = await readFile(join(source, name), 'utf8');
     const item = parseItem(text);
     bodies.set(item.fm.id, item.body);
+    items.push({ id: item.fm.id, kind: item.fm.kind, state: item.fm.state });
     if (item.fm.state === 'open') {
       open.push(item.fm.id);
       if (item.fm.kind === 'release' && !row) row = { id: item.fm.id, title: item.fm.title };
@@ -59,7 +62,7 @@ export async function copyStartupTracker(source: string, root: string): Promise<
     await writeFile(join(dir, name), text);
   }
   assert.ok(row, 'copied tracker has an open release to observe on screen');
-  return { bodies, open, total: bodies.size, row };
+  return { bodies, open, items, total: bodies.size, row };
 }
 
 type Fault = 'slow-list' | 'bodies' | 'oversized-reply';
@@ -203,9 +206,9 @@ export async function measureStartup(t: TestContext, bin: string, root: string, 
   await until(() => STARTUP_REQUESTS.every(type => wire.stats().replies[type] !== undefined), { what: 'all eight startup reply receipts' });
   const stats = wire.stats();
   assert.equal(stats.lists, 1, 'one initial item payload');
-  assert.deepEqual(stats.requests.map(({ type, projection, state }) => ({ type, projection, state })), [{ type: 'task.list', projection: 'summary', state: 'open' }]);
-  assert.deepEqual([...stats.payloadIds].sort(), [...fixture.open].sort(), 'first wire payload contains every open item and no closed items');
-  assert.deepEqual((await c.lua<string[]>("local ids={};for _,it in ipairs(require('cland.state').S.items) do ids[#ids+1]=it.id end;return ids")).sort(), [...fixture.open].sort(), 'all open summaries are installed');
+  assert.deepEqual(stats.requests.map(({ type, projection, state, include_containers }) => ({ type, projection, state, include_containers })), [{ type: 'task.list', projection: 'summary', state: 'open', include_containers: true }]);
+  const installedIds = await c.lua<string[]>("local ids={};for _,it in ipairs(require('cland.state').S.items) do ids[#ids+1]=it.id end;return ids");
+  assertStartupItems(fixture.items, stats.payloadIds, installedIds);
   assert.ok(stats.payloadBytes > 0, 'first task.list response was observed');
   const result = { startupMs, payloadBytes: stats.payloadBytes, total: fixture.total, open: fixture.open.length, replies: stats.replies };
   t.diagnostic(`startup measurement ${JSON.stringify(result)}; ${process.platform}/${process.arch}; real headless Neovim; elapsed connection-to-render (suite attribution from runner)`);

@@ -386,8 +386,11 @@ the test places Sessions left of the explorer; no GUI or harness starts.
 The hard limits are **3,000 ms**, **131,072 bytes (128 KiB)** for the first item reply, **262,144 bytes (256 KiB)** per startup reply and **1,048,576 bytes (1 MiB)** across the eight startup reads. A transparent
 socket relay counts UTF-8 bytes of the *first task.list response*, including the
 JSON result envelope and trailing newline. It also checks that exactly one
-open-summary request returns precisely the expected open ids and that Neovim
-installs them all. The startup clock runs from delivery of the authenticated
+open-summary request with `include_containers:true` returns precisely the open
+items plus every non-task row (including closed containers), and that Neovim
+installs them all. `hub/test/startup-budget.test.ts` exercises these shared probe
+assertions at T1, including missing, extra and duplicate wire or installed rows.
+The startup clock runs from delivery of the authenticated
 hub welcome to observation of the explorer item row, Coordinator header,
 header session count and both session rows in their physical screen columns.
 All downstream frames wait behind the welcome until the screen observer is

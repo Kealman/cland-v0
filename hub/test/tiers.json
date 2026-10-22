@@ -384,6 +384,7 @@
     "hub/test/sqlite-contention.test.ts": "T2",
     "hub/test/stage-closure-component.test.ts": "T2",
     "hub/test/stage-qa.test.ts": "T3",
+    "hub/test/startup-budget.test.ts": "T1",
     "hub/test/startup-deadline-component.test.ts": "T2",
     "hub/test/startup-diagnostic.test.ts": "T1",
     "hub/test/startup-ready-component.test.ts": "T2",
