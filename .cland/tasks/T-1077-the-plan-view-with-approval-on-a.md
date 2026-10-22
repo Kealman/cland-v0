@@ -2,8 +2,8 @@
 id: T-1077
 kind: task
 title: The Plan view with approval on a
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-843
 branch: t/T-1077-the-plan-view-with-approval-on-a
 created: 2026-10-21T17:32:16.973Z
-updated: 2026-10-22T11:46:29.101Z
+updated: 2026-10-22T11:51:23.923Z
+closed: 2026-10-22T11:51:23.923Z
 ---
 
 ## Summary
@@ -165,3 +166,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head evidence clear; A-9139 independently audits A-9138/run b4d7884f at source-clear18015261/tree071da040. T1/all-fallbackT2 hub+Neovim/Web exit0;2444 ordinary passes, zero fail/cancel/skip. Plan C1/C2/C3 pass1.653857545/1.135570776/1.099836922s,parent5.212670358s<8.2s. Incoming criteria parent10.702496971s<17.3s and both all-33 palette viewport traversals pass. Standards0;Spec0. Linuxx64c8lon1 cland-v0-55102bdc,Node24.21/Nvim0.12.5,workers2(Web4),465s/$0.0323;hostaef4dccd reused/notremoteT0repeat. Generic lint/tier/duration/ratchet report-only,two missing baselines;Web40.70s is not a40s tier-budget pass. Enforced new-identity gate satisfied. No Plan Web-load repetitions,T3/T4,full-lifecycle or stage-QA claim. Historical A-9103 stays failed; premerge green evidence not substituted.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-22T11:51:23.923Z
+
+Merged 1f2144fc56d201b63faf902e33a229e055ee769d onto dev.
