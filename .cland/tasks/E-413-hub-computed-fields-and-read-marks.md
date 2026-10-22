@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-804
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-22T02:34:13.506Z
+updated: 2026-10-22T04:23:52.615Z
 ---
 
 ## Summary
@@ -111,6 +111,7 @@ stages:
         - T-1081
         - T-1089
         - T-1091
+        - T-1093
       - - T-1053
         - T-1055
   - name: marks and threads
@@ -123,3 +124,86 @@ stages:
       - - T-1057
         - T-1059
 ```
+
+## Comments
+
+### qa-676 · 2026-10-22T04:23:03.873Z
+
+verdict: qa
+result: not clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-22-1
+commit: a0ab98362a9c34e7cefd4660ca62d9c264a3fcbc
+stage: fields
+stage_hash: 367d6e0f0698d54efb688a5147c3ef148b59a907dd842b3b018cb8740d778a94
+findings: [{"severity":"low","text":"E413S1-15 FAIL, in scope T-1081 C5. Reading lines 722–733 and 841–854 shows “Counts and container progress reflect the loaded summaries until this fetch completes” and a refresh of “the requested closed list”, contradicting authoritative full hub roll-ups and per-parent pages demonstrated by E413S1-10/14. Coordinator bcd68aa3 accepted the docs finding. No fix made.","file":"nvim/README.md","line":727},{"severity":"low","text":"E413S1-00 brief setup correction: init creates C-1..C-4; overlaying the committed tracker left 1096 files rather than exact 1092. Authorized decision 7b31ad72: stop scratch hubs, replace only p1/.cland/tasks with W committed copy, verify 1092, restart. Exact commands in setup-correction.sh; original capture preserved.","file":"qa/briefs/E-413-stage-1.md"},{"severity":"low","text":"E413S1-00 brief environment correction: original prefix count 1 named GH_PAGER only; no credential exposure established. Under 7b31ad72 every later scratch process uses the complete fixtureEnvironment result after overlays, scratch paths and final prefix removal; prelaunch count 0. run.mjs preserves PATH/SHELL/TERM/system TMPDIR. Both scratch hubs were restarted under it. Original env and output retained.","file":"qa/briefs/E-413-stage-1.md"},{"severity":"low","text":"E413S1-22 brief oracle correction, authorized 43149d5a: outgoing-send boundaries gave midAdvances 0; boundaries at result t and result none give 1. Expected model.advance seq73 lies after sending reset and before its reply. Same raw capture, no product rerun, both outputs retained.","file":"qa/briefs/E-413-stage-1.md"},{"severity":"low","text":"E413S1-28 brief cleanup probe is global: pgrep count 1 then immediate PID/name-only follow-up 0. All five fixture-owned census lines already reported after 0; scratch hub stopped. Decision 79502bbb accepts PASS with limitation. Coordinator reports other Web test sessions; attribution of the vanished match remains unproven. Use fixture-owned process checks.","file":"qa/briefs/E-413-stage-1.md"}]
+finding_counts: {"high":0,"medium":0,"low":5}
+
+| Case | Result | Observation / evidence |
+| --- | --- | --- |
+| E413S1-00 | PASS | p1 and p2] bash E413S1-00.sh via run.mjs (saved exact command); Exact detached S and seven merged items; clean. Authorized setup correction: exact committed 1092 files, sealed prefix count 0 after filtering GH_PAGER by key name only; scratch hubs restarted. [E413S1-00-output.txt](E413S1-00-output.txt) |
+| E413S1-01 | PASS | 1/1 Lua differential; 1092 bodies plus 3 ancestor regressions, 0 differences; copied snapshot 119318 bytes. [E413S1-01-output.txt](E413S1-01-output.txt) |
+| E413S1-02 | PASS | 107 open rows, complete ancestor chains and computed facts; 22/22 targeted tests. Original trailing wrapper extraction error retained separately after successful checks. [E413S1-02-output.txt](E413S1-02-output.txt) |
+| E413S1-03 | PASS | T1057 edit published exactly T1057, E413, R377 with updated ancestors. [E413S1-03-output.txt](E413S1-03-output.txt) |
+| E413S1-04 | PASS | 2/2 scale tests; macOS first hub.status 2358.5ms; startup replies 463777 bytes. [E413S1-04-output.txt](E413S1-04-output.txt) |
+| E413S1-05 | PASS | All summary-field documentation needles present and consistent. [E413S1-05-output.txt](E413S1-05-output.txt) |
+| E413S1-06 | PASS | Verdict reason/round/scope and decision arrive in snapshots/deltas and closed by-id read; no bodies/comments in snapshot. [E413S1-06-output.txt](E413S1-06-output.txt) |
+| E413S1-07 | PASS | Two plan stages in order, totals 7 and 4; status mutation delivered updated histogram; settlement test passed. [E413S1-07-output.txt](E413S1-07-output.txt) |
+| E413S1-08 | PASS | No body/comments; every open task has agents_text; E413 headings match file order and positive word count. [E413S1-08-output.txt](E413S1-08-output.txt) |
+| E413S1-09 | PASS | All card-field documentation needles present and consistent. [E413S1-09-output.txt](E413S1-09-output.txt) |
+| E413S1-10 | PASS | p1] bash E413S1-10.sh via run.mjs (saved exact command); 6/6 Neovim progress tests; stage total 7 with zero loaded closed stage members. [E413S1-10-output.txt](E413S1-10-output.txt) |
+| E413S1-11 | PASS | Items snapshot 117094 bytes, first Neovim reply 109899 bytes <=122880; no closed rows, same item set, 1092 files. [E413S1-11-output.txt](E413S1-11-output.txt) |
+| E413S1-12 | PASS | E482 closed pages 100+10, 110 unique closed tasks; owner rollup 110/110, fully closed subtree absent from snapshot. [E413S1-12-output.txt](E413S1-12-output.txt) |
+| E413S1-13 | PASS | Held page close/reopen race: no duplicates, correct seven-row closed set, authoritative done count +1 then restored. [E413S1-13-output.txt](E413S1-13-output.txt) |
+| E413S1-14 | PASS | 82/82 Neovim tests including copied tracker explorer/board/card and nested closed pages; zero skips. [E413S1-14-output.txt](E413S1-14-output.txt) |
+| E413S1-15 | FAIL | FAIL: nvim/README.md:727–730 says progress reflects loaded summaries and a closed list is refreshed; contradicts full hub counts and per-parent pages in passing checks and lines 841–854. [E413S1-15-output.txt](E413S1-15-output.txt) |
+| E413S1-16 | PASS | Linux droplet stage cover (cited)] bash E413S1-16.sh via run.mjs (saved exact command); Both stage covers complete at S; Linux first hub.status 8502.4ms <10000, startup test passes (duration gate report-only). [E413S1-16-output.txt](E413S1-16-output.txt) |
+| E413S1-17 | PASS | Unread 1,2,3 with exact lastMessageAt; topic.read resets 0; 16/16 targeted tests. [E413S1-17-output.txt](E413S1-17-output.txt) |
+| E413S1-18 | PASS | One reviewer row, newest T7 hold plus 1; T6 prior hold, QA probe status, removed on disconnect. [E413S1-18-output.txt](E413S1-18-output.txt) |
+| E413S1-19 | PASS | One key, complete merged rows, no consecutive duplicates, one status delta, final null. [E413S1-19-output.txt](E413S1-19-output.txt) |
+| E413S1-20 | PASS | Session/unread docs present and consistent. [E413S1-20-output.txt](E413S1-20-output.txt) |
+| E413S1-21 | PASS | Warning-filtered page/live rows, one advance, inherited filter and explicit override pass. [E413S1-21-output.txt](E413S1-21-output.txt) |
+| E413S1-22 | PASS | Authorized oracle correction: original send-boundary midAdvances 0; reply-boundary 1. Same connection, selected-topic event, contiguous sequence; no product rerun. [E413S1-22-output.txt](E413S1-22-output.txt) |
+| E413S1-23 | PASS | test $W] bash E413S1-23.sh via run.mjs (saved exact command); Legacy connection sees two not-clear and two clear verdicts, zero advances; 19/19 tests. [E413S1-23-output.txt](E413S1-23-output.txt) |
+| E413S1-24 | PASS | Events-filter docs present and consistent. [E413S1-24-output.txt](E413S1-24-output.txt) |
+| E413S1-25 | PASS | Wire import lint and typecheck exit 0 with no diagnostics. [E413S1-25-output.txt](E413S1-25-output.txt) |
+| E413S1-26 | PASS | R377 rollup 5/13 with 8 loaded epics, 7 mixed closed children; E412 pages 5+5+3, identities unique and not in snapshot. [E413S1-26-output.txt](E413S1-26-output.txt) |
+| E413S1-27 | PASS | Copied tracker probe 1/1: 1092 items/107 open, 110014 bytes, 48.700625ms connection-to-render. Six budget tests pass including intentional negative cases. [E413S1-27-output.txt](E413S1-27-output.txt) |
+| E413S1-28 | PASS | Build clean and 8/8 Web tests. Five fixture census lines after 0; global pgrep transient 1 then settled 0, PASS under decision 79502bbb with attribution limitation. [E413S1-28-output.txt](E413S1-28-output.txt) |
+| E413S1-29 | PASS | 2/2 filtered QA tests under stdio/stub; parent-unfold greps 1/1; clean tree. [E413S1-29-output.txt](E413S1-29-output.txt) |
+
+**Not clear — E413S1-15 failed.** All 30 scoped cases completed: 29 PASS, 1 FAIL. No blocked, inconclusive or skipped cases. No epic criterion marks (stage verdict only).
+
+Findings (all low; the first is the product documentation defect, the others are brief corrections):
+
+- **nvim/README.md:727** — E413S1-15 FAIL, in scope T-1081 C5. Reading lines 722–733 and 841–854 shows “Counts and container progress reflect the loaded summaries until this fetch completes” and a refresh of “the requested closed list”, contradicting authoritative full hub roll-ups and per-parent pages demonstrated by E413S1-10/14. Coordinator bcd68aa3 accepted the docs finding. No fix made.
+- **qa/briefs/E-413-stage-1.md** — E413S1-00 brief setup correction: init creates C-1..C-4; overlaying the committed tracker left 1096 files rather than exact 1092. Authorized decision 7b31ad72: stop scratch hubs, replace only p1/.cland/tasks with W committed copy, verify 1092, restart. Exact commands in setup-correction.sh; original capture preserved.
+- **qa/briefs/E-413-stage-1.md** — E413S1-00 brief environment correction: original prefix count 1 named GH_PAGER only; no credential exposure established. Under 7b31ad72 every later scratch process uses the complete fixtureEnvironment result after overlays, scratch paths and final prefix removal; prelaunch count 0. run.mjs preserves PATH/SHELL/TERM/system TMPDIR. Both scratch hubs were restarted under it. Original env and output retained.
+- **qa/briefs/E-413-stage-1.md** — E413S1-22 brief oracle correction, authorized 43149d5a: outgoing-send boundaries gave midAdvances 0; boundaries at result t and result none give 1. Expected model.advance seq73 lies after sending reset and before its reply. Same raw capture, no product rerun, both outputs retained.
+- **qa/briefs/E-413-stage-1.md** — E413S1-28 brief cleanup probe is global: pgrep count 1 then immediate PID/name-only follow-up 0. All five fixture-owned census lines already reported after 0; scratch hub stopped. Decision 79502bbb accepts PASS with limitation. Coordinator reports other Web test sessions; attribution of the vanished match remains unproven. Use fixture-owned process checks.
+
+QA wrapper note, separate from product and brief findings: E413S1-02 extraction accidentally included the markdown tail after the command. All frame assertions and 22 tests completed successfully before the shell reported a command-substitution end-of-file error. The raw output remains retained; the generated wrapper tail was corrected for following scripts. No product check was rerun. E413S1-01 and the direct E413S1-27 probe use Node’s spec reporter (ℹ), so their original # counter grep printed no counts; reading the retained logs establishes 1/1 each, zero skips.
+
+Build and method:
+
+- Stage **fields**, E-413; run **qa-s1-2026-10-22-1**; full tested SHA **a0ab98362a9c34e7cefd4660ca62d9c264a3fcbc**. Clean detached HEAD and refs/heads/dev both equal S after all checks. Stage items: T-1052, T-1058, T-1081, T-1089, T-1091, T-1053, T-1055; all merged.
+- Local macOS arm64, Node v24.21.0, pinned Neovim v0.12.5; isolated scratch HOME/XDG/Git and shared credential filtering. Every case checks the local suite queue. Commands, exact scripts, raw frames, output and queue reads are retained per case. No real browser, provider operation, product edit or new full suite.
+- **165/165 targeted test assertions pass**, zero failures/skips, including the standalone copied-tracker startup probe. Wire import lint/typecheck and Web build pass. See targeted-test-counts.json. The copied tracker has 1092 items, 107 open; first reply 110014 bytes and connection-to-render 48.700625 ms in the direct probe. This is that probe’s measured interval, not whole-process startup or suite wall time. Negative budget tests intentionally exceed limits.
+- E413S1-16 and final plan read report stage cover complete at verification tree **16bac2b00b8d629277a02b9914b68fe676d11564**. Both covers below are existing Coordinator receipts at S, not rerun by QA.
+
+| Cover / log | Actual completion | Platform/executor | Hub run duration / queue | Lifetime / cost |
+| --- | --- | --- | --- | --- |
+| Linux 468f6bae-effb-415f-88a1-6eb48d11aba6, merged A-8883 | exit 0; 3690 tests, 3682 pass, 8 macOS skips, 0 fail | droplet, Linux x64 6.8.0-142-generic; 2 shards, 2 workers | 1053328 ms / 3989 ms | total $0.1344125 |
+| shard-1, A-8884 | exit 0 | cland-v0-90e45f3d, c-8 lon1 | 939960 ms | 927449 ms / $0.06440618055555555; released |
+| shard-2, A-8885 | exit 0 | cland-v0-e3ffcabd, c-8 lon1 | 1015960 ms | 1008091 ms / $0.07000631944444445; released |
+| macOS 6143d5e7-df7b-4269-ad9f-07bd01409e12, A-8887 | exit 0; 3690/3690 pass, 0 skipped | local darwin arm64 27.0.0; 2 workers | 1211542 ms / 451 ms | local cost N/A |
+
+All cover platforms use Node v24.21.0 and Neovim v0.12.5. Check/T1/T2/T3/T4 base/Web phases completed; extra T4 load repetitions were skipped. Lint, test duration budgets and T3 ratchet were report-only. Projected timing and tier share are not measured wall times. Hub runMs and provider lease lifetime are separate recorded clocks. Linux startup probe: first completed hub.status 8502.4 ms under the enforced 10000 ms case assertion; its whole test duration warning was report-only.
+
+Cleanup: both scratch hubs stopped via their own CLI (pids 1478 and 2479); fc/drv/scratch process scans zero; scratch root removed with literal non-force rm -r. See cleanup.txt. Detached worktree removal follows the recorded verdict. No live hub or real HOME changes.
+
+Rule proposal sent in topic-804: assertions should identify frames by stable item/topic/session identity rather than arrival position, since model-domain frames interleave. The boundary correction is retained separately from product failures.
+
+All 30 cases are recorded once in project .cland/qa/runs.jsonl. Stage outcome remains not clear for E413S1-15; no epic criterion verification/failure marks requested.
+
+Evidence artifact A-8893: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8893-e-413-stage-fields-at-a0ab9836-29-pass-docs-finding-e413s1-15/report.md

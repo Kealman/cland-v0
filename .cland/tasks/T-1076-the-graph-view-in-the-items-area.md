@@ -3,7 +3,7 @@ id: T-1076
 kind: task
 title: The Graph view in the Items area
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-21T17:32:16.876Z
-updated: 2026-10-21T17:32:16.876Z
+updated: 2026-10-22T04:08:34.078Z
 ---
 
 ## Summary

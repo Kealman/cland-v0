@@ -12,10 +12,10 @@ parent: R-377
 blocked_by:
   - E-412
   - E-415
-topic: null
+topic: topic-830
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-21T17:32:22.088Z
+updated: 2026-10-22T04:08:33.370Z
 ---
 
 ## Summary
@@ -126,3 +126,52 @@ stages:
       - - T-1077
       - - T-1078
 ```
+
+## Comments
+
+### qa-676 · 2026-10-22T04:08:33.370Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-22-1
+commit: a0ab98362a9c34e7cefd4660ca62d9c264a3fcbc
+stage: tree, card and layout
+stage_hash: 0945450af3ed6b60700b632e6ed35cfe4c086ca81e9fa6cedf1e02cfbabe99a9
+findings: [{"severity":"low","text":"Request/brief scope mismatch resolved by Coordinator 6479acd9: case25 has no sign-in grant and is out of scope. Original BLOCKED recorder line retained historically; no sign-in attempted and no PASS claimed.","file":"qa/briefs/E-416-stage-1.md"}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Result | Evidence |
+|---|---|---|
+| E416S1-00 | PASS | A-8889 report and per-case captures |
+| E416S1-01 | PASS | A-8889 report and per-case captures |
+| E416S1-02 | PASS | A-8889 report and per-case captures |
+| E416S1-03 | PASS | A-8889 report and per-case captures |
+| E416S1-04 | PASS | A-8889 report and per-case captures |
+| E416S1-05 | PASS | A-8889 report and per-case captures |
+| E416S1-06 | PASS | A-8889 report and per-case captures |
+| E416S1-07 | PASS | A-8889 report and per-case captures |
+| E416S1-08 | PASS | A-8889 report and per-case captures |
+| E416S1-09 | PASS | A-8889 report and per-case captures |
+| E416S1-10 | PASS | A-8889 report and per-case captures |
+| E416S1-11 | PASS | A-8889 report and per-case captures |
+| E416S1-12 | PASS | A-8889 report and per-case captures |
+| E416S1-13 | PASS | A-8889 report and per-case captures |
+| E416S1-14 | PASS | A-8889 report and per-case captures |
+| E416S1-15 | PASS | A-8889 report and per-case captures |
+| E416S1-16 | PASS | A-8889 report and per-case captures |
+| E416S1-17 | PASS | A-8889 report and per-case captures |
+| E416S1-18 | PASS | A-8889 report and per-case captures |
+| E416S1-19 | PASS | A-8889 report and per-case captures |
+| E416S1-21 | PASS | A-8889 report and per-case captures |
+| E416S1-22 | PASS | A-8889 report and per-case captures |
+| E416S1-23 | PASS | A-8889 report and per-case captures |
+| E416S1-24 | PASS | A-8889 report and per-case captures |
+
+Low finding: request 939dac5d initially required E416S1-25 BLOCKED; Coordinator correction 6479acd9 restores the committed brief's Out of scope. E416S1-25 is out of scope: no human grant to sign the cland QA profile in to the live hub. Original blocked record remains unchanged as historical evidence, excluded from this verdict scope. No product failure observed.
+
+Fresh local macOS arm64 checks: 56/56 targeted tests pass, no skips; serial, isolated HOME/XDG/Git, system TMPDIR, credential filter, browser census 0→0. Build/typechecks/tier lint pass. Graph differential covers 1092 copied items/67 container graphs. DOM plant rejected document with TS2584 exit1, restored clean. Model-only rebuild samples 0.1–0.4 ms for 300 items exclude transport/React. Chrome cland QA anonymous cases pass; matching source stamps, Offline, filters/folds persist, independent client defaults, 22 help rows, group card boundary/split/close; restored page state and closed owned tab. Probe errors (stale AX id; unsupported shift+/ spelling corrected to question keysym) retained separately, not product failures.
+
+Coordinator covers at same full SHA/tree16bac2b0: Linux 468f6bae A-8883, shard logs A-8884/A-8885, 3682 pass/8 skip/0 fail; local macOS 6143d5e7 A-8887, 3690 pass/no skips. Both check/T1–T3/T4 base/Web executed, T4 extra repetitions skipped; lint/budgets/ratchet report-only. Linux x64 droplet 2 workers, run wall1053.328s, cost$0.1344125: shard1 cland-v0-90e45f3d run939.960s/lifetime927.449s/$0.06440618; shard2 cland-v0-e3ffcabd run1015.960s/lifetime1008.091s/$0.07000632; both released. macOS arm64 2 workers run1211.542s, remote cost N/A. Node24.21.0/Neovim0.12.5. Measured run walls distinguished from projected tier budgets and lease lifetimes.
+
+HEAD=dev=request and clean before/after; stage cover complete. No epic criterion marks. Evidence A-8889: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8889-e-416-stage-tree-card-and-layout-at-a0ab9836-24-pass-signed-in-case-out-of-scope/report.md
