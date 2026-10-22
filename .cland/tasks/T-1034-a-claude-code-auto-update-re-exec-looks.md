@@ -2,8 +2,8 @@
 id: T-1034
 kind: task
 title: A Claude Code auto-update re-exec looks like a harness death and revokes the Coordinator
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-824
 branch: t/T-1034-a-claude-code-auto-update-re-exec-looks
 created: 2026-10-21T05:59:56.127Z
-updated: 2026-10-22T00:52:06.187Z
+updated: 2026-10-22T01:33:19.739Z
+closed: 2026-10-22T01:33:19.739Z
 ---
 
 ## Summary
@@ -34,10 +35,13 @@ Evidence: the hub's role revocation events for coord at 2026-10-20T21:33Z and 20
 
 - [x] C1. A Claude Code session launched by the hub has `DISABLE_AUTOUPDATER=1` in its environment, after the credential filter (test with the fake harness).
   - done: impl-1034 · 2026-10-21T22:52:02.812Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1034-final · 2026-10-22T01:29:55.196Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
 - [x] C2. A fake Claude session whose pid changes while its session id stays the same, followed by a hello within the grace window, keeps its row, role and claim, and no revocation event is posted (test).
   - done: impl-1034 · 2026-10-21T23:07:44.263Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1034-final · 2026-10-22T01:29:55.196Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
 - [x] C3. A Coordinator vacancy longer than 10 minutes posts one notice in General with the relaunch commands, and posts nothing more while the role stays vacant (fake-clock test).
   - done: impl-1034 · 2026-10-21T23:18:06.470Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1034-final · 2026-10-22T01:29:55.196Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
 - [x] C4. `hub/README.md#coordinator-session-procedure` describes the re-exec handling and the vacancy notice.
   - verified: rev-23 [reviewer] · run rev-20261021-1034-source-3 · 2026-10-21T23:08:42.829Z · commit 6bc0ca45d39a60a5b0aaca989795dcc91e2b1413
   - done: impl-1034 · 2026-10-21T23:18:17.251Z
@@ -45,6 +49,7 @@ Evidence: the hub's role revocation events for coord at 2026-10-20T21:33Z and 20
   - verified: rev-23 [reviewer] · run rev-20261021-1034-task-evidence · 2026-10-21T23:28:07.240Z · commit cee548ee1b48a32359b921c1862a213554da0743
   - verified: rev-23 [reviewer] · run rev-20261022-1034-source-5 · 2026-10-22T00:40:57.223Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
   - verified: rev-23 [reviewer] · run rev-20261022-1034-task-evidence-2 · 2026-10-22T00:52:06.187Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
+  - verified: rev-23 [reviewer] · run rev-20261022-1034-final · 2026-10-22T01:29:55.196Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
 
 ## Comments
 
@@ -198,3 +203,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-8814/523a9f19 matches source-clear ada6e304: T1/all-T2 hub+Neovim/actualWeb exit0,2376ordinary test/361file passes plus90 scoped load passes;18new identities each distinct explicit5/5 including production-default death/reconnect-first/shutdown. Schedule18/store27/project-clock4 pass. A-8813 independently inspected,L1 wording corrected. Host gate reused,lint/duration/resource/ratchet report-only;6missing baselines. Task evidence clear; C1–C3 final marks still await Coordinator full/native T3 rerun—A-8807 failures cannot be established fixed by task selection alone. C4 current;QA none. Audit A-8815.
 
 Criteria: C4 verified.
+
+### rev-23 · 2026-10-22T01:29:55.196Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1034-final
+commit: ada6e304df0cbccef19efe44e506afd19f7f5488
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+C1–C4 verified. Required full A-8838/b225b10d exactly matches reviewed head and passes T1/T2/T3/Web: 3614 test passes, 542 file passes, eight unrelated platform/tool skips, no failure/cancellation. Independently matched all five A-8807 native failure identities to passing full receipts; fake-Claude crash/relaunch and owned updater/re-exec/default-grace/vacancy cases pass. A-8814/A-8815 retains 18 new identities 5/5 under load. Host gate reused remotely; report-only timing/lint/ratchet diagnostics and skip limits retained. QA none; no T4/live provider incident claim. Final audit A-8839; ready for Coordinator enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-22T01:33:19.739Z
+
+Merged c820a77cad7863445a2386dc6ec9d15c5abd292b onto dev.

@@ -2,8 +2,8 @@
 id: T-1088
 kind: task
 title: The startup budget probe rejects T-1081's first payload because it now carries closed containers
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-825
 branch: t/T-1088-the-startup-budget-probe-rejects-t-1081
 created: 2026-10-22T00:25:33.925Z
-updated: 2026-10-22T01:16:07.048Z
+updated: 2026-10-22T01:33:13.212Z
+closed: 2026-10-22T01:33:13.212Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 C1/C2 verified: A-8823 prints copied-live membership/measurement (240750 bytes, 40.090250 ms); unchanged byte guard remains red and assigned to T-1089 by Coordinator 9efe43bd. A-8832 exactly matches reviewed head, task T1/all-T2/Web exit 0 with 2371 ordinary passes; both shared-assertion tests have five distinct load passes and explicit 5/5. Report-only diagnostics retained, T3 deferred. No copied-live byte-budget pass claimed. Final audit artifact posted in topic-825.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T01:33:13.212Z
+
+Merged 8a9cb8f6ad101b2401388483bf1261fc833ebdad onto dev.

@@ -2,8 +2,8 @@
 id: T-1085
 kind: task
 title: demo status usage omits --commit, so qa lint rejects the documented freshness command
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-827
 branch: t/T-1085-demo-status-usage-omits-commit-so-qa
 created: 2026-10-21T22:38:59.689Z
-updated: 2026-10-22T01:14:18.462Z
+updated: 2026-10-22T01:33:05.241Z
+closed: 2026-10-22T01:33:05.241Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 C1 verified. Original A-8829/e5aa5a52 exactly matches reviewed head: T1/all-T2 fallback/Web exit 0, 2370 ordinary passes; new public QA-lint regression ordinary pass plus five distinct load passes and explicit 5/5. Host check passed, reused remotely; existing report-only diagnostics retained. T3 deferred by task policy, no T4/QA claim. Final audit artifact posted in topic-827; ready for Coordinator enqueue.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-22T01:33:05.241Z
+
+Merged 369c12b4dcbfcbc4cdbd551376b910614b1b068b onto dev.
