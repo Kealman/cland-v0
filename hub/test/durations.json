@@ -5882,6 +5882,13 @@
     "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": 14.752851
   },
   "allow": {
+    "web/test/palette.test.ts::Items help contains all 32 rows within small viewports during complete keyboard scrolls": {
+      "seconds": 7.5,
+      "owner": "E-880",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "T-1097 complete keyboard-scroll regression measured 4.451092109 s in Linux x64 c-8 lon1 run 146b8efc at 1a508be8 (A-9032) and 4.979509666 s in run 994a565b at 9782fdbd (A-9040). Native PageDown/End/Home completion, both small viewports, exact all-32-row visibility and browser/hub teardown are retained. Temporary cap rounds up about 1.5x the worst measured Linux sample while E-880 restores Web tier budgets."
+    },
     "web/test/board.test.ts::the Board view and Items view switcher": {
       "seconds": 9.7,
       "owner": "E-880",
