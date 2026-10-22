@@ -1982,7 +1982,7 @@ persistence case stops and reopens `projectHub` in-process, retaining the exact
 marks, topic position and one-time import receipt; it makes no OS-process
 restart claim. `nvim/test/human-marks-component.test.ts` uses the headless recorded
 stub and a second scripted frame peer for the Events visit, shared topic reads,
-one-time legacy import and stale-copy cleanup. Peer marks updates must reach an
+one-time legacy import and stale-copy cleanup. A held initial marks reply and a separately deferred preference write prove that startup without validated legacy keys makes no write attempt, preserving the original invalid-file notice. Peer marks updates must reach an
 already connected editor, including a delta that precedes a held older
 `marks.get` response. The Events visit observer starts before navigation and
 waits for the exact peer-visible timestamp; cold-start replacement waits for

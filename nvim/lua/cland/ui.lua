@@ -163,9 +163,13 @@ end
 -- Keep the old keys on disk until the hub's durable read/import acknowledgement.
 function M.legacy_marks() return legacy_marks end
 function M.marks_imported()
+  local had_legacy_marks = legacy_marks ~= nil
   marks_imported, legacy_marks = true, nil
   state.S.ui.plan_seen = nil
   state.S.ui.events.last_look = nil
+  -- A failed read or a file without legacy keys needs no migration write.
+  -- In particular, do not flush an unrelated pending preference change here.
+  if not had_legacy_marks then return end
   M.changed()
   M.flush()
 end

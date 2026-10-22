@@ -107,6 +107,52 @@ test('C3: legacy marks import once before their ui.json keys are removed', { ski
 });
 
 
+test('marks startup without validated legacy keys never flushes pending preferences', { skip }, async t => {
+  const clean = JSON.stringify({ version: 2, panels: { left: false, right: 'sessions', dock: false }, sizes: {}, items_filter: 'board' });
+  for (const content of [null, 'directory', '{broken', '{"version":1,"panels":false}', '{"version":2}',
+    clean]) {
+    const root = await tempProject(t);
+    await mkdir(join(root, '.cland'));
+    const path = join(root, '.cland/ui.json');
+    if (content === 'directory') await mkdir(path);
+    else if (content !== null) await writeFile(path, content);
+    const control = join(root, 'control.sock');
+    const c = await startClient(t, bin, root, { ...isolated(root), CLAND_HUB_TRANSPORT: 'stdio',
+      CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: control,
+      CLAND_STUB_SCENARIO_JSON: JSON.stringify({ holdSnapshots: ['marks.get'] }),
+    });
+    await waitInitialSnapshots(c);
+    await stubControl(control, { waitSnapshot: 'marks.get' });
+    // Hold the ordinary preference debounce independently of startup. The marks
+    // acknowledgement must not take ownership of this pending preference write.
+    await c.lua(`local path = ...; local ui = require('cland.ui'); local open = vim.uv.fs_open
+      _G.preference_write_attempts = 0
+      vim.uv.fs_open = function(file, flags, mode)
+        if file:sub(1, #path + 1) == path .. '.' and flags == 'wx' then
+          _G.preference_write_attempts = _G.preference_write_attempts + 1
+        end
+        return open(file, flags, mode)
+      end
+      ui.DEBOUNCE_MS = 60000
+      require('cland.state').S.ui.accounts_folded = true
+      ui.changed()`, path);
+    await stubControl(control, { releaseSnapshots: ['marks.get'] });
+    await eventually('marks startup callback completes without importing local keys', async () =>
+      await c.lua<boolean>("return require('cland.marks').ready") || undefined);
+    assert.equal(await c.lua('return _G.preference_write_attempts'), 0, `no startup preference write for ${content}`);
+    assert.equal(await c.lua("return require('cland').client:connected()"), true);
+    const requests = (await stubControl(control, { requests: true })).requests as Array<Record<string, unknown>>;
+    assert.equal(requests.filter(f => f.type === 'marks.set' && f.import).length, 0);
+    const notice = await c.lua<string | null>("return require('cland.state').S.flash and require('cland.state').S.flash.text or vim.NIL");
+    if (content === null || content === clean) assert.equal(notice, null);
+    else assert.equal(notice, 'ui.json unreadable or invalid; using default layout');
+    // The pending ordinary preference write still exists, and the filesystem
+    // observer sees it when explicitly flushed after the startup assertions.
+    await c.lua("require('cland.ui').flush()");
+    assert.ok(await c.lua<number>('return _G.preference_write_attempts') > 0);
+  }
+});
+
 test('marks.get replays a peer delta received before its held older response', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
