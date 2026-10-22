@@ -284,6 +284,7 @@ export async function verifierWorkload(t: import('node:test').TestContext, burst
     observing = false;
     assert.deepEqual(scans, [], 'delivery acceptance and session views use indexed message lookups only');
     // At most one capture and one explicit view per delivery, plus a fixed allowance.
+    t.diagnostic(`burst ${burst}: ${burstSize} deliveries, ${burstSize} views, ${pendingReads - readsBefore} pending reads`);
     assert.ok(pendingReads - readsBefore <= (burst === 2 ? burstSize + 10 : burstSize * 2 + 10), `${burstSize} deliveries and ${burstSize} explicit views allow no synchronous whole-presence reads (${pendingReads - readsBefore} pending reads)`);
     await tick();
     const presence = human.frames.slice(before).filter(f => f.type === 'presence');

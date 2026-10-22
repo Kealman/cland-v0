@@ -667,9 +667,10 @@ export class HubCore {
 
   useSessionRows(read: () => HarnessProcessView[]): void { this.#processRows = read; }
 
-  /** Compose from the same loaded process/presence facts used by compatibility reads. */
-  sessionRows(processes = this.#processRows()): SessionRow[] {
-    const presence = this.presence();
+  /** Explicit process views carry freshly loaded work; the default reader may return cached facts. */
+  sessionRows(loadedProcesses?: HarnessProcessView[]): SessionRow[] {
+    const processes = loadedProcesses ?? this.#processRows();
+    const presence = this.presence(loadedProcesses);
     const key = (s: { sessionId: string; name: string }) => s.sessionId === UNKNOWN_SESSION ? `name:${s.name}` : s.sessionId;
     const connected = new Map(presence.map(s => [key(s), s]));
     const entries: Array<{ process?: HarnessProcessView; presence?: Presence }> = processes.map(process => {
@@ -1729,9 +1730,13 @@ export class HubCore {
     return this.#live.get(connection.name) === connection;
   }
 
-  presence(): Presence[] {
+  presence(processes: HarnessProcessView[] = []): Presence[] {
+    // A merged-row read has already loaded work facts for its running processes.
+    const loaded = new Map(processes.filter(p => p.status === 'running').map(p => [p.sessionId, p]));
     return [...this.#live.values()].map((c) => {
-      const pending = this.sessionPending(c);
+      const process = loaded.get(c.sessionId);
+      const work = process?.name === c.name && process.role === c.role ? process : undefined;
+      const pending = work ? work.pending : this.sessionPending(c);
       return {
         name: c.name,
         sessionId: c.sessionId,
@@ -1741,7 +1746,7 @@ export class HubCore {
         status: c.status,
         connectedAt: c.connectedAt,
         state: this.sessionState(c.sessionId),
-        holds: this.sessionHolds(c),
+        holds: work?.holds ?? this.sessionHolds(c),
         ...(pending ? { pending } : {}),
       };
     });

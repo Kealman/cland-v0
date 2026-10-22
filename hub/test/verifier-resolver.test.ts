@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { HubCore, type Connection } from '../src/hub/core.ts';
 import { trackerItems } from '../src/hub/topics.ts';
 import { Tracker, type Actor } from '../src/tracker/tracker.ts';
-import type { Message } from '../src/protocol.ts';
+import type { HarnessProcessView, Message } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
 
 async function resolver(t: TestContext) {
@@ -34,6 +34,34 @@ async function resolver(t: TestContext) {
   const coord = peer('coord', 'coordinator');
   return { root, tracker, core, clock, received, connections, actor, peer, ack, send, coord };
 }
+
+test('default session rows keep current work after cached process facts become stale', async t => {
+  const { root, tracker, core, clock, peer, ack, send, coord } = await resolver(t);
+  const reviewer = peer('rev', 'reviewer');
+  ack('rev');
+  const item = await tracker.create(coord, { title: 'Current session work', size: 'S' });
+  const process: HarnessProcessView = {
+    name: 'rev', sessionId: 'rev-id', role: 'reviewer', harness: 'codex', model: null,
+    cwd: root, item: null, pid: null, harnessId: null, harnessSessionId: null,
+    startedAt: clock.now().toISOString(), status: 'running', state: 'idle', attach: null, holds: [],
+  };
+  core.seedProcess(process);
+  assert.equal(send('coord', 'reviewer', `review request ${item.id}`).outcomes[0]?.outcome, 'delivered');
+  ack('rev');
+  const row = () => core.sessionRows().find(row => row.name === 'rev')!;
+  assert.deepEqual(row().pending, { item: item.id, kind: 'review' });
+  await tracker.hold(reviewer, item.id);
+  core.refreshPresence();
+  const holds = tracker.sessionHolds(reviewer.id);
+  assert.equal(holds.length, 1);
+  assert.deepEqual(row().holds, holds, 'new holds replace cached empty work');
+  core.seedProcess({ ...process, pending: { item: item.id, kind: 'review' }, holds });
+  await tracker.hold(reviewer, item.id, true);
+  core.clearPendingVerification('rev', item.id);
+  core.refreshPresence();
+  assert.equal(row().pending, undefined, 'cleared pending work is not restored from the cache');
+  assert.deepEqual(row().holds, [], 'released holds are not restored from the cache');
+});
 
 test('three live Reviewers resolve one request with affinity, fallback and queued assignment', async t => {
   const { tracker, core, received, connections, peer, actor, ack, send, coord } = await resolver(t);
