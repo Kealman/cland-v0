@@ -26,9 +26,11 @@
       "A-8963",
       "A-8967",
       "A-9079",
-      "A-9083"
+      "A-9083",
+      "A-9478",
+      "A-9485"
     ],
-    "commit": "7887f694ace91db414735b9af93ab20bedbc8c45"
+    "commit": "4411dcc99173b864850ac0988a11334d87262614"
   },
   "budget": {
     "testSeconds": 5,
@@ -2313,6 +2315,54 @@
     "nvim/test/human-marks-component.test.ts": {
       "seconds": 0.921319,
       "tests": 3
+    },
+    "hub/test/approval-records.test.ts": {
+      "seconds": 1.858518,
+      "tests": 18
+    },
+    "hub/test/skill-provenance-merge.test.ts": {
+      "seconds": 0.307369,
+      "tests": 1
+    },
+    "hub/test/skill-provenance.test.ts": {
+      "seconds": 0.018347,
+      "tests": 1
+    },
+    "hub/test/topic-withdraw.test.ts": {
+      "seconds": 0.76834,
+      "tests": 6
+    },
+    "hub/test/web-area-state.test.ts": {
+      "seconds": 0.026005,
+      "tests": 8
+    },
+    "hub/test/web-markdown.test.ts": {
+      "seconds": 0.007384,
+      "tests": 7
+    },
+    "web/test/area-slots.test.ts": {
+      "seconds": 4.346836,
+      "tests": 1
+    },
+    "web/test/item-criteria.test.ts": {
+      "seconds": 7.61261,
+      "tests": 1
+    },
+    "web/test/key-contexts.test.ts": {
+      "seconds": 3.508987,
+      "tests": 3
+    },
+    "web/test/plan.test.ts": {
+      "seconds": 3.629375,
+      "tests": 1
+    },
+    "web/test/sessions.test.ts": {
+      "seconds": 5.689037,
+      "tests": 5
+    },
+    "web/test/topics.test.ts": {
+      "seconds": 7.871903,
+      "tests": 9
     }
   },
   "tests": {
@@ -5933,7 +5983,98 @@
     "nvim/test/human-marks-component.test.ts::C2: visiting events publishes the shared last look; a peer reading a topic clears its Neovim row": 0.278806,
     "nvim/test/human-marks-component.test.ts::C3: legacy marks import once before their ui.json keys are removed": 0.416835,
     "nvim/test/human-marks-component.test.ts::marks.get replays a peer delta received before its held older response": 0.225678,
-    "web/test/palette.test.ts::Items help contains all 33 rows within small viewports during complete keyboard scrolls": 3.480305
+    "web/test/palette.test.ts::Items help contains all 33 rows within small viewports during complete keyboard scrolls": 3.480305,
+    "hub/src/hub/store.test.ts::a withdrawn Question preserves its cleared wait across Store reopen without replay": 0.018532,
+    "hub/test/approval-records.test.ts::a deny note follows the session claim to its item topic and native note support avoids a duplicate message": 0.097015,
+    "hub/test/approval-records.test.ts::a human answer reaches the adapter once and both clients observe the attributed closed record": 0.064551,
+    "hub/test/approval-records.test.ts::a native approval keeps its identity and attachment while the owning session is renamed": 0.113006,
+    "hub/test/approval-records.test.ts::a pending request has no default answer after 24 hours of fake time": 0.088718,
+    "hub/test/approval-records.test.ts::adapter close confirmation during delivery preserves the reserved human outcome and publishes one close": 0.060939,
+    "hub/test/approval-records.test.ts::adapter requests publish one approval delta and inbox row, then archive the harness outcome": 0.15076,
+    "hub/test/approval-records.test.ts::an oversized fallback note is refused before delivering deny and can be corrected (cap 1024)": 0.078051,
+    "hub/test/approval-records.test.ts::an oversized fallback note is refused before delivering deny and can be corrected (cap 8192)": 0.066019,
+    "hub/test/approval-records.test.ts::Claude Code waiting episode is one stable TUI approval record in the snapshot": 0.139613,
+    "hub/test/approval-records.test.ts::deny remains deny and a note the native protocol cannot carry is a human message to the session in General": 0.070168,
+    "hub/test/approval-records.test.ts::failed adapter delivery returns to pending, refuses with the reason and journals a warning before a human retry": 0.065957,
+    "hub/test/approval-records.test.ts::inbox CLI prints approval states, choices, TUI routing and archived outcome attribution": 0.324253,
+    "hub/test/approval-records.test.ts::only the human may answer: every agent role including Aides is refused on socket and spoke": 0.165324,
+    "hub/test/approval-records.test.ts::public approval subjects cap UTF-8 at 64 KiB, preserve small changes and exclude private tool input": 0.075074,
+    "hub/test/approval-records.test.ts::TUI waiting episodes close without claiming consent and a later wait gets its own record": 0.064721,
+    "hub/test/approval-records.test.ts::two clients in one tick reserve one winner before adapter confirmation and refuse the loser with attribution": 0.07377,
+    "hub/test/approval-records.test.ts::two pending requests of one session count once each, and native ids are scoped to the session": 0.076418,
+    "hub/test/approval-records.test.ts::unoffered choices and TUI-only approvals refuse answers without changing their records": 0.084161,
+    "hub/test/clock.test.ts::FakeClock delivers a blocked interval once at wakeup and schedules its next tick in the future": 0.000554,
+    "hub/test/codex-native.test.ts::busy Codex admits an agent steer before starting the queued human input in a new turn": 0.281681,
+    "hub/test/connection-snapshot.test.ts::session.list adds snapshot-shaped archived rows without changing compatibility fields": 0.191249,
+    "hub/test/daemon.test.ts::hub stop during an in-flight droplet create retains ownership and reaps the hub within three seconds": 2.229046,
+    "hub/test/daemon.test.ts::SIGTERM during an in-flight droplet create retains ownership and reaps the hub within three seconds": 1.948585,
+    "hub/test/daemon.test.ts::SIGTERM with stalled socket close during an in-flight droplet create retains ownership and reaps the hub within three seconds": 4.030493,
+    "hub/test/executor-deadline.test.ts::provider shutdown detaches an unanswered call and refuses later calls": 0.000449,
+    "hub/test/executor-safety-component.test.ts::stopping during create detaches the provider reply and retains the tagged lease for restart": 0.543674,
+    "hub/test/executor-safety-component.test.ts::stopping during provider cleanup keeps release unconfirmed until restart observes deletion": 0.413702,
+    "hub/test/item-summary-scale.test.ts::a thousand-item planned hub serves within two seconds of listening before maintenance": 4.782588,
+    "hub/test/item-summary-scale.test.ts::a thousand-item planned startup batches explorer recomputation": 4.92981,
+    "hub/test/journal-flush.test.ts::live journal observations defer every unfinished tail and retain malformed complete records": 0.000684,
+    "hub/test/nvim-frame-consumers.test.ts::full refresh excludes local Lua checks that never await a stub frame": 0.00042,
+    "hub/test/opencode-adapter.test.ts::a busy OpenCode turn queues the human’s message while an agent’s report steers it": 1.0427,
+    "hub/test/skill-provenance-merge.test.ts::copied skill provenance retains both branches after a real Git merge": 0.307369,
+    "hub/test/skill-provenance.test.ts::provenance lint requires records behind the stable changes pointer": 0.018347,
+    "hub/test/topic-withdraw.test.ts::a broadcast withdrawal is atomic when one addressee was injected": 0.147798,
+    "hub/test/topic-withdraw.test.ts::withdraw after spoke acceptance fences late acks and preserves held progress": 0.080306,
+    "hub/test/topic-withdraw.test.ts::withdraw before spoke acceptance fences late acks and preserves held progress": 0.111582,
+    "hub/test/topic-withdraw.test.ts::withdraw cannot claim success after an unconfirmed adapter submission": 0.143351,
+    "hub/test/topic-withdraw.test.ts::withdraw refuses an injected message, an agent caller and an agent message": 0.083368,
+    "hub/test/topic-withdraw.test.ts::withdraw removes a busy session message and leaves the next turn intact": 0.201935,
+    "hub/test/topics-component.test.ts::only a human Question sets the wait, and later Messages do not change its addressee": 0.092871,
+    "hub/test/topics-component.test.ts::the human's kinds survive history and reach a second frame client": 0.06212,
+    "hub/test/verifier-resolver.test.ts::default session rows keep current work after cached process facts become stale": 0.062633,
+    "hub/test/web-area-state.test.ts::adapter capabilities are read once per connection without replacing newer merged session rows": 0.000679,
+    "hub/test/web-area-state.test.ts::area deltas replace complete views without inventory requests and retain registry order": 0.001119,
+    "hub/test/web-area-state.test.ts::area snapshots retain merged sessions, launch defaults, queue arrival and ordered account views": 0.020748,
+    "hub/test/web-area-state.test.ts::merged session deltas update inventories by stable key without process or presence rereads": 0.000765,
+    "hub/test/web-area-state.test.ts::moving an artifact removes its top-level inventory row and never adds an unseen moved child": 0.000521,
+    "hub/test/web-area-state.test.ts::new artifact deltas preserve the newest-first inventory order from artifact.list": 0.000455,
+    "hub/test/web-area-state.test.ts::reconnect and resync replace the areas from fresh hub snapshots and inventories": 0.001077,
+    "hub/test/web-area-state.test.ts::visibility reprojects artifacts by id without dropping the rest or rereading inventories": 0.000641,
+    "hub/test/web-authority-unit.test.ts::web launch directories are refused before dispatch, including malformed fields": 0.000165,
+    "hub/test/web-authority.test.ts::human clients page a session’s sent and received traffic across topics without changing its own history": 0.277304,
+    "hub/test/web-authority.test.ts::session history pages keep whole messages under the byte cap and page back without gaps": 0.153524,
+    "hub/test/web-authority.test.ts::session history remains a human-client read even from an Aide’s attributed shell": 0.059556,
+    "hub/test/web-authority.test.ts::the authenticated web cookie answers an approval as the human through the common gate": 0.059942,
+    "hub/test/web-authority.test.ts::the authenticated web human can withdraw a queued message and receives its text": 0.058319,
+    "hub/test/web-authority.test.ts::web launches in the project root and refuses a directory while Unix keeps that field": 0.078851,
+    "hub/test/web-authority.test.ts::web.session exposes only the asking browser’s sign-in and its fixed expiry": 0.061589,
+    "hub/test/web-keymap.test.ts::focused contexts resolve before shell keys without changing Items or Plan chords": 0.000382,
+    "hub/test/web-markdown.test.ts::fences retain their language and literal body and stop at each message end": 0.002539,
+    "hub/test/web-markdown.test.ts::HTML, images and unsafe or unsupported link destinations remain literal text": 0.000349,
+    "hub/test/web-markdown.test.ts::inline formatting and configured item ids become small renderer tokens": 0.000418,
+    "hub/test/web-markdown.test.ts::lists retain text continuations, ordered starts, quotes and tables stay text": 0.000462,
+    "hub/test/web-markdown.test.ts::messages preserve heading levels and join paragraph lines": 0.002869,
+    "hub/test/web-markdown.test.ts::tables without outer pipes keep their rows and unsupported syntax stays visible": 0.000196,
+    "hub/test/web-markdown.test.ts::unsupported fence separators fall back to text and parsing advances": 0.000551,
+    "nvim/test/human-marks-component.test.ts::marks startup without validated legacy keys never flushes pending preferences": 1.469126,
+    "nvim/test/inbox-actions.test.ts::Enter on a recorded Claude Code approval requests attachment of that session": 0.276638,
+    "nvim/test/thread.test.ts::a withdrawn human message uses the dropped glyph and colour and ignores older stages": 0.278435,
+    "web/test/area-slots.test.ts::area modules keep their slots and live hub state across a restart": 4.346836,
+    "web/test/item-criteria.test.ts::criteria edits on the card": 7.61261,
+    "web/test/key-contexts.test.ts::area modules keep selection and drawers while unimplemented session actions stay absent from help and palette": 1.235144,
+    "web/test/key-contexts.test.ts::declared composer fields own their keys while ordinary fields retain native input": 1.383127,
+    "web/test/key-contexts.test.ts::the palette lists and runs handled Items actions after restoring focus": 0.890716,
+    "web/test/plan.test.ts::the Plan view in Items": 3.629375,
+    "web/test/sessions.test.ts::gs from an item reveals its claimed session inside a folded group": 0.989783,
+    "web/test/sessions.test.ts::Sessions caps stopped rows at the latest twenty and reads merged archives with A": 1.176809,
+    "web/test/sessions.test.ts::Sessions groups count fake sessions and remember folds without hub requests": 1.502826,
+    "web/test/sessions.test.ts::Sessions rows render merged facts, holds, waiting detail and physical selection keys": 1.315555,
+    "web/test/sessions.test.ts::Sessions selected human wait names its topic and usage falls back to tokens": 0.704064,
+    "web/test/topics.test.ts::300 messages open at the end and page backwards without gaps, repeats or a moving anchor": 1.169522,
+    "web/test/topics.test.ts::a fresh snapshot replaces a pending initial history load and ignores its stale reply": 1.187166,
+    "web/test/topics.test.ts::a rejected earlier page retries with its old top message anchored": 0.963707,
+    "web/test/topics.test.ts::held history pages retain live messages, newer ask state and the scrolling anchor": 1.196241,
+    "web/test/topics.test.ts::live messages and ask outcomes replace thread facts without another history or topic-list read": 0.599686,
+    "web/test/topics.test.ts::read marks wait one visible second and never include offscreen messages or a hidden page": 0.567187,
+    "web/test/topics.test.ts::reading the top of a long thread marks only the last message on screen": 0.676977,
+    "web/test/topics.test.ts::reconnect resumes missed thread deltas and only rereads history after a fresh snapshot": 0.663107,
+    "web/test/topics.test.ts::Topics groups separate waiting, standing, item and closed topics and remember folds": 0.84831
   },
   "allow": {
     "web/test/plan.test.ts::the Plan view in Items": {
