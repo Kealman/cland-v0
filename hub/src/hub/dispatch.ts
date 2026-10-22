@@ -1666,6 +1666,13 @@ export class Dispatcher {
             return answer(core.roleList());
           case 'hygiene.unmute':
             return answer(core.unmute(frame.a, frame.b));
+          case 'approval.answer': {
+            const resumed = this.#guard.resumer(frame.type, client);
+            return later(frame.type, core.inbox.answerApproval(frame.approval, frame.choice, frame.note, transport.edge === 'web' ? 'web' : 'neovim', (sessionId, requestId, value) => {
+              if (!this.#sessions) throw new Error('the hub has no adapters');
+              return this.#sessions.answerApproval(sessionId, requestId, value);
+            }, resumed).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+          }
           case 'topic.answer':
             return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason));
           case 'events.list': {

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { WEB_AUTHORITY, webAuthorityRefusal } from '../src/hub/web-authority.ts';
 
 test('the web allows human workbench reads, writes, queued verification and merge', () => {
-  for (const type of ['resume', 'topic.send', 'task.create', 'task.edit', 'session.resume', 'session.stop', 'session.bridge', 'suite.start', 'suite.slot', 'suite.cancel', 'suite.classify', 'merge', 'executor.status', 'artifact.promote', 'artifact.move', 'artifact.url']) {
+  for (const type of ['resume', 'approval.answer', 'topic.send', 'task.create', 'task.edit', 'session.resume', 'session.stop', 'session.bridge', 'suite.start', 'suite.slot', 'suite.cancel', 'suite.classify', 'merge', 'executor.status', 'artifact.promote', 'artifact.move', 'artifact.url']) {
     assert.equal(webAuthorityRefusal({ type, id: 'request' }), null, type);
   }
   assert.equal(webAuthorityRefusal({ type: 'artifact.create', id: 'inline', content: 'web bytes' }), null);

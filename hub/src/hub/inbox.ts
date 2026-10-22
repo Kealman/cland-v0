@@ -10,8 +10,10 @@ import { isDeepStrictEqual } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
-import type { ApprovalOutcome, HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, InboxRequest, InboxMessage, InboxPlan, InboxDeparture, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
+import type { ApprovalChoice, ApprovalOutcome, HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, InboxRequest, InboxMessage, InboxPlan, InboxDeparture, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
+import type { Resumed } from './budget.ts';
+import { HygieneError } from './hygiene.ts';
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { ItemSummary } from '../tracker/tracker.ts';
 import type { InboxWait, Store } from './store.ts';
@@ -62,6 +64,8 @@ export type InboxPort = {
   idleNotifyMs: number;
   /** Long idle also reaches subscribed sessions, independently of its human inbox layer. */
   idle: (session: string, minutes: number) => void;
+  approvalNote: (record: InboxApproval, note: string) => void;
+  sizeRefusal: (text: string) => string | null;
 };
 
 export class InboxBoard {
@@ -362,9 +366,52 @@ export class InboxBoard {
     this.#changed();
   }
 
+  async answerApproval(id: string, choice: ApprovalChoice, note: string | undefined, via: 'neovim' | 'web', deliver: (sessionId: string, requestId: string, answer: { choice: ApprovalChoice; note?: string }) => Promise<{ noteDelivered: boolean }>, resumed: Resumed): Promise<InboxApproval> {
+    const record = this.#approvals.get(id);
+    const previous = record?.outcome ?? this.#port.store.inboxOutcome('approval', id);
+    if (previous && 'via' in previous) throw new Error(`approval already answered by ${previous.by} via ${previous.via} at ${previous.at}`);
+    if (!record) throw new Error('no pending approval');
+    if (record.answerIn === 'tui') throw new Error('this approval stays in the harness TUI; answer in Neovim');
+    if (record.state !== 'pending') throw new Error('approval is not pending');
+    if (!record.choices.includes(choice)) throw new Error(`choice ${choice} is not offered by this approval`);
+    const noteRefusal = note === undefined ? null : this.#port.sizeRefusal(note);
+    if (noteRefusal) throw new HygieneError(noteRefusal, { code: 'hygiene', rule: 'size' });
+    const outcome: ApprovalOutcome = { choice, by: 'human', via, at: this.#port.now().toISOString(), ...(note !== undefined ? { note } : {}) };
+    const answering: InboxApproval = { ...record, state: 'answering', outcome };
+    this.#approvals.set(id, answering);
+    this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', answering, 'approval') });
+    this.#changed();
+    let delivery: { noteDelivered: boolean };
+    try {
+      delivery = await deliver(record.sessionId, id.slice(record.sessionId.length + 1), { choice, ...(note !== undefined ? { note } : {}) });
+    } catch (error) {
+      resumed(() => {
+        if (this.#closed) return;
+        const current = this.#approvals.get(id);
+        if (current?.state === 'answering' && current.outcome === outcome) {
+          const { outcome: _attempt, ...facts } = current;
+          const pending: InboxApproval = { ...facts, state: 'pending' };
+          this.#approvals.set(id, pending);
+          this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', pending, 'approval') });
+          this.#changed();
+        }
+        this.#port.log({ event: 'approval-answer-failed', severity: 'warn', session: record.session, approval: id,
+          error: error instanceof Error ? error.message : String(error) });
+      });
+      throw error;
+    }
+    return resumed(() => {
+      if (this.#closed) throw new Error('the hub stopped while answering; check the harness outcome');
+      const current = this.#approvals.get(id);
+      const closed = current ? this.#closeApproval(current, outcome) : { ...record, state: 'closed' as const, outcome: this.#port.store.inboxOutcome('approval', id) as ApprovalOutcome };
+      if (note?.trim() && !delivery.noteDelivered) this.#port.approvalNote(closed, note);
+      return closed;
+    });
+  }
+
   closeApproval(sessionId: string, requestId: string, outcome: ApprovalOutcome): void {
     const record = this.#approvals.get(`${sessionId}:${requestId}`);
-    if (record) this.#closeApproval(record, outcome);
+    if (record) this.#closeApproval(record, record.state === 'answering' && record.outcome?.choice === outcome.choice ? record.outcome : outcome);
   }
 
   #waitApproval(record: InboxApproval): void {
@@ -372,7 +419,7 @@ export class InboxBoard {
       text: record.command ?? record.subject.change ?? 'waiting for approval' });
   }
 
-  #closeApproval(record: InboxApproval, reported: ApprovalOutcome): void {
+  #closeApproval(record: InboxApproval, reported: ApprovalOutcome): InboxApproval {
     // Copy the outcome too: adapters must not smuggle arbitrary native payload into a delta or archive.
     const outcome: ApprovalOutcome = { choice: reported.choice, by: reported.by, via: reported.via, at: reported.at,
       ...(reported.note !== undefined ? { note: reported.note } : {}) };
@@ -385,6 +432,7 @@ export class InboxBoard {
     if (this.#fallbacks.get(record.sessionId)?.id === record.id) this.#fallbacks.delete(record.sessionId);
     this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', closed, 'approval') });
     this.#changed();
+    return closed;
   }
 
   #syncApprovals(): void {

@@ -195,3 +195,13 @@ test('FakeClock blocking work delays due callbacks without moving time backwards
   assert.equal(clock.pending, 0);
   for (const ms of [-1, NaN, Infinity]) assert.throws(() => clock.block(ms), /finite non-negative/);
 });
+
+test('FakeClock delivers a blocked interval once at wakeup and schedules its next tick in the future', async () => {
+  const clock = new FakeClock(0), ticks: number[] = [];
+  clock.setInterval(() => ticks.push(clock.now().getTime()), 1000);
+  clock.block(3000);
+  await clock.advance(0);
+  assert.deepEqual(ticks, [3000]);
+  await clock.advance(1000);
+  assert.deepEqual(ticks, [3000, 4000]);
+});

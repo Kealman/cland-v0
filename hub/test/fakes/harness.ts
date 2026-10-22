@@ -5,7 +5,7 @@ import { CODEX_CAPABILITIES, CODEX_CLAUSE_AT_SPAWN } from '../../src/adapters/co
 import { OPENCODE_CAPABILITIES, OPENCODE_CLAUSE_AT_SPAWN } from '../../src/adapters/opencode.ts';
 import { InjectUncertain, type ApprovalRequest, type AdapterHost, type HarnessAdapter, type HarnessProcess, type SpawnRequest, type ResumeResult } from '../../src/adapters/contract.ts';
 import { realClock, type Clock, type ClockTimer } from '../../src/hub/clock.ts';
-import type { ApprovalOutcome, Message, SessionState, SessionUsage, TopicRef } from '../../src/protocol.ts';
+import type { ApprovalChoice, ApprovalOutcome, Message, SessionState, SessionUsage, TopicRef } from '../../src/protocol.ts';
 
 export const FAKE_FLAVOURS = ['claude-code', 'codex', 'opencode'] as const;
 export type FakeFlavour = typeof FAKE_FLAVOURS[number];
@@ -26,8 +26,12 @@ export class FakeHarness implements HarnessAdapter {
   readonly clauseAtSpawn;
   readonly spawns: SpawnRequest[] = [];
   readonly injections: FakeInject[] = [];
+  readonly approvalAnswers: Array<{ sessionId: string; requestId: string; choice: ApprovalChoice; note?: string }> = [];
   readonly stops: HarnessProcess[] = [];
   readonly resumes: Array<{ process: HarnessProcess; options: Parameters<HarnessAdapter['resume']>[1] }> = [];
+  readonly #approvalScripts: Array<'accept' | 'fail' | 'hold'> = [];
+  readonly #heldApprovals = new Map<string, (outcome: 'accept' | 'fail') => void>();
+  approvalNotes = true;
   readonly #clock: Clock;
   readonly #host: AdapterHost | undefined;
   readonly #sessions = new Map<string, FakeSession>();
@@ -113,6 +117,26 @@ export class FakeHarness implements HarnessAdapter {
   raiseApproval(name: string, request: ApprovalRequest & { subject: ApprovalRequest['subject'] & Record<string, unknown> } & Record<string, unknown>): void {
     this.#host?.approvalRequested?.(this.#session(name).process.sessionId, request);
   }
+  scriptApproval(...outcomes: Array<'accept' | 'fail' | 'hold'>): void { this.#approvalScripts.push(...outcomes); }
+  answerApproval(process: HarnessProcess, requestId: string, answer: { choice: ApprovalChoice; note?: string }): Promise<{ noteDelivered: boolean }> {
+    this.approvalAnswers.push({ sessionId: process.sessionId, requestId, ...answer });
+    const outcome = this.#approvalScripts.shift() ?? 'accept';
+    return new Promise((resolve, reject) => {
+      const key = `${process.sessionId}:${requestId}`;
+      const settle = (result: 'accept' | 'fail') => {
+        this.#heldApprovals.delete(key);
+        if (result === 'fail') reject(new Error('fake approval delivery failed'));
+        else resolve({ noteDelivered: this.approvalNotes });
+      };
+      if (outcome === 'hold') this.#heldApprovals.set(key, settle);
+      else settle(outcome);
+    });
+  }
+  settleApproval(name: string, requestId: string, outcome: 'accept' | 'fail' = 'accept'): void {
+    const settle = this.#heldApprovals.get(`${this.#session(name).process.sessionId}:${requestId}`);
+    if (!settle) throw new Error('no held approval');
+    settle(outcome);
+  }
   closeApproval(name: string, requestId: string, outcome: ApprovalOutcome): void {
     this.#host?.approvalClosed?.(this.#session(name).process.sessionId, requestId, outcome);
   }
@@ -151,6 +175,7 @@ export class FakeHarness implements HarnessAdapter {
     return { found: true, process: found, state: session?.state ?? 'idle' };
   }
   close(): void {
+    for (const settle of [...this.#heldApprovals.values()]) settle('fail');
     for (const timer of this.#timers.keys()) this.#clock.clearTimeout(timer);
     this.#timers.clear();
     for (const pending of [...this.#pending.values()]) pending.settle('reject');

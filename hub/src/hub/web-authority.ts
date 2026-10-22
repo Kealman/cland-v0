@@ -12,6 +12,7 @@ export const WEB_AUTHORITY = {
   'account.clear': true,
   'account.list': true,
   'account.poll': true,
+  'approval.answer': true,
   'artifact.archive': true,
   'artifact.create': (frame: Record<string, unknown>) => Object.hasOwn(frame, 'path') ? 'reads a local artifact path' : null,
   'artifact.delete': 'deletes artifact state and files',

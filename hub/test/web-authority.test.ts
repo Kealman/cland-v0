@@ -204,6 +204,28 @@ test('web refuses as on the initial hello and still requires a valid human hello
   assert.equal((await welcome).name, 'human');
 });
 
+test('the authenticated web cookie answers an approval as the human through the common gate', async t => {
+  const { web, local, hub } = await clients(t);
+  assert.equal((await local.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' })).ok, true);
+  hub.fakes.codex!.raiseApproval('worker', { id: 'browser', kind: 'command', subject: { command: 'echo web' }, choices: ['once', 'always', 'deny'] });
+  const pending = await local.request({ type: 'inbox.list' });
+  const record = (pending.value as import('../src/protocol.ts').Inbox).approvals[0]!;
+  const result = await web.request({ type: 'approval.answer', approval: record.id, choice: 'always', note: 'This command is safe' });
+  assert.equal(result.ok, true, result.error);
+  const closed = (result.value as { approval: typeof record }).approval;
+  assert.equal(closed.state, 'closed');
+  assert.equal(closed.outcome?.by, 'human');
+  assert.equal(closed.outcome?.via, 'web');
+  assert.equal(closed.outcome?.choice, 'always');
+  assert.equal(closed.outcome?.note, 'This command is safe');
+  assert.deepEqual(hub.fakes.codex!.approvalAnswers.map(a => [a.requestId, a.choice, a.note]), [['browser', 'always', 'This command is safe']]);
+  const late = await local.request({ type: 'approval.answer', approval: record.id, choice: 'deny' });
+  assert.equal(late.ok, false);
+  assert.match(late.error!, /human.*web/);
+  assert.ok(late.error!.includes(closed.outcome!.at));
+  assert.equal(hub.fakes.codex!.approvalAnswers.length, 1);
+});
+
 test('the authenticated web human can withdraw a queued message and receives its text', async t => {
   const { web, local } = await clients(t);
   const sent = await web.request({ type: 'topic.send', topic: 'general', text: 'restore web composer', kind: 'decision' });

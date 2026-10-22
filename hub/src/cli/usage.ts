@@ -181,6 +181,7 @@ export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and
                           (--json for the hub's Inbox frame)
                           --archive prints departures from the last seven days, newest first, with when and why;
                           closed approvals include outcome, who answered and when
+                          approvals are answered by the human in Neovim or the web; TUI-only rows say answer in Neovim
 `;
 
 export const TOPIC_USAGE = `  topic create <title> [--item T-n] [--json] [--as <name>]

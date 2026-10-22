@@ -211,6 +211,9 @@ export interface HarnessAdapter {
    * the harness and its answer never came: the delivery is `uncertain`, never retried on its own.
    */
   inject(process: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void>;
+  /** Answer one native request. Resolve after delivery is confirmed; reject on failure.
+   * noteDelivered reports whether the native protocol carried the optional note. Never reinterpret deny. */
+  answerApproval?(process: HarnessProcess, requestId: string, answer: { choice: ApprovalChoice; note?: string }): Promise<{ noteDelivered: boolean }>;
   /** A confirmation the harness sent through the hub (the mod's `injected`): settles a pending inject. */
   confirm(process: HarnessProcess, messageId: string): void;
   /** What a signal posted from inside the session (`cland hook <event>`, with the harness's payload) means. */

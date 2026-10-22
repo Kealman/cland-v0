@@ -55,7 +55,8 @@ export class FakeClock implements Clock {
         if (!timer) break;
         this.#time = Math.max(this.#time, timer.due);
         if (timer.interval === null) this.#timers.delete(timer);
-        else { timer.due += timer.interval; timer.order = this.#order++; }
+        // Like Node after blocked work, an overdue interval fires once; missed ticks do not replay.
+        else { timer.due = this.#time + timer.interval; timer.order = this.#order++; }
         timer.callback();
         await yieldIO();
       }

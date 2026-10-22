@@ -1710,6 +1710,11 @@ export class Store implements HygieneMemory {
     return this.#prepare('select 1 from inbox_departures where kind = ? and id = ? limit 1').get(kind, id) !== undefined;
   }
 
+  inboxOutcome(kind: InboxRowKind, id: string): InboxDeparture['outcome'] | undefined {
+    const row = this.#prepare('select outcome_json from inbox_departures where kind = ? and id = ? order by number desc limit 1').get(kind, id) as Row | undefined;
+    return row?.outcome_json ? JSON.parse(row.outcome_json as string) as NonNullable<InboxDeparture['outcome']> : undefined;
+  }
+
   departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = '', outcome?: InboxDeparture['outcome']): InboxDeparture | null {
     return this.#transaction(() => {
       const waiting = this.#prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes;

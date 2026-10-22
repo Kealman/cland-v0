@@ -3,10 +3,13 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createConnection } from 'node:net';
 import { once } from 'node:events';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { cland, connectUi, frameClient, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
-import type { Inbox } from '../src/protocol.ts';
+import type { ApprovalOutcome, Inbox } from '../src/protocol.ts';
 
 async function ok<T>(ui: FrameClient, frame: Record<string, unknown> & { type: string }): Promise<T> {
   const result = await ui.request(frame);
@@ -196,4 +199,234 @@ test('a native approval keeps its identity and attachment while the owning sessi
   assert.equal(after.label, 'renamed [Coordinator]');
   assert.equal(after.id, before.id);
   assert.equal(after.attach, before.attach);
+});
+
+test('a human answer reaches the adapter once and both clients observe the attributed closed record', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const first = await connectUi(t, discovery), second = await connectUi(t, discovery);
+  for (const ui of [first, second]) await ok(ui, { type: 'subscribe' });
+  const { process } = await ok<{ process: { sessionId: string } }>(first, { type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
+  fakes.codex!.raiseApproval('worker', { id: 'native:7', kind: 'command', subject: { command: 'echo safe' }, choices: ['once', 'deny'] });
+  const record = (await ok<Inbox>(first, { type: 'inbox.list' })).approvals[0]!;
+  const closed = [first, second].map(ui => ui.waitFor(f => f.type === 'approval' && (f.approval as typeof record).state === 'closed'));
+  const at = clock.now().toISOString();
+  await ok(first, { type: 'approval.answer', approval: record.id, choice: 'once' });
+  for (const receipt of await Promise.all(closed)) {
+    assert.equal((receipt.approval as typeof record).id, record.id);
+    assert.deepEqual((receipt.approval as typeof record).outcome, { choice: 'once', by: 'human', via: 'neovim', at });
+  }
+  assert.deepEqual(fakes.codex!.approvalAnswers, [{ sessionId: process.sessionId, requestId: 'native:7', choice: 'once' }]);
+  assert.deepEqual((await ok<Inbox>(second, { type: 'inbox.list' })).approvals, []);
+});
+
+test('two clients in one tick reserve one winner before adapter confirmation and refuse the loser with attribution', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const first = await connectUi(t, discovery), second = await connectUi(t, discovery);
+  await ok(first, { type: 'subscribe' });
+  await ok(first, { type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
+  fakes.codex!.raiseApproval('worker', { id: 'race', kind: 'command', subject: { command: 'echo safe' }, choices: ['once', 'always', 'deny'] });
+  const record = (await ok<Inbox>(first, { type: 'inbox.list' })).approvals[0]!;
+  fakes.codex!.scriptApproval('hold');
+  const answering = first.waitFor(f => f.type === 'approval' && (f.approval as typeof record).state === 'answering');
+  const answers = [first.request({ type: 'approval.answer', approval: record.id, choice: 'once' }), second.request({ type: 'approval.answer', approval: record.id, choice: 'deny' })];
+  const reserved = (await answering).approval as typeof record;
+  assert.ok(reserved.outcome?.choice === 'once' || reserved.outcome?.choice === 'deny');
+  assert.equal(reserved.outcome.by, 'human');
+  assert.equal(reserved.outcome.via, 'neovim');
+  assert.equal(reserved.outcome.at, clock.now().toISOString());
+  const winner = reserved.outcome.choice === 'once' ? 0 : 1;
+  const loser = await answers[1 - winner]!;
+  assert.equal(loser.ok, false);
+  assert.match(loser.error!, /human.*neovim/);
+  assert.ok(loser.error!.includes(reserved.outcome!.at));
+  assert.equal(fakes.codex!.approvalAnswers.length, 1);
+  fakes.codex!.settleApproval('worker', 'race');
+  assert.equal((await answers[winner]!).ok, true);
+  const after = await ok<Inbox>(second, { type: 'inbox.list', archive: true });
+  assert.equal(after.archive?.length, 1);
+  assert.deepEqual(after.archive?.[0]?.outcome, reserved.outcome);
+  const late = await second.request({ type: 'approval.answer', approval: record.id, choice: 'always' });
+  assert.equal(late.ok, false);
+  assert.match(late.error!, /human.*neovim/);
+  assert.ok(late.error!.includes(reserved.outcome!.at));
+  assert.equal(fakes.codex!.approvalAnswers.length, 1);
+});
+
+test('unoffered choices and TUI-only approvals refuse answers without changing their records', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
+  await ok(ui, { type: 'session.launch', name: 'claude', harness: 'claude-code', role: 'implementer' });
+  fakes.codex!.raiseApproval('worker', { id: 'limited', kind: 'command', subject: { command: 'echo safe' }, choices: ['once', 'deny'] });
+  fakes['claude-code']!.waitingForApproval('claude');
+  const before = await ok<Inbox>(ui, { type: 'inbox.list' });
+  const limited = before.approvals.find(a => a.session === 'worker')!, tui = before.approvals.find(a => a.session === 'claude')!;
+  for (const [approval, choice, reason] of [[limited.id, 'always', /not offered/], [tui.id, 'once', /answer in Neovim/]] as const) {
+    const result = await ui.request({ type: 'approval.answer', approval, choice });
+    assert.equal(result.ok, false);
+    assert.match(result.error!, reason);
+    assert.deepEqual((await ok<Inbox>(ui, { type: 'inbox.list' })).approvals, before.approvals);
+  }
+  assert.deepEqual(fakes.codex!.approvalAnswers, []);
+  assert.deepEqual(fakes['claude-code']!.approvalAnswers, []);
+});
+
+test('only the human may answer: every agent role including Aides is refused on socket and spoke', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  const { process } = await ok<{ process: { sessionId: string } }>(ui, { type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
+  fakes.codex!.raiseApproval('worker', { id: 'human', kind: 'command', subject: { command: 'echo safe' }, choices: ['once', 'deny'] });
+  const before = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals;
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'worker', sessionId: process.sessionId, role: 'implementer' });
+  await spoke.waitForPresence(['worker']);
+  const agentAnswer = await spoke.call<{ ok: boolean }>('approval.answer', { approval: before[0]!.id, choice: 'once' });
+  assert.equal(agentAnswer.ok, false);
+  const { item } = await ok<{ item: { id: string } }>(ui, { type: 'task.create', title: 'Fixture epic', kind: 'epic' });
+  for (const role of ['coordinator', 'lead', 'reviewer', 'qa', 'aide', null]) {
+    await ok(ui, { type: 'session.launch', name: `agent-${role ?? 'no-role'}`, harness: 'opencode', ...(role ? { role } : {}), ...(role === 'lead' ? { item: item.id } : {}) });
+  }
+  const sessions = await ok<{ processes: Array<{ name: string; sessionId: string }> }>(ui, { type: 'session.list' });
+  for (const session of sessions.processes) {
+    const result = await ui.request({ type: 'approval.answer', approval: before[0]!.id, choice: 'once', as: { name: session.name, sessionId: session.sessionId, shell: true } });
+    assert.equal(result.ok, false, session.name);
+    assert.match(result.error!, /human|permission|forbidden/i);
+  }
+  assert.deepEqual((await ok<Inbox>(ui, { type: 'inbox.list' })).approvals, before);
+  assert.deepEqual(fakes.codex!.approvalAnswers, []);
+});
+
+test('failed adapter delivery returns to pending, refuses with the reason and journals a warning before a human retry', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
+  fakes.codex!.raiseApproval('worker', { id: 'retry', kind: 'command', subject: { command: 'echo safe' }, choices: ['once', 'deny'] });
+  const before = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals[0]!;
+  fakes.codex!.scriptApproval('fail');
+  const warning = ui.waitFor(f => f.type === 'event' && String((f.row as { text: string }).text).includes('fake approval delivery failed'));
+  const result = await ui.request({ type: 'approval.answer', approval: before.id, choice: 'deny', note: 'Keep it local' });
+  assert.equal(result.ok, false);
+  assert.match(result.error!, /fake approval delivery failed/);
+  assert.deepEqual((await ok<Inbox>(ui, { type: 'inbox.list' })).approvals, [before]);
+  const row = (await warning).row as { id: string; warning: boolean; text: string };
+  assert.equal(row.warning, true);
+  const events = await ok<{ rows: Array<{ id: string; warning?: boolean }> }>(ui, { type: 'events.list' });
+  assert.ok(events.rows.some(event => event.id === row.id && event.warning));
+  await ok(ui, { type: 'approval.answer', approval: before.id, choice: 'deny' });
+  assert.deepEqual(fakes.codex!.approvalAnswers.map(a => a.choice), ['deny', 'deny']);
+  const after = await ok<Inbox>(ui, { type: 'inbox.list', archive: true });
+  assert.equal(after.archive?.length, 1);
+  assert.equal((after.archive?.[0]?.outcome as ApprovalOutcome)?.choice, 'deny');
+});
+
+test('deny remains deny and a note the native protocol cannot carry is a human message to the session in General', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'opencode', role: 'implementer' });
+  fakes.opencode!.approvalNotes = false;
+  fakes.opencode!.raiseApproval('worker', { id: 'deny', kind: 'command', subject: { command: 'rm important' }, choices: ['once', 'deny'] });
+  const record = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals[0]!;
+  await ok(ui, { type: 'approval.answer', approval: record.id, choice: 'deny', note: 'Keep this file' });
+  assert.deepEqual(fakes.opencode!.approvalAnswers.map(a => [a.choice, a.note]), [['deny', 'Keep this file']]);
+  const history = await ok<{ messages: Array<{ from: string; fromKind: string; to: string[]; text: string }> }>(ui, { type: 'topic.history', topic: 'general' });
+  const notes = history.messages.filter(m => m.text === 'Keep this file');
+  assert.equal(notes.length, 1);
+  assert.deepEqual({ from: notes[0]!.from, fromKind: notes[0]!.fromKind, to: notes[0]!.to }, { from: 'human', fromKind: 'human', to: ['worker'] });
+  assert.equal(((await ok<Inbox>(ui, { type: 'inbox.list', archive: true })).archive?.[0]?.outcome as ApprovalOutcome)?.choice, 'deny');
+});
+
+test('a pending request has no default answer after 24 hours of fake time', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
+  fakes.codex!.raiseApproval('worker', { id: 'wait', kind: 'command', subject: { command: 'echo safe' }, choices: ['once', 'deny'] });
+  const before = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals;
+  // Wake after a suspended day: overdue one-shot timers and interval checks still run.
+  clock.block(24 * 60 * 60 * 1000);
+  await clock.advance(0);
+  assert.deepEqual((await ok<Inbox>(ui, { type: 'inbox.list' })).approvals, before);
+  assert.deepEqual(fakes.codex!.approvalAnswers, []);
+});
+
+test('a deny note follows the session claim to its item topic and native note support avoids a duplicate message', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  const { item } = await ok<{ item: { id: string } }>(ui, { type: 'task.create', title: 'Approval fixture', size: 'S', assignee: 'worker' });
+  const { topic } = await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Approval item', item: item.id });
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'opencode', role: 'implementer' });
+  await ok(ui, { type: 'task.claim', item: item.id, as: { name: 'worker' } });
+  fakes.opencode!.approvalNotes = false;
+  const request = { id: 'without-note', kind: 'command' as const, subject: { command: 'rm important' }, choices: ['once', 'deny'] as Array<'once' | 'deny'> };
+  fakes.opencode!.raiseApproval('worker', request);
+  const record = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals[0]!;
+  await ok(ui, { type: 'approval.answer', approval: record.id, choice: 'deny', note: 'Keep the item file' });
+  const history = await ok<{ messages: Array<{ text: string; fromKind: string; to: string[] }> }>(ui, { type: 'topic.history', topic: topic.id });
+  assert.ok(history.messages.some(m => m.text === 'Keep the item file' && m.fromKind === 'human' && m.to[0] === 'worker'));
+  const general = await ok<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: 'general' });
+  assert.equal(general.messages.some(m => m.text === 'Keep the item file'), false);
+  fakes.opencode!.approvalNotes = true;
+  fakes.opencode!.raiseApproval('worker', { ...request, id: 'with-note' });
+  const next = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals[0]!;
+  await ok(ui, { type: 'approval.answer', approval: next.id, choice: 'deny', note: 'Native note' });
+  const after = await ok<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: topic.id });
+  assert.equal(after.messages.some(m => m.text === 'Native note'), false);
+  assert.deepEqual(fakes.opencode!.approvalAnswers.map(a => [a.choice, a.note]), [['deny', 'Keep the item file'], ['deny', 'Native note']]);
+});
+
+test('adapter close confirmation during delivery preserves the reserved human outcome and publishes one close', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
+  fakes.codex!.raiseApproval('worker', { id: 'callback', kind: 'command', subject: { command: 'echo safe' }, choices: ['once', 'deny'] });
+  const record = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals[0]!;
+  fakes.codex!.scriptApproval('hold');
+  const answering = ui.waitFor(f => f.type === 'approval' && (f.approval as typeof record).state === 'answering');
+  const answer = ui.request({ type: 'approval.answer', approval: record.id, choice: 'deny', note: 'Keep it' });
+  const winner = ((await answering).approval as typeof record).outcome!;
+  const closed = ui.waitFor(f => f.type === 'approval' && (f.approval as typeof record).state === 'closed');
+  fakes.codex!.closeApproval('worker', 'callback', { choice: 'deny', by: 'harness', via: 'harness', at: clock.now().toISOString() });
+  assert.deepEqual(((await closed).approval as typeof record).outcome, winner);
+  fakes.codex!.settleApproval('worker', 'callback');
+  const result = await answer;
+  assert.equal(result.ok, true, result.error);
+  await ok(ui, { type: 'inbox.list' });
+  assert.equal(ui.frames.filter(f => f.type === 'approval' && (f.approval as typeof record).state === 'closed').length, 1);
+  const after = await ok<Inbox>(ui, { type: 'inbox.list', archive: true });
+  assert.equal(after.archive?.length, 1);
+  assert.deepEqual(after.archive?.[0]?.outcome, winner);
+});
+
+for (const cap of [8192, 1024]) test(`an oversized fallback note is refused before delivering deny and can be corrected (cap ${cap})`, async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Approval note size fixture');
+  config.hygiene.maxTextBytes = cap;
+  config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'opencode', role: 'implementer' });
+  fakes.opencode!.approvalNotes = false;
+  fakes.opencode!.raiseApproval('worker', { id: 'note-limit', kind: 'command', subject: { command: 'rm important' }, choices: ['once', 'deny'] });
+  const before = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals;
+  const refused = await ui.request({ type: 'approval.answer', approval: before[0]!.id, choice: 'deny', note: '🚀'.repeat(cap / 4 + 1) });
+  assert.equal(refused.ok, false);
+  assert.ok(refused.error!.includes(`${cap + 4} bytes; the cap is ${cap}`));
+  assert.equal(fakes.opencode!.approvalAnswers.length, 0);
+  assert.deepEqual((await ok<Inbox>(ui, { type: 'inbox.list' })).approvals, before);
+  await ok(ui, { type: 'approval.answer', approval: before[0]!.id, choice: 'deny', note: 'Keep it' });
+  assert.equal(fakes.opencode!.approvalAnswers.length, 1);
+  assert.equal(fakes.opencode!.approvalAnswers[0]!.choice, 'deny');
+  const history = await ok<{ messages: Array<{ text: string; fromKind: string }> }>(ui, { type: 'topic.history', topic: 'general' });
+  assert.ok(history.messages.some(m => m.text === 'Keep it' && m.fromKind === 'human'));
 });

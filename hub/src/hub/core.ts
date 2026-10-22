@@ -526,6 +526,13 @@ export class HubCore {
       items: () => [...this.#itemSnapshots.values()],
       presence: () => this.presence(),
       stateOf: (id) => this.sessionState(id),
+      sizeRefusal: text => this.#hygiene.sizeRefusal(text),
+      approvalNote: (record, note) => {
+        const process = this.#processRows?.().find(p => p.sessionId === record.sessionId);
+        const item = process?.item ?? this.#sessionItems(record.sessionId)[0];
+        const topic = item ? this.#store.topics().find(t => t.item === item) : undefined;
+        this.sendFromHuman(topic?.id ?? 'general', note, [process?.name ?? record.session]);
+      },
       idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
       idle: (session, minutes) => this.publishEvent({ session }, 'session.state', `${session} idle ${minutes} min`, { lifecycle: 'long idle' }),
     });

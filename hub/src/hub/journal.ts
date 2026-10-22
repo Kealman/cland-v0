@@ -166,6 +166,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'ask-cancelled',
   'notification',
   'inbox-departure',
+  'approval-answer-failed',
   // hygiene
   'loop-breaker',
   'unmuted',
@@ -526,6 +527,9 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   } else if (r.event === 'notification') {
     kind = r.kind === 'executor-fallback' ? 'suite' : r.kind === 'verdict' ? 'verdict' : r.kind === 'release' ? 'release' : r.kind === 'plan' ? 'task' : 'session';
     subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : undefined;
+  } else if (r.event === 'approval-answer-failed') {
+    kind = 'session'; subject = session ? { kind: 'session', id: session } : undefined;
+    text = `approval answer failed: ${r.error}`; glyph = '⚠';
   } else if (r.event === 'tracker-storage-fatal') {
     kind = 'task'; subject = item ? { kind: 'item', id: item } : { kind: 'topic', id: 'agents' }; glyph = '⚠';
   } else if (r.event === 'verification-cleanup-incomplete') {

@@ -479,6 +479,14 @@ export class Sessions {
     return a;
   }
 
+  async answerApproval(sessionId: string, requestId: string, answer: { choice: import('../protocol.ts').ApprovalChoice; note?: string }): Promise<{ noteDelivered: boolean }> {
+    const process = this.#table.bySessionId(sessionId);
+    if (!process || process.status !== 'running') throw new Error('the approval session is not running');
+    const adapter = this.adapter(process.harness);
+    if (!adapter.answerApproval) throw new Error('the adapter cannot relay approvals; answer in Neovim');
+    return adapter.answerApproval(process, requestId, answer);
+  }
+
   // ---------------------------------------------------------------- views
 
   view(p: HarnessProcess): HarnessProcessView {
