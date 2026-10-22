@@ -3,7 +3,7 @@ id: T-1077
 kind: task
 title: The Plan view with approval on a
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-843
 branch: t/T-1077-the-plan-view-with-approval-on-a
 created: 2026-10-21T17:32:16.973Z
-updated: 2026-10-22T10:51:45.346Z
+updated: 2026-10-22T11:03:50.113Z
 ---
 
 ## Summary
@@ -35,10 +35,13 @@ The Plan view shows the selected epic's plan: its stages, lanes and QA policy, w
 
 - [x] C1. In a scratch project with `[plan] approval = "human"`, `a` in the Plan view approves a waiting plan, and `cland task plan show` reads it approved by the human (Web test).
   - done: impl-1077 · 2026-10-22T10:51:38.858Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1077-final-1 · 2026-10-22T11:03:49.990Z · commit ae8817e8c103b04a4572cc27bf7ebf978767de5b
 - [x] C2. A plan change made after the human's last look shows in the watch colour, and opening the view moves the plan's mark (Web test).
   - done: impl-1077 · 2026-10-22T10:31:36.822Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1077-final-1 · 2026-10-22T11:03:49.990Z · commit ae8817e8c103b04a4572cc27bf7ebf978767de5b
 - [x] C3. Below desktop width `a` is not offered (Web test).
   - done: impl-1077 · 2026-10-22T10:31:36.896Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1077-final-1 · 2026-10-22T11:03:49.990Z · commit ae8817e8c103b04a4572cc27bf7ebf978767de5b
 
 ## Comments
 
@@ -103,3 +106,31 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear; A-9105 independently audits exact source-clear44e72f4d/A-9103. Actual parent enforced failure quoted; C1/C2/C3ordinary pass1.812154/1.185217/1.196273s,parent5.448538s.2439passed/0fail/cancel/skip,T1/allT2exit0,Webexit1; no new functional source finding. Linuxx64 c8lon1,workers2(Web4),518s/$0.0360,hosta0c8865c reused/notrepeated,lint132/59/0refusals andgenericdiagnosticsreport-only. No Webload/T3/T4/full-lifecycle/stageQA pass. Allcriteriaunverified; owned allowance correction per brief needs fresh pushed-head source review before next mode-free verify. A-9103 stays failed.
 
 Criteria: C1 failed (Required configured acceptance failed solely on owned parent duration5.448537630s>5s; C1–C3 assertions passed, but overall run is not clear.).
+
+### rev-26 · 2026-10-22T10:54:05.599Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1077-source-4
+commit: ae8817e8c103b04a4572cc27bf7ebf978767de5b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-9111 incorporates the prior full source audit at44e72f4d. The only new delta is the Plan parent identity's 8.2s E-880 allowance, dated2026-10-22 through2026-10-29, rounded about1.5x the actual5.448537630s Linux sample in A-9103, as the launch brief requires. Assertions, fixtures, production code and generic Web4s report budget are unchanged. Standards0;Spec0. A-9106 lint receipt is qualified local precommit supporting evidence, not configured acceptance. Historical3f8c3d6c/A-9103 remains failed overall. C1–C3 remain run-dependent and unverified. Submit mode-free verification at unchanged ae8817e8; a changed head needs fresh source review. No T3/T4, full lifecycle or stage-QA pass is claimed.
+
+### rev-26 · 2026-10-22T11:03:49.990Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1077-final-1
+commit: ae8817e8c103b04a4572cc27bf7ebf978767de5b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-9119 audits original A-9118/run f8a46b4b against source-clear ae8817e8/tree706ad690. T1, fallback all T2 across hub+Neovim and Web exit0;2439 ordinary passes, zero fail/cancel/skip. Actual C1/C2/C3 finish records pass1.679793454/1.089255100/0.961953944s; parent4.997972967s satisfies reviewed8.2s cap. Standards0;Spec0. Linuxx64 c8lon1 cland-v0-9a937e21, Node24.21/Nvim0.12.5, workers2(Web4),500s/$0.0348. Host check stdout retained; bb495322 host gate reused, not repeated remote T0. Generic lint/tier/duration/ratchet diagnostics report-only, one missing baseline; enforced new-identity gate satisfied. No Plan Web-load repetition, T3/T4, full-lifecycle or stage-QA pass claimed. Historical A-9103 remains failed; stage QA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
