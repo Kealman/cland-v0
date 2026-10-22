@@ -3,7 +3,7 @@ id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-837
 branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-22T07:40:25.278Z
+updated: 2026-10-22T08:19:01.290Z
 ---
 
 ## Summary
@@ -31,22 +31,23 @@ A run is consecutive agent-to-agent messages with nothing between them that neve
 
 ## Acceptance criteria
 
-- [ ] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
-  - failed: rev-26 [reviewer] · 2026-10-22T07:40:25.278Z · note Required configured receipt806b26c3 at4176f40d failed Web viewport assertion and enforced identity duration gate; owned C1/run assertions passed but final gate is unsatisfied.
+- [x] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
+  - done: impl-1056 · 2026-10-22T08:17:56.716Z
 - [x] C2. A fifth message updates the same run id in a delta, without a history re-read (test).
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
-  - done: impl-1056 · 2026-10-22T07:27:40.825Z
+  - done: impl-1056 · 2026-10-22T08:17:56.794Z
 - [x] C3. An ask, a verdict, an answer, or a message to or from the human or an Aide ends a run, and the next agent message starts a new one (test).
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
-  - done: impl-1056 · 2026-10-22T07:27:40.898Z
+  - done: impl-1056 · 2026-10-22T08:17:56.965Z
 - [x] C4. A history page that starts mid-run carries that run's id and its full fold line (test).
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
-  - done: impl-1056 · 2026-10-22T07:27:41.068Z
+  - done: impl-1056 · 2026-10-22T08:17:57.038Z
 - [x] C5. `hub/README.md` describes runs and fold lines.
   - verified: rev-23 [reviewer] · run rev-20261022-1056-source-2 · 2026-10-22T06:59:34.374Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
-  - done: impl-1056 · 2026-10-22T07:27:41.141Z
   - verified: rev-26 [reviewer] · run rev-20261022-1056-source-3 · 2026-10-22T07:29:18.071Z · commit 4176f40d140331375fe06563af0d652cdcace94a
+  - done: impl-1056 · 2026-10-22T08:17:57.115Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1056-source-4 · 2026-10-22T08:19:01.290Z · commit 35323740a1e649c7561494159f5af834ab4b95da
 
 ## Comments
 
@@ -144,3 +145,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear; A-9020 audits original A-9018 at unchanged4176f40d. Actual Web failure quoted in findings; T1/allT2 exit0, Webexit1. Ordinary2427pass/2fail/0skip; interruption2467pass/2fail includesload, not ordinary. All8 owned run identities have base+5/5 passes,max0.585644s, so no new thread-run source finding. Linuxx64 c8lon1 droplet535s/$0.0371; generic diagnostics report-only, 5s new-identity enforcement and assertion are failures. No T3/T4/full-lifecycle/stageQA pass. Bugs/S shared candidate goes to lead T-1056 for Coordinator disposition; no autonomous retry/dev merge/fix. Earlier green e15737c5 historical; sourceclear not final-ready.
 
 Criteria: C1 failed (Required configured receipt806b26c3 at4176f40d failed Web viewport assertion and enforced identity duration gate; owned C1/run assertions passed but final gate is unsatisfied.).
+
+### impl-1056 · 2026-10-22T08:17:56.655Z
+
+Applied exactly Coordinator-posted shared fix e2233f5e as pushed35323740a1e649c7561494159f5af834ab4b95da, no dev merge/other changes. Patch-id1a8fd0fa matches original exactly; only palette test +7.5s datedE-880 allowance. Root typecheck/static/lint pass locally; no new production source edits. Targeted palette attempt unavailable before assertions: actual `Error: playwright-core is not installed; run npm install` from fixture setup,2setup failures, no local browser pass. Requesting delta review before prepared Linux mode-free verification.
+
+### rev-26 · 2026-10-22T08:19:01.290Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1056-source-4
+commit: 35323740a1e649c7561494159f5af834ab4b95da
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Shared-fix delta source clear; A-9048 independently matches donor e2233f5e/pick patch-id1a8fd0fa under Coordinator d4096542. Only authorized palette test/duration files change. Native scrollend observer precedes keys, bounded completion preserves exact all32-row PageDown-only traversal, End last-row/Home top and viewport assertions. Matching7.5s identity allowance datedOct22–29,E-880,~1.5x measured Linux4.979509666s; no production/run-test/doc changes. C5 source reverified; C1–C4 await fresh mode-free configured execution. A-9047 local browser attempt unavailable: actual missing playwright-core setup error, no assertions/pass; summarized typecheck/static/lint success not a configured receipt. Donor passes not this-head proof. A-9018 remains failed; no runtime exception/T3/T4/full-lifecycle/stageQA claim. Standards0;Spec0.
+
+Criteria: C5 verified.

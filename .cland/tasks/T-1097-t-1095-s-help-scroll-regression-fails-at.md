@@ -2,8 +2,8 @@
 id: T-1097
 kind: task
 title: "T-1095's help-scroll regression fails at 1024×600 on Linux: a row is never fully visible after one PageDown"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1095
 topic: topic-841
 branch: t/T-1097-t-1095-s-help-scroll-regression-fails-at
 created: 2026-10-22T07:39:15.709Z
-updated: 2026-10-22T08:16:03.401Z
+updated: 2026-10-22T08:20:51.206Z
+closed: 2026-10-22T08:20:51.206Z
 ---
 
 ## Summary
@@ -124,3 +125,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at amended head: original A-9044 / ff2091cb and task.view agree; independently audited 2421 ordinary passes / 369 file passes, actual T1/all-T2/Web exit0, no load-scoped finishes. Owned Web once: 2.010407505s / 2.130948471s; parent4.549291425s. All three Linux parents remain below5s; reviewed7.5s allowance is ~1.5×worst4.979509666s. C1/C2 verified with source A-9030/A-9043, retained local10/10/planted proof and listed samples. Host9071a5ef reused; report-only warnings retained; no T3/T4/QA claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T08:20:51.206Z
+
+Merged b6da38f2643048ea6c8eff8d7897da3c35a23bad onto dev.

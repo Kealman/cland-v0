@@ -3,7 +3,7 @@ id: T-1096
 kind: task
 title: doctor-cli fails on a droplet shard that never builds the web bundle
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-839
 branch: t/T-1096-doctor-cli-fails-on-a-droplet-shard-that
 created: 2026-10-22T07:20:08.870Z
-updated: 2026-10-22T07:50:20.070Z
+updated: 2026-10-22T08:17:20.361Z
 ---
 
 ## Summary
@@ -24,11 +24,12 @@ The E-416 stage cover 5be1db36 (A-9000, shard-1 log A-9001, dev 90c54f5a, Linux 
 
 ## Acceptance criteria
 
-- [ ] C1. A hub-only shard whose selection contains `hub/test/doctor-cli.test.ts` but neither Web tests nor `web-auth.test.ts` builds the web bundle before its workers start; a suite-runner test proves it the way "a hub-only shard builds the bundle before its secret-scan worker starts" does (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T07:50:00.729Z · note Authorized retry A-9031 remains red: 1280×720 PageDown reveals fold-open timeout plus 8.806s > 5s gate; await T-1097 shared fix per Coordinator7684f7cb.
+- [x] C1. A hub-only shard whose selection contains `hub/test/doctor-cli.test.ts` but neither Web tests nor `web-auth.test.ts` builds the web bundle before its workers start; a suite-runner test proves it the way "a hub-only shard builds the bundle before its secret-scan worker starts" does (test).
+  - done: impl-1096 · 2026-10-22T08:16:37.163Z
 - [x] C2. Every other hub test that reads the built bundle or its stamp is either in the same build condition or independent of the checkout's `web/dist`, and the list is in the item topic from a search of hub/test (test).
   - done: impl-1096 · 2026-10-22T07:25:18.893Z
   - verified: rev-23 [reviewer] · run rev-20261022-1096-source · 2026-10-22T07:29:31.249Z · commit 7c1469bc81d0a724dc87d64eeebb919e4116ec37
+  - verified: rev-23 [reviewer] · run rev-20261022-1096-source-2 · 2026-10-22T08:17:20.361Z · commit 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
 
 ## Comments
 
@@ -88,3 +89,22 @@ Criteria: C1 failed (Authorized retry A-9031 remains red: 1280×720 PageDown rev
 ### impl-1096 · 2026-10-22T07:50:20.070Z
 
 Coordinator-authorized unchanged-head retry 615a5c7f (A-9031), Linux x64 droplet c-8 lon1, failed only the T-1097 palette test: 1280×720 `PageDown reveals fold-open: not within 6000 ms`, plus parent 8.806 s > 5 s enforced gate. T1/all-T2 fallback passed; Web failed; 2412 tests / 2410 pass / 2 fail; no T3. Prior A-9016 failed same test at 1024×600/open-other. Latest Coordinator disposition: hold 7c1469bc and claim for posted T-1097 cherry-pick, delta review, then mode-free verify. Source/C2 retained; C1/final evidence remains blocked. No further retry.
+
+### impl-1096 · 2026-10-22T08:17:06.176Z
+
+Coordinator decision d4096542 authorized exactly shared fix e2233f5e. Cherry-picked without conflict onto 7c1469bc, producing 34650f114ea4adcd190ce75dcb9c1b758f3b15c9, pushed to origin. Only palette.test.ts and durations.json changed; no dev merge. C1 re-marked done; delta source review requested from reviewer in topic-839 before mode-free verification.
+
+### rev-23 · 2026-10-22T08:17:20.361Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1096-source-2
+commit: 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear under Coordinator d4096542: exactly posted shared fix e2233f5e, only palette test and exact 7.5s dated E-880 allowance. Test blob46dbe218 identical to reviewed T-1097; original bundle implementation/test/docs unchanged. C2 audit refreshed. Historical failed task receipts retained; C1 final evidence awaits ordinary mode-free configured run at this exact head. QA none.
+
+Criteria: C2 verified.
