@@ -283,6 +283,7 @@ test('QA rig, E-418 stage seams and the session list', { timeout: 50 * 60_000 },
     config.verification.lockPath = join(root, 'suite.lock');
     config.hygiene.loopBreaker.max = 200; config.hygiene.rateLimit.max = 200;
     await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/crew.toml'), '[crew.reviewer]\npolicy = "pool"\nsize = 4\n'); // two reviewers run at once (qa-review, qa-request); the default pool admits one (run 1)
     await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   } });
   const root = fixture.root;
