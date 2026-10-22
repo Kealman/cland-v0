@@ -2,8 +2,8 @@
 id: T-1147
 kind: task
 title: session.list returns hub-merged rows for archived sessions
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-861
 branch: t/T-1147-session-list-returns-hub-merged-rows-for
 created: 2026-10-22T16:51:34.536Z
-updated: 2026-10-22T17:06:49.079Z
+updated: 2026-10-22T17:20:30.762Z
+closed: 2026-10-22T17:20:30.762Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ updated: 2026-10-22T17:06:49.079Z
 
 - [x] C1. `session.list {archived: true}` returns a `rows` field whose entries equal the snapshot's merged row shape for each archived session, and the existing fields are byte-identical for current callers (test).
   - done: impl-1147 · 2026-10-22T17:06:03.292Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1147-final · 2026-10-22T17:16:12.165Z · commit f034a362f6daa3f035291ce4458359804fc03011
 - [x] C2. The web edge allows the read, and the wire types and conformance cover the new field (test).
   - done: impl-1147 · 2026-10-22T16:55:22.821Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1147-final · 2026-10-22T17:16:12.165Z · commit f034a362f6daa3f035291ce4458359804fc03011
 
 ## Comments
 
@@ -82,3 +85,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear, A-9361; incorporates A-9348 and A-9357. Fresh synchronous presence already contains exact identity holds/pending, now reused for connected rows; disconnected lookups and stopped pending suppression retain original semantics. No test/bound/legacy field/archive behavior changes, no dev merge. Standards0/Spec0. Reported correction-tree workload8/snapshot13/computed4 and typecheck green are targeted local evidence only. C1/C2 remain unverified pending fresh exact-head mode-free configured receipt; old dfc568aa run remains failed.
+
+### rev-23 · 2026-10-22T17:16:12.165Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1147-final
+commit: f034a362f6daa3f035291ce4458359804fc03011
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear, A-9370; A-9369/run dd02f665 at exact source-clear f034a362. Parsed2504 ordinary tests/381 files pass; new archived-row identity ordinary+5 unique load repetitions pass, original inbox workload bound passes unchanged. Authority and snapshot/computed-session files pass; host check/wire gate4261ff3 reused/not repeated remotely. All T1/fallback all hub+Neovim T2/actual Web pass on Linuxx64 c-8lon1 workers2/Web4. Generic budgets/lint/ratchet report-only; Web49.326s exceeds40s report-only budget. No T3/T4/QA/full-cover claim. Old dfc568aa receipt remains failed.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T17:20:30.762Z
+
+Merged de40ac3c93e5f1713c775831ce1f475bd17c07e1 onto dev.

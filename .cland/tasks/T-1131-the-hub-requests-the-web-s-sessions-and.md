@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-855
 branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T16:59:20.864Z
+updated: 2026-10-22T17:10:59.036Z
 ---
 
 ## Summary
@@ -36,29 +36,28 @@ The wire types go in the shared module with their conformance entries, and the w
 ## Acceptance criteria
 
 - [x] C1. A human client reads a session's recent messages in both directions across topics, bounded and paged by message number, and a session's own `history` is unchanged (T2 test).
-  - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
-  - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.185Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
-  - done: impl-1131 · 2026-10-22T16:54:14.942Z
+  - done: impl-1131 · 2026-10-22T17:10:30.194Z
 - [x] C2. Over the web edge a browser reads its own sign-in's creation, last use and expiry, and the reply names no other browser's session (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.185Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
-  - done: impl-1131 · 2026-10-22T16:54:15.023Z
+  - done: impl-1131 · 2026-10-22T17:09:45.682Z
 - [x] C3. `session.launch` with a directory from the web edge is refused with `cli-neovim-only`, and the same launch without a directory starts in the project root (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
-  - done: impl-1131 · 2026-10-22T16:54:16.220Z
+  - done: impl-1131 · 2026-10-22T17:09:45.793Z
 - [x] C4. The web authority table classifies both new requests, and its unit test refuses a web launch directory before dispatch (T1 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
-  - done: impl-1131 · 2026-10-22T16:54:16.544Z
+  - done: impl-1131 · 2026-10-22T17:09:46.034Z
 - [x] C5. `hub/README.md` documents the two requests and the launch-directory refusal (docs).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-source · 2026-10-22T15:30:13.597Z · commit 1a9d9298fe8331e51e36c3426031f63f9af310cd
   - verified: rev-31 [reviewer] · run rev-20261022-1131-delta · 2026-10-22T15:45:01.565Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-delta2 · 2026-10-22T16:17:41.661Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
-  - done: impl-1131 · 2026-10-22T16:54:16.654Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-delta3 · 2026-10-22T16:59:20.863Z · commit 68f0b004506c879886fa6a519b577b1f04350e69
+  - done: impl-1131 · 2026-10-22T17:09:46.158Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-delta4 · 2026-10-22T17:10:59.036Z · commit f2254248853bddee47e8277ed56ece1beefac4a7
 
 ## Comments
 
@@ -202,5 +201,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear at 68f0b004; Standards and Spec: no findings. A-9350 records authorized merge, exact parent policy/test/wire/provenance retention and unchanged owned security boundaries. C5 verified. C1-C4 await fresh same-head mode-free configured verification; prior A-9306 belongs to b6c9e92e. A-9346 is supporting local static output, not a new suite receipt.
+
+Criteria: C5 verified.
+
+### rev-31 · 2026-10-22T17:10:23.382Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-web-duration
+commit: 68f0b004506c879886fa6a519b577b1f04350e69
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Historical run not clear; A-9365. Linux f41bed98/A-9363 T1/T2 exit0 and all assertions pass, but Web enforced area-slots duration gate exits1. Report-only budgets distinguished. Six owned identities have actual5/5; no whole-gate pass. Source A-9350 clear. New f2254248 shared-fix delta reviewed separately; restore claimant C1 before final settlement.
+
+Criteria: C1 failed (Required configured f41bed98 failed shared Web area-slots duration gate 6.818s >5s; owned assertions/load groups pass, no source defect established.).
+
+### rev-31 · 2026-10-22T17:10:59.036Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-delta4
+commit: f2254248853bddee47e8277ed56ece1beefac4a7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-9366. Coordinator ae6368ad authorizes shared ec539bca allowance merge. Only test-related delta is dated9s area-slots allowance; owned source/tests/docs unchanged. Imported upstream executor restoration retained. C5 verified, C1-C4 await fresh mode-free exact-head verification. Historical A-9363/A-9365 remains failed overall; no source defect.
 
 Criteria: C5 verified.

@@ -3,7 +3,7 @@ id: T-1118
 kind: task
 title: The Topics area and the thread in pages, with read marks
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T17:08:07.367Z
+updated: 2026-10-22T17:20:35.161Z
 ---
 
 ## Summary
@@ -32,18 +32,14 @@ The Topics area shows the topics in groups (§3.2): those waiting for the human 
 
 ## Acceptance criteria
 
-- [x] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
-  - done: impl-1118 · 2026-10-22T17:07:54.550Z
-- [x] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
-  - done: impl-1118 · 2026-10-22T17:07:54.632Z
-- [x] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
-  - done: impl-1118 · 2026-10-22T17:07:54.710Z
-- [x] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
-  - done: impl-1118 · 2026-10-22T17:07:54.889Z
+- [ ] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
+  - failed: rev-23 [reviewer] · 2026-10-22T17:20:35.160Z · note Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.
+- [ ] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
+  - failed: rev-23 [reviewer] · 2026-10-22T17:20:35.161Z · note Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.
+- [ ] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
+  - failed: rev-23 [reviewer] · 2026-10-22T17:20:35.161Z · note Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.
+- [ ] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
+  - failed: rev-23 [reviewer] · 2026-10-22T17:20:35.161Z · note Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.
 
 ## Comments
 
@@ -134,3 +130,31 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, A-9353, original A-9352/run38d7e7a0 at unchanged source-clear2d424d78. Parsed2487 ordinary passes/380 file passes; all T1/fallback all hub+Neovim T2/actual Web exit0. Nine Topics cases and palette compatibility pass, establishing C1–C4 with prior source audits. Linux x64 c-8 lon1 workers2/Web4, host check gate ae07b9fc reused/not remote repeated. Web48.208s exceeds40s report-only budget; generic lint/duration/ratchet warnings retained, no enforcing-budget or load-repetition claim. No T3/T4/QA claim; historical failed A-9335 remains failed.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-23 · 2026-10-22T17:09:30.883Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-source-5
+commit: 451ef78ae11ef98ed5baf228473ef409ed8e16d2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear, A-9364. Authorized conflict resolutions preserve incoming area modules/state and owned Topics module/cache/controls. Shell uses Page for detail and inline Topics; modern visibility applies topic+artifact replacements together without rereads. Added Pane/Page Web observations and combined callback assertion retain previous final assertions. Incoming accepted T-1110 code unchanged; final shared dated9s area-slots allowance matches6.017s Linux sample. Standards0/Spec0. A-9362 exact-head local root check plus8 T1 and five named Web files all pass as targeted evidence only. All C1–C4 marks at old2d424d78 are historical; new same-head configured mode-free evidence required.
+
+### rev-23 · 2026-10-22T17:20:35.161Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-runner-evidence
+commit: 451ef78ae11ef98ed5baf228473ef409ed8e16d2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Evidence not clear, A-9376, A-9371. Actual 'SyntaxError: Unexpected end of JSON input' at run-suite.ts254 parsing quarantine receipt. T1/all-T2 pass; Web executes but receipt collection fails. Available stream contains2511 passes including9 Topics cases, while aggregate2424 and an in-flight case remain; neither incomplete record is overall passing evidence. Source A-9364 retained, no Topics source defect inferred. Shared runner candidate S/Bugs routed to lead; hold diagnosis/retry for Coordinator disposition. No new T3/T4/QA claim.
+
+Criteria: C1 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.), C2 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.), C3 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.), C4 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.).

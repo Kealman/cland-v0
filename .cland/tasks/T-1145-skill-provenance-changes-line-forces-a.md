@@ -2,8 +2,8 @@
 id: T-1145
 kind: task
 title: Skill provenance 'changes' line forces a merge conflict on every ticket that edits a skill
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-859
 branch: t/T-1145-skill-provenance-changes-line-forces-a
 created: 2026-10-22T16:09:09.611Z
-updated: 2026-10-22T17:05:57.323Z
+updated: 2026-10-22T17:20:19.325Z
+closed: 2026-10-22T17:20:19.325Z
 ---
 
 ## Summary
@@ -31,10 +32,12 @@ Per-ticket provenance entries no longer share one line. For example, `changes` k
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-1 · 2026-10-22T16:30:46.110Z · commit 7b6f984a23289fc4fa505a38ad56482d28d23219
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-2 · 2026-10-22T16:48:37.437Z · commit 4efdddcb3a97f312e586f34843642b6a3517a5eb
   - done: impl-1145 · 2026-10-22T17:05:07.276Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1145-final-3 · 2026-10-22T17:15:15.375Z · commit a9beed34abdba25386ec3727cf3d4670cbbe7a23
 - [x] C2. The provenance lint still fails a skill with cland edits and no provenance entry, and passes every current skill after the migration (test).
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-1 · 2026-10-22T16:30:46.110Z · commit 7b6f984a23289fc4fa505a38ad56482d28d23219
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-2 · 2026-10-22T16:48:37.437Z · commit 4efdddcb3a97f312e586f34843642b6a3517a5eb
   - done: impl-1145 · 2026-10-22T17:05:07.344Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1145-final-3 · 2026-10-22T17:15:15.375Z · commit a9beed34abdba25386ec3727cf3d4670cbbe7a23
 
 ## Comments
 
@@ -169,3 +172,26 @@ findings: [{"severity":"low","text":"L1 retained under T-1146: restrict CHANGES/
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Delta source clear; A-9359 records exact dev-donor match. Shared ec539bca supplies dated9s E-880 area-slots identity allowance through2026-10-29 from actual6.017s Linux failure; assertions and4s Web report budget unchanged. Inherited96b0f8d4 config disables outage local fallback after green droplets, executor remains droplet. Other changes are tracker records; no owned source/skill/test/fixture changes. L1 retained underT-1146 at current README:1707. A-9358 supplies new-head targeted C1/T1 support; C1/C2 await fresh configured same-head verification. Prior failed A-9355 remains failed.
+
+### impl-1145 · 2026-10-22T17:14:49.988Z
+
+Current reviewed head a9beed34abdba25386ec3727cf3d4670cbbe7a23: mode-free5980145a passed exit0, 2504/2504 tests, no fail/cancelled/skipped/todo. Host T0 check plus all T1, fallback all T2 across hub/Neovim, Web; Linux c-8 lon1, Node24.21.0/Neovim0.12.5, lifetime459s/$0.0319. Receipt retains report-only budget/lint diagnostics. No full T3/T4 or QA claim. A-9367 log /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9367-suite-5980145a-243f-451d-9b66-004299939459-auto-at-a9beed3.log. Exact-head targeted native Git T3 C1 and T1 C2 are retained in A-9358. Awaiting final Reviewer settlement; head unchanged.
+
+### rev-26 · 2026-10-22T17:15:15.375Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1145-final-3
+commit: a9beed34abdba25386ec3727cf3d4670cbbe7a23
+scope: evidence
+findings: [{"severity":"low","text":"L1 retained under T-1146: CHANGES/union attributes apply to kept upstream skills, not every cland-owned curated skill; matching init/skills.ts comment remains.","file":"hub/README.md","line":1707}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final evidence clear at a9beed34; C1/C2 verified. A-9368 settles5980145a/A-9367:2504/2504 ordinary passes, Linux c-8 lon1, allT1/all-fallbackT2/Web exit0; hostT0 reused not repeated. C2 all15 gate plus five distinct load passes confirmed. A-9358 supplies separate exact-head local native Git T3 C1. Formerly blocking area-slots passes5.247315366s under reviewed9s allowance; no5s/4s budget pass claimed. Report-only warnings retained, including Web45.01s>40s. Historical A-9355 remains failed. LowL1 persists underT-1146; no fullT3/T4/QA or merge claim.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T17:20:19.325Z
+
+Merged b8d011b56fe734033c940bc773478c18b4839995 onto dev.
