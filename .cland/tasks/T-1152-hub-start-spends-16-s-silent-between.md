@@ -3,7 +3,7 @@ id: T-1152
 kind: task
 title: Hub start spends 16 s silent between binding listeners and restoring sessions when a lease needs recovery
 state: open
-status: ready
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-865
 branch: t/T-1152-hub-start-spends-16-s-silent-between
 created: 2026-10-22T18:04:51.408Z
-updated: 2026-10-22T20:11:16.233Z
+updated: 2026-10-22T20:52:44.677Z
 ---
 
 ## Summary
