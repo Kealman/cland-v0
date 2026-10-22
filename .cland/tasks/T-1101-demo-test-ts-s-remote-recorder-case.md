@@ -3,7 +3,7 @@ id: T-1101
 kind: task
 title: demo.test.ts's remote recorder case times out on demo.start under macOS T3 load
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-848
 branch: t/T-1101-demo-test-ts-s-remote-recorder-case
 created: 2026-10-22T09:03:34.023Z
-updated: 2026-10-22T13:48:52.311Z
+updated: 2026-10-22T13:59:10.680Z
 ---
 
 ## Summary
@@ -26,8 +26,10 @@ The shared stage cover's macOS run 3dcaf593 (A-9068, dev ff6edeaa, local darwin 
 - [x] C1. The test waits for demo.start's durable receipt with a bound that holds under the T3 load of a full macOS run, or splits the fake executor's provisioning time from the asserted behaviour, keeping its final assertions (rule 9) (test).
   - done: impl-1101 · 2026-10-22T13:44:57.199Z
   - verified: rev-23 [reviewer] · run rev-20261022-1101-source · 2026-10-22T13:48:52.311Z · commit 88fc85294bf26d4b589c8dd8013c97db4ce1bdbe
+  - verified: rev-23 [reviewer] · run rev-20261022-1101-final · 2026-10-22T13:59:10.610Z · commit 88fc85294bf26d4b589c8dd8013c97db4ce1bdbe
 - [x] C2. The test passes 20/20 under `--test-concurrency 4` with a parallel CPU load on macOS, in a disposable root under rule 15 (test).
   - done: impl-1101 · 2026-10-22T13:44:57.249Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1101-final · 2026-10-22T13:59:10.610Z · commit 88fc85294bf26d4b589c8dd8013c97db4ce1bdbe
 
 ## Comments
 
@@ -57,3 +59,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full source clear at 88fc85294bf26d4b589c8dd8013c97db4ce1bdbe/tree 20f063348b2ba3560441316eb3c44548e9a58787, fixed base eb7755d8. All 17 success calls migrated and 5 refusal requests retained; existing final assertions unchanged. New helper arms persisted new active/delivered/ready lease observer before send, excludes old leases and correlates exact result lease under separately bounded reply wait. Docs/tier/isolation/cleanup checked; no production changes or findings. A-9178 parsed 20 unique four-worker stress waves, 80/80 executions (40 per native scenario), 16 CPU burners under authorized window; runner A-9176 inspected. Tested 7315450f has identical helper/tests/docs; review-head merge changes only tracker. Baseline 9 waves did not reproduce historical 5 s failure, limitation retained. C1 verified; local C2 proof accepted, final C2 mark awaits exact-head mode-free configured receipt. No Reviewer runtime, Linux/native-T3/full-suite/QA or enforcing-budget claim.
 
 Criteria: C1 verified.
+
+### rev-23 · 2026-10-22T13:59:10.610Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1101-final
+commit: 88fc85294bf26d4b589c8dd8013c97db4ce1bdbe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at unchanged 88fc85294bf26d4b589c8dd8013c97db4ce1bdbe/tree 20f063348b2ba3560441316eb3c44548e9a58787. A-9184/09c04df4 original records and hub passed state checked: aggregate/T1/all-T2 hub+Neovim/Web exit 0; 2445 ordinary test and 375 file passes, no failures/skips/cancellations. T2 demo-cap 2/2 and release-component 9/9 pass; no task load-scope finishes or Linux native demo T3 inferred. C2 A-9178 macOS 20 unique four-worker waves/80 executions under 16 CPU burners already source-audited, tested helper/tests/docs identical across tracker-only merge; all-four-file targeted 18/18 retained. Baseline did not reproduce historical 5 s timeout, limitation explicit. Linux c-8 lon1 501 s/$0.0348, host 9b9049d5 reused/not repeated remotely; generic lint/duration/ratchet report-only, 2 missing baselines, no enforcing-budget/T3/T4/stage/QA/full-suite claim. Zero findings; Coordinator owns landing/deferred integrated coverage.
+
+Criteria: C1 verified, C2 verified.

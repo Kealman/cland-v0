@@ -2,7 +2,8 @@
 id: E-413
 kind: epic
 title: Hub-computed fields and read marks
-state: open
+state: closed
+criterion_seq: 7
 labels:
   - epic
   - v0.2
@@ -14,7 +15,8 @@ blocked_by:
 topic: topic-804
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-22T13:53:17.609Z
+updated: 2026-10-22T14:08:37.012Z
+closed: 2026-10-22T14:08:37.012Z
 ---
 
 ## Summary
@@ -68,12 +70,19 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project holding a copy of the live tracker and the fake harnesses, QA runs the differential test of the summary and the roll-ups against the Lua and reads zero differences. A frame client takes the snapshot and reads a task's card facts (the summary with its provenance, the verdict's reason, the Decision block) and an epic's stage states without a `task.view` or a `task.plan show`. QA sends three messages into a topic and reads its unread count from the deltas, and reads a verifier's merged session row with its hold and +N. QA opens the events view in the headless Neovim workbench and reads the same last look from the frame client, then marks a topic read in the frame client and reads it read in Neovim. A subscription filtered to warnings receives only warnings. A fake Implementer and a fake Reviewer exchange four messages, and the frame client reads one fold line that a fifth message updates. The frame client answers one ask with an option and declines another with a reason: both fold with their outcomes in the thread and in the inbox's departures, the asker receives `declined: <reason>`, and the topic stays open.
 
 - [ ] C1. Item summaries carry the summary with its provenance, the container roll-ups, `blocked` and `next`, the verdict's reason, the Decision block and the stage states, equal to the Lua's rules on a copy of the live tracker.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:08:06.323Z · commit 4fd2ac6770cd299e0dee23921662a55b597b2d65
 - [ ] C2. A topic's unread count and last message time come with every message delta, and sessions come as one merged projection.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:08:06.323Z · commit 4fd2ac6770cd299e0dee23921662a55b597b2d65
 - [ ] C3. The events' last look, each plan's last look and the topics' read marks are held in the hub per human, and Neovim and every browser read and set the same marks.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:08:06.324Z · commit 4fd2ac6770cd299e0dee23921662a55b597b2d65
 - [ ] C4. A subscription can carry the events filter, and its first page and live rows arrive filtered.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:08:06.324Z · commit 4fd2ac6770cd299e0dee23921662a55b597b2d65
 - [ ] C5. A run of agent messages comes with a fold line built from facts (who, how many, the latest step, the age) that follows the run as it grows.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:08:06.324Z · commit 4fd2ac6770cd299e0dee23921662a55b597b2d65
 - [ ] C6. An answered ask carries its outcome in the thread and in the inbox's departure, and declining is an answer with the value `declined` and a reason that the asker receives, with the topic left open.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:08:06.324Z · commit 4fd2ac6770cd299e0dee23921662a55b597b2d65
 - [ ] C7. `hub/README.md`, `nvim/README.md` and the role clauses describe the fields, the marks, the fold line and declining.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:08:06.324Z · commit 4fd2ac6770cd299e0dee23921662a55b597b2d65
 
 ## Dogfooding
 
@@ -357,3 +366,68 @@ Evidence: A-9086 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9
 ### hub · 2026-10-22T13:53:17.609Z
 
 demo 31975670-6f81-4518-ab65-acc989dc65af created: droplet cland-v0-31975670, commit 4fd2ac6770cd299e0dee23921662a55b597b2d65, deadline 2026-10-22T15:07:01.541Z.
+
+### hub · 2026-10-22T14:06:09.647Z
+
+demo 31975670-6f81-4518-ab65-acc989dc65af destroyed: lifetime 784777 ms; cost $0.0545.
+
+### qa-676 · 2026-10-22T14:08:06.324Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-dod-2026-10-22-1
+commit: 4fd2ac6770cd299e0dee23921662a55b597b2d65
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Where | Result | Evidence |
+| --- | --- | --- | --- |
+| E413D-01 | local macOS | PASS | [E413D-01.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-01.txt) |
+| E413D-02 | local macOS | PASS | [E413D-02-output.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-02-output.txt) |
+| E413D-03 | droplet | PASS | [E413D-03.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-03.json) |
+| E413D-04 | droplet | PASS | [E413D-04-output.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-04-output.txt) |
+| E413D-05 | droplet | PASS | [E413D-05.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-05.txt) |
+| E413D-06 | droplet | PASS | [E413D-06.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-06.txt) |
+| E413D-07 | droplet | PASS | [E413D-07.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-07.txt) |
+| E413D-08 | droplet | PASS | [E413D-08.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-08.txt) |
+| E413D-09 | droplet | PASS | [E413D-09.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-09.txt) |
+| E413D-10 | droplet | PASS | [E413D-10.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-10.txt) |
+| E413D-11 | droplet | PASS | [E413D-11.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-11.txt) |
+| E413D-12 | droplet | PASS | [E413D-12.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-12.txt) |
+| E413D-13 | droplet | PASS | [E413D-13.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-13.txt) |
+| E413D-14 | droplet | PASS | [E413D-14.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-14.txt) |
+| E413D-15 | droplet | PASS | [E413D-15.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-15.txt) |
+| E413D-16 | droplet | PASS | [E413D-16.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-16.txt) |
+| E413D-17 | droplet | PASS | [E413D-17.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-17.txt) |
+| E413D-18 | droplet | PASS | [E413D-18.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-18.txt) |
+| E413D-19 | local macOS | PASS | [E413D-19.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-19.txt) |
+| E413D-20 | local macOS | PASS | [E413D-20.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-20.txt) |
+| E413D-21 | droplet | PASS | [E413D-21-outer.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-21-outer.txt) |
+| E413D-22 | local macOS | PASS | [E413D-22.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-22.json) |
+| E413D-23 | droplet | PASS | [E413D-23-settlement.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/E413D-23-settlement.json) |
+
+Run `qa-dod-2026-10-22-1`, E-413 epic Definition of done at full source commit `4fd2ac6770cd299e0dee23921662a55b597b2d65`; brief `qa/briefs/E-413.md` at the same tree. All 14 children and all three stages were closed before the run.
+
+Executor: one demo droplet, Linux x86_64, Node v24.21.0, pinned Neovim v0.12.5. Local macOS arm64 was used only for gates, documentation and recording. Lease `31975670-6f81-4518-ab65-acc989dc65af`, deadline `2026-10-22T15:07:01.541Z`. Hub-confirmed state `released`; final lifetime **784777 ms** (784.777 s), cost **$0.05449840277777778**. The original stop/after receipts retained `releasing` estimates; these are superseded by the final settlement receipt, not treated as measured completion. One lease, one stop; no provider operations.
+
+Freshness returned `current: true` (E413D-22). Differential: 1,107 committed item bodies plus three ancestor rows, zero Lua/hub differences; snapshot 122,243 bytes within the 1,048,576-byte cap. The exact scratch tracker copy contained 1,108 entries including `.gitkeep`. All 22 helper hashes matched after transfer. Credential-prefix count was zero before scratch processes started.
+
+The named repository tests ran once: E413D-07 1/1, -16 14/14, -17 25/25, -18 39/39 (79/79 across 11 files). The separate one-process Neovim cross-client demo passed its one test. All had zero skipped, failed or cancelled tests. These are targeted tests and fresh protocol/Neovim checks, not a full-suite receipt. The committed brief excludes Coordinator stage/epic occasions and report-only duration budgets; QA submitted no suite and makes no wall-budget claim.
+
+All eight fresh behavioral checks (E413D-08–15) passed: card facts, authoritative unread deltas, merged session rows, shared event/plan/topic marks, filtered events, stable fold identity and age, and durable answered/declined outcomes through thread, inbox and asker. Captures include four Neovim text screens, exact protocol frames and named-test logs. No real browser was used; browser rendering is out of scope.
+
+Cleanup: both scratch hubs stopped with exit 0; census of all 31 recorded fixture PIDs found none alive. All 54 remote captures were transferred; scratch removal was confirmed.
+
+Findings ranked high, medium, low: none. No helper changes, probe corrections, product changes or reruns. The final zero-missing-marker greps in E413D-19/20 return exit 1 as expected for no matches; all required documentation strings were present, and surrounding text matched the live observations.
+
+Criterion marks verified by this clear run: C1 (07,08,16); C2 (09,10,16); C3 (11,12,17); C4 (13,17); C5 (14,18); C6 (15,18); C7 (18,19,20). Gates and cleanup 01–06,21–23 apply to all.
+
+
+Full commands, observations and raw captures: A-9187, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9187-e-413-epic-dod-at-4fd2ac67-23-pass-c1-c7-released-demo-lease/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-22T14:08:37.012Z
+
+Closed on the epic DoD demo qa-dod-2026-10-22-1, clear at 4fd2ac67 (A-9187). C1–C7 are verified and all 23 checks passed: the lease demo on a c-8 droplet (784.8 s, $0.0545) plus local macOS docs checks. The three stages were closed earlier: fields, marks and threads, and fixture refresh.
