@@ -33,6 +33,20 @@ import { webPhaseAvailable, type WebPrerequisite } from '../src/web-phase.ts';
 // Candidate capability read by verificationCommands; old runners retain their recorded tiers.
 export const supportsWebPhase = true;
 
+// These tests read the installation's bundle, directly or through the real doctor.
+// Keep the prerequisite independent of Web/browser availability and shard placement.
+const installedBundleReaders = [
+  'hub/test/web-auth.test.ts',
+  'hub/test/doctor-cli.test.ts',
+  'hub/test/doctor-isolation.test.ts',
+  'hub/test/fixture-orphans.test.ts',
+  'hub/test/hook-bridge-doctor.test.ts',
+  'hub/test/orphan-servers.test.ts',
+  'hub/test/orphan-sweep-lock.test.ts',
+  'hub/test/termination-ownership.test.ts',
+  'hub/test/territory-cli.test.ts',
+];
+
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string; tierPlan?: TierPlan } = {}): Promise<number> {
   try { await assertTestAdmission(options.cwd); }
@@ -107,8 +121,8 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       const prerequisite = await import(pathToFileURL(join(holder.worktree!, 'web/test/prerequisite.ts')).href) as { webPrerequisite: () => Promise<WebPrerequisite> };
       return prerequisite.webPrerequisite();
     }, line => process.stdout.write(line + '\n'));
-    const bundleScan = suites.some(args => args.some(arg => matchesGlob(join(holder.worktree!, 'hub/test/web-auth.test.ts'), resolve(holder.worktree!, arg))));
-    if ((webAvailable || bundleScan) && existsSync(join(holder.worktree!, 'web/build.ts'))) {
+    const readsInstalledBundle = suites.some(args => args.some(arg => installedBundleReaders.some(file => matchesGlob(join(holder.worktree!, file), resolve(holder.worktree!, arg)))));
+    if ((webAvailable || readsInstalledBundle) && existsSync(join(holder.worktree!, 'web/build.ts'))) {
       const { ensureWebBuild } = await import('./web-build.ts');
       await ensureWebBuild(holder.worktree!);
     }

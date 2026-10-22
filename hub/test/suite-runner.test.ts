@@ -58,6 +58,21 @@ test('bundle scan prerequisite', async () => { assert.equal(await readFile('web/
   assert.match(suite.output(), /Web bundle: built once/);
 });
 
+test('a hub-only shard builds the bundle before its doctor CLI worker starts', async t => {
+  const dir = await fixture(t);
+  await mkdir(join(dir, 'web'), { recursive: true });
+  await mkdir(join(dir, 'hub/test'), { recursive: true });
+  await writeFile(join(dir, 'web/build.ts'), `import { mkdir, writeFile } from 'node:fs/promises';
+await mkdir('dist'); await writeFile('dist/index.html', 'built bundle');`);
+  const file = 'hub/test/doctor-cli.test.ts';
+  await writeFile(join(dir, file), `import test from 'node:test'; import assert from 'node:assert/strict'; import { readFile } from 'node:fs/promises';
+test('doctor bundle prerequisite', async () => { assert.equal(await readFile('web/dist/index.html', 'utf8'), 'built bundle'); });`);
+  const suite = run(t, dir, file);
+  assert.equal(await suite.done, 0, suite.output());
+  assert.equal(await readFile(join(dir, 'web/dist/index.html'), 'utf8'), 'built bundle');
+  assert.match(suite.output(), /Web bundle: built once/);
+});
+
 test('the runner lists static and runtime skips by file, name and reason without changing suite counts', async t => {
   const dir = await fixture(t);
   const file = join(dir, 'skips.mjs');

@@ -1,4 +1,4 @@
-// The package runner builds before workers; standalone bundle scans reuse it.
+// The package runner builds before bundle readers; standalone scans reuse it.
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

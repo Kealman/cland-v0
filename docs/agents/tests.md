@@ -1611,7 +1611,10 @@ covers HTTP upgrade checks, client/spoke admission and secret leakage at T2
 with an in-process project hub. Its standalone prerequisite uses the shared
 web-build helper to build a missing or stale bundle once before tests; the leak
 scan requests every file of the actual installed bundle. Suite shards containing
-this file build before workers, even without a Web phase or an available browser.
+any `installedBundleReaders` entry in `hub/test/run-suite.ts` build before workers,
+even without a Web phase or an available browser. That list includes this file
+and all real-doctor bundle readers, including `doctor-cli.test.ts`; targeted
+standalone doctor CLI runs require a current build.
 Doctor component fixtures inject the installation bundle check; the separate
 `web-bundle.test.ts` retains missing/stale/current diagnosis on scratch files.
 The tests use scratch HOME/XDG/Git configuration

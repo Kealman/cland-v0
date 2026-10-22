@@ -4523,9 +4523,12 @@ carry Web with Neovim once. Tier commands infer Web only for candidates declarin
 retain its coverage. Root check builds the browser bundle; hand-run package suites
 check its source receipt and build once before workers if needed.
 
-Shards containing `hub/test/web-auth.test.ts` also build before workers, even
-without Web or an available browser. Standalone runs of that file use the same
-helper. Delivery cleans ignored `web/dist`; matching prepared dependencies skip
+Shards containing an installation-bundle reader also build before workers, even
+without Web or an available browser. The named `installedBundleReaders` list in
+`hub/test/run-suite.ts` covers `web-auth.test.ts` and all tests invoking the real
+doctor bundle check, including `doctor-cli.test.ts`. Standalone `web-auth.test.ts`
+runs use the same helper; targeted doctor CLI runs require a current build.
+Delivery cleans ignored `web/dist`; matching prepared dependencies skip
 `npm ci`, and a matching host gate skips the remote check. A warm image therefore
 does not guarantee a bundle. Cold installs and the Web-owning shard can mask this.
 Build failures name `npm run build --workspace web` as the prerequisite command.
