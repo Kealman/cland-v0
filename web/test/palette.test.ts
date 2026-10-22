@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { Page } from 'playwright-core';
 import assert from 'node:assert/strict';
 import { connectUi } from '../../hub/test/harness.ts';
+import { until } from '../../hub/test/until.ts';
 import { webFixture, pageUntil } from './harness.ts';
 
 async function physical(page: Page, chord: string) {
@@ -203,4 +204,59 @@ test('the palette and area keys help', async t => {
     });
   });
 
+});
+
+test('Items help stays inside small viewports and every row is reachable by keyboard scrolling', async t => {
+  const fixture = await webFixture(t);
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
+    await t.test(`${viewport.width}×${viewport.height}`, async t => {
+      await fixture.pageCase(t, async page => {
+        await page.keyboard.press('2');
+        await page.getByRole('heading', { name: 'Items', exact: true }).waitFor();
+        await physical(page, 'Shift+Slash');
+        const help = page.getByRole('dialog', { name: 'Items keys', exact: true });
+        await help.waitFor();
+        const rows = help.locator('[data-key-action]');
+        assert.equal(await rows.count(), 32);
+        const visibleRows = () => rows.evaluateAll(nodes => {
+          const dialog = document.querySelector('dialog')!.getBoundingClientRect();
+          return nodes.filter(node => {
+            const row = node.getBoundingClientRect();
+            return row.top >= Math.max(0, dialog.top) && row.bottom <= Math.min(innerHeight, dialog.bottom);
+          }).map(node => node.getAttribute('data-key-action')!);
+        });
+        const actions = await rows.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-key-action')!));
+        await page.keyboard.press('PageDown');
+        await page.keyboard.press('End');
+        await pageUntil(page, () => {
+          const dialog = document.querySelector('dialog')!.getBoundingClientRect();
+          const last = document.querySelector('[data-key-action="accept"]')!.getBoundingClientRect();
+          return last.top >= Math.max(0, dialog.top) && last.bottom <= Math.min(innerHeight, dialog.bottom);
+        }, 'last Items help row visible after End');
+        assert.equal(await rows.last().locator('dt').textContent(), 'Enter card or return to tree');
+        assert.equal(await help.evaluate(node => {
+          const rect = node.getBoundingClientRect();
+          return rect.top >= 0 && rect.left >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth;
+        }), true, 'help dialog stays inside the viewport');
+        await page.keyboard.press('Home');
+        await pageUntil(page, () => {
+          const dialog = document.querySelector('dialog')!.getBoundingClientRect();
+          const first = document.querySelector('[data-key-action="Inbox"]')!.getBoundingClientRect();
+          return first.top >= Math.max(0, dialog.top) && first.bottom <= Math.min(innerHeight, dialog.bottom);
+        },
+          'first help row visible after Home');
+        const seen = new Set(await visibleRows());
+        for (let step = 0; step < actions.length && seen.size < actions.length; step++) {
+          const next = actions.find(action => !seen.has(action))!;
+          const reached = until(async () => (await visibleRows()).includes(next), { what: `PageDown reveals ${next}`, timeoutMs: 3000 });
+          await page.keyboard.press('PageDown');
+          await reached;
+          const visible = await visibleRows();
+          assert.ok(visible.includes(next), `PageDown reveals ${next}`);
+          for (const action of visible) seen.add(action);
+        }
+        assert.equal(seen.size, 32, 'PageDown brings every help row into view');
+      }, page => page.setViewportSize(viewport));
+    });
+  }
 });
