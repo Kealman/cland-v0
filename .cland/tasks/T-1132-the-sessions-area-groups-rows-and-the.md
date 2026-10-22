@@ -3,7 +3,7 @@ id: T-1132
 kind: task
 title: "The Sessions area: groups, rows and the unfolded row"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-860
 branch: t/T-1132-the-sessions-area-groups-rows-and-the
 created: 2026-10-22T15:16:15.097Z
-updated: 2026-10-22T17:22:33.360Z
+updated: 2026-10-22T17:35:51.261Z
 ---
 
 ## Summary
@@ -40,16 +40,23 @@ There is no Attach anywhere in the area. Rows come from the hub's merged session
 
 - [x] C1. With fake sessions in every state (an Aide, one waiting for approval, busy, idle and stopped), each of Yours, Waiting, Busy, Idle and Stopped lists its sessions with its count in the group and the header (Web test with the fake harness).
   - done: impl-1132 · 2026-10-22T17:21:52.924Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-final · 2026-10-22T17:35:50.938Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
 - [x] C2. Idle folded stays folded after a reload, and folding sends no hub request (Web test).
   - done: impl-1132 · 2026-10-22T17:21:53.022Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-final · 2026-10-22T17:35:50.938Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
 - [x] C3. A row shows the glyph, name, role, harness, model, account, item, state with its age and usage from the hub's merged row, with a verifier's hold and +N and a requested item dimmed (Web test).
   - done: impl-1132 · 2026-10-22T17:21:53.114Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-final · 2026-10-22T17:35:50.938Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
 - [x] C4. The selected waiting row unfolds in place with its approval command in full, and no control in the area offers Attach (Web test).
   - done: impl-1132 · 2026-10-22T17:21:53.327Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-final · 2026-10-22T17:35:50.938Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
 - [x] C5. Stopped lists at most the latest 20 with the archived count, and `A`, which `?` lists in Sessions, shows the archived sessions (Web test).
   - done: impl-1132 · 2026-10-22T17:21:53.416Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-final · 2026-10-22T17:35:50.938Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
 - [x] C6. `web/README.md` gains a Sessions section with the groups, the row and the keys (docs).
   - done: impl-1132 · 2026-10-22T17:21:53.517Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-source · 2026-10-22T17:25:42.272Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-final · 2026-10-22T17:35:50.938Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
 
 ## Comments
 
@@ -60,3 +67,33 @@ Test-first slice 1: web/test/sessions.test.ts uses the explicitly specified Web/
 ### impl-1132 · 2026-10-22T17:04:54.205Z
 
 Implementation checkpoint 99141306 committed; merged origin/dev (including ec539bca shared area-slots duration allowance) before first source review. Non-archive targeted Web and static lint evidence are local macOS working-tree results, not a task verification receipt. Archive read is wired to T-1147’s documented additive merged rows field and remains blocked on that prerequisite; no verification enqueued.
+
+### rev-23 · 2026-10-22T17:25:42.272Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1132-source
+commit: 5d0175075741ab18ba9238edeb85f5fa93145c88
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-9385. Standards0/Spec0. Groups/counts/remembered folds, hub-row facts and requested dimming, selected waiting detail, physical navigation/gs and latest20/archive rows follow item scope. Archive consumes typed hub merged rows; no process/presence merge or Attach. Tests retain targeted boundary/final assertions and explicit enabled help labels; matching README verified C6. A-9379 local targeted evidence is qualified, no configured suite inferred. C1–C5 remain runtime-dependent pending exact-head mode-free verification with actual Web; after-stage QA separate.
+
+Criteria: C6 verified.
+
+### rev-23 · 2026-10-22T17:35:50.938Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1132-final
+commit: 5d0175075741ab18ba9238edeb85f5fa93145c88
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, A-9391, A-9390/e201f65a exact source-clear5d017507. Parsed2510 ordinary tests/383 files pass; all T1/all hub+Neovim T2/actual Web pass. Five Sessions cases establishC1–C5 with accepted source; C6 docs refreshed. Group/fold, facts/full waits, stopped/archive andgs boundaries all pass; new maximum2.579s<4s trigger, no allowance required. Linuxx64 c-8lon1 workers2/Web4, host check2ab0e4ab reused/not repeated remotely. Web56.240s>40s report-only budget; generic diagnostics retained, no enforcing-budget/repetition/T3/T4/QA/full-cover claim.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

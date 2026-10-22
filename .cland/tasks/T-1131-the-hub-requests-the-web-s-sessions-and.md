@@ -2,8 +2,8 @@
 id: T-1131
 kind: task
 title: The hub requests the web's sessions and profile need
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-855
 branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T17:23:31.081Z
+updated: 2026-10-22T17:39:35.812Z
+closed: 2026-10-22T17:39:35.812Z
 ---
 
 ## Summary
@@ -38,21 +39,25 @@ The wire types go in the shared module with their conformance entries, and the w
 - [x] C1. A human client reads a session's recent messages in both directions across topics, bounded and paged by message number, and a session's own `history` is unchanged (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final4 · 2026-10-22T17:21:34.850Z · commit f2254248853bddee47e8277ed56ece1beefac4a7
   - done: impl-1131 · 2026-10-22T17:23:02.706Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-final5 · 2026-10-22T17:34:52.729Z · commit 1d555184c03ef8331ee4d8b8d622d7e59e17d237
 - [x] C2. Over the web edge a browser reads its own sign-in's creation, last use and expiry, and the reply names no other browser's session (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.185Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final4 · 2026-10-22T17:21:34.850Z · commit f2254248853bddee47e8277ed56ece1beefac4a7
   - done: impl-1131 · 2026-10-22T17:23:02.905Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-final5 · 2026-10-22T17:34:52.729Z · commit 1d555184c03ef8331ee4d8b8d622d7e59e17d237
 - [x] C3. `session.launch` with a directory from the web edge is refused with `cli-neovim-only`, and the same launch without a directory starts in the project root (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final4 · 2026-10-22T17:21:34.850Z · commit f2254248853bddee47e8277ed56ece1beefac4a7
   - done: impl-1131 · 2026-10-22T17:23:02.995Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-final5 · 2026-10-22T17:34:52.729Z · commit 1d555184c03ef8331ee4d8b8d622d7e59e17d237
 - [x] C4. The web authority table classifies both new requests, and its unit test refuses a web launch directory before dispatch (T1 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final4 · 2026-10-22T17:21:34.850Z · commit f2254248853bddee47e8277ed56ece1beefac4a7
   - done: impl-1131 · 2026-10-22T17:23:03.137Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-final5 · 2026-10-22T17:34:52.730Z · commit 1d555184c03ef8331ee4d8b8d622d7e59e17d237
 - [x] C5. `hub/README.md` documents the two requests and the launch-directory refusal (docs).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-source · 2026-10-22T15:30:13.597Z · commit 1a9d9298fe8331e51e36c3426031f63f9af310cd
   - verified: rev-31 [reviewer] · run rev-20261022-1131-delta · 2026-10-22T15:45:01.565Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
@@ -63,6 +68,8 @@ The wire types go in the shared module with their conformance entries, and the w
   - verified: rev-31 [reviewer] · run rev-20261022-1131-delta4 · 2026-10-22T17:10:59.036Z · commit f2254248853bddee47e8277ed56ece1beefac4a7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final4 · 2026-10-22T17:21:34.850Z · commit f2254248853bddee47e8277ed56ece1beefac4a7
   - done: impl-1131 · 2026-10-22T17:23:03.331Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-delta5 · 2026-10-22T17:24:33.699Z · commit 1d555184c03ef8331ee4d8b8d622d7e59e17d237
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-final5 · 2026-10-22T17:34:52.730Z · commit 1d555184c03ef8331ee4d8b8d622d7e59e17d237
 
 ## Comments
 
@@ -253,3 +260,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-9378, C1-C5 verified. Exact reviewed f2254248 configured b25b05af/A-9377 exits0,2509/2509,zero fail/cancel/skip,T1/all-T2 hub+Neovim/Web complete. Six owned identities each have five distinct successful raw load IDs plus explicit5/5. Linux c8 lon1 workers2/Web4, host T0 gate9244597b not repeated remotely. Lint/nominal budgets report-only; shared5.818s area-slots passes reviewed9s allowance. Source A-9350/A-9366 current; historical A-9363 remains failed. T3/T4/stageQA deferred, no merge enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-22T17:24:33.699Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-delta5
+commit: 1d555184c03ef8331ee4d8b8d622d7e59e17d237
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-9384, no Standards/Spec findings. Coordinator681774fb-authorized merge retains all39 prior provenance entries among40 unique CHANGES lines, stable metadata pointer, every prior skill paragraph and authority/wire assertions. Owned dispatch/Store/cookie edge and full T2 authority file unchanged; imported archived row composition preserves compatibility fields. C5 verified. C1-C4 await fresh mode-free exact-head verification; A-9377 historical.
+
+Criteria: C5 verified.
+
+### rev-31 · 2026-10-22T17:34:52.730Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-final5
+commit: 1d555184c03ef8331ee4d8b8d622d7e59e17d237
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-9389, C1-C5 verified at exact1d555184. Configured Linux50c1b52b/A-9388 exits0,2511/2511,no fail/cancel/skip,T1/all-T2 hub+Neovim/Web complete. All six owned identities have five distinct raw successful load IDs and explicit5/5. Source A-9384 current. T0 host gatee362d818 not repeated remotely; nominal lint/budgets report-only, enforced identity gate passed with reviewed allowance. T3/T4/stageQA deferred; no merge enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-22T17:39:35.812Z
+
+Merged f090f9a1ee0430cc6348f30e61c9e42904f71cf6 onto dev.

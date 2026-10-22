@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T17:22:44.220Z
+updated: 2026-10-22T17:32:22.750Z
 ---
 
 ## Summary
@@ -33,13 +33,13 @@ The Topics area shows the topics in groups (§3.2): those waiting for the human 
 ## Acceptance criteria
 
 - [x] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
-  - done: impl-1118 · 2026-10-22T17:22:43.777Z
+  - done: impl-1118 · 2026-10-22T17:32:22.272Z
 - [x] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
-  - done: impl-1118 · 2026-10-22T17:22:43.978Z
+  - done: impl-1118 · 2026-10-22T17:32:22.384Z
 - [x] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
-  - done: impl-1118 · 2026-10-22T17:22:44.063Z
+  - done: impl-1118 · 2026-10-22T17:32:22.477Z
 - [x] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
-  - done: impl-1118 · 2026-10-22T17:22:44.141Z
+  - done: impl-1118 · 2026-10-22T17:32:22.665Z
 
 ## Comments
 
@@ -158,3 +158,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Evidence not clear, A-9376, A-9371. Actual 'SyntaxError: Unexpected end of JSON input' at run-suite.ts254 parsing quarantine receipt. T1/all-T2 pass; Web executes but receipt collection fails. Available stream contains2511 passes including9 Topics cases, while aggregate2424 and an in-flight case remain; neither incomplete record is overall passing evidence. Source A-9364 retained, no Topics source defect inferred. Shared runner candidate S/Bugs routed to lead; hold diagnosis/retry for Coordinator disposition. No new T3/T4/QA claim.
 
 Criteria: C1 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.), C2 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.), C3 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.), C4 failed (Required configured Web phase exits1 during quarantine JSON receipt parsing; passing partial test stream is incomplete evidence.).
+
+### rev-23 · 2026-10-22T17:31:50.295Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-retry-evidence
+commit: 451ef78ae11ef98ed5baf228473ef409ed8e16d2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Not clear, A-9387, A-9386. Actual error: 'the screen never showed artifact event reaches the rendered grid within10000ms', artifact-render.test.ts394. T1 passes, T2 fails, Web absent;2423/2424 pass is incomplete evidence. Source A-9364 retained, no causal Topics bug inferred. S/Bugs candidate routed to lead for Coordinator disposition; no retry or timeout change authorized here. Generic duration/lint/ratchet report-only; no T3/T4/QA claim.
+
+Criteria: C1 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.), C2 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.), C3 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.), C4 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.).
