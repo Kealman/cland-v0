@@ -267,7 +267,8 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   assert.equal(commandEvent.state, 'waiting for approval');
   const pending = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; approvalCommand?: string }> };
   assert.equal(pending.processes.find(p => p.name === 'coord')?.approvalCommand, 'touch approved');
-  // a message during the active turn is steered into it, and confirmed by turn/steer's result
+  // Approval waiting is distinct from busy: the human's input still steers this turn.
+  // Busy-state human queuing / agent steering is covered at the T2 native RPC seam in codex-native.test.ts.
   const steerId = await sendGeneral(ui, 'and this one while you wait');
   await ui.waitFor((f) => f.type === 'delivery' && f.message === steerId && f.stage === 'injected', 15_000);
   assert.match(await fake.log(launched.pid as number), /turn\/steer [0-9a-f-]+: <channel [^\n]*>\nand this one while you wait/);

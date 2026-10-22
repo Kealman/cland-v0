@@ -32,6 +32,31 @@ async function consumeRecovery(f: Fixture) {
   await f.records();
 }
 
+test('busy Codex admits an agent steer before starting the queued human input in a new turn', async t => {
+  const f = await scriptedCodex(t);
+  // T2 native RPC seam: hold a running turn, without an approval wait or a real binary.
+  f.native.start('original');
+  f.native.item('original', 'original native input');
+  await f.ui.waitFor(frame => frame.type === 'session.state' && frame.state === 'busy');
+  const human = await f.send('human input for the next turn');
+  const agent = await f.send('agent report for this turn', true);
+  await f.injected(agent);
+  const steers = f.native.calls.filter(call => call.method === 'turn/steer');
+  assert.equal(steers.length, 1);
+  assert.ok(textOf(steers[0]!.params).includes(agent));
+  assert.equal(f.native.count('turn/start'), 0, 'queued human input has not crossed the native boundary');
+  assert.ok(!f.native.calls.some(call => textOf(call.params)?.includes(human)));
+  f.native.item('original', textOf(steers[0]!.params));
+
+  f.native.complete('original');
+  await f.injected(human);
+  const starts = f.native.calls.filter(call => call.method === 'turn/start');
+  assert.equal(starts.length, 1);
+  assert.ok(textOf(starts[0]!.params).includes(human), 'the human input enters a new native turn after completion');
+  assert.equal(f.native.count('turn/steer'), 1, 'the human input never steers the old native turn');
+  await consumeRecovery(f);
+});
+
 // Both orderings share one hub, and use a new connection per table row.
 test('deferred reconnect snapshots preserve newer approval events in either arrival order', async t => {
   const f = await scriptedCodex(t);

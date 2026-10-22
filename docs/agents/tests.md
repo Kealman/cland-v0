@@ -735,6 +735,16 @@ lifecycle seam. The same writer drain applies during signal recovery.
 
 `topics-component.test.ts` exercises `topic.send` kinds through public frames, history and a second client's message deltas; only a Question starts a wait, and a later Message cannot change its addressee. `topic-withdraw.test.ts` uses sealed `projectHub` fixtures with fake time and a raw fake spoke. Observe accepted delivery before withdrawing across a busy transition, then send a late acknowledgement and require the next retained message's injected receipt. Keep assertions that the withdrawn input was never injected and its held progress was delivered once. Adapter submission is a durable exclusion fence, even without confirmation; test refusal at that boundary and after injection. `hub/src/hub/store.test.ts` reopens the Store in-process to prove withdrawal and its cleared Question wait persist without replay. `web-authority.test.ts` keeps the authenticated human edge proof. Neovim's recorded `thread.test.ts` checks the terminal glyph/colour and rejects older delivery stages; refresh only its recording when adding frame inputs. No browser or live hub is needed for this hub-side slice.
 
+The sender-specific native admission paths stay covered in `opencode-adapter.test.ts`
+(T3 HTTP/SSE contract) and `codex-native.test.ts` (T2 scripted RPC): a human
+message sent in state `busy` waits, an agent report steers the running turn,
+and the human input starts a new native turn after completion. Hold the native
+turn explicitly, observe the agent's injected receipt before asserting the
+human input has not reached the adapter, then release and require the human's
+injected receipt. OpenCode's fake `/test/turn` endpoint holds execution without
+changing the busy state. Existing human steering during `waiting for approval`
+is a different state and remains covered by the Codex contract/reconciliation tests.
+
 ### Waiting for an observable condition
 
 Use `until(predicate, { what })` from `hub/test/harness.ts` for a condition

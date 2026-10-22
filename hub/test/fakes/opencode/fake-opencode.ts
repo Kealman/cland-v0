@@ -31,6 +31,7 @@
 // "shell approval" references a shell tool, otherwise edit. "without source" omits the tool reference.
 // GET …/message/{id} supplies the referenced assistant tool part. /test/message can hold those lookups. A text
 // containing "needs a form" raises `form.created` and waits for a reply or a cancel.
+// POST /test/turn {paused} holds/resumes input execution while the native turn remains running.
 //
 // State lives under FAKE_OPENCODE_HOME: sessions/<ses>.json (shared by every server, like OpenCode's database),
 // servers/<pid>.json (the live servers, for the tests' cleanup), prompts/<ses>.log (each prompt and its delivery).
@@ -182,6 +183,8 @@ async function serve(args: string[]): Promise<number> {
   const runs = new Map<string, Run>();
   const permissions = new Map<string, Map<string, Pending & { request: Record<string, unknown> }>>();
   const messages = new Map<string, Record<string, unknown>>();
+  let turnPaused = false;
+  const turnWaiters = new Set<() => void>();
   let messagePaused = false;
   const messageWaiters = new Set<() => void>();
   const forms = new Map<string, Map<string, Pending & { title: string }>>();
@@ -190,6 +193,10 @@ async function serve(args: string[]): Promise<number> {
 
   const answer = async (session: SessionInfo, text: string) => {
     emit('session.step.started', { sessionID: session.id, agent: 'build', model: session.model, assistantMessageID: rid('msg') });
+    if (turnPaused) await new Promise<void>(resolve => {
+      const release = () => { turnWaiters.delete(release); resolve(); };
+      turnWaiters.add(release);
+    });
     const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(text)?.[1] ?? text;
     // Explicit slow-turn input stages steering, cancellation and outage races.
     await sleep(body.includes('take your time') ? 2000 : turnMs);
@@ -288,6 +295,11 @@ async function serve(args: string[]): Promise<number> {
           if (!messagePaused) for (const resolve of messageWaiters) resolve();
         }
         return send(res, 200, { data: { waiting: messageWaiters.size } });
+      }
+      if (url.pathname === '/test/turn' && method === 'POST') {
+        turnPaused = (await readBody(req)).paused === true;
+        if (!turnPaused) for (const resolve of turnWaiters) resolve();
+        return send(res, 200, { data: true });
       }
       if (url.pathname === '/api/event' && method === 'GET') {
         if (streamPaused) return send(res, 503, { message: 'test stream paused' });

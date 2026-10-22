@@ -3466,7 +3466,6 @@
     "hub/test/opencode-adapter.test.ts::a killed OpenCode server: the state turns unknown and the hub logs it once": 3.329482,
     "hub/test/opencode-adapter.test.ts::a launch without a model prefers big-pickle over a listed but deprecated free model": 1.38716,
     "hub/test/opencode-adapter.test.ts::a launched OpenCode session: its own server, the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, the state follows the event stream": 3.331322,
-    "hub/test/opencode-adapter.test.ts::a message sent while the session works steers the running turn; one sent while idle is queued": 3.01256,
     "hub/test/opencode-adapter.test.ts::a pending permission is waiting for approval within one event, and the reply brings the turn back; a form is waiting for human": 2.687751,
     "hub/test/opencode-adapter.test.ts::a stopped OpenCode session whose native conversation disappeared offers fresh instead of recreating its id": 3.904231,
     "hub/test/opencode-adapter.test.ts::after a hub restart, resume re-finds the OpenCode server and session through the process table and the event stream goes on": 4.564996,

@@ -3,6 +3,7 @@
 // - launch/attach: "a launched OpenCode session" (config, private password, TUI cwd);
 // - first role clause: "the first OpenCode native prompt" (one input, clause before brief);
 // - injected/reply correlation: "a launched OpenCode session" (queue, stages, replyTo);
+// - sender delivery: "a busy OpenCode turn" (human queues, agent steers through native HTTP/SSE);
 // - signals/model/usage: "a launched OpenCode session", "a pending permission" and "a failed OpenCode turn";
 // - stop: "a launched OpenCode session"; hub-process restart: "after a hub restart";
 // - native-conversation relaunch: "a killed OpenCode server" and "a stopped OpenCode session".
@@ -18,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import { nativeProjectHub as projectHub, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
+import { nativeProjectHub as projectHub, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, inProcessSpoke, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 import { NO_PS } from './native-process.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
@@ -305,9 +306,9 @@ test('a failed OpenCode turn is recorded in Agents and the events view and repor
   assert.equal((await status(ui)).harnesses.find((h) => h.name === launched.name)?.status, 'running');
 });
 
-test('a message sent while the session works steers the running turn; one sent while idle is queued', async (t) => {
+test('a busy OpenCode turn queues the human’s message while an agent’s report steers it', async (t) => {
   const root = await tempProject(t);
-  // Suppress polling while SSE outage and stream recovery determine the observed state.
+  // Observe turn boundaries from SSE rather than polling.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -316,23 +317,45 @@ test('a message sent while the session works steers the running turn; one sent w
   assert.equal(launched.model, 'opencode/fake-paid');
   await clauseAnswered(ui, 'impl');
   await presentAs(ui, 'impl', 'idle');
+  const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  await sender.waitForPresence(['sender', 'impl']);
   const clauseTurn = stateEvents(ui, 'impl').length;
 
-  // The fake's explicit slow-turn input leaves time to steer before this turn completes.
-  const first = await sendGeneral(ui, 'take your time with this one');
+  // Hold native execution without changing its busy state; no timer races the assertions.
+  await api(launched, root, 'POST', '/test/turn', { paused: true });
+  const first = await sendGeneral(ui, 'work on the first input');
+  await ui.waitFor(f => f.type === 'delivery' && f.message === first && f.stage === 'injected');
   await presentAs(ui, 'impl', 'busy');
-  const second = await sendGeneral(ui, 'and this too');
-  for (const id of [first, second]) await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
-  await replyTo(ui, 'impl', 'pong: take your time with this one');
-  await replyTo(ui, 'impl', 'pong: and this too');
+  const second = await ui.request({ type: 'topic.send', topic: 'general', to: ['impl'], text: 'human input for the next turn' });
+  assert.equal(second.ok, true, second.error);
+  const queued = second.value as { message: { id: string }; outcomes: Array<{ outcome: string }> };
+  assert.deepEqual(queued.outcomes.map(o => o.outcome), ['queued']);
+  const report = await sender.call<{ ok: boolean; error?: string }>('send', { to: ['impl'], topic: 'general', text: 'agent report for this turn' });
+  assert.equal(report.ok, true, report.error);
+  const reportFrame = await ui.waitFor(f => f.type === 'message' && (f.message as { text: string }).text === 'agent report for this turn');
+  const reportId = (reportFrame.message as { id: string }).id;
+  await ui.waitFor(f => f.type === 'delivery' && f.message === reportId && f.stage === 'injected');
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage: string }> };
+  assert.equal(history.messages.find(m => m.id === queued.message.id)?.stage, 'queued');
+  const heldPrompts = await fake.prompts(launched.harnessSessionId!);
+  assert.ok(!heldPrompts.includes(queued.message.id), 'human input never reaches the native busy turn');
+  assert.match(heldPrompts, /prompt steer \(running\): <channel [^\n]*from_kind="agent"[^\n]*>\nagent report for this turn/);
+
+  await api(launched, root, 'POST', '/test/turn', { paused: false });
+  await replyTo(ui, 'impl', 'pong: work on the first input');
+  await replyTo(ui, 'impl', 'pong: agent report for this turn');
+  await ui.waitFor(f => f.type === 'delivery' && f.message === queued.message.id && f.stage === 'injected');
+  await replyTo(ui, 'impl', 'pong: human input for the next turn');
   await presentAs(ui, 'impl', 'idle');
   const prompts = (await fake.prompts(launched.harnessSessionId as string)).split('\n').filter((l) => l.startsWith('prompt '));
   // the role clause was the first prompt
   assert.match(prompts[1] as string, /^prompt queue: /);
-  assert.match(prompts[2] as string, /^prompt steer \(running\): /, 'the second steered the running turn');
-  // one turn answered both: busy once, then idle
+  assert.match(prompts[2] as string, /^prompt steer \(running\): /, 'the agent report steered the running turn');
+  assert.match(prompts[3] as string, /^prompt queue: /, 'the human input starts after the running turn ends');
+  assert.equal(prompts.length, 4, 'each input reaches the native harness once');
+  // The first turn consumes the agent report; the queued human input starts a second turn.
   const states = stateEvents(ui, 'impl').slice(clauseTurn).map((e) => e.state);
-  assert.deepEqual(states.slice(states.indexOf('busy')), ['busy', 'idle']);
+  assert.deepEqual(states.slice(states.indexOf('busy')), ['busy', 'idle', 'busy', 'idle']);
 });
 
 test('a pending permission is waiting for approval within one event, and the reply brings the turn back; a form is waiting for human', async (t) => {
