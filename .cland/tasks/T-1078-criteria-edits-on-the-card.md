@@ -3,7 +3,7 @@ id: T-1078
 kind: task
 title: Criteria edits on the card
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-844
 branch: t/T-1078-criteria-edits-on-the-card
 created: 2026-10-21T17:32:17.135Z
-updated: 2026-10-22T11:06:49.963Z
+updated: 2026-10-22T11:28:59.861Z
 ---
 
 ## Summary
@@ -34,9 +34,13 @@ E-416 (§3.5; tracer step 6).
 
 - [x] C1. A criterion added on the card reads back through `cland task view`, and an edit and a removal keep the other ids unchanged (Web test).
   - done: impl-1078 · 2026-10-22T11:05:56.764Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1078-final-2 · 2026-10-22T11:16:45.388Z · commit 8e010a994994a4d810c13bb1ea4d6a35d7ea798a
+  - verified: rev-23 [reviewer] · run rev-20261022-1078-final-3 · 2026-10-22T11:28:59.753Z · commit 9989ae33f6b4de4588c8fbaf6206983ae01aee96
 - [x] C2. Setting the done mark records it as the human (Web test).
   - done: impl-1078 · 2026-10-22T10:29:35.874Z
   - verified: rev-23 [reviewer] · run rev-20261022-1078-final · 2026-10-22T11:01:59.639Z · commit 6093e61459fd749ef1379d85d58be3e859d44bf4
+  - verified: rev-23 [reviewer] · run rev-20261022-1078-final-2 · 2026-10-22T11:16:45.388Z · commit 8e010a994994a4d810c13bb1ea4d6a35d7ea798a
+  - verified: rev-23 [reviewer] · run rev-20261022-1078-final-3 · 2026-10-22T11:28:59.753Z · commit 9989ae33f6b4de4588c8fbaf6206983ae01aee96
 - [x] C3. No other field of the item is editable from the web (Web test).
   - done: impl-1078 · 2026-10-22T10:29:35.945Z
   - verified: rev-23 [reviewer] · run rev-20261022-1078-source-2 · 2026-10-22T10:40:18.593Z · commit abaf4ae5d2b1ef6b3068edaabd8254892ad0e322
@@ -44,6 +48,9 @@ E-416 (§3.5; tracer step 6).
   - verified: rev-23 [reviewer] · run rev-20261022-1078-final · 2026-10-22T11:01:59.639Z · commit 6093e61459fd749ef1379d85d58be3e859d44bf4
   - verified: rev-23 [reviewer] · run rev-20261022-1078-source-4 · 2026-10-22T11:04:19.257Z · commit a095eb65b3a4b160a48ffae56543f39be5d64909
   - verified: rev-23 [reviewer] · run rev-20261022-1078-source-5 · 2026-10-22T11:06:49.963Z · commit 8e010a994994a4d810c13bb1ea4d6a35d7ea798a
+  - verified: rev-23 [reviewer] · run rev-20261022-1078-final-2 · 2026-10-22T11:16:45.388Z · commit 8e010a994994a4d810c13bb1ea4d6a35d7ea798a
+  - verified: rev-23 [reviewer] · run rev-20261022-1078-source-6 · 2026-10-22T11:18:23.545Z · commit 9989ae33f6b4de4588c8fbaf6206983ae01aee96
+  - verified: rev-23 [reviewer] · run rev-20261022-1078-final-3 · 2026-10-22T11:28:59.753Z · commit 9989ae33f6b4de4588c8fbaf6206983ae01aee96
 
 ## Comments
 
@@ -175,3 +182,56 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized baseline-key correction source clear at 8e010a994994a4d810c13bb1ea4d6a35d7ea798a/tree 99ae43c271f42d886c2c4124c89e33e1d14d19fc. One-line delta from a095eb65 resolves A-9121 M1: tests-map baseline all-32 -> actual all-33 identity; static JSON verifies measured 3.480305 s and both 7.5/17.3 s allowance objects unchanged, no old key remains. Historical incoming refresh provenance retained; no claim this is a new all-33 measurement. Coordinator f13a5218 authorization and A-9122 original local durations 19/19 checked; no code/test/assertion/wait or extra dev merge. A-9123 audit, zero findings. C3 source mark refreshed; C1/C2 require exact-head mode-free configured receipt. Previous merged-head submission was refused before queueing, not a runtime run; A-9115 remains pre-merge history. No Reviewer runtime/T3/T4/after-stage QA claim.
 
 Criteria: C3 verified.
+
+### rev-23 · 2026-10-22T11:16:45.388Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1078-final-2
+commit: 8e010a994994a4d810c13bb1ea4d6a35d7ea798a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Exact-head C1–C3 evidence clear at 8e010a994994a4d810c13bb1ea4d6a35d7ea798a/tree 99ae43c271f42d886c2c4124c89e33e1d14d19fc. A-9128/1af0fa53 original finish records and hub passed state checked: aggregate/T1/all-T2 hub+Neovim/Web exit 0, 2439 ordinary test and 374 file passes. C1/C2/C3 lines 13294/13307/13316 pass; parent 13317 10.402085703 s under 17.3 s allowance, both all-33 help viewports pass. Linux x64 c-8 lon1, 493 s/$0.0343, host 129427ae reused/not repeated remotely. Existing lint/duration/ratchet report-only, 1 missing baseline; no enforcing tier-budget, Web repetitions/T3/T4/QA claim. Further directed dev merge is underway per 42582b48: this verdict applies only to 8e010a99 and will be historical; new merge requires delta review and exact-head mode-free receipt. Zero findings.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1078 · 2026-10-22T11:17:31.107Z
+
+Second Coordinator-directed rule-11 merge pushed at 9989ae33f6b4de4588c8fbaf6206983ae01aee96 / tree dbd6638145e0069462b703b13e857a2abbee36fa; parents 8e010a994994a4d810c13bb1ea4d6a35d7ea798a 733afdbadaafb7a23e151dda8663b82792b3fdc7. Observed T-1090 merged:true and waited for 1af0fa53 completion before merge. Sole conflict implement SKILL.md metadata: retained T-1078 and T-1090 entries exactly once; both instruction paragraphs remain. Imported T-1090 fixtures/helpers/docs/tracker changes unmodified, criterion runtime/test source unchanged. Local skill-provenance and tier-manifest lint plus diff check pass; all-33 baseline/allowance identities retained with no all-32 key. A-9130 records identity and logs. Pre-merge A-9128 was Linux T1/all-T2/Web green, 2,439 tests, but does not cover this head. Fresh delta source review then exact-head mode-free verify pending; no merge to dev.
+
+### rev-23 · 2026-10-22T11:18:23.545Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1078-source-6
+commit: 9989ae33f6b4de4588c8fbaf6206983ae01aee96
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Second directed dev-merge delta clear at 9989ae33f6b4de4588c8fbaf6206983ae01aee96/tree dbd6638145e0069462b703b13e857a2abbee36fa; parents accepted 8e010a99 and dev 733afdba. Coordinator 75a12fb4 authorization inspected. Implement-skill metadata union retains both T-1078/T-1090 entries exactly once and both instruction paragraphs. Criterion browser runtime/tests/keymap/tier/durations unchanged; actual help test, baseline and allowance all use all-33, no old key reintroduced. Incoming T-1090 fixtures/helper/docs unchanged in task comparison; expected 15-file task diff and diff check clean. A-9130 original static lint receipts checked; A-9131 audit, zero Standards/Spec findings. C3 source mark refreshed; C1/C2 await exact-head mode-free receipt. Pre-merge A-9128/A-9129 remain historical. No Reviewer runtime/T3/T4/after-stage QA claim.
+
+Criteria: C3 verified.
+
+### impl-1078 · 2026-10-22T11:28:33.964Z
+
+Exact-head mode-free verification 8a5d8486-4773-42cc-9a2e-40a244e32710 passed at 9989ae33f6b4de4588c8fbaf6206983ae01aee96 / tree dbd6638145e0069462b703b13e857a2abbee36fa. A-9132: Linux x64 c-8 lon1 droplet, Node 24.21.0, T1/all-T2 fallback across hub+Neovim/Web each exit 0; 2,440 recorded tests pass, zero failures/skips. Host check gate d26226cf61d4404ee16c2982e3bf6ea2823cd844 was not repeated on droplet. Enforced new-identity duration gate passes with accepted parent-only allowance; ordinary timing budgets, lint (132 findings/59 files) and T3 ratchet remain report-only. T3/T4 and affected after-stage QA are not covered. Lifetime 552 s, cost $0.0383. Head unchanged and pushed; Reviewer receives receipt for final settlement. No Implementer merge to dev.
+
+### rev-23 · 2026-10-22T11:28:59.753Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1078-final-3
+commit: 9989ae33f6b4de4588c8fbaf6206983ae01aee96
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1–C3 clear at unchanged merged head 9989ae33f6b4de4588c8fbaf6206983ae01aee96/tree dbd6638145e0069462b703b13e857a2abbee36fa. Original A-9132/8a5d8486 finish records and hub passed state checked: aggregate/T1/all-T2 hub+Neovim/Web exit 0, 2440 ordinary test and 374 file passes, no failures/skips/cancellations. Criteria C1/C2/C3 lines 13299/13308/13321 pass; parent 13329 12.537443864 s under accepted 17.3 s allowance; complete all-33 help both viewports pass, parent 4.262608295 s under 7.5 s. Linux x64 c-8 lon1, workers 2/Web 4, 552 s/$0.0383, host d26226cf reused/not repeated remotely. Existing lint/duration/ratchet report-only, 1 missing baseline; actual Web 50.42 s is not an enforcing tier-budget pass. No Web repetition/T3/T4/QA claim. Accepted source A-9131 remains unchanged; no findings. Coordinator owns landing/affected after-stage QA.
+
+Criteria: C1 verified, C2 verified, C3 verified.
