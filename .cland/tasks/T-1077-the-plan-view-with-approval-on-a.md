@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-843
 branch: t/T-1077-the-plan-view-with-approval-on-a
 created: 2026-10-21T17:32:16.973Z
-updated: 2026-10-22T11:03:50.113Z
+updated: 2026-10-22T11:46:29.101Z
 ---
 
 ## Summary
@@ -36,12 +36,15 @@ The Plan view shows the selected epic's plan: its stages, lanes and QA policy, w
 - [x] C1. In a scratch project with `[plan] approval = "human"`, `a` in the Plan view approves a waiting plan, and `cland task plan show` reads it approved by the human (Web test).
   - done: impl-1077 · 2026-10-22T10:51:38.858Z
   - verified: rev-26 [reviewer] · run rev-20261022-1077-final-1 · 2026-10-22T11:03:49.990Z · commit ae8817e8c103b04a4572cc27bf7ebf978767de5b
+  - verified: rev-26 [reviewer] · run rev-20261022-1077-final-2 · 2026-10-22T11:46:28.985Z · commit 1801526187607bee5381a352c0f094af729bd8a5
 - [x] C2. A plan change made after the human's last look shows in the watch colour, and opening the view moves the plan's mark (Web test).
   - done: impl-1077 · 2026-10-22T10:31:36.822Z
   - verified: rev-26 [reviewer] · run rev-20261022-1077-final-1 · 2026-10-22T11:03:49.990Z · commit ae8817e8c103b04a4572cc27bf7ebf978767de5b
+  - verified: rev-26 [reviewer] · run rev-20261022-1077-final-2 · 2026-10-22T11:46:28.985Z · commit 1801526187607bee5381a352c0f094af729bd8a5
 - [x] C3. Below desktop width `a` is not offered (Web test).
   - done: impl-1077 · 2026-10-22T10:31:36.896Z
   - verified: rev-26 [reviewer] · run rev-20261022-1077-final-1 · 2026-10-22T11:03:49.990Z · commit ae8817e8c103b04a4572cc27bf7ebf978767de5b
+  - verified: rev-26 [reviewer] · run rev-20261022-1077-final-2 · 2026-10-22T11:46:28.985Z · commit 1801526187607bee5381a352c0f094af729bd8a5
 
 ## Comments
 
@@ -132,5 +135,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final same-head evidence clear; A-9119 audits original A-9118/run f8a46b4b against source-clear ae8817e8/tree706ad690. T1, fallback all T2 across hub+Neovim and Web exit0;2439 ordinary passes, zero fail/cancel/skip. Actual C1/C2/C3 finish records pass1.679793454/1.089255100/0.961953944s; parent4.997972967s satisfies reviewed8.2s cap. Standards0;Spec0. Linuxx64 c8lon1 cland-v0-9a937e21, Node24.21/Nvim0.12.5, workers2(Web4),500s/$0.0348. Host check stdout retained; bb495322 host gate reused, not repeated remote T0. Generic lint/tier/duration/ratchet diagnostics report-only, one missing baseline; enforced new-identity gate satisfied. No Plan Web-load repetition, T3/T4, full-lifecycle or stage-QA pass claimed. Historical A-9103 remains failed; stage QA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-26 · 2026-10-22T11:37:21.185Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1077-source-5
+commit: 1801526187607bee5381a352c0f094af729bd8a5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized dev-merge delta source clear; A-9137 audits both parents and combined conflicts under Coordinator276c2ab1. Keymap retains Plan a/d plus scoped card e, both dated allowances remain, all-33 baseline/test/allowance align and all-32 key is removed. View-specific Plan help preserves Tree33-row traversal. Plan member retention, marks/watch and width guards unchanged; incoming criterion Shell handler does not intercept Plan actions. Matching docs and folded guidance retained. Standards0;Spec0. A-9136 original local resolved-working-tree Plan4/4,palette11/11,durations19/19 and check0 are qualified supporting evidence, not a configured merge-head pass. Prior ae8817e8 Linux receipt remains historical. C1–C3 remain run-dependent/unverified at this head. Submit mode-free verification at unchanged18015261; after-stage QA separate.
+
+### rev-26 · 2026-10-22T11:46:28.985Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1077-final-2
+commit: 1801526187607bee5381a352c0f094af729bd8a5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-9139 independently audits A-9138/run b4d7884f at source-clear18015261/tree071da040. T1/all-fallbackT2 hub+Neovim/Web exit0;2444 ordinary passes, zero fail/cancel/skip. Plan C1/C2/C3 pass1.653857545/1.135570776/1.099836922s,parent5.212670358s<8.2s. Incoming criteria parent10.702496971s<17.3s and both all-33 palette viewport traversals pass. Standards0;Spec0. Linuxx64c8lon1 cland-v0-55102bdc,Node24.21/Nvim0.12.5,workers2(Web4),465s/$0.0323;hostaef4dccd reused/notremoteT0repeat. Generic lint/tier/duration/ratchet report-only,two missing baselines;Web40.70s is not a40s tier-budget pass. Enforced new-identity gate satisfied. No Plan Web-load repetitions,T3/T4,full-lifecycle or stage-QA claim. Historical A-9103 stays failed; premerge green evidence not substituted.
 
 Criteria: C1 verified, C2 verified, C3 verified.
