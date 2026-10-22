@@ -2,8 +2,8 @@
 id: T-1076
 kind: task
 title: The Graph view in the Items area
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-834
 branch: t/T-1076-the-graph-view-in-the-items-area
 created: 2026-10-21T17:32:16.876Z
-updated: 2026-10-22T05:09:41.088Z
+updated: 2026-10-22T05:14:34.506Z
+closed: 2026-10-22T05:14:34.506Z
 ---
 
 ## Summary
@@ -118,3 +119,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head audit A-8939: A-8938/8af5955a T1/allT2/actualWeb exits0,2402 ordinary passes,0fail/skip/cancel. Actual Graph C1.811s/C2 1.036s/C3.755s,parent3.991498650s; bounded closed epic/counts/done paints,scope/node/Tree/card roundtrip and token guard all pass. Board5.614288936s satisfies Coordinator-authorized9.7s dated shared allowance, not original5s; historicalA-8928 remains failed. AllC1-C3 verified,no remaining Standards/Spec findings. Linux x64 c-8 lon1,488s/$0.0339; host8994462e reused,not repeated remotely;generic diagnostics report-only/10missing baselines. No load5/5,T3/T4,full lifecycle or after-stageQA claim. Coordinator controls landing/combined cover pair and stageQAs per latest92668858.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-22T05:14:34.506Z
+
+Merged 767ccd88a988bc3223782fc48f08925023bda139 onto dev.
