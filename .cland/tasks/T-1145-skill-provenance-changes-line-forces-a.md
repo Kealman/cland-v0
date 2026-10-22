@@ -3,7 +3,7 @@ id: T-1145
 kind: task
 title: Skill provenance 'changes' line forces a merge conflict on every ticket that edits a skill
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-859
 branch: t/T-1145-skill-provenance-changes-line-forces-a
 created: 2026-10-22T16:09:09.611Z
-updated: 2026-10-22T16:53:02.914Z
+updated: 2026-10-22T17:05:57.323Z
 ---
 
 ## Summary
@@ -29,12 +29,12 @@ Per-ticket provenance entries no longer share one line. For example, `changes` k
 
 - [x] C1. Two branches that each add a provenance entry to the same skill merge without a conflict (test).
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-1 · 2026-10-22T16:30:46.110Z · commit 7b6f984a23289fc4fa505a38ad56482d28d23219
-  - done: impl-1145 · 2026-10-22T16:32:12.024Z
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-2 · 2026-10-22T16:48:37.437Z · commit 4efdddcb3a97f312e586f34843642b6a3517a5eb
+  - done: impl-1145 · 2026-10-22T17:05:07.276Z
 - [x] C2. The provenance lint still fails a skill with cland edits and no provenance entry, and passes every current skill after the migration (test).
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-1 · 2026-10-22T16:30:46.110Z · commit 7b6f984a23289fc4fa505a38ad56482d28d23219
-  - done: impl-1145 · 2026-10-22T16:32:12.092Z
   - verified: rev-26 [reviewer] · run rev-20261022-1145-final-2 · 2026-10-22T16:48:37.437Z · commit 4efdddcb3a97f312e586f34843642b6a3517a5eb
+  - done: impl-1145 · 2026-10-22T17:05:07.344Z
 
 ## Comments
 
@@ -126,3 +126,46 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Final evidence clear at4efdddcb; C1/C2 verified. A-9336 settles same-head6ab00fe2/A-9334:2479/2479 ordinary passes, Linux c-8 sfo2, allT1/all-fallbackT2/Web exit0, hostT0 gate reused not repeated. C2 includes the all15 provenance gate plus five distinct actual load-gate passes. A-9321 supplies the separate exact-head local macOS native Git T3 contract; no completeT3/T4/QA claim. All report-only budget overages retained, including actual Web55.43s>40s; L1 stays low underT-1146. Old/cancelled heads not counted; no merge performed.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-22T16:54:16.311Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1145-source-4
+commit: 3a13520badd30e3f2b5240333e92f20c54a6fb6b
+scope: delta
+findings: [{"severity":"low","text":"L1 retained under T-1146: qualify CHANGES/union attributes as kept upstream skills, not all cland-owned skills; matching init/skills.ts comment remains.","file":"hub/README.md","line":1697}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Delta source clear; A-9345 records Coordinator03d403e1 authorization and both-parent comparison. All38 prior task records survive, new T-1110 record appended verbatim, stable pointer/maintenance and incoming approval-gate guidance retained. No migration lint/test changes; other incoming accepted T-1130/T-1110 code is unmodified. L1 retained underT-1146. A-9344 is new-head targeted C1/T1 support only; C1/C2 await fresh configured same-head verification, not prior6ab00fe2.
+
+### impl-1145 · 2026-10-22T17:04:06.736Z
+
+Blocked on shared-defect candidate: configured a5f7f2e3 at 3a13520b exits1. Actual enforced failure: duration budget web/test/area-slots.test.ts::area modules keep their slots and live hub state across a restart 6.017s >5s. T1/T2 exit0, Web exit1, no assertion failures; not a passing receipt. Linux c-8 lon1; A-9355 log. Reported to lead T-1145 in topic-859 and holding diagnosis/reruns pending Coordinator shared fix.
+
+### rev-26 · 2026-10-22T17:04:23.445Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261022-1145-evidence-3
+commit: 3a13520badd30e3f2b5240333e92f20c54a6fb6b
+scope: evidence
+findings: [{"severity":"medium","text":"Enforced new-identity duration gate fails in A-9355: area modules keep their slots and live hub state across a restart6.017s>5s. Unchanged inherited T-1130 shared Bugs/S candidate; configured verification is not clear pending Coordinator disposition.","file":"web/test/area-slots.test.ts","line":12},{"severity":"low","text":"L1 retained under T-1146: scope CHANGES/union attributes to kept upstream skills; matching init/skills.ts comment remains.","file":"hub/README.md","line":1697}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Final evidence not clear; A-9356 records A-9355's actual enforced failure: duration budget web/test/area-slots.test.ts::area modules keep their slots and live hub state across a restart6.017s>5s. T1/allT2 exit0 and2504 ordinary assertions pass, but Web/overall exit1 on Linux c-8 lon1; hostT0 not repeated. This inherited T-1130 test is a shared Bugs/S candidate for lead/Coordinator disposition. C1/C2 remain unverified; positive provenance/all15/5-of-5/native-Git receipts do not establish an overall pass, and no provenance behavior failure is inferred from this unrelated gate. No independent retry/change; L1 retained underT-1146.
+
+### rev-26 · 2026-10-22T17:05:57.323Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1145-source-5
+commit: a9beed34abdba25386ec3727cf3d4670cbbe7a23
+scope: delta
+findings: [{"severity":"low","text":"L1 retained under T-1146: restrict CHANGES/union-attribute wording to kept upstream skills, not every cland-owned curated skill; matching init/skills.ts comment remains.","file":"hub/README.md","line":1707}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Delta source clear; A-9359 records exact dev-donor match. Shared ec539bca supplies dated9s E-880 area-slots identity allowance through2026-10-29 from actual6.017s Linux failure; assertions and4s Web report budget unchanged. Inherited96b0f8d4 config disables outage local fallback after green droplets, executor remains droplet. Other changes are tracker records; no owned source/skill/test/fixture changes. L1 retained underT-1146 at current README:1707. A-9358 supplies new-head targeted C1/T1 support; C1/C2 await fresh configured same-head verification. Prior failed A-9355 remains failed.

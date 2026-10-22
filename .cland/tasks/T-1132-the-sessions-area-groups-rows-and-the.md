@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-860
 branch: t/T-1132-the-sessions-area-groups-rows-and-the
 created: 2026-10-22T15:16:15.097Z
-updated: 2026-10-22T16:51:37.676Z
+updated: 2026-10-22T17:04:54.205Z
 ---
 
 ## Summary
@@ -49,3 +49,7 @@ There is no Attach anywhere in the area. Rows come from the hub's merged session
 ### impl-1132 · 2026-10-22T16:51:02.057Z
 
 Test-first slice 1: web/test/sessions.test.ts uses the explicitly specified Web/fake-harness seam. Red on the T-1130 base: locator for Yours/my-aide timed out because SessionGroups is still a reserved slot. Implementing group projection and shared browser-only Fold next.
+
+### impl-1132 · 2026-10-22T17:04:54.205Z
+
+Implementation checkpoint 99141306 committed; merged origin/dev (including ec539bca shared area-slots duration allowance) before first source review. Non-archive targeted Web and static lint evidence are local macOS working-tree results, not a task verification receipt. Archive read is wired to T-1147’s documented additive merged rows field and remains blocked on that prerequisite; no verification enqueued.

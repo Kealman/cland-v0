@@ -3,7 +3,7 @@ id: T-1131
 kind: task
 title: The hub requests the web's sessions and profile need
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-855
 branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T16:26:54.852Z
+updated: 2026-10-22T16:59:20.864Z
 ---
 
 ## Summary
@@ -37,27 +37,28 @@ The wire types go in the shared module with their conformance entries, and the w
 
 - [x] C1. A human client reads a session's recent messages in both directions across topics, bounded and paged by message number, and a session's own `history` is unchanged (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
-  - done: impl-1131 · 2026-10-22T16:15:33.810Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.185Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
+  - done: impl-1131 · 2026-10-22T16:54:14.942Z
 - [x] C2. Over the web edge a browser reads its own sign-in's creation, last use and expiry, and the reply names no other browser's session (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
-  - done: impl-1131 · 2026-10-22T16:15:34.517Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.185Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
+  - done: impl-1131 · 2026-10-22T16:54:15.023Z
 - [x] C3. `session.launch` with a directory from the web edge is refused with `cli-neovim-only`, and the same launch without a directory starts in the project root (T2 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
-  - done: impl-1131 · 2026-10-22T16:15:35.474Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
+  - done: impl-1131 · 2026-10-22T16:54:16.220Z
 - [x] C4. The web authority table classifies both new requests, and its unit test refuses a web launch directory before dispatch (T1 test).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
-  - done: impl-1131 · 2026-10-22T16:15:36.495Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
+  - done: impl-1131 · 2026-10-22T16:54:16.544Z
 - [x] C5. `hub/README.md` documents the two requests and the launch-directory refusal (docs).
   - verified: rev-31 [reviewer] · run rev-20261022-1131-source · 2026-10-22T15:30:13.597Z · commit 1a9d9298fe8331e51e36c3426031f63f9af310cd
   - verified: rev-31 [reviewer] · run rev-20261022-1131-delta · 2026-10-22T15:45:01.565Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final · 2026-10-22T16:13:19.840Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
-  - done: impl-1131 · 2026-10-22T16:15:37.357Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-delta2 · 2026-10-22T16:17:41.661Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
   - verified: rev-31 [reviewer] · run rev-20261022-1131-final2 · 2026-10-22T16:26:54.186Z · commit b6c9e92e9a9d49ef94694f95bba8bebf7d93aa22
+  - done: impl-1131 · 2026-10-22T16:54:16.654Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-delta3 · 2026-10-22T16:59:20.863Z · commit 68f0b004506c879886fa6a519b577b1f04350e69
 
 ## Comments
 
@@ -188,3 +189,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear after authorized dev merge, A-9308; C1–C5 verified, no findings. Exact unchanged b6c9e92e:304fd849/A-9306 automatic local fallback exits0,2473/2473,zero fail/cancel/skip,T0/T1/all-T2/Web complete. Six owned identities each have five distinct raw load-gate passes and explicit5/5. Source A-9291 covers metadata union and integration; old A-9281/A-9285 remains old-head proof. Actual local darwin arm64 workers4/Web2; lint/durations report-only,T3 deferred/noT4/stageQA claim. No merge enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-22T16:59:20.864Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-delta3
+commit: 68f0b004506c879886fa6a519b577b1f04350e69
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear at 68f0b004; Standards and Spec: no findings. A-9350 records authorized merge, exact parent policy/test/wire/provenance retention and unchanged owned security boundaries. C5 verified. C1-C4 await fresh same-head mode-free configured verification; prior A-9306 belongs to b6c9e92e. A-9346 is supporting local static output, not a new suite receipt.
+
+Criteria: C5 verified.

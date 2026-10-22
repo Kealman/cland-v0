@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T16:52:57.665Z
+updated: 2026-10-22T17:08:07.367Z
 ---
 
 ## Summary
@@ -33,13 +33,17 @@ The Topics area shows the topics in groups (§3.2): those waiting for the human 
 ## Acceptance criteria
 
 - [x] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
-  - done: impl-1118 · 2026-10-22T16:52:25.656Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
+  - done: impl-1118 · 2026-10-22T17:07:54.550Z
 - [x] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
-  - done: impl-1118 · 2026-10-22T16:29:17.966Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
+  - done: impl-1118 · 2026-10-22T17:07:54.632Z
 - [x] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
-  - done: impl-1118 · 2026-10-22T16:22:07.989Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
+  - done: impl-1118 · 2026-10-22T17:07:54.710Z
 - [x] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
-  - done: impl-1118 · 2026-10-22T16:52:25.750Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final · 2026-10-22T17:02:34.579Z · commit 2d424d780595987af6f2825280f5d7a5d85eaadf
+  - done: impl-1118 · 2026-10-22T17:07:54.889Z
 
 ## Comments
 
@@ -115,3 +119,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear, A-9343; incorporates accepted full source A-9313 and integration A-9329. Palette now checks Topics18 and four literal labels while retaining all compatibility assertions. Partial-read regression holds the outgoing frame, confirms unread3, arms exact peer readSeq/unread2 before release, and retains final list assertion; Rule9 docs match. Standards0/Spec0. A-9339 exact-head local check plus targeted11/11 palette and9/9 Topics qualify as targeted evidence only. C1–C4 remain unverified until fresh mode-free exact-head run with actual Web. Historical A-9335 remains failed; restore C1/C4 claimant done marks before submission.
+
+### rev-23 · 2026-10-22T17:02:34.579Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-final
+commit: 2d424d780595987af6f2825280f5d7a5d85eaadf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, A-9353, original A-9352/run38d7e7a0 at unchanged source-clear2d424d78. Parsed2487 ordinary passes/380 file passes; all T1/fallback all hub+Neovim T2/actual Web exit0. Nine Topics cases and palette compatibility pass, establishing C1–C4 with prior source audits. Linux x64 c-8 lon1 workers2/Web4, host check gate ae07b9fc reused/not remote repeated. Web48.208s exceeds40s report-only budget; generic lint/duration/ratchet warnings retained, no enforcing-budget or load-repetition claim. No T3/T4/QA claim; historical failed A-9335 remains failed.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
