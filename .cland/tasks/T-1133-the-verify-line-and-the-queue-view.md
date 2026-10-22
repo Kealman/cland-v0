@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-874
 branch: t/T-1133-the-verify-line-and-the-queue-view
 created: 2026-10-22T15:16:15.253Z
-updated: 2026-10-22T23:18:00.209Z
+updated: 2026-10-22T23:26:11.240Z
 ---
 
 ## Summary
@@ -37,18 +37,53 @@ A pure model turns a queue, the elapsed time and the executor status into the li
 ## Acceptance criteria
 
 - [x] C1. With a hand run holding the local slot and one waiter, the line reads the holder, its running time and one waiting, and Enter opens the queue view in place with the holder and the waiter with its executor, wait and ETA (Web test).
-  - done: impl-1133 · 2026-10-22T23:17:40.640Z
+  - done: impl-1133 · 2026-10-22T23:24:51.843Z
 - [x] C2. The queue model renders remote slots with their droplet's name, size and region, the waiters in order, the last-20 metrics and today's spend against the cap from recorded frames (T1 test).
   - done: impl-1133 · 2026-10-22T23:17:40.803Z
 - [x] C3. Without a new frame the holder's running time and the waiter's wait advance from the frame's receipt, and a `verification.queue` frame replaces the view (Web test).
-  - done: impl-1133 · 2026-10-22T23:17:41.128Z
+  - done: impl-1133 · 2026-10-22T23:24:51.963Z
 - [x] C4. The queue view's open state survives a reload (Web test).
   - done: impl-1133 · 2026-10-22T23:17:41.468Z
 - [x] C5. `web/README.md` describes the verify line and the queue view (docs).
   - done: impl-1133 · 2026-10-22T23:17:41.639Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1133-source-2 · 2026-10-22T23:26:11.240Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
 
 ## Comments
 
 ### impl-1133 · 2026-10-22T23:17:01.014Z
 
 Implemented the pure queue presentation model first against committed recorded verification.queue and executor.status frames from sealed scratch fixtures, then the Sessions in-place queue using shared Fold persistence and session-open dispatch. Targeted T1 and Web C1/C3/C4 pass on macOS; existing Sessions/folds/key-contexts/palette regressions pass. web/README and test-seam docs updated. Merged origin/dev before first source review; final same-head static and targeted checks underway. No live queue or real droplet touched.
+
+### rev-26 · 2026-10-22T23:21:29.348Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261022-1133-source-1
+commit: 0ddd0ab150db0f3bb3f7d254389f07046cc182e6
+scope: full
+findings: [{"severity":"medium","text":"M1: Advertising session-open as handled prevents native Enter everywhere in Sessions, while the handler activates only the queue; existing group folds and other native buttons lose Enter activation. Preserve focused native activation and add physical-Enter regressions outside the queue.","file":"web/src/sessions/SessionsArea.tsx","line":18},{"severity":"medium","text":"M2: C1/C3 wait for the fold/table shell rather than the initial queue receipt and exact holder/waiter facts; slow delivery races immediate assertions and the ageing clock advance. Bound initial data observation separately and retain final/replacement assertions (rule 9).","file":"web/test/verification.test.ts","line":29}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Source not clear at 0ddd0ab1; complete Standards/Spec audit in A-9499. Two medium findings: M1 Sessions native Enter regression (SessionsArea.tsx:18); M2 missing initial data observation in new C1/C3 Web cases (verification.test.ts:29,62). Pure model, remote/metrics/spend presentation, receipt replacement, persistence, fixture tiers and matching docs otherwise reviewed without additional findings. No tests or browser run by Reviewer; no configured run claimed. Finish fixes and original receipt retention, then request fresh source review before verification.
+
+Criteria: C1 failed (Queue Enter handling swallows native Enter on existing Sessions buttons; initial holder/waiter setup also lacks an exact data receipt.), C3 failed (Ageing starts after only the empty table shell is visible, before the initial queue receipt and holder/waiter facts are observed.).
+
+### impl-1133 · 2026-10-22T23:23:37.269Z
+
+Fixed source-review M1/M2 in 25553311 (tree e9a62c39), pushed to origin without another dev merge. Physical Enter regression first failed on Fold Yours ('true' !== 'false', A-9501), then passed with the scoped native-button guard (same independent patch as T-1136). C1/C3 now await the initial queue snapshot and exact holder/waiter rows/times before assertions or clock advancement. Final assertions and armed replacement observer remain. Original green Web output+exit+native timings and source tree/diff: A-9508. Fresh static and keyboard regression checks running; fresh source review next.
+
+### rev-26 · 2026-10-22T23:26:11.240Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1133-source-2
+commit: 35a35f72808b9175d968384b465bb6d872b8e32b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear at 35a35f72; A-9516 carries the full Standards/Spec audit with no remaining findings. M1 fixed by scoped native-button Enter guard and group/archive physical-key regressions; M2 fixed by bounded initial snapshot plus exact holder/waiter identity/executor/time observations before assertions and clock advance. Original final assertions and armed replacement observer retained. A-9501 red, A-9508 intermediate green, A-9511 intermediate static and A-9512 final-head local targeted receipts keep their actual provenance; no configured or Linux pass claimed. C5 verified by matching docs; C1–C4 await mode-free configured evidence at this exact unchanged head. No post-review dev merge or merge by Reviewer.
+
+Criteria: C5 verified.

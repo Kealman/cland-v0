@@ -3,8 +3,9 @@ id: T-1134
 kind: task
 title: "The account model: the Accounts area and the accounts strip"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-875
 branch: t/T-1134-the-account-model-the-accounts-area-and
 created: 2026-10-22T15:16:15.395Z
-updated: 2026-10-22T23:09:55.880Z
+updated: 2026-10-22T23:23:48.836Z
 ---
 
 ## Summary
@@ -35,8 +36,35 @@ Neovim's `accounts.lua` defines the formats. The profile block joins the top of 
 
 ## Acceptance criteria
 
-- [ ] C1. The account model gives the worst window, amber from 75 and red from 90 percent, the limited mark with its reset, and a dash, never 0 percent, for an account with no reading, signed out or on OpenCode (T1 test).
-- [ ] C2. With a registry of three fake accounts with limit readings, one limited, the Accounts area lists each in registry order with its harness, path and every window with its share, reset, age and source, and the limited one with its mark (Web test).
-- [ ] C3. Opening the Accounts area sends one `account.poll` (Web test).
-- [ ] C4. The strip shows a cell per account with its worst window and reset, the limited account in red with its reset and the session that hit it, the other windows in the tooltip, and its link opens the Accounts area (Web test).
-- [ ] C5. `web/README.md` describes the Accounts area and the strip (docs).
+- [x] C1. The account model gives the worst window, amber from 75 and red from 90 percent, the limited mark with its reset, and a dash, never 0 percent, for an account with no reading, signed out or on OpenCode (T1 test).
+  - done: impl-1134 · 2026-10-22T23:19:28.371Z
+- [x] C2. With a registry of three fake accounts with limit readings, one limited, the Accounts area lists each in registry order with its harness, path and every window with its share, reset, age and source, and the limited one with its mark (Web test).
+  - done: impl-1134 · 2026-10-22T23:19:28.473Z
+- [x] C3. Opening the Accounts area sends one `account.poll` (Web test).
+  - done: impl-1134 · 2026-10-22T23:19:28.565Z
+- [x] C4. The strip shows a cell per account with its worst window and reset, the limited account in red with its reset and the session that hit it, the other windows in the tooltip, and its link opens the Accounts area (Web test).
+  - done: impl-1134 · 2026-10-22T23:19:28.764Z
+- [x] C5. `web/README.md` describes the Accounts area and the strip (docs).
+  - done: impl-1134 · 2026-10-22T23:19:28.870Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1134-source · 2026-10-22T23:23:48.836Z · commit 27a9fa9904391d90f5dbf920bbca332641e805c5
+
+## Comments
+
+### impl-1134 · 2026-10-22T23:18:10.677Z
+
+Implemented one pure account projection consumed by the read-only Accounts blocks and P20 Sessions strip. Targeted T1 model tests and 4 isolated Web tests are green on the current worktree on local macOS; no provider binaries or real account directories used. npm run check passed (test lint is report-only; 0 refusals). C1–C4 include source severity, missing-data dashes, all windows/paths, limited details, one poll per area entry, deltas, fold persistence, tooltips and link; registry failure readback is covered too. Existing area/palette/connection regression checks are next before source review. Per-item QA is after-stage, with no outstanding qaCriteria; no per-item QA brief supplied.
+
+### rev-32 · 2026-10-22T23:23:48.836Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261023-1134-source
+commit: 27a9fa9904391d90f5dbf920bbca332641e805c5
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear A-9509, findings []. Shared pure account projection matches worst-window/severity/75–90 thresholds, missing-data dashes, local reset/age/source, synthetic-default ordering and limited details. Accounts blocks/read-only poll-on-entry, complete registry reply refresh, P20 strip/meter/tooltips/fold/same-pane navigation, page/drawer facts and README match item/epic. Three new T1 tests and four sealed Web cases establish source paths for C1–C4 with bounded retained request/result/rendered-delta receipts; run-dependent criteria remain unverified until fresh configured same-head execution. C5 docs verified. A-9495 local implementation narrative is supplemental, not a configured suite/overall runtime pass. No new protocol/dependency/keymap/permission, or reviewer test/probe/browser run. Mode-free verify may run at this exact head; QA remains affected/after-stage.
+
+Criteria: C5 verified.

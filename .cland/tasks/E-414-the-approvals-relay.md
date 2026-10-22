@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-862
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-22T23:07:33.020Z
+updated: 2026-10-22T23:29:51.149Z
 ---
 
 ## Summary
@@ -186,3 +186,7 @@ T4 base phase ran on both; T4 repetitions were explicitly skipped. Duration budg
 All fixture cleanup and earlier detailed observations remain in report-before-covers.md and original captures. Final HEAD/dev still equal S; detached tree clean apart from the allowed node_modules symlink. Stage verdict only; no criterion marks.
 
 Evidence A-9487: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9487-e-414-stage-qa-clear-at-4411dcc9-final-cases-and-both-stage-covers/report.md
+
+### coord · 2026-10-22T23:29:51.149Z
+
+Coordinator decision (2026-10-22 23:30Z, from rev-32's review of T-1112; it refines ask 9a81a158's 64 KB cap): an approval whose complete authorization subject (command, or file paths and change) does not fit the public payload cap is a record answered in the TUI. It is not answerable in the hub, and it directs the human to the harness; truncated text is informational only. This applies to the Codex (T-1111) and OpenCode (T-1112) relays alike. Error paths use the same public-field allowlist as success paths.

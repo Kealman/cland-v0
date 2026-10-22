@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-876
 branch: t/T-1139-the-artifacts-area-the-tree-keep-and
 created: 2026-10-22T15:16:16.169Z
-updated: 2026-10-22T23:17:29.716Z
+updated: 2026-10-22T23:19:35.141Z
 ---
 
 ## Summary
@@ -46,9 +46,25 @@ Creating, moving, promoting, deleting and editing in place stay in Neovim and th
   - done: impl-1139 · 2026-10-22T23:16:53.783Z
 - [x] C5. `web/README.md` gains an Artifacts section with the sections and the keys (docs).
   - done: impl-1139 · 2026-10-22T23:16:53.875Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1139-source · 2026-10-22T23:19:35.141Z · commit 59f8de9034c5edab1a6f190186d0ed2571577061
 
 ## Comments
 
 ### impl-1139 · 2026-10-22T23:16:10.379Z
 
 Implemented the Artifacts pane with Mine/Kept/By role/Archived folds, provenance/status rows, visible-row navigation, keep/archive commands and lazy folder files. Extended the existing bounded inventory with More artifacts; live replacements win over pending pages and reconnect invalidates old page replies. TDD reds were observed before each slice. Targeted local macOS Web tests pass (4 tests, worst 1.034 s); callback T1 passes (9 tests). T0 and existing slot/help regression checks in progress. QA policy is after-stage, so no per-item QA request.
+
+### rev-23 · 2026-10-22T23:19:35.141Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1139-source
+commit: 59f8de9034c5edab1a6f190186d0ed2571577061
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear; no findings. Ten-file delta from 52657840 reviewed against item/Neovim grouping, shared physical shortcuts and docs. Grouping/folds/counts, keep/archive server boundaries, on-demand folder effects, unique bounded inventory continuation and live/reconnect race guards match the scope. No client deletion, dependency or permission change. C5 verified: README accurately documents implemented sections/keys and later file/topic/composer slices. C1–C4 remain run-dependent pending exact-head mode-free configured evidence. A-9490 is local implementation-tree targeted evidence only; topic separately reports exact-head check. New Web tier registration and shared palette expectation are consistent. No Reviewer test/browser execution; after-stage QA separate. Detailed source artifact posted in topic-876.
+
+Criteria: C5 verified.

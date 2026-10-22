@@ -3,8 +3,9 @@ id: T-1136
 kind: task
 title: "Acting on a session: Stop, Resume, Archive, Capabilities and the session's page"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 7
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-873
 branch: t/T-1136-acting-on-a-session-stop-resume-archive
 created: 2026-10-22T15:16:15.750Z
-updated: 2026-10-22T23:09:43.677Z
+updated: 2026-10-22T23:25:17.610Z
 ---
 
 ## Summary
@@ -37,10 +38,39 @@ A refused or failed action shows its reason in place; the cookie's refused actio
 
 ## Acceptance criteria
 
-- [ ] C1. `x` on a busy fake session asks for a confirmation in place, Esc leaves it running, and Enter stops it as `cland session list` reads (Web test with the fake harness).
-- [ ] C2. `r` on the stopped session resumes it with its name and role, as `cland session list` reads (Web test with the fake harness).
-- [ ] C3. `d` on a stopped session asks for a confirmation and archives it, and it leaves Stopped for the archive (Web test).
-- [ ] C4. `c` shows the session's adapter capability table read-only, and a session without an adapter says so (Web test).
-- [ ] C5. The session's page shows the model, account, usage and capabilities and runs the same four actions with the same confirmations (Web test).
-- [ ] C6. A resume the harness cannot perform shows the hub's reason and offers a fresh launch with the same brief (Web test with the fake harness).
-- [ ] C7. `web/README.md` documents the actions, the confirmations and the session's page (docs).
+- [x] C1. `x` on a busy fake session asks for a confirmation in place, Esc leaves it running, and Enter stops it as `cland session list` reads (Web test with the fake harness).
+  - done: impl-1136 · 2026-10-22T23:21:46.925Z
+- [x] C2. `r` on the stopped session resumes it with its name and role, as `cland session list` reads (Web test with the fake harness).
+  - done: impl-1136 · 2026-10-22T23:21:47.019Z
+- [x] C3. `d` on a stopped session asks for a confirmation and archives it, and it leaves Stopped for the archive (Web test).
+  - done: impl-1136 · 2026-10-22T23:21:47.101Z
+- [x] C4. `c` shows the session's adapter capability table read-only, and a session without an adapter says so (Web test).
+  - done: impl-1136 · 2026-10-22T23:21:47.302Z
+- [x] C5. The session's page shows the model, account, usage and capabilities and runs the same four actions with the same confirmations (Web test).
+  - done: impl-1136 · 2026-10-22T23:21:47.390Z
+- [x] C6. A resume the harness cannot perform shows the hub's reason and offers a fresh launch with the same brief (Web test with the fake harness).
+  - done: impl-1136 · 2026-10-22T23:21:47.479Z
+- [x] C7. `web/README.md` documents the actions, the confirmations and the session's page (docs).
+  - done: impl-1136 · 2026-10-22T23:21:47.568Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-source-1 · 2026-10-22T23:25:17.610Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+
+## Comments
+
+### impl-1136 · 2026-10-22T23:20:20.195Z
+
+Implemented the shared row/page Stop, Resume, Archive and Capabilities flow with in-place confirmations and hub-reason/fresh-brief handling; narrow tap/Enter opens the page. Test-first at the epic's public fake-harness/Headless Shell seams. Nine new action cases pass locally on macOS arm64 (current uncommitted tree; no suite/gate claim), plus Sessions, area slots, palette and key-context browser files. No new action test exceeded 4 seconds on successful samples. Source checks underway; review will precede hub verification. QA policy is affected after-stage, with no per-item QA criteria or brief.
+
+### rev-26 · 2026-10-22T23:25:17.610Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1136-source-1
+commit: c361576fadcf03c3bd803056dc97fcf0dcb8b878
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at c361576f; A-9513 records Standards and Spec, no findings. Shared row/page confirmation and resume/fresh handling retain native button Enter, pending duplicate guard, actual hub refusal reasons and offline no replay; capabilities and responsive page routing match the item. Nine new Web cases and affected regressions reviewed at their documented sealed fake-harness seams. C7 verified by matching docs. C1–C6 remain runtime-unverified pending mode-free configured verification at this exact unchanged head. A-9507 targeted/check claims are supporting local development evidence, not a configured or Linux pass; original receipt retention requested. Affected QA remains after-stage; no merge performed.
+
+Criteria: C7 verified.

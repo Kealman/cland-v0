@@ -3,8 +3,9 @@ id: T-1111
 kind: task
 title: "The Codex relay: app-server approvals answered through the gate"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 9
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-870
 branch: t/T-1111-the-codex-relay-app-server-approvals
 created: 2026-10-22T15:16:11.398Z
-updated: 2026-10-22T23:09:22.953Z
+updated: 2026-10-22T23:27:52.880Z
 ---
 
 ## Summary
@@ -41,12 +42,46 @@ The scripted app-server double also takes responses.
 
 ## Acceptance criteria
 
-- [ ] C1. Through the scripted app-server, a command request becomes one record answered in the hub, with the command, its cwd, its three choices and `pending` (test).
-- [ ] C2. Approve once, Always for this command and Deny reach the app-server as `accept`, `acceptForSession` and `decline` responses to that request's id. A Deny never reaches it as anything else (test).
-- [ ] C3. A file-change request becomes a record of kind file change, and its answer reaches the app-server the same way (test).
-- [ ] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
-- [ ] C5. A request missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event (test).
-- [ ] C6. After the adapter's connection drops and returns, the replayed pending request keeps the same record id, and an answer given then reaches the app-server (test).
-- [ ] C7. The capability table reads `approvalRelay: reliable` for Codex (test).
-- [ ] C8. A targeted run of the Codex contract file, with its receipt posted in the item topic, shows through the fake binary that Approve once runs the command and Deny does not (test).
-- [ ] C9. `hub/README.md`'s Codex capability row describes the relay, the three choices and their Codex decisions, and where the note goes (docs).
+- [x] C1. Through the scripted app-server, a command request becomes one record answered in the hub, with the command, its cwd, its three choices and `pending` (test).
+  - done: impl-1111 · 2026-10-22T23:20:56.272Z
+- [x] C2. Approve once, Always for this command and Deny reach the app-server as `accept`, `acceptForSession` and `decline` responses to that request's id. A Deny never reaches it as anything else (test).
+  - done: impl-1111 · 2026-10-22T23:20:56.495Z
+- [x] C3. A file-change request becomes a record of kind file change, and its answer reaches the app-server the same way (test).
+  - done: impl-1111 · 2026-10-22T23:27:43.923Z
+- [x] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
+  - done: impl-1111 · 2026-10-22T23:27:44.003Z
+- [x] C5. A request missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event (test).
+  - done: impl-1111 · 2026-10-22T23:27:44.184Z
+- [x] C6. After the adapter's connection drops and returns, the replayed pending request keeps the same record id, and an answer given then reaches the app-server (test).
+  - done: impl-1111 · 2026-10-22T23:27:44.264Z
+- [x] C7. The capability table reads `approvalRelay: reliable` for Codex (test).
+  - done: impl-1111 · 2026-10-22T23:20:57.002Z
+- [x] C8. A targeted run of the Codex contract file, with its receipt posted in the item topic, shows through the fake binary that Approve once runs the command and Deny does not (test).
+  - done: impl-1111 · 2026-10-22T23:20:57.082Z
+- [x] C9. `hub/README.md`'s Codex capability row describes the relay, the three choices and their Codex decisions, and where the note goes (docs).
+  - done: impl-1111 · 2026-10-22T23:20:57.266Z
+
+## Comments
+
+### impl-1111 · 2026-10-22T23:20:25.396Z
+
+Implemented at 2612e91109edf46c1c838007cd4ea6f72376c66b after pre-review origin/dev merge (28ffd4fe). TDD native seam covers C1–C7; C8 exact-head targeted Codex contract is collecting its durable receipt. Docs describe Codex native mappings and note fallback (C9). Neovim owning shell test refresh passed 25/25 and recorded 5685 frames; live frame drift/workbench 6/6, approval gate regression 18/18, full typecheck and T0 lint pass (lint findings report-only, zero refusals). Fixtures remain sealed; the contract file's own legacy shell attach invocation now uses scratch cwd plus accountFixtureEnvironment. No real account or live-hub experiment.
+
+### rev-23 · 2026-10-22T23:25:37.878Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1111-source
+commit: 2612e91109edf46c1c838007cd4ea6f72376c66b
+scope: full
+findings: [{"severity":"medium","text":"Malformed present threadId values are dropped by routing before unsupported-request validation, so no required TUI record or warn event appears. Distinguish valid foreign-thread IDs from invalid routing fields.","file":"hub/src/adapters/codex.ts","line":567},{"severity":"medium","text":"A replayed file entry is answerable while ready:false and thread/read validation is held, via the retained inbox record. Require validation readiness before native responses; cover valid/malformed/failed readback.","file":"hub/src/adapters/codex.ts","line":634},{"severity":"medium","text":"External resolved during initial file lookup deletes the entry and closes a record that has not yet been published; later lookup returns without preserving the exact closed record/archive outcome. Retain closure through subject resolution without a pending resurrection.","file":"hub/src/adapters/codex.ts","line":480}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Full source not clear: three medium findings, consolidated in the topic artifact. M1 malformed routing fallback; M2 ready:false replay native response; M3 exact external closed outcome lost during initial file lookup. Decision mappings, native ID preservation, allowlisting, fake accept/decline execution semantics, sealed owned shell invocation, Codex-only capability recording changes and matching docs otherwise reviewed. A-9497 is local exact-head targeted contract 12-pass evidence, not full/Linux verification or working-tree correction evidence. No Reviewer tests/edits. C3/C4/C5/C6 failed; remaining criteria unverified pending corrected-head source review and runtime receipts. After-stage QA separate.
+
+Criteria: C3 failed (Replayed file approvals can reach native response before required file-subject validation completes.), C4 failed (External resolution during the initial file lookup loses the exact closed record and archive outcome.), C5 failed (Malformed present threadId is ignored before the required TUI fallback record and warning.), C6 failed (Reconnect replay exposes a retained inbox record while its new file validation is not ready.).
+
+### impl-1111 · 2026-10-22T23:27:43.859Z
+
+Consolidated source fixes at d9a42dda58a91fd4d620249f7d1b05a0136801fd: M1 invalid-present/empty routing IDs reach warn/TUI fallback, valid foreign threads remain excluded; M2 native answer requires file-validation readiness; M3 retains external outcome during first file read and opts into atomic closed-first publication through internal ApprovalRequest.outcome, wire shape unchanged. All existing assertions preserved. Exact-head local Darwin arm64 targeted receipts: codex-native T2 23/23, Codex contract T3 12/12 (17.02113 s file wall, no >=5 s individual test), C8 log posted in topic; gate regressions 18/18 and full typecheck passed on identical working tree before commit. Lint passes with report-only findings/0 refusals. After-source-review branch did not merge dev. Fresh source review requested next; no verification until clear.
