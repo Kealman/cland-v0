@@ -1698,6 +1698,16 @@ and `TopicMessage`; run facts count toward the existing history reply cap.
 
 ## Implementer test selection
 
+Startup explorer regressions use `item-summary-scale.test.ts` at T2: a thousand
+durable rows with a planned epic and retained verdicts count recompute batches.
+The serving case arms the existing task-write gate before startup, observes the
+listening and serving receipts separately, and keeps an unscaled two-second
+monotonic gap assertion. It then observes the held planned write, proves a status
+reply while it is held, releases it and observes the planned status. Fixture
+setup has its own bound. No real daemon or browser is needed. The diagnostic
+`hub/scripts/measure-startup.ts` copies durable live inputs into a sealed scratch
+root; its measurements are diagnostic evidence, not a suite receipt.
+
 Claude re-exec ownership uses the frame/MCP seam in
 `claude-code-schedule.test.ts`: the production adapter reads a scripted native
 CLI boundary, synthetic PID/start facts and a fake clock in a sealed scratch

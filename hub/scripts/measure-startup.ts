@@ -63,10 +63,18 @@ test('measure copied durable startup state', async t => {
     }
     return;
   }
-  const hub = await projectHub(t, root, env, { clock: new FakeClock(Date.now()), log: entry => { if (entry.event === 'hub-startup-step' || entry.event === 'serving') console.error(JSON.stringify({ ...entry, elapsedMs: +(performance.now() - setup).toFixed(3) })); } });
+  let recomputes = 0, listeningAt: number | undefined, servingAt: number | undefined;
+  const hub = await projectHub(t, root, env, { clock: new FakeClock(Date.now()), log: entry => {
+    if (entry.event === 'explorer-recomputed') recomputes++;
+    if (entry.event === 'listening') listeningAt ??= performance.now();
+    if (entry.event === 'serving') servingAt = performance.now();
+    if (entry.event === 'hub-startup-step' || entry.event === 'serving') console.error(JSON.stringify({ ...entry, elapsedMs: +(performance.now() - setup).toFixed(3) }));
+  } });
+  const startupRecomputes = recomputes;
   try {
     const startupMs = performance.now() - setup;
     console.log('READY ' + startupMs.toFixed(3) + ' ms');
+    console.log(JSON.stringify({ startupRecomputes, listeningToServingMs: listeningAt !== undefined && servingAt !== undefined ? +(servingAt - listeningAt).toFixed(3) : null }));
     let receive = (_line: string) => {};
     let open = true;
     const composed = new Map<string, number>();

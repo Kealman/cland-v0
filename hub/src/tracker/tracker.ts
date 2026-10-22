@@ -419,7 +419,10 @@ export class Tracker {
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
-      settled: (ids) => ids.forEach((id) => { this.#announce(id, true); this.#scheduleReady(id); this.#schedulePlannedFor(id); }),
+      settled: (ids) => {
+        this.#announceBatch(ids);
+        for (const id of ids) { this.#scheduleReady(id); this.#schedulePlannedFor(id); }
+      },
       tipsMoved: () => { this.#tipsMoved(); options.onDevTip?.(this.#fresh.tip('dev')); },
     });
   }
@@ -509,6 +512,7 @@ export class Tracker {
   #schedulePlanned(id: string): void {
     if (this.#stopping) return;
     this.#plannedChecks.add(id);
+    if (this.#deferredReady) return;
     if (this.#plannedTimer) return;
     this.#plannedTimer = setImmediate(() => {
       this.#plannedTimer = null;
@@ -570,7 +574,17 @@ export class Tracker {
     for (const listener of this.#tipListeners) {
       try { listener(); } catch (error) { this.#log({ event: 'task-tip-listener-failed', error: String(error) }); }
     }
-    for (const item of this.list()) if (item.branch || isPlanningContainer(item.kind, this.ladder) || item.verdicts.length || item.status === 'ready') { this.#announce(item.id, true); this.#scheduleReady(item.id); }
+    const ids = this.list().filter(item => item.branch || isPlanningContainer(item.kind, this.ladder) || item.verdicts.length || item.status === 'ready').map(item => item.id);
+    this.#announceBatch(ids);
+    for (const id of ids) this.#scheduleReady(id);
+  }
+
+  /** Refresh all source rows before a projected read flushes the shared aggregates. */
+  #announceBatch(ids: string[]): void {
+    const affected = new Set(ids.flatMap(id => [id, ...this.#ancestorIds(this.#index.get(id)?.parent ?? null)]));
+    for (const id of affected) this.#refreshExplorer(id);
+    this.#explorer?.flush();
+    for (const id of ids) this.#announce(id, true);
   }
 
   /** Freshness, verdicts and branch changes converge on one queued workflow check. */
@@ -857,11 +871,14 @@ export class Tracker {
     this.#capturePruneTimer.unref();
   }
 
-  /** Start background readiness only after the daemon can answer status probes. */
+  /** Start planning and readiness only after the daemon can answer status probes. */
   resumeReadyChecks(): void {
     const pending = this.#deferredReady;
     this.#deferredReady = null;
     if (this.#stopping) return;
+    if (pending) {
+      for (const id of this.#plannedChecks) this.#schedulePlanned(id);
+    }
     for (const id of pending ?? []) this.#scheduleReady(id);
   }
 
