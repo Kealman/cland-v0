@@ -5,6 +5,7 @@ title: Closed containers push Neovim's first payload to 240 KB on the live track
 state: open
 status: in progress
 size: M
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ regression_of: T-1081
 topic: topic-828
 branch: t/T-1089-closed-containers-push-neovim-s-first
 created: 2026-10-22T01:04:50.220Z
-updated: 2026-10-22T01:05:27.006Z
+updated: 2026-10-22T01:14:59.593Z
 ---
 
 ## Summary
@@ -28,6 +29,15 @@ Neovim's first item payload, and the web's open snapshot where it feeds the same
 ## Acceptance criteria
 
 - [ ] C1. On a copy of the live tracker, Neovim's first item payload stays at or under 120 KiB, measured by the startup probe and asserted in a test with a fixture that holds many closed containers (test).
-- [ ] C2. Releases, epics and categories still show their full done/total and stage counts from the hub's roll-ups with closed containers out of the first payload, in Neovim and in the web tree (tests).
-- [ ] C3. Unfolding a closed epic or showing done items loads closed containers and tasks through the bounded pages with one row per identity (test).
-- [ ] C4. The 1 MiB items cap check and the Lua differential still pass on the copied tracker (tests).
+- [x] C2. Releases, epics and categories still show their full done/total and stage counts from the hub's roll-ups with closed containers out of the first payload, in Neovim and in the web tree (tests).
+  - done: impl-1089 · 2026-10-22T01:14:59.431Z
+- [x] C3. Unfolding a closed epic or showing done items loads closed containers and tasks through the bounded pages with one row per identity (test).
+  - done: impl-1089 · 2026-10-22T01:14:59.528Z
+- [x] C4. The 1 MiB items cap check and the Lua differential still pass on the copied tracker (tests).
+  - done: impl-1089 · 2026-10-22T01:14:59.593Z
+
+## Comments
+
+### impl-1089 · 2026-10-22T01:13:12.863Z
+
+Checkpoint: public-frame forest regression reproduced first reply236737 >122880 bytes; ancestor-closure projection reduces it to3017. Closed parent pages now include containers with numeric identity cursors; Neovim scoped/all archive reads discover new containers recursively, and Web traverses/deduplicates nested pages. Local Darwin arm64 targeted: item-summary10/10, tracker-summary12/12, snapshot12/12, native progress6/6, native copied closed-pages1/1 (6.048s), browser items8/8 (new identity0.831s), copied-body Lua1/1 (6.640s,1088+3 bodies,0differences,121791-byte snapshot). npm check passed; test lint report mode,0refusals. Supporting worktree evidence only, not exact-head Linux/suite proof. Startup support/probe contract intentionally untouched until Coordinator posts T-1088 landing, per decision e1bbd285.
