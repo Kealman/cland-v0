@@ -22,9 +22,11 @@
       "A-8379",
       "A-8376",
       "A-8570",
-      "A-8574"
+      "A-8574",
+      "A-8963",
+      "A-8967"
     ],
-    "commit": "dbb1604fd8ab9f21a4f1a5858117d99e9e4932ac"
+    "commit": "918951c2ecd592394ef613e10ba7cdc6a00c8e82"
   },
   "budget": {
     "testSeconds": 5,
@@ -2225,6 +2227,62 @@
     "web/test/palette.test.ts": {
       "seconds": 5.081626,
       "tests": 1
+    },
+    "hub/test/item-summary-lua.test.ts": {
+      "seconds": 18.068314,
+      "tests": 1
+    },
+    "hub/test/item-summary-scale.test.ts": {
+      "seconds": 2.162466,
+      "tests": 1
+    },
+    "hub/test/item-summary.test.ts": {
+      "seconds": 3.487947,
+      "tests": 10
+    },
+    "hub/test/nvim-observation.test.ts": {
+      "seconds": 0.002862,
+      "tests": 4
+    },
+    "hub/test/startup-budget.test.ts": {
+      "seconds": 0.005395,
+      "tests": 2
+    },
+    "hub/test/web-graph-layout.test.ts": {
+      "seconds": 0.003566,
+      "tests": 3
+    },
+    "nvim/test/closed-pages.test.ts": {
+      "seconds": 13.407368,
+      "tests": 1
+    },
+    "nvim/test/web-graph-layout.test.ts": {
+      "seconds": 1.84549,
+      "tests": 4
+    },
+    "web/test/board.test.ts": {
+      "seconds": 3.697281,
+      "tests": 1
+    },
+    "web/test/graph.test.ts": {
+      "seconds": 2.659262,
+      "tests": 1
+    },
+    "web/test/item-card.test.ts": {
+      "seconds": 7.421114,
+      "tests": 6
+    },
+    "web/test/items-actions.test.ts": {
+      "seconds": 9.094389,
+      "tests": 7
+    },
+    "web/test/items-order.test.ts": {
+      "seconds": 1.615876,
+      "tests": 1
+    },
+    "web/test/items.test.ts": {
+      "seconds": 19.076396,
+      "tests": 5
     }
   },
   "tests": {
@@ -5735,7 +5793,93 @@
     "nvim/test/progress-counts-component.test.ts::release and epic cards preserve aggregate progress and open blocker counts across wrapped resizes": 0.647774,
     "nvim/test/progress-counts-component.test.ts::scoped release details and category rows count the aggregate child level": 0.249982,
     "web/test/folds.test.ts::browser folds and the prose guard": 4.110278,
-    "web/test/palette.test.ts::the palette and area keys help": 5.081626
+    "web/test/palette.test.ts::the palette and area keys help": 5.081626,
+    "hub/src/hub/store.test.ts::a Coordinator vacancy posts one decision in General after ten minutes and resets when filled": 0.137448,
+    "hub/src/hub/store.test.ts::a late Coordinator disconnect after core and store close cannot write, publish or rearm vacancy monitoring": 0.015773,
+    "hub/src/hub/store.test.ts::a reopened core recovers an absent Coordinator vacancy and keeps its one-notice receipt across store reopen": 0.106314,
+    "hub/test/claude-code-schedule.test.ts::a different native session cannot inherit a dead Claude session by reusing its background id": 0.119349,
+    "hub/test/claude-code-schedule.test.ts::a newer hook identity fences an in-flight known replacement PID probe before grace expiry": 0.126129,
+    "hub/test/claude-code-schedule.test.ts::a newer hook identity fences an in-flight query replacement PID probe before grace expiry": 0.128359,
+    "hub/test/claude-code-schedule.test.ts::a newer hook identity fences an in-flight unavailable replacement PID probe before grace expiry": 0.127273,
+    "hub/test/claude-code-schedule.test.ts::Claude coordinator re-exec retains its row, role and claim with discovery identity and hello at 5000ms": 0.163188,
+    "hub/test/claude-code-schedule.test.ts::Claude coordinator re-exec retains its row, role and claim with flight identity and hello at 5000ms": 0.162575,
+    "hub/test/claude-code-schedule.test.ts::Claude coordinator re-exec retains its row, role and claim with hook identity and hello at 5000ms": 0.144583,
+    "hub/test/claude-code-schedule.test.ts::Claude coordinator re-exec retains its row, role and claim with known identity and hello at 0ms": 0.135753,
+    "hub/test/claude-code-schedule.test.ts::Claude coordinator re-exec retains its row, role and claim with known identity and hello at 31000ms": 0.136742,
+    "hub/test/claude-code-schedule.test.ts::Claude implementer re-exec retains its row, role and claim with known identity and hello at 5000ms": 0.202298,
+    "hub/test/claude-code-schedule.test.ts::default Claude grace publishes promptly at one second: death": 0.100524,
+    "hub/test/claude-code-schedule.test.ts::default Claude grace publishes promptly at one second: reconnect-first": 0.114114,
+    "hub/test/claude-code-schedule.test.ts::default Claude grace publishes promptly at one second: shutdown": 0.08319,
+    "hub/test/claude-code-schedule.test.ts::hub-launched Claude disables auto-update in both the filtered CLI environment and supervised settings": 0.106986,
+    "hub/test/epic-close.test.ts::closed epic demo reads after restart do not rescan history": 0.115582,
+    "hub/test/executor-run-rules.test.ts::a failed output checkpoint cannot leave mirrored bytes with a stale restart deadline": 0.043449,
+    "hub/test/executor-run-rules.test.ts::a silent droplet integrated run times out with its in-flight file and releases the machine": 0.042807,
+    "hub/test/executor-run-rules.test.ts::a silent droplet task run times out with its in-flight file and releases the machine": 0.075368,
+    "hub/test/executor-run-rules.test.ts::failed log polls still expire remote silence and retain a valid done receipt": 0.072316,
+    "hub/test/executor-run-rules.test.ts::new remote bytes reset the pinned stall limit and restart retains that boundary": 0.043622,
+    "hub/test/executor-run-rules.test.ts::remote silence expires between transport polls while a completed run keeps its receipt": 0.070377,
+    "hub/test/executor-run-rules.test.ts::replaying output after a checkpoint-before-append restart keeps its original silence boundary": 0.039361,
+    "hub/test/follows-native.test.ts::demo freshness batches Git reads and preserves rename, revert, side-branch and merge conflicts": 0.215702,
+    "hub/test/follows-native.test.ts::stage ancestry settles within two seconds while an old thousand-commit demo scan is outstanding": 0.43263,
+    "hub/test/item-summary-lua.test.ts::snapshot summaries and roll-ups equal Lua on every copied live tracker body": 18.068314,
+    "hub/test/item-summary-scale.test.ts::a thousand-item task change recomputes only its three-row chain within 100 ms": 2.162466,
+    "hub/test/item-summary.test.ts::card facts arrive in snapshots and deltas while body and comments stay on demand": 0.223073,
+    "hub/test/item-summary.test.ts::claims, holds, subtree verdicts and topic activity update their container facts": 0.232411,
+    "hub/test/item-summary.test.ts::closed children page per parent under the reply budget and a closing delta leaves the open snapshot": 0.805635,
+    "hub/test/item-summary.test.ts::closed summary batches keep full Lua text, validate ids and stay within reply byte budgets": 0.085458,
+    "hub/test/item-summary.test.ts::closing and reopening a compact card never posts its historical scoped verdicts again": 0.166257,
+    "hub/test/item-summary.test.ts::next excludes planned work below closed ancestors and follows reopening and movement": 0.123182,
+    "hub/test/item-summary.test.ts::one task change recomputes and sends only changed task and ancestor fields": 0.117032,
+    "hub/test/item-summary.test.ts::open payload prunes closed container forests while preserving ancestors and bounded archive pages": 1.485995,
+    "hub/test/item-summary.test.ts::snapshot supplies summary provenance, container progress, stage, blocked and next without task.view": 0.158677,
+    "hub/test/item-summary.test.ts::stage-cover settlement pushes a changed current stage without another item edit or reread": 0.090227,
+    "hub/test/nvim-frame-consumers.test.ts::full refresh excludes native clients sharing the launcher and type-only stub consumers": 0.001339,
+    "hub/test/nvim-frame-refresh.test.ts::a recording consumer with no prior slice still refuses zero frames": 0.000319,
+    "hub/test/nvim-observation.test.ts::Neovim observation accepts the ready state before its deadline": 0.000774,
+    "hub/test/nvim-observation.test.ts::Neovim observation rejects a ready state returned after 100 ms at a 100 ms deadline": 0.001604,
+    "hub/test/nvim-observation.test.ts::Neovim observation rejects a ready state returned after 101 ms at a 100 ms deadline": 0.000217,
+    "hub/test/nvim-observation.test.ts::Neovim observation retains the last failed rendered state at its deadline": 0.000267,
+    "hub/test/project-clock.test.ts::projectHub stop with a connected Coordinator leaves no vacancy timer after socket teardown": 0.068387,
+    "hub/test/qa-lint.test.ts::brief accepts demo status freshness checks at a named commit": 0.000165,
+    "hub/test/session-archive.test.ts::250 idle session rows settle for ten minutes and archive at their dated threshold": 1.176354,
+    "hub/test/session-archive.test.ts::failed resume cleanup wakes a preserved stopped row with a 11s archive deadline": 0.017519,
+    "hub/test/session-archive.test.ts::failed resume cleanup wakes a preserved stopped row with a 1s archive deadline": 0.017893,
+    "hub/test/session-archive.test.ts::only a changed item close time wakes stopped sessions, and lifecycle stops set a new deadline": 0.148833,
+    "hub/test/startup-budget.test.ts::startup probe accepts open items and their ancestors while omitting fully closed subtrees": 0.001812,
+    "hub/test/startup-budget.test.ts::startup probe rejects missing, extra and duplicate wire or installed rows": 0.003583,
+    "hub/test/startup-ready-component.test.ts::unbranched historical verdicts need no ready-check read while a branchless ready row is demoted": 0.099898,
+    "hub/test/tracker-summary.test.ts::card transport facts stay compact and defer closed facts to by-id pages": 0.01656,
+    "hub/test/web-graph-layout.test.ts::graph dictionaries accept prototype-shaped identifiers without losing vertices": 0.000179,
+    "hub/test/web-graph-layout.test.ts::graph keeps sibling dependencies, reduces shortcuts and separates tray/outside edges": 0.003022,
+    "hub/test/web-graph-layout.test.ts::graph preserves cyclic membership and supplied rank diagnostics": 0.000365,
+    "nvim/test/closed-pages.test.ts::copied tracker explorer, board and card render closed children from parent pages": 13.407368,
+    "nvim/test/progress-counts-component.test.ts::stage progress in the plan, explorer and card includes unloaded closed stage members": 0.619751,
+    "nvim/test/qa.test.ts::FOLLOWS-001 reaches its closed predecessor task under both the stdio and stub hubs": 1.231772,
+    "nvim/test/web-graph-layout.test.ts::TypeScript graph equals Lua layers, order and edge routes on GRAPH-001": 0.038742,
+    "nvim/test/web-graph-layout.test.ts::TypeScript graph equals Lua on cyclic, ranked and dense sibling graphs": 0.338695,
+    "nvim/test/web-graph-layout.test.ts::TypeScript graph equals Lua on every epic and release in a scratch live tracker copy": 1.289548,
+    "nvim/test/web-graph-layout.test.ts::TypeScript graph equals Lua when wide bands wrap to the available room": 0.178505,
+    "web/test/board.test.ts::the Board view and Items view switcher": 3.697281,
+    "web/test/graph.test.ts::the Graph view in Items": 2.659262,
+    "web/test/item-card.test.ts::agents text loads once on expansion and survives folding and reselection": 0.924116,
+    "web/test/item-card.test.ts::closed cards fetch by-id facts and refresh from item deltas": 0.82864,
+    "web/test/item-card.test.ts::closed container retains its open verdict owner facts through deltas": 0.727996,
+    "web/test/item-card.test.ts::drawer cards use summary facts across ten rows without task.view": 2.203821,
+    "web/test/item-card.test.ts::Enter enters the card and Escape or h returns to the same tree row": 1.771429,
+    "web/test/item-card.test.ts::hidden closed siblings defer card ordinal until a complete order or parent page arrives": 0.965112,
+    "web/test/items-actions.test.ts::Board selection and scope retain a non-first epic from Tree": 0.772472,
+    "web/test/items-actions.test.ts::Graph shares selection, messages and scope navigation with Tree": 0.992292,
+    "web/test/items-actions.test.ts::late item links preserve later Board epic and All tabs": 1.830685,
+    "web/test/items-actions.test.ts::late item-link results preserve later area and row navigation": 1.509504,
+    "web/test/items-actions.test.ts::M creates a missing item topic and sends the quick message there": 0.990321,
+    "web/test/items-actions.test.ts::scope breadcrumbs, back and item-id links reveal item ancestors": 1.229323,
+    "web/test/items-actions.test.ts::three selected items send one General message to the fake Coordinator": 1.769792,
+    "web/test/items-order.test.ts::ordinary rank and parent changes invalidate earlier rank-event orders": 1.615876,
+    "web/test/items.test.ts::a delta rebuilds the 300-item browser tree within 15 ms": 1.40205,
+    "web/test/items.test.ts::closed container pages restore nested archives once and preserve unloaded release progress": 1.415704,
+    "web/test/items.test.ts::closed epic children arrive through bounded pages and remain current after close and reconnect": 0.897708,
+    "web/test/items.test.ts::hidden done rows retain hub stage and total counts without loading closed pages": 0.608083,
+    "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": 14.752851
   },
   "allow": {
     "web/test/board.test.ts::the Board view and Items view switcher": {
