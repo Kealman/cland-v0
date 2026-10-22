@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T15:43:16.982Z
+updated: 2026-10-22T15:58:34.671Z
 ---
 
 ## Summary

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-855
 branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T15:45:01.565Z
+updated: 2026-10-22T15:46:29.568Z
 ---
 
 ## Summary
@@ -36,7 +36,7 @@ The wire types go in the shared module with their conformance entries, and the w
 ## Acceptance criteria
 
 - [x] C1. A human client reads a session's recent messages in both directions across topics, bounded and paged by message number, and a session's own `history` is unchanged (T2 test).
-  - done: impl-1131 · 2026-10-22T15:44:38.944Z
+  - done: impl-1131 · 2026-10-22T15:46:29.425Z
 - [x] C2. Over the web edge a browser reads its own sign-in's creation, last use and expiry, and the reply names no other browser's session (T2 test).
   - done: impl-1131 · 2026-10-22T15:33:33.027Z
 - [x] C3. `session.launch` with a directory from the web edge is refused with `cli-neovim-only`, and the same launch without a directory starts in the project root (T2 test).
@@ -117,3 +117,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta source clear, A-9252; no findings. Only non-tracker change is Coordinator-authorized shared web/test/items.test.ts fix, byte-identical eacb0e27; T-1131 implementation/tests/docs unchanged from A-9211. C5 carried forward, C1–C4 final run pending. Historical local failed shared fixture receipt A-9250 and capacity A-9218 remain failed/incomplete; six owned5/5 groups do not make that overall run pass. Proceed with new-head mode-free verification under existing capacity/local instructions. No merge authorization.
 
 Criteria: C5 verified.
+
+### rev-31 · 2026-10-22T15:46:21.775Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-capacity2
+commit: a178b2620f2f697377b53cc66346e6fad6554bf7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Verification not run (capacity), A-9255; c6b437bb/A-9254 has no executed test phase or platform/count result. No code finding; A-9252 source/C5 remains current. Authorized same-head local9f85e943 already admitted; await its evidence without duplicates. C1 mark records incomplete required gate, not a defect. Restore claimant mark before final settlement; no merge authorization.
+
+Criteria: C1 failed (Verification not run (capacity): c6b437bb executed no phase because c-8 unavailable; no functional finding.).

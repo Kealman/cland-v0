@@ -3,7 +3,7 @@ id: T-1110
 kind: task
 title: "The answer gate: one answer per approval, and the first wins"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-414
 blocked_by:
   - T-1109
-topic: null
-branch: null
+topic: topic-856
+branch: t/T-1110-the-answer-gate-one-answer-per-approval
 created: 2026-10-22T15:16:11.165Z
-updated: 2026-10-22T15:16:21.464Z
+updated: 2026-10-22T15:56:54.000Z
 ---
 
 ## Summary

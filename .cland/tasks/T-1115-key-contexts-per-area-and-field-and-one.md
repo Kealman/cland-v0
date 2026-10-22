@@ -2,8 +2,8 @@
 id: T-1115
 kind: task
 title: Key contexts per area and field, and one area slot in the shell
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-852
 branch: t/T-1115-key-contexts-per-area-and-field-and-one
 created: 2026-10-22T15:16:12.148Z
-updated: 2026-10-22T15:38:05.463Z
+updated: 2026-10-22T15:59:01.140Z
+closed: 2026-10-22T15:59:01.140Z
 ---
 
 ## Summary
@@ -36,18 +37,23 @@ Today one chord resolves to one action for the whole page. Digits `1` to `7` alw
 
 ## Acceptance criteria
 
-- [ ] C1. The same physical key resolves to the Items action in Items and to the focused area's own action in a context that declares it, with exact modifiers, and every existing Items and Plan binding and `1` to `7` in the shell resolve as before (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
-- [ ] C2. A field that declares the composer context receives its context's bindings, and any other field still receives only `⌘K` (Web test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
-- [ ] C3. A key declared in the Sessions table but not handled by its view does nothing there and is absent from `?` in Sessions; `?` in Items lists the same keys and labels as before (Web test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
-- [ ] C4. Inbox, Sessions, Topics, Events, Artifacts and Accounts render through the area slot with their stand-in lists, selection and drawer as before, the shell has one key listener, and the existing shell, palette, fold and Items Web tests pass unchanged (Web test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
+- [x] C1. The same physical key resolves to the Items action in Items and to the focused area's own action in a context that declares it, with exact modifiers, and every existing Items and Plan binding and `1` to `7` in the shell resolve as before (test).
+  - done: impl-1115 · 2026-10-22T15:52:01.428Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1115-final · 2026-10-22T15:52:33.455Z · commit ddeecc3c6ae59515d373372da94c9765865f6db0
+- [x] C2. A field that declares the composer context receives its context's bindings, and any other field still receives only `⌘K` (Web test).
+  - done: impl-1115 · 2026-10-22T15:52:01.517Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1115-final · 2026-10-22T15:52:33.455Z · commit ddeecc3c6ae59515d373372da94c9765865f6db0
+- [x] C3. A key declared in the Sessions table but not handled by its view does nothing there and is absent from `?` in Sessions; `?` in Items lists the same keys and labels as before (Web test).
+  - done: impl-1115 · 2026-10-22T15:52:01.600Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1115-final · 2026-10-22T15:52:33.456Z · commit ddeecc3c6ae59515d373372da94c9765865f6db0
+- [x] C4. Inbox, Sessions, Topics, Events, Artifacts and Accounts render through the area slot with their stand-in lists, selection and drawer as before, the shell has one key listener, and the existing shell, palette, fold and Items Web tests pass unchanged (Web test).
+  - done: impl-1115 · 2026-10-22T15:52:01.927Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1115-final · 2026-10-22T15:52:33.456Z · commit ddeecc3c6ae59515d373372da94c9765865f6db0
 - [x] C5. `web/README.md` under Palette and keys describes the contexts, the per-area tables and how an area declares the actions it handles (docs).
   - done: impl-1115 · 2026-10-22T15:30:00.786Z
   - verified: rev-23 [reviewer] · run rev-20261022-1115-source-2 · 2026-10-22T15:35:20.002Z · commit 13e8700d1fbd73488ba5e229365da4fe8f7324a4
   - verified: rev-23 [reviewer] · run rev-20261022-1115-source-3 · 2026-10-22T15:36:49.306Z · commit ddeecc3c6ae59515d373372da94c9765865f6db0
+  - verified: rev-23 [reviewer] · run rev-20261022-1115-final · 2026-10-22T15:52:33.456Z · commit ddeecc3c6ae59515d373372da94c9765865f6db0
 
 ## Comments
 
@@ -118,3 +124,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 87422129/A-9233: `auto exit 1; droplet size c-8 unavailable in regions lon1, nyc1, sfo2`. Host npm run check completed; runtime T1/T2/Web and load counts/platform unavailable, projections not measured. No new source finding; ddeecc3c/A-9231 source clear and C5 mark remain applicable. C1–C4 final evidence missing. Coordinator-authorized unchanged local replacement afbfb96e is admitted and not evaluated; this historical record does not cancel/prejudge it. No Reviewer execution or retry requested.
 
 Criteria: C1 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.), C2 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.), C3 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.), C4 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.).
+
+### rev-23 · 2026-10-22T15:52:33.456Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1115-final
+commit: ddeecc3c6ae59515d373372da94c9765865f6db0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear from A-9258/afbfb96e plus source A-9226/A-9231. Parsed2450 ordinary test passes/376file passes,0fail/cancel/skip; local Darwin arm64 Node24.21.0/Neovim0.12.5, T2workers4/Web2. Host check local; allT1/fallback allT2 both packages/actualWeb exit0. C1 resolver2/2 plus five distinct new-identity load passes and explicit5/5 (4187); C2–C4 newWeb3/3 (0.677/0.730/0.509s), actual native palette typing/context-action/focus check and all stand-ins; shell/palette/folds/Items/Plan file passes inspected. Existing compatibility files unchanged apart from authorized shared Items fix. C5 unchanged docs refreshed. Report-only duration/lint/ratchet/3missing baselines retained; no enforcing-budget,Web repetition,T3/T4/QA/full-cover claim. A-9233 capacity failure historical; local replacement Coordinator-authorized. Zero remaining Standards/Spec findings; all C1–C5 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-22T15:59:01.140Z
+
+Merged 406844d87c6078c7d356c9b12b3a09ae63da89fb onto dev.

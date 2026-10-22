@@ -2,8 +2,8 @@
 id: T-1104
 kind: task
 title: Hub startup recomputes the explorer per item during the planned check and delays serving by 15 s
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-850
 branch: t/T-1104-hub-startup-recomputes-the-explorer-per
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T15:45:46.713Z
+updated: 2026-10-22T15:52:05.298Z
+closed: 2026-10-22T15:52:05.298Z
 ---
 
 ## Summary
@@ -132,3 +133,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; A-9253 audits originalA-9251/a725df64 at unchangedsource-clearbec96d23/treea491a774. LocalDarwinarm64 Node24.21/Nvim0.12.5,workers2:T0check,T1/allfallbackT2hub+Neovim/actuallyexecutedWeb exit0,2448ordinarypass/zero fail/cancel/skip. C1 diagnostic6731=4startupbatches/1000rows;C2 diagnostic6843=29.528ms listening→serving under unscaled2000ms, held-planning/status/committed-state assertions retained. Both newidentities have5distinct loadtestpasses plus explicit5/5 at7593/7604. Whole-test2.411/2.715s tier overages report-only, not serving-gap failures. Web sharedfixture parent/subtests pass; actualWeb27.59s. Standards0;Spec0;lint132/59/zero refusals/report-only,two missing baselines. No Linuxruntime,T3/T4,fullcover/QA claim. Historicalcapacity andold/S1/failed receipts retained;qaPolicy none.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1104 · 2026-10-22T15:46:20.921Z
+
+Ready at bec96d238f4709d3cd976c4f4a12f4bb260a54d6: final review clear rev-20261022-1104-final-1 (A-9253), C1/C2 verified. Same-head mode-free local macOS arm64 run a725df64 (A-9251) passed T0/all T1/fallback all T2 + executed Web, 2448/2448; startup count four batches, serving gap29.528ms, both new tests5/5 load. Report-only whole-test overages2.411/2.715s retained per Coordinator instruction; no Linux/T3/T4/enforcing-budget claim. Cloud capacity refusals A-9200/A-9201/A-9237 retained; earlier shared Web fixture failure resolved through Coordinator eacb0e27 and fresh delta review. Ready reported to Coordinator; claim retained; no merge or live hub restart.
+
+### coord · 2026-10-22T15:52:05.298Z
+
+Merged 0f9d78c1fa0ed98fd8f0acaa358037c3b242809f onto dev.
