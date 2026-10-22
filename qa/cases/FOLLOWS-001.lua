@@ -12,7 +12,11 @@ end
 local function select_row(key)
   local e = require('cland.explorer')
   for r, row in ipairs(e.rows or {}) do
-    if row.key == key then api.nvim_win_set_cursor(e.tree_win(), { r, 0 }); return true end
+    if row.key == key then
+      api.nvim_set_current_win(e.tree_win())
+      api.nvim_win_set_cursor(e.tree_win(), { r, 0 })
+      return true
+    end
   end
 end
 return {
@@ -29,22 +33,30 @@ return {
     },
   },
   run = function(qa)
+    qa.wait_for(function()
+      for _, it in ipairs(qa.state().items) do
+        if it.id == 'E-2' then return true end
+      end
+    end, 10000, 'the open predecessor epic')
+    -- Closed T-3 arrives through E-2's parent page, not the first payload.
+    require('cland.explorer').set_open('E-2', true)
     qa.wait_for(function() return qa.state().hub.state == 'connected' and #qa.state().items == 5 end, 10000, 'the five fixture items')
-    local follower
-    for _, it in ipairs(qa.state().items) do if it.id == 'E-4' then follower = it end end
-    qa.expect(follower and type(follower.follows) == 'table' and follower.follows[1] == 'E-2', 'the hub reports E-4 follows E-2')
-    qa.expect(#(follower.blocked_by or {}) == 0, 'the follow is not a blocker')
     qa.keys('<Esc><Space>e')
     qa.wait_for(function()
       local e = require('cland.explorer')
       return e.b and e.lines and table.concat(e.lines, '\n'):find('Follower epic', 1, true) and table.concat(e.lines, '\n'):find('Predecessor epic', 1, true)
     end, 5000, 'both epics in the tree')
     qa.wait_for(function() return select_row('E-4') end, 5000, 'the E-4 row')
+    qa.keys('<CR>')
     qa.wait_for(function()
       local e = require('cland.explorer')
       local c = card()
       return e.card.key == 'E-4' and c:find('follows', 1, true) and c:find('E-2', 1, true)
     end, 5000, 'the card of E-4 with its follows')
+    -- Relations are card facts, fetched when the card opens.
+    local follower = require('cland.item_view').get('E-4', {summary_only=true})
+    qa.expect(follower and type(follower.follows) == 'table' and follower.follows[1] == 'E-2', 'the hub reports E-4 follows E-2')
+    qa.expect(#(follower.blocked_by or {}) == 0, 'the follow is not a blocker')
     local c = card()
     local blocked = c:find('blocked by', 1, true)
     local follows = c:find('follows', 1, true)
@@ -53,7 +65,7 @@ return {
     qa.expect(c:find('follows E-2', 1, true) and c:find('Predecessor', follows, true), 'the follows row names the predecessor\n' .. c)
     qa.expect(c:find('blocked by none', 1, true), 'no blockers\n' .. c)
     qa.dump('follows-card')
-    qa.keys('gI')
+    qa.keys('hgI')
     qa.wait_for(function()
       local v = qa.state().view
       return v.kind == 'item' and v.id == 'E-4' and qa.screen():match('follows +E%-2')

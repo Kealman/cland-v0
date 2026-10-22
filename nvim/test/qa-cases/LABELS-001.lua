@@ -16,15 +16,20 @@ return {
     },
   },
   run = function(qa)
-    -- Startup loads open summaries; unfold the explorer to fetch the closed fixture too.
+    -- Startup loads open summaries. Q-2 belongs to T-1's closed-child page,
+    -- rather than the root archive, even though T-1 is a leaf task.
     qa.keys('<Esc><Space>e')
     qa.wait_for(function()
-      return qa.screen():find('Closed items', 1, true)
-    end, 10000, 'the explorer')
-    qa.keys('zR')
+      for _, item in ipairs(qa.state().items) do
+        if item.id == 'T-1' then return true end
+      end
+    end, 10000, 'the open fixture task')
+    require('cland.explorer').set_open('T-1', true)
     qa.wait_for(function()
-      return #qa.state().items == 2
-    end, 10000, 'the two fixture items')
+      for _, item in ipairs(qa.state().items) do
+        if item.id == 'Q-2' then return true end
+      end
+    end, 10000, 'the closed fixture question from its parent page')
     qa.keys('<Esc>:Cland view item T-1<CR>')
     qa.wait_for(function()
       return qa.screen():find('A comment: with a colon.', 1, true)

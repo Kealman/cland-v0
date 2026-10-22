@@ -218,6 +218,19 @@ test('every run is given the fixed grid, the pinned TERM, LANG and TZ, paths of 
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
 });
 
+test('FOLLOWS-001 reaches its closed predecessor task under both the stdio and stub hubs', { skip }, async (t) => {
+  for (const hub of ['stdio', 'stub']) {
+    const run = await qa(t, [`${SHIPPED}FOLLOWS-001.lua`, '--hub', hub]);
+    assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+    assert.equal(run.code, 0, hub);
+    const { items } = (run.line.evidence as { state: { items: Array<Record<string, unknown>> } }).state;
+    assert.deepEqual(items.map(item => item.id).sort(), ['E-2', 'E-4', 'R-1', 'T-3', 'T-5'], hub);
+    const predecessor = items.find(item => item.id === 'T-3');
+    assert.equal(predecessor?.state, 'closed', hub);
+    assert.equal(predecessor?.parent, 'E-2', hub);
+  }
+});
+
 test('fixture values YAML would read as structure reach the client whole, the same under the stdio hub and the stub hub', { skip }, async (t) => {
   for (const hub of ['stdio', 'stub']) {
     const run = await qa(t, [`${CASES}LABELS-001.lua`, '--hub', hub]);
