@@ -1,3 +1,4 @@
+import { mergeHumanMarks } from '../src/hub/human-marks.ts';
 import { STUB_NOW } from '../../nvim/test/fixtures/clock.ts';
 // Hub-side source of the recorded Neovim protocol projections. Never imported by T2.
 import { parseConfig, defaultConfig } from '../src/init/config.ts';
@@ -27,6 +28,13 @@ export function fixtureOutput(operation: string, input: Row): unknown {
   };
   const summary = (item: Row) => ({ ...item, criteria: criteria(item).criteriaCounts });
   switch (operation) {
+    case 'human-marks': {
+      const numeric = typeof input.before.events === 'number' || typeof input.frame.events === 'number';
+      const before = { ...input.before, ...(typeof input.before.events === 'number' ? { events: new Date(input.before.events).toISOString() } : {}) };
+      const frame = { ...input.frame, ...(typeof input.frame.events === 'number' ? { events: new Date(input.frame.events).toISOString() } : {}) };
+      const marks = mergeHumanMarks(before, frame, id => input.histories[id] ?? []);
+      return numeric ? { ...marks, events: marks.events === null ? null : Date.parse(marks.events) } : marks;
+    }
     case 'config': {
       const config = input.source ? parseConfig(input.source, '@root@', {}) : defaultConfig('@root@');
       const configured = new Ladder(tracker?.ladder ?? tracker?.levels ?? config.tracker.levels);

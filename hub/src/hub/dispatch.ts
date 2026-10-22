@@ -1617,6 +1617,10 @@ export class Dispatcher {
             return answer({ topic: core.closeTopic(frame.topic) });
           case 'topic.resolve':
             return answer({ topic: core.resolveTopic(frame.topic) });
+          case 'marks.get':
+            return answer({ marks: core.humanMarks() });
+          case 'marks.set':
+            return answer({ marks: core.setHumanMarks(frame, id => this.#options.tracker?.planHistory(id) ?? []) });
           case 'topic.read':
             return answer({ topic: core.readTopic(frame.topic, frame.upTo) });
           case 'role.set': {

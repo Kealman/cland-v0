@@ -305,6 +305,7 @@ end
 
 local function wire_client(client)
   require('cland.explorer').setup(client)
+  require('cland.marks').setup(client)
   -- a handler that failed says so on the status line, one line, never as an error in the message area
   client:on('error', function(msg)
     state.say('cland: ' .. tostring(msg), 'ClandRedBar')

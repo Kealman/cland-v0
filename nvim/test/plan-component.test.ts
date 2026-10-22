@@ -110,6 +110,8 @@ test('equal-time plan history keeps later moves after the saved receipt', { skip
   await openPlan(client, 'T-2');
   await waitPlan(client, 'T-2', 'T-3 moved from S1 to S2');
   assert.ok((await planText(client, 'T-2')).includes('Move for panel integration'));
+  await waitFor(() => client.lua<boolean>("return require('cland.marks').plan('T-2') == 'd'"), 'shared equal-time plan receipt acknowledged');
+  assert.equal(await client.lua("return require('cland.marks').plan('T-2')"), 'd');
 });
 
 test('future per-item QA excludes only evidence accepted by the hub gate', { skip }, async t => {

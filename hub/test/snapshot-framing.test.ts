@@ -9,7 +9,7 @@ function empty(): SnapshotValues {
   return {
     tracker: { levels: [], ladder: [], prefixes: {} }, items: { items: [] },
     sessions: { rows: [], processes: [], presence: [], archived: 0, roles: { roles: [], coordinator: null }, crew: { config: defaultCrew(), summary: '' }, coordinator: null, verification: null },
-    topics: { topics: [] }, inbox: { asks: [], approvals: [], plans: [], requests: [], messages: [], waiting: [], needsYou: 0 },
+    topics: { topics: [], marks: { events: null, plans: {}, imported: false } }, inbox: { asks: [], approvals: [], plans: [], requests: [], messages: [], waiting: [], needsYou: 0 },
     events: { rows: [], before: null, more: false }, accounts: { registry: '', accounts: [] },
   };
 }

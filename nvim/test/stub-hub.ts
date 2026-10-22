@@ -51,6 +51,7 @@ process.once('exit', () => { fixtureOwner?.close(); fixtureOwner?.remove(); });
 export type Scenario = {
   // T-902: source-shaped account snapshots for the sessions panel.
   accounts?: Array<Record<string, unknown>>;
+  marks?: import('../../shared/wire/index.ts').HumanMarks;
   events?: EventRow[];
   verification?: VerificationQueue;
   crew?: { config: Record<string, unknown>; summary: string };
@@ -158,11 +159,18 @@ const projected = (frame: unknown) => {
   const f = frame as Frame;
   const requestType = requests.find(r => r.id === f.id)?.type;
   const bound = f.type === 'result' ? { ...f, id: '@request@' } : f;
-  const output = replayFrame<Frame>('frame', { frame: bound, requestType, ...context() });
+  const mark = f.type === 'marks' || requestType === 'marks.get' || requestType === 'marks.set';
+  const output = replayFrame<Frame>('frame', { frame: bound, requestType, ...(mark ? {} : context()) });
   return f.type === 'result' ? { ...output, id: f.id } : output;
 };
 const rawWrite = (frame: unknown) => process.stdout.write(`${JSON.stringify(frame)}\n`);
-const write = (frame: unknown) => rawWrite(projected(frame));
+let remoteReply: Frame | undefined;
+let remote = false;
+const write = (frame: unknown) => {
+  const value = projected(frame);
+  if (remote && value.type === 'result') remoteReply = value as Frame;
+  else rawWrite(value);
+};
 const snapshots: Array<{ type: string; release: (error?: string) => void }> = [];
 const snapshotWaiters: Array<{ type: string; count: number; resolve: () => void }> = [];
 const initialReplay = new Set(['hub.status', 'task.list', 'role.list']);
@@ -339,6 +347,20 @@ function answer(f: Frame) {
         const artifacts = ordered.slice(start, start + scenario.artifactPageSize);
         return ok(f.id, { artifacts, ...(start + artifacts.length < ordered.length ? { more: true, before: artifacts.at(-1)!.id } : {}) });
       }
+    case 'marks.get':
+      return ok(f.id, { marks: scenario.marks ?? { events: null, plans: {}, imported: false } });
+    case 'marks.set': {
+      const before = scenario.marks ?? { events: null, plans: {}, imported: false };
+      // Ordinal numeric instants preserve timestamp order through the recording catalog's age bindings.
+      const marks = replayFrame<{ events: number | null; plans: Record<string,string>; imported: boolean }>('human-marks', {
+        before: { ...before, events: before.events === null ? null : 0 },
+        frame: { ...f, id: '@request@', ...(typeof f.events === 'string' ? { events: before.events === null ? 1 : Math.sign(Date.parse(f.events) - Date.parse(before.events)) } : {}) },
+        histories: Object.fromEntries((scenario.items ?? []).map(it => [it.id, it.planHistory ?? []])), at: now(),
+      });
+      scenario.marks = { ...marks, events: marks.events === null ? null : marks.events === 0 ? before.events : new Date(String(f.events)).toISOString() };
+      write({ type: 'marks', marks: scenario.marks });
+      return ok(f.id, { marks: scenario.marks });
+    }
     case 'topic.list':
       return ok(f.id, { topics: scenario.topics });
     case 'topic.history': {
@@ -579,6 +601,12 @@ if (controlPath) {
         try {
           const cmd = JSON.parse(line) as Record<string, unknown>;
           command = cmd;
+          if (cmd.frame) {
+            const frame = cmd.frame as Frame;
+            requests.push(frame);
+            remote = true; remoteReply = undefined;
+            try { answer(frame); } finally { remote = false; }
+          }
           if (cmd.emit) write(cmd.emit);
           if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map(frame => `${JSON.stringify(projected(frame))}\n`).join(''));
           if (cmd.set) Object.assign(scenario, cmd.set);
@@ -604,7 +632,7 @@ if (controlPath) {
             snapshotWaiters.push({ type: cmd.waitSnapshot, count, resolve: deferred.resolve });
             void deferred.promise.then(() => sock.write(`${JSON.stringify({ ok: true })}\n`));
           } else {
-            sock.write(`${JSON.stringify({ ok: true, ...(cmd.requests ? { requests } : {}) })}\n`);
+            sock.write(`${JSON.stringify({ ok: true, ...(cmd.requests ? { requests } : {}), ...(cmd.frame ? { frame: remoteReply } : {}) })}\n`);
           }
           if (cmd.exit) {
             server?.close();

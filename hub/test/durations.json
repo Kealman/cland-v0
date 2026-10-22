@@ -5613,7 +5613,7 @@
     "nvim/test/panel-placement-component.test.ts::top-bar chips reopen Inbox and Sessions on their chosen side, including a vacant Coordinator": 0.283712,
     "nvim/test/panel-placement-component.test.ts::Topics dock stays above the right Sessions panel with Inbox left and keeps its manual height without duplicates": 0.301446,
     "nvim/test/panel-placement-component.test.ts::topics: gm and its palette action move the panel; its key toggles on the new home": 0.298116,
-    "nvim/test/panel-placement-component.test.ts::version-2 panel homes and occupants round-trip without losing import receipts": 0.296281,
+    "nvim/test/panel-placement-component.test.ts::version-2 panel homes round-trip while shared marks stay out of preferences": 0.296281,
     "nvim/test/qa-shipped.test.ts::ARTIFACT-001 passes through the headless QA runner": 0.534465,
     "nvim/test/qa-shipped.test.ts::PANELS-017 passes through the headless QA runner": 0.441325,
     "nvim/test/qa-shipped.test.ts::PANELS-018 passes through the headless QA runner": 0.420998,

@@ -338,6 +338,7 @@ const toTopic = (row: Row): Topic => {
     updatedAt: row.updated_at as string,
     item: (row.item as string | null) ?? null,
     unread: Number(row.unread ?? 0),
+    readSeq: Number(row.read_seq ?? 0),
     lastMessageAt: (row.last_message_at as string | null) ?? null,
     ...(warning ? { warning } : {}),
   };

@@ -2,7 +2,7 @@
 local state = require('cland.state')
 local uv = vim.uv
 local M = { DEBOUNCE_MS = 200 }
-local path, timer, pending, saved, warned
+local path, timer, pending, saved, warned, marks_imported, legacy_marks
 
 function M.panel_defaults()
   return { items = 'left', inbox = 'right', sessions = 'right', topics = 'right' }
@@ -43,10 +43,12 @@ end
 
 local function snapshot()
   local ui = state.S.ui
+  local events = vim.deepcopy(ui.events or { filter = vim.empty_dict(), muted = {} })
+  if marks_imported then events.last_look = nil end
   return {
     version = 2,
-    plan_seen = vim.deepcopy(ui.plan_seen or vim.empty_dict()),
-    events = vim.deepcopy(ui.events or { filter = vim.empty_dict(), muted = {} }),
+    plan_seen = not marks_imported and legacy_marks and vim.deepcopy(ui.plan_seen or vim.empty_dict()) or nil,
+    events = events,
     preset = ui.preset or vim.NIL,
     panel_homes = vim.deepcopy(ui.panel_homes),
     panels = { left = ui.left, left_kind = ui.left_kind, right = ui.right or vim.NIL, dock = ui.dock },
@@ -95,6 +97,7 @@ local function validate(data)
   assert(vim.tbl_contains(require('cland.items').FILTERS, data.items_filter) or vim.tbl_contains(require('cland.items').LAYERS, data.items_filter), 'invalid items filter')
   assert(data.current_release == nil or (type(data.current_release) == 'string' and data.current_release:match('^%a%-[1-9]%d*$')), 'invalid release pick')
   assert(data.accounts_folded == nil or type(data.accounts_folded) == 'boolean', 'invalid accounts fold')
+  data.had_legacy_marks = data.plan_seen ~= nil or data.events and data.events.last_look ~= nil
   data.plan_seen = data.plan_seen or vim.empty_dict()
   assert(type(data.plan_seen) == 'table', 'invalid plan receipts')
   for id, receipt in pairs(data.plan_seen) do
@@ -124,6 +127,7 @@ end
 function M.load(root)
   if timer then timer:stop(); timer:close(); timer = nil end
   path, pending, warned = root .. '/.cland/ui.json', nil, false
+  marks_imported, legacy_marks = false, nil
   local ui = state.S.ui
   ui.plan_seen = vim.empty_dict()
   ui.events = { filter = vim.empty_dict(), muted = {} }
@@ -141,6 +145,7 @@ function M.load(root)
     ui.accounts_folded = data.accounts_folded or false
     ui.plan_seen = data.plan_seen
     ui.events = data.events
+    if data.had_legacy_marks then legacy_marks = { events = data.events.last_look, plans = vim.deepcopy(data.plan_seen) } end
     ui.preset = data.preset
     ui.left, ui.right, ui.dock = data.panels.left, data.panels.right, data.panels.dock
     ui.panel_homes, ui.left_kind, ui.right = data.sides.homes, data.sides.left_kind, data.sides.right
@@ -153,6 +158,16 @@ function M.load(root)
     state.say('ui.json unreadable or invalid; using default layout', 'ClandAmberBar')
   end
   saved = vim.json.encode(snapshot())
+end
+
+-- Keep the old keys on disk until the hub's durable read/import acknowledgement.
+function M.legacy_marks() return legacy_marks end
+function M.marks_imported()
+  marks_imported, legacy_marks = true, nil
+  state.S.ui.plan_seen = nil
+  state.S.ui.events.last_look = nil
+  M.changed()
+  M.flush()
 end
 
 -- Write completely to a unique sibling, then rename. An interrupted write leaves the previous file intact.
@@ -169,7 +184,9 @@ local function atomic_write(text)
     end)
     if read_ok and type(current) == 'table' then
       local data = vim.json.decode(text)
-      for key, value in pairs(current) do if data[key] == nil then data[key] = value end end
+      for key, value in pairs(current) do
+        if data[key] == nil and not (marks_imported and key == 'plan_seen') then data[key] = value end
+      end
       text = vim.json.encode(data) .. '\n'
     end
     fd = assert(uv.fs_open(tmp, 'wx', 384))

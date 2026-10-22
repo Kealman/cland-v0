@@ -160,6 +160,7 @@ export type Topic = {
   /** The unit of work the topic is bound to (an item id, `T-12`), or null; one topic per item at most. */
   item: string | null;
   /** The human's unread messages: those from others since the human last read the topic (`topic.read`). */
+  readSeq?: number;
   unread: number;
   /** The latest message's time, or null for a topic with no message yet (listed last). */
   lastMessageAt: string | null;
@@ -276,6 +277,7 @@ export type HubEvent =
   | { type: 'session.role'; session: string; role: string | null; previous: string | null; reason: string; ts: string }
   /** A topic changed: created, its status, its warning, its binding or the human's unread count. */
   | { type: 'topic'; topic: Topic }
+  | { type: 'marks'; marks: HumanMarks }
   /** An ask's state changed (answered, withdrawn, cancelled): the thread's card follows it. */
   | { type: 'ask'; topic: string; ask: string; card: AskCard }
   /** The inbox changed (an ask, an approval, a plan, a request, a message): all of it, as `inbox.list` answers. */
@@ -539,11 +541,12 @@ export const SNAPSHOT_LIMITS = {
   topics: MAX_FRAME_BYTES, inbox: MAX_FRAME_BYTES, events: MAX_FRAME_BYTES,
   accounts: 256 * 1024,
 } as const;
+export type HumanMarks = { events: string | null; plans: Record<string, string>; imported: boolean };
 export type SnapshotValues = {
   tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
   items: { items: import('./tracker/tracker.ts').ExplorerSummary[]; done_items?: number };
   sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: import('./crew.ts').CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
-  topics: { topics: Topic[] };
+  topics: { topics: Topic[]; marks: HumanMarks };
   inbox: Inbox & { needsYou: number };
   events: EventsPage;
   accounts: import('./accounts/limits.ts').AccountList;
@@ -684,6 +687,8 @@ export type ClientRequest =
   | { type: 'topic.resolve'; id: string; topic: string }
   /** The human read the topic up to a message (its id; absent: the latest): `{ topic: Topic }` with `unread`. */
   | { type: 'topic.read'; id: string; topic: string; upTo?: string }
+  | { type: 'marks.get'; id: string }
+  | { type: 'marks.set'; id: string; events?: string; plans?: Record<string, string>; import?: boolean }
   /** Subscribe/update the connection's events filter. With filter, returns `{ subscribed: true, events: EventsPage }`; absent resets to all rows. */
   | { type: 'subscribe'; id: string; filter?: EventsFilter }
   /** The human assigns a role to a session, live or not yet connected: `{ session: RoleHolder }`. */
@@ -1061,6 +1066,12 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.topic === 'string';
     case 'topic.create':
       return typeof f.title === 'string' && (f.item === undefined || typeof f.item === 'string');
+    case 'marks.get':
+      return true;
+    case 'marks.set':
+      return (f.events === undefined || typeof f.events === 'string' && Number.isFinite(Date.parse(f.events)))
+        && (f.plans === undefined || isObject(f.plans) && Object.values(f.plans).every(v => typeof v === 'string'))
+        && (f.import === undefined || typeof f.import === 'boolean');
     case 'topic.read':
       return typeof f.topic === 'string' && (f.upTo === undefined || typeof f.upTo === 'string');
     default:

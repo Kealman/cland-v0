@@ -589,6 +589,39 @@ and reports bytes per domain plus five compose/framing samples. It never opens
 the source tracker database or runs Git. Other domains use empty/default scratch
 state and are labelled accordingly. Setup, copying and transport are excluded.
 
+## Human last looks and read marks
+
+The project currently has one human identity. Every authenticated browser cookie,
+Unix UI and stdio UI reads and updates that human's marks; a cookie or connection
+never gets its own copy. The `topics` snapshot includes `marks`:
+`{ events: string | null, plans: Record<string, string>, imported: boolean }`.
+`marks.get` returns `{ marks }` for clients using individual reads. `marks.set`
+accepts an optional `events` ISO timestamp and/or `plans` mapping item IDs to plan
+history receipt IDs, and returns the complete `{ marks }`. Both frames are
+human-only, including on the web; there is no agent tool or CLI command for them.
+A changed mark emits a `marks` replacement delta, with the usual model sequence
+and replay guarantees, and a legacy push for Neovim. Marks persist in the hub's
+SQLite store and survive reopening it.
+
+An events timestamp only increases. Plan receipts are opaque IDs ordered by the
+hub's plan history, including publications with identical timestamps; older
+receipts cannot replace later ones. The map uses canonical `T-<number>` keys so
+legacy and current item prefixes refer to the same plan. Normal writes reject
+unknown receipts. Topics keep their existing `topic.read { topic, upTo? }` act:
+`upTo` is a message ID (absent means the latest); `Topic.readSeq` exposes the
+highest durable message number read. A later older read cannot decrease it.
+The topic replacement and its authoritative unread count reach all clients.
+
+Neovim first reads the shared marks, then imports legacy `events.last_look` and
+`plan_seen` from `.cland/ui.json` with `marks.set { import: true, ... }`. The hub
+merges forward and records `imported` in the same durable write. Only the first
+import applies; retries and stale copies cannot overwrite current marks. An
+import may preserve a receipt whose history has already been retained away,
+without replacing a known newer receipt. After the acknowledgement Neovim
+removes the legacy keys atomically, preserving filters, folds, current release,
+other owners' preferences and existing pins/mutes. If the reply or local cleanup
+is interrupted, the next start reads the durable receipt before retrying cleanup.
+
 ## Identity and delivery
 
 The Implementer holding an item's claim leads that item. Send a report to `@lead T-n` with `send {to: ["lead T-n"], text: "…"}`; human topic messages may mention `@lead T-n` in their text. The hub resolves this address from committed tracker facts immediately before recording: to the nearest node lead up the item's parent chain, then the Coordinator. When the sender leads that node, the address skips its own claims and reaches the next lead; an Implementer reports blocked with `to: ["lead T-n"]` for its own item. Stopped or dead Leads are skipped, while disconnected living Leads retain queued delivery. Explicit session names and role addresses, including `coordinator`, keep their ordinary meaning. The recorded addressee is the resolved session; a later claim change cannot move its queued report or progress note, including across a restart. Unknown and closed items are refused with an error naming the item and telling the sender to address `coordinator` instead. A human's claim does not become an agent addressee. Ordinary agent-send permissions still apply.

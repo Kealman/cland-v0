@@ -1515,6 +1515,11 @@ export class Tracker {
     return { id, file: meta.file };
   }
 
+  /** Hub publication order, including identical timestamps and retired item IDs during import. */
+  planHistory(rawId: string): readonly PlanHistoryEntry[] {
+    return [...(this.#planHistory.get(`T-${idNumber(rawId)}`) ?? [])];
+  }
+
   view(rawId: string): ItemView {
     const { id, file } = this.#require(rawId);
     const indexed = this.#index.get(id);

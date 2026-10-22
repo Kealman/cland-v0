@@ -1,4 +1,5 @@
 import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
+import { mergeHumanMarks } from './human-marks.ts';
 import type { AnswerAttribution } from '../protocol.ts';
 import { ModelRing } from './model-ring.ts';
 import { heartbeatDigest } from './heartbeat.ts';
@@ -2801,6 +2802,22 @@ export class HubCore {
     this.#move(topic, 'resolve', `resolved by ${by}`);
     this.#publishTopics();
     return this.#topicOrThrow(id);
+  }
+
+  /** One human identity owns the project; browser cookies and Unix clients share its marks. */
+  humanMarks(): import('../protocol.ts').HumanMarks {
+    const value = this.#store.meta('human-marks');
+    return value ? JSON.parse(value) : { events: null, plans: {}, imported: false };
+  }
+
+  setHumanMarks(frame: Extract<import('../protocol.ts').ClientRequest, { type: 'marks.set' }>, history: (id: string) => readonly { id: string }[]): import('../protocol.ts').HumanMarks {
+    const before = this.humanMarks();
+    const marks = mergeHumanMarks(before, frame, history);
+    if (!isDeepStrictEqual(before, marks)) {
+      this.#store.setMeta('human-marks', JSON.stringify(marks));
+      this.#emit({ type: 'marks', marks });
+    }
+    return marks;
   }
 
   /** The human read a topic up to a message (else its latest): its unread count drops, subscribers hear it. */

@@ -37,7 +37,7 @@ end
 function M.summary(look)
   local n, warnings = 0, 0
   for _, r in ipairs(M.latest) do
-    if epoch(r.ts) > epoch(look or prefs().last_look) then n = n + 1; if r.warning then warnings = warnings + 1 end end
+    if epoch(r.ts) > epoch(look or require('cland.marks').events()) then n = n + 1; if r.warning then warnings = warnings + 1 end end
   end
   return n == 200 and M.latest_more and '200+' or tostring(n), warnings
 end
@@ -124,11 +124,14 @@ function M.load(older)
 end
 
 function M.visit()
-  M.visit_look = prefs().last_look
   local sec, usec = vim.uv.gettimeofday()
-  prefs().last_look = os.date('!%Y-%m-%dT%H:%M:%S', sec) .. ('.%03dZ'):format(math.floor(usec / 1000))
-  require('cland.ui').changed()
-  state.changed()
+  local at = os.date('!%Y-%m-%dT%H:%M:%S', sec) .. ('.%03dZ'):format(math.floor(usec / 1000))
+  local marks = require('cland.marks')
+  marks.when_ready(function()
+    M.visit_look = marks.events()
+    marks.set({ events = at })
+    state.changed()
+  end)
 end
 
 function M.enter()

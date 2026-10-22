@@ -143,7 +143,10 @@ test('events keys, warning/dim presentation, independent mutes, last look and co
   const saved = JSON.parse(await readFile(path, 'utf8'));
   assert.deepEqual(saved.visibility, { topics: { general: 'pin' } });
   assert.deepEqual(saved.other_owner, { keep: 'yes' });
-  assert.ok(saved.events.last_look > lastLook);
+  const sharedLook = await c.lua<string>("return require('cland.marks').events()");
+  assert.ok(sharedLook > lastLook);
+  assert.equal('last_look' in saved.events, false);
+  assert.equal('plan_seen' in saved, false);
   assert.deepEqual(saved.events.filter, { kinds: ['verdict'], warnings: true });
   assert.deepEqual(saved.events.muted, []);
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);

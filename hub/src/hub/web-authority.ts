@@ -97,6 +97,8 @@ export const WEB_AUTHORITY = {
   'topic.history': true,
   'topic.list': true,
   'topic.read': true,
+  'marks.get': true,
+  'marks.set': true,
   'topic.rename': true,
   'topic.resolve': true,
   'topic.send': true,

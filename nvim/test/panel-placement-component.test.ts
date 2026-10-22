@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { skip, startShell, baseScenario, ts, requestsOf, statusLine, type Shell } from './shell-fixture.ts';
 import { eventually } from './fixture.ts';
 
-test('version-2 panel homes and occupants round-trip without losing import receipts', { skip }, async t => {
+test('version-2 panel homes round-trip while shared marks stay out of preferences', { skip }, async t => {
   const c = await startShell(t);
   await place(c, 'sessions', 'left');
   await place(c, 'items', 'right');
@@ -18,8 +18,8 @@ test('version-2 panel homes and occupants round-trip without losing import recei
   assert.equal(saved.version, 2);
   assert.deepEqual(saved.panel_homes, { items: 'right', sessions: 'left', inbox: 'right', topics: 'right' });
   assert.deepEqual(saved.panels, { left: true, left_kind: 'sessions', right: 'items', dock: false });
-  assert.deepEqual(saved.plan_seen, { 'E-789': 'plan-receipt' });
-  assert.equal(saved.events.last_look, '2026-10-20T10:00:00Z');
+  assert.equal('plan_seen' in saved, false);
+  assert.equal('last_look' in saved.events, false);
   await c.lua("require('cland.ui').load(require('cland.state').S.root); require('cland.layout').build({insert=false})");
   await expectPanel(c, 'left', 'SESSIONS');
   await expectPanel(c, 'right', 'ITEMS');
