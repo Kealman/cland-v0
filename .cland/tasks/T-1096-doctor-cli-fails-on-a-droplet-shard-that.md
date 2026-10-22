@@ -3,7 +3,7 @@ id: T-1096
 kind: task
 title: doctor-cli fails on a droplet shard that never builds the web bundle
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-839
 branch: t/T-1096-doctor-cli-fails-on-a-droplet-shard-that
 created: 2026-10-22T07:20:08.870Z
-updated: 2026-10-22T08:17:20.361Z
+updated: 2026-10-22T08:27:22.001Z
 ---
 
 ## Summary
@@ -26,10 +26,12 @@ The E-416 stage cover 5be1db36 (A-9000, shard-1 log A-9001, dev 90c54f5a, Linux 
 
 - [x] C1. A hub-only shard whose selection contains `hub/test/doctor-cli.test.ts` but neither Web tests nor `web-auth.test.ts` builds the web bundle before its workers start; a suite-runner test proves it the way "a hub-only shard builds the bundle before its secret-scan worker starts" does (test).
   - done: impl-1096 · 2026-10-22T08:16:37.163Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1096-final · 2026-10-22T08:27:21.591Z · commit 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
 - [x] C2. Every other hub test that reads the built bundle or its stamp is either in the same build condition or independent of the checkout's `web/dist`, and the list is in the item topic from a search of hub/test (test).
   - done: impl-1096 · 2026-10-22T07:25:18.893Z
   - verified: rev-23 [reviewer] · run rev-20261022-1096-source · 2026-10-22T07:29:31.249Z · commit 7c1469bc81d0a724dc87d64eeebb919e4116ec37
   - verified: rev-23 [reviewer] · run rev-20261022-1096-source-2 · 2026-10-22T08:17:20.361Z · commit 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
+  - verified: rev-23 [reviewer] · run rev-20261022-1096-final · 2026-10-22T08:27:21.591Z · commit 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
 
 ## Comments
 
@@ -108,3 +110,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta source clear under Coordinator d4096542: exactly posted shared fix e2233f5e, only palette test and exact 7.5s dated E-880 allowance. Test blob46dbe218 identical to reviewed T-1097; original bundle implementation/test/docs unchanged. C2 audit refreshed. Historical failed task receipts retained; C1 final evidence awaits ordinary mode-free configured run at this exact head. QA none.
 
 Criteria: C2 verified.
+
+### impl-1096 · 2026-10-22T08:26:51.977Z
+
+Mode-free verify fa8f555e at exact delta-reviewed 34650f114ea4adcd190ce75dcb9c1b758f3b15c9 passed (A-9051): Linux x64 droplet c-8 lon1, 2412/2412 pass, T1/all-T2 fallback across hub and Neovim/actual Web exit 0. T3 absent, deferred to periodic/integrated occasions (absent configured batch tiers). Budget/tripwire diagnostics report-only; host typecheck gate 2a4876c7 reused, not repeated. Lifetime 498 s, cost $0.0346. Asked Reviewer to settle C1/final evidence; head unchanged, claim retained, no merge.
+
+### rev-23 · 2026-10-22T08:27:21.591Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1096-final
+commit: 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear: original A-9051 / fa8f555e matches reviewed head; independently audited 2412 ordinary passes / 366 file passes, actual T1/all-T2/Web exit0, no load-scoped finishes. Former palette blocker passes both sizes, parent4.762626766s. C1 completed with unchanged-source local T3 runner proof A-9004/A-9005/A-9007 plus green configured task gate; explicitly no remote suite-runner/T3 execution. C2 source audit retained. Linux498s/$0.0346; host2a4876c7 reused, report-only diagnostics retained. C1/C2 verified; QA none.
+
+Criteria: C1 verified, C2 verified.
