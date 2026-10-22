@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T15:17:28.867Z
+updated: 2026-10-22T15:26:33.160Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ The human's `topic.send` takes an optional kind, `message` by default, `decision
 - [ ] C4. A withdraw after the message was injected is refused naming the stage, and an agent's withdraw and another sender's message are refused (test).
 - [ ] C5. Neovim's thread shows a withdrawn message with the dropped glyph and colour (test).
 - [ ] C6. `hub/README.md` and `nvim/README.md` describe the kinds and the withdraw (docs).
+
+## Comments
+
+### impl-1117 · 2026-10-22T15:26:33.160Z
+
+TDD progress: kind/history/second-client delta tests red→green; busy fake-session withdraw red→green; raw fake-spoke tests preserve progress and next-message delivery across accepted-before-injection and late ack. A regression for completed but unconfirmed adapter submission caught false withdrawal success; a durable injection-started fence now refuses it. Applying Coordinator's decision: only human Question creates a wait; Message/Decision preserve existing questions without starting waits. Neovim withdrawal renderer test added and protocol recordings refreshed (24/24 thread assertions, local macOS); full verification awaits source review.

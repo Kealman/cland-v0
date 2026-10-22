@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-851
 branch: t/T-1109-one-approval-record-in-the-hub-in-the
 created: 2026-10-22T15:16:11.019Z
-updated: 2026-10-22T15:17:19.870Z
+updated: 2026-10-22T15:28:57.466Z
 ---
 
 ## Summary
@@ -58,3 +58,9 @@ The records ride in the snapshot's inbox section. Each change pushes an `approva
 - [ ] C7. In headless Neovim on recorded frames, ↵ on a Claude Code approval row still attaches the session (test).
 - [ ] C8. The Neovim recordings that carry the inbox are refreshed with `npm run test:nvim-fixtures`, and each file's frame count change is listed in the item topic (test).
 - [ ] C9. `hub/README.md` describes the approval record. Its Claude Code capability row says approvals stay in the TUI and their records are marked to answer in Neovim (docs).
+
+## Comments
+
+### impl-1109 · 2026-10-22T15:28:57.466Z
+
+Implemented test-first at the epic's frame/recorded-client seams: explicit native request/close callbacks, scoped request records and deltas, TUI fallback, needs-you per request, allowlisted 64 KiB UTF-8 subjects, durable archived outcome, CLI state/choices/outcomes, and recorded Neovim Enter attachment. Coordinator confirmed sessionId:nativeRequestId (6b74c26b); reconnect mapping belongs to T-1113. Targeted T2 frame tests 7/7 and snapshot tests 12/12, existing inbox component tests 10/10 on macOS working tree. Recording refresh counts posted in the item topic. Final check/review preparation underway; no full verification yet.

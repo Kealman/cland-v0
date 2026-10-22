@@ -3,8 +3,9 @@ id: T-1115
 kind: task
 title: Key contexts per area and field, and one area slot in the shell
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-852
 branch: t/T-1115-key-contexts-per-area-and-field-and-one
 created: 2026-10-22T15:16:12.148Z
-updated: 2026-10-22T15:17:23.125Z
+updated: 2026-10-22T15:30:11.275Z
 ---
 
 ## Summary
@@ -35,8 +36,19 @@ Today one chord resolves to one action for the whole page. Digits `1` to `7` alw
 
 ## Acceptance criteria
 
-- [ ] C1. The same physical key resolves to the Items action in Items and to the focused area's own action in a context that declares it, with exact modifiers, and every existing Items and Plan binding and `1` to `7` in the shell resolve as before (test).
-- [ ] C2. A field that declares the composer context receives its context's bindings, and any other field still receives only `⌘K` (Web test).
-- [ ] C3. A key declared in the Sessions table but not handled by its view does nothing there and is absent from `?` in Sessions; `?` in Items lists the same keys and labels as before (Web test).
-- [ ] C4. Inbox, Sessions, Topics, Events, Artifacts and Accounts render through the area slot with their stand-in lists, selection and drawer as before, the shell has one key listener, and the existing shell, palette, fold and Items Web tests pass unchanged (Web test).
-- [ ] C5. `web/README.md` under Palette and keys describes the contexts, the per-area tables and how an area declares the actions it handles (docs).
+- [x] C1. The same physical key resolves to the Items action in Items and to the focused area's own action in a context that declares it, with exact modifiers, and every existing Items and Plan binding and `1` to `7` in the shell resolve as before (test).
+  - done: impl-1115 · 2026-10-22T15:30:00.061Z
+- [x] C2. A field that declares the composer context receives its context's bindings, and any other field still receives only `⌘K` (Web test).
+  - done: impl-1115 · 2026-10-22T15:30:00.326Z
+- [x] C3. A key declared in the Sessions table but not handled by its view does nothing there and is absent from `?` in Sessions; `?` in Items lists the same keys and labels as before (Web test).
+  - done: impl-1115 · 2026-10-22T15:30:00.445Z
+- [x] C4. Inbox, Sessions, Topics, Events, Artifacts and Accounts render through the area slot with their stand-in lists, selection and drawer as before, the shell has one key listener, and the existing shell, palette, fold and Items Web tests pass unchanged (Web test).
+  - done: impl-1115 · 2026-10-22T15:30:00.549Z
+- [x] C5. `web/README.md` under Palette and keys describes the contexts, the per-area tables and how an area declares the actions it handles (docs).
+  - done: impl-1115 · 2026-10-22T15:30:00.786Z
+
+## Comments
+
+### impl-1115 · 2026-10-22T15:28:58.474Z
+
+Implemented context-partitioned physical-code resolution, explicit field opt-in, handled-action help/palette and the shared non-Items AreaSlot. TDD observed resolver red (Sessions d wrongly returned plan-discuss), browser field red (composer Enter unclaimed), ordinary field ancestor red, and palette contextual-action red before fixes. Existing Web test files have not been edited. Local macOS targeted runs passed: pure resolver, new key-contexts (3 tests; each <1.1s), unchanged palette/help, folds and shell. Full queued verification follows a clear source review at its exact head; no suite receipt is claimed yet.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-21T02:52:35.891Z
+updated: 2026-10-22T15:23:15.405Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -376,3 +376,7 @@ Incident: 6th Coordinator harness exit since 2026-10-18, at 2026-10-20 00:12Z (o
 ### coord · 2026-10-21T02:52:35.891Z
 
 Incident 2026-10-20 21:33Z – 2026-10-21 02:51Z (7th coord harness exit): coord's Claude Code harness (pid 61982, job 8fb7be60) died at 21:33:12Z; the hub re-filled the role, but the bridge closed at 22:33Z with no Claude process behind it, so the crew ran without a Coordinator for ~5 h 20 m. Stranded: T-981 ready 21:44Z (and impl-981's question), T-982 ready 21:49Z, periodic dev T3 red at 23:49Z (T-1032 auto-filed). No merges, launches or covers happened. The stand-in (cland-impl) relaunched coord at 02:51Z with session resume --relaunch + role set (new pid 15046, job 9b3af5a6). Coord's tmp helper scripts lived in the old job dir and had to be copied.
+
+### coord · 2026-10-22T15:23:15.405Z
+
+2026-10-22 15:21–15:23Z: DigitalOcean had no c-8 capacity in any snapshot region (lon1, nyc1, sfo2). Two T-1104 mode-free runs failed before execution (A-9200, A-9201: 'droplet size c-8 unavailable in regions lon1, nyc1, sfo2'). Remedy for now: coord authorized a one-off --executor local for T-1104. Open question: should the snapshot carry a fourth region, or should a smaller fallback size apply when c-8 is unavailable everywhere?
