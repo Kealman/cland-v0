@@ -2,8 +2,8 @@
 id: T-1096
 kind: task
 title: doctor-cli fails on a droplet shard that never builds the web bundle
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-839
 branch: t/T-1096-doctor-cli-fails-on-a-droplet-shard-that
 created: 2026-10-22T07:20:08.870Z
-updated: 2026-10-22T08:38:48.635Z
+updated: 2026-10-22T08:43:26.997Z
+closed: 2026-10-22T08:43:26.997Z
 ---
 
 ## Summary
@@ -166,3 +167,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head clear: original A-9059 / ee41e5ab matches exact reviewed67a2f065; independently audited2425 ordinary passes/370 file passes, actual T1/all-T2/Web exit0, no load-scoped finishes. C1 uses accepted source plus local post-merge A-9053 2/2 and prior A-9007 45/45; zero remote runner/T3 finishes, explicitly not LinuxT3 proof. C2 audit retained. Linux476s/$0.0330; host7339b3a reused; report-only warnings/four missing baselines retained. C1/C2 verified; QA none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T08:43:26.997Z
+
+Merged 09848e04276afd7cd752822c2ffe081336682e59 onto dev.
