@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-824
 branch: t/T-1034-a-claude-code-auto-update-re-exec-looks
 created: 2026-10-21T05:59:56.127Z
-updated: 2026-10-21T23:28:07.240Z
+updated: 2026-10-22T00:52:06.187Z
 ---
 
 ## Summary
@@ -43,6 +43,8 @@ Evidence: the hub's role revocation events for coord at 2026-10-20T21:33Z and 20
   - done: impl-1034 · 2026-10-21T23:18:17.251Z
   - verified: rev-23 [reviewer] · run rev-20261021-1034-source-4 · 2026-10-21T23:18:41.801Z · commit cee548ee1b48a32359b921c1862a213554da0743
   - verified: rev-23 [reviewer] · run rev-20261021-1034-task-evidence · 2026-10-21T23:28:07.240Z · commit cee548ee1b48a32359b921c1862a213554da0743
+  - verified: rev-23 [reviewer] · run rev-20261022-1034-source-5 · 2026-10-22T00:40:57.223Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
+  - verified: rev-23 [reviewer] · run rev-20261022-1034-task-evidence-2 · 2026-10-22T00:52:06.187Z · commit ada6e304df0cbccef19efe44e506afd19f7f5488
 
 ## Comments
 
@@ -147,5 +149,52 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-8790/488394cb same source-clear head exits0: T1/fallback all hub+Neovim T2/actual Web;2373 ordinary test passes,361 files,75 scoped load test/file passes. Schedule15/store27 and all seven formerly failing compatibility paths pass unchanged;15 new identities each have five distinct passing load finishes and explicit5/5. Max owned load0.575685653s. Host gate reused, lint/duration/resource/ratchet report-only;6 missing baselines. Task evidence clear; final C1–C3 marks/landing clearance await Coordinator-required same-head full cover including native Claude T3. C4 current; A-8786 failed history retained; QA none. Audit A-8791.
+
+Criteria: C4 verified.
+
+### impl-1034 · 2026-10-22T00:39:02.958Z
+
+Corrected native-full lifecycle regression at pushed ada6e304 (tree9683a903): approved 1s default plus dedicated final-observation timer, verified same-native replacement, explicit test grace for native death consumers, and reconnect-before-missing default regression. C1–C4 remain implemented/done. Audit A-8810; original local red/green and targeted evidence A-8811 (45 distinct tests, local darwin/arm64, not configured/full cover). Prior failed full A-8807 remains historical red. Requesting fresh source review before exact-head mode-free verify; Coordinator full rerun remains required. QA none.
+
+### rev-23 · 2026-10-22T00:40:42.961Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1034-full-red
+commit: cee548ee1b48a32359b921c1862a213554da0743
+scope: evidence
+findings: [{"severity":"medium","text":"M6 compatibility: required full A-8807 fails five genuine-death/exit consumers because unconditional30s grace exceeds unchanged5s frame/poll and15s hold deadlines. Coordinator approved1s default plus independent expiry/fresh native proof and deterministic fixture timing, without weakening final assertions.","file":"hub/src/adapters/claude-code.ts","line":625}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Historical full97dce9d7 atcee548ee exits1:T1/T2pass,T3fivefail,3443passes/5skips,no completed Neovim/Web cover. Actual errors comprise3frame5000ms timeouts,lead-routing polling5000ms andsession-holds polling15000ms. A-8790 remains task-only green; final C1–C3 unverified. Currentada6e304 correction reviewed separately perCoordinator8911c291. Detailed combined failure/source audit A-8812.
+
+### rev-23 · 2026-10-22T00:40:57.223Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1034-source-5
+commit: ada6e304df0cbccef19efe44e506afd19f7f5488
+scope: full
+findings: [{"severity":"low","text":"L1 evidence wording: A-8810 describes all five A-8807 failures as no-frame5000ms. Actual errors are three such frame waits, lead-routing polling5000ms and session-holds polling15000ms. Correct the retained audit wording without rerunning or changing source."}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Coordinator8911c291 approval verified. M6 resolved: production1s default from first missing observation, dedicated expiry invoking fresh same-native discovery, verified adoption; timer cleanup on adoption/unwatch/close. Prior identity/stop/relaunch/terminal-close fences retained. Independent default death/reconnect-first/shutdown tests and explicit100ms native fixture grace preserve final assertions and existing wait bounds. No blocking Standards/Spec finding; one low retained-evidence wording correction. C4 updated procedure verified. A-8811 local45 distinct passes on2e24d3ef carried by independently checked runtime-equivalent finaldelta (nvim type assertions/README spelling only); final layers4/4,nvim typecheck/lint0, prior hub source-equivalent typecheck0. Not current configured/full proof; A-8807 failed history preserved. Fresh exact-head mode-free then Coordinator full/native cover required; C1–C3 final marks pending, QA none. Audit A-8812.
+
+Criteria: C4 verified.
+
+### rev-23 · 2026-10-22T00:52:06.187Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1034-task-evidence-2
+commit: ada6e304df0cbccef19efe44e506afd19f7f5488
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-8814/523a9f19 matches source-clear ada6e304: T1/all-T2 hub+Neovim/actualWeb exit0,2376ordinary test/361file passes plus90 scoped load passes;18new identities each distinct explicit5/5 including production-default death/reconnect-first/shutdown. Schedule18/store27/project-clock4 pass. A-8813 independently inspected,L1 wording corrected. Host gate reused,lint/duration/resource/ratchet report-only;6missing baselines. Task evidence clear; C1–C3 final marks still await Coordinator full/native T3 rerun—A-8807 failures cannot be established fixed by task selection alone. C4 current;QA none. Audit A-8815.
 
 Criteria: C4 verified.
