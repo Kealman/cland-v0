@@ -1,4 +1,7 @@
-import { PROTOCOL_VERSION, type AccountList, type Artifact, type ClientHello, type EventsPage, type HarnessProcessView, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
+import { PROTOCOL_VERSION, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
+import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
+import { replaceAccount, type AccountsState } from './accounts/state.ts';
+import { replaceArtifact, type ArtifactsState } from './artifacts/state.ts';
 import type { Area } from './keymap.ts';
 import { compareReleases } from './current-release.ts';
 
@@ -18,7 +21,7 @@ function explorerItem(item: ItemSummary): ExplorerSummary {
 }
 
 
-export type ConnectionState = {
+export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   project: string; live: boolean; restartRequired?: boolean;
   command?: <T>(frame: Command<WorkbenchRequest>) => Promise<T>;
   resolveItem?: (id: string) => Promise<{ item: ExplorerSummary; ancestors: ExplorerSummary[] } | undefined>;
@@ -26,7 +29,6 @@ export type ConnectionState = {
   coordinator?: string | null;
   topics?: Topic[];
   marks?: SnapshotValues['topics']['marks'];
-  sessions?: SnapshotValues['sessions']['rows'];
   crew?: SnapshotValues['sessions']['crew']['config'];
   needsYou?: number;
   approvals?: number;
@@ -173,11 +175,8 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     changed(state);
   }
   function readObjects() {
-    request({ type: 'session.list', id: 'shell-sessions' });
     request({ type: 'topic.list', id: 'shell-topics' });
     request({ type: 'events.list', id: 'shell-events', limit: 200 });
-    request({ type: 'artifact.list', id: 'shell-artifacts' });
-    request({ type: 'account.list', id: 'shell-accounts' });
   }
   function items(value: ExplorerSummary[]) {
     state = { ...state, items: value, closedTasks: parent => closed.get(parent) ?? [], closedTasksLoaded: parent => closed.has(parent), loadClosed,
@@ -237,6 +236,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           if (reload) { stopped = true; clearTimeout(deadline); socket.close(); location.reload(); return; }
         }
         request({ type: 'hub.status', id: 'connection-status' });
+        request({ type: 'session.list', id: 'shell-sessions' });
         request({ type: 'artifact.list', id: 'shell-artifacts' });
       } else if (frame.type === 'snapshot') {
         if (frame.domain === 'tracker') state = { ...state, tracker: frame.value, siblingOrders: {}, plansById: {} };
@@ -246,12 +246,15 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           for (const parent of closedWanted) loadClosed(parent);
         }
         else if (frame.domain === 'sessions') {
-          state = { ...state, coordinator: frame.value.coordinator, sessions: frame.value.rows, crew: frame.value.crew.config, idleFrom: frame.value.crew.config.idle_from ?? [] };
+          state = { ...state, coordinator: frame.value.coordinator, ...sessionSnapshot(frame.value, Date.now()), crew: frame.value.crew.config, idleFrom: frame.value.crew.config.idle_from ?? [] };
           rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
         } else if (frame.domain === 'inbox') inbox(frame.value);
         else if (frame.domain === 'topics') { state = { ...state, topics: frame.value.topics, marks: frame.value.marks }; rows('Topics', frame.value.topics); }
         else if (frame.domain === 'events') rows('Events', frame.value.rows.map(row => ({ id: row.id, title: row.text })));
-        else if (frame.domain === 'accounts') rows('Accounts', frame.value.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
+        else if (frame.domain === 'accounts') {
+          state = { ...state, accounts: frame.value };
+          rows('Accounts', frame.value.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
+        }
         changed(state);
       } else if (frame.type === 'resync' || frame.type === 'snapshot.refused') {
         socket.close();
@@ -291,24 +294,26 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         state = { ...state, plansById: { ...state.plansById, [id]: frame.ok ? (frame.value as { stages: PlanStages }).stages : [] } };
         changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-sessions') {
-        rows('Sessions', (frame.value as { processes: HarnessProcessView[] }).processes.map(row => ({ id: row.name, title: row.label ?? row.name })));
+        state = { ...state, adapters: (frame.value as { adapters: Record<string, Capabilities> }).adapters };
+        changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-topics') {
         state = { ...state, topics: (frame.value as { topics: Topic[] }).topics };
         rows('Topics', state.topics!);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-events') {
         rows('Events', (frame.value as EventsPage).rows.map(row => ({ id: row.id, title: row.text })));
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-artifacts') {
-        rows('Artifacts', (frame.value as { artifacts: Artifact[] }).artifacts.map(row => ({ id: row.id, title: row.title })));
-      } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-accounts') {
-        rows('Accounts', (frame.value as AccountList).accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
+        state = { ...state, artifacts: (frame.value as { artifacts: Artifact[] }).artifacts };
+        rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
       } else if (frame.type === 'marks') { state = { ...state, marks: frame.marks }; changed(state); }
       else if (frame.type === 'inbox') inbox(frame.inbox);
-      else if (frame.type === 'session.row') { state = { ...state, sessions: [...(state.sessions ?? []).filter(row => row.key !== frame.key), ...(frame.row ? [frame.row] : [])] }; changed(state); }
+      else if (frame.type === 'session.row') {
+        state = { ...state, sessions: replaceSession(state.sessions ?? [], frame.key, frame.row) };
+        rows('Sessions', state.sessions!.map(row => ({ id: row.name, title: row.label })));
+      }
       else if (frame.type === 'session.usage') { state = { ...state, sessions: (state.sessions ?? []).map(row => row.sessionId === frame.sessionId ? { ...row, usage: frame.usage } : row) }; changed(state); }
       else if (frame.type === 'crew') { state = { ...state, crew: frame.config, idleFrom: frame.config.idle_from }; changed(state); }
-      else if (frame.type === 'role.filled' || frame.type === 'role.vacant' || frame.type === 'presence') {
+      else if (frame.type === 'role.filled' || frame.type === 'role.vacant') {
         request({ type: 'hub.status', id: 'connection-status' });
-        request({ type: 'session.list', id: 'shell-sessions' });
       } else if (frame.type === 'task') {
         itemRevisions.set(frame.id, (itemRevisions.get(frame.id) ?? 0) + 1);
         if (frame.done_items !== undefined) state = {...state,doneItems:frame.done_items};
@@ -339,12 +344,24 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       } else if (frame.type === 'event') {
         request({ type: 'events.list', id: 'shell-events', limit: 200 });
       } else if (frame.type === 'artifact') {
-        request({ type: 'artifact.list', id: 'shell-artifacts' });
+        state = { ...state, artifacts: replaceArtifact(state.artifacts, frame.artifact) };
+        rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
+      } else if (frame.type === 'verification.queue') {
+        state = { ...state, verification: { queue: frame.queue, receivedAt: Date.now() } };
+        changed(state);
       } else if (frame.type === 'account') {
-        request({ type: 'account.list', id: 'shell-accounts' });
-      } else if (frame.type === 'session.process' || frame.type === 'sessions.pruned') {
-        request({ type: 'session.list', id: 'shell-sessions' });
+        state = { ...state, accounts: replaceAccount(state.accounts, frame.account) };
+        rows('Accounts', state.accounts!.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
+      } else if (frame.type === 'session.process') {
+        if (frame.archived !== undefined) { state = { ...state, archivedSessions: frame.archived }; changed(state); }
+      } else if (frame.type === 'sessions.pruned') {
+        state = { ...state, archivedSessions: frame.archived, sessions: (state.sessions ?? []).filter(row => !frame.sessionIds.includes(row.sessionId)) };
+        rows('Sessions', state.sessions!.map(row => ({ id: row.name, title: row.label })));
       } else if (frame.type === 'visibility') {
+        if ('rows' in frame) {
+          state = { ...state, artifacts: frame.rows.artifacts.reduce((rows, artifact) => replaceArtifact(rows, artifact), state.artifacts ?? []) };
+          rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
+        }
         readObjects();
       } else if (frame.type === 'error') {
         if (frame.code === 'version') {

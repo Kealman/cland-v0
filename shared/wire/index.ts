@@ -1196,3 +1196,12 @@ export type Welcome = Extract<HubFrame, { type: 'welcome' }>;
 export type Result = Extract<HubFrame, { type: 'result' }>;
 export type ErrorFrame = Extract<HubFrame, { type: 'error' }>;
 export const PROTOCOL_VERSION = 2;
+
+// hub/src/adapters/contract.ts
+export type Reliability = 'reliable' | 'heuristic' | 'none';
+export type Capabilities = {
+  terminal: 'none';
+  launchPolicy?: 'rules, not a sandbox';
+  history: Reliability; usage: Reliability; setModel: Reliability; approvalRelay: Reliability;
+  states: Record<Exclude<SessionState, 'unknown'>, Reliability>;
+};

@@ -117,16 +117,61 @@ needs-you count prefixes the tab title. The Coordinator and needs-you controls
 navigate to Sessions and Inbox respectively.
 
 The connection negotiates snapshots, numbered deltas and slim frames. The initial
-snapshot supplies tracker configuration, open item summaries and all non-task rows, sessions, topics, inbox,
-events and accounts; `hub.status` supplies the project name and `artifact.list`
-the artifact inventory. Item deltas replace or remove rows directly, without a
-`task.list` reread. Reconnection takes a fresh snapshot, retaining the previous
-display while offline. Inbox pushes update attention immediately;
-presence/Coordinator changes refresh status.
+snapshot supplies tracker configuration, open item summaries and all non-task rows,
+merged sessions, roles, the verification queue, topics, inbox, events and account
+views. `hub.status` supplies the project name; one `session.list` reads adapter
+capabilities and one `artifact.list` reads the artifact inventory per connection.
+Item deltas replace or remove rows directly, without a `task.list` reread.
+Reconnection takes fresh snapshots, retaining the previous display while offline.
+Inbox pushes update attention immediately; Coordinator changes refresh status.
 Task deltas carry full verdict history: the client selects the latest per kind
 and retains its history round, matching the snapshot projection. Any item
 replacement/removal invalidates cached sibling orders for its old and new
 parent before applying a fresh order supplied by a rank event.
+
+## Area modules and live state
+
+`src/AreaSlot.tsx` registers each non-Items area as an `AreaModule`: `Pane` is
+its list, `Page` is its detail in a pane (including ⌘Enter in the other pane),
+and `Drawer` is its selected object's drawer. Every slot receives the current
+`connection`, rows, selection and selection callback; pane controls expose handled
+shortcuts through a ref. The module declares its key `context` and `handledActions`.
+The shell's shared dispatcher, help and palette use those declarations. Declared
+Sessions and Artifacts mutation keys remain inactive until their slices implement
+them. Modules mark their own content with the matching `data-key-context`.
+
+Sessions, Accounts and Artifacts live in `src/sessions/`, `src/accounts/` and
+`src/artifacts/`. They retain the ID/title inventories and details for now, shared
+through `AreaObjects.tsx`. Inbox, Topics and Events keep their existing stand-ins;
+Items retains its tree, views and card. Sessions reserves separate component files
+for `SessionsHeader`, `AccountsStrip`, `VerifyLine` and `SessionGroups`, all empty
+until their following slices land; each receives the same area props so those
+lanes can grow independently of the shell.
+
+`ConnectionState` includes the state types from each area's `state.ts`:
+
+| Area | Hub state available to its slots |
+| --- | --- |
+| Sessions | `sessions` (complete merged rows by stable key), `archivedSessions`, `roles` including launch defaults, `adapters`, and `verification` with `queue` and client `receivedAt` milliseconds |
+| Accounts, and the Sessions strip | `accounts`: registry path, optional registry error and complete views in registry order, including windows, source, reading time and limited mark |
+| Artifacts | `artifacts`: complete inventory records, including status, author, kept and layer facts |
+
+Session snapshots replace the merged rows, archived count, roles and queue.
+`session.row` replaces/removes by stable key; usage updates match the launch ID,
+and process/prune frames carry archived counts. Presence and process changes do
+not trigger `session.list`: their merged rows arrive through `session.row`.
+`account` replaces one complete view at its registry position, `verification.queue`
+replaces the queue and its receipt time, and `artifact` replaces one complete
+record by ID, with no inventory reread; a moved artifact leaves the top-level
+inventory, matching `artifact.list`. Visibility reprojects artifacts by ID.
+A resync reconnects, and fresh hub snapshots/inventories replace earlier state,
+including clearing registry errors and rows absent from the new hub.
+
+`hub/test/web-area-state.test.ts` tests the public connection callback at T1 with a
+scripted WebSocket and fake time, using the shared wire types. It covers model
+facts that do not yet have UI. `web/test/area-slots.test.ts` keeps the real hub,
+production socket and isolated Headless Shell proof: all slots, delta delivery
+without inventory requests, and a new hub's Sessions/Accounts without a reload.
 
 ## Items tree
 
@@ -306,8 +351,8 @@ selected object in the other pane; the drawer stays closed during the split and
 when it closes until a row is selected again. Swap carries each pane's area and
 selection together. Escape sends no hub request and never answers an inbox row.
 All three shortcuts use the shared physical-code map (`Meta+Backslash`,
-`Meta+Enter`, `Escape`). The stand-in lists use read-only list replies and refresh
-on matching hub frames and reconnection; they expose no domain mutations.
+`Meta+Enter`, `Escape`). The inventories expose no domain mutations; area modules consume the live model
+described above, while the remaining stand-ins retain their existing reads.
 
 ## Palette and keys
 

@@ -325,8 +325,8 @@ export function Shell() {
                 </div>}</>}>
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
-              {paneArea !== 'Items' && <AreaSlot area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
-                controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'drawer' : 'pane'} />}
+              {paneArea !== 'Items' && <AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
+                controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'page' : 'pane'} />}
               {detail && row && paneArea === 'Items' && findItem(connection, row.id) &&
                 <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />}
               </Fold>
@@ -349,7 +349,7 @@ export function Shell() {
           </div>}>
           {preferences.area === 'Items' && findItem(connection, selectedRow.id)
             ? <ItemCard key={selectedRow.id} item={findItem(connection, selectedRow.id)!} connection={connection} message={message?.card === selectedRow.id ? message : undefined} />
-            : preferences.area !== 'Items' && <AreaSlot area={preferences.area} rows={connection.rows?.[preferences.area]} selected={selectedRow.id}
+            : preferences.area !== 'Items' && <AreaSlot connection={connection} area={preferences.area} rows={connection.rows?.[preferences.area]} selected={selectedRow.id}
               select={id => selectRow('primary', id)} surface="drawer" />}
           </Fold>
         </aside>}
