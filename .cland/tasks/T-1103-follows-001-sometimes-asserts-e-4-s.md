@@ -3,7 +3,7 @@ id: T-1103
 kind: task
 title: FOLLOWS-001 sometimes asserts E-4's follows before its card facts arrive under the stub hub
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - needs-triage
@@ -13,9 +13,9 @@ parent: C-325
 blocked_by: []
 regression_of: T-1091
 topic: null
-branch: null
+branch: t/T-1103-follows-001-sometimes-asserts-e-4-s
 created: 2026-10-22T09:55:15.125Z
-updated: 2026-10-22T22:09:53.200Z
+updated: 2026-10-22T23:32:30.771Z
 ---
 
 ## Summary
@@ -32,3 +32,7 @@ Periodic dev T3 run ca10630b (A-9077, dev ff6edeaa, Linux droplet) failed `nvim/
 ### coord · 2026-10-22T22:09:53.200Z
 
 Recurred in T-1152's verify all c06bc92d at ebe47ab8 (A-9475, Linux c-8 lon1): FOLLOWS-001 reaches its closed predecessor task under both the stdio and stub hubs. That run failed only on this test.
+
+### coord · 2026-10-22T23:32:09.461Z
+
+Recurred again in T-1152's verify all a1a29f10 at ebe47ab8 (A-9529, Linux c-8 lon1, 2026-10-22 23:31Z), the only failure in 3691 tests: under `--hub stub` FOLLOWS-001 returned FAIL "the hub reports E-4 follows E-2" after 415 ms while the card was still "loading the agents' text…". T-1152 cannot reach this path: nvim/test/stub-hub.ts imports only types from hub/src, and T-1152 changes hub startup (daemon, dispatch, server). Third Linux sighting (dev ff6edeaa, then T-1152 twice); it fails at a rate that now blocks gates, so it needs a fix soon.

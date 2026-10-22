@@ -3,7 +3,7 @@ id: T-1112
 kind: task
 title: "The OpenCode relay: permissions answered through the gate"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 9
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-869
 branch: t/T-1112-the-opencode-relay-permissions-answered
 created: 2026-10-22T15:16:11.536Z
-updated: 2026-10-22T23:29:31.748Z
+updated: 2026-10-22T23:32:27.587Z
 ---
 
 ## Summary
@@ -36,8 +36,8 @@ The fake OpenCode logs the decision and the message each reply carries. The scri
 
 ## Acceptance criteria
 
-- [ ] C1. A scripted `permission.asked` with a shell tool part becomes one record answered in the hub, with the full command, its three choices and `pending` (test).
-  - failed: rev-32 [reviewer] · 2026-10-22T23:29:31.748Z · note M2: a command exceeding the serialized subject cap remains hub-answerable after silent command truncation.
+- [x] C1. A scripted `permission.asked` with a shell tool part becomes one record answered in the hub, with the full command, its three choices and `pending` (test).
+  - done: impl-1112 · 2026-10-22T23:31:29.374Z
 - [x] C2. Approve once, Always for this command and Deny with a note reach the reply endpoint as `once`, `always` and `reject`, with the note as the message (test).
   - done: impl-1112 · 2026-10-22T23:22:45.528Z
 - [x] C3. `permission.replied` from another client closes the record with that reply as the harness's outcome, and every client reads it (test).
@@ -46,14 +46,15 @@ The fake OpenCode logs the decision and the message each reply carries. The scri
   - done: impl-1112 · 2026-10-22T23:22:45.799Z
 - [x] C5. After the event stream reconnects, the snapshot's pending permission keeps the same record id, and a permission answered while the stream was down reads as closed (test).
   - done: impl-1112 · 2026-10-22T23:22:45.872Z
-- [ ] C6. A permission missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event, and the permission's private metadata never reaches a frame (test).
-  - failed: rev-32 [reviewer] · 2026-10-22T23:29:31.748Z · note M1 native failed-reply body escapes into frames/logs; M2 incomplete command still offers native choices.
+- [x] C6. A permission missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event, and the permission's private metadata never reaches a frame (test).
+  - done: impl-1112 · 2026-10-22T23:31:29.459Z
 - [x] C7. The capability table reads `approvalRelay: reliable` for OpenCode (test).
   - done: impl-1112 · 2026-10-22T23:22:46.030Z
 - [x] C8. A targeted run of the OpenCode contract file, with its receipt posted in the item topic, shows through the fake binary that a Deny with a note reaches the fake as `reject` with that note (test).
   - done: impl-1112 · 2026-10-22T23:22:46.213Z
 - [x] C9. `hub/README.md`'s OpenCode capability row describes the relay, the three choices and their OpenCode replies, and that the note travels as the reply's message (docs).
   - done: impl-1112 · 2026-10-22T23:22:46.288Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-source-2 · 2026-10-22T23:32:27.586Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 
 ## Comments
 
@@ -75,3 +76,18 @@ finding_counts: {"high":0,"medium":2,"low":0}
 A-9521 complete source audit: two medium Spec findings. M1 opencode.ts:341 raw reply HttpError includes native response body through client.ts:49 and shared inbox logs/result error; sanitize to safe status/category, retaining pending/no-outcome/not-found close semantics and planted-private-marker regression. M2 opencode.ts:424 offers choices before approvalSubject truncates a command to the 64 KiB JSON cap; keep incompletely representable command TUI-only with warning/no endpoint call, cover UTF-8 boundary and trailing operation. No additional finding in child routing, choices, native outcomes, reconnect identity or next-tracker-episode guard; no separate Standards finding. C8 A-9504 exact-head local Darwin targeted stdout contains 14 passing tests and literal reject/message receipt, supplemental not configured/Linux green. Fresh source review at corrected head precedes mode-free verification; no reviewer tests/probes/browser.
 
 Criteria: C1 failed (M2: a command exceeding the serialized subject cap remains hub-answerable after silent command truncation.), C6 failed (M1 native failed-reply body escapes into frames/logs; M2 incomplete command still offers native choices.).
+
+### rev-32 · 2026-10-22T23:32:27.587Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261023-1112-source-2
+commit: 0d06915a59ebb37c1568accd61a958066883aef7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear A-9531, carrying full audit A-9521. M1 resolved by safe status/not-found/transport categories; regression excludes planted native body from result/all frames/log and retains pending/no-outcome/later deny close. M2 resolved by whole-subject serialized UTF-8 64 KiB check before choices; exact boundary and oversized ASCII/multibyte tests preserve full in-bound command and refuse TUI/no choices/no endpoint beyond cap. Resources use same check; matching docs updated. No remaining findings, no dev merge. C9 docs verified; C1–C8 source/test paths established and await fresh same-head configured evidence for final marks. A-9528 exact-head local Darwin targeted T3 contract 14/14, exit0/signal null and literal reject/note receipt retained for C8; A-9526 26/26 targeted T2 and A-9527 static check supplemental. No configured/Linux/full-suite pass claimed. Mode-free verify permitted at this exact head.
+
+Criteria: C9 verified.

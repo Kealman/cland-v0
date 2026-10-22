@@ -3,7 +3,7 @@ id: T-1111
 kind: task
 title: "The Codex relay: app-server approvals answered through the gate"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 9
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-870
 branch: t/T-1111-the-codex-relay-app-server-approvals
 created: 2026-10-22T15:16:11.398Z
-updated: 2026-10-22T23:27:52.880Z
+updated: 2026-10-22T23:29:58.656Z
 ---
 
 ## Summary
@@ -48,8 +48,8 @@ The scripted app-server double also takes responses.
   - done: impl-1111 · 2026-10-22T23:20:56.495Z
 - [x] C3. A file-change request becomes a record of kind file change, and its answer reaches the app-server the same way (test).
   - done: impl-1111 · 2026-10-22T23:27:43.923Z
-- [x] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
-  - done: impl-1111 · 2026-10-22T23:27:44.003Z
+- [ ] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
+  - failed: rev-23 [reviewer] · 2026-10-22T23:29:58.656Z · note External resolution during initial file lookup is still lost when native disconnect precedes read completion/rejection.
 - [x] C5. A request missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event (test).
   - done: impl-1111 · 2026-10-22T23:27:44.184Z
 - [x] C6. After the adapter's connection drops and returns, the replayed pending request keeps the same record id, and an answer given then reaches the app-server (test).
@@ -85,3 +85,18 @@ Criteria: C3 failed (Replayed file approvals can reach native response before re
 ### impl-1111 · 2026-10-22T23:27:43.859Z
 
 Consolidated source fixes at d9a42dda58a91fd4d620249f7d1b05a0136801fd: M1 invalid-present/empty routing IDs reach warn/TUI fallback, valid foreign threads remain excluded; M2 native answer requires file-validation readiness; M3 retains external outcome during first file read and opts into atomic closed-first publication through internal ApprovalRequest.outcome, wire shape unchanged. All existing assertions preserved. Exact-head local Darwin arm64 targeted receipts: codex-native T2 23/23, Codex contract T3 12/12 (17.02113 s file wall, no >=5 s individual test), C8 log posted in topic; gate regressions 18/18 and full typecheck passed on identical working tree before commit. Lint passes with report-only findings/0 refusals. After-source-review branch did not merge dev. Fresh source review requested next; no verification until clear.
+
+### rev-23 · 2026-10-22T23:29:58.656Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1111-source-2
+commit: d9a42dda58a91fd4d620249f7d1b05a0136801fd
+scope: full
+findings: [{"severity":"medium","text":"Known external closure during initial file lookup is still dropped if the native connection closes before read success/rejection: close clears entries and this guard returns before publishing entry.resolved. Preserve the exact closed outcome across disconnect without pending resurrection.","file":"hub/src/adapters/codex.ts","line":622},{"severity":"low","text":"Closed-first requests set since at delayed enrichment completion but retain an earlier outcome.at; the new test's 1-second delay therefore produces since later than closure. Preserve valid chronology and assert it.","file":"hub/src/hub/inbox.ts","line":366}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Second source review not clear: M1 malformed routing and M2 ready guard are resolved; M3 ordinary held-read closure fixed but disconnect variant remains. One low L1 records since-after-outcome timestamp inversion in the opt-in closed-first inbox path. Coordinator authorization for narrow internal outcome contract confirmed; ordinary inbox/OpenCode paths remain unchanged. Detailed audit posted in topic-870. No other source findings. Local corrected-head 23-native/12-contract passes are targeted evidence only; not working-tree fix or full/Linux verification. C4 failed, remaining runtime criteria unverified. New-head source review must precede verification; no Reviewer test execution.
+
+Criteria: C4 failed (External resolution during initial file lookup is still lost when native disconnect precedes read completion/rejection.).
