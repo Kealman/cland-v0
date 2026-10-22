@@ -3,7 +3,7 @@ id: T-1119
 kind: task
 title: The message block with Markdown, role colours, verdicts and chips
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-871
 branch: t/T-1119-the-message-block-with-markdown-role
 created: 2026-10-22T15:16:12.897Z
-updated: 2026-10-22T23:26:31.014Z
+updated: 2026-10-22T23:36:11.946Z
 ---
 
 ## Summary
@@ -35,12 +35,16 @@ The header carries the sender, the role in its colour, the addressees, the kind 
 
 - [x] C1. A message shows the P12 header (sender, role in its colour, addressees, kind, time, delivery stage) over its body, with the role colour as a 3 px bar in its own gutter (Web test).
   - done: impl-1119 · 2026-10-22T23:18:48.301Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1119-final · 2026-10-22T23:36:11.720Z · commit 96e3d2b558c212ae67f6002bb0bb5e3237777214
 - [x] C2. The human's messages sit on a band, a watch-layer message is dimmed, and a not-clear verdict shows its result with its criteria marks and the failed criterion's note (Web test).
   - done: impl-1119 · 2026-10-22T23:18:48.392Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1119-final · 2026-10-22T23:36:11.720Z · commit 96e3d2b558c212ae67f6002bb0bb5e3237777214
 - [x] C3. Markdown in a message renders headings, lists, code blocks and links, links open outside the page, and HTML in a message shows as text with no element from it in the DOM (Web test).
   - done: impl-1119 · 2026-10-22T23:18:48.585Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1119-final · 2026-10-22T23:36:11.720Z · commit 96e3d2b558c212ae67f6002bb0bb5e3237777214
 - [x] C4. Item ids in a body are links that open the item and stay on one line at the hyphen, and artifact, file and folder posts show as chips (Web test).
   - done: impl-1119 · 2026-10-22T23:23:48.198Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1119-final · 2026-10-22T23:36:11.720Z · commit 96e3d2b558c212ae67f6002bb0bb5e3237777214
 
 ## Comments
 
@@ -79,3 +83,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; A-9518. Standards0/Spec0; M1 closed by retaining agent clear first-line ItemText in compact header with real send→render→item navigation regression, structured verdict/criteria coverage unchanged. A-9510 raw product red and5/5 green/commands/exits/timings/source patch audited, initial permission setup failure excluded. All C1-C4 are Web-run-dependent and remain unverified until exact-head configured mode-free result. No dev merge after review, no merge enqueue.
+
+### impl-1119 · 2026-10-22T23:35:41.648Z
+
+Same-head configured mode-free verify 05cff4ba-4a0a-490c-9009-7793d514ab73 passed at 96e3d2b558c212ae67f6002bb0bb5e3237777214; A-9539 preserves the log. Linux x64 droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5; 2535 tests passed, 0 failed/skipped. Runtime coverage: all T1, fallback all T2 across packages, Web. Host typecheck gate at 4e150f19 (not repeated remotely). Lint/duration budgets report-only; reported existing overruns do not become enforced passes. T3 deferred to periodic dev/integrated occasions, absent configured batch tiers; not claimed as process-integration coverage. Executor lifetime 482s, cost $0.0335 (not suite wall time). Awaiting Reviewer's same-head final settlement; no merge requested.
+
+### rev-31 · 2026-10-22T23:36:11.720Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261023-1119-final
+commit: 96e3d2b558c212ae67f6002bb0bb5e3237777214
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-9545, C1-C4 verified. Exact96e3d2b5 configured05cff4ba/A-9539 exits0,2535/2535,no fail/cancel/skip,T1/all-T2/Web complete. Five actual owned Web pass receipts plus all9 retained Topics cases; no Web repetition claim. Linux c8 lon1 workers2/Web4,T0 host gate4e150f19 not repeated remotely. Nominal lint/budgets report-only; source A-9518 current,M1 resolved. T3/T4/stageQA deferred,no merge enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

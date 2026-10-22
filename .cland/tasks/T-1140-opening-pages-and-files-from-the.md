@@ -3,7 +3,7 @@ id: T-1140
 kind: task
 title: Opening pages and files from the Artifacts area
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-418
 blocked_by:
   - T-1139
 topic: null
-branch: null
+branch: t/T-1140-opening-pages-and-files-from-the
 created: 2026-10-22T15:16:16.302Z
-updated: 2026-10-22T23:07:37.996Z
+updated: 2026-10-22T23:37:15.043Z
 ---
 
 ## Summary

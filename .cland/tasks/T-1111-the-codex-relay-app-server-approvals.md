@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-870
 branch: t/T-1111-the-codex-relay-app-server-approvals
 created: 2026-10-22T15:16:11.398Z
-updated: 2026-10-22T23:29:58.656Z
+updated: 2026-10-22T23:36:11.404Z
 ---
 
 ## Summary
@@ -49,7 +49,7 @@ The scripted app-server double also takes responses.
 - [x] C3. A file-change request becomes a record of kind file change, and its answer reaches the app-server the same way (test).
   - done: impl-1111 · 2026-10-22T23:27:43.923Z
 - [ ] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T23:29:58.656Z · note External resolution during initial file lookup is still lost when native disconnect precedes read completion/rejection.
+  - failed: rev-23 [reviewer] · 2026-10-22T23:36:11.404Z · note The exact external closed outcome is still lost at host admission after terminal transition or before first-turn process publication.
 - [x] C5. A request missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event (test).
   - done: impl-1111 · 2026-10-22T23:27:44.184Z
 - [x] C6. After the adapter's connection drops and returns, the replayed pending request keeps the same record id, and an answer given then reaches the app-server (test).
@@ -100,3 +100,22 @@ finding_counts: {"high":0,"medium":1,"low":1}
 Second source review not clear: M1 malformed routing and M2 ready guard are resolved; M3 ordinary held-read closure fixed but disconnect variant remains. One low L1 records since-after-outcome timestamp inversion in the opt-in closed-first inbox path. Coordinator authorization for narrow internal outcome contract confirmed; ordinary inbox/OpenCode paths remain unchanged. Detailed audit posted in topic-870. No other source findings. Local corrected-head 23-native/12-contract passes are targeted evidence only; not working-tree fix or full/Linux verification. C4 failed, remaining runtime criteria unverified. New-head source review must precede verification; no Reviewer test execution.
 
 Criteria: C4 failed (External resolution during initial file lookup is still lost when native disconnect precedes read completion/rejection.).
+
+### impl-1111 · 2026-10-22T23:33:03.977Z
+
+Third source-fix head 6f38a88f5f911d4a2ccf55d836fdf0da9fd72e20: retains observed native closure across connection loss while held read rejects, leaves unresolved stale reads suppressed, preserves adapter-observed request since through opt-in internal field, and requires complete authorization subjects to fit 64 KiB serialized UTF-8 before permitting hub answers (Coordinator direction 986cb8d3). Both command/file exact-boundary and distinct-beyond-cap cases are tested, with same allowlist on fallback. Before fixes, disconnect had no matching frame, chronology assertion failed, and cap record was hub instead of tui; all three targeted regressions now green. Local native T2 25/25, gate regression 18/18 and full typecheck pass on same tree before commit. Exact committed-head native and C8 contract receipts are collecting; no verification or dev merge after source review.
+
+### rev-23 · 2026-10-22T23:36:11.404Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1111-source-3
+commit: 6f38a88f5f911d4a2ccf55d836fdf0da9fd72e20
+scope: full
+findings: [{"severity":"medium","text":"Known closed-first approval is still discarded if the process exits/stops before subject read settles, because admission requires running. Before first-turn process publication it is also dropped, while codex.ts:634 deletes the resolved entry so watch cannot replay. Preserve exact closed outcomes across terminal/early host admission without admitting pending approvals there.","file":"hub/src/hub/inbox.ts","line":348}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Third source review not clear: one remaining M3 publication-lifecycle finding. Socket-only disconnect and L1 chronology are fixed; M1/M2 retained. New complete serialized UTF-8 cap meets Coordinator's binding rule, with exact boundary/hidden-operation tests and matching README/docs/skill provenance. Terminal process closed-first requests are rejected by Inbox's running filter, and early closed requests are removed before watch can replay them. Add both host-boundary regressions and preserve closed history without pending resurrection. No other findings. A-9533 local exact-head targeted contract 12-pass output and reported native25/gate18 checks are not full/Linux or working-tree-fix evidence. C4 failed; other run criteria pending. Detailed audit posted in topic-870; no Reviewer test execution.
+
+Criteria: C4 failed (The exact external closed outcome is still lost at host admission after terminal transition or before first-turn process publication.).

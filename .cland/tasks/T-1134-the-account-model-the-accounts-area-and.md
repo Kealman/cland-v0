@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-875
 branch: t/T-1134-the-account-model-the-accounts-area-and
 created: 2026-10-22T15:16:15.395Z
-updated: 2026-10-22T23:23:48.836Z
+updated: 2026-10-22T23:35:32.361Z
 ---
 
 ## Summary
@@ -39,7 +39,7 @@ Neovim's `accounts.lua` defines the formats. The profile block joins the top of 
 - [x] C1. The account model gives the worst window, amber from 75 and red from 90 percent, the limited mark with its reset, and a dash, never 0 percent, for an account with no reading, signed out or on OpenCode (T1 test).
   - done: impl-1134 · 2026-10-22T23:19:28.371Z
 - [x] C2. With a registry of three fake accounts with limit readings, one limited, the Accounts area lists each in registry order with its harness, path and every window with its share, reset, age and source, and the limited one with its mark (Web test).
-  - done: impl-1134 · 2026-10-22T23:19:28.473Z
+  - done: impl-1134 · 2026-10-22T23:35:32.361Z
 - [x] C3. Opening the Accounts area sends one `account.poll` (Web test).
   - done: impl-1134 · 2026-10-22T23:19:28.565Z
 - [x] C4. The strip shows a cell per account with its worst window and reset, the limited account in red with its reset and the session that hit it, the other windows in the tooltip, and its link opens the Accounts area (Web test).
@@ -47,6 +47,7 @@ Neovim's `accounts.lua` defines the formats. The profile block joins the top of 
 - [x] C5. `web/README.md` describes the Accounts area and the strip (docs).
   - done: impl-1134 · 2026-10-22T23:19:28.870Z
   - verified: rev-32 [reviewer] · run rev-20261023-1134-source · 2026-10-22T23:23:48.836Z · commit 27a9fa9904391d90f5dbf920bbca332641e805c5
+  - verified: rev-32 [reviewer] · run rev-20261023-1134-source-2 · 2026-10-22T23:35:27.961Z · commit 414b0d2020b85e0c991ba556d4e2d9f1fa2abeef
 
 ## Comments
 
@@ -66,5 +67,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear A-9509, findings []. Shared pure account projection matches worst-window/severity/75–90 thresholds, missing-data dashes, local reset/age/source, synthetic-default ordering and limited details. Accounts blocks/read-only poll-on-entry, complete registry reply refresh, P20 strip/meter/tooltips/fold/same-pane navigation, page/drawer facts and README match item/epic. Three new T1 tests and four sealed Web cases establish source paths for C1–C4 with bounded retained request/result/rendered-delta receipts; run-dependent criteria remain unverified until fresh configured same-head execution. C5 docs verified. A-9495 local implementation narrative is supplemental, not a configured suite/overall runtime pass. No new protocol/dependency/keymap/permission, or reviewer test/probe/browser run. Mode-free verify may run at this exact head; QA remains affected/after-stage.
+
+Criteria: C5 verified.
+
+### rev-32 · 2026-10-22T23:34:21.209Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261023-1134-evidence
+commit: 27a9fa9904391d90f5dbf920bbca332641e805c5
+scope: evidence
+findings: [{"severity":"medium","text":"M1: cross-area regression still requires the removed Accounts objects stand-in list. A-9532 actual: locator.waitFor Timeout3000ms waiting for list Accounts objects. Update Accounts rendered readiness to the new account surface, keeping Sessions selection/drawer/help/palette/split assertions and bounds.","file":"web/test/key-contexts.test.ts","line":53}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-9534 audits failed same-head 186ba376/A-9532. Actual locator.waitFor Timeout3000ms at key-contexts.test.ts:53 waits for list Accounts objects, intentionally removed by the new account blocks. Migrate this compatibility fixture, preserving every remaining assertion; no timeout increase or timing diagnosis. Linux x64 c-8 lon1, Node24.21/Neovim0.12.5; T1/all-T2 complete exit0, Web exit1; aggregate2537 tests/2536pass/1fail/0skip. Generic budgets/lint/ratchet report-only, no T3/T4/QA/full-suite pass. No new production finding. C2 failed; other run-dependent final marks withheld. Fresh source review required after correction before mode-free verify.
+
+Criteria: C2 failed (Accounts surface migration leaves key-contexts.test.ts:53 waiting for removed Accounts objects list; configured Web phase fails (A-9532).).
+
+### rev-32 · 2026-10-22T23:35:27.961Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261023-1134-source-2
+commit: 414b0d2020b85e0c991ba556d4e2d9f1fa2abeef
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear A-9538 carrying full audit A-9509. Sole change updates key-contexts.test.ts Accounts readiness from removed stand-in list to actual pane plus accounts key-context assertion. All other areas' list receipts/headings, every Sessions selection/drawer/help/palette/split assertion and original timeout unchanged. M1 resolved; no production/resources/docs changes or remaining findings; diff check clean. C5 README source-verified at this head. C1–C4 await fresh configured same-head evidence; A-9536 local post-fix output at source later committed is supplemental, and A-9532 remains prior-head red. No suite/Linux/QA green claimed. Mode-free verify permitted at this exact head.
 
 Criteria: C5 verified.

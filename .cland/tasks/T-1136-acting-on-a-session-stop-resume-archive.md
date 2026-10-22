@@ -3,7 +3,7 @@ id: T-1136
 kind: task
 title: "Acting on a session: Stop, Resume, Archive, Capabilities and the session's page"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-873
 branch: t/T-1136-acting-on-a-session-stop-resume-archive
 created: 2026-10-22T15:16:15.750Z
-updated: 2026-10-22T23:25:17.610Z
+updated: 2026-10-22T23:36:00.650Z
 ---
 
 ## Summary
@@ -40,19 +40,26 @@ A refused or failed action shows its reason in place; the cookie's refused actio
 
 - [x] C1. `x` on a busy fake session asks for a confirmation in place, Esc leaves it running, and Enter stops it as `cland session list` reads (Web test with the fake harness).
   - done: impl-1136 · 2026-10-22T23:21:46.925Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
 - [x] C2. `r` on the stopped session resumes it with its name and role, as `cland session list` reads (Web test with the fake harness).
   - done: impl-1136 · 2026-10-22T23:21:47.019Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
 - [x] C3. `d` on a stopped session asks for a confirmation and archives it, and it leaves Stopped for the archive (Web test).
   - done: impl-1136 · 2026-10-22T23:21:47.101Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
 - [x] C4. `c` shows the session's adapter capability table read-only, and a session without an adapter says so (Web test).
   - done: impl-1136 · 2026-10-22T23:21:47.302Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
 - [x] C5. The session's page shows the model, account, usage and capabilities and runs the same four actions with the same confirmations (Web test).
   - done: impl-1136 · 2026-10-22T23:21:47.390Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
 - [x] C6. A resume the harness cannot perform shows the hub's reason and offers a fresh launch with the same brief (Web test with the fake harness).
   - done: impl-1136 · 2026-10-22T23:21:47.479Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
 - [x] C7. `web/README.md` documents the actions, the confirmations and the session's page (docs).
   - done: impl-1136 · 2026-10-22T23:21:47.568Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-source-1 · 2026-10-22T23:25:17.610Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
 
 ## Comments
 
@@ -74,3 +81,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear at c361576f; A-9513 records Standards and Spec, no findings. Shared row/page confirmation and resume/fresh handling retain native button Enter, pending duplicate guard, actual hub refusal reasons and offline no replay; capabilities and responsive page routing match the item. Nine new Web cases and affected regressions reviewed at their documented sealed fake-harness seams. C7 verified by matching docs. C1–C6 remain runtime-unverified pending mode-free configured verification at this exact unchanged head. A-9507 targeted/check claims are supporting local development evidence, not a configured or Linux pass; original receipt retention requested. Affected QA remains after-stage; no merge performed.
 
 Criteria: C7 verified.
+
+### rev-26 · 2026-10-22T23:36:00.379Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1136-final-1
+commit: c361576fadcf03c3bd803056dc97fcf0dcb8b878
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C7 verified. A-9541 audits same-head 38e66ace/A-9537: exit 0, 2539 passed with zero failed/cancelled/skipped, Linux c-8 lon1 T1/all-T2 hub+Neovim/Web and host T0 reused, not repeated remotely. All nine owned Web action cases have successful distinct receipts (1.053–2.495s); no owned 5/5 load or allowance claimed. Generic lint/duration/ratchet warnings retained in report mode, including actual Web wall 56.913s>40s and missing owned file baseline. Source clear A-9513 plus runtime settles all criteria; precommit A-9517 remains supporting provenance. No T3/T4/QA pass or merge claimed; affected QA remains after-stage.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

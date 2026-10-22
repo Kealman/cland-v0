@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:26:44.017Z
-updated: 2026-10-20T17:26:44.017Z
+updated: 2026-10-22T23:37:32.848Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ The periodic dev T3 bundles the commit it was started for (from the object store
 
 - [ ] C1. A periodic dev T3 started at commit X still bundles X when root dev moves during bundling (test).
 - [ ] C2. A bundling failure is reported as an infrastructure outcome, not red, starts no culprit search and is retried at the next eligible tip (test).
+
+## Comments
+
+### coord · 2026-10-22T23:37:32.848Z
+
+Recurred 2026-10-22 23:36Z: periodic dev T3 a373df37 (A-9548) at a5ec440d reported "Periodic dev T3 red" with exit 1 "dirty or changed worktree cannot be bundled for droplet: HEAD changed", because T-1139 landed (adde2c7c) while it bundled. No test ran, and the culprit search came back inconclusive with no failing files. It still posts a red headline in General for an infrastructure race.

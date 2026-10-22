@@ -2,8 +2,8 @@
 id: T-1139
 kind: task
 title: "The Artifacts area: the tree, keep and archive"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-876
 branch: t/T-1139-the-artifacts-area-the-tree-keep-and
 created: 2026-10-22T15:16:16.169Z
-updated: 2026-10-22T23:31:01.509Z
+updated: 2026-10-22T23:36:13.885Z
+closed: 2026-10-22T23:36:13.885Z
 ---
 
 ## Summary
@@ -88,3 +89,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; all C1–C5 verified at unchanged head. A-9522/723c9140 passes 2535 ordinary tests, no fail/skip/cancel, actual Linux x64 c-8 lon1 all T1/fallback hub+Neovim T2/Web. All four new Artifacts cases pass: grouping/folds 3.411317242 s, keep/up 1.300305448 s, archive/folder 1.267047536 s, bounded paging 2.606032950 s; each below >=4 s allowance trigger. Callback paging race has five distinct repeated passes with explicit 5/5. C5 source docs retained. Host check 7b6d9734 reused remotely; generic budget/lint/resource/ratchet warnings report-only, Web 57.49 s > 40 s report budget, one missing baseline. No T3/T4/QA claim; after-stage QA separate. No findings or source change; detailed final artifact posted in topic-876.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-22T23:36:13.885Z
+
+Merged adde2c7c8eeff334a78b74adc8bfda202b9bcf66 onto dev.

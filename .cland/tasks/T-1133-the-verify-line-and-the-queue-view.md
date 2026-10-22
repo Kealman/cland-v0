@@ -3,7 +3,7 @@ id: T-1133
 kind: task
 title: The verify line and the queue view
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-874
 branch: t/T-1133-the-verify-line-and-the-queue-view
 created: 2026-10-22T15:16:15.253Z
-updated: 2026-10-22T23:26:11.240Z
+updated: 2026-10-22T23:37:29.307Z
 ---
 
 ## Summary
@@ -38,15 +38,20 @@ A pure model turns a queue, the elapsed time and the executor status into the li
 
 - [x] C1. With a hand run holding the local slot and one waiter, the line reads the holder, its running time and one waiting, and Enter opens the queue view in place with the holder and the waiter with its executor, wait and ETA (Web test).
   - done: impl-1133 · 2026-10-22T23:24:51.843Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
 - [x] C2. The queue model renders remote slots with their droplet's name, size and region, the waiters in order, the last-20 metrics and today's spend against the cap from recorded frames (T1 test).
   - done: impl-1133 · 2026-10-22T23:17:40.803Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
 - [x] C3. Without a new frame the holder's running time and the waiter's wait advance from the frame's receipt, and a `verification.queue` frame replaces the view (Web test).
   - done: impl-1133 · 2026-10-22T23:24:51.963Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
 - [x] C4. The queue view's open state survives a reload (Web test).
   - done: impl-1133 · 2026-10-22T23:17:41.468Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
 - [x] C5. `web/README.md` describes the verify line and the queue view (docs).
   - done: impl-1133 · 2026-10-22T23:17:41.639Z
   - verified: rev-26 [reviewer] · run rev-20261022-1133-source-2 · 2026-10-22T23:26:11.240Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
+  - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
 
 ## Comments
 
@@ -87,3 +92,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear at 35a35f72; A-9516 carries the full Standards/Spec audit with no remaining findings. M1 fixed by scoped native-button Enter guard and group/archive physical-key regressions; M2 fixed by bounded initial snapshot plus exact holder/waiter identity/executor/time observations before assertions and clock advance. Original final assertions and armed replacement observer retained. A-9501 red, A-9508 intermediate green, A-9511 intermediate static and A-9512 final-head local targeted receipts keep their actual provenance; no configured or Linux pass claimed. C5 verified by matching docs; C1–C4 await mode-free configured evidence at this exact unchanged head. No post-review dev merge or merge by Reviewer.
 
 Criteria: C5 verified.
+
+### rev-26 · 2026-10-22T23:36:39.579Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1133-final-1
+commit: 35a35f72808b9175d968384b465bb6d872b8e32b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C5 verified. A-9546 audits same-head 4ca6dbc8/A-9540: exit0,2536 passed with zero failed/cancelled/skipped, Linux c-8 lon1 T1/all-T2 hub+Neovim/Web and reused host T0, not repeated remotely. Both new T1 model identities have actual distinct5/5 load finishes. C1/C3/C4 Web cases and parent pass; parent3.986645884s below >=4s allowance trigger, no owned Web repetition claim. M1 native Enter and M2 initial-data receipts remain covered. Generic lint/duration/ratchet warnings retained in report mode, including actual Web wall53.941s>40s and two missing baselines. C5 docs carried from source A-9516. No T3/T4/QA pass or merge claimed; affected QA remains after-stage.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
