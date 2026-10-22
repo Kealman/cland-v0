@@ -591,6 +591,13 @@ export class Sessions {
     return this.#table.all().filter(p => !!p.archivedAt === archived && !this.#pendingStops.has(p.sessionId)).map((p) => this.view(p));
   }
 
+  /** Snapshot composition, with archived reads excluding unrelated connected presence. */
+  listRows(archived = false) {
+    const processes = this.list(archived);
+    const rows = this.#core.sessionRows(processes).filter(row => !!row.archived === archived);
+    return { processes, rows };
+  }
+
   archivedCount(): number {
     return this.#table.archivedCount() - [...this.#pendingStops.values()].filter(p => this.#table.bySessionId(p.process.sessionId)?.archivedAt).length;
   }

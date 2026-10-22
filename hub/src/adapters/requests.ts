@@ -5,7 +5,7 @@
 //                                                              launch defaults (roles.toml) fill what is not given; with `item`
 //                                                              (an Implementer's task or a Lead's epic/release): {process, claim, worktree, reason?}, in the
 //                                                              item's worktree (`src/hub/worktrees.ts`)
-//   session.list    {archived?: true}                                         → {processes, archived: count, adapters: {<harness>: capabilities}, coordinator}
+//   session.list    {archived?: true}                                         → {processes, archived: count, pendingStops, adapters: {<harness>: capabilities}, coordinator, rows}
 //   session.attach  {session}                                  → {command}
 //   session.archive {session}                                  → {process}   human and Coordinator; stopped/exited only
 //   session.stop    {session}                                  → {process}
@@ -98,8 +98,10 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
         if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
         return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed, authorize));
       }
-      case 'session.list':
-        return ok({ processes: sessions.list(frame.archived ?? false), archived: sessions.archivedCount(), pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
+      case 'session.list': {
+        const { processes, rows } = sessions.listRows(frame.archived ?? false);
+        return ok({ processes, archived: sessions.archivedCount(), pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator(), rows });
+      }
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
       case 'session.archive':

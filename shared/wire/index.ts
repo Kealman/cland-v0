@@ -420,6 +420,10 @@ export type SessionRow = Omit<Partial<HarnessProcessView>, 'harness' | 'status' 
   additionalHolds: number;
 };
 
+// hub/src/adapters/sessions.ts (Sessions.listRows)
+/** Row portion of session.list; the existing count, recovery and adapter fields remain alongside it. */
+export type SessionListRows = { processes: HarnessProcessView[]; rows: SessionRow[] };
+
 export type HarnessProcessView = {
   account?: string | null;
   stateReason?: string;

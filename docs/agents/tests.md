@@ -1712,6 +1712,14 @@ and `TopicMessage`; run facts count toward the existing history reply cap.
 
 ## Implementer test selection
 
+Archived merged session reads use the public `session.list`/snapshot seam in
+`connection-snapshot.test.ts` at T2. A sealed project with a fake clock compares
+merged rows against the snapshot, archives a stopped process, and checks the
+archived-only result and byte-identical legacy fields with unmanaged presence
+connected. `web-authority-unit.test.ts` covers the archived read at T1, and
+`wire-conformance.ts` checks `SessionListRows` at T0. Existing process lists,
+counts, snapshot membership and startup observers remain unchanged.
+
 Startup explorer regressions use `item-summary-scale.test.ts` at T2: a thousand
 durable rows with a planned epic and retained verdicts count recompute batches.
 The serving case arms the existing task-write gate before startup, observes the

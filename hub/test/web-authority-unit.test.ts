@@ -8,6 +8,7 @@ test('the web allows human workbench reads, writes, queued verification and merg
     assert.equal(webAuthorityRefusal({ type, id: 'request' }), null, type);
   }
   assert.equal(webAuthorityRefusal({ type: 'artifact.create', id: 'inline', content: 'web bytes' }), null);
+  assert.equal(webAuthorityRefusal({ type: 'session.list', id: 'archived', archived: true }), null);
 });
 
 test('the web refuses any as field on every classified request, even a malformed value', () => {

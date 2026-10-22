@@ -681,8 +681,9 @@ export class HubCore {
     return entries.map(({ process: p, presence: live }) => {
       const identity = live ?? p!;
       const running = p ? p.status === 'running' : true;
-      const holds = this.sessionHolds(identity);
-      const pending = running ? this.sessionPending(identity) : undefined;
+      // Connected presence already loaded these work facts for this projection.
+      const holds = live?.holds ?? this.sessionHolds(identity);
+      const pending = running ? (live ? live.pending : this.sessionPending(identity)) : undefined;
       const held = holds[0];
       const state = p?.stateReason || !running ? 'unknown' : this.sessionState(identity.sessionId);
       const saved = this.#store.meta(`heartbeat-state:${identity.sessionId}`);

@@ -8,10 +8,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { serializeItem } from '../src/tracker/item.ts';
 import { Store } from '../src/hub/store.ts';
+import { ProcessTable } from '../src/adapters/processes.ts';
 import { FakeClock } from './fake-clock.ts';
 import { SNAPSHOT_LIMITS } from '../src/protocol.ts';
 import type { HubFrame } from '../src/protocol.ts';
-import { connectSocket, frameClient, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { connectSocket, frameClient, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 
 async function client(t: TestContext, discovery: { socket: string; secret: string }, features?: string[]): Promise<FrameClient> {
@@ -25,6 +26,40 @@ async function client(t: TestContext, discovery: { socket: string; secret: strin
   await welcome;
   return ui;
 }
+
+test('session.list adds snapshot-shaped archived rows without changing compatibility fields', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  const clock = new FakeClock();
+  const at = clock.now().toISOString();
+  const table = new ProcessTable(join(root, '.cland/hub.db'), clock);
+  for (const name of ['worker', 'retained']) table.put({ name, role: 'implementer', harness: 'codex', model: null, cwd: root,
+    pid: null, harnessId: null, sessionId: `${name}-id`, harnessSessionId: null, startedAt: at, stoppedAt: at, status: 'stopped' });
+  table.close();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const unmanaged = await inProcessSpoke(t, { discover: true, cwd: root, name: 'unmanaged' });
+  await unmanaged.waitForPresence(['unmanaged']);
+  const ui = await client(t, discovery, ['snapshot']);
+  await ui.waitFor(f => f.type === 'snapshot.end');
+  const snapshot = ui.frames.find(f => f.type === 'snapshot' && f.domain === 'sessions')!.value as import('../src/protocol.ts').SnapshotValues['sessions'];
+  type List = { rows: import('../src/protocol.ts').SessionRow[]; processes: import('../src/protocol.ts').HarnessProcessView[]; archived: number; pendingStops: unknown[]; adapters: unknown; coordinator: string | null };
+  const before = (await ui.request({ type: 'session.list' })).value as List;
+  const { rows, ...legacy } = before;
+  assert.deepEqual(rows, snapshot.rows);
+  assert.equal(JSON.stringify(legacy), JSON.stringify({ processes: snapshot.processes, archived: 0, pendingStops: [], adapters: before.adapters, coordinator: null }));
+  const empty = (await ui.request({ type: 'session.list', archived: true })).value as List;
+  assert.deepEqual(empty.rows, [], 'unmanaged presence does not leak into archived rows');
+  const archived = await ui.request({ type: 'session.archive', session: 'worker' });
+  assert.equal(archived.ok, true, archived.error);
+  const after = (await ui.request({ type: 'session.list', archived: true })).value as List;
+  const { rows: archivedRows, ...archivedLegacy } = after;
+  assert.equal(JSON.stringify(archivedLegacy), JSON.stringify({ processes: [(archived.value as { process: unknown }).process], archived: 1, pendingStops: [], adapters: before.adapters, coordinator: null }));
+  assert.deepEqual(archivedRows, [{ ...snapshot.rows.find(row => row.name === 'worker')!, archived: true, archivedAt: at, archivedBy: 'hand', layer: 'archive' }]);
+  const active = (await ui.request({ type: 'session.list' })).value as List;
+  assert.deepEqual(active.rows, snapshot.rows.filter(row => row.name !== 'worker'));
+  assert.deepEqual(active.processes, snapshot.processes.filter(row => row.name !== 'worker'));
+  assert.equal(active.archived, 1);
+});
 
 test('hello negotiates model features and legacy clients keep their existing welcome', async t => {
   const root = await tempProject(t);

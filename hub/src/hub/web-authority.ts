@@ -63,7 +63,7 @@ export const WEB_AUTHORITY = {
   'session.attach': true,
   'session.bridge': true,
   'session.launch': true,
-  'session.list': true,
+  'session.list': true, // Includes the archived merged-row read.
   'session.prune': true,
   'session.resume': true,
   'session.retry': true,
