@@ -2,8 +2,8 @@
 id: T-1089
 kind: task
 title: Closed containers push Neovim's first payload to 240 KB on the live tracker, over the 128 KiB budget
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1081
 topic: topic-828
 branch: t/T-1089-closed-containers-push-neovim-s-first
 created: 2026-10-22T01:04:50.220Z
-updated: 2026-10-22T02:10:19.353Z
+updated: 2026-10-22T02:15:06.320Z
+closed: 2026-10-22T02:15:06.320Z
 ---
 
 ## Summary
@@ -106,3 +107,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 C1–C4 verified. A-8856 exactly matches reviewed head: T1/all-T2/Web exit 0, 2394 ordinary passes; both new task-gated identities five distinct load passes/explicit 5/5. All three A-8852 failures, six aggregate regressions and browser nested archive pass. C1 copied-live111470 B/dense121518 B and C4 Lua125244 B/zero differences retain A-8846 local source-equivalent provenance; native/product source unchanged by correction. Coordinator 796b94ad requires no separate full; no new Linux T3 claim. Forest 2.0645 s/max2.2339 s is a report-only 2 s overage. Other report-only diagnostics, deferred T-1090 refresh and after-stage QA retained. Final audit A-8857; ready for Coordinator enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-22T02:15:06.320Z
+
+Merged 3b54cdcd8864b8278c53713b3ab623fff66e2607 onto dev.
