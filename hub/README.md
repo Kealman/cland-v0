@@ -2987,9 +2987,12 @@ Verification runs the project's configured check and test commands; see
 [Verification commands](#verification-commands). The following runner details
 and package commands describe cland's own suite.
 
-`npm run test:nvim-fixtures` refreshes the Neovim protocol recordings. It captures
-and validates all requested files before replacing fixtures, refusing skipped or
-incomplete runs and captures below the existing frame counts. See the
+`npm run test:nvim-fixtures` refreshes the Neovim protocol recordings. Full
+discovery selects runtime stub consumers through imports and launch URLs, rather
+than test tiers, and excludes native clients that only share the command-validating
+launcher (such as `artifact-browser.test.ts`) and type-only stub references. It
+captures and validates all requested files before replacing fixtures, refusing
+skipped or incomplete runs and captures below the existing frame counts. See the
 [fixture maintenance guidance](../docs/agents/tests.md) for full, retained and
 per-file slice refreshes.
 

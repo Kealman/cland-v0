@@ -569,8 +569,12 @@ those producers. The human QA CLI keeps its arbitrary/read-only scenario API
 through the explicit T3 `qa-stub-hub.ts` adapter; it is outside T2 client imports.
 
 Run `npm run test:nvim-fixtures` to capture existing stub consumers serially and
-rewrite the live attach baseline. This maintenance command requires one-minute
-load below 15. A trailing test file refreshes that file while retaining the
+rewrite the live attach baseline. Full discovery follows runtime imports and stub
+launch URLs through helpers, including non-T2 consumers. Test tiers alone do not
+select recording files. Type-only dependencies and the shared client launcher
+(`nvim/test/client.ts`, which only validates the stub command) do not make a
+native real-hub test a recording consumer; `artifact-browser.test.ts` is excluded.
+This maintenance command requires one-minute load below 15. A trailing test file refreshes that file while retaining the
 catalog; `--from-recordings` regenerates existing inputs and the live baseline
 without replaying client assertions. Use the full command after adding scenarios.
 Capture runs must finish successfully with at least one test and no skips. The

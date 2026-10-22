@@ -4,8 +4,13 @@ import ts from 'typescript';
 
 function dependencies(file: string, text: string): string[] {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
-  const specifiers = ts.preProcessFile(text, true, true).importedFiles.map(entry => entry.fileName);
+  const specifiers: string[] = [];
   const visit = (node: ts.Node): void => {
+    if ((ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly
+      || ts.isExportDeclaration(node) && !node.isTypeOnly)
+      && node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)) specifiers.push(node.moduleSpecifier.text);
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword
+      && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) specifiers.push(node.arguments[0].text);
     // The stdio stub is launched by path, rather than imported into the test.
     if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'URL'
       && node.arguments?.length === 2 && ts.isStringLiteralLike(node.arguments[0]!)
@@ -17,8 +22,8 @@ function dependencies(file: string, text: string): string[] {
 }
 
 /** Files to run during a full protocol-frame refresh, including non-T2 consumers. */
-export async function frameConsumers(files: readonly string[], tiers: Record<string, unknown>, read: FixtureSource): Promise<string[]> {
-  const selected = new Set(Object.keys(tiers).filter(file => file.startsWith('nvim/test/') && tiers[file] === 'T2'));
+export async function frameConsumers(files: readonly string[], read: FixtureSource): Promise<string[]> {
+  const selected = new Set<string>();
   const graph = new Map<string, string[]>();
   for (const entry of files) {
     const pending = [entry];
@@ -26,6 +31,9 @@ export async function frameConsumers(files: readonly string[], tiers: Record<str
     while (pending.length) {
       const file = pending.pop()!;
       if (file === 'nvim/test/stub-hub.ts') { selected.add(entry); break; }
+      // The shared launcher only compares the stub URL to validate commands;
+      // its native clients do not consume or record protocol fixtures.
+      if (file === 'nvim/test/client.ts') continue;
       if (seen.has(file) || !/\.[cm]?[jt]sx?$/.test(file)) continue;
       seen.add(file);
       if (!graph.has(file)) {

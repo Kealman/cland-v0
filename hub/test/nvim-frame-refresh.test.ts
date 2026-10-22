@@ -57,3 +57,14 @@ test('recording requires a successful complete test receipt', () => {
     assert.throws(() => assertRecordingRun('capture.test.ts', code, output), /capture.test.ts/);
   }
 });
+
+test('a recording consumer with no prior slice still refuses zero frames', async () => {
+  for (const retain of [false, true]) {
+    const writes: unknown[] = [];
+    await assert.rejects(refreshFrameCatalog(['new-consumer.test.ts'], retain, {
+      catalog: catalog([first]), slices: new Map(), capture: async () => [],
+      normalize: r => [r], publish: async next => { writes.push(next); },
+    }), /new-consumer.test.ts recorded 0 frames; expected at least 1/);
+    assert.deepEqual(writes, []);
+  }
+});

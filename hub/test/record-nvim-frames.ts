@@ -57,7 +57,6 @@ export async function refresh(files: string[], retain = false, slice = false): P
   } finally { await rm(dir, { recursive: true, force: true }); }
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const tiers = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8')).tests;
   const slice = process.argv.includes('--slice');
   const requested = process.argv.slice(2).filter(arg => arg !== '--slice');
   if (requested[0] === '--from-recordings') {
@@ -73,7 +72,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const candidates: string[] = [];
     if (!requested.length) for await (const file of glob('nvim/test/**/*.test.ts')) candidates.push(file);
     const files = requested.length ? requested : await frameConsumers(
-      candidates, tiers,
+      candidates,
       fixtureSource(fileURLToPath(new URL('../../', import.meta.url))),
     );
     await refresh(files, requested.length > 0, slice);
