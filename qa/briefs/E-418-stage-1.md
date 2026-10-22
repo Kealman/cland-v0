@@ -278,6 +278,7 @@ test('QA rig, E-418 stage seams and the session list', { timeout: 50 * 60_000 },
   appendFileSync(`${Q}/pids`, `${process.pid}\n`);
   const fixture = await webFixture(t, { prepare: async root => {
     await writeFile(join(process.env.XDG_CONFIG_HOME, 'cland/accounts.toml'), `[accounts.qa-claude]\nharness = "claude-code"\n[accounts.qa-codex]\nharness = "codex"\nhome = "${root}/qa-codex"\n`);
+    await mkdir(join(root, 'qa-codex'), { recursive: true }); // the registry refuses a launch on an account whose home does not exist (run 1, E418S1-12)
     const config = defaultConfig('QA E-418 stage 1');
     config.verification.lockPath = join(root, 'suite.lock');
     config.hygiene.loopBreaker.max = 200; config.hygiene.rateLimit.max = 200;
