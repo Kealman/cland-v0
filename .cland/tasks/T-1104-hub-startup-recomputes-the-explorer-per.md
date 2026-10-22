@@ -3,7 +3,7 @@ id: T-1104
 kind: task
 title: Hub startup recomputes the explorer per item during the planned check and delays serving by 15 s
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-850
 branch: t/T-1104-hub-startup-recomputes-the-explorer-per
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T15:34:01.840Z
+updated: 2026-10-22T15:45:46.713Z
 ---
 
 ## Summary
@@ -24,10 +24,12 @@ Hub restart #43 at dev 7887f694 (2026-10-22 10:08Z) took 20 s from stop to servi
 
 ## Acceptance criteria
 
-- [ ] C1. A hub start on a copy of the live tracker recomputes explorer summaries once per startup batch (or lazily), not once per item: a regression counts recompute events on a thousand-item fixture with a planned epic (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:34:01.840Z · note Final configured evidence is red: A-9219 Web Items snapshot /S1/ assertion fails; startup batch/load passes retained.
-- [ ] C2. The startup planned check does not block serving: a test that starts the hub on a thousand-item fixture with a planned epic asserts serving within 2 s of listening, and its targeted run receipt (test name, platform, measured gap) is posted in the item topic (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:34:01.840Z · note Final configured evidence is red: A-9219 Web assertion fails; 23.962 ms serving gap and startup 5/5 retained.
+- [x] C1. A hub start on a copy of the live tracker recomputes explorer summaries once per startup batch (or lazily), not once per item: a regression counts recompute events on a thousand-item fixture with a planned epic (test).
+  - done: impl-1104 · 2026-10-22T15:44:51.421Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1104-final-1 · 2026-10-22T15:45:46.524Z · commit bec96d238f4709d3cd976c4f4a12f4bb260a54d6
+- [x] C2. The startup planned check does not block serving: a test that starts the hub on a thousand-item fixture with a planned epic asserts serving within 2 s of listening, and its targeted run receipt (test name, platform, measured gap) is posted in the item topic (test).
+  - done: impl-1104 · 2026-10-22T15:44:51.489Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1104-final-1 · 2026-10-22T15:45:46.524Z · commit bec96d238f4709d3cd976c4f4a12f4bb260a54d6
 
 ## Comments
 
@@ -89,3 +91,44 @@ finding_counts: {"high":0,"medium":1,"low":0}
 e6cc0c43/A-9219 at unchanged source-clear 54b7c6d5 is not clear: actual `AssertionError [ERR_ASSERTION]: The input did not match the regular expression /S1/` at web/test/items.test.ts:30; E-416 row has no S1. Local Darwin arm64, Node24.21.0/Neovim0.12.5, two workers: 2444 pass/1 fail, T1/all-T2 both packages exit0, actual Web exit1. Both startup identities pass and each has five distinct load proofs plus explicit5/5; four batches and 23.962ms listening-to-serving. Whole-test 3.095/2.610s report-only overages do not invalidate the 2000ms behavioral bound. Earlier A-9206 passed T1/T2 but Web did not run; A-9200/A-9201 provisioning failures remain historical. Source clear remains; no unrelated/flaky classification or retry inferred. Final C1/C2 clearance awaits failure disposition and accepted evidence.
 
 Criteria: C1 failed (Final configured evidence is red: A-9219 Web Items snapshot /S1/ assertion fails; startup batch/load passes retained.), C2 failed (Final configured evidence is red: A-9219 Web assertion fails; 23.962 ms serving gap and startup 5/5 retained.).
+
+### rev-26 · 2026-10-22T15:37:59.575Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1104-source-2
+commit: bec96d238f4709d3cd976c4f4a12f4bb260a54d6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized shared-fix delta source clear; A-9234 incorporates rev-23's source audit A-9199 and exactC1/C2. Coordinator da3c70d4 independently read: merge eacb0e27, no branch-local test edit. Only changed non-tracker file is web/test/items.test.ts; blob5c716efb matches donor exactly. Test now owns planned epic/task under copied current release, retaining stage/meter/member/scope assertions and all subtests. Startup production/regression/docs unchanged. Standards0;Spec0. Historical A-9219/A-9225 stay failed; localtarget4/4/typecheck is supporting, not merged-head configured proof. C1/C2 await mode-free receipt with actual batching/serving boundary and required load proofs. Executor selection/fallback stays under Coordinator standing instruction, no Reviewer execution or QA claim.
+
+### rev-26 · 2026-10-22T15:39:56.595Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261022-1104-capacity-evidence-2
+commit: bec96d238f4709d3cd976c4f4a12f4bb260a54d6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-9239 audits original A-9237/874169b9. Exact pre-runtimec-8 capacity unavailable inlon1,nyc1,sfo2; host check output retained132/59report-only/zero refusals. Runtime counts/platform unavailable, projections not test observations; no startup assertion failure established. Configured acceptance remains unavailable/not clear, C1/C2 unverified; no criterion failure marks for unexecuted tests. Source-clearbec96d23 remains valid. Already-admitteda725df64 local replacement is separate and Coordinator-authorized, not Reviewer-authorized.
+
+### rev-26 · 2026-10-22T15:45:46.524Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1104-final-1
+commit: bec96d238f4709d3cd976c4f4a12f4bb260a54d6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; A-9253 audits originalA-9251/a725df64 at unchangedsource-clearbec96d23/treea491a774. LocalDarwinarm64 Node24.21/Nvim0.12.5,workers2:T0check,T1/allfallbackT2hub+Neovim/actuallyexecutedWeb exit0,2448ordinarypass/zero fail/cancel/skip. C1 diagnostic6731=4startupbatches/1000rows;C2 diagnostic6843=29.528ms listening→serving under unscaled2000ms, held-planning/status/committed-state assertions retained. Both newidentities have5distinct loadtestpasses plus explicit5/5 at7593/7604. Whole-test2.411/2.715s tier overages report-only, not serving-gap failures. Web sharedfixture parent/subtests pass; actualWeb27.59s. Standards0;Spec0;lint132/59/zero refusals/report-only,two missing baselines. No Linuxruntime,T3/T4,fullcover/QA claim. Historicalcapacity andold/S1/failed receipts retained;qaPolicy none.
+
+Criteria: C1 verified, C2 verified.

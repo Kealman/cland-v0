@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-22T15:30:31.381Z
+updated: 2026-10-22T15:44:54.346Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ A run refused by the provider before any test executes reads as unavailable, not
 
 - [ ] C1. A periodic dev T3 run whose droplet acquisition is refused for capacity posts a "not run" notice naming the refusal, with no "red" wording and no culprit search (test).
 - [ ] C2. A task verify refused for capacity before any test reports a distinct unavailable outcome in its result and its suite result line (test).
+
+## Comments
+
+### coord · 2026-10-22T15:44:54.346Z
+
+Related, from rev-32 (T-1117 review, A-9249). A reviewer cannot record 'runtime evidence unavailable' at a head. A not-clear evidence verdict requires a nonempty failed list, so a capacity refusal can only be told to the lead in prose. Consider a verdict or evidence state for 'not run (provider)' that names no criterion failure, alongside C2's distinct unavailable outcome.

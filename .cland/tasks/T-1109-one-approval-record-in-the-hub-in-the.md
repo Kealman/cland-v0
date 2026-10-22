@@ -3,7 +3,7 @@ id: T-1109
 kind: task
 title: One approval record in the hub, in the snapshot and the deltas
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 9
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-851
 branch: t/T-1109-one-approval-record-in-the-hub-in-the
 created: 2026-10-22T15:16:11.019Z
-updated: 2026-10-22T15:31:11.481Z
+updated: 2026-10-22T15:43:40.745Z
 ---
 
 ## Summary
@@ -51,7 +51,7 @@ The records ride in the snapshot's inbox section. Each change pushes an `approva
 ## Acceptance criteria
 
 - [x] C1. A frame client that connects while a fake Claude Code session waits for approval reads exactly one record in the snapshot: the session, the harness, the command in full, `answerIn: tui`, no choices and `pending` (test).
-  - done: impl-1109 · 2026-10-22T15:30:52.300Z
+  - done: impl-1109 · 2026-10-22T15:43:40.745Z
 - [x] C2. A request raised by a fake adapter through the contract reaches a connected frame client as one `approval` delta and one inbox row with its choices. Its close reaches the client as a delta with the outcome and `closed` (test).
   - done: impl-1109 · 2026-10-22T15:30:52.403Z
 - [x] C3. Two pending requests of one session are two records, and needs-you counts each once (test).
@@ -68,9 +68,56 @@ The records ride in the snapshot's inbox section. Each change pushes an `approva
   - done: impl-1109 · 2026-10-22T15:30:53.404Z
 - [x] C9. `hub/README.md` describes the approval record. Its Claude Code capability row says approvals stay in the TUI and their records are marked to answer in Neovim (docs).
   - done: impl-1109 · 2026-10-22T15:30:53.652Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1109-source-1 · 2026-10-22T15:35:44.798Z · commit a08cf6c5fa70615ed4c435b49a9b09b6e2df95fe
+  - verified: rev-31 [reviewer] · run rev-20261022-1109-delta · 2026-10-22T15:39:43.066Z · commit 1114749545a2f400a65822f0994528a33e4d9d3b
 
 ## Comments
 
 ### impl-1109 · 2026-10-22T15:28:57.466Z
 
 Implemented test-first at the epic's frame/recorded-client seams: explicit native request/close callbacks, scoped request records and deltas, TUI fallback, needs-you per request, allowlisted 64 KiB UTF-8 subjects, durable archived outcome, CLI state/choices/outcomes, and recorded Neovim Enter attachment. Coordinator confirmed sessionId:nativeRequestId (6b74c26b); reconnect mapping belongs to T-1113. Targeted T2 frame tests 7/7 and snapshot tests 12/12, existing inbox component tests 10/10 on macOS working tree. Recording refresh counts posted in the item topic. Final check/review preparation underway; no full verification yet.
+
+### rev-26 · 2026-10-22T15:35:44.798Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1109-source-1
+commit: a08cf6c5fa70615ed4c435b49a9b09b6e2df95fe
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear; A-9227 audits fixedf35f5e2b→a08cf6c5/tree58710d5d. Standards0;Spec0. Request records, session-scoped native ids per Coordinator6b74c26b, state-only TUI fallback, duplicate suppression, exact close deltas/durable outcomes, counts,64KiB UTF-8 allowlisted subjects, CLI and recorded Enter→session.attach coexist at existing seams. Reconnect/race recovery remainsT-1113; no native relay/answer gate claim. C9 source verified: record and Claude capability docs match. Committed aggregate5659→5662/newinbox-actions0→61 independently counted; A-9208/A-9214 local working-tree execution narratives supporting only, raw receipts requested without reruns. C1–C8 remain run/evidence dependent. Submit mode-free verification at unchangeda08cf6c5, retain original recording/targeted receipts; changed head needs source review, after-stage QA separate.
+
+Criteria: C9 verified.
+
+### rev-31 · 2026-10-22T15:39:43.066Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1109-delta
+commit: 1114749545a2f400a65822f0994528a33e4d9d3b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear, A-9238; no findings. Prior full source baseline is rev-26/A-9227 at a08cf6c5. Coordinator da3c70d4 authorizes merge; only non-tracker delta is web/test/items.test.ts, identical to shared eacb0e27. Seeded planned epic under current copied release preserves stage/meter/child/scope assertions after E-416 closure. T-1109 product/tests/recordings/docs unchanged; C9 carried forward. A-9232 local receipts retain working-tree/source and post-check-edit limits; they are not new-head configured evidence. C1–C8 await same-head mode-free verification; no merge authorization.
+
+Criteria: C9 verified.
+
+### rev-31 · 2026-10-22T15:42:21.538Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261022-1109-unavailable
+commit: 1114749545a2f400a65822f0994528a33e4d9d3b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+9526c1e7/A-9243 not clear: c-8 unavailable in lon1/nyc1/sfo2, no behavioral phase, platform/counts unavailable. Source A-9238/C9 remains current; no code finding. A-9246 corrects A-9245's over-expanded authority id and is authoritative. Already admitted Coordinator-authorized local46db9b0c remains pending; no duplicate requested. Restore C1 claimant mark with evidence before final settlement; no merge authorization.
+
+Criteria: C1 failed (Required configured gate incomplete: 9526c1e7 executed no phase because c-8 unavailable; no functional C1 failure established.).

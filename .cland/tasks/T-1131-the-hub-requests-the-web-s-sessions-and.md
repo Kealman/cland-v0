@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-855
 branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T15:33:33.387Z
+updated: 2026-10-22T15:45:01.565Z
 ---
 
 ## Summary
@@ -36,7 +36,7 @@ The wire types go in the shared module with their conformance entries, and the w
 ## Acceptance criteria
 
 - [x] C1. A human client reads a session's recent messages in both directions across topics, bounded and paged by message number, and a session's own `history` is unchanged (T2 test).
-  - done: impl-1131 · 2026-10-22T15:33:32.932Z
+  - done: impl-1131 · 2026-10-22T15:44:38.944Z
 - [x] C2. Over the web edge a browser reads its own sign-in's creation, last use and expiry, and the reply names no other browser's session (T2 test).
   - done: impl-1131 · 2026-10-22T15:33:33.027Z
 - [x] C3. `session.launch` with a directory from the web edge is refused with `cli-neovim-only`, and the same launch without a directory starts in the project root (T2 test).
@@ -44,8 +44,9 @@ The wire types go in the shared module with their conformance entries, and the w
 - [x] C4. The web authority table classifies both new requests, and its unit test refuses a web launch directory before dispatch (T1 test).
   - done: impl-1131 · 2026-10-22T15:33:33.197Z
 - [x] C5. `hub/README.md` documents the two requests and the launch-directory refusal (docs).
-  - done: impl-1131 · 2026-10-22T15:26:18.394Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-source · 2026-10-22T15:30:13.597Z · commit 1a9d9298fe8331e51e36c3426031f63f9af310cd
+  - done: impl-1131 · 2026-10-22T15:40:56.275Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1131-delta · 2026-10-22T15:45:01.565Z · commit a178b2620f2f697377b53cc66346e6fad6554bf7
 
 ## Comments
 
@@ -82,3 +83,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Historical e098d0fc/A-9215 is not clear: auto exit1, droplet size c-8 unavailable in lon1/nyc1/sfo2. Counts/platform unavailable; only host check output retained. No behavioral phase ran, projections are not passes. Source-clear A-9211/C5 remains applicable; no source finding. A-9218 preserves the exact failure and limits. Replacement c5acff9b already admitted; this verdict does not prejudge that pending run or ask for another. Restore claimant marks with supported evidence before final settlement; no merge authorization.
 
 Criteria: C1 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.), C2 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.), C3 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.), C4 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.).
+
+### impl-1131 · 2026-10-22T15:40:47.688Z
+
+Configured local darwin arm64 verification c5acff9b at 1a9d9298 completed T1/T2 exit 0 and Web exit 1 solely on copied live tracker snapshot expected /S1/ for closed E-416 (A-9242); this is the shared defect fixed by Coordinator eacb0e27. Per posted instruction merged origin/dev (only shared test plus tracker), pushed a178b262 and requested delta source review before next exact-head run. No T-1131 production edits, no merge enqueue.
+
+### rev-31 · 2026-10-22T15:44:29.964Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-shared-web-failure
+commit: 1a9d9298fe8331e51e36c3426031f63f9af310cd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Historical local c5acff9b/A-9242 not clear; A-9250. T1/T2 passed with all six task-new5/5 groups, but Web failed exact /S1/ on closed E-416. Matches Coordinator's shared eacb0e27 defect, not a T-1131 source finding. Mac darwin arm64, T3 deferred, lint/budgets report-only. New a178b262 delta review requested separately; historical failure is not a pass. Restore claimant C1 mark before final settlement.
+
+Criteria: C1 failed (Required configured gate c5acff9b failed shared Web snapshot /S1/ assertion on closed E-416; own C1/T1/T2 identities pass, no owning defect established.).
+
+### rev-31 · 2026-10-22T15:45:01.565Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-delta
+commit: a178b2620f2f697377b53cc66346e6fad6554bf7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear, A-9252; no findings. Only non-tracker change is Coordinator-authorized shared web/test/items.test.ts fix, byte-identical eacb0e27; T-1131 implementation/tests/docs unchanged from A-9211. C5 carried forward, C1–C4 final run pending. Historical local failed shared fixture receipt A-9250 and capacity A-9218 remain failed/incomplete; six owned5/5 groups do not make that overall run pass. Proceed with new-head mode-free verification under existing capacity/local instructions. No merge authorization.
+
+Criteria: C5 verified.

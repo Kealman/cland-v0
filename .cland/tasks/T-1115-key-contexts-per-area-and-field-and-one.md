@@ -3,7 +3,7 @@ id: T-1115
 kind: task
 title: Key contexts per area and field, and one area slot in the shell
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-852
 branch: t/T-1115-key-contexts-per-area-and-field-and-one
 created: 2026-10-22T15:16:12.148Z
-updated: 2026-10-22T15:35:20.002Z
+updated: 2026-10-22T15:38:05.463Z
 ---
 
 ## Summary
@@ -36,17 +36,18 @@ Today one chord resolves to one action for the whole page. Digits `1` to `7` alw
 
 ## Acceptance criteria
 
-- [x] C1. The same physical key resolves to the Items action in Items and to the focused area's own action in a context that declares it, with exact modifiers, and every existing Items and Plan binding and `1` to `7` in the shell resolve as before (test).
-  - done: impl-1115 · 2026-10-22T15:30:00.061Z
-- [x] C2. A field that declares the composer context receives its context's bindings, and any other field still receives only `⌘K` (Web test).
-  - done: impl-1115 · 2026-10-22T15:30:00.326Z
-- [x] C3. A key declared in the Sessions table but not handled by its view does nothing there and is absent from `?` in Sessions; `?` in Items lists the same keys and labels as before (Web test).
-  - done: impl-1115 · 2026-10-22T15:30:00.445Z
-- [x] C4. Inbox, Sessions, Topics, Events, Artifacts and Accounts render through the area slot with their stand-in lists, selection and drawer as before, the shell has one key listener, and the existing shell, palette, fold and Items Web tests pass unchanged (Web test).
-  - done: impl-1115 · 2026-10-22T15:34:04.528Z
+- [ ] C1. The same physical key resolves to the Items action in Items and to the focused area's own action in a context that declares it, with exact modifiers, and every existing Items and Plan binding and `1` to `7` in the shell resolve as before (test).
+  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
+- [ ] C2. A field that declares the composer context receives its context's bindings, and any other field still receives only `⌘K` (Web test).
+  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
+- [ ] C3. A key declared in the Sessions table but not handled by its view does nothing there and is absent from `?` in Sessions; `?` in Items lists the same keys and labels as before (Web test).
+  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
+- [ ] C4. Inbox, Sessions, Topics, Events, Artifacts and Accounts render through the area slot with their stand-in lists, selection and drawer as before, the shell has one key listener, and the existing shell, palette, fold and Items Web tests pass unchanged (Web test).
+  - failed: rev-23 [reviewer] · 2026-10-22T15:38:05.463Z · note A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.
 - [x] C5. `web/README.md` under Palette and keys describes the contexts, the per-area tables and how an area declares the actions it handles (docs).
   - done: impl-1115 · 2026-10-22T15:30:00.786Z
   - verified: rev-23 [reviewer] · run rev-20261022-1115-source-2 · 2026-10-22T15:35:20.002Z · commit 13e8700d1fbd73488ba5e229365da4fe8f7324a4
+  - verified: rev-23 [reviewer] · run rev-20261022-1115-source-3 · 2026-10-22T15:36:49.306Z · commit ddeecc3c6ae59515d373372da94c9765865f6db0
 
 ## Comments
 
@@ -87,3 +88,33 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear at 13e8700d. Continuation of A-9220 full audit; only keyboard.ts guard and new key-contexts Web regression changed since e557832c, no dev merge. M1 resolved: palette field permits its local controls and common dismiss/open-other/palette actions; ordinary g/digits/? return without preventDefault, explicit composer rule retained. Native key typing regression asserts g1234567? then handled Items action and restored focus. Existing Web files unchanged. Surrounding keymap/modal dispatch and README contexts/handledActions/AreaSlot agree; C5 verified. Standards0/Spec0 findings, no Reviewer runtime execution. C1–C4 remain runtime-dependent pending exact-head configured verification including unchanged Web compatibility files. Reported local targeted tests are not a configured pass; preserve original evidence.
 
 Criteria: C5 verified.
+
+### rev-23 · 2026-10-22T15:36:49.306Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1115-source-3
+commit: ddeecc3c6ae59515d373372da94c9765865f6db0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear over accepted13e8700d/A-9226: eight tracker files plus Coordinator shared items.test.ts fix eacb0e27; T-1115 production/new tests/docs unchanged. Shared fixture chooses current copied release, seeds an open planned epic/task/stage before hub launch, retains S1/meter/stage/task and scope assertions, eliminating dependence on E-416 staying open. No isolation/wait/cleanup change or new source finding; Standards0/Spec0. C5 refreshed; C1–C4 remain pending exact-head mode-free verification and unchanged compatibility files apart from this authorized shared fix. No Reviewer execution or passing suite/QA claim.
+
+Criteria: C5 verified.
+
+### rev-23 · 2026-10-22T15:38:05.463Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1115-capacity-evidence
+commit: ddeecc3c6ae59515d373372da94c9765865f6db0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+87422129/A-9233: `auto exit 1; droplet size c-8 unavailable in regions lon1, nyc1, sfo2`. Host npm run check completed; runtime T1/T2/Web and load counts/platform unavailable, projections not measured. No new source finding; ddeecc3c/A-9231 source clear and C5 mark remain applicable. C1–C4 final evidence missing. Coordinator-authorized unchanged local replacement afbfb96e is admitted and not evaluated; this historical record does not cancel/prejudge it. No Reviewer execution or retry requested.
+
+Criteria: C1 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.), C2 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.), C3 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.), C4 failed (A-9233 failed provisioning: c-8 unavailable; configured runtime/load evidence absent, not an assertion failure.).
