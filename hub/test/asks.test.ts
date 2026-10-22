@@ -119,8 +119,8 @@ test('answering with option 2 posts the option as a message with answer_to, deli
   assert.equal(delivered.params.meta?.from_kind, 'human');
   assert.equal(delivered.params.meta?.topic, 'general');
 
-  // the wait is cleared: the human spoke last, so the topic waits for the agent
-  await ui.waitFor((f) => f.type === 'topic' && (f.topic as Topic).id === 'general' && (f.topic as Topic).status === 'waiting for agent' && ui.frames.indexOf(f) >= mark);
+  // The answer settles the ask without starting a human Question wait.
+  await ui.waitFor((f) => f.type === 'topic' && (f.topic as Topic).id === 'general' && (f.topic as Topic).status === 'open' && ui.frames.indexOf(f) >= mark);
   const card = (await ui.waitFor((f) => f.type === 'ask' && f.ask === asked.ask && ui.frames.indexOf(f) >= mark)) as { topic: string; card: Card };
   assert.equal(card.topic, 'general');
   assert.deepEqual(card.card, { question: 'Which port?', options: ['a fixed one', 'a free one, picked at start'], free: true, state: 'answered', answer: answered.message.id, option: 2, answered_as: 'human', outcome: { status: 'answered', text: 'a free one, picked at start', option: 2, by: 'human', at: answered.message.ts } });
@@ -166,7 +166,7 @@ test('two open asks in one topic: answering one keeps the wait, a plain message 
   assert.equal(free.message.text, 'keep both, behind a flag');
   assert.equal(free.message.answerTo, second.ask);
   await coord.waitForEvent((e) => e.params.content === 'keep both, behind a flag' && e.params.meta?.answer_to === second.ask);
-  assert.equal((await topicOf(ui, topic.id)).status, 'waiting for agent');
+  assert.equal((await topicOf(ui, topic.id)).status, 'open');
   assert.equal((await inbox(ui)).needsYou, 0);
 
   // options only: no free answer

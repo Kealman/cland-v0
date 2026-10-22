@@ -601,3 +601,31 @@ test('history accepts exclusive safe-integer cursors and refuses ambiguous or in
     assert.equal(isClientRequest({ ...frame, after: '1' }), false);
   } finally { core.close(); core.store.close(); }
 });
+
+
+test('a withdrawn Question preserves its cleared wait across Store reopen without replay', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-withdrawn-question-'));
+  const file = join(root, 'hub.sqlite');
+  const clock = new FakeClock();
+  let core = new HubCore({ clock, store: new Store(file) });
+  try {
+    const { message } = core.sendFromHuman('general', 'a question nobody received', undefined, undefined, undefined, undefined, undefined, undefined, undefined, 'question');
+    assert.equal(core.topics().find(t => t.id === 'general')?.status, 'waiting for agent');
+    core.withdrawHumanMessage('general', message.id);
+    core.close();
+    core.store.close();
+    core = new HubCore({ clock, store: new Store(file) });
+    const history = core.topicHistory('general');
+    assert.equal(history.topic.status, 'open');
+    assert.equal(history.messages.find(m => m.id === message.id)?.stage, 'withdrawn');
+    const received: Message[] = [];
+    const joined = core.hello({ type: 'hello', protocol: 2, sessionId: 'sess-coord', name: 'coord', role: 'coordinator', cwd: root }, message => { received.push(message); return true; });
+    assert.ok(joined.ok);
+    core.flushQueued('coord');
+    const next = core.sendFromHuman('general', 'after reopen');
+    core.ack(joined.connection, next.message.id);
+    assert.ok(received.some(m => m.id === next.message.id), 'the next message still reaches the returning recipient');
+    assert.equal(core.store.stage(next.message.id), 'delivered');
+    assert.equal(received.some(m => m.id === message.id), false, 'the withdrawn message never reaches the returning recipient');
+  } finally { core.close(); core.store.close(); await rm(root, { recursive: true, force: true }); }
+});

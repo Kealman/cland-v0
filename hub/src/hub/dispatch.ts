@@ -1173,7 +1173,7 @@ export class Dispatcher {
             const reply = typeof frame.replyTo === 'string' ? frame.replyTo : undefined;
             const to = Array.isArray(frame.to) ? frame.to as string[] : undefined;
             const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts, frame.kind, undefined, false, undefined, frame.request, frame.subject)
-              : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts);
+              : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts, undefined, undefined, frame.kind as import('../protocol.ts').HumanMessageKind | undefined);
             return { type: 'result', id: String(frame.id), ok: true, value };
           });
         } catch (err) { return resumed(() => Dispatcher.#failure(String(frame.id), err)); }
@@ -1591,8 +1591,12 @@ export class Dispatcher {
             return answer({ topics: core.topics() });
           case 'topic.history':
             return answer(core.topicHistoryPage(frame.topic, frame.limit, frame));
+          case 'topic.withdraw': {
+            if (this.#asSession(frame)) throw new Error('only the human may withdraw a message');
+            return answer(core.withdrawHumanMessage(frame.topic, frame.message));
+          }
           case 'topic.send': {
-            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo);
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, undefined, undefined, frame.kind);
             return answer({ message, outcomes });
           }
           case 'topic.rename':

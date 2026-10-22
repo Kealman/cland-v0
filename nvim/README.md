@@ -475,11 +475,16 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 | `lua/cland/storage.lua` | The one-time migration of workbench-owned legacy state into `cland-nvim`. |
 | `lua/cland/thread_md.lua` | Cached per-body Markdown spans and compact link/table projections; no whole-thread parser. |
 | `lua/cland/topic_view.lua` | One topic's thread and composer, wired to the client (history merged on every connect). |
-| `lua/cland/thread.lua` | The thread buffer: `sender [Role]` (the role's label) and local time on each message's header. The human's own messages show their delivery stage right-aligned (`⌁ queued`, `✓ delivered`, `✓✓ injected`), changed in place on `delivery` events. A one-line notice under the messages tells about the hub connection or a failed send. A cursor away from the tail stays where it is. |
+| `lua/cland/thread.lua` | The thread buffer: `sender [Role]` (the role's label) and local time on each message's header. The human's own messages show their delivery stage right-aligned (`⌁ queued`, `✓ delivered`, `✓✓ injected`, `✗ withdrawn`), changed in place on `delivery` events. A one-line notice under the messages tells about the hub connection or a failed send. A cursor away from the tail stays where it is. |
 | `lua/cland/composer.lua` | The composer, a prompt buffer. Enter sends, Shift+Enter (or Alt+Enter) inserts a newline. The text is kept until the hub accepts it and put back on a refusal. |
 | `lua/cland/ui.lua` | The debounced, atomic store for per-machine UI preferences in `.cland/ui.json`. |
 | `lua/cland/qa.lua` | The QA lane: the screen grid as text, the state snapshot, `:Cland qa dump`, and the runner of `cland --headless --qa` with the Lua QA API (below). |
 | `lua/cland/hl.lua` | The design's colours and glyphs: delivery stages, session states, item states. |
+
+
+
+Human topic messages carry `message` (the default), `decision` or `question` in their header. Only a Question starts a wait for its addressee; a Message or Decision preserves an existing Question wait. The protocol's human-only `topic.withdraw {topic, message}` returns the text to a web composer's draft before any adapter submission and changes the stage to `withdrawn`. Neovim observes this stage with the same `✗` glyph and red colour as `dropped`; it does not initiate withdrawal. Terminal withdrawal ignores an older queued/delivered snapshot. See `hub/README.md` (Human kinds and withdrawal) for acceptance, uncertain-submission and bare-spoke boundaries.
+
 
 ## Tests
 

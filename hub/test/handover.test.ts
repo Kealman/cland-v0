@@ -78,7 +78,7 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
 
   // before: A claims T-1, and the human asks the Coordinator something in General that A has not answered
   assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);
-  const asked = await ui.request({ type: 'topic.send', topic: 'general', text: 'When do we release?' });
+  const asked = await ui.request({ type: 'topic.send', topic: 'general', text: 'When do we release?', kind: 'question' });
   assert.equal(asked.ok, true, asked.error);
   await a.waitForEvent((e) => e.params.content.includes('When do we release?'));
   // the Agents topic: a message to the Coordinator that A answered is not waiting

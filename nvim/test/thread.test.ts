@@ -28,6 +28,20 @@ const msg = (id: string, role = 'coordinator', text = 'Taking T-58.') => ({
   text, ts, topic: 'general', stage: role === 'human' ? 'queued' : null,
 });
 
+test('a withdrawn human message uses the dropped glyph and colour and ignores older stages', { skip }, async t => {
+  const c = await start(t, { messages: { general: [] } });
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: msg('withdraw-me', 'human', 'queued words') } });
+  await c.waitScreen(s => s.includes('queued words'), 'queued message rendered');
+  await c.control({ emit: { type: 'delivery', topic: 'general', message: 'withdraw-me', stage: 'withdrawn' } });
+  await c.waitScreen(s => s.includes('✗ withdrawn'), 'withdrawn delivery rendered');
+  assert.deepEqual(await c.lua(`
+    local hl=require('cland.hl')
+    return {hl.STAGE.withdrawn[1]==hl.STAGE.dropped[1],hl.STAGE.withdrawn[3]==hl.STAGE.dropped[3]}
+  `), [true, true]);
+  await c.control({ emit: { type: 'delivery', topic: 'general', message: 'withdraw-me', stage: 'delivered' } });
+  assert.equal(await c.lua("return require('cland.views').topic('general').thread.by_id['withdraw-me'].stage"), 'withdrawn');
+});
+
 test('live chip grouping rewrites only its ask, and unrelated senders, intervening messages and days keep headers', { skip }, async t => {
   const ask = (id: string) => ({ ...msg(id), to: [], text: 'Ask ' + id, ask: {state: 'open', options: ['Yes'], free: true} });
   const chip = (id: string) => ({ ...msg(id), to: [], artifact: {id: 'A-' + id, kind: 'note', title: 'Evidence ' + id} });

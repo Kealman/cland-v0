@@ -203,3 +203,16 @@ test('web refuses as on the initial hello and still requires a valid human hello
   web.send({ type: 'hello', protocol: 2, client: 'web' });
   assert.equal((await welcome).name, 'human');
 });
+
+test('the authenticated web human can withdraw a queued message and receives its text', async t => {
+  const { web, local } = await clients(t);
+  const sent = await web.request({ type: 'topic.send', topic: 'general', text: 'restore web composer', kind: 'decision' });
+  assert.equal(sent.ok, true, sent.error);
+  const message = (sent.value as { message: { id: string; kind: string } }).message;
+  assert.equal(message.kind, 'decision');
+  const withdrawn = await web.request({ type: 'topic.withdraw', topic: 'general', message: message.id });
+  assert.equal(withdrawn.ok, true, withdrawn.error);
+  assert.equal((withdrawn.value as { text: string }).text, 'restore web composer');
+  const history = await local.request({ type: 'topic.history', topic: 'general' });
+  assert.equal((history.value as { messages: Array<{ id: string; stage: string }> }).messages.find(m => m.id === message.id)?.stage, 'withdrawn');
+});

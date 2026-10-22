@@ -1,6 +1,6 @@
 import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
 import { mergeHumanMarks } from './human-marks.ts';
-import type { AnswerAttribution } from '../protocol.ts';
+import type { AnswerAttribution, HumanMessageKind } from '../protocol.ts';
 import { ModelRing } from './model-ring.ts';
 import { heartbeatDigest } from './heartbeat.ts';
 import { defaultCrew } from '../crew.ts';
@@ -399,6 +399,8 @@ export class HubCore {
   readonly #states = new Map<string, SessionState>();
   readonly #approvalCommands = new Map<string, string>();
   #drainingVerifierRequests = false;
+  /** Sessions rejects recipients without an adapter-owned injection boundary. */
+  #withdrawalRefusal: ((messageId: string, sessions: string[]) => string | null) | null = null;
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
@@ -1601,6 +1603,32 @@ export class HubCore {
     this.#onDelivered = listener;
   }
 
+  /** Sessions fences withdrawal against an adapter submission already in flight. */
+  onWithdrawalCheck(check: ((messageId: string, sessions: string[]) => string | null) | null): void {
+    this.#withdrawalRefusal = check;
+  }
+
+  withdrawHumanMessage(topicId: string, messageId: string): { text: string; message: TopicMessage } {
+    this.#topicOrThrow(topicId);
+    const message = this.#store.message(messageId);
+    if (!message || message.topic !== topicId) throw new Error(`no message "${messageId}" in this topic`);
+    if (message.fromKind !== 'human' || message.from !== HUMAN || message.answerTo) throw new Error('only the human’s own ordinary messages can be withdrawn');
+    const deliveries = this.#store.deliveriesOf(messageId);
+    const settled = deliveries.find(d => d.state !== 'queued' && d.state !== 'delivered');
+    if (settled) throw new Error(`cannot withdraw: delivery to ${settled.session} is ${settled.state}`);
+    const submitted = deliveries.find(d => d.injectionStarted);
+    if (submitted) throw new Error(`cannot withdraw: delivery to ${submitted.session} is ${submitted.state} (adapter submission started)`);
+    if (!deliveries.length) throw new Error('cannot withdraw: no queued deliveries');
+    const refusal = this.#withdrawalRefusal?.(messageId, deliveries.map(d => d.session));
+    if (refusal) throw new Error(`cannot withdraw: ${refusal}`);
+    this.#store.withdraw(messageId);
+    const topic = this.#store.topic(topicId)!;
+    if (topic.status === 'waiting for agent' && !this.#store.lastHumanAddressees(topicId).length) this.#move(topic, 'reply', 'human question withdrawn');
+    this.#emitStage(messageId);
+    this.#publishTopics();
+    return { text: message.text, message: { ...message, topic: topicId, seq: this.#store.messageSeq(messageId), stage: 'withdrawn' } };
+  }
+
   /** A session's adapter confirmed the turn (spec 4.2, `injected`); false when the delivery was not `delivered`. */
   markInjected(messageId: string, session: string): boolean {
     if (!this.#store.markInjected(messageId, session)) return false;
@@ -2503,6 +2531,7 @@ export class HubCore {
   }
 
   #sendTo(c: Connection, message: Message): boolean {
+    if (message.fromKind === 'human' && this.sessionState(c.sessionId) === 'busy') return false;
     if (message.detail?.event === 'heartbeat' && this.sessionState(c.sessionId) !== 'idle') return false;
     if (isHeldDelivery(message)) return false;
     if (message.kind !== 'role' && this.sessionState(c.sessionId) === 'idle') this.#store.bindTurnEvents(message.id, c.name);
@@ -2697,7 +2726,8 @@ export class HubCore {
 
   topics(): Topic[] {
     return this.#store.topics().map(topic => {
-      const waitingFor = this.asks.waitingFor(topic.id);
+      const asks = this.asks.waitingFor(topic.id);
+      const waitingFor = asks.length ? asks : topic.status === 'waiting for agent' ? this.#store.lastHumanAddressees(topic.id) : [];
       return waitingFor.length ? { ...topic, waitingFor } : topic;
     });
   }
@@ -2976,9 +3006,9 @@ export class HubCore {
    * `@session-name` mentions in the text, else the Coordinator (spec 4.5). A role reaches its live holders; with
    * none connected the message is queued under the role (`@<role>`) until a session takes the role, and the topic
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
-   * they reach. The topic then waits for an agent, and the human has read it.
+   * they reach. Only a Question starts a wait for its addressee; every kind marks the topic read.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution, kind: HumanMessageKind = 'message'): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -3022,6 +3052,7 @@ export class HubCore {
       id: messageId ?? randomUUID(),
       from: HUMAN,
       fromKind: 'human',
+      kind,
       via: 'hub',
       to: [...sessions, ...placeholders],
       text,
@@ -3043,13 +3074,14 @@ export class HubCore {
     for (const n of sessions) this.#hygiene.humanTouched(this.#identity(n));
     for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
     this.#emitMessage(message);
-    this.#move(topic, 'human', 'a human message');
+    this.#move(topic, kind === 'question' ? 'human' : 'human-message', `a human ${kind}`);
     this.#publishTopics();
     const states = new Map<string, boolean>();
     for (const n of sessions) states.set(n, this.#send(message, n));
     for (const [tag, names] of tagOf) {
       const offline = names.filter((n) => !states.get(n));
-      outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} offline — queued` } : { to: tag, outcome: 'delivered' });
+      const waiting = offline.every(n => this.#live.has(n)) ? 'busy' : offline.some(n => this.#live.has(n)) ? 'offline or busy' : 'offline';
+      outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} ${waiting} — queued` } : { to: tag, outcome: 'delivered' });
     }
     for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
     this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });

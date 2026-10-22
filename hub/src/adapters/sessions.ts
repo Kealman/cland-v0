@@ -366,6 +366,16 @@ export class Sessions {
       }
     });
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
+    this.#core.onWithdrawalCheck((messageId, names) => {
+      for (const name of names) {
+        if (name.startsWith('@')) continue; // A vacant role has never received a frame.
+        const p = this.#table.bySessionId(this.#core.store.sessionIdOf(name) ?? '');
+        // A bare spoke injects immediately; there is no adapter boundary to retract safely.
+        if (!p) return `delivery to ${name} is queued/delivered by a bare spoke; injection cannot be excluded`;
+        if (this.#inflight.has(`${p.sessionId}:${messageId}`)) return `delivery to ${name} is delivered (injection in flight)`;
+      }
+      return null;
+    });
     // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
     this.#core.launchedRole((_name, sessionId, token) => {
       // the launch's first hello, taken once: a reconnect gets the clause again, injected
@@ -1411,7 +1421,10 @@ export class Sessions {
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
     const changed = this.#core.setSessionState(sessionId, name, signal.state, signal.source, signal.approvalCommand);
     // the next idle — a transition, not every poll that finds it idle — retries what was never confirmed
-    if (signal.state === 'idle' && changed) this.#retry(p, signal.at);
+    if (signal.state === 'idle' && changed) {
+      this.#core.flushQueued(name);
+      this.#retry(p, signal.at);
+    }
     return changed;
   }
 
@@ -1549,13 +1562,16 @@ export class Sessions {
     if (reconnected) this.#clearUnconfirmedMessage(sessionId, messageId);
     const pending = this.#unconfirmed.get(sessionId)?.messages.get(messageId);
     if (!reconnected && pending && this.#core.clock.now().getTime() < pending.retryAt) return;
-    const message = this.#core.store.deliveryMessage(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
-    if (!message) return;
+    const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
+    const message = this.#core.store.deliveryMessage(messageId, name);
+    if (!message || this.#core.store.deliveriesOf(messageId).find(d => d.session === name)?.state !== 'delivered') return;
+    if (message.fromKind === 'human' && this.#core.sessionState(sessionId) === 'busy') return;
     if ((message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) && this.#core.sessionState(sessionId) !== 'idle') return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
     // Hook/adapter signal timestamps use transport time, independently of policy backoff time.
     const flight = { sentAt: realClock.now().getTime(), again: false, reconnected: false };
+    this.#core.store.startInjection(messageId, name);
     this.#inflight.set(key, flight);
     if (message.fromKind !== 'hub') this.#core.store.setMeta(`pool-handoff:${sessionId}`, '');
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;
@@ -1670,6 +1686,7 @@ export class Sessions {
       try { adapter.close(); } catch (error) { failures.push(error); }
     }
     this.#core.onDelivered(null);
+    this.#core.onWithdrawalCheck(null);
     this.#core.launchedRole(null);
     this.#core.pendingLaunch(null);
     this.#core.launchIdentity(null);

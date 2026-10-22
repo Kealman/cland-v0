@@ -10,15 +10,16 @@ import type { Claim } from '../tracker/index-db.ts';
 
 /**
  * What moves a topic's status:
- * - `human`: the human wrote (to anyone) — the topic waits for an agent;
+ * - `human`: the human asked a Question (to anyone) — the topic waits for an agent;
+ * - `human-message`: a human Message or Decision reopens a closed topic, preserving an existing Question wait;
  * - `to-human`: an agent wrote to the human — the topic is open again, unless it waits for the human (an ask, #33);
- * - `reply`: an agent the human's latest message addressed wrote in the topic to others — that wait is answered;
+ * - `reply`: an agent the human's latest Question addressed wrote in the topic to others — that wait is answered;
  * - `between-agents`: any other agent message in the topic — only a closed topic reopens;
  * - `ask`: an agent asked the human (#33);
  * - `resolve`: the wait is cleared, by the Coordinator (the `resolve` tool) or the human (`topic.resolve`);
  * - `close`: the human closed it, or its item closed.
  */
-export type TopicMove = 'human' | 'to-human' | 'reply' | 'between-agents' | 'ask' | 'resolve' | 'close';
+export type TopicMove = 'human' | 'human-message' | 'to-human' | 'reply' | 'between-agents' | 'ask' | 'resolve' | 'close';
 
 export class TopicRefusal extends Error {}
 
@@ -27,6 +28,8 @@ export function nextStatus(current: TopicStatus, move: TopicMove): TopicStatus {
   switch (move) {
     case 'human':
       return 'waiting for agent';
+    case 'human-message':
+      return current === 'waiting for agent' ? current : 'open';
     case 'to-human':
       return current === 'waiting for human' ? current : 'open';
     case 'reply':

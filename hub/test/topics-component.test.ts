@@ -1,12 +1,13 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { FakeClock } from './fake-clock.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { connectSocket, connectUi, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
 
-type Topic = { id: string; title: string; status: string; standing: boolean; createdAt: string; updatedAt: string };
+type Topic = { id: string; title: string; status: string; standing: boolean; createdAt: string; updatedAt: string; waitingFor?: string[] };
 
-type TopicMessage = { seq: number; id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; stage?: string };
+type TopicMessage = { seq: number; id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; stage?: string; kind?: string };
 
 const ISO = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 
@@ -78,7 +79,7 @@ test('a message from the UI is queued while no session holds the coordinator rol
   const before = await ui.request({ type: 'topic.history', topic: 'general', before: message.seq + 1 });
   assert.equal((before.value as { messages: TopicMessage[] }).messages[0]?.seq, message.seq);
 
-  const event = (await ui.waitFor((f) => f.type === 'message')) as { topic: { id: string; title: string; unread: number; lastMessageAt: string }; message: TopicMessage };
+  const event = (await ui.waitFor((f) => f.type === 'message')) as { topic: { id: string; title: string; unread: number; lastMessageAt: string; waitingFor?: string[] }; message: TopicMessage };
   assert.deepEqual(event.topic, { id: 'general', title: 'General', unread: 0, lastMessageAt: message.ts });
   assert.equal(event.message.id, message.id);
   assert.equal(event.message.seq, message.seq);
@@ -170,4 +171,47 @@ test("a spoke's send appears to the subscribed UI as a message event with sender
   assert.equal(elsewhere.ok, false);
   assert.equal(elsewhere.error, 'no topic "nope"');
   assert.deepEqual((await history(ui, 'agents')).filter((m) => m.from !== 'hub'), [], 'nothing but the hub notices in Agents');
+});
+
+
+test("the human's kinds survive history and reach a second frame client", async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const writer = await connectUi(t, discovery);
+  const reader = await connectUi(t, discovery);
+  await reader.request({ type: 'subscribe' });
+  for (const kind of ['decision', 'question', 'message']) {
+    const sent = await writer.request({ type: 'topic.send', topic: 'general', text: `human ${kind}`, kind });
+    assert.equal(sent.ok, true, sent.error);
+    const { message } = sent.value as { message: TopicMessage };
+    assert.equal(message.kind, kind);
+    const delta = await reader.waitFor(f => f.type === 'message' && (f.message as TopicMessage).id === message.id);
+    assert.equal((delta.message as TopicMessage).kind, kind);
+    assert.equal((await history(reader, 'general')).find(m => m.id === message.id)?.kind, kind);
+  }
+  const ordinary = await writer.request({ type: 'topic.send', topic: 'general', text: 'default kind' });
+  assert.equal((ordinary.value as { message: TopicMessage }).message.kind, 'message');
+});
+
+test('only a human Question sets the wait, and later Messages do not change its addressee', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const coord = await inProcessSpoke(t, { clock, discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const reviewer = await inProcessSpoke(t, { clock, discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'sess-rev' });
+  await reviewer.waitForPresence(['coord', 'rev']);
+  const ui = await connectUi(t, discovery);
+  for (const kind of ['message', 'decision', undefined]) {
+    assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'ordinary human words', kind })).ok, true);
+    assert.equal((await topics(ui)).find(t => t.id === 'general')?.status, 'open');
+  }
+  await ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'a question', kind: 'question' });
+  assert.equal((await topics(ui)).find(t => t.id === 'general')?.status, 'waiting for agent');
+  assert.deepEqual((await topics(ui)).find(t => t.id === 'general')?.waitingFor, ['coord']);
+  await ui.request({ type: 'topic.send', topic: 'general', to: ['rev'], text: 'additional information', kind: 'message' });
+  await reviewer.call('send', { to: ['coord'], topic: 'general', text: 'unrelated reply' });
+  assert.equal((await topics(ui)).find(t => t.id === 'general')?.status, 'waiting for agent');
+  await coord.call('send', { to: ['rev'], topic: 'general', text: 'the answer' });
+  assert.equal((await topics(ui)).find(t => t.id === 'general')?.status, 'open');
 });

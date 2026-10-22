@@ -102,6 +102,7 @@ export const WEB_AUTHORITY = {
   'topic.rename': true,
   'topic.resolve': true,
   'topic.send': true,
+  'topic.withdraw': true,
   'visibility.set': true,
   'web.link': 'mints a local sign-in link',
   'web.sessions': 'lists local browser sessions',

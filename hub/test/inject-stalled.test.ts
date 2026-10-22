@@ -180,13 +180,14 @@ test('an idle predating an in-flight inject cannot queue a retry across clock do
   assert.equal(launched.ok, true, launched.error);
   const peer = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: (launched.value as { process: HarnessProcessView }).process.sessionId, launchToken: fake.spawns[0]!.launchToken! });
   await peer.waitForPresence(['impl']);
-  fake.busy('impl');
+  fake.idle('impl');
   const oldIdle = realClock.now().getTime() - 1;
   fake.scriptInject('impl', 'hold', 'accept');
   const sent = await ui.request({ type: 'topic.send', topic: 'general', to: ['impl'], text: 'already accounts for the old idle' });
   const id = (sent.value as { message: Message }).message.id;
   await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'delivered');
   assert.equal(fake.injections.filter(input => input.message.id === id).length, 1, 'inject is in flight before the delayed signal');
+  fake.busy('impl'); // Human input now waits when already busy; this inject entered while idle.
   const signal = await ui.request({ type: 'session.signal', session: 'impl', event: 'turn-end', at: oldIdle });
   assert.equal(signal.ok, true, signal.error);
   assert.equal((signal.value as { applied: boolean }).applied, true, 'the delayed idle changes state while injection is held');

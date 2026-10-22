@@ -120,10 +120,11 @@ M.STAGE = {
   delivered = { '✓', 'delivered', 'ClandDim' },
   injected = { '✓✓', 'injected', 'ClandTeal' },
   dropped = { '✗', 'dropped', 'ClandRed' },
+  withdrawn = { '✗', 'withdrawn', 'ClandRed' },
 }
 
 --- How far a stage is along, so an older snapshot never moves a message back.
-M.STAGE_RANK = { queued = 1, delivered = 2, dropped = 2, injected = 3 }
+M.STAGE_RANK = { queued = 1, delivered = 2, dropped = 2, injected = 3, withdrawn = 4 }
 
 --- A session's state (spec 4.2) as a glyph, a colour and words; `exited` and `stopped` are process states.
 M.SESSION = {

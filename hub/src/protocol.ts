@@ -27,6 +27,8 @@ export const UPDATE_HINT = 'update cland and restart the session';
 
 export type FromKind = 'human' | 'agent' | 'hub';
 export type Via = 'session' | 'hub';
+export type HumanMessageKind = 'message' | 'decision' | 'question';
+
 export type SendKind = 'progress' | 'report' | 'question' | 'decision' | 'request';
 export type RequestKind = 'review' | 'qa' | 'handover';
 export const SEND_KINDS: readonly SendKind[] = ['progress', 'report', 'question', 'decision', 'request'];
@@ -121,7 +123,7 @@ export type Message = {
   ts: string;
   /** The topic the message belongs to (its id); absent on the hub's own notices. */
   topic?: string;
-  /** An agent's send kind, or a hub notice's lifecycle kind (`role`, `claim`, `mute`, …). */
+  /** The human/agent's kind, or a hub notice's lifecycle kind (`role`, `claim`, `mute`, …). */
   kind?: string;
   request?: RequestKind;
   subject?: string;
@@ -166,7 +168,7 @@ export type Topic = {
   lastMessageAt: string | null;
   /** A message waits for a role nobody holds: `no coordinator` (or `no reviewer`, …); absent otherwise. */
   warning?: string;
-  /** Parties that can currently settle an open ask, excluding forwarded parents. */
+  /** Parties that can currently settle an open ask or the latest human Question, excluding forwarded asks. */
   waitingFor?: string[];
 };
 
@@ -174,8 +176,8 @@ export type Topic = {
 export type TopicRef = { id: string; title: string; item?: string | null };
 
 /** A message's progress (spec 4.2): `queued` until every addressee's spoke acked it, then `delivered`;
- *  `injected` once every addressee's adapter confirmed the turn; `dropped` when it waited past the TTL. */
-export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
+ *  `injected` once every addressee's adapter confirmed the turn; `dropped` when it waited past the TTL; `withdrawn` when the human recalled it before submission. */
+export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped' | 'withdrawn';
 
 /** Exclusive numeric history cursors; string `before` preserves the Neovim message-id cursor. */
 export type TopicHistoryFilter = AgentsHistoryFilter & { before?: number | string; after?: number };
@@ -694,7 +696,9 @@ export type ClientRequest =
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
-  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string; artifacts?: string[] }
+  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string; artifacts?: string[]; kind?: HumanMessageKind }
+  /** Human-only recall before any adapter submission: `{text, message: TopicMessage}`. */
+  | { type: 'topic.withdraw'; id: string; topic: string; message: string }
   | { type: 'topic.rename'; id: string; topic: string; title: string }
   | { type: 'topic.delete'; id: string; topic: string }
   /** The human opens a topic, optionally bound to an item: `{ topic: Topic }`. */
@@ -1067,10 +1071,13 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.session === 'string';
     case 'topic.history':
       return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && (f.before === undefined || typeof f.before === 'string' || isMessageSeq(f.before)) && (f.after === undefined || isMessageSeq(f.after)) && (f.before === undefined || f.after === undefined) && isAgentsHistoryFilter(f);
+    case 'topic.withdraw':
+      return typeof f.topic === 'string' && typeof f.message === 'string';
     case 'topic.send':
       return (
         typeof f.topic === 'string' &&
         typeof f.text === 'string' &&
+        (f.kind === undefined || f.kind === 'message' || f.kind === 'decision' || f.kind === 'question') &&
         (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
         (f.replyTo === undefined || typeof f.replyTo === 'string')
       );

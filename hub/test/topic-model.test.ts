@@ -39,7 +39,7 @@ async function ok<T>(ui: FrameClient, frame: { type: string } & Record<string, u
 }
 
 const create = async (ui: FrameClient, title: string, item?: string) => (await ok<{ topic: Topic }>(ui, { type: 'topic.create', title, ...(item ? { item } : {}) })).topic;
-const send = (ui: FrameClient, topic: string, text: string) => ok<{ message: TopicMessage; outcomes: Outcome[] }>(ui, { type: 'topic.send', topic, text });
+const send = (ui: FrameClient, topic: string, text: string) => ok<{ message: TopicMessage; outcomes: Outcome[] }>(ui, { type: 'topic.send', topic, text, kind: 'question' });
 const listed = async (ui: FrameClient) => (await ok<{ topics: Topic[] }>(ui, { type: 'topic.list' })).topics;
 const topicOf = async (ui: FrameClient, id: string) => (await listed(ui)).find((x) => x.id === id) as Topic;
 

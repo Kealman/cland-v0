@@ -36,6 +36,7 @@ export type WireConformance = [
   Assert<Equal<import('../src/protocol.ts').ClientRequest | import('../src/adapters/requests.ts').SessionRequest | import('../src/tracker/requests.ts').TaskRequest, Wire.WorkbenchRequest>>,
   Assert<Equal<import('../src/protocol.ts').FromKind, Wire.FromKind>>,
   Assert<Equal<import('../src/protocol.ts').Via, Wire.Via>>,
+  Assert<Equal<import('../src/protocol.ts').HumanMessageKind, Wire.HumanMessageKind>>,
   Assert<Equal<import('../src/protocol.ts').SendKind, Wire.SendKind>>,
   Assert<Equal<import('../src/protocol.ts').RequestKind, Wire.RequestKind>>,
   Assert<Equal<import('../src/protocol.ts').Outcome, Wire.Outcome>>,

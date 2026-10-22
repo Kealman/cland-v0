@@ -11,6 +11,8 @@ export type FromKind = 'human' | 'agent' | 'hub';
 export type Via = 'session' | 'hub';
 
 // hub/src/protocol.ts
+export type HumanMessageKind = 'message' | 'decision' | 'question';
+
 export type SendKind = 'progress' | 'report' | 'question' | 'decision' | 'request';
 
 // hub/src/protocol.ts
@@ -138,7 +140,7 @@ export type Message = {
   ts: string;
   /** The topic the message belongs to (its id); absent on the hub's own notices. */
   topic?: string;
-  /** An agent's send kind, or a hub notice's lifecycle kind (`role`, `claim`, `mute`, …). */
+  /** The human/agent's kind, or a hub notice's lifecycle kind (`role`, `claim`, `mute`, …). */
   kind?: string;
   request?: RequestKind;
   subject?: string;
@@ -212,7 +214,7 @@ export type Topic = {
   lastMessageAt: string | null;
   /** A message waits for a role nobody holds: `no coordinator` (or `no reviewer`, …); absent otherwise. */
   warning?: string;
-  /** Parties that can currently settle an open ask, excluding forwarded parents. */
+  /** Parties that can currently settle an open ask or the latest human Question, excluding forwarded asks. */
   waitingFor?: string[];
 };
 
@@ -220,7 +222,7 @@ export type Topic = {
 export type TopicRef = { id: string; title: string; item?: string | null };
 
 // hub/src/protocol.ts
-export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
+export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped' | 'withdrawn';
 
 // hub/src/protocol.ts
 /** Exclusive numeric history cursors; string `before` preserves the Neovim message-id cursor. */
@@ -910,7 +912,9 @@ export type ClientRequest =
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
-  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string; artifacts?: string[] }
+  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string; artifacts?: string[]; kind?: HumanMessageKind }
+  /** Human-only recall before any adapter submission: `{text, message: TopicMessage}`. */
+  | { type: 'topic.withdraw'; id: string; topic: string; message: string }
   | { type: 'topic.rename'; id: string; topic: string; title: string }
   | { type: 'topic.delete'; id: string; topic: string }
   /** The human opens a topic, optionally bound to an item: `{ topic: Topic }`. */

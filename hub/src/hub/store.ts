@@ -17,7 +17,7 @@ import { vacancyWarning } from './topics.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
  *  the turn, or dropped past the TTL. */
-export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected' | 'uncertain';
+export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected' | 'uncertain' | 'withdrawn';
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
 export type ReleasedDigest = { trigger: string; session: string; notes: string[]; reheld: string[] };
 
@@ -201,7 +201,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'run_eligible', type: 'integer' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
-  /** The agent's send kind, or the hub notice's kind (`role`: a clause or revocation). */
+  /** The human/agent's kind, or the hub notice's kind (`role`: a clause or revocation). */
   { table: 'messages', column: 'notice', type: 'text' },
   /** A notice's facts as JSON (`Message.detail`): a mute's refusal and pair; null for every other message. */
   { table: 'messages', column: 'notice_detail', type: 'text' },
@@ -222,6 +222,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   /** Addressing provenance: an explicit session name or claimed-item lead, rather than broadcast resolution.
    *  Old rows have no provenance and cannot establish a direct address. */
   { table: 'deliveries', column: 'direct', type: 'integer not null default 0' },
+  /** Durable exclusion fence: absence of an adapter confirmation does not prove no submission. */
+  { table: 'deliveries', column: 'injection_started', type: 'integer not null default 0' },
   /** A progress note's turn-starting delivery, fixed before transport and reused on every retry. */
   { table: 'deliveries', column: 'digest_id', type: 'text' },
   { table: 'deliveries', column: 'launch_brief', type: 'text' },
@@ -376,6 +378,7 @@ from topics t left join pending_roles p on p.topic = t.id`;
  *  once every delivery that was not dropped was injected. */
 const stageOf = (states: string[]): DeliveryStage | undefined => {
   if (states.length === 0) return undefined;
+  if (states.every(s => s === 'withdrawn')) return 'withdrawn';
   if (states.includes('queued')) return 'queued';
   if (states.every((s) => s === 'dropped')) return 'dropped';
   if (states.every((s) => s === 'injected' || s === 'dropped')) return 'injected';
@@ -449,7 +452,13 @@ export class Store implements HygieneMemory {
     for (const { table, column, type } of ADDED_COLUMNS) {
       const have = columnsOf(table);
       if (have.size > 0 && !have.has(column)) {
-        this.#db.exec(`alter table ${table} add column ${column} ${type}`);
+        this.#transaction(() => {
+          this.#db.exec(`alter table ${table} add column ${column} ${type}`);
+          if (table === 'deliveries' && column === 'injection_started') {
+            // Older accepted input may already have reached the harness before upgrade.
+            this.#db.exec("update deliveries set injection_started = 1 where state in ('delivered', 'uncertain', 'injected')");
+          }
+        });
         have.add(column);
       }
     }
@@ -999,6 +1008,25 @@ export class Store implements HygieneMemory {
       on source.message_id = target.message_id where source.session = ? and target.session = ?`).get(from, to) as Row).count);
   }
 
+  /** Per-recipient facts, including states hidden by the aggregate stage. */
+  deliveriesOf(messageId: string): Array<{ session: string; state: DeliveryState; injectionStarted: boolean }> {
+    return (this.#prepare('select session, state, injection_started from deliveries where message_id = ?').all(messageId) as Row[])
+      .map(row => ({ session: row.session as string, state: row.state as DeliveryState, injectionStarted: Boolean(row.injection_started) }));
+  }
+
+  /** A durable fence before invoking the adapter; a missing confirmation never proves absence of input. */
+  startInjection(messageId: string, session: string): void {
+    this.#prepare('update deliveries set injection_started = 1 where session = ? and (message_id = ? or digest_id = ?)').run(session, messageId, messageId);
+  }
+
+  /** Withdraw a root atomically; its held notes remain available to the next turn. */
+  withdraw(messageId: string): void {
+    this.#transaction(() => {
+      this.#prepare("update deliveries set digest_id = null, state = 'queued', delivered_at = null where digest_id = ? and state in ('queued', 'delivered')").run(messageId);
+      this.#prepare("update deliveries set state = 'withdrawn', delivered_at = null where message_id = ?").run(messageId);
+    });
+  }
+
   /** The session's spoke accepted the message; false when there was no queued delivery of it (a repeat ack). */
   markDelivered(messageId: string, session: string, now: number): boolean {
     const root = this.deliveryRoot(messageId, session);
@@ -1432,12 +1460,13 @@ export class Store implements HygieneMemory {
     else this.#prepare('insert into assignees (item, name, session_id) values (?, ?, ?) on conflict (item) do update set name = excluded.name, session_id = excluded.session_id').run(item, name, sessionId);
   }
 
-  /** Who the topic's latest human message was delivered to (a role's placeholder once claimed is its holder). */
+  /** The latest human Question's addressees (legacy untyped messages retain their existing wait).
+   * A withdrawn latest Question has none; a later Message or Decision does not replace the wait. */
   lastHumanAddressees(topic: string): string[] {
     return (
       this.#prepare(
           `select d.session from deliveries d where d.message_id = (
-             select id from messages where topic = ? and from_kind = 'human' order by created_at desc, rowid desc limit 1)`,
+             select id from messages where topic = ? and from_kind = 'human' and (notice = 'question' or notice is null) order by created_at desc, rowid desc limit 1) and d.state != 'withdrawn'`,
         )
         .all(topic) as Row[]
     ).map((r) => r.session as string);
