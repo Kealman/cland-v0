@@ -2,8 +2,8 @@
 id: T-1151
 kind: task
 title: hub.stop never reaches stopped while a droplet create is in flight, and SIGTERM is ignored
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-864
 branch: t/T-1151-hub-stop-never-reaches-stopped-while-a
 created: 2026-10-22T18:04:51.275Z
-updated: 2026-10-22T20:01:55.456Z
+updated: 2026-10-22T20:33:40.627Z
+closed: 2026-10-22T20:33:40.627Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified. A-9439 settles same-head375711e8/A-9438:2529/2529 ordinary passes, Linux c-8 lon1 T1/allT2/Web, hostT0 gate not repeated. Three owned T1/T2 identities have actual distinct5/5 load passes. A-9432 is exact-head/tree macOS native daemon T3 evidence18/18, preserving durable stopped/OS exit within asserted unscaled3s, signal deadline exit1, retained lease/late-create reconciliation and foreign-resource protection. Printed whole-test durations are not shutdown latency samples. Report-only budget warnings retained, including Web51.63s>40s; no Linux/fullT3/T4/QA claim. No findings in reviewed scope; existing pre-create lock gap separately reported as follow-up. No merge performed.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T20:33:40.627Z
+
+Merged 61392734ffb1611a2912b1073e803daa0d270e41 onto dev.
