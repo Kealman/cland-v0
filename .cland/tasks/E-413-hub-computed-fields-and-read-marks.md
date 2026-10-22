@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-804
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-22T10:29:43.782Z
+updated: 2026-10-22T12:32:35.675Z
 ---
 
 ## Summary
@@ -129,6 +129,7 @@ stages:
       when: after-stage
     lanes:
       - - T-1090
+        - T-1107
 ```
 
 ## Comments

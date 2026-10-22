@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T09:03:34.023Z
-updated: 2026-10-22T09:03:34.023Z
+updated: 2026-10-22T12:11:40.868Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ The shared stage cover's macOS run 3dcaf593 (A-9068, dev ff6edeaa, local darwin 
 
 - [ ] C1. The test waits for demo.start's durable receipt with a bound that holds under the T3 load of a full macOS run, or splits the fake executor's provisioning time from the asserted behaviour, keeping its final assertions (rule 9) (test).
 - [ ] C2. The test passes 20/20 under `--test-concurrency 4` with a parallel CPU load on macOS, in a disposable root under rule 15 (test).
+
+## Comments
+
+### coord · 2026-10-22T12:11:40.868Z
+
+Second test, same cause: the macOS stage cover b2ce36f1 (A-9148, dev b99de2c7, local darwin arm64, T3 peak load 7.62) failed `hub/test/demo-release.test.ts` "demo stop waits for an archived droplet with stripped tags to become absent" with the same `Error: no result for demo.start within 5000ms` (hub/test/harness.ts:631). Both demo tests wait 5 s for the harness's demo.start reply under macOS T3 load. This item's fix should cover every demo.start wait in hub/test (demo.test.ts, demo-release.test.ts and any other caller of that harness request), not one file.
