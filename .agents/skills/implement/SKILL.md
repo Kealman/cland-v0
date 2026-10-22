@@ -3,10 +3,12 @@ name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
 metadata:
   origin: "mattpocock/skills skills/engineering/implement at 6d6a5b90; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966); web build/check flow (T-990); clause procedure reference (T-975); browser sign-in fixtures (T-980); separate Web phase planning (T-1025); persistent browser sessions (T-982); web authority conformance and fixtures (T-981); isolated browser fixture/install flow (T-991); artifact capabilities (T-987); network/QR fixtures (T-988); prepared browser image recovery (T-993); bundle scan prerequisites (T-1031); hub shard bundle readers (T-1096); computed item summaries and bounded closed-text reads (T-1052); hub shutdown receipts and diagnostic (T-1060); remote silence watchdog (T-1067); drawer card compact transport, lean startup lists and lazy body (T-1073); closed-task parent pages (T-1081); open ancestor closure and closed-container pages (T-1089); Items scope, messages and by-id link navigation (T-1074); shared human marks and legacy import (T-1054); declined ask outcomes and recorded client seam (T-1059); web card criterion edits (T-1078); audited Neovim fixture refresh and local-only exclusions (T-1090); pure message Markdown and raw-HTML guard (T-1116); approval record frame/recorded-client seams (T-1109); human-only approval gate and scripted answer receipts (T-1110); human kinds and queued withdrawal (T-1117)"
+  changes: "CHANGES"
 ---
 
 Implement the work described by the user in the spec or tickets.
+
+When editing a kept upstream skill, append the change and item as a new line in its sibling `CHANGES`; keep `metadata.changes: CHANGES` stable.
 
 If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask.
 

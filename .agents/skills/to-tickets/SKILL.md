@@ -3,7 +3,7 @@ name: to-tickets
 description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edges as text in one file per ticket locally, or native blocking links on a real tracker).
 metadata:
   origin: "mattpocock/skills skills/engineering/to-tickets at 9e2abf86; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); cland tracker wording (b0c148a6); categories (T-317); size and Summary (T-331); lane flow (T-335); size gate (T-473); cland update fallback (T-620); Codex invocation follows frontmatter (T-621)"
+  changes: "CHANGES"
 ---
 
 Lane order uses `follows` between epics, separate from `blocked_by`. A follow is met when its predecessor closes, or has task children all closed with its last ticket merged. When every ticket of the predecessor’s last stage is in review, cut the following epic’s tickets with `to-tickets` and write its `plan-epic`; launch the first stage on the last merge once blockers are closed and follows met. The predecessor’s QA demo runs in parallel. Until either demo verdict is recorded or the predecessor closes, the merge gate holds follower tickets whose diff overlaps files changed by that predecessor’s merges on dev; tickets with no overlap can merge.

@@ -40,6 +40,14 @@ delivery; it never runs during local verification. See
 [Verification commands](../../hub/README.md#verification-commands) for the shell,
 clean-tree and snapshot-key contract.
 
+The T0 skill provenance gate (`hub/test/lint-skill-provenance.ts`) checks the
+kept upstream skills' origin/MIT headers, `LICENSE`, stable `metadata.changes: CHANGES`
+pointers, nonempty `CHANGES` files and per-skill union merge attributes. For a
+skill edit, append a new change/item line in its sibling `CHANGES`, as described
+in [skill maintenance](../../skills/README.md). The T1 lint fixture rejects missing
+or empty records; `skill-provenance-merge.test.ts` proves native Git merge,
+`merge-tree` and one-parent squash preservation after copying the shipped skills.
+
 The T0 dictionary membership guard (`hub/test/lint-dictionary-membership.ts`)
 checks every `in` expression in `hub/src` with the TypeScript compiler API.
 String-indexed dictionaries (including `Record<string, …>`), `any`, `unknown`,

@@ -1,5 +1,5 @@
 // The curated skill set cland ships: cland's own skills and the upstream skills it keeps, recording their
-// origins and cland's changes in their headers. Their source of truth is this repository's `.agents/skills/`,
+// origins in their headers and cland's changes in sibling CHANGES files. Their source of truth is this repository's `.agents/skills/`,
 // the live copies cland's own sessions use, read relative to the cland package. An installed cland provisions
 // exactly what it was built with and nothing is duplicated.
 //

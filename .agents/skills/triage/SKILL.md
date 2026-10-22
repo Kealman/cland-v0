@@ -3,7 +3,7 @@ name: triage
 description: Move issues and external PRs through a state machine of triage roles, categorise, verify, grill if needed, and write agent-ready briefs.
 metadata:
   origin: "mattpocock/skills skills/engineering/triage at d80fa0f4; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); brief on any tracker (b0c148a6); categories (T-317); cland update fallback (T-620); Codex invocation follows frontmatter (T-621)"
+  changes: "CHANGES"
 ---
 
 # Triage

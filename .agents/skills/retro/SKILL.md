@@ -3,7 +3,7 @@ name: retro
 description: "Conduct a retrospective on a coding session."
 metadata:
   origin: "mattpocock/skills skills/engineering/retro at a7d038f6; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); Codex invocation follows frontmatter (T-621)"
+  changes: "CHANGES"
 ---
 
 The user has asked for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.

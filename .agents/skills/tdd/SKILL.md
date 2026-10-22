@@ -3,7 +3,7 @@ name: tdd
 description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
 metadata:
   origin: "mattpocock/skills skills/engineering/tdd at 3f599139; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "none"
+  changes: "CHANGES"
 ---
 
 # Test-Driven Development

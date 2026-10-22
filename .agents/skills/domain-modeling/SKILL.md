@@ -3,7 +3,7 @@ name: domain-modeling
 description: Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a GLOSSARY.md, or recording or editing an ADR.
 metadata:
   origin: "mattpocock/skills skills/engineering/domain-modeling at d80fa0f4; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "none"
+  changes: "CHANGES"
 ---
 
 # Domain Modeling
