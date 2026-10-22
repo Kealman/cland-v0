@@ -2,8 +2,8 @@
 id: T-1054
 kind: task
 title: Last looks and read marks per human in the hub, with Neovim moved onto them
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-835
 branch: t/T-1054-last-looks-and-read-marks-per-human-in
 created: 2026-10-21T14:04:14.830Z
-updated: 2026-10-22T07:13:11.735Z
+updated: 2026-10-22T07:25:41.576Z
+closed: 2026-10-22T07:25:41.576Z
 ---
 
 ## Summary
@@ -106,3 +107,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final task criteria clear; A-8999 audits unchanged source-clear cd6fdf8c and original A-8998/run053c94c4 exit0. C1/C2/C3/C4 plus held-read identity each have base+5/5 actual load passes; worst0.490350/0.461346/0.730109/0.208786/0.404629s respectively. C1 cross-client monotonicity, C2 exact visit/peer-read/live marks, C3 ack/removal/stale-copy after observed editor/group exit, C4 documented in-process storage reopen, C5 current source docs established. 2414 ordinary passes,no fail/cancel/skip; T1/all fallbackT2 hub+Neovim/Web complete, Linuxx64 c8lon1 droplet,workers2(Web4),535s/$0.0372. Host check82732297 reused,not repeated remotely; original stdout retained. Generic lint/tier/duration/ratchet report-only; Web42.38s not a <40s budget claim. No T3/T4/integrated/full-lifecycle/stageQA pass claimed; Coordinator-owned separate lifecycle/stage receipts and landing freeze remain separate. Standards0;Spec0.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-22T07:25:41.576Z
+
+Merged c6396710773fe7282b59250e7e24f023e5066c60 onto dev.

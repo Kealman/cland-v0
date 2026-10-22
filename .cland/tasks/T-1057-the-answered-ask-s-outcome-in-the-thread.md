@@ -2,8 +2,8 @@
 id: T-1057
 kind: task
 title: The answered ask's outcome in the thread and the inbox departure
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-836
 branch: t/T-1057-the-answered-ask-s-outcome-in-the-thread
 created: 2026-10-21T14:04:15.186Z
-updated: 2026-10-22T07:06:45.530Z
+updated: 2026-10-22T07:25:31.163Z
+closed: 2026-10-22T07:25:31.163Z
 ---
 
 ## Summary
@@ -103,3 +104,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged source-reviewed 18709f18; C1–C4 verified. Fresh 19899dec/A-8994 passed Linux x64 c-8 lon1 T1/all fallback hub+Neovim T2/Web: 2413 ordinary tests, zero failed/skipped/cancelled. Option live/history C1, exact answered departure/archive C2, deterministic no-journal rapid free-text C3 and T1 Store reopen each passed ordinary plus 5/5 load repetitions (20 total); original FakeClock exact-card assertion passed. C4 source docs unchanged. Host check 8d3d5ed7 reused, not repeated remotely. No T3/T4 or after-stage QA claim; affected QA on dev remains separate. Lint/duration/tier/ratchet report-only; inherited overages, 12 missing baselines/incomplete timing projections are not budget passes. No findings. A-8995 audit: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8995-t-1057-final-clear-at-18709f18.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-22T07:25:31.163Z
+
+Merged 55465447062a6ae66198ff0fc42d895fa0018039 onto dev.
