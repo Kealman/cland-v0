@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-414
 blocked_by: []
-topic: null
+topic: topic-851
 branch: t/T-1109-one-approval-record-in-the-hub-in-the
 created: 2026-10-22T15:16:11.019Z
-updated: 2026-10-22T15:16:55.142Z
+updated: 2026-10-22T15:17:19.870Z
 ---
 
 ## Summary

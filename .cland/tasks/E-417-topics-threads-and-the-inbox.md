@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-22T15:16:21.563Z
+updated: 2026-10-22T15:17:41.506Z
 ---
 
 ## Summary
@@ -139,3 +139,9 @@ stages:
         - T-1128
         - T-1129
 ```
+
+## Comments
+
+### coord · 2026-10-22T15:17:41.506Z
+
+Decision on ask 9a81a158 (stand-in under D24, 15:17Z), per spec §3.4: only a human Question leaves the topic waiting for its addressee; a human Message or Decision does not (T-1117).

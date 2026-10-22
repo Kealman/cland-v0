@@ -3,7 +3,7 @@ id: T-1104
 kind: task
 title: Hub startup recomputes the explorer per item during the planned check and delays serving by 15 s
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-850
 branch: t/T-1104-hub-startup-recomputes-the-explorer-per
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T15:13:29.488Z
+updated: 2026-10-22T15:17:17.541Z
 ---
 
 ## Summary
@@ -24,8 +24,10 @@ Hub restart #43 at dev 7887f694 (2026-10-22 10:08Z) took 20 s from stop to servi
 
 ## Acceptance criteria
 
-- [ ] C1. A hub start on a copy of the live tracker recomputes explorer summaries once per startup batch (or lazily), not once per item: a regression counts recompute events on a thousand-item fixture with a planned epic (test).
-- [ ] C2. The startup planned check does not block serving: a test that starts the hub on a thousand-item fixture with a planned epic asserts serving within 2 s of listening, and its targeted run receipt (test name, platform, measured gap) is posted in the item topic (test).
+- [x] C1. A hub start on a copy of the live tracker recomputes explorer summaries once per startup batch (or lazily), not once per item: a regression counts recompute events on a thousand-item fixture with a planned epic (test).
+  - done: impl-1104 · 2026-10-22T15:17:17.320Z
+- [x] C2. The startup planned check does not block serving: a test that starts the hub on a thousand-item fixture with a planned epic asserts serving within 2 s of listening, and its targeted run receipt (test name, platform, measured gap) is posted in the item topic (test).
+  - done: impl-1104 · 2026-10-22T15:17:17.483Z
 
 ## Comments
 

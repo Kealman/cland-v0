@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-418
 blocked_by: []
-topic: null
+topic: topic-855
 branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T15:17:09.750Z
+updated: 2026-10-22T15:17:39.170Z
 ---
 
 ## Summary

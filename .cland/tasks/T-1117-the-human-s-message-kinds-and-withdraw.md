@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-417
 blocked_by: []
-topic: null
+topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T15:17:06.018Z
+updated: 2026-10-22T15:17:28.867Z
 ---
 
 ## Summary

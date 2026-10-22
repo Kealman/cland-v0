@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-22T15:16:20.923Z
+updated: 2026-10-22T15:17:41.387Z
 ---
 
 ## Summary
@@ -117,3 +117,9 @@ stages:
     lanes:
       - - T-1113
 ```
+
+## Comments
+
+### coord · 2026-10-22T15:17:41.387Z
+
+Decision on ask 9a81a158 (stand-in under D24, 15:17Z). The approval record carries the command, its cwd and the reason, plus the file paths and the change as the harness reports them, capped at 64 KB, and no other tool input (T-127). Only the human answers approvals; agent sessions, Aides included, are refused. The deny note is optional.
