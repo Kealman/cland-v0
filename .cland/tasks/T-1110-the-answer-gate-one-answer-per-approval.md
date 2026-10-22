@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-856
 branch: t/T-1110-the-answer-gate-one-answer-per-approval
 created: 2026-10-22T15:16:11.165Z
-updated: 2026-10-22T16:15:28.281Z
+updated: 2026-10-22T16:34:26.090Z
 ---
 
 ## Summary
@@ -39,22 +39,31 @@ The in-process fake adapter gets a scripted answer path (accept, fail, hold), so
 ## Acceptance criteria
 
 - [x] C1. A frame client's Approve once on a fake adapter's request reaches the adapter once. Both that client and a second frame client read the record closed as "once", by the human, with where and when (test).
-  - done: impl-1110 · 2026-10-22T16:09:11.774Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - done: impl-1110 · 2026-10-22T16:26:11.724Z
 - [x] C2. When two frame clients answer the same request in one tick, the adapter gets one answer and one outcome is recorded. The second client is refused with who answered and when (test).
-  - done: impl-1110 · 2026-10-22T16:09:11.938Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - done: impl-1110 · 2026-10-22T16:26:11.806Z
 - [x] C3. An answer is refused, and the record left unchanged, when its choice is not offered, when the record is closed, or when the record is answered in the TUI (test).
-  - done: impl-1110 · 2026-10-22T16:09:12.290Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - done: impl-1110 · 2026-10-22T16:26:11.892Z
 - [x] C4. An agent session's `approval.answer` is refused, and a browser client holding the cookie answers through the web edge (test).
-  - done: impl-1110 · 2026-10-22T16:09:12.469Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - done: impl-1110 · 2026-10-22T16:26:11.981Z
 - [x] C5. When the adapter fails to deliver an answer, the record returns to pending, the client is refused with the reason, and a warn-level event is journaled (test).
-  - done: impl-1110 · 2026-10-22T16:09:13.013Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - done: impl-1110 · 2026-10-22T16:26:12.186Z
 - [x] C6. Deny with a note, to an adapter whose protocol carries no note, delivers a deny to the adapter and posts the note into the session's topic as the human's message to that session (test).
-  - done: impl-1110 · 2026-10-22T16:13:42.560Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - done: impl-1110 · 2026-10-22T16:26:12.281Z
 - [x] C7. A pending request stays pending with no answer sent to the adapter after the fake clock advances 24 hours (test).
-  - done: impl-1110 · 2026-10-22T16:09:13.548Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - done: impl-1110 · 2026-10-22T16:26:12.375Z
 - [x] C8. `hub/README.md` describes `approval.answer`, the gate, the refusal naming the winner and the rule that nothing answers by default (docs).
   - done: impl-1110 · 2026-10-22T16:09:13.913Z
   - verified: rev-23 [reviewer] · run rev-20261022-1110-source-2 · 2026-10-22T16:15:28.281Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-source-3 · 2026-10-22T16:26:05.529Z · commit b0df2398e60b11878f43b6044c85576bca26b33f
 
 ## Comments
 
@@ -89,5 +98,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at48e798b0/treec26a7716, continuation of full audit6fe5e26c/A-9284; no dev merge. M1 resolved: existing configured UTF-8 Hygiene size preflight runs before outcome/reservation/native delivery. Regression default8192/custom1024 caps checks multibyte cap+4bytes refusal, no adapter invocation, unchanged pending record and successful corrected deny/human note retry. TS-narrowing-only followup preserves assertions. C8 matching README/fixtures docs verified; original authority/race/failure/default/shared FakeClock scope unchanged. Standards0/Spec0 remaining findings; no Reviewer execution. C1–C7 await exact-head mode-free receipt/load proofs. A-9283 local24file importer summary and A-9286 implementation-candidate narrative remain qualified supporting evidence, not queued suite or native-harness proof.
+
+Criteria: C8 verified.
+
+### rev-23 · 2026-10-22T16:23:11.489Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1110-final
+commit: 48e798b0b99412920361c454069475768308d5fe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear from A-9296/96a904f7 plus corrected source A-9288. Parsed2480ordinary test passes/378file passes,0fail/cancel/skip. Thirteen new identities each5 distinct load passes+explicit5/5 (65 total), max0.689352167s. Approval-records18/18 covers two-client winner/late refusal/TUI/unoffered/all-agent refusal/fail-pending-warn/note fallback/default+custom cap corrected retry/24virtual-hour no default/native-close attribution. Authenticated-cookie gate33/33file and authority-unit4/4, clock12/12/project-clock4/4 inspected; C8 docs refreshed. Actual local Darwin arm64 Node24.21.0/Neovim0.12.5 after automatic c-8 capacity fallback; local host check/allT1/fallback allT2 both packages/actualWeb exit0, T2workers4/Web2. Report-only lint/duration/ratchet/5missing baselines retained; no Linux,T3/T4,Web repetition,native relay,QA/full-cover or enforcing-budget claim. Standards0/Spec0 remaining; C1–C8 verified; after-stage QA/landing Coordinator-owned.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-23 · 2026-10-22T16:26:05.529Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1110-source-3
+commit: b0df2398e60b11878f43b6044c85576bca26b33f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear atb0df2398/tree2739475d over accepted48e798b0+incoming31bd45bc. Conflict resolutions preserve every skill provenance entry and both guidance paragraphs; web-authority tests retain approval cookie/late-attribution and incoming decision/withdrawal cases. Authority keeps approval.answer plus topic.send/withdraw and original own-as/unknown/prototype/CLI-only refusals. Inbox approval gate/preflight/contract/approval tests/FakeClock files byte-unchanged; incoming human-message kind/busy/withdrawal fences inspected at fallback note intersection without issue. Standards0/Spec0. C8 refreshed; C1–C7 final marks await exact-head new mode-free receipt. Old A-9296 is historical head evidence, local merged-head targeted claims qualified; no Reviewer execution or new QA/suite claim.
 
 Criteria: C8 verified.
