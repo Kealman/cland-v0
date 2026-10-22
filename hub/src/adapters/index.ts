@@ -55,6 +55,7 @@ export function projectSessions(options: { openDatabase?: (path: string) => Data
   };
   try {
     const pollMs = positive(env.CLAND_ADAPTER_POLL_MS);
+    const reexecGraceMs = positive(env.CLAND_TEST_CLAUDE_REEXEC_GRACE_MS);
     const claudeAgentsMs = positive(env.CLAND_CLAUDE_AGENTS_MS);
     const injectTimeoutMs = positive(env.CLAND_INJECT_TIMEOUT_MS);
     const stopGraceMs = positive(env.CLAND_STOP_GRACE_MS);
@@ -68,6 +69,7 @@ export function projectSessions(options: { openDatabase?: (path: string) => Data
       clock: options.core.clock,
       ...(env.CLAND_CLAUDE_BIN ? { bin: env.CLAND_CLAUDE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
+      ...(reexecGraceMs ? { reexecGraceMs } : {}),
       ...(claudeAgentsMs ? { agentsMs: claudeAgentsMs } : {}),
       ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
       ...(stopGraceMs ? { stopGraceMs } : {}),

@@ -2,14 +2,14 @@
 import test from 'node:test';
 import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
-import { withDiscoveredPid, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, tempProject, fakeClaude } from './harness.ts';
+import { withDiscoveredPid, connectUi, killDaemon, spawnSpoke, nativeProjectHub as projectHub, tempProject, fakeClaude } from './harness.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 
 test('long idle and death climb from item to epic to release; stopped Leads leave inherited routing', async t => {
   const root = await tempProject(t);
   // Keep pushed idle and death states authoritative while testing inherited routing.
   const pollMs = 50;
-  const fake = await fakeClaude(t, { pollMs, pushTrustMs: 120_000 });
+  const fake = await fakeClaude(t, { pollMs, reexecGraceMs: 100, pushTrustMs: 120_000 });
   const clock = new FakeClock();
   const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '800' }, { clock });
   const ui = await connectUi(t, discovery);
@@ -33,12 +33,11 @@ test('long idle and death climb from item to epic to release; stopped Leads leav
   }
   const processes = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; sessionId: string; pid: number | null }> };
   const impl = await withDiscoveredPid(ui, processes.processes.find(p => p.name === 'impl')!);
+  const published = ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · impl died · ${item.id}`);
   process.kill(impl.pid, 'SIGKILL');
-  // SIGKILL and socket delivery are asynchronous; drive each liveness poll until its receipt arrives.
-  const death = await eventually('implementer death notification', async () => {
-    await clock.advance(pollMs);
-    return ui.frames.find(f => f.type === 'message' && (f.message as Message).text === `event · session.state · impl died · ${item.id}`);
-  }, 5000);
+  await killDaemon(impl.pid);
+  await clock.advance(pollMs + 100);
+  const death = await published;
   assert.deepEqual((death.message as Message).to, ['lead-1']);
   assert.equal((await ui.request({ type: 'session.stop', session: 'lead-1' })).ok, true);
   const stopped = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · lead-1 stopped · ${epic.id}`);

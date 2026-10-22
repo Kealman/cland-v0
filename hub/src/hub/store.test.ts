@@ -47,6 +47,93 @@ test('store reuses prepared SQL with fresh bindings and keeps connections and ro
   } finally { first.close(); second.close(); }
 });
 
+test('a Coordinator vacancy posts one decision in General after ten minutes and resets when filled', async () => {
+  const clock = new FakeClock();
+  const core = new HubCore({ clock });
+  try {
+    const joined = core.hello({ type: 'hello', protocol: 2, sessionId: 'vacancy-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+    assert.ok(joined.ok);
+    core.disconnect(joined.connection);
+    const decisions = () => core.topicHistory('general').messages.filter(m => m.kind === 'decision');
+    await clock.advance(599_999);
+    assert.equal(decisions().length, 0);
+    await clock.advance(1);
+    assert.equal(decisions().length, 1);
+    assert.match(decisions()[0]!.text, /last holder.*coord/);
+    assert.ok(decisions()[0]!.text.includes('cland session resume coord --relaunch'));
+    assert.ok(decisions()[0]!.text.includes('cland role set coord coordinator'));
+    await clock.advance(20 * 60_000);
+    assert.equal(decisions().length, 1, 'no repeated alarm during one vacancy');
+    const back = core.hello({ type: 'hello', protocol: 2, sessionId: 'vacancy-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+    assert.ok(back.ok);
+    core.disconnect(back.connection);
+    await clock.advance(599_999);
+    const rescued = core.hello({ type: 'hello', protocol: 2, sessionId: 'vacancy-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+    assert.ok(rescued.ok);
+    await clock.advance(600_000);
+    assert.equal(decisions().length, 1, 'a filled role cancels the pending alarm');
+    core.disconnect(rescued.connection);
+    await clock.advance(600_000);
+    assert.equal(decisions().length, 2, 'a later vacancy gets its own notice');
+  } finally { core.close(); core.store.close(); }
+});
+
+test('a reopened core recovers an absent Coordinator vacancy and keeps its one-notice receipt across store reopen', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-vacancy-'));
+  const file = join(root, 'hub.sqlite');
+  const clock = new FakeClock();
+  let core = new HubCore({ clock, store: new Store(file) });
+  const reopen = () => { core.close(); core.store.close(); core = new HubCore({ clock, store: new Store(file) }); };
+  const decisions = () => core.topicHistory('general').messages.filter(m => m.kind === 'decision');
+  try {
+    const joined = core.hello({ type: 'hello', protocol: 2, sessionId: 'restart-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+    assert.ok(joined.ok);
+    // The previous hub had a live holder. Its successor starts without that peer.
+    core.store.clearMeta('coordinator-last-holder'); // Pre-feature stores know the holder through its role row.
+    reopen();
+    await clock.advance(240_000);
+    reopen(); // An existing vacancy must not restart its ten-minute deadline.
+    await clock.advance(359_999);
+    assert.equal(decisions().length, 0);
+    await clock.advance(1);
+    assert.equal(decisions().length, 1);
+    assert.ok(decisions()[0]!.text.includes('cland session resume coord --relaunch'));
+    assert.ok(decisions()[0]!.text.includes('cland role set coord coordinator'));
+    reopen();
+    await clock.advance(600_000);
+    assert.equal(decisions().length, 1, 'a delivered alarm is not duplicated by restart');
+    const back = core.hello({ type: 'hello', protocol: 2, sessionId: 'restart-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+    assert.ok(back.ok);
+    core.disconnect(back.connection);
+    await clock.advance(240_000);
+    reopen();
+    const rescued = core.hello({ type: 'hello', protocol: 2, sessionId: 'restart-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+    assert.ok(rescued.ok);
+    await clock.advance(600_000);
+    assert.equal(decisions().length, 1, 'refill cancels a recovered vacancy alarm');
+  } finally { core.close(); core.store.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('a late Coordinator disconnect after core and store close cannot write, publish or rearm vacancy monitoring', async () => {
+  for (const vacant of [false, true]) {
+    const clock = new FakeClock();
+    const core = new HubCore({ clock });
+    const joined = core.hello({ type: 'hello', protocol: 2, sessionId: 'closed-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+    assert.ok(joined.ok);
+    if (vacant) core.disconnect(joined.connection);
+    core.close();
+    core.store.close();
+    assert.equal(clock.pending, 0, 'close cancels an already pending vacancy timer');
+    const published: string[] = [];
+    core.subscribe(event => published.push(event.type));
+    assert.doesNotThrow(() => core.disconnect(joined.connection), 'late socket close cannot touch the closed database');
+    assert.equal(clock.pending, 0, 'late disconnect cannot rearm a timer');
+    await clock.advance(600_000);
+    assert.equal(clock.pending, 0);
+    assert.deepEqual(published, [], 'no lifecycle publication after terminal close');
+  }
+});
+
 test('a sessions table written by an older hub gains the status and role columns in place and keeps its rows', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'cland-hub-migrate-'));
   const file = join(dir, 'hub.sqlite');

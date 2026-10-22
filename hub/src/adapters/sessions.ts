@@ -435,16 +435,18 @@ export class Sessions {
         this.#log({ event: 'adapter-reconnected', session: p.name });
         this.#retry(p, undefined, true);
       },
-      recordPid: (sessionId, pid) => {
+      recordPid: (sessionId, pid, pidStarted, harnessSessionId) => {
         const p = this.#table.bySessionId(sessionId);
         if (p) {
-          void this.#processStarted(pid).then(started => {
+          const publish = (started: string | null) => {
             if (this.#closed || started === null) return;
             const current = this.#table.bySessionId(sessionId);
             // Keep the native stop path until PID and identity can be published together.
             // A stop or relaunch during the probe must not acquire this earlier launch's PID.
-            if (current?.pid === p.pid && current.startedAt === p.startedAt && current.status === 'running') this.#table.update(current.name, { pid, pidStarted: started });
-          });
+            if (current?.pid === p.pid && current.startedAt === p.startedAt && current.status === 'running') this.#table.update(current.name, { pid, pidStarted: started, ...(harnessSessionId ? { harnessSessionId } : {}) });
+          };
+          if (pidStarted !== undefined) publish(pidStarted);
+          else void this.#processStarted(pid).then(publish);
         }
       },
     };

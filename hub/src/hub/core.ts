@@ -190,6 +190,7 @@ export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: 
 
 /** The one exclusive role (spec 4.4): a vacancy is announced. */
 export const COORDINATOR = 'coordinator';
+type CoordinatorVacancy = { last: string; since: number; noticeId: string; notified: boolean };
 /** The `notice` kind of a stored role clause or revocation. */
 const ROLE_NOTICE = 'role';
 
@@ -417,6 +418,7 @@ export class HubCore {
   readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
   #coordinator: string | null = null;
+  #coordinatorVacancyTimer: ClockTimer | undefined;
   #canSteerEvents: (sessionId: string) => boolean = () => false;
   readonly #processItems = new Map<string, string | null>();
   readonly #artifactStates = new Map<string, Artifact['status']>();
@@ -525,6 +527,7 @@ export class HubCore {
     });
     // The inbox observes section changes and journals informational notifications.
     this.#listeners.add((e) => this.inbox.observe(e));
+    this.#restoreCoordinatorVacancy();
   }
 
   // ---------------------------------------------------------------- events
@@ -556,6 +559,7 @@ export class HubCore {
     this.#journalImmediate = null;
     this.#journalRows = [];
     this.clock.clearTimeout(this.#limitTimer);
+    this.clock.clearTimeout(this.#coordinatorVacancyTimer);
     this.inbox.close();
   }
 
@@ -2410,16 +2414,56 @@ export class HubCore {
   }
 
   /** Tell subscribers when the live Coordinator changes: `role.vacant` when none is left, `role.filled` when one is back. */
+  #restoreCoordinatorVacancy(): void {
+    const raw = this.#store.meta('coordinator-vacancy');
+    if (raw) {
+      try {
+        const saved = JSON.parse(raw) as Partial<CoordinatorVacancy> | null;
+        if (typeof saved?.last === 'string' && saved.last && typeof saved.since === 'number' && Number.isFinite(saved.since)
+          && typeof saved.noticeId === 'string' && saved.noticeId && typeof saved.notified === 'boolean') {
+          this.#watchCoordinatorVacancy(saved as CoordinatorVacancy);
+          return;
+        }
+      } catch { /* Recover legacy or incomplete state from the remembered holder below. */ }
+    }
+    const last = this.#store.meta('coordinator-last-holder') ?? this.#store.sessionsWithRole(COORDINATOR)[0];
+    if (last) this.#watchCoordinatorVacancy({ last, since: this.#now().getTime(), noticeId: randomUUID(), notified: false });
+  }
+
+  #watchCoordinatorVacancy(vacancy: CoordinatorVacancy): void {
+    this.#store.setMeta('coordinator-vacancy', JSON.stringify(vacancy));
+    if (vacancy.notified) return;
+    this.#coordinatorVacancyTimer = this.clock.setTimeout(() => {
+      this.#coordinatorVacancyTimer = undefined;
+      if (this.#closed || this.coordinator() !== null) return;
+      this.noticeInTopic(GENERAL.id, {
+        id: vacancy.noticeId,
+        kind: 'decision',
+        text: `The Coordinator role has been vacant for ten minutes; its last holder was ${vacancy.last}. Resume with \`cland session resume ${vacancy.last} --relaunch\`, then restore the role with \`cland role set ${vacancy.last} coordinator\`.`,
+      });
+      // A stable notice id makes recovery between publication and this receipt idempotent.
+      this.#store.setMeta('coordinator-vacancy', JSON.stringify({ ...vacancy, notified: true }));
+    }, Math.max(1, vacancy.since + 10 * 60_000 - this.#now().getTime()));
+    this.#coordinatorVacancyTimer.unref();
+  }
+
+  /** Announce live-holder transitions independently of restored vacancy monitoring. */
   #announceCoordinator(): void {
+    if (this.#closed) return;
     const now = this.coordinator();
     if (now === this.#coordinator) return;
     const was = this.#coordinator;
     this.#coordinator = now;
+    this.clock.clearTimeout(this.#coordinatorVacancyTimer);
+    this.#coordinatorVacancyTimer = undefined;
     const ts = this.#now().toISOString();
     if (now === null) {
       this.#log({ event: 'coordinator-vacant', was });
       this.#emit({ type: 'role.vacant', role: COORDINATOR, ts });
+      if (was) this.#watchCoordinatorVacancy({ last: was, since: this.#now().getTime(), noticeId: randomUUID(), notified: false });
     } else {
+      this.#store.clearMeta('coordinator-vacancy');
+      this.#store.setMeta('coordinator-last-holder', now);
       this.#log({ event: 'coordinator-filled', session: now });
       this.#emit({ type: 'role.filled', role: COORDINATOR, session: now, ts });
     }

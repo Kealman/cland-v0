@@ -4330,6 +4330,42 @@ Optional regression `found_by` records where the escape was caught: `review`, `c
 
 ## Coordinator session procedure
 
+Hub-launched Claude Code runs with `DISABLE_AUTOUPDATER=1`, enforced after
+credential filtering and in the supervised session settings. Update Claude Code
+between sessions. If its process is replaced anyway, the watcher holds the row,
+role and claims for a one-second re-exec grace after observing the old PID gone.
+Native discovery can adopt a live replacement PID with a verified process start
+identity only when it names the same harness session id; a reused background id
+alone cannot transfer ownership. Native identity learned after launch by
+discovery or a hook is kept in both the watcher and the durable process row.
+A hello or bridge reconnect during that grace keeps the session's ownership
+while discovery refreshes the PID. A dedicated expiry callback runs the final
+native query at the grace boundary, independently of the ordinary liveness
+poll; it bypasses the ordinary 30-second native-query
+cache, so a reconnect after the last snapshot is still observed. If launch or
+resume already owns a native query, the watcher settles it before the final
+observation and ownership decision. If the process stays gone, the hub records
+the exit and releases ownership after
+the grace expires.
+An explicit stop still waits for verified termination and publishes its stopped
+state directly. Test fixtures can inject `ClaudeCodeOptions.reexecGraceMs` or
+use `fakeClaude(t, { reexecGraceMs })` through the internal
+`CLAND_TEST_CLAUDE_REEXEC_GRACE_MS` hook; there is no user grace setting or CLI flag.
+If a newer native-id hook arrives during discovery or a replacement's
+process-start probe, stale results cannot publish a PID or conversation. The next watcher tick
+reconciles the newer identity before any grace-expiry exit.
+
+If the Coordinator stays vacant for ten minutes, the hub posts one `decision`
+notice in General naming the last holder and the recovery commands
+`cland session resume <name> --relaunch` and `cland role set <name> coordinator`.
+It sends no further vacancy alarm while that vacancy lasts; filling the role
+cancels a pending alarm and a later vacancy starts a new ten-minute window.
+The deadline, last holder and sent-notice receipt survive hub restart. An
+absent remembered holder starts monitoring when the reopened hub has no live
+Coordinator; restarting an existing vacancy keeps its original deadline.
+Hub shutdown cancels vacancy monitoring; late socket closes after terminal core
+shutdown cannot write vacancy state, publish transitions or rearm its timer.
+
 For `cland hub stop` reporting `stopped, lock released, process still alive`,
 exit 1 means the named PID remains alive after acknowledged shutdown and the
 ten-second exit deadline. The CLI leaves it running because it released the

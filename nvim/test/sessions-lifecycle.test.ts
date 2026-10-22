@@ -56,7 +56,7 @@ async function focusPanel(c: Client) {
 
 test('Claude Code, Codex and OpenCode sessions launched from the UI show in the panel with live state, attach on Enter, and a killed one turns unknown with the death in the hub log', { skip, timeout: 180_000 }, async (t) => {
   const root = await tempProject(t);
-  const claude = await fakeClaude(t);
+  const claude = await fakeClaude(t, { reexecGraceMs: 100 });
   const codexHome = await fakeHome(t, 'fake-codex-');
   const opencodeHome = await fakeHome(t, 'fake-opencode-');
   const env = {
@@ -110,10 +110,12 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   // the Claude Code session's process dies: unknown in the panel, harness-exited in the hub's log
   const [session] = await claude.sessions();
   assert.ok(session, 'the fake Claude Code session runs');
-  process.kill(session.pid, 'SIGKILL');
   await focusPanel(c);
   await c.input('zRgg/^ . coord \\[<CR>');
-  await c.waitScreen((x) => /✗ coord \[Coordinator\]/.test(x) && x.includes('unknown · died'), 'coord unknown after its death', 15_000);
+  const published = c.waitScreen((x) => /✗ coord \[Coordinator\]/.test(x) && x.includes('unknown · died'), 'coord unknown after its death', 15_000);
+  process.kill(session.pid, 'SIGKILL');
+  await killDaemon(session.pid);
+  await published;
   const deathLogs = await ui.request({ type: 'hub.status', flushLogs: true });
   assert.equal(deathLogs.ok, true, deathLogs.error);
   assert.match(await hubLog(root), /"event":"harness-exited","session":"coord"/);

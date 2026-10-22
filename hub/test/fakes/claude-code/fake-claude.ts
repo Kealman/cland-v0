@@ -116,7 +116,7 @@ async function main(args: string[]): Promise<number> {
     while (!existsSync(join(CONFIG_DIR, 'agents-release'))) await new Promise(r => setTimeout(r, 10));
   }
   appendFileSync(join(HOME, 'calls.jsonl'), `${JSON.stringify({ at: Date.now(), args, configDir })}\n`);
-  appendFileSync(join(HOME, 'invocations.jsonl'), `${JSON.stringify({ at: Date.now(), args, subcommand: first, configDir, CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR ?? null })}\n`);
+  appendFileSync(join(HOME, 'invocations.jsonl'), `${JSON.stringify({ at: Date.now(), args, subcommand: first, configDir, CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR ?? null, DISABLE_AUTOUPDATER: process.env.DISABLE_AUTOUPDATER ?? null })}\n`);
   if ((first === 'agents' || args.includes('--bg')) && (existsSync(join(HOME, 'logged-out')) || existsSync(join(CONFIG_DIR, 'logged-out')))) {
     process.stderr.write('OAuth token has expired. Please run claude auth login.\n');
     if (first === 'agents' && existsSync(join(CONFIG_DIR, 'agents-hold'))) writeFileSync(join(CONFIG_DIR, 'agents-finished'), String(process.pid));

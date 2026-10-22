@@ -104,10 +104,14 @@ export type ClaudeCodeOptions = {
   clock?: Clock;
   /** Process identity fact; production reads the native process start time. */
   processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
+  /** Native process liveness boundary; tests supply synthetic process facts. */
+  pidAlive?: (pid: number) => boolean;
   /** The `claude` executable: `CLAND_CLAUDE_BIN`, PATH, then the installer folders. */
   bin?: string;
   /** How often the processes' pids are checked (no CLI), ms. */
   pollMs?: number;
+  /** Re-exec observation window after a missing PID; default 1 second. Injectable for clock-driven tests. */
+  reexecGraceMs?: number;
   /** How long an inject waits for the mod's confirmation before it stays `delivered`, ms. */
   injectTimeoutMs?: number;
   /** Shared agents interval, ms; default 30 seconds. Short values are for fake harnesses. */
@@ -220,6 +224,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #env: NodeJS.ProcessEnv;
   readonly #processEnv: NodeJS.ProcessEnv;
   readonly #processStarted: NonNullable<ClaudeCodeOptions['processStarted']>;
+  readonly #pidAlive: (pid: number) => boolean;
+  readonly #reexecGraceMs: number;
+  readonly #missingSince = new Map<string, number>();
+  readonly #reexecTimers = new Map<string, ClockTimer>();
+  #polling = false;
   /** Watched processes by session id. */
   readonly #watched = new Map<string, HarnessProcess>();
   /** The mod's bridge of each session: where inject frames go. */
@@ -237,6 +246,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#clock = options.clock ?? realClock;
     this.#processEnv = options.env ?? process.env;
     this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#processEnv));
+    this.#pidAlive = options.pidAlive ?? pidAlive;
+    this.#reexecGraceMs = options.reexecGraceMs ?? 1000;
     this.#bin = options.bin ?? harnessBinary('claude-code', this.#processEnv);
     this.#pollMs = options.pollMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
@@ -292,7 +303,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const env = withoutExecutorCredentials({ ...this.#env, ...p.accountEnv });
     if (p.account) for (const key of AUTH_VARIABLES) delete env[key];
     return new Promise((resolve, reject) => {
-      execFile(this.#bin, args, { cwd, env: { ...env, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {
+      execFile(this.#bin, args, { cwd, env: { ...env, DISABLE_AUTOUPDATER: '1', ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {
         if (err && typeof err.code !== 'number') reject(new Error(`${this.#bin} ${args[0] ?? ''}: ${err.message}`));
         else resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
       }));
@@ -321,11 +332,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#saveSchedule(d);
   }
 
-  #agents(p: HarnessProcess, resumed: Resumed = untimed): Promise<AgentEntry[] | null> {
+  #agents(p: HarnessProcess, resumed: Resumed = untimed, refresh = false): Promise<AgentEntry[] | null> {
     const d = this.#directory(p);
     if (this.#closed || d.signedOut || ![...this.#watched.values()].some(watched => this.#directory(watched) === d)) return Promise.resolve(null);
     if (d.agentsFlight) return d.agentsFlight;
-    if (this.#clock.now().getTime() - d.lastAgentsAt < this.#agentsMs) return Promise.resolve(d.entries);
+    if (!refresh && this.#clock.now().getTime() - d.lastAgentsAt < this.#agentsMs) return Promise.resolve(d.entries);
     d.lastAgentsAt = this.#clock.now().getTime();
     this.#saveSchedule(d);
     d.agentsFlight = continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, AgentEntry[] | null, unknown> {
@@ -400,7 +411,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       hooks,
       ...(configuredIsolation.some(Boolean) ? {} : { worktree: { bgIsolation: BG_ISOLATION } }),
       // what the mod reads to find its session and the hub
-      env: { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
+      env: { DISABLE_AUTOUPDATER: '1', CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
     };
     return ['--mcp-config', JSON.stringify(mcp), '--settings', JSON.stringify(settings), '--plugin-dir', MOD_DIR];
   }
@@ -517,6 +528,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess, at = this.#clock.now().getTime()): Interpretation {
+    // Hooks may learn the native conversation before discovery does (including /clear).
+    // Sessions persists it; keep the watched launch on that same authoritative identity.
+    const watched = p && this.#watched.get(p.sessionId);
+    if (watched && typeof payload.session_id === 'string' && payload.session_id) watched.harnessSessionId = payload.session_id;
     const meaning = interpret(event, payload);
     if (p && event === 'turn-end' && payload.hook_event_name === 'StopFailure' && payload.error === 'authentication_failed') {
       this.#markSignedOut(p, at);
@@ -570,6 +585,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   #unwatch(sessionId: string): void {
+    this.#clearMissing(sessionId);
     for (const prompt of this.#prompts.get(sessionId)?.values() ?? []) prompt.resolve?.([]);
     this.#prompts.delete(sessionId);
     this.#watched.delete(sessionId);
@@ -584,35 +600,90 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#bridges.delete(sessionId);
   }
 
+  #clearMissing(sessionId: string): void {
+    this.#missingSince.delete(sessionId);
+    this.#clock.clearTimeout(this.#reexecTimers.get(sessionId));
+    this.#reexecTimers.delete(sessionId);
+  }
+
   async #poll(): Promise<void> {
-    if (this.#closed || this.#watched.size === 0) return;
-    // a pid that is gone is a crash, whatever agent view says
-    for (const p of [...this.#watched.values()]) {
-      if (this.#stopping.has(p.sessionId)) continue;
-      if (p.pid !== null && !pidAlive(p.pid)) {
-        this.#unwatch(p.sessionId);
-        this.#host.exited(p.sessionId, `pid ${p.pid} is gone`);
-      }
-    }
-    if (this.#watched.size === 0) return;
-    const directories = new Map<DirectorySchedule, HarnessProcess>();
-    for (const p of this.#watched.values()) if (!this.#stopping.has(p.sessionId)) directories.set(this.#directory(p), p);
-    await Promise.all([...directories].map(async ([d, representative]) => {
-      const at = this.#clock.now().getTime();
-      if (d.agentsFlight || d.signedOut || at - d.lastAgentsAt < this.#agentsMs) return;
-      const entries = await this.#agents(representative);
-      if (!entries) return;
+    if (this.#closed || this.#polling || this.#watched.size === 0) return;
+    this.#polling = true;
+    try {
+      // A supervisor may replace its process while retaining the native conversation.
+      // A short grace permits replacement while genuine deaths still publish promptly.
       for (const p of [...this.#watched.values()]) {
-        if (this.#stopping.has(p.sessionId) || this.#directory(p) !== d) continue;
-        const entry = this.#find(entries, p);
-        if (!entry) continue;
-        if (p.pid === null && entry.pid !== undefined) {
-          p.pid = entry.pid;
-          this.#host.recordPid(p.sessionId, entry.pid);
-        }
-        this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
+        if (this.#stopping.has(p.sessionId)) continue;
+        if (p.pid !== null && !this.#pidAlive(p.pid)) {
+          if (!this.#missingSince.has(p.sessionId)) {
+            this.#missingSince.set(p.sessionId, this.#clock.now().getTime());
+            const timer = this.#clock.setTimeout(() => {
+              this.#reexecTimers.delete(p.sessionId);
+              void this.#poll();
+            }, this.#reexecGraceMs);
+            timer.unref();
+            this.#reexecTimers.set(p.sessionId, timer);
+          }
+        } else this.#clearMissing(p.sessionId);
       }
-    }));
+      if (this.#watched.size === 0) return;
+      const directories = new Map<DirectorySchedule, HarnessProcess>();
+      const changedIdentity = new Set<string>();
+      for (const p of this.#watched.values()) if (!this.#stopping.has(p.sessionId)) directories.set(this.#directory(p), p);
+      await Promise.all([...directories].map(async ([d, representative]) => {
+        const conversations = new Map([...this.#watched.values()].filter(p => this.#directory(p) === d).map(p => [p.sessionId, p.harnessSessionId]));
+        // Launch/resume can own a bounded query independently of this poll.
+        // Settle it before deciding whether grace requires a fresh observation.
+        const flight = d.agentsFlight;
+        if (flight) await flight;
+        const at = this.#clock.now().getTime();
+        // A reconnect can follow the last scheduled snapshot. Before releasing
+        // ownership, observe native identity once more at the grace boundary.
+        const recovery = [...this.#watched.values()].some(p => {
+          const since = this.#missingSince.get(p.sessionId);
+          return this.#directory(p) === d && since !== undefined && at - since >= this.#reexecGraceMs;
+        });
+        if (d.signedOut || (!flight && !recovery && at - d.lastAgentsAt < this.#agentsMs)) return;
+        const entries = await this.#agents(representative, untimed, recovery);
+        for (const p of [...this.#watched.values()]) {
+          if (this.#stopping.has(p.sessionId) || this.#directory(p) !== d) continue;
+          const entry = entries ? this.#find(entries, p) : undefined;
+          if (conversations.has(p.sessionId) && conversations.get(p.sessionId) !== p.harnessSessionId && entry?.sessionId !== p.harnessSessionId) {
+            changedIdentity.add(p.sessionId);
+            continue;
+          }
+          if (!entry) continue;
+          if (entry.pid !== undefined && entry.pid !== p.pid && this.#pidAlive(entry.pid)
+            && ((p.pid === null && p.harnessSessionId === null) || entry.sessionId === (p.harnessSessionId ?? p.sessionId))) {
+            const nativeId = p.harnessSessionId, previousPid = p.pid;
+            const started = await this.#processStarted(entry.pid);
+            // A stop, relaunch or shutdown while probing cannot acquire the old launch's PID.
+            if (this.#closed || this.#watched.get(p.sessionId) !== p || this.#stopping.has(p.sessionId)) continue;
+            if (p.harnessSessionId !== nativeId || p.pid !== previousPid) {
+              // A hook advanced the authoritative conversation during the native probe.
+              // Reconcile it on the next bounded poll before any grace-expiry exit.
+              changedIdentity.add(p.sessionId);
+              continue;
+            }
+            if (!started || !this.#pidAlive(entry.pid)) continue;
+            p.pid = entry.pid;
+            p.pidStarted = started;
+            p.harnessSessionId = entry.sessionId ?? p.harnessSessionId;
+            this.#clearMissing(p.sessionId);
+            this.#host.recordPid(p.sessionId, entry.pid, started, entry.sessionId);
+          }
+          this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
+        }
+      }));
+      for (const p of [...this.#watched.values()]) {
+        const since = this.#missingSince.get(p.sessionId);
+        if (!changedIdentity.has(p.sessionId) && !this.#stopping.has(p.sessionId) && since !== undefined && this.#clock.now().getTime() - since >= this.#reexecGraceMs
+          && p.pid !== null && !this.#pidAlive(p.pid)) {
+          this.#unwatch(p.sessionId);
+          this.#host.exited(p.sessionId, `pid ${p.pid} is gone after the ${this.#reexecGraceMs}ms re-exec grace`);
+        }
+      }
+    } finally { this.#polling = false; }
   }
 
   // ---------------------------------------------------------------- stop, resume
@@ -719,6 +790,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#prompts.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
+    for (const timer of this.#reexecTimers.values()) this.#clock.clearTimeout(timer);
+    this.#reexecTimers.clear();
+    this.#missingSince.clear();
     this.#watched.clear();
     for (const pending of this.#pending.values()) {
       clearTimeout(pending.timer);

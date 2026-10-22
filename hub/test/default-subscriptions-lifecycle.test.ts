@@ -7,7 +7,7 @@ import { cland, connectUi, eventually, fakeClaude, killDaemon, nativeProjectHub 
 test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with warning events', async t => {
   const root = await tempProject(t);
   // Keep pushed states authoritative while the idle notification timer runs.
-  const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
+  const fake = await fakeClaude(t, { pollMs: 50, reexecGraceMs: 100, pushTrustMs: 120_000 });
   const idleNotifyMs = 800;
   const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: String(idleNotifyMs) });
   const ui = await connectUi(t, discovery);
@@ -42,8 +42,10 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
     return text.includes('release reviewer event') ? text : undefined;
   });
   assert.match(log, /rev stopped[\s\S]*release reviewer event/);
+  const published = ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · impl died · ${item.id}`);
   process.kill(implProcess.pid, 'SIGKILL');
-  const died = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · impl died · ${item.id}`);
+  await killDaemon(implProcess.pid);
+  const died = await published;
   assert.deepEqual((died.message as Message).to, ['coord']);
   assert.equal((died.message as Message & { stage: string }).stage, 'queued');
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord release death event' });
@@ -58,7 +60,7 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
 
 test('a lead death while the hub is down reaches the offline Coordinator once after restart', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
+  const fake = await fakeClaude(t, { pollMs: 50, reexecGraceMs: 100 });
   let { discovery } = await startDaemon(t, root, fake.env);
   let ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -93,7 +95,7 @@ test('a lead death while the hub is down reaches the offline Coordinator once af
 
 for (const pendingReceipt of [false, true]) test(`terminal recovery routes an older pooled Reviewer death past its ${pendingReceipt ? 'verified-stopped lead with pending cleanup' : 'already-dead lead'}`, async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
+  const fake = await fakeClaude(t, { pollMs: 50, reexecGraceMs: 100 });
   let { discovery } = await startDaemon(t, root, fake.env);
   let ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });

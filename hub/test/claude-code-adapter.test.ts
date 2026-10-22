@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { FakeClock } from './fake-clock.ts';
 import { nativeProjectHub as projectHub, withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
@@ -99,8 +100,10 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
 
   const launchMark = ui.frames.length;
   const launched = await launch(ui, 'coord', { role: 'coordinator', model: 'claude-fake-1' });
-  const calls = (await readFile(join(fake.home, 'invocations.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { args: string[] });
+  const calls = (await readFile(join(fake.home, 'invocations.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { args: string[]; DISABLE_AUTOUPDATER: string | null });
+  assert.ok(calls.every(call => call.DISABLE_AUTOUPDATER === '1'), 'the fake native CLI receives the filtered launch environment');
   const bg = calls.find(c => c.args.includes('--bg'))!.args;
+  assert.equal(JSON.parse(bg[bg.indexOf('--settings') + 1]!).env.DISABLE_AUTOUPDATER, '1');
   assert.equal(bg[bg.indexOf('--permission-mode') + 1], 'auto');
   assert.ok(!bg.includes('--dangerously-skip-permissions'));
   // Precedence permutations live at T2 in claude-code-environment.test.ts; prove the binary frame once.
@@ -210,16 +213,18 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
 
 test('a crashed Claude Code process: the state turns unknown and the hub logs it once; launched again under its name, it works', async (t) => {
   const root = await tempProject(t);
+  const clock = new FakeClock();
   // a confirmation comes from a hook's or the mod's process, which a loaded machine starts seconds late: the deadline is
   // wide, so an unconfirmed inject below means the new process's confirmation was not taken, not that it was slow
-  const fake = await fakeClaude(t, { lateBg: true, injectTimeoutMs: 30_000 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const fake = await fakeClaude(t, { lateBg: true, injectTimeoutMs: 30_000, reexecGraceMs: 100 });
+  const { discovery } = await projectHub(t, root, fake.env, { clock });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
   await presentAs(ui, 'impl-1', 'idle');
 
   await killDaemon((await withDiscoveredPid(ui, launched)).pid);
+  await clock.advance(150); // OS exit is observed; expire the 50ms watcher tick plus injected 100ms grace.
   const gone = await eventually('the process gone', async () => (await status(ui)).harnesses.find((x) => x.name === 'impl-1' && x.status === 'exited'));
   assert.equal(gone.state, 'unknown');
   assert.equal(gone.attach, null);

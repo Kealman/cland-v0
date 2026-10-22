@@ -2,12 +2,12 @@
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject, withDiscoveredPid } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject, withDiscoveredPid } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 test('delivered verifier requests persist across restart and clear on hold, verdict, stop and death', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
+  const fake = await fakeClaude(t, { reexecGraceMs: 100 });
   const started = await startDaemon(t, root, fake.env);
   let ui = await connectUi(t, started.discovery);
   await ui.request({ type: 'subscribe' });
@@ -77,6 +77,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   await eventually('request before death', async () => (await dyingRow()).pending?.item === ids[0] || undefined);
   const discovered = await withDiscoveredPid(ui, dying);
   process.kill(discovered.pid, 'SIGKILL');
+  await killDaemon(discovered.pid);
   await eventually('dead session clears pending', async () => (await dyingRow()).status === 'exited' && !(await dyingRow()).pending || undefined);
 });
 

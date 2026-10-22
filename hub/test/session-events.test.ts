@@ -2,7 +2,7 @@
 // Subscribed UI frames at the transport boundary: presence, process rows and coalesced usage.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, connectWsUi, eventually, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, withDiscoveredPid } from './harness.ts';
+import { connectUi, connectWsUi, eventually, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, withDiscoveredPid } from './harness.ts';
 import type { HarnessProcessView, Presence, SessionUsage } from '../src/protocol.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
@@ -58,7 +58,7 @@ test('rename before the spoke welcome waits; after welcome its process event sur
 
 test('process rows publish launch, model, role, rename, exit and stop; usage bursts publish latest totals per session', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
+  const fake = await fakeClaude(t, { reexecGraceMs: 100 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -95,8 +95,10 @@ test('process rows publish launch, model, role, rename, exit and stop; usage bur
   assert.equal(renamed.ok, true, renamed.error);
   await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).name === 'renamed-coord');
   const discovered = await withDiscoveredPid(ui, coord);
+  const published = ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).status === 'exited');
   process.kill(discovered.pid, 'SIGKILL');
-  const exited = await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).status === 'exited');
+  await killDaemon(discovered.pid);
+  const exited = await published;
   assert.equal(row(exited).attach, null);
   assert.equal(row(exited).state, 'unknown');
   await ui.request({ type: 'session.stop', session: impl.name });

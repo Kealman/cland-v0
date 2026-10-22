@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeClaude, nativeProjectHub as projectHub, tempProject, withDiscoveredPid } from './harness.ts';
+import { connectUi, eventually, fakeClaude, killDaemon, nativeProjectHub as projectHub, tempProject, withDiscoveredPid } from './harness.ts';
 import type { EventsPage, Inbox } from '../src/protocol.ts';
 
 test('layout saves and human choices serialize through the shared UI lock', async t => {
@@ -75,16 +75,22 @@ for (const [terminal, role, expected] of [['stopped', 'implementer', 'background
     const root = await tempProject(t);
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), '[visibility]\nsessions.idle = "now"\n');
-    const fake = await fakeClaude(t, { pollMs: 50 });
+    const fake = await fakeClaude(t, { pollMs: 50, reexecGraceMs: 100 });
     const { discovery } = await projectHub(t, root, fake.env);
     const ui = await connectUi(t, discovery);
     await ui.request({ type: 'subscribe' });
     const launched = await ui.request({ type: 'session.launch', name: 'worker', role, harness: 'claude-code' }, 30_000);
     assert.equal(launched.ok, true, launched.error);
     const processRow = (launched.value as { process: { sessionId: string; pid: number } }).process;
+    let published: ReturnType<typeof ui.waitFor> | undefined;
     if (terminal === 'stopped') assert.equal((await ui.request({ type: 'session.stop', session: 'worker' }, 30_000)).ok, true);
-    else process.kill((await withDiscoveredPid(ui, processRow)).pid, 'SIGKILL');
-    const changed = await ui.waitFor(f => f.type === 'session.process' && (f.process as { status: string }).status === terminal);
+    else {
+      const pid = (await withDiscoveredPid(ui, processRow)).pid;
+      published = ui.waitFor(f => f.type === 'session.process' && (f.process as { status: string }).status === terminal);
+      process.kill(pid, 'SIGKILL');
+      await killDaemon(pid);
+    }
+    const changed = await (published ?? ui.waitFor(f => f.type === 'session.process' && (f.process as { status: string }).status === terminal));
     assert.equal((changed.process as { layer: string }).layer, expected);
     const state = await ui.waitFor(f => f.type === 'session.state' && f.sessionId === processRow.sessionId && f.state === 'unknown' && f.source === (terminal === 'stopped' ? 'stopped' : 'process'));
     assert.equal(state.layer, expected, 'the following state event must keep terminal status and the Aide exception');

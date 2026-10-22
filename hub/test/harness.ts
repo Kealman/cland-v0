@@ -743,7 +743,7 @@ export type FakeClaude = {
 
 export async function fakeClaude(
   t: TestContext,
-  timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean; writerClock?: Clock } = {},
+  timings: { pollMs?: number; reexecGraceMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean; writerClock?: Clock } = {},
 ): Promise<FakeClaude> {
   await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
@@ -781,6 +781,7 @@ export async function fakeClaude(
     CLAND_CLAUDE_AGENTS_MS: String(timings.pollMs ?? 50),
     FAKE_CLAUDE_TURN_MS: String(timings.turnMs ?? 30),
     CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 50),
+    ...(timings.reexecGraceMs !== undefined ? { CLAND_TEST_CLAUDE_REEXEC_GRACE_MS: String(timings.reexecGraceMs) } : {}),
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
     CLAND_PUSH_TRUST_MS: String(timings.pushTrustMs ?? 100),
     ...(timings.awaitSignals ? { FAKE_CLAUDE_AWAIT_SIGNALS: '1' } : {}),

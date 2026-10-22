@@ -12,24 +12,27 @@ import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost, HarnessProcess } from '../src/adapters/contract.ts';
 import { FakeClock } from './fake-clock.ts';
 import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 function cli(t: TestContext) {
-  const calls: Array<{ args: string[]; configDir: string | undefined }> = [];
+  const calls: Array<{ args: string[]; configDir: string | undefined; env: NodeJS.ProcessEnv }> = [];
   const sessions: Array<{ id: string; sessionId: string; pid?: number; status: string }> = [];
   let loggedOut = false;
   let hold = false;
   let knownPid = false;
+  let pid = process.pid;
   const pending: Array<() => void> = [];
   t.mock.method(cp, 'execFile', (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
     assert.equal(bin, 'fixture-claude', 'no native command escapes the scripted edge');
-    calls.push({ args, configDir: options.env?.CLAUDE_CONFIG_DIR });
+    calls.push({ args, configDir: options.env?.CLAUDE_CONFIG_DIR, env: { ...options.env } });
+    const listing = JSON.stringify(sessions); // Native output can describe the query's earlier snapshot.
     const finish = () => {
       if (args[0] === '--bg') {
         if (loggedOut) { callback({ code: 1 }, '', 'authentication expired'); return; }
         const id = `background-${sessions.length}`;
-        sessions.push({ id, sessionId: args[args.indexOf('--session-id') + 1]!, status: 'idle', ...(knownPid ? { pid: process.pid } : {}) });
+        sessions.push({ id, sessionId: `native-${args[args.indexOf('--session-id') + 1]!}`, status: 'idle', ...(knownPid ? { pid } : {}) });
         callback(null, `claude attach ${id}`, '');
-      } else if (args[0] === 'agents') callback(null, JSON.stringify(sessions), '');
+      } else if (args[0] === 'agents') callback(null, listing, '');
       else if (args[0] === 'stop') { const i = sessions.findIndex(s => s.id === args[1]); if (i >= 0) sessions.splice(i, 1); callback(null, '', ''); }
       else assert.fail(`unscripted command ${args[0]}`);
     };
@@ -38,7 +41,7 @@ function cli(t: TestContext) {
   });
   syncBuiltinESMExports();
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  return { calls, sessions, pending, set loggedOut(value: boolean) { loggedOut = value; }, set hold(value: boolean) { hold = value; }, set knownPid(value: boolean) { knownPid = value; }, agents: () => calls.filter(c => c.args[0] === 'agents') };
+  return { calls, sessions, pending, set loggedOut(value: boolean) { loggedOut = value; }, set hold(value: boolean) { hold = value; }, set knownPid(value: boolean) { knownPid = value; }, set pid(value: number) { pid = value; }, agents: () => calls.filter(c => c.args[0] === 'agents') };
 }
 
 // Native socket/MCP completion is bounded in real time while hub time stays fixed.
@@ -137,7 +140,7 @@ test('Claude discovery and watch share the default schedule across adapter resta
   assert.equal(clock.pending, 0);
 });
 
-async function component(t: TestContext) {
+async function component(t: TestContext, pidAlive?: (pid: number) => boolean, processStarted: (pid: number) => Promise<string | null> = async pid => `fixture-start-${pid}`, reexecGraceMs: number | null = 30_000) {
   const native = cli(t);
   const root = await tempProject(t);
   const clock = new FakeClock();
@@ -153,7 +156,7 @@ async function component(t: TestContext) {
           scheduleWrites++;
         } },
       };
-      const adapter = new ClaudeCodeAdapter(adapterHost, { clock, bin: 'fixture-claude', pollMs: 5000, env: { HOME: root, CLAUDE_CONFIG_DIR: directory } });
+      const adapter = new ClaudeCodeAdapter(adapterHost, { clock, bin: 'fixture-claude', pollMs: 5000, ...(reexecGraceMs === null ? {} : { reexecGraceMs }), ...(pidAlive ? { pidAlive } : {}), processStarted, env: fixtureEnvironment(root, {}, { CLAUDE_CONFIG_DIR: directory, DISABLE_AUTOUPDATER: '0' }) });
       return adapter;
     }] });
     const ui = await connectUi(t, hub.discovery);
@@ -180,6 +183,233 @@ async function component(t: TestContext) {
   }
   return { native, root, clock, directory, open, records, nextPoll, queryCompleted, get scheduleWrites() { return scheduleWrites; } };
 }
+
+test('hub-launched Claude disables auto-update in both the filtered CLI environment and supervised settings', async t => {
+  const f = await component(t);
+  const { ui } = await f.open();
+  const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  const bg = f.native.calls.find(call => call.args[0] === '--bg')!;
+  assert.equal(bg.env.DISABLE_AUTOUPDATER, '1');
+  assert.equal(bg.env.DIGITALOCEAN_TOKEN, undefined);
+  const settings = JSON.parse(bg.args[bg.args.indexOf('--settings') + 1]!);
+  assert.equal(settings.env.DISABLE_AUTOUPDATER, '1', 'the supervised background harness does not inherit CLI env');
+});
+
+for (const [role, reconnectAt, identity] of [['implementer', 5000, 'known'], ['coordinator', 0, 'known'], ['coordinator', 31_000, 'known'], ['coordinator', 5000, 'discovery'], ['coordinator', 5000, 'hook'], ['coordinator', 5000, 'flight']] as const) test(`Claude ${role} re-exec retains its row, role and claim with ${identity} identity and hello at ${reconnectAt}ms`, async t => {
+  const alive = new Set([91001]);
+  const f = await component(t, pid => alive.has(pid));
+  f.native.knownPid = identity !== 'discovery';
+  f.native.pid = 91001;
+  const { ui } = await f.open();
+  const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'impl', role });
+  assert.equal(result.ok, true, result.error);
+  const launched = (result.value as { process: HarnessProcess }).process;
+  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'impl', assignRole: false, sessionId: launched.sessionId });
+  const first = await peer();
+  await first.waitForPresence(['impl']);
+  const made = await ui.request({ type: 'task.create', title: 'Re-exec work', size: 'S', assignee: 'impl' });
+  assert.equal(made.ok, true, made.error);
+  const id = (made.value as { item: { id: string } }).item.id;
+  const claimed = await first.call<{ ok: boolean; error?: string }>('task.claim', { id });
+  assert.equal(claimed.ok, true, claimed.error);
+  const nativeId = identity === 'hook' ? `cleared-${f.native.sessions[0]!.sessionId}` : f.native.sessions[0]!.sessionId;
+  assert.notEqual(nativeId, launched.sessionId, 'native and cland identities are distinct');
+  if (identity === 'hook') {
+    f.native.sessions[0]!.sessionId = nativeId;
+    const signalled = await ui.request({ type: 'session.signal', session: 'impl', launch: launched.sessionId, event: 'session-start', at: f.clock.now().getTime(), payload: { session_id: nativeId } });
+    assert.equal(signalled.ok, true, signalled.error);
+  }
+  if (identity === 'discovery') {
+    f.native.sessions[0]!.pid = 91001;
+    const discovered = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.pid === 91001);
+    await f.clock.advance(30_000);
+    await receipt(discovered);
+    const learned = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+    assert.equal(learned.processes[0]?.harnessSessionId, nativeId, 'late discovery publishes the native identity');
+  }
+  await first.close();
+  alive.delete(91001);
+  f.native.sessions.length = 0;
+  if (reconnectAt) await f.clock.advance(reconnectAt);
+  let rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  assert.equal(rows.processes.find(p => p.name === 'impl')?.status, 'running', 'a missing PID is held during the re-exec grace');
+  alive.add(91002);
+  f.native.sessions.push({ id: launched.harnessId!, sessionId: nativeId, pid: 91002, status: 'idle' });
+  const second = await peer();
+  await second.waitForPresence(['impl']);
+  let updated = identity !== 'flight' ? ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.pid === 91002) : undefined;
+  if (identity === 'flight') {
+    await f.clock.advance(24_000);
+    f.clock.block(1000); // Launch's discovery enters at t=30s, before the grace boundary.
+    f.native.hold = true;
+    f.native.pid = 91003;
+    alive.add(91003);
+    const helper = ui.request({ type: 'session.launch', harness: 'claude-code', name: 'helper' });
+    try {
+      await receipt((async () => { while (!f.native.pending.length) await yieldIO(); })());
+      await f.clock.advance(5000);
+      const held = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+      assert.equal(held.processes.find(p => p.name === 'impl')?.status, 'running', 'pending native discovery is settled before ownership release');
+      updated = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.pid === 91002);
+    } finally {
+      f.native.hold = false;
+      for (const finish of f.native.pending.splice(0)) finish();
+      const completed = await helper;
+      assert.equal(completed.ok, true, completed.error);
+    }
+  } else await f.clock.advance(35_000 - reconnectAt);
+  assert.ok(updated);
+  await receipt(updated);
+  rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  const row = rows.processes.find(p => p.name === 'impl')!;
+  assert.equal(row.pid, 91002);
+  assert.equal(row.status, 'running');
+  assert.equal(row.sessionId, launched.sessionId);
+  assert.equal(row.harnessSessionId, nativeId);
+  assert.equal(row.role, role);
+  const viewed = await ui.request({ type: 'task.view', item: id });
+  assert.equal(viewed.ok, true, viewed.error);
+  const item = viewed.value as { item: { claim: { sessionId: string } } };
+  assert.equal(item.item.claim.sessionId, launched.sessionId);
+  assert.equal((await f.records(ui)).some(r => ['role-revoked', 'harness-exited'].includes(r.event)), false);
+});
+
+for (const probeIdentity of ['known', 'unavailable', 'query']) test(`a newer hook identity fences an in-flight ${probeIdentity} replacement PID probe before grace expiry`, async t => {
+  const alive = new Set([91001, 91002, 91003]);
+  let entered!: () => void;
+  const probeEntered = new Promise<void>(resolve => { entered = resolve; });
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const f = await component(t, pid => alive.has(pid), async pid => {
+    if (pid === 91002 && probeIdentity !== 'query') { entered(); await held; if (probeIdentity === 'unavailable') return null; }
+    return `fixture-start-${pid}`;
+  });
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  const { ui } = await f.open();
+  const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(result.ok, true, result.error);
+  const launched = (result.value as { process: HarnessProcess }).process;
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: launched.sessionId });
+  await peer.waitForPresence(['coord']);
+  const made = await ui.request({ type: 'task.create', title: 'Probe work', size: 'S', assignee: 'coord' });
+  assert.equal(made.ok, true, made.error);
+  const id = (made.value as { item: { id: string } }).item.id;
+  const claimed = await peer.call<{ ok: boolean; error?: string }>('task.claim', { id });
+  assert.equal(claimed.ok, true, claimed.error);
+  const oldNative = launched.harnessSessionId!;
+  const newNative = `cleared-${oldNative}`;
+  assert.notEqual(oldNative, launched.sessionId);
+  alive.delete(91001);
+  f.native.sessions[0]!.pid = 91002;
+  const mark = ui.frames.length;
+  try {
+    if (probeIdentity === 'query') f.native.hold = true;
+    await f.clock.advance(30_000);
+    if (probeIdentity === 'query') await receipt((async () => { while (!f.native.pending.length) await yieldIO(); })());
+    else await receipt(probeEntered);
+    await f.clock.advance(2000);
+    f.native.sessions[0] = { ...f.native.sessions[0]!, sessionId: newNative, pid: 91003 };
+    const hook = await ui.request({ type: 'session.signal', session: 'coord', launch: launched.sessionId, event: 'session-start', at: f.clock.now().getTime(), payload: { session_id: newNative } });
+    assert.equal(hook.ok, true, hook.error);
+    await f.clock.advance(3000); // The original 30-second missing-PID grace expires while the probe is held.
+    release();
+    f.native.hold = false;
+    for (const finish of f.native.pending.splice(0)) finish();
+    const intermediate = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+    assert.equal(intermediate.processes[0]?.harnessSessionId, newNative, 'a resolved stale probe cannot overwrite the newer native identity');
+    assert.equal(intermediate.processes[0]?.status, 'running', 'newer identity is reconciled before grace exit');
+    const adopted = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.pid === 91003);
+    await f.clock.advance(5000);
+    await receipt(adopted);
+    const rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+    assert.equal(rows.processes[0]?.pid, 91003);
+    assert.equal(rows.processes[0]?.harnessSessionId, newNative);
+    assert.equal(rows.processes[0]?.role, 'coordinator');
+    assert.equal(rows.processes[0]?.status, 'running');
+    const viewed = (await ui.request({ type: 'task.view', item: id })).value as { item: { claim: { sessionId: string } } };
+    assert.equal(viewed.item.claim.sessionId, launched.sessionId);
+    assert.equal(ui.frames.slice(mark).some(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.pid === 91002), false, 'no stale PID was published');
+    assert.equal((await f.records(ui)).some(r => ['role-revoked', 'harness-exited'].includes(r.event)), false);
+  } finally { release(); f.native.hold = false; for (const finish of f.native.pending.splice(0)) finish(); }
+});
+
+for (const outcome of ['death', 'reconnect-first', 'shutdown'] as const) test(`default Claude grace publishes promptly at one second: ${outcome}`, async t => {
+  const alive = new Set([91001, 91002]);
+  // null leaves the production grace default intact; race tests above inject long virtual windows.
+  const f = await component(t, pid => alive.has(pid), undefined, null);
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  const { hub, ui } = await f.open();
+  const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(result.ok, true, result.error);
+  const launched = (result.value as { process: HarnessProcess }).process;
+  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: launched.sessionId });
+  const first = await peer();
+  await first.waitForPresence(['coord']);
+  if (outcome === 'reconnect-first') {
+    const made = await ui.request({ type: 'task.create', title: 'Reconnect before missing PID', size: 'S', assignee: 'coord' });
+    assert.equal(made.ok, true, made.error);
+    const id = (made.value as { item: { id: string } }).item.id;
+    assert.equal((await first.call<{ ok: boolean }>('task.claim', { id })).ok, true);
+    await first.close();
+    const reconnected = await peer();
+    await reconnected.waitForPresence(['coord']); // Reconnect receipt precedes the missing-PID observation.
+    f.native.sessions[0]!.pid = 91002;
+  } else f.native.sessions.length = 0;
+  alive.delete(91001);
+  await f.clock.advance(5999); // First missing observation at 5000; expiry must run before the 10000 poll.
+  const before = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  assert.equal(before.processes[0]?.status, 'running');
+  assert.equal(before.processes[0]?.pid, 91001);
+  if (outcome === 'shutdown') {
+    await hub.stop();
+    assert.equal(f.clock.pending, 0, 'shutdown cancels the pending grace expiry');
+    await f.clock.advance(1000);
+    assert.equal(f.clock.pending, 0);
+    return;
+  }
+  await f.clock.advance(1);
+  const after = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  assert.equal(after.processes[0]?.status, outcome === 'death' ? 'exited' : 'running');
+  assert.equal(after.processes[0]?.pid, outcome === 'death' ? 91001 : 91002);
+  const records = await f.records(ui);
+  assert.equal(records.filter(r => r.event === 'harness-exited').length, outcome === 'death' ? 1 : 0);
+  if (outcome === 'reconnect-first') {
+    assert.equal(after.processes[0]?.role, 'coordinator');
+    assert.equal(after.processes[0]?.harnessSessionId, launched.harnessSessionId);
+    const viewed = (await ui.request({ type: 'task.view', item: 'T-1' })).value as { item: { claim: { sessionId: string } } };
+    assert.equal(viewed.item.claim.sessionId, launched.sessionId);
+    assert.equal(records.some(r => r.event === 'role-revoked'), false);
+  }
+});
+
+test('a different native session cannot inherit a dead Claude session by reusing its background id', async t => {
+  const alive = new Set([91001, 91002]);
+  const f = await component(t, pid => alive.has(pid));
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  const { ui } = await f.open();
+  const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  const p = (launched.value as { process: HarnessProcess }).process;
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  await peer.waitForPresence(['coord']);
+  alive.delete(91001);
+  f.native.sessions[0] = { id: p.harnessId!, sessionId: 'another-native-conversation', pid: 91002, status: 'idle' };
+  const exited = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.status === 'exited');
+  await f.clock.advance(34_999);
+  const before = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  assert.equal(before.processes[0]?.status, 'running', 'ownership is held up to the grace deadline');
+  assert.equal(before.processes[0]?.pid, 91001, 'a different native identity is never adopted');
+  await f.clock.advance(1);
+  await receipt(exited);
+  const after = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  assert.equal(after.processes[0]?.status, 'exited');
+  assert.equal(after.processes[0]?.pid, 91001);
+  assert.equal((await f.records(ui)).filter(r => r.event === 'harness-exited').length, 1);
+});
 
 test('a signed-out Claude directory stays quiet across store reopen and recovers only on explicit success', async t => {
   const f = await component(t);

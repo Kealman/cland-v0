@@ -53,6 +53,15 @@ async function reply(spoke: Awaited<ReturnType<typeof connectSocket>>, id: strin
   }
 }
 
+test('projectHub stop with a connected Coordinator leaves no vacancy timer after socket teardown', async t => {
+  const { clock, hub, connect } = await fixture(t);
+  await connect();
+  await hub.stop();
+  assert.equal(clock.pending, 0, 'stopping the project clears every hub timer');
+  await clock.advance(600_000);
+  assert.equal(clock.pending, 0, 'late socket close cannot rearm vacancy monitoring');
+});
+
 test('projectHub drops store-and-forward delivery after the injected TTL', async t => {
   const { clock, hub, ui, connect } = await fixture(t);
   let spoke = await connect();
