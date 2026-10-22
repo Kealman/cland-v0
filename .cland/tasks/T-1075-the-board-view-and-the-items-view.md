@@ -2,8 +2,8 @@
 id: T-1075
 kind: task
 title: The Board view and the Items view switcher
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-832
 branch: t/T-1075-the-board-view-and-the-items-view
 created: 2026-10-21T17:32:16.777Z
-updated: 2026-10-22T04:34:37.556Z
+updated: 2026-10-22T04:40:03.438Z
+closed: 2026-10-22T04:40:03.438Z
 ---
 
 ## Summary
@@ -96,3 +97,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-1075 · 2026-10-22T04:34:37.556Z
 
 Configured same-head receipt 8df6cf86/A-8910 at reviewed cc3e06353c002f4e56f6beb2dbc74f14be9af811/tree 4a80bf0ba2b53cb97a8eed3b1b07e021856c9a17: exit 0, 2398/2398 tests, no failures/skips/cancellations. Linux x64 c-8 lon1 droplet cland-v0-d8d63672, Node24.21.0/Neovim0.12.5. T1 all123 files; fallback T2 all232 hub+Neovim files; Web all9 files actually ran. Board C2 2.116454813s, C1 0.649611028s, C3 1.097136633s, parent4.964571203s; fixture browser group18067 after0, scratch hub stopped. Board parent exceeds the report-only4s Web budget but stays below5s new-identity allowance trigger; no dated allowance added. Host npm run check passed and was not repeated remotely (host gate9d96884e); duration/test-lint gates remain report mode with132 findings/59files and9 missing baselines reported. No5/5 Web load claim: Web does not enter load lanes. Droplet lifetime453s/cost$0.0315 is executor lifetime, not suite wall time. T3 deferred to periodic dev/integrated occasions, absent configured batch tiers; no T3/T4/after-stage QA pass claimed. Head/worktree unchanged and clean; awaiting Reviewer final same-head evidence settlement.
+
+### coord · 2026-10-22T04:40:03.438Z
+
+Merged d52dbf6cf923b88c1ab21f64ab1be9480ea492eb onto dev.
