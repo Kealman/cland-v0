@@ -2,8 +2,8 @@
 id: T-1118
 kind: task
 title: The Topics area and the thread in pages, with read marks
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T17:32:22.750Z
+updated: 2026-10-22T17:47:09.726Z
+closed: 2026-10-22T17:47:09.726Z
 ---
 
 ## Summary
@@ -34,12 +35,16 @@ The Topics area shows the topics in groups (§3.2): those waiting for the human 
 
 - [x] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
   - done: impl-1118 · 2026-10-22T17:32:22.272Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final-2 · 2026-10-22T17:42:17.037Z · commit 451ef78ae11ef98ed5baf228473ef409ed8e16d2
 - [x] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
   - done: impl-1118 · 2026-10-22T17:32:22.384Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final-2 · 2026-10-22T17:42:17.037Z · commit 451ef78ae11ef98ed5baf228473ef409ed8e16d2
 - [x] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
   - done: impl-1118 · 2026-10-22T17:32:22.477Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final-2 · 2026-10-22T17:42:17.037Z · commit 451ef78ae11ef98ed5baf228473ef409ed8e16d2
 - [x] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
   - done: impl-1118 · 2026-10-22T17:32:22.665Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1118-final-2 · 2026-10-22T17:42:17.037Z · commit 451ef78ae11ef98ed5baf228473ef409ed8e16d2
 
 ## Comments
 
@@ -173,3 +178,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Not clear, A-9387, A-9386. Actual error: 'the screen never showed artifact event reaches the rendered grid within10000ms', artifact-render.test.ts394. T1 passes, T2 fails, Web absent;2423/2424 pass is incomplete evidence. Source A-9364 retained, no causal Topics bug inferred. S/Bugs candidate routed to lead for Coordinator disposition; no retry or timeout change authorized here. Generic duration/lint/ratchet report-only; no T3/T4/QA claim.
 
 Criteria: C1 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.), C2 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.), C3 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.), C4 failed (Configured retry exits1 on Neovim artifact refresh timeout; required Web phase did not execute.).
+
+### rev-23 · 2026-10-22T17:42:17.037Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-final-2
+commit: 451ef78ae11ef98ed5baf228473ef409ed8e16d2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head clear, A-9395, A-9394/run33e4a9ad at451ef78a. Parsed2512 ordinary tests/382 files pass; all T1/all fallback hub+Neovim T2/actual Web complete. Nine Topics cases plus Pane/Page, visibility callback and compatibility files pass; C1–C4 verified with sourceA-9364. Linuxx64c-8lon1 workers2/Web4, host check2955bc10 reused/not repeated remotely. Web55.308s>40s report-only budget; generic diagnostics retained, no repetition/enforcing-budget/T3/T4/QA/full-cover claim. Previous parser/artifact failure receipts remain historical failures.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-22T17:47:09.726Z
+
+Merged 8bd5f778619595e65cbf4b607f1b0a38432fc647 onto dev.
