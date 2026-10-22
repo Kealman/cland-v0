@@ -16,7 +16,7 @@ found_by: droplet
 topic: null
 branch: null
 created: 2026-10-22T18:21:31.244Z
-updated: 2026-10-22T18:21:40.033Z
+updated: 2026-10-22T20:21:41.358Z
 closed: 2026-10-22T18:21:40.033Z
 ---
 
@@ -45,3 +45,18 @@ Run b1bdb777-511c-4dc0-aced-a81887fb6d32; head 0c8c8c9a5ecfcb824ffae7c3a478897de
 ### coord · 2026-10-22T18:21:40.033Z
 
 Duplicate of T-1150 (filed 17:58Z from the same periodic run 0764ca02, regression of T-1117). The hub's search confirms the culprit 0c8c8c9a (T-1117); T-1150 carries the test migration and its full Linux run 6e61e141 is in progress.
+
+### hub · 2026-10-22T20:21:41.358Z
+
+Periodic run bea28a99-ae00-4a09-bff0-e576ca77078c; red head ed86d772185bae632106810aa3bf21959bc53fda; tree 42b6f114cde44b8a77581fc180c8ad3ebb1b1616
+Last green run eb22dbbc-8450-4749-9331-032f86d3084b; head 1b4291e6019fdeda13d101c1e3fd70ebfbf60553
+Original log A-9436: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9436-suite-bea28a99-ae00-4a09-bff0-e576ca77078c-all-at-ed86d77.log
+hub/test/opencode-adapter.test.ts: culprit at 0c8c8c9a5ecfcb824ffae7c3a478897defe09d80 The human's message kinds and Withdraw in the hub (T-1117)
+Run 13c9c3fd-2f2f-47a2-b0c6-be4072383083; head ed86d772185bae632106810aa3bf21959bc53fda; red; log A-9440: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9440-suite-13c9c3fd-2f2f-47a2-b0c6-be4072383083-all-at-ed86d77.log
+Run 71e28efa-96d8-428b-82df-e61711d57e91; head 1b4291e6019fdeda13d101c1e3fd70ebfbf60553; green; log A-9441: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9441-suite-71e28efa-96d8-428b-82df-e61711d57e91-all-at-1b4291e.log
+Run d9392dee-dfda-4040-af24-fb035459c82d; head 4fd2ac6770cd299e0dee23921662a55b597b2d65; green; log A-9442: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9442-suite-d9392dee-dfda-4040-af24-fb035459c82d-all-at-4fd2ac6.log
+Run 123694d9-4de1-400e-8e9e-025903eaa0eb; head 58aa8efd66089c04613d2002ea072a9738046a3b; green; log A-9444: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9444-suite-123694d9-4de1-400e-8e9e-025903eaa0eb-all-at-58aa8ef.log
+Run 783a99e4-7243-42fc-a5c9-6dc8a6a98242; head de40ac3c93e5f1713c775831ce1f475bd17c07e1; red; log A-9446: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9446-suite-783a99e4-7243-42fc-a5c9-6dc8a6a98242-all-at-de40ac3.log
+Run ce04c611-2fed-480e-9df2-d654f4afc2fe; head 1db66120ceea49ef40eaae8aa4352c1fe14bd06b; red; log A-9447: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9447-suite-ce04c611-2fed-480e-9df2-d654f4afc2fe-all-at-1db6612.log
+Run 7aa8a96d-27e8-492a-aa76-2832adf9900d; head 26e74e4dba757ff1cda5229df5a66be0cfa30486; red; log A-9448: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9448-suite-7aa8a96d-27e8-492a-aa76-2832adf9900d-all-at-26e74e4.log
+Run 20bf0d4a-0616-4018-a1af-6fbd2e0f3cc7; head 0c8c8c9a5ecfcb824ffae7c3a478897defe09d80; red; log A-9449: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9449-suite-20bf0d4a-0616-4018-a1af-6fbd2e0f3cc7-all-at-0c8c8c9.log
