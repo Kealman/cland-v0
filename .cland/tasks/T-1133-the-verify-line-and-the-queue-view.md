@@ -3,7 +3,7 @@ id: T-1133
 kind: task
 title: The verify line and the queue view
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-418
 blocked_by:
   - T-1130
-topic: null
-branch: null
+topic: topic-874
+branch: t/T-1133-the-verify-line-and-the-queue-view
 created: 2026-10-22T15:16:15.253Z
-updated: 2026-10-22T23:07:37.511Z
+updated: 2026-10-22T23:09:51.970Z
 ---
 
 ## Summary

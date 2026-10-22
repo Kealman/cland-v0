@@ -3,7 +3,7 @@ id: T-1112
 kind: task
 title: "The OpenCode relay: permissions answered through the gate"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-414
 blocked_by:
   - T-1110
-topic: null
-branch: null
+topic: topic-869
+branch: t/T-1112-the-opencode-relay-permissions-answered
 created: 2026-10-22T15:16:11.536Z
-updated: 2026-10-22T23:07:33.722Z
+updated: 2026-10-22T23:09:21.354Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1136
 kind: task
 title: "Acting on a session: Stop, Resume, Archive, Capabilities and the session's page"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-418
 blocked_by:
   - T-1132
-topic: null
-branch: null
+topic: topic-873
+branch: t/T-1136-acting-on-a-session-stop-resume-archive
 created: 2026-10-22T15:16:15.750Z
-updated: 2026-10-22T23:07:37.120Z
+updated: 2026-10-22T23:09:43.677Z
 ---
 
 ## Summary

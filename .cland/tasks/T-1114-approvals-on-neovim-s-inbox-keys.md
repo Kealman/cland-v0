@@ -3,7 +3,7 @@ id: T-1114
 kind: task
 title: Approvals on Neovim's inbox keys
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-414
 blocked_by:
   - T-1110
-topic: null
-branch: null
+topic: topic-872
+branch: t/T-1114-approvals-on-neovim-s-inbox-keys
 created: 2026-10-22T15:16:11.910Z
-updated: 2026-10-22T23:07:33.818Z
+updated: 2026-10-22T23:09:58.294Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ In Neovim's inbox, in both the panel and the full-width view, a relayed approval
 - [ ] C3. A refused answer folds the row to the winner's outcome and says who answered and when (test).
 - [ ] C4. On a row answered in the TUI, ↵ still attaches, and `1`, `2` and `d` send nothing and say where to answer (test).
 - [ ] C5. `nvim/README.md` lists the approval keys, the folded outcome and the row answered in the TUI, and `GLOSSARY.md` defines Approval (docs).
+
+## Comments
+
+### impl-1114 · 2026-10-22T23:09:58.294Z
+
+Implementation started test-first at the assigned recorded-frame/headless Neovim seam (T2), both inbox views. Root node_modules linked. Tests will observe outbound approval.answer and rendered folded outcomes; TUI attachment remains stub-refused at its existing boundary. Stage QA applies after-stage, no per-item brief required.
