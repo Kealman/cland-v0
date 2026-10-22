@@ -3,7 +3,7 @@ id: T-1096
 kind: task
 title: doctor-cli fails on a droplet shard that never builds the web bundle
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-839
 branch: t/T-1096-doctor-cli-fails-on-a-droplet-shard-that
 created: 2026-10-22T07:20:08.870Z
-updated: 2026-10-22T08:29:24.751Z
+updated: 2026-10-22T08:38:48.635Z
 ---
 
 ## Summary
@@ -27,12 +27,14 @@ The E-416 stage cover 5be1db36 (A-9000, shard-1 log A-9001, dev 90c54f5a, Linux 
 - [x] C1. A hub-only shard whose selection contains `hub/test/doctor-cli.test.ts` but neither Web tests nor `web-auth.test.ts` builds the web bundle before its workers start; a suite-runner test proves it the way "a hub-only shard builds the bundle before its secret-scan worker starts" does (test).
   - done: impl-1096 · 2026-10-22T08:16:37.163Z
   - verified: rev-23 [reviewer] · run rev-20261022-1096-final · 2026-10-22T08:27:21.591Z · commit 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
+  - verified: rev-23 [reviewer] · run rev-20261022-1096-final-2 · 2026-10-22T08:38:48.200Z · commit 67a2f0650f96f1116afd783d410040390a8f632d
 - [x] C2. Every other hub test that reads the built bundle or its stamp is either in the same build condition or independent of the checkout's `web/dist`, and the list is in the item topic from a search of hub/test (test).
   - done: impl-1096 · 2026-10-22T07:25:18.893Z
   - verified: rev-23 [reviewer] · run rev-20261022-1096-source · 2026-10-22T07:29:31.249Z · commit 7c1469bc81d0a724dc87d64eeebb919e4116ec37
   - verified: rev-23 [reviewer] · run rev-20261022-1096-source-2 · 2026-10-22T08:17:20.361Z · commit 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
   - verified: rev-23 [reviewer] · run rev-20261022-1096-final · 2026-10-22T08:27:21.591Z · commit 34650f114ea4adcd190ce75dcb9c1b758f3b15c9
   - verified: rev-23 [reviewer] · run rev-20261022-1096-source-3 · 2026-10-22T08:29:24.751Z · commit 67a2f0650f96f1116afd783d410040390a8f632d
+  - verified: rev-23 [reviewer] · run rev-20261022-1096-final-2 · 2026-10-22T08:38:48.200Z · commit 67a2f0650f96f1116afd783d410040390a8f632d
 
 ## Comments
 
@@ -145,3 +147,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear under e84d4f53. Metadata conflict preserves T-1096/T-1054/T-1059 provenance; task diff versus incoming dev remains six files44+/9-. Runner and regression blobs identical to prior final source, C2 reader audit refreshed. A-9053 original post-merge local T3 cases2/2 supports C1; no configured/Linux gate inferred. C1/final evidence pending ordinary mode-free exact-head receipt; prior A-9051 historical. QA none.
 
 Criteria: C2 verified.
+
+### impl-1096 · 2026-10-22T08:38:25.931Z
+
+Coordinator-authorized origin/dev merge 92dc7144 produced 67a2f065; sole skill metadata conflict resolved preserving both sides. Local post-merge shard regressions 2/2 green A-9053. Reviewer delta source clear rev-20261022-1096-source-3. Mode-free ee41e5ab at exact 67a2f065 passed: A-9059, Linux x64 droplet c-8 lon1, 2425/2425 pass, T1/all-T2 fallback/actual Web exit 0. T3 absent; host check 7339b3a reused/not repeated; report-only diagnostics retained. Lifetime 476 s, $0.0330. Final evidence settlement requested; no merge performed.
+
+### rev-23 · 2026-10-22T08:38:48.200Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1096-final-2
+commit: 67a2f0650f96f1116afd783d410040390a8f632d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head clear: original A-9059 / ee41e5ab matches exact reviewed67a2f065; independently audited2425 ordinary passes/370 file passes, actual T1/all-T2/Web exit0, no load-scoped finishes. C1 uses accepted source plus local post-merge A-9053 2/2 and prior A-9007 45/45; zero remote runner/T3 finishes, explicitly not LinuxT3 proof. C2 audit retained. Linux476s/$0.0330; host7339b3a reused; report-only warnings/four missing baselines retained. C1/C2 verified; QA none.
+
+Criteria: C1 verified, C2 verified.
