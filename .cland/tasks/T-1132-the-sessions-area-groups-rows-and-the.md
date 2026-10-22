@@ -2,8 +2,8 @@
 id: T-1132
 kind: task
 title: "The Sessions area: groups, rows and the unfolded row"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-860
 branch: t/T-1132-the-sessions-area-groups-rows-and-the
 created: 2026-10-22T15:16:15.097Z
-updated: 2026-10-22T18:01:26.879Z
+updated: 2026-10-22T18:07:54.067Z
+closed: 2026-10-22T18:07:54.067Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head clear, A-9406; A-9404/run51299c7b at fd1c9051. Parsed 2,525 ordinary tests/384 files pass; all T1/all hub+Neovim T2/actual Web complete. Five Sessions cases and Topics/palette/key-contexts/area-slots pass; C1–C6 verified with accepted source, prior low docs finding resolved. New maximum2.330s<4s trigger. Linuxx64 c-8lon1 workers2/Web4, host check37825f51 reused/not repeated remotely. Web55.310s>40s report-only budget; generic diagnostics retained, no enforcing-budget/repetition/T3/T4/QA/full-cover claim.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-22T18:07:54.067Z
+
+Merged 10c984acd79dc62b9d89791f6bbd6b96e0297af4 onto dev.

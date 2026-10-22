@@ -5,6 +5,7 @@ title: OpenCode steer test fails after T-1117 queues the human's messages to a b
 state: open
 status: in progress
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ regression_of: T-1117
 topic: topic-863
 branch: t/T-1150-opencode-steer-test-fails-after-t-1117
 created: 2026-10-22T17:55:52.283Z
-updated: 2026-10-22T18:03:30.726Z
+updated: 2026-10-22T18:07:20.093Z
 ---
 
 ## Summary
@@ -27,8 +28,10 @@ Decide and pin which senders steer a running turn. Under §3.4 and T-1117, the h
 
 ## Acceptance criteria
 
-- [ ] C1. The OpenCode adapter test asserts that a human message to a busy session is queued and injected after the turn, and that the steering path (whichever sender keeps it) still steers the running turn (test).
-- [ ] C2. Every other T2/T3 test that asserts steering of a human message is found by search and updated or confirmed, and the list is posted in the item topic (test).
+- [x] C1. The OpenCode adapter test asserts that a human message to a busy session is queued and injected after the turn, and that the steering path (whichever sender keeps it) still steers the running turn (test).
+  - done: impl-1150 · 2026-10-22T18:07:20.032Z
+- [x] C2. Every other T2/T3 test that asserts steering of a human message is found by search and updated or confirmed, and the list is posted in the item topic (test).
+  - done: impl-1150 · 2026-10-22T18:07:20.093Z
 - [ ] C3. The named file passes in a targeted Linux run whose receipt is posted in the item topic, because T3 is not in mode-free runs (test).
 
 ## Comments
