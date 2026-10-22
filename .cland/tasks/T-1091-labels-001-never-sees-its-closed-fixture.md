@@ -2,8 +2,8 @@
 id: T-1091
 kind: task
 title: LABELS-001 never sees its closed fixture question under the stdio hub after T-1089
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1089
 topic: topic-829
 branch: t/T-1091-labels-001-never-sees-its-closed-fixture
 created: 2026-10-22T02:34:06.693Z
-updated: 2026-10-22T02:52:53.740Z
+updated: 2026-10-22T02:57:48.300Z
+closed: 2026-10-22T02:57:48.300Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 C1/C2 verified. A-8867 local Darwin T3 qa.test.ts24/24 proves LABELS/FOLLOWS stdio and stub with full fields/identity/card assertions. A-8869 exactly matches reviewed head: configured Linux T1/all-T2/Web exit 0,2394 ordinary passes/363 files, no failures/skips. No T3 or scoped load finishes in task receipt; no inferred Linux native/5/5 proof. Coordinator fe15d11c explicitly defers Linux T3 to post-landing dev stage covers. C2 audit already source-verified. Existing report-only diagnostics and after-stage QA limits retained. Final audit A-8870; ready for Coordinator enqueue.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T02:57:48.300Z
+
+Merged 046ae61ac6907d5cca6aa04d02fa92754de20a17 onto dev.
