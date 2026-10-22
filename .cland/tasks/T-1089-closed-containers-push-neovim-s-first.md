@@ -3,7 +3,7 @@ id: T-1089
 kind: task
 title: Closed containers push Neovim's first payload to 240 KB on the live tracker, over the 128 KiB budget
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1081
 topic: topic-828
 branch: t/T-1089-closed-containers-push-neovim-s-first
 created: 2026-10-22T01:04:50.220Z
-updated: 2026-10-22T01:14:59.593Z
+updated: 2026-10-22T01:36:51.429Z
 ---
 
 ## Summary
@@ -28,7 +28,8 @@ Neovim's first item payload, and the web's open snapshot where it feeds the same
 
 ## Acceptance criteria
 
-- [ ] C1. On a copy of the live tracker, Neovim's first item payload stays at or under 120 KiB, measured by the startup probe and asserted in a test with a fixture that holds many closed containers (test).
+- [x] C1. On a copy of the live tracker, Neovim's first item payload stays at or under 120 KiB, measured by the startup probe and asserted in a test with a fixture that holds many closed containers (test).
+  - done: impl-1089 · 2026-10-22T01:36:24.804Z
 - [x] C2. Releases, epics and categories still show their full done/total and stage counts from the hub's roll-ups with closed containers out of the first payload, in Neovim and in the web tree (tests).
   - done: impl-1089 · 2026-10-22T01:14:59.431Z
 - [x] C3. Unfolding a closed epic or showing done items loads closed containers and tasks through the bounded pages with one row per identity (test).

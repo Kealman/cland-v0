@@ -2,8 +2,8 @@
 id: T-1079
 kind: task
 title: The full Neovim fixture recorder aborts on a native test file that records no frames
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-826
 branch: t/T-1079-the-full-neovim-fixture-recorder-aborts
 created: 2026-10-21T17:52:08.489Z
-updated: 2026-10-22T01:34:01.431Z
+updated: 2026-10-22T01:39:06.153Z
+closed: 2026-10-22T01:39:06.153Z
 ---
 
 ## Summary
@@ -97,3 +98,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 C1/C2 verified. Replacement A-8844/3bb441ef matches merged reviewed head: T1/all-T2/Web exit 0, 2371 ordinary passes; all nine recorder tests pass and both new identities have five distinct load passes plus explicit 5/5. Original named explorer capture mismatch remains under amended C1/deferred refresh; no full maintenance pass claimed. Shared duration gate resolved by authorized allowance; A-8834 stays historical red. L1 correction A-8828 retained. Existing report-only diagnostics and task-policy T3 deferral explicit; QA none. Final audit A-8845; ready for Coordinator enqueue.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T01:39:06.153Z
+
+Merged 8995f22337e2f289aab737ad789311911ce2dfc7 onto dev.
