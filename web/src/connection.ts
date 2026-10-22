@@ -22,8 +22,12 @@ export type ConnectionState = {
   project: string; live: boolean; restartRequired?: boolean;
   command?: <T>(frame: Command<WorkbenchRequest>) => Promise<T>;
   resolveItem?: (id: string) => Promise<{ item: ExplorerSummary; ancestors: ExplorerSummary[] } | undefined>;
+  loadItems?: (ids: string[]) => Promise<void>;
   coordinator?: string | null;
   topics?: Topic[];
+  marks?: SnapshotValues['topics']['marks'];
+  sessions?: SnapshotValues['sessions']['rows'];
+  crew?: SnapshotValues['sessions']['crew']['config'];
   needsYou?: number;
   approvals?: number;
   plans?: number;
@@ -115,6 +119,23 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     }
     return target ? { item: target, ancestors } : undefined;
   }
+  const itemRevisions = new Map<string, number>();
+  const retainedItems = new Set<string>();
+  async function loadItems(ids: string[]) {
+    ids.forEach(id => retainedItems.add(id));
+    const missing = [...new Set(ids)].filter(id => !findItem(state, id));
+    for (let offset = 0; offset < missing.length; offset += 100) {
+      const batch = missing.slice(offset, offset + 100);
+      const revisions = new Map(batch.map(id => [id, itemRevisions.get(id)]));
+      const result = await command<{ items: ExplorerSummary[] }>({ type: 'task.list', ids: batch, projection: 'summary' });
+      const rows = new Map(state.items?.map(row => [row.id, row]));
+      for (const row of result.items) {
+        // A newer delta, including deletion, wins over an outstanding summary read.
+        if (itemRevisions.get(row.id) === revisions.get(row.id) && !findItem(state, row.id)) rows.set(row.id, row);
+      }
+      items([...rows.values()]);
+    }
+  }
   const requestedPlans = new Set<string>();
   const closed = new Map<string, ExplorerSummary[]>();
   const closedLoads = new Map<string, {rows:Map<string,ExplorerSummary>;deltas:Map<string,ExplorerSummary|null>}>();
@@ -177,8 +198,9 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     ]);
   }
   function connect() {
-    state = { ...state, command, resolveItem };
+    state = { ...state, command, resolveItem, loadItems };
     requestedPlans.clear();
+    itemRevisions.clear(); retainedItems.clear();
     closed.clear();closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
     state = { ...state, cardFacts: {}, bodies: {}, cardErrors: {}, loadCard: id => loadCardData(id, false), loadBody: id => loadCardData(id, true) };
@@ -224,10 +246,10 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           for (const parent of closedWanted) loadClosed(parent);
         }
         else if (frame.domain === 'sessions') {
-          state = { ...state, coordinator: frame.value.coordinator, idleFrom: frame.value.crew.config.idle_from ?? [] };
+          state = { ...state, coordinator: frame.value.coordinator, sessions: frame.value.rows, crew: frame.value.crew.config, idleFrom: frame.value.crew.config.idle_from ?? [] };
           rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
         } else if (frame.domain === 'inbox') inbox(frame.value);
-        else if (frame.domain === 'topics') { state = { ...state, topics: frame.value.topics }; rows('Topics', frame.value.topics); }
+        else if (frame.domain === 'topics') { state = { ...state, topics: frame.value.topics, marks: frame.value.marks }; rows('Topics', frame.value.topics); }
         else if (frame.domain === 'events') rows('Events', frame.value.rows.map(row => ({ id: row.id, title: row.text })));
         else if (frame.domain === 'accounts') rows('Accounts', frame.value.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
         changed(state);
@@ -279,12 +301,16 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         rows('Artifacts', (frame.value as { artifacts: Artifact[] }).artifacts.map(row => ({ id: row.id, title: row.title })));
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-accounts') {
         rows('Accounts', (frame.value as AccountList).accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
-      } else if (frame.type === 'inbox') inbox(frame.inbox);
-      else if (frame.type === 'crew') { state = { ...state, idleFrom: frame.config.idle_from }; changed(state); }
+      } else if (frame.type === 'marks') { state = { ...state, marks: frame.marks }; changed(state); }
+      else if (frame.type === 'inbox') inbox(frame.inbox);
+      else if (frame.type === 'session.row') { state = { ...state, sessions: [...(state.sessions ?? []).filter(row => row.key !== frame.key), ...(frame.row ? [frame.row] : [])] }; changed(state); }
+      else if (frame.type === 'session.usage') { state = { ...state, sessions: (state.sessions ?? []).map(row => row.sessionId === frame.sessionId ? { ...row, usage: frame.usage } : row) }; changed(state); }
+      else if (frame.type === 'crew') { state = { ...state, crew: frame.config, idleFrom: frame.config.idle_from }; changed(state); }
       else if (frame.type === 'role.filled' || frame.type === 'role.vacant' || frame.type === 'presence') {
         request({ type: 'hub.status', id: 'connection-status' });
         request({ type: 'session.list', id: 'shell-sessions' });
       } else if (frame.type === 'task') {
+        itemRevisions.set(frame.id, (itemRevisions.get(frame.id) ?? 0) + 1);
         if (frame.done_items !== undefined) state = {...state,doneItems:frame.done_items};
         invalidateCard(frame.id);
         const value = new Map(state.items?.map(row => [row.id, row]));
@@ -304,7 +330,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           if (row?.state==='closed'&&closedParent(row)===parent) next.push(row);
           closed.set(parent,next);
         }
-        if (row && !(row.kind==='task'&&row.state==='closed')) value.set(frame.id,row);
+        if (row && (!(row.kind==='task'&&row.state==='closed') || retainedItems.has(row.id))) value.set(frame.id,row);
         else value.delete(frame.id);
         if (requestedPlans.delete(frame.id)) state.loadPlan?.(frame.id);
         items([...value.values()]);

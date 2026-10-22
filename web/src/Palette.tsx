@@ -1,6 +1,8 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { actionKeys, displayKey, shellActions, paletteActions, foldActions, treeActions, type Area, type Shortcut } from './keymap.ts';
+import { actionKeys, displayKey, shellActions, paletteActions, foldActions, treeActions, planActions, type Area, type Shortcut } from './keymap.ts';
 import type { ConnectionState, ObjectRow } from './connection.ts';
+import { useItemsView } from './ItemsView.tsx';
+import { useDesktop } from './desktop.ts';
 import s from './Palette.module.css';
 
 const kinds = [
@@ -32,6 +34,9 @@ export function PaletteDialog({ mode, area, connection, controls, close, run, op
   mode: 'palette' | 'help'; area: Area; connection: ConnectionState; controls: Ref<PaletteControls>;
   close: () => void; run: (action: Shortcut) => void; open: (area: Area, row: ObjectRow, pane: boolean) => void;
 }) {
+  const view = useItemsView();
+  const desktop = useDesktop();
+  const itemActions = area !== 'Items' ? [] : view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions;
   const dialog = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -80,7 +85,7 @@ export function PaletteDialog({ mode, area, connection, controls, close, run, op
   } }));
   const activeResult = useRef<HTMLDivElement>(null);
   useEffect(() => { activeResult.current?.scrollIntoView({ block: 'nearest' }); }, [selected, query]);
-  const helpActions = new Map([...shellActions, ...foldActions, ...(area === 'Items' ? treeActions : [])].map(row => [row.action, row]));
+  const helpActions = new Map([...shellActions, ...foldActions, ...itemActions].map(row => [row.action, row]));
   return <dialog ref={dialog} className={s.dialog} data-keys-help={mode === 'help' ? '' : undefined} aria-label={mode === 'palette' ? 'Palette' : `${area} keys`}
     onCancel={event => { event.preventDefault(); close(); }}>
     {mode === 'help' ? <>

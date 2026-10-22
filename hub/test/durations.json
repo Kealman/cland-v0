@@ -5937,6 +5937,13 @@
     "web/test/palette.test.ts::Items help contains all 33 rows within small viewports during complete keyboard scrolls": 3.480305
   },
   "allow": {
+    "web/test/plan.test.ts::the Plan view in Items": {
+      "seconds": 8.2,
+      "owner": "E-880",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "T-1077 retains three real hub/Headless Shell criterion cases, CLI human approval receipt, Plan-first closed-member and selected-task closure facts, shared mark/watch paints, live resize guards and observed browser/hub teardown. Linux x64 c-8 lon1 run 3f8c3d6c at 44e72f4d (A-9103) measured 5.44853763 s for the parent identity; assertions passed and the enforced new-identity duration gate alone failed. Temporary 8.2 s cap rounds up about 1.5x that measured sample while E-880 restores Web tier budgets."
+    },
     "web/test/item-criteria.test.ts::criteria edits on the card": {
       "seconds": 17.3,
       "owner": "E-880",

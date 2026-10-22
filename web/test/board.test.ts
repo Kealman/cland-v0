@@ -98,7 +98,7 @@ test('the Board view and Items view switcher', async t => {
     assert.equal(await board.locator('[data-object-id="T-900107"]').count(), 0);
     assert.equal(await page.getByRole('button', { name: 'D · Done hidden', exact: true }).getAttribute('aria-pressed'), 'true');
     assert.equal(await page.getByRole('button', { name: 'Graph', exact: true }).isEnabled(), true);
-    assert.equal(await page.getByRole('button', { name: 'Plan', exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Plan', exact: true }).isEnabled(), true);
     await page.getByRole('button', { name: 'Tree', exact: true }).click();
     assert.equal(await tree.locator('[data-object-id="T-900105"]').getAttribute('aria-selected'), 'true');
     assert.equal(await tree.locator('[data-object-id="R-900000"]').count(), 0);

@@ -2,15 +2,16 @@ import { useSyncExternalStore, type ComponentProps } from 'react';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
 import { ItemsTree } from './ItemsTree.tsx';
 import { ItemsBoard } from './ItemsBoard.tsx';
+import { ItemsPlan } from './ItemsPlan.tsx';
 import { ItemsGraph } from './ItemsGraph.tsx';
 import s from './ItemsView.module.css';
 
-// Later views enable one entry and provide their component here.
+// Views share the Items selection and scope.
 export const itemViews = [
   { id: 'tree', label: 'Tree', enabled: true },
   { id: 'board', label: 'Board', enabled: true },
   { id: 'graph', label: 'Graph', enabled: true },
-  { id: 'plan', label: 'Plan', enabled: false },
+  { id: 'plan', label: 'Plan', enabled: true },
 ] as const;
 type View = typeof itemViews[number]['id'];
 let current: View | undefined;
@@ -29,6 +30,7 @@ export function showItemsView(view: View) {
   writeInterfaceState('items', { ...(saved && typeof saved === 'object' ? saved : {}), view });
   listeners.forEach(listener => listener());
 }
+export function useItemsView() { return useSyncExternalStore(subscribe, snapshot); }
 export function ItemsViewSwitcher({ onChange }: { onChange?: () => void } = {}) {
   const view = useSyncExternalStore(subscribe, snapshot);
   return <div className={s.switcher} role="group" aria-label="Items view">
@@ -38,5 +40,5 @@ export function ItemsViewSwitcher({ onChange }: { onChange?: () => void } = {}) 
 }
 export function ItemsView(props: ComponentProps<typeof ItemsTree>) {
   const view = useSyncExternalStore(subscribe, snapshot);
-  return view === 'graph' ? <ItemsGraph {...props} /> : view === 'board' ? <ItemsBoard {...props} /> : <ItemsTree {...props} />;
+  return view === 'plan' ? <ItemsPlan {...props} /> : view === 'graph' ? <ItemsGraph {...props} /> : view === 'board' ? <ItemsBoard {...props} /> : <ItemsTree {...props} />;
 }

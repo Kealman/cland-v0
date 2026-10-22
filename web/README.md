@@ -226,8 +226,7 @@ never writes the hub's or Neovim's interface state.
 
 ## Items views
 
-The Items header switches between Tree, Board and Graph. Plan is disabled
-until its view lands. The view is a browser preference under
+The Items header switches between Tree, Board, Graph and Plan. The view is a browser preference under
 `cland.ui.items.v1`; changing it preserves the shared scope, done/archive filters
 and selected item, including its drawer card. Split panes share the view preference.
 
@@ -490,3 +489,25 @@ snapshot and task deltas. Stage fractions and derived stage state read the
 parent item's authoritative stage summaries (`merged`, `total`, `statuses`,
 `state`); an absent legacy summary displays unavailable merged progress. These
 facts remain complete with D hiding done and closed child pages still unloaded.
+
+### Plan
+
+Plan opens the selected epic, or the epic containing the selected item. It shows
+stages, ordered lanes, QA policies and overrides, stage gates, hub progress,
+history, crew and external blockers. Missing plan members load through bounded
+by-id summary reads, including closed tasks on a Plan-first entry; their deltas
+remain visible without body reads. Its summary column folds below the stages
+under 1280 px. The source excerpt is read only and loads when expanded.
+
+At desktop width (at least 1280 px), `a` or **Approve** approves a waiting plan
+through the hub as the human. The action is absent below that width and remains
+inert on the keyboard. Offline, pending and stale requests cannot approve.
+`d` opens a message field for the epic's Lead in its topic, creating that topic
+when needed. A failed send retains the draft; mutations never retry automatically.
+There is no plan editing.
+
+Changes since the human's last look use the watch colour. Entry freezes the
+previous per-human receipt, then acknowledges the newest loaded history record
+through `marks.set`. That visit keeps its highlights, including later live
+changes; a new visit uses the hub's updated receipt. Marks agree with Neovim and
+other browsers and follow history order even when timestamps match.

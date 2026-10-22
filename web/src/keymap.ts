@@ -1,7 +1,7 @@
 export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'] as const;
 export type Area = typeof areas[number];
 export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
-  | 'tree-scope' | 'tree-back' | 'jump-leader' | 'jump-item' | 'jump-topic' | 'jump-session'
+  | 'plan-approve' | 'plan-discuss' | 'tree-scope' | 'tree-back' | 'jump-leader' | 'jump-item' | 'jump-topic' | 'jump-session'
   | 'tree-select' | 'tree-extend-next' | 'tree-extend-previous' | 'tree-message' | 'tree-topic-message' | 'tree-edit-criteria'
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
@@ -16,6 +16,7 @@ export const keyMap: Readonly<Record<string, Shortcut>> = {
   ArrowDown: 'next-result', ArrowUp: 'previous-result',
   ArrowLeft: 'fold-close', ArrowRight: 'fold-open',
   // Items selection, scope and message bindings (T-1074).
+  KeyA: 'plan-approve', KeyD: 'plan-discuss',
   KeyS: 'tree-scope', 'Space Space': 'tree-back',
   KeyG: 'jump-leader', 'KeyG KeyI': 'jump-item', 'KeyG KeyT': 'jump-topic', 'KeyG KeyS': 'jump-session',
   KeyX: 'tree-select', 'Shift+KeyJ': 'tree-extend-next', 'Shift+KeyK': 'tree-extend-previous',
@@ -74,4 +75,8 @@ export const treeActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
   { action: 'tree-archive', label: 'Show archived roots' },
   { action: 'accept', label: 'Enter card or return to tree' },
   { action: 'dismiss', label: 'Return from card or close drawer' },
+];
+
+export const planActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
+  { action: 'plan-approve', label: 'Approve plan' }, { action: 'plan-discuss', label: 'Discuss plan with Lead' },
 ];
