@@ -3,7 +3,7 @@ id: T-1076
 kind: task
 title: The Graph view in the Items area
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-834
 branch: t/T-1076-the-graph-view-in-the-items-area
 created: 2026-10-21T17:32:16.876Z
-updated: 2026-10-22T04:59:52.518Z
+updated: 2026-10-22T05:09:41.088Z
 ---
 
 ## Summary
@@ -35,12 +35,15 @@ The Graph view of the current scope: task nodes, with done nodes in the done col
 
 - [x] C1. The Graph of a release shows a closed epic in the done colour with its full fraction and an open one with its count in work (Web test).
   - done: impl-1076 · 2026-10-22T04:46:11.519Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1076-final-1 · 2026-10-22T05:09:40.972Z · commit 7c2d5e0dce981c8cc31fa974011b04d43c7a89da
 - [x] C2. Switching to Graph and back keeps the scope and the selection, and selecting a node selects its row (Web test).
   - done: impl-1076 · 2026-10-22T04:59:26.650Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1076-final-1 · 2026-10-22T05:09:40.972Z · commit 7c2d5e0dce981c8cc31fa974011b04d43c7a89da
 - [x] C3. No hex colour outside the tokens (typecheck colour guard passes).
   - done: impl-1076 · 2026-10-22T04:46:11.655Z
   - verified: rev-26 [reviewer] · run rev-20261022-1076-source-1 · 2026-10-22T04:47:27.074Z · commit ed4c9ded72d99786b53783a5b275c79c84284b28
   - verified: rev-26 [reviewer] · run rev-20261022-1076-source-2 · 2026-10-22T04:59:52.518Z · commit 7c2d5e0dce981c8cc31fa974011b04d43c7a89da
+  - verified: rev-26 [reviewer] · run rev-20261022-1076-final-1 · 2026-10-22T05:09:40.972Z · commit 7c2d5e0dce981c8cc31fa974011b04d43c7a89da
 
 ## Comments
 
@@ -96,3 +99,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear A-8930, incorporates unchanged Graph design A-8923. Direct Coordinator eab83019 authorizes exact separate allowance-only7c2d5e0d as shared T-1075 fix. Only7 manifest lines: exact Board parent9.7s,open ownerE-880,UTC2026-10-22→29,reason cites original6.456065132s Linux sample/~1.5x. No baseline/product/test/assertion/fixture/docs change or dev merge; whitespace clean. Standards0;Spec0. C3 static token criterion refreshed; C2 done restored, runtime C1/C2 await replacement exact-head configured run. A-8928 remains failed overall; assertion passes never promoted. No local runtime during cover-quiet; replacement droplet verification allowed, dev freeze/after-stage QA separate.
 
 Criteria: C3 verified.
+
+### impl-1076 · 2026-10-22T05:09:22.806Z
+
+Replacement same-head configured run8af5955a/A-8938 at reviewed7c2d5e0d/tree55f2ee0a70d1e3e3f58b0a3f92ff4344885fc486 exits0:2402/2402 pass,no failures/skips/cancellations. Actual Linux x64 c-8 lon1, Node24.21.0/Neovim0.12.5; T1 all123files/725tests, fallback T2 all232hub+Neovimfiles/1584tests, Web all10files actually ran. Graph C1 .810717438s/C2 1.036375694s/C3 .755169753s,parent3.991498650s; browser group census after0/scratch hub stopped. Board parent5.614288936s fits authorized9.7s datedE-880 allowance. Host gate provenance8994462e reused/not repeated remotely. Generic tier-duration/ratchet/test-lint diagnostics report-only (132findings/59files,10missing baselines); enforced new-identity gate passes. Web has no load repetitions, no5/5 Web claim. T3 deferred to periodic/integrated occasions and absent configured batch tiers; no T3/T4/stage/after-stage QA claim. Droplet lifetime488s/cost$0.0339 is executor lifetime, not test wall time. Head unchanged/worktree clean; waiting final Reviewer settlement. No merge.
+
+### rev-26 · 2026-10-22T05:09:40.972Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1076-final-1
+commit: 7c2d5e0dce981c8cc31fa974011b04d43c7a89da
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head audit A-8939: A-8938/8af5955a T1/allT2/actualWeb exits0,2402 ordinary passes,0fail/skip/cancel. Actual Graph C1.811s/C2 1.036s/C3.755s,parent3.991498650s; bounded closed epic/counts/done paints,scope/node/Tree/card roundtrip and token guard all pass. Board5.614288936s satisfies Coordinator-authorized9.7s dated shared allowance, not original5s; historicalA-8928 remains failed. AllC1-C3 verified,no remaining Standards/Spec findings. Linux x64 c-8 lon1,488s/$0.0339; host8994462e reused,not repeated remotely;generic diagnostics report-only/10missing baselines. No load5/5,T3/T4,full lifecycle or after-stageQA claim. Coordinator controls landing/combined cover pair and stageQAs per latest92668858.
+
+Criteria: C1 verified, C2 verified, C3 verified.
