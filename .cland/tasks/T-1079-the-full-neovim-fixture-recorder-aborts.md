@@ -3,17 +3,17 @@ id: T-1079
 kind: task
 title: The full Neovim fixture recorder aborts on a native test file that records no frames
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-826
+branch: t/T-1079-the-full-neovim-fixture-recorder-aborts
 created: 2026-10-21T17:52:08.489Z
-updated: 2026-10-21T17:52:08.489Z
+updated: 2026-10-22T01:03:33.808Z
 ---
 
 ## Summary

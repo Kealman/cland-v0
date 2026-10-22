@@ -3,17 +3,17 @@ id: T-1088
 kind: task
 title: The startup budget probe rejects T-1081's first payload because it now carries closed containers
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-825
+branch: t/T-1088-the-startup-budget-probe-rejects-t-1081
 created: 2026-10-22T00:25:33.925Z
-updated: 2026-10-22T00:25:33.925Z
+updated: 2026-10-22T01:03:22.861Z
 ---
 
 ## Summary
