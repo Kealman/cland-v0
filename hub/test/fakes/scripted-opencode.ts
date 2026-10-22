@@ -6,7 +6,7 @@ import type { TestContext } from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { OpenCodeAdapter } from '../../src/adapters/opencode.ts';
-import { OpenCodeClient, type PermissionRequest, type ServerEvent } from '../../src/adapters/opencode/client.ts';
+import { HttpError, OpenCodeClient, type PermissionRequest, type ServerEvent } from '../../src/adapters/opencode/client.ts';
 import type { HarnessProcess } from '../../src/adapters/contract.ts';
 import type { Message } from '../../src/protocol.ts';
 import { FakeClock } from '../fake-clock.ts';
@@ -27,9 +27,12 @@ export class ScriptedOpenCode {
   readonly permissionSnapshots: Array<{ response: ReturnType<typeof deferred<unknown>>; data: PermissionRequest[] }> = [];
   readonly prompts: Array<{ id: string; text: string; delivery: string; running: boolean }> = [];
   readonly promptAttempts: Array<{ id?: string; text: string; delivery: string }> = [];
+  readonly replies: Array<{ session: string; request: string; decision: string; message?: string }> = [];
+  replyFailure: { status: number; body: string } | undefined;
   losePromptResponse = false;
   readonly lookups: Array<ReturnType<typeof deferred<unknown>>> = [];
   holdMessages = false;
+  shellCommand = 'touch approved && echo done';
   failPut = false;
   failDelete = false;
   instruction: string | undefined;
@@ -49,7 +52,7 @@ export class ScriptedOpenCode {
   }
   message() { return { data: { type: 'assistant', privateInput: 'private-message', content: [
     { type: 'tool', id: 'wrong', name: 'shell', state: { status: 'completed', input: { command: 'wrong command' } } },
-    { type: 'tool', id: 'tool-shell', name: 'shell', state: { status: 'completed', input: { command: 'touch approved && echo done', privateInput: 'private-tool' } } },
+    { type: 'tool', id: 'tool-shell', name: 'shell', state: { status: 'completed', input: { command: this.shellCommand, privateInput: 'private-tool' } } },
     { type: 'tool', id: 'tool-edit', name: 'edit', state: { status: 'completed', input: { command: 'private-edit-command' } } },
   ] } }; }
   request(method: string, path: string, body?: unknown): unknown {
@@ -58,6 +61,18 @@ export class ScriptedOpenCode {
       ...[...this.children].filter(([, s]) => s.running).map(([id]) => [id, {}]),
     ]) };
     const sid = decodeURIComponent(path.split('/')[3] ?? '');
+    if (path.includes('/permission/') && path.endsWith('/reply') && method === 'POST') {
+      if (this.replyFailure) throw new HttpError(this.replyFailure.status, this.replyFailure.body);
+      const request = decodeURIComponent(path.split('/')[5]!);
+      const answer = body as { decision: string; message?: string };
+      this.replies.push({ session: sid, request, ...answer });
+      const permissions = sid === this.session ? this.permissions : this.children.get(sid)?.permissions ?? [];
+      const remaining = permissions.filter(p => answer.decision !== 'reject' && p.id !== request);
+      if (sid === this.session) this.permissions = remaining;
+      else if (this.children.has(sid)) this.children.get(sid)!.permissions = remaining;
+      this.emit('permission.replied', { sessionID: sid, requestID: request, reply: answer.decision });
+      return { data: true };
+    }
     if (path.endsWith('/permission')) {
       const data = structuredClone(sid === this.session ? this.permissions : this.children.get(sid)?.permissions ?? []);
       if (sid !== this.holdPermissionSession) return { data };
@@ -143,6 +158,7 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false,
     lifecycle.watch = adapter.watch.bind(adapter);
     lifecycle.unwatch = adapter.unwatch.bind(adapter);
     lifecycle.usage = adapter.usage.bind(adapter);
+    lifecycle.answerApproval = adapter.answerApproval?.bind(adapter);
     const close = lifecycle.close.bind(lifecycle);
     lifecycle.close = () => { adapter.close(); close(); };
     return lifecycle;
@@ -192,5 +208,5 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false,
   // Every positive state wait starts after the caller's mark, avoiding a prior episode's receipt.
   function markStates() { mark = ui.frames.length; return mark; }
   async function state(state: string) { return ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.state === state && ui.frames.indexOf(f) >= mark); }
-  return { root, clock, native, ui, peer, sender, coord, adapter, process, records, log, send, reply, reconnect, states, row, idle, markStates, state };
+  return { root, discovery, clock, native, ui, peer, sender, coord, adapter, process, records, log, send, reply, reconnect, states, row, idle, markStates, state };
 }

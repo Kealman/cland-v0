@@ -5,11 +5,193 @@ import assert from 'node:assert/strict';
 import { scriptedOpenCode } from './fakes/scripted-opencode.ts';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { eventually } from './harness.ts';
-import type { Message, SessionUsage } from '../src/protocol.ts';
+import { connectUi, eventually } from './harness.ts';
+import type { ApprovalRecord, Message, SessionUsage } from '../src/protocol.ts';
 
 const command = 'touch approved && echo done';
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+
+test('a shell permission becomes one answerable record with its full command and no private metadata', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.start();
+  f.native.ask();
+  const frame = await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).answerIn === 'hub' && (e.approval as ApprovalRecord).subject.command === command);
+  const record = frame.approval as ApprovalRecord;
+  assert.equal(record.id, `${f.process.sessionId}:shell`);
+  assert.equal(record.sessionId, f.process.sessionId);
+  assert.equal(record.kind, 'command');
+  assert.deepEqual(record.subject, { command });
+  assert.deepEqual(record.choices, ['once', 'always', 'deny']);
+  assert.equal(record.answerIn, 'hub');
+  assert.equal(record.state, 'pending');
+  const capabilities = (await f.ui.request({ type: 'session.list' })).value as { adapters: { opencode: { approvalRelay: string } } };
+  assert.equal(capabilities.adapters.opencode.approvalRelay, 'reliable');
+  const inbox = (await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] };
+  assert.deepEqual(inbox.approvals.map(a => a.id), [record.id]);
+  assert.doesNotMatch(JSON.stringify(f.ui.frames), /private-permission-metadata|private-message|private-tool|wrong command/);
+});
+
+test('human permission choices and notes reach the requesting native session through the gate', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  for (const [choice, decision] of [['once', 'once'], ['always', 'always'], ['deny', 'reject']] as const) {
+    const id = `permission-${choice}`;
+    f.native.ask(id);
+    const frame = await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:${id}`);
+    const answer = await f.ui.request({ type: 'approval.answer', approval: (frame.approval as ApprovalRecord).id, choice, note: `note for ${choice}` });
+    assert.equal(answer.ok, true, answer.error);
+    assert.deepEqual(f.native.replies.at(-1), { session: f.native.session, request: id, decision, message: `note for ${choice}` });
+    assert.equal(((answer.value as { approval: ApprovalRecord }).approval).outcome?.by, 'human');
+  }
+});
+
+test('an attached client permission reply closes the record for every hub client', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const other = await connectUi(t, f.discovery);
+  await other.request({ type: 'subscribe' });
+  for (const [reply, choice] of [['once', 'once'], ['always', 'always'], ['reject', 'deny']] as const) {
+    const id = `external-${reply}`;
+    f.native.ask(id);
+    await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:${id}`);
+    const closed = (client: typeof f.ui) => client.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:${id}` && (e.approval as ApprovalRecord).state === 'closed');
+    const first = closed(f.ui), second = closed(other);
+    f.native.approve(id, reply);
+    const a = (await first).approval as ApprovalRecord;
+    assert.deepEqual((await second).approval, a);
+    assert.equal(a.outcome?.choice, choice);
+    assert.equal(a.outcome?.by, 'harness');
+    assert.equal(a.outcome?.via, 'harness');
+  }
+});
+
+test('a child permission belongs to the parent record and answers the child endpoint', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.emit('session.created', { sessionID: 'child/one', parentID: f.native.session });
+  f.native.emit('permission.asked', { sessionID: 'child/one', id: 'child-permission', action: 'edit', resources: ['src/one.ts', 'src/two.ts'], metadata: { token: 'private-child' } });
+  const frame = await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:child-permission`);
+  const record = frame.approval as ApprovalRecord;
+  assert.equal(record.sessionId, f.process.sessionId);
+  assert.equal(record.session, 'impl');
+  assert.deepEqual(record.subject, { command: 'edit', files: ['src/one.ts', 'src/two.ts'] });
+  assert.equal((await f.ui.request({ type: 'approval.answer', approval: record.id, choice: 'deny' })).ok, true);
+  assert.deepEqual(f.native.replies, [{ session: 'child/one', request: 'child-permission', decision: 'reject' }]);
+  assert.doesNotMatch(JSON.stringify(f.ui.frames), /private-child/);
+});
+
+test('reconnect keeps the same pending permission id and closes an off-stream answer', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.ask('survives');
+  const id = `${f.process.sessionId}:survives`;
+  await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id);
+  await f.reconnect();
+  const inbox = (await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] };
+  assert.deepEqual(inbox.approvals.map(a => a.id), [id]);
+  const closed = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id && (e.approval as ApprovalRecord).state === 'closed', 1000);
+  f.native.permissions = [];
+  await f.reconnect();
+  const record = (await closed).approval as ApprovalRecord;
+  assert.equal(record.outcome?.choice, 'answered in the harness');
+  assert.equal(record.outcome?.via, 'harness');
+  assert.deepEqual(((await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] }).approvals, []);
+});
+
+test('permission shape drift stays in the TUI with a warning and no private frame fields', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const cases = [
+    { resources: ['safe/path'] },
+    { action: 'edit' },
+    { action: 'edit', resources: 'private-malformed-resources' },
+    { action: 'shell', resources: [], source: { type: 'tool', messageID: 'assistant' } },
+    { action: 'shell', resources: [], source: { type: 'tool', messageID: 'assistant', id: 'missing-tool' } },
+  ];
+  for (const [i, fields] of cases.entries()) {
+    const id = `malformed-${i}`;
+    f.native.emit('permission.asked', { id, ...fields, metadata: { token: 'private-malformed-metadata' } });
+    const frame = await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:${id}`);
+    const record = frame.approval as ApprovalRecord;
+    assert.equal(record.answerIn, 'tui');
+    assert.deepEqual(record.choices, []);
+    assert.equal((await f.ui.request({ type: 'approval.answer', approval: record.id, choice: 'deny' })).ok, false);
+    f.native.approve(id);
+  }
+  assert.equal(f.native.replies.length, 0);
+  const warnings = (await f.log()).trim().split('\n').map(line => JSON.parse(line) as { event: string; severity?: string }).filter(e => e.event === 'opencode-approval-shape');
+  assert.equal(warnings.length, cases.length);
+  assert.ok(warnings.every(e => e.severity === 'warn'));
+  assert.doesNotMatch(JSON.stringify(f.ui.frames), /private-malformed/);
+});
+
+test('a native reply during command lookup retains the request and its exact closed outcome', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.holdMessages = true;
+  f.native.ask('fast-reply');
+  await eventually('command lookup is held', () => f.native.lookups.length === 1 || undefined, 500);
+  const closed = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:fast-reply` && (e.approval as ApprovalRecord).state === 'closed', 1000);
+  f.native.approve('fast-reply', 'reject');
+  await f.native.releaseMessages();
+  const record = (await closed).approval as ApprovalRecord;
+  assert.deepEqual(record.subject, { command });
+  assert.equal(record.outcome?.choice, 'deny');
+  assert.equal(record.outcome?.via, 'harness');
+});
+
+test('a permission without a native id is visible only as a TUI fallback', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const mark = f.ui.frames.length;
+  f.native.emit('permission.asked', { action: 'edit', resources: ['safe/path'], metadata: { secret: 'private-no-id' } });
+  await eventually('malformed permission warning', async () => (await f.log()).includes('opencode-approval-shape') || undefined, 500);
+  const inbox = (await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] };
+  assert.equal(inbox.approvals.length, 1);
+  assert.equal(inbox.approvals[0]?.answerIn, 'tui');
+  assert.deepEqual(inbox.approvals[0]?.choices, []);
+  assert.doesNotMatch(JSON.stringify(f.ui.frames.slice(mark)), /private-no-id/);
+});
+
+test('a not-found reply waits for the native outcome and never records attempted consent', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.ask('already-replied');
+  const id = `${f.process.sessionId}:already-replied`;
+  await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id);
+  f.native.replyFailure = { status: 404, body: 'PermissionNotFoundError: {"metadata":{"secret":"private-native-reply"}}' };
+  const result = await f.ui.request({ type: 'approval.answer', approval: id, choice: 'always' });
+  assert.equal(result.ok, false);
+  assert.match(result.error!, /HTTP 404.*not found/);
+  assert.doesNotMatch(JSON.stringify(result), /private-native-reply/);
+  const inbox = (await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] };
+  assert.equal(inbox.approvals[0]?.state, 'pending');
+  assert.equal(inbox.approvals[0]?.outcome, undefined);
+  const closed = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id && (e.approval as ApprovalRecord).state === 'closed');
+  f.native.approve('already-replied', 'reject');
+  assert.equal(((await closed).approval as ApprovalRecord).outcome?.choice, 'deny');
+  assert.equal(f.native.replies.length, 0);
+  assert.doesNotMatch(JSON.stringify(f.ui.frames), /private-native-reply/);
+  assert.doesNotMatch(await f.log(), /private-native-reply/);
+});
+
+test('only complete commands within the UTF-8 subject cap offer native relay choices', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const tail = ' && distinct-trailing-operation';
+  const capacity = 65536 - Buffer.byteLength(JSON.stringify({ command: '' })) - tail.length;
+  for (const [prefix, label] of [['x'.repeat(capacity), 'ascii'], ['界'.repeat(Math.floor(capacity / 3)) + 'x'.repeat(capacity % 3), 'multibyte']] as const) {
+    for (const oversized of [false, true]) {
+      const id = `${label}-${oversized}`;
+      f.native.shellCommand = prefix + tail + (oversized ? 'x' : '');
+      assert.equal(Buffer.byteLength(JSON.stringify({ command: f.native.shellCommand })), 65536 + Number(oversized));
+      const before = f.native.replies.length;
+      f.native.ask(id);
+      const frame = await f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:${id}`);
+      const record = frame.approval as ApprovalRecord;
+      assert.equal(record.answerIn, oversized ? 'tui' : 'hub');
+      assert.deepEqual(record.choices, oversized ? [] : ['once', 'always', 'deny']);
+      const result = await f.ui.request({ type: 'approval.answer', approval: record.id, choice: 'once' });
+      assert.equal(result.ok, !oversized);
+      assert.equal(f.native.replies.length, before + Number(!oversized));
+      if (oversized) f.native.approve(id);
+      else assert.equal(record.subject.command, f.native.shellCommand);
+    }
+  }
+  const warnings = (await f.log()).split('\n').filter(line => line.includes('opencode-approval-shape'));
+  assert.equal(warnings.length, 2);
+});
 
 test('a missing OpenCode password keeps PID supervision and retries native watch after restoration', { timeout: 2000 }, async t => {
   const f = await scriptedOpenCode(t);

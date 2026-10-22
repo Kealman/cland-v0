@@ -11,7 +11,7 @@
 //       GET  /api/session/active                {data: {<ses>: {type: running}}}
 //       POST /api/session {id?, title, model, location}; GET /api/session/{id} (404 when unknown); GET /api/session
 //       POST /api/session/{id}/prompt {text, delivery: steer|queue} → {data: {id: msg_…, delivery, …}}
-//       GET  /api/session/{id}/permission, POST …/permission/{per}/reply {decision}
+//       GET  /api/session/{id}/permission, POST …/permission/{per}/reply {decision, message?}
 //       GET  /api/session/{id}/form, POST …/form/{frm}/reply, DELETE …/form/{frm}
 //       GET  /api/model                         one paid model and one free (`opencode/fake-free`); none in the
 //                                               first 400 ms, as a real server's catalog loads after it listens
@@ -430,7 +430,10 @@ async function serve(args: string[]): Promise<number> {
         if (parts[3] === 'permission' && parts[5] === 'reply' && method === 'POST') {
           const pending = of(permissions, sid).get(parts[4] as string);
           if (!pending) return send(res, 404, { _tag: 'PermissionNotFoundError' });
-          const reply = String((await readBody(req)).decision ?? 'once');
+          const answer = await readBody(req);
+          const reply = String(answer.decision);
+          if (!['once', 'always', 'reject'].includes(reply)) return send(res, 400, { error: 'invalid permission decision' });
+          appendFileSync(join(PROMPTS, `${sid}.log`), `permission-reply ${JSON.stringify({ session: sid, request: parts[4], decision: reply, ...(answer.message !== undefined ? { message: answer.message } : {}) })}\n`);
           of(permissions, sid).delete(parts[4] as string);
           emit('permission.replied', { sessionID: sid, requestID: parts[4], reply });
           pending.resolve(reply);

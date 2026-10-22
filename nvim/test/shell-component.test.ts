@@ -10,6 +10,21 @@ import { skip, ts, proc, baseScenario, startShell, requestsOf, onSessionRow, sta
 
 const topBar = (s: string) => s.split('\n')[0] ?? '';
 
+test('the OpenCode capability table shows the reliable approval relay', { skip }, async t => {
+  const envRoot = await tempProject(t);
+  const c = await startShell(t, s => {
+    s.processes = [{ ...proc('impl-1', 'implementer', 'idle'), harness: 'opencode' }];
+    s.adapters = { opencode: {
+      terminal: 'none', launchPolicy: 'rules, not a sandbox', history: 'none', usage: 'reliable', setModel: 'none', approvalRelay: 'reliable',
+      states: { busy: 'reliable', idle: 'reliable', 'waiting for approval': 'heuristic', 'waiting for human': 'heuristic' },
+    } };
+  }, fixtureEnvironment(envRoot, process.env));
+  await onSessionRow(c, 'impl-1');
+  await c.input('c');
+  const screen = await c.waitScreen(s => s.includes('impl-1 [Implementer] · OpenCode · capability table') && /approvalRelay +reliable/.test(s), 'OpenCode relay capability row');
+  assert.match(screen, /approvalRelay +reliable/);
+});
+
 
 test('the chip and inbox header show only the hub count through event floods, messages and resolutions', { skip }, async t => {
   const bound = topic('topic-count', 'Count item', 'open', { item: 'T-12' });

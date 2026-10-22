@@ -19,6 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
+import type { ApprovalRecord } from '../src/protocol.ts';
 import { nativeProjectHub as projectHub, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, inProcessSpoke, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 import { NO_PS } from './native-process.ts';
 
@@ -214,7 +215,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
     history: 'none',
     usage: 'reliable',
     setModel: 'none',
-    approvalRelay: 'none',
+    approvalRelay: 'reliable',
     states: { busy: 'reliable', idle: 'reliable', 'waiting for approval': 'heuristic', 'waiting for human': 'heuristic' },
   });
 
@@ -400,6 +401,20 @@ test('a pending permission is waiting for approval within one event, and the rep
   const formStates = stateEvents(ui, 'impl').map((e) => e.state);
   assert.deepEqual(formStates.slice(formStates.lastIndexOf('waiting for human')), ['waiting for human', 'busy', 'idle']);
   assert.ok(stateEvents(ui, 'impl').every((e) => e.source === 'sse' || e.source === 'resume'), 'every state came from the event stream');
+
+  // C8: the human gate carries a Deny and its note through the real HTTP edge to the fake binary.
+  const mark = ui.frames.length;
+  await sendGeneral(ui, 'this one needs approval: shell approval');
+  const permission = await ui.waitFor(e => ui.frames.indexOf(e) >= mark && e.type === 'approval' && (e.approval as ApprovalRecord).answerIn === 'hub' && (e.approval as ApprovalRecord).subject.command === 'touch approved && echo done');
+  const record = permission.approval as ApprovalRecord;
+  const note = 'Do not change the workspace.';
+  const answer = await ui.request({ type: 'approval.answer', approval: record.id, choice: 'deny', note });
+  assert.equal(answer.ok, true, answer.error);
+  const receipt = await eventually('fake binary durably logs the permission reply', async () => (await fake.prompts(launched.harnessSessionId!)).split('\n').find(line => line.startsWith('permission-reply ') && JSON.parse(line.slice('permission-reply '.length)).request === record.id.slice(launched.sessionId.length + 1)));
+  assert.deepEqual(JSON.parse(receipt.slice('permission-reply '.length)), { session: launched.harnessSessionId, request: record.id.slice(launched.sessionId.length + 1), decision: 'reject', message: note });
+  t.diagnostic(receipt);
+  await ui.waitFor(e => ui.frames.indexOf(e) >= mark && e.type === 'approval' && (e.approval as ApprovalRecord).id === record.id && (e.approval as ApprovalRecord).state === 'closed');
+  assert.equal(((answer.value as { approval: ApprovalRecord }).approval).outcome?.choice, 'deny');
 });
 
 test('a killed OpenCode server: the state turns unknown and the hub logs it once', async (t) => {

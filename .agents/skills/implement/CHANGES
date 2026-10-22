@@ -39,3 +39,4 @@ human kinds and queued withdrawal (T-1117)
 human-only approval gate and scripted answer receipts (T-1110)
 session history, own-browser profile and launch directory boundary (T-1131)
 bounded provisioning shutdown, signal deadline and late-resource reconciliation (T-1151)
+T-1112: Document the OpenCode scripted relay seam, child/reconnect/shape checks and targeted fake-binary Deny-with-note receipt.

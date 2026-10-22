@@ -27,11 +27,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, renameSync } from 'node:fs';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
+import type { ApprovalChoice, ApprovalOutcome, Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
 import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { sessionPolicy } from './opencode/policy.ts';
-import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef, type PermissionRequest, type ServerEvent } from './opencode/client.ts';
+import { formatModel, HttpError, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, permissionRequest, pickFreeModel, type ModelRef, type PermissionRequest, type ServerEvent } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
@@ -53,8 +53,8 @@ export const OPENCODE_CAPABILITIES: Capabilities = {
   usage: 'reliable',
   // `POST /api/session/{id}/model` exists; the contract has no setModel yet
   setModel: 'none',
-  // approvals stay in the OpenCode TUI in v0 (spec 4.3)
-  approvalRelay: 'none',
+  // Human-only answers through the permission reply endpoint; shape drift stays in the TUI.
+  approvalRelay: 'reliable',
   states: {
     // session.execution.started / succeeded | failed | interrupted, reported by the server
     busy: 'reliable',
@@ -96,8 +96,10 @@ const pidAlive = (pid: number): boolean => {
   }
 };
 
+type WatchedApproval = { tracker: SessionTracker; reported: boolean; outcome?: ApprovalOutcome };
+
 /** One watched session: its server's client, the event subscription, and what the stream says. */
-type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
+type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; approvals: Map<string, WatchedApproval>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
 /** PID supervision survives missing native connection material. One attempt per session may read it. */
 type WatchTicket = { process: HarnessProcess; pending: boolean; warned: boolean };
 
@@ -332,6 +334,23 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- watch: the event stream and liveness
 
+  async answerApproval(p: HarnessProcess, requestId: string, answer: { choice: ApprovalChoice; note?: string }): Promise<{ noteDelivered: boolean }> {
+    const w = this.#watched.get(p.sessionId);
+    const tracker = w && [w.tracker, ...w.children.values()].find(t => t.permissions.has(requestId));
+    if (!w || !tracker) throw new Error('no pending OpenCode permission; waiting for the harness outcome');
+    try {
+      await w.client.request('POST', `/api/session/${encodeURIComponent(tracker.sessionId)}/permission/${encodeURIComponent(requestId)}/reply`, {
+        decision: answer.choice === 'deny' ? 'reject' : answer.choice,
+        ...(answer.note !== undefined ? { message: answer.note } : {}),
+      });
+    } catch (error) {
+      // Native error bodies can contain permission metadata; only safe categories leave the adapter.
+      const category = error instanceof HttpError ? `HTTP ${error.status}${error.status === 404 ? '; not found' : ''}` : 'transport';
+      throw new Error(`OpenCode permission reply failed (${category}); waiting for the harness outcome`);
+    }
+    return { noteDelivered: true };
+  }
+
   watch(p: HarnessProcess): void {
     if (this.#closed) return;
     this.#unwatch(p.sessionId);
@@ -357,7 +376,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         ticket.warned = true;
         return;
       }
-      const w: Watch = { process: ticket.process, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children: new Map(), abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
+      const w: Watch = { process: ticket.process, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children: new Map(), approvals: new Map(), abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
       this.#watched.set(p.sessionId, w);
       void this.#subscribe(w);
     } finally { ticket.pending = false; }
@@ -394,9 +413,50 @@ export class OpenCodeAdapter implements HarnessAdapter {
   #describePermission(w: Watch, request: PermissionRequest, tracker = w.tracker): void {
     const pending = tracker.permissions.get(request.id);
     if (!pending) return;
-    void w.client.approvalCommand(tracker.sessionId, request).then(command => {
-      if (this.#watched.get(w.process.sessionId) !== w) return;
-      this.#apply(w, tracker.describePermission(pending, command), Date.now());
+    let approval = w.approvals.get(request.id);
+    if (!approval) {
+      approval = { tracker, reported: false };
+      w.approvals.set(request.id, approval);
+    }
+    const current = approval;
+    void w.client.approvalDetails(tracker.sessionId, request).then(({ command, subject }) => {
+      if (this.#watched.get(w.process.sessionId) !== w || w.approvals.get(request.id) !== current) return;
+      // A late description may finish a closed record, but cannot change a later waiting episode.
+      this.#apply(w, tracker.describePermission(pending, command), this.#clock.now().getTime());
+      if (current.reported) return;
+      this.#host.approvalRequested?.(w.process.sessionId, {
+        id: request.id, kind: request.action === 'shell' ? 'command' : 'other',
+        subject: subject ?? {}, choices: subject ? ['once', 'always', 'deny'] : [], answerIn: subject ? 'hub' : 'tui',
+      });
+      current.reported = true;
+      if (!subject) this.#host.log({ event: 'opencode-approval-shape', severity: 'warn', session: w.process.name, request: request.id });
+      if (current.outcome) {
+        const outcome = current.outcome;
+        delete current.outcome;
+        this.#closePermission(w, request.id, outcome);
+      }
+    });
+  }
+
+  #closePermission(w: Watch, id: string, outcome: ApprovalOutcome): void {
+    const approval = w.approvals.get(id);
+    if (!approval || approval.outcome) return;
+    if (!approval.reported) { approval.outcome = outcome; return; }
+    w.approvals.delete(id);
+    this.#host.approvalClosed?.(w.process.sessionId, id, outcome);
+  }
+
+  #permissionEvent(w: Watch, tracker: SessionTracker, event: ServerEvent): void {
+    const d = event.data ?? {};
+    if (d.sessionID !== tracker.sessionId) return;
+    const id = typeof d.requestID === 'string' ? d.requestID : typeof d.id === 'string' ? d.id : undefined;
+    const reply = d.reply;
+    const choice = reply === 'reject' ? 'deny' : reply === 'once' || reply === 'always' ? reply : 'answered in the harness';
+    const all = () => [...w.approvals].filter(([, a]) => a.tracker === tracker).map(([id]) => id);
+    const ids = event.type === 'permission.replied' ? reply === 'reject' ? all() : id ? [id] : []
+      : ['session.execution.succeeded', 'session.execution.failed', 'session.execution.interrupted'].includes(event.type) ? all() : [];
+    for (const requestId of ids) this.#closePermission(w, requestId, {
+      choice: event.type === 'permission.replied' ? choice : 'withdrawn', by: 'harness', via: 'harness', at: new Date(event.created ?? this.#clock.now().getTime()).toISOString(),
     });
   }
 
@@ -409,6 +469,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
       try {
         await w.client.events(
           (e) => {
+            const raw = e.data ?? {};
+            if (e.type === 'permission.asked' && (raw.sessionID === w.tracker.sessionId || typeof raw.sessionID === 'string' && w.children.has(raw.sessionID))) {
+              e = { ...e, data: { sessionID: raw.sessionID, ...permissionRequest(raw) } };
+            }
             snapshotEvents?.push(e);
             // An admission can queue the next turn: only delivered inbox items fed this execution.
             const d = e.data ?? {};
@@ -446,11 +510,13 @@ export class OpenCodeAdapter implements HarnessAdapter {
             const sid = typeof d.sessionID === 'string' ? d.sessionID : form?.sessionID;
             const child = sid ? w.children.get(sid) : undefined;
             if (child) {
+              this.#permissionEvent(w, child, e);
               const change = child.apply(e);
               // A child's model and execution boundaries belong to that child, not the parent turn.
               this.#apply(w, { ...(change.usage ? { usage: change.usage } : {}), ...(change.state ? { state: change.state } : {}) }, e.created ?? Date.now());
               if (e.type === 'permission.asked' && typeof d.id === 'string') this.#describePermission(w, { ...d, id: d.id }, child);
             }
+            this.#permissionEvent(w, w.tracker, e);
             this.#apply(w, w.tracker.apply(e), e.created ?? Date.now());
             if (e.type === 'permission.asked' && d.sessionID === w.tracker.sessionId && typeof d.id === 'string') this.#describePermission(w, { ...d, id: d.id });
           },
@@ -467,6 +533,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
                 // usage, launch records and turn completion were already published on arrival.
                 for (const event of snapshotEvents ?? []) for (const { tracker } of snapshots) tracker.apply(event);
                 snapshotEvents = null;
+                for (const [id, approval] of w.approvals) if (!approval.tracker.permissions.has(id)) {
+                  this.#closePermission(w, id, { choice: 'answered in the harness', by: 'harness', via: 'harness', at: this.#clock.now().toISOString() });
+                }
                 this.#apply(w, { state: w.tracker.state() }, Date.now());
                 for (const { tracker } of snapshots) for (const permission of tracker.permissions.values()) this.#describePermission(w, permission.request, tracker);
                 // the stream is back: what failed to inject while it was down is retried, state change or not

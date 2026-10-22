@@ -2164,7 +2164,7 @@ Without an explicit model, launch polls `GET /api/model` every 200 ms: a cold ca
 | history | none: the messages are readable (`GET /api/session/{id}/message`), but not read in v0 |
 | usage | reliable: per message, from `session.step.ended`, summed into `usage.total`, with the step under `usage.last` |
 | setModel | none: `POST /api/session/{id}/model` exists, but the contract has no setModel yet |
-| approvalRelay | none: approvals stay in the OpenCode TUI (spec 4.3) |
+| approvalRelay | reliable: parent and child `permission.asked` requests become records of the parent cland session. The human answers through the gate: Approve once → `once`, Always for this command (OpenCode's wider grant) → `always`, Deny → `reject`. `POST /api/session/{id}/permission/{requestID}/reply` targets the native session that asked; the optional note travels as the reply's `message`. `permission.replied` closes the record with the native outcome, including replies from an attached TUI. Reply failures expose only a safe status/category; a not-found reply does not infer an outcome. Reconnect snapshots retain pending ids and close requests no longer pending as `answered in the harness`. Only the command or action/resources enter the subject; private permission metadata never enters a frame. Missing required fields or a subject exceeding the serialized 64 KiB UTF-8 cap keep that request TUI-only and log a warning; a truncated command never offers relay choices. |
 | busy, idle | reliable: the server reports a turn's start and end |
 | waiting for approval, waiting for human | heuristic: the server has no waiting status, so they are derived from a pending `permission.asked` or `form.created` |
 

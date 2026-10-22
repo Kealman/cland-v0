@@ -1,6 +1,7 @@
 // A small client for one OpenCode 2.x server (`opencode serve`): its HTTP API under `/api`, HTTP Basic with the
 // user `opencode` and the server's password, and its server-sent event stream (`GET /api/event`).
 // Only the routes the adapter uses (verified against the OpenAPI document of opencode v2.0.24).
+import { randomUUID } from 'node:crypto';
 
 /** OpenCode's model reference; cland writes `<providerID>/<id>#<variant>` when a variant is selected. */
 export type ModelRef = { providerID: string; id: string; variant?: string };
@@ -12,10 +13,16 @@ export type ModelEntry = { id: string; providerID: string; variants?: Array<{ id
 export type ServerEvent = { id?: string; type: string; created?: number; data?: Record<string, unknown> };
 
 /** Pending permission data shared by the SSE event and permission list. */
-export type PermissionRequest = { id: string; action?: unknown; source?: unknown };
+export type PermissionRequest = { id: string; action?: unknown; source?: unknown; resources?: unknown };
 export type PermissionRule = { action: string; resource: string; effect: 'allow' | 'deny' | 'ask' };
 
 const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+/** With no native identity, retain only a TUI waiting episode; it can never address a reply endpoint. */
+export function permissionRequest(value: unknown): PermissionRequest {
+  const p = record(value);
+  return typeof p.id === 'string' && p.id ? { id: p.id, action: p.action, resources: p.resources, source: p.source } : { id: `unrecognized:${randomUUID()}` };
+}
 
 export class HttpError extends Error {
   readonly status: number;
@@ -101,27 +108,41 @@ export class OpenCodeClient {
       this.request<{ data: PermissionRequest[] }>('GET', `/api/session/${sid}/permission`),
       this.request<{ data: Array<{ id: string }> }>('GET', `/api/session/${sid}/form`),
     ]);
-    return { running: Object.hasOwn(active.data ?? {}, sessionId), permissions: permissions.data ?? [], forms: (forms.data ?? []).map((f) => f.id) };
+    return { running: Object.hasOwn(active.data ?? {}, sessionId), permissions: (Array.isArray(permissions.data) ? permissions.data : [null]).map(permissionRequest), forms: (forms.data ?? []).map((f) => f.id) };
   }
 
-  /** v2 permissions reference an assistant tool part; resources contain parsed fragments, not the full command. */
-  async approvalCommand(sessionId: string, permission: PermissionRequest): Promise<string | undefined> {
-    const fallback = typeof permission.action === 'string' ? permission.action : undefined;
+  /** One allowlisted description for both the waiting state and the approval record. */
+  async approvalDetails(sessionId: string, permission: PermissionRequest): Promise<{ command: string | undefined; subject: import('../../protocol.ts').ApprovalSubject | null }> {
+    const action = typeof permission.action === 'string' ? permission.action : undefined;
+    const resources = permission.resources;
+    const valid = !!permission.id && !!action && Array.isArray(resources) && resources.every(r => typeof r === 'string');
+    let command = action;
+    let shell = false;
     const source = record(permission.source);
-    if (source.type !== 'tool' || typeof source.messageID !== 'string' || typeof source.id !== 'string') return fallback;
-    try {
-      const response = await this.request<{ data: unknown }>('GET', `/api/session/${encodeURIComponent(sessionId)}/message/${encodeURIComponent(source.messageID)}`);
-      const message = record(response.data);
-      if (message.type !== 'assistant' || !Array.isArray(message.content)) return fallback;
-      const tool = message.content.map(record).find(part => part.type === 'tool' && part.id === source.id);
-      if (!tool || typeof tool.name !== 'string') return fallback;
-      const state = record(tool.state);
-      const command = record(state.input).command;
-      return permission.action === 'shell' && tool.name === 'shell' && state.status !== 'streaming' && typeof command === 'string' ? command : tool.name;
-    } catch {
-      // Missing source data must not hide the waiting state or leak the HTTP response into events.
-      return fallback;
+    if (source.type === 'tool' && typeof source.messageID === 'string' && source.messageID && typeof source.id === 'string' && source.id) {
+      try {
+        const response = await this.request<{ data: unknown }>('GET', `/api/session/${encodeURIComponent(sessionId)}/message/${encodeURIComponent(source.messageID)}`);
+        const message = record(response.data);
+        if (message.type === 'assistant' && Array.isArray(message.content)) {
+          const tool = message.content.map(record).find(part => part.type === 'tool' && part.id === source.id);
+          const state = record(tool?.state);
+          const input = record(state.input);
+          shell = action === 'shell' && tool?.name === 'shell' && typeof state.status === 'string' && state.status !== 'streaming' && typeof input.command === 'string';
+          if (shell) command = input.command as string;
+          else if (typeof tool?.name === 'string') command = tool.name;
+        }
+      } catch {
+        // Neither native error bodies nor other tool input may leave this boundary.
+      }
     }
+    const subject = !valid || action === 'shell' && !shell ? null : action === 'shell' ? { command: command! } : { command: action!, files: resources as string[] };
+    // The hub caps serialized subjects at 64 KiB. A truncated description cannot authorize the original action.
+    return { command, subject: subject && Buffer.byteLength(JSON.stringify(subject)) <= 64 * 1024 ? subject : null };
+  }
+
+  /** Rejection reports use the same safe description, even for TUI-only permissions. */
+  async approvalCommand(sessionId: string, permission: PermissionRequest): Promise<string | undefined> {
+    return (await this.approvalDetails(sessionId, permission)).command;
   }
 
   /**
