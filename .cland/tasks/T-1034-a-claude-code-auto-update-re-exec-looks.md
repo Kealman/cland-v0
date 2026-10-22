@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-824
 branch: t/T-1034-a-claude-code-auto-update-re-exec-looks
 created: 2026-10-21T05:59:56.127Z
-updated: 2026-10-21T23:01:33.368Z
+updated: 2026-10-21T23:28:07.240Z
 ---
 
 ## Summary
@@ -35,11 +35,14 @@ Evidence: the hub's role revocation events for coord at 2026-10-20T21:33Z and 20
 - [x] C1. A Claude Code session launched by the hub has `DISABLE_AUTOUPDATER=1` in its environment, after the credential filter (test with the fake harness).
   - done: impl-1034 · 2026-10-21T22:52:02.812Z
 - [x] C2. A fake Claude session whose pid changes while its session id stays the same, followed by a hello within the grace window, keeps its row, role and claim, and no revocation event is posted (test).
-  - done: impl-1034 · 2026-10-21T23:01:25.499Z
+  - done: impl-1034 · 2026-10-21T23:07:44.263Z
 - [x] C3. A Coordinator vacancy longer than 10 minutes posts one notice in General with the relaunch commands, and posts nothing more while the role stays vacant (fake-clock test).
-  - done: impl-1034 · 2026-10-21T23:01:25.582Z
+  - done: impl-1034 · 2026-10-21T23:18:06.470Z
 - [x] C4. `hub/README.md#coordinator-session-procedure` describes the re-exec handling and the vacancy notice.
-  - done: impl-1034 · 2026-10-21T22:52:02.966Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1034-source-3 · 2026-10-21T23:08:42.829Z · commit 6bc0ca45d39a60a5b0aaca989795dcc91e2b1413
+  - done: impl-1034 · 2026-10-21T23:18:17.251Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1034-source-4 · 2026-10-21T23:18:41.801Z · commit cee548ee1b48a32359b921c1862a213554da0743
+  - verified: rev-23 [reviewer] · run rev-20261021-1034-task-evidence · 2026-10-21T23:28:07.240Z · commit cee548ee1b48a32359b921c1862a213554da0743
 
 ## Comments
 
@@ -69,3 +72,80 @@ finding_counts: {"high":0,"medium":3,"low":0}
 Full ten-file Standards/Spec audit against 2a3f4858. No independent Standards finding; C1 filtered/supervised env and C4 procedure text inspected. Three medium Spec findings block source clearance, detailed in A-8769. Original A-8768 is local targeted summary, not queued/full proof; retain original stdout/commands/exits/head-tree/platform/timings without transcription reruns. No Reviewer runtime. Fresh source review at corrected head before mode-free verify; Coordinator full pre-merge cover separately required. QA none.
 
 Criteria: C2 failed (Watcher misses late-learned distinct native identity and can finalize exit while relevant discovery is still in flight.), C3 failed (Reopened core with an absent remembered Coordinator never arms the ten-minute vacancy notice.).
+
+### rev-23 · 2026-10-21T23:03:06.755Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261021-1034-source-2
+commit: 18f090bbaa5ae772ddabbb4feac5d785e6916e01
+scope: full
+findings: [{"severity":"medium","text":"M4 Spec/C2: After awaiting processStarted, recheck the authoritative native identity as well as object/stop/close/liveness. A hook can set watched/table identity B during the probe for entry A; the continuation currently overwrites B with A and publishes the stale PID. Add a held-probe newer-hook regression with final native/PID/role/claim/no-revocation receipts, and isolate the hook test from discovery's independent identity adoption.","file":"hub/src/adapters/claude-code.ts","line":636}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+M1–M3 primary corrections inspected: late native publication/hook synchronization, bounded in-flight discovery settlement and fresh boundary read, durable restored vacancy deadline/dedup/refill cancellation. One new async identity race remains; no separate Standards finding. A-8779 exact staged-tree local targeted 12+26+6+6 passes/typecheck/lint retained with provenance; not configured/full evidence. A-8780/A-8777 capture limits explicitly noted. Detailed audit A-8781. Fresh source review before verification; Coordinator required full cover separate, QA none.
+
+Criteria: C2 failed (A newer hook-native identity arriving during processStarted can be overwritten by the stale pre-await native entry, transferring ownership to the wrong conversation.).
+
+### rev-23 · 2026-10-21T23:08:42.829Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1034-source-3
+commit: 6bc0ca45d39a60a5b0aaca989795dcc91e2b1413
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+M1–M4 resolved; full prior audit against 2a3f4858 retained. Per-directory discovery and post-start-probe identity fences preserve newer hook facts and defer current-poll death until fresh reconciliation. Hook-only known-PID identity change, held successful/unavailable probe and stale query snapshot regressions retain final native/PID/role/claim/no-stale-PID/no-revocation assertions. Genuine-death/conflicting-id tests preserved; durable restored vacancy monitoring and filtered/supervised env unchanged. No Standards/Spec findings. C4 procedure established. A-8782 exact staged-tree local 15/15 schedule and 6/6 native contract/typecheck/lint pass; A-8779 unchanged store/env evidence remains historical local. Detailed audit A-8783. C1–C3 final runtime marks await exact-head mode-free and Coordinator-required full pre-merge cover; QA none.
+
+Criteria: C4 verified.
+
+### rev-23 · 2026-10-21T23:16:05.640Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261021-1034-evidence-red
+commit: 6bc0ca45d39a60a5b0aaca989795dcc91e2b1413
+scope: evidence
+findings: [{"severity":"medium","text":"M5 compatibility/lifecycle: A-8786 has seven Error: database is not open failures from late socket disconnect -> #announceCoordinator -> #watchCoordinatorVacancy -> Store.setMeta after core/store close. Prevent terminally closed vacancy work/store writes/timer rearming; add a late-disconnect-after-close regression and preserve existing failing-file assertions.","file":"hub/src/hub/core.ts","line":2449}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-8786 /4437665a overall exit1: T1 passes, T2 incomplete with seven identical owned shutdown-path errors across five files; no completed Neovim/Web/T3 evidence. Ordinary2006passes/7fails, plus65 scoped load passes; owned schedule15/store26 and13 new identities' distinct5/5 load summaries pass but do not establish full safety. Host gate reused, lint/duration/resource/ratchet report-only. No fabricated failure of the passing C1–C3 cases; final runtime marks remain pending corrected-head task and Coordinator full. C4 source mark retained; QA none. Detailed trace/receipts A-8787.
+
+### rev-23 · 2026-10-21T23:18:41.801Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1034-source-4
+commit: cee548ee1b48a32359b921c1862a213554da0743
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+M5 resolved by terminal #closed guard before vacancy state/store/transition/timer work. T1 connected/already-vacant late disconnect after core+store close and T2 connected projectHub.stop retain no-throw/no-publication/zero-timer assertions; seven existing failures' assertions unchanged. Ordinary live vacancy behavior and M1–M4 native/env/recovery paths unchanged. No Standards/Spec findings; C4 procedure verified. A-8788 exact staged-tree local124 targeted passes/typecheck/lint retained, not configured/full proof; A-8786 stays failed historical evidence. Detailed audit A-8789. Fresh exact-head mode-free then Coordinator full cover required before C1–C3 final marks; QA none.
+
+Criteria: C4 verified.
+
+### impl-1034 · 2026-10-21T23:28:06.170Z
+
+Mode-free task verification 488394cb-0c76-4d31-8761-0ea94874b595 passed at cee548ee1b48a32359b921c1862a213554da0743, Linux x64 c-8 lon1 droplet, Node 24.21.0: 2373/2373; T1, T2 (hub+Neovim fallback) and Web exit0. Host typecheck gate c153041 reused, not repeated remotely; lint/duration budgets report-only. Durable A-8790. Prior A-8786 is failed historical evidence from the fixed late-disconnect vacancy write. Current source clear A-8789; Reviewer final criterion settlement and Coordinator's separate full pre-merge cover still pending. Head remains fixed; Implementer will not merge.
+
+### rev-23 · 2026-10-21T23:28:07.240Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1034-task-evidence
+commit: cee548ee1b48a32359b921c1862a213554da0743
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-8790/488394cb same source-clear head exits0: T1/fallback all hub+Neovim T2/actual Web;2373 ordinary test passes,361 files,75 scoped load test/file passes. Schedule15/store27 and all seven formerly failing compatibility paths pass unchanged;15 new identities each have five distinct passing load finishes and explicit5/5. Max owned load0.575685653s. Host gate reused, lint/duration/resource/ratchet report-only;6 missing baselines. Task evidence clear; final C1–C3 marks/landing clearance await Coordinator-required same-head full cover including native Claude T3. C4 current; A-8786 failed history retained; QA none. Audit A-8791.
+
+Criteria: C4 verified.

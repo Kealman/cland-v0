@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-823
 branch: t/T-1081-the-items-snapshot-carries-closed-tasks
 created: 2026-10-21T18:52:28.328Z
-updated: 2026-10-21T22:41:24.848Z
+updated: 2026-10-21T23:41:19.640Z
 ---
 
 ## Summary
@@ -32,16 +32,20 @@ The snapshot's items domain carries the open items and every container (releases
 - [x] C2. A frame client unfolding a closed epic, or turning on `D`, receives its closed tasks through bounded pages, and their counts match the container's roll-up (test).
   - done: impl-1081 · 2026-10-21T22:31:36.693Z
   - verified: rev-26 [reviewer] · run rev-20261021-1081-task-evidence · 2026-10-21T22:41:24.848Z · commit 7abc0af7e431f28e4674e3b6e325d69e94257ba9
+  - verified: rev-26 [reviewer] · run rev-20261021-1081-task-evidence-2 · 2026-10-21T23:41:19.639Z · commit 7163b97c5497d3acbd8b8dffd8a391a19d284b22
 - [x] C3. A task that closes arrives in a delta and then leaves the open set; a client holding the closed page sees it there (test).
   - done: impl-1081 · 2026-10-21T22:08:04.846Z
   - verified: rev-26 [reviewer] · run rev-20261021-1081-task-evidence · 2026-10-21T22:41:24.848Z · commit 7abc0af7e431f28e4674e3b6e325d69e94257ba9
+  - verified: rev-26 [reviewer] · run rev-20261021-1081-task-evidence-2 · 2026-10-21T23:41:19.639Z · commit 7163b97c5497d3acbd8b8dffd8a391a19d284b22
 - [x] C4. The Neovim explorer and board render closed children through the page request with the same counts as before, in headless tests on the copied tracker.
   - done: impl-1081 · 2026-10-21T22:08:04.861Z
 - [x] C5. `hub/README.md` and `nvim/README.md` describe the open snapshot and the closed pages.
   - done: impl-1081 · 2026-10-21T22:08:04.882Z
   - verified: rev-26 [reviewer] · run rev-20261021-1081-source-2 · 2026-10-21T22:18:49.413Z · commit 99c434e83c92f5f7817492499957c3a5f37c5c0e
   - verified: rev-26 [reviewer] · run rev-20261021-1081-source-3 · 2026-10-21T22:32:11.373Z · commit 7abc0af7e431f28e4674e3b6e325d69e94257ba9
-- [ ] C6. startup-replies-scale's thousand-item test runs in under 10 s on a Linux droplet at the task head (it ran 14.6 s at T-1058's head, A-8722, against 6.8–11 s before), so its first hub.status regains margin under the 15 s budget.
+  - verified: rev-26 [reviewer] · run rev-20261021-1081-source-4 · 2026-10-21T23:30:29.198Z · commit 7163b97c5497d3acbd8b8dffd8a391a19d284b22
+- [x] C6. startup-replies-scale's thousand-item test reports its first completed hub.status under 10 s on a Linux droplet at the task head (12.4 s at T-1058's head, A-8722), so the 15 s budget regains margin; the test's fixture setup cost stays with T-1068.
+  - done: impl-1081 · 2026-10-21T23:29:33.918Z
 
 ## Comments
 
@@ -121,5 +125,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Task evidence clear for C2/C3, audit A-8766. Same-head 93db283b/A-8765 exited 0: T1/all hub+Neovim T2/Web, 2362 ordinary passes plus 10 separate load passes. Parent-page/closed-delta/removal test and readiness test each have explicit 5/5; Web page/reconnect and hidden-count regressions passed ordinarily, no Web 5/5 claimed. Former exact deletion-frame failure is green. Linux x64 c-8 lon1, lifetime 471 s/$0.0327; host gate 4f7272db reused, lint/budget/ratchet report-only. T3/T4 absent: C1 copied size, C4 real copied Neovim and C6 whole-test Linux <10 s remain pending separate required full pre-merge receipt. C5 remains source-verified. No final-ready or after-stage QA claim; historical A-8758 stays failed.
+
+Criteria: C2 verified, C3 verified.
+
+### rev-26 · 2026-10-21T23:30:29.198Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1081-source-4
+commit: 7163b97c5497d3acbd8b8dffd8a391a19d284b22
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, audit A-8794. Only delta from 7abc0af7 is the exact closed-pages T3 identity's 22 s allowance, E-880, dated 2026-10-21→2026-10-28, approximately 1.5× actual Linux 14.616116916 s; no assertions/fixtures/product changes. A-8792 stays overall exit 1: enforcing new-identity duration 14.616 >5 s, T1/T2 green/T3 red, Web absent, 3562 passes/8 skips/0 assertion failures. Confirmed Coordinator 2c57d104 and tracker narrow C6 to first completed hub.status <10 s: old-head receipt 9388.7 ms; whole test 11.842717161 s did not meet former target. Revised C6 and all runtime criteria await matching-head replacement evidence; C5 source-verified. A-8793 local dirty-tree manifest lint exit 0 is labelled supporting evidence. Standards 0; Spec 0; no after-stage QA pass claimed.
+
+Criteria: C5 verified.
+
+### rev-26 · 2026-10-21T23:41:19.640Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1081-task-evidence-2
+commit: 7163b97c5497d3acbd8b8dffd8a391a19d284b22
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Replacement task evidence clear for C2/C3; audit A-8796. Same-head 2cdf6e8c/A-8795 exited 0 with T1/all hub+Neovim T2/Web: 2362 ordinary passes plus 10 separate load repetitions. Parent-page/close/removal and readiness identities explicitly 5/5; Web page/reconnect and hidden-count ordinary passes, no Web 5/5 claimed. Linux x64 c-8 lon1, lifetime 577 s/$0.0400, host febaa072 reused; lint/duration/ratchet report-only. T3/T4 absent. C1/C4 and revised C6 first completed hub.status <10 s await matching-head Coordinator full pre-merge evidence. C5 remains source-verified. No final-ready or after-stage QA claim; historical failed receipts stay failed.
 
 Criteria: C2 verified, C3 verified.

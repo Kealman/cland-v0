@@ -2,8 +2,8 @@
 id: T-1073
 kind: task
 title: The card in the drawer from the snapshot's facts
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-822
 branch: t/T-1073-the-card-in-the-drawer-from-the-snapshot
 created: 2026-10-21T17:32:16.525Z
-updated: 2026-10-21T23:00:40.848Z
+updated: 2026-10-22T00:06:38.855Z
+closed: 2026-10-22T00:06:38.855Z
 ---
 
 ## Summary
@@ -35,10 +36,13 @@ The card shows the summary with its provenance line, the facts, the progress, th
 
 - [x] C1. A Web test reads the card of a task with a not-clear verdict (reason, round, scope), its Decision block and its facts with zero `task.view` frames sent while moving the cursor across ten rows (Web test, frame log).
   - done: impl-1073 · 2026-10-21T22:00:16.653Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1073-final · 2026-10-22T00:01:54.992Z · commit 79a84551b28b01eea433786df7394c43a3bf02b3
 - [x] C2. Opening the agents' text sends exactly one body request, and the card shows it (Web test).
   - done: impl-1073 · 2026-10-21T22:00:16.672Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1073-final · 2026-10-22T00:01:54.992Z · commit 79a84551b28b01eea433786df7394c43a3bf02b3
 - [x] C3. Enter moves the focus into the card and Esc/`h` back, with the cursor kept on its row (Web test).
   - done: impl-1073 · 2026-10-21T22:09:48.130Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1073-final · 2026-10-22T00:01:54.992Z · commit 79a84551b28b01eea433786df7394c43a3bf02b3
 
 ## Comments
 
@@ -173,3 +177,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 M5 resolved: ordinary listSummaries defaults lean; composeSnapshot explicitly opts into unchanged card transport. Existing by-id page accounting and full task deltas remain unchanged. Coordinator-directed independent fix, no T-1081/dev merge or budget increase. T1 assertions prove lean/default and opt-in card fields; native T3 adds 120 KiB margin before original 128 KiB final guard, preserving negative controls. Docs/kept skill metadata match. Retained A-8775 local Darwin final-source native 4/4 at 121531 bytes, tracker 12/12, protocol 8/8, card Web 5/5, check 0; not configured/full proof. No remaining Standards/Spec findings, detailed A-8776. Fresh exact-head mode-free then Coordinator full pre-merge rerun required; C1–C3 final settlement pending; after-stage QA separate. Prior A-8770 remains failed historical full and A-8762 historical task proof.
+
+### rev-23 · 2026-10-21T23:09:24.002Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1073-task-evidence-2
+commit: 79a84551b28b01eea433786df7394c43a3bf02b3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-8784 / 1a5b7020 matches source-clear79a84551 and exits0: T1/fallback all hub+Neovim T2/actual Linux Web, 2364 ordinary test and362 file passes plus5 scoped load passes. Card Web5/5 and corrected palette help pass; compact transport test retains lean-list assertions and explicit unique5/5 load receipts. Host gate reused, duration/lint/resource/ratchet report-only;7 missing baselines. Task evidence clear, but no T3 startup-budget execution here. Local A-8775 and historical failed full A-8770 retained; Coordinator-required full retry pending before C1–C3 final marks/landing clearance. QA after-stage separate. Audit A-8785.
+
+### rev-23 · 2026-10-22T00:01:54.992Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1073-final
+commit: 79a84551b28b01eea433786df7394c43a3bf02b3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head source/task/full settlement: A-8799/d313ff6a T1/T2/T3/actual Web exits0,3602 test passes/543 files,8 unowned skips,no failures/cancellations; prior task A-8784 green and compact transport unique5/5 retained. C1 ten-row facts/zero task.view,C2 one lazy body,C3 actual drawer/Split/Swap/two-row focus all pass; closed-card/container delta cases also pass. Native startup4/4:121531B<=120KiB margin,original128KiB guard unchanged; negative controls correct. Lua1084+3rows/0differences,859027B<1MiB. All C1–C3 verified; no remaining Standards/Spec findings. Host gate reused; lint/duration/resource/ratchet report-only,including owned card4.804s>Web4s and T3wall1332.37s>900s;9 missing baselines. Eight skips retained outside owned coverage; no T4/after-stage QA claim. Coordinator owns enqueue/landing perfd1774de. Detailed audit A-8800.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1073 · 2026-10-22T00:02:05.553Z
+
+Final Reviewer rev-20261022-1073-final/A-8800 verifies C1–C3 at unchanged79a84551/tree51b624a5. Mode-free1a5b7020/A-8784 and Coordinator full d313ff6a/A-8799 are green: Linux x64, fullT1/T2/T3/Web3602pass/8unowned skips/0fail. Native first payload121531B, copied-Lua859027B/1084+3/0differences; all card cases pass. Card4.804s>4s and existing timing/lint findings remain report-only, no T4/after-stageQA claim. Ready reported to Coordinator for enqueue; no Implementer merge, claim retained.
+
+### coord · 2026-10-22T00:06:38.855Z
+
+Merged d5e976353d454a51603e286a808dababa0a29e0b onto dev.
