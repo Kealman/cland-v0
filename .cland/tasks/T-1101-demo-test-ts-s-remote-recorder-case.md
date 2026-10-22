@@ -2,8 +2,8 @@
 id: T-1101
 kind: task
 title: demo.test.ts's remote recorder case times out on demo.start under macOS T3 load
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-848
 branch: t/T-1101-demo-test-ts-s-remote-recorder-case
 created: 2026-10-22T09:03:34.023Z
-updated: 2026-10-22T13:59:10.680Z
+updated: 2026-10-22T14:13:49.641Z
+closed: 2026-10-22T14:13:49.641Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1/C2 clear at unchanged 88fc85294bf26d4b589c8dd8013c97db4ce1bdbe/tree 20f063348b2ba3560441316eb3c44548e9a58787. A-9184/09c04df4 original records and hub passed state checked: aggregate/T1/all-T2 hub+Neovim/Web exit 0; 2445 ordinary test and 375 file passes, no failures/skips/cancellations. T2 demo-cap 2/2 and release-component 9/9 pass; no task load-scope finishes or Linux native demo T3 inferred. C2 A-9178 macOS 20 unique four-worker waves/80 executions under 16 CPU burners already source-audited, tested helper/tests/docs identical across tracker-only merge; all-four-file targeted 18/18 retained. Baseline did not reproduce historical 5 s timeout, limitation explicit. Linux c-8 lon1 501 s/$0.0348, host 9b9049d5 reused/not repeated remotely; generic lint/duration/ratchet report-only, 2 missing baselines, no enforcing-budget/T3/T4/stage/QA/full-suite claim. Zero findings; Coordinator owns landing/deferred integrated coverage.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T14:13:49.641Z
+
+Merged b91a6569c2f8a4503bd0f84a216a6135912700a7 onto dev.

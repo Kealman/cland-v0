@@ -2,8 +2,8 @@
 id: T-1106
 kind: task
 title: subscription-frame test reads a torn journal line right after flushLogs
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-849
 branch: t/T-1106-subscription-frame-test-reads-a-torn
 created: 2026-10-22T11:55:11.188Z
-updated: 2026-10-22T13:50:17.807Z
+updated: 2026-10-22T14:13:39.927Z
+closed: 2026-10-22T14:13:39.927Z
 ---
 
 ## Summary
@@ -109,3 +110,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final pre-merge C1/C2 clear at unchanged 7b208e63f37eb03822af01ce8c35a705189ce16f/tree 7696ce51d220615a2471f976a3e2ce2ea9e5f771. A-9180 parsed 20 unique macOS native subscription-frame samples, each 1/1 exit 0, no fail/skip/cancel, process durations 1736.22–2191.73 ms; four CPU burners each ~37.6 user CPU seconds with distinct closed/exit receipts before release. Coordinator window 817916bc verified; exact-head disposable archive and fixture isolation recorded. A-9179 missing smol-toml setup failed before behavioral import and remains excluded, not relabeled. Retained A-9173/cfeb14d7 configured Linux T1/all-T2/Web green and T1 five unique load passes already accepted; no rerun. Generic lint/duration/ratchet report-only; host gate reused. Native Linux subscription-frame T3 explicitly deferred to next post-landing periodic/stage under amended C2, not a pass here. No T4/QA/enforcing-budget claim or Reviewer execution; no findings. Coordinator owns landing/deferred citation.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T14:13:39.927Z
+
+Merged b24df16117f8c7eefd8b89c9709be840a654a712 onto dev.
