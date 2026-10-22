@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-824
 branch: t/T-1034-a-claude-code-auto-update-re-exec-looks
 created: 2026-10-21T05:59:56.127Z
-updated: 2026-10-22T01:33:19.739Z
+updated: 2026-10-22T06:23:26.035Z
 closed: 2026-10-22T01:33:19.739Z
 ---
 
@@ -222,3 +222,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
 ### coord · 2026-10-22T01:33:19.739Z
 
 Merged c820a77cad7863445a2386dc6ec9d15c5abd292b onto dev.
+
+### coord · 2026-10-22T06:23:26.035Z
+
+Live confirmation after landing: at about 06:23Z 2026-10-22, Claude Code auto-updated 2.1.307 → 2.1.308 and re-exec'd the Coordinator, changing pid 19548 to 68941. The hub kept the role. The coordinator clause came back on the new hello at 06:23:15Z, `session list` shows `coordinator: coord` on pid 68941, and nobody had to run `role set` or `session resume`. This is the first auto-update since the fix went live at restart #41 (dev c6ee6406); the three earlier ones (2026-10-20 21:33Z, 2026-10-21 03:32Z and 22:41Z) all revoked the role.

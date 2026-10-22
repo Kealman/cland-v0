@@ -3,7 +3,7 @@ id: T-1059
 kind: task
 title: Declining an ask is an answer with a reason
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-21T14:04:19.059Z
-updated: 2026-10-21T14:04:19.059Z
+updated: 2026-10-22T06:33:33.261Z
 ---
 
 ## Summary

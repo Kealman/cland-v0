@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-804
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-22T04:23:52.615Z
+updated: 2026-10-22T06:33:31.873Z
 ---
 
 ## Summary
@@ -207,3 +207,83 @@ Rule proposal sent in topic-804: assertions should identify frames by stable ite
 All 30 cases are recorded once in project .cland/qa/runs.jsonl. Stage outcome remains not clear for E413S1-15; no epic criterion verification/failure marks requested.
 
 Evidence artifact A-8893: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8893-e-413-stage-fields-at-a0ab9836-29-pass-docs-finding-e413s1-15/report.md
+
+### qa-676 · 2026-10-22T06:33:31.873Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-22-2
+commit: 918951c2ecd592394ef613e10ba7cdc6a00c8e82
+stage: fields
+stage_hash: e24f3f609a88d513e0350d92dc168c5947caaf27e929c2b8267e744fae570594
+findings: [{"severity":"low","text":"E413S1-00 brief defect: setup copies *.md but diff -qr compares the whole committed directory, including .gitkeep. Original output “Only in .../.cland/tasks: .gitkeep” retained. Decision f90e8095 authorized copying that committed file, repeating only exact diff/count and starting hubs. Corrected diff empty, 1094 item files, no product change.","file":"qa/briefs/E-413-stage-1.md"},{"severity":"low","text":"E413S1-10 brief defect: literal expected total:7 is stale after T-1093 joined. Printed plan and snapshot show total:8 with loadedFieldsMembers:0; six Neovim progress tests pass. Decision 35a51fab authorizes the printed-plan count, also for other at-writing counts. Original output retained, no product rerun.","file":"qa/briefs/E-413-stage-1.md"}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Case | Result | Observation / evidence |
+| --- | --- | --- |
+| E413S1-00 | PASS | Exact S/dev, clean; 8 item merges. 1094 tracker files; exact directory diff empty after authorized .gitkeep correction; prefix count 0, scratch hubs correct. [E413S1-00-output.txt](E413S1-00-output.txt) |
+| E413S1-01 | PASS | 1/1 Lua oracle; 1094 bodies +3 ancestor regressions, 0 differences; 118960-byte copied snapshot. [E413S1-01-output.txt](E413S1-01-output.txt) |
+| E413S1-02 | PASS | 105 open rows, complete chains, no extra/closed rows, computed facts; E413 done 8/12; 33/33 tests. [E413S1-02-output.txt](E413S1-02-output.txt) |
+| E413S1-03 | PASS | T1057 title edit publishes only T1057, E413 and R377 once each. [E413S1-03-output.txt](E413S1-03-output.txt) |
+| E413S1-04 | PASS | 2/2 scale tests; local macOS first hub.status 2181.9ms, 463778 startup bytes and 99497 snapshot bytes. [E413S1-04-output.txt](E413S1-04-output.txt) |
+| E413S1-05 | PASS | Summary documentation present and surrounding text consistent. [E413S1-05-output.txt](E413S1-05-output.txt) |
+| E413S1-06 | PASS | Verdict reason/round/scope and Decision in pushed snapshots/deltas and closed by-id read; no body/comments. [E413S1-06-output.txt](E413S1-06-output.txt) |
+| E413S1-07 | PASS | Stages fields total 8 and marks total 4 in plan order; status histogram delta correct. [E413S1-07-output.txt](E413S1-07-output.txt) |
+| E413S1-08 | PASS | No full bodies/comments; all open tasks have agents_text, headings in order, E413 words 2395. [E413S1-08-output.txt](E413S1-08-output.txt) |
+| E413S1-09 | PASS | Card fact documentation present and consistent. [E413S1-09-output.txt](E413S1-09-output.txt) |
+| E413S1-10 | PASS | 6/6 Neovim progress tests; printed plan total 8 with 0 loaded members, authorized stale-number correction 35a51fab. [E413S1-10-output.txt](E413S1-10-output.txt) |
+| E413S1-11 | PASS | 116728-byte items snapshot; first Neovim reply 109663 bytes <=122880; same item set, no closed subtree rows. [E413S1-11-output.txt](E413S1-11-output.txt) |
+| E413S1-12 | PASS | Closed E482 pages 100+10, 110 unique children, owner rollup 110/110, subtree absent from snapshot. [E413S1-12-output.txt](E413S1-12-output.txt) |
+| E413S1-13 | PASS | Close/reopen race: 8 unique closed identities; done count 989→990→989, T1053 planned and T1054 absent from fresh open snapshot. [E413S1-13-output.txt](E413S1-13-output.txt) |
+| E413S1-14 | PASS | 82/82 Neovim tests including copied tracker closed pages, explorer/board/card; no skips. [E413S1-14-output.txt](E413S1-14-output.txt) |
+| E413S1-15 | PASS | T1093 fixed prior failure: nvim README now states full hub rollups before closed pages load and per-parent refresh; all documentation matches. [E413S1-15-output.txt](E413S1-15-output.txt) |
+| E413S1-16 | PASS | Current Linux A8963 and macOS A8967 green at S. Linux first hub.status 9736.3ms <10000. Pre-verdict plan displays old verdict tree; interpretation 47c49c56 confirmed in tracker.ts:1887, recheck after verdict. [E413S1-16-output.txt](E413S1-16-output.txt) |
+| E413S1-17 | PASS | Unread counts 1,2,3 with exact timestamps, reset 0; 16/16 tests. [E413S1-17-output.txt](E413S1-17-output.txt) |
+| E413S1-18 | PASS | One reviewer row, newest T7 hold plus 1, prior T6 hold; status QA probe, then removed. [E413S1-18-output.txt](E413S1-18-output.txt) |
+| E413S1-19 | PASS | Five row frames; one key, complete rows, no duplicate, one status change, final null. [E413S1-19-output.txt](E413S1-19-output.txt) |
+| E413S1-20 | PASS | Session/unread documentation present and consistent. [E413S1-20-output.txt](E413S1-20-output.txt) |
+| E413S1-21 | PASS | Warnings-only page/live rows, one advance, inherited page filter and explicit override correct. [E413S1-21-output.txt](E413S1-21-output.txt) |
+| E413S1-22 | PASS | Corrected committed oracle passes directly: midAdvances 1, one welcome/no close, selected topic only, contiguous sequence and reset. [E413S1-22-output.txt](E413S1-22-output.txt) |
+| E413S1-23 | PASS | Legacy connection unchanged: 2 not-clear/2 clear/0 advances; 19/19 tests. [E413S1-23-output.txt](E413S1-23-output.txt) |
+| E413S1-24 | PASS | Filter documentation present and consistent. [E413S1-24-output.txt](E413S1-24-output.txt) |
+| E413S1-25 | PASS | Wire import lint and typecheck exit 0 without diagnostics. [E413S1-25-output.txt](E413S1-25-output.txt) |
+| E413S1-26 | PASS | R377 rollup 5/13 before loading 5 closed epics; 7 mixed-kind page rows; E412 pages 5+5+3, no duplicates/overlap. [E413S1-26-output.txt](E413S1-26-output.txt) |
+| E413S1-27 | PASS | Copied tracker probe 1/1: 1094/105 items, 109786-byte first reply, 40.984209ms connection-to-render; 6 budget tests pass including intended negatives. [E413S1-27-output.txt](E413S1-27-output.txt) |
+| E413S1-28 | PASS | Build clean. Initial missing playwright-core attempt retained (5 top-level failures before browser). Authorized allowed symlink and retry: 8/8 pass, 5 fixture census lines after 0. No install/product edit. [E413S1-28-output.txt](E413S1-28-output.txt) |
+| E413S1-29 | PASS | 2/2 LABELS/FOLLOWS tests under stdio and stub; parent-unfold checks 1/1; clean tree. [E413S1-29-output.txt](E413S1-29-output.txt) |
+
+**Clear: all 30 scoped cases PASS.** Stage fields only; no epic criterion marks. The prior E413S1-15 product documentation defect is fixed.
+
+Findings (low, brief defects only):
+
+- E413S1-00 brief defect: setup copies *.md but diff -qr compares the whole committed directory, including .gitkeep. Original output “Only in .../.cland/tasks: .gitkeep” retained. Decision f90e8095 authorized copying that committed file, repeating only exact diff/count and starting hubs. Corrected diff empty, 1094 item files, no product change.
+- E413S1-10 brief defect: literal expected total:7 is stale after T-1093 joined. Printed plan and snapshot show total:8 with loadedFieldsMembers:0; six Neovim progress tests pass. Decision 35a51fab authorizes the printed-plan count, also for other at-writing counts. Original output retained, no product rerun.
+
+Execution evidence and limits:
+
+- E413S1-28 initially stopped before browser launch with `Error: playwright-core is not installed; run npm install` at web/test/harness.ts:47; five top-level failures and no fixture census. The brief permits a root node_modules symlink when a tool cannot resolve parent modules. Decision **ffd68fd1** authorized that symlink and a tests/census-only retry under this run. The original log/output remain as E413S1-28-initial-dependency.*. The build passed once and was not repeated; no install or product edit. Retry: **8/8 pass, zero skips; five fixture census lines after 0, scratch hub stopped**. E413S1-28-retry-output.txt is the final result. Its shell exit 1 is the expected final `grep -c -v` finding zero bad census lines; the test exit is 0.
+- Final targeted test outcomes: **176 pass, 0 fail, 0 skipped** across the named files and standalone startup probe. This excludes and explicitly retains the initial dependency attempt above; it does not relabel that attempt a pass. Node emitted its spec reporter (`ℹ`/`✔`); the brief’s `#` summary greps therefore print no counters, but each original log contains the actual counts and named passing tests. No tests were rerun to change reporter format. See targeted-test-counts.json.
+- The corrected committed E413S1-22 interval passes directly: midAdvances 1; no extra oracle change this run. The corrected E413S1-28 fixture census replaces the old global process probe.
+- E413S1-16 pre-verdict plan shows fields on old tree 16bac2b0 and missing Linux, because its latest stage verdict is the previous not-clear run at a0ab9836. Coordinator decision **47c49c56** instructs using the green receipts at this run’s S and rechecking after the new verdict. Read-only source confirms tracker.ts:1887 passes verdict.commit into #stageCover. Current tree **8993586bfaaf23fbfa0897972355710243faac43** already appears complete for marks and threads. Original plan output and source interpretation retained. No suite resubmitted. Post-verdict closure will be reported to the Coordinator.
+
+Build: **918951c2ecd592394ef613e10ba7cdc6a00c8e82**, clean detached worktree; HEAD and refs/heads/dev equal S before and after. Run **qa-s1-2026-10-22-2**, affected/after-stage **fields**, eight merged items T-1052, T-1058, T-1081, T-1089, T-1091, T-1093, T-1053 and T-1055. Local tests ran on macOS arm64, Node v24.21.0, pinned Neovim v0.12.5; scratch HOME/XDG/Git and full fixtureEnvironment applied as committed brief, 37 inherited names unset and credential-prefix count 0 before scratch launch. System TMPDIR retained. Exported environment values were never printed or copied into this artifact.
+
+Key measurements: copied tracker 1094 items /105 open; Lua oracle 0 differences across 1094 bodies +3 regression rows; snapshot 116728 bytes in p1 (oracle snapshot 118960); first Neovim reply 109663 bytes. The direct copied-tracker probe measured **40.984209 ms connection-to-render**, **109786-byte first payload**, below 3000 ms and 122880 bytes. This interval is not whole-process startup or suite wall time. All negative budget tests passed by detecting their intentional slow/oversized responses.
+
+Existing Coordinator stage covers at S (not rerun by QA):
+
+| Receipt | Actual result / phases | Platform / executor | Measured duration and recorded cost |
+| --- | --- | --- | --- |
+| db122ec9-4858-49aa-9194-7b6ccd8e6d8c — merged A-8963 | exit 0, 3697 pass /8 skip /0 fail; check, T1,T2,T3,T4 base, Web | Linux x64 6.8.0-142-generic, droplet, 2 shards/2 workers | **1165.83 s admission through collection**, total **$0.1452** (log precision) |
+| shard-1 — A-8964 | exit 0 | cland-v0-761f8127, c-8 lon1 | 978.66 s admission→remote finish; collection 18.47 s; reported lifetime 961 s, cost $0.0667 |
+| shard-2 — A-8965 | exit 0 | cland-v0-d272e0a6, c-8 lon1 | 1146.66 s admission→remote finish; collection 18.88 s; reported lifetime 1130 s, cost $0.0784 |
+| e724f157-4e06-4e06-93f3-89d108b84996 — A-8967 | exit 0, 3705/3705 pass; check, T1,T2,T3,T4 base, Web | local macOS darwin arm64 27.0.0, 2 workers | 1250.286 s queue→finish from recorded timestamps (includes 0.23 s queue); no droplet cost |
+
+Both platforms use Node v24.21.0 and Neovim v0.12.5. Extra T4 load repetitions were skipped; ten T4 files ran in the base phase. Lint, duration budgets and T3 ratchet are report-only; projections and tier-share figures are not measured wall time. Linux first completed hub.status **9736.3 ms** is below its case’s enforced 10000 ms assertion; startup-replies-scale passes though its whole-test duration warning is report-only. Local supporting first hub.status is 2181.9 ms. Receipt extracts, platform/result metadata and durable artifact IDs retained.
+
+Cleanup completed: scratch hubs pids 58076 and 58833 stopped with their own CLI; fc/drv/scratch process scans 0; literal scratch root removed with non-force rm -r. Worktree remains clean for verdict and is removed afterwards. No real browser, live hub modification, provider operation or product fix.
+
+All 30 checks recorded once via qa-record.sh into project runs.jsonl. No epic criterion verification/failure marks. Rule proposal in topic-804: exact-copy setup and assertions should enumerate the same file set, including committed dotfiles.
+
+Evidence: A-8969, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8969-e-413-stage-fields-rerun-at-918951c2-30-pass-readme-fix-verified/report.md

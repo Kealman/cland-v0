@@ -3,17 +3,17 @@ id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-413
 blocked_by: []
-topic: null
-branch: null
+topic: topic-837
+branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-21T14:04:15.025Z
+updated: 2026-10-22T06:42:07.048Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ A run is consecutive agent-to-agent messages with nothing between them that neve
 - [ ] C3. An ask, a verdict, an answer, or a message to or from the human or an Aide ends a run, and the next agent message starts a new one (test).
 - [ ] C4. A history page that starts mid-run carries that run's id and its full fold line (test).
 - [ ] C5. `hub/README.md` describes runs and fold lines.
+
+## Comments
+
+### impl-1056 · 2026-10-22T06:42:07.048Z
+
+TDD at the brief's agreed T2 history/live-frame seams: C1 red was `one full run accompanies history: undefined !== 1`; C2 red was `the message delta carries the updated full run` (undefined); C3 red was a verdict incorrectly retaining a run id. Current four criterion tests pass locally on Darwin arm64 (~0.73 s file): complete factual line, same-id fifth-message delta, ask/verdict/answer/human/Aide boundaries plus midnight, and numeric/message-id mid-run pages with full metadata including first-three/+N. C4 passes using the existing full-run projection; no new reread behavior was needed. Persistence/legacy/byte-bound checks and docs are in progress; this is targeted development evidence, not queued verification.

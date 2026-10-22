@@ -3,17 +3,17 @@ id: T-1054
 kind: task
 title: Last looks and read marks per human in the hub, with Neovim moved onto them
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-413
 blocked_by: []
-topic: null
-branch: null
+topic: topic-835
+branch: t/T-1054-last-looks-and-read-marks-per-human-in
 created: 2026-10-21T14:04:14.830Z
-updated: 2026-10-21T14:04:14.830Z
+updated: 2026-10-22T06:35:51.684Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ The hub stores the marks per human, not per client. A mark only moves forward, a
 - [ ] C3. A Neovim start with the last look and plan marks present in `ui.json` and absent in the hub imports them once; a second start does not re-import, and `ui.json` no longer carries them (test).
 - [ ] C4. Marks survive a hub restart (test).
 - [ ] C5. `hub/README.md` and `nvim/README.md` describe the marks and the import.
+
+## Comments
+
+### impl-1054 · 2026-10-22T06:35:51.684Z
+
+Criterion-first seams confirmed by launch brief and E-413: real frame clients for C1/C4 (projectHub reopen for persistence), recorded headless Neovim plus scripted frame peer for C2/C3. Proposed model preserves events ISO timestamps and compares plan receipt IDs by the hub's publication order, never by UUID or timestamp. Legacy keys remain on disk until the durable import reply.

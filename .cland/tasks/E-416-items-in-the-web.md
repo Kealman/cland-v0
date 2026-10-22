@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-830
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-22T04:08:33.370Z
+updated: 2026-10-22T06:45:25.677Z
 ---
 
 ## Summary
@@ -116,6 +116,7 @@ stages:
       when: after-stage
     lanes:
       - - T-1074
+        - T-1095
       - - T-1075
         - T-1076
   - name: plan and edits
@@ -175,3 +176,7 @@ Fresh local macOS arm64 checks: 56/56 targeted tests pass, no skips; serial, iso
 Coordinator covers at same full SHA/tree16bac2b0: Linux 468f6bae A-8883, shard logs A-8884/A-8885, 3682 pass/8 skip/0 fail; local macOS 6143d5e7 A-8887, 3690 pass/no skips. Both check/T1–T3/T4 base/Web executed, T4 extra repetitions skipped; lint/budgets/ratchet report-only. Linux x64 droplet 2 workers, run wall1053.328s, cost$0.1344125: shard1 cland-v0-90e45f3d run939.960s/lifetime927.449s/$0.06440618; shard2 cland-v0-e3ffcabd run1015.960s/lifetime1008.091s/$0.07000632; both released. macOS arm64 2 workers run1211.542s, remote cost N/A. Node24.21.0/Neovim0.12.5. Measured run walls distinguished from projected tier budgets and lease lifetimes.
 
 HEAD=dev=request and clean before/after; stage cover complete. No epic criterion marks. Evidence A-8889: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8889-e-416-stage-tree-card-and-layout-at-a0ab9836-24-pass-signed-in-case-out-of-scope/report.md
+
+### coord · 2026-10-22T06:45:25.677Z
+
+Stage "views and messages" QA run qa-s2-2026-10-22-1 at dev 918951c2 (qa-676, evidence A-8971): 23 checks PASS and E416S2-23 FAIL (medium). In real Chrome at the unchanged window size, the Items help dialog's last two rows (A, Enter) stay below the visible window after scrolling. 74/74 targeted tests passed. The verdict was not recorded: the hub refused it because T-1095, the fix for this finding, had already been added to the stage by the Coordinator before the verdict ("all stage items must merge onto dev before stage QA"). That was the Coordinator's ordering error, not QA's, and the stage stays open either way. A fresh run follows after T-1095 lands.
