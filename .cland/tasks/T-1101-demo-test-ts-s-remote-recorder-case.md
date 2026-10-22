@@ -1,0 +1,27 @@
+---
+id: T-1101
+kind: task
+title: demo.test.ts's remote recorder case times out on demo.start under macOS T3 load
+state: open
+status: backlog
+size: XS
+labels:
+  - needs-triage
+  - flaky
+assignee: null
+parent: C-325
+blocked_by: []
+topic: null
+branch: null
+created: 2026-10-22T09:03:34.023Z
+updated: 2026-10-22T09:03:34.023Z
+---
+
+## Summary
+
+The shared stage cover's macOS run 3dcaf593 (A-9068, dev ff6edeaa, local darwin arm64, 2 workers, T3 peak 1m load 7.25) failed `hub/test/demo.test.ts` "the demo recorder runs a headless case remotely and retains captures and executor accounting locally" with `Error: no result for demo.start within 5000ms` (hub/test/harness.ts:631). The same test passed 5/5 alone at the same commit (coord, 2026-10-22 09:05Z), and the Linux cover 4b8ac01b at that commit was green. Its 5 s frame-result wait is within load noise on a busy macOS run.
+
+## Acceptance criteria
+
+- [ ] C1. The test waits for demo.start's durable receipt with a bound that holds under the T3 load of a full macOS run, or splits the fake executor's provisioning time from the asserted behaviour, keeping its final assertions (rule 9) (test).
+- [ ] C2. The test passes 20/20 under `--test-concurrency 4` with a parallel CPU load on macOS, in a disposable root under rule 15 (test).

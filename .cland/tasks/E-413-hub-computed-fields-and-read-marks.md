@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-804
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-22T06:33:31.873Z
+updated: 2026-10-22T08:51:32.217Z
 ---
 
 ## Summary
@@ -123,6 +123,12 @@ stages:
       - - T-1056
       - - T-1057
         - T-1059
+  - name: fixture refresh
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1090
 ```
 
 ## Comments

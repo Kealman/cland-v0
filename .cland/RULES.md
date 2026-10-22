@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 17 -->
+<!-- cland: rule high-water 19 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -136,12 +136,12 @@ The Coordinator then merges the published tip into dev; it never runs `cland syn
 
 ## 15 Real-machine work runs sealed
 Scope: all
-Date: 2026-10-20
+Date: 2026-10-22
 Status: active
-Origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
-Reason: A scratch HOME alone still inherited DIGITALOCEAN_TOKEN and harness account paths (T-651, T-646). `cland init` provisioned a real HOME on 2026-10-16. T-492 leaked a credential into argv. Retired rule 13 was one case of this. The v0.1.4 build produced 24 proposals of this rule (A-7281).
+Origin: message:general/a9509902-689c-41a5-bd4b-7275a1edab5b
+Reason: A scratch HOME alone still inherited DIGITALOCEAN_TOKEN and harness account paths (T-651, T-646). `cland init` provisioned a real HOME on 2026-10-16. T-492 leaked a credential into argv. An inherited GIT_DIR plus an implicit `git init --bare` set core.bare=true in the live repository (T-973). Retired rule 13 was one case of this. A-7281 (24 proposals); GIT_* clause added with rule batch A-8634 (R2).
 
-Any test, probe, demo or experiment that runs cland, Git, a harness or an installer uses a disposable root. It also uses its own HOME, XDG directories and Git configuration, and an environment with provider and account variables removed. It never runs against the live project, the human's HOME or inherited credentials. Child launch environments apply the shared credential filter after every overlay.
+Any test, probe, demo or experiment that runs cland, Git, a harness or an installer uses a disposable root. It also uses its own HOME, XDG directories and Git configuration, and an environment with provider and account variables removed. It never runs against the live project, the human's HOME or inherited credentials. Child launch environments apply the shared credential filter and remove every inherited `GIT_*` repository and configuration variable after every overlay; a scratch HOME alone does not isolate Git.
 
 ## 16 Docs, help, skills and clauses change in the same item
 Scope: implementer, reviewer
@@ -160,4 +160,22 @@ Origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
 Reason: These failures happened in the v0.1.4 run: a release run was satisfied from a macOS stage cache (T-950); projections were judged as wall times; a T0–T2 receipt was described as an integration pass (T-713); missing receipts read as zero (T-681). 21 proposals in the v0.1.4 build (A-7281).
 
 A claim about tests, timing or coverage names what actually ran: the head or tree, the tiers or phases completed, the platform and executor, and whether a gate was in report or enforce mode. A partial run, a cache hit, a projection or a missing receipt is labelled as such. None of them ever counts as a pass, a wall time or zero. A diagnosis quotes the actual failure output before it classifies the failure.
+
+## 18 Crew sessions never drive the human's browser or desktop
+Scope: all
+Date: 2026-10-22
+Status: active
+Origin: message:general/a9509902-689c-41a5-bd4b-7275a1edab5b
+Reason: On 2026-10-20 a crew session opened the human's real browser and default profile (A-7738); the ban was written only in QA brief templates and a fixture note that Implementers and Reviewers never load. Approved with rule batch A-8634 (R1), without the "after the Coordinator told the human" clause, since QA holds the human's standing grant.
+
+Check browser behaviour only in an isolated testing browser (Chrome Headless Shell or Chrome for Testing) with its own user-data-dir, and start no GUI process on the human's machine unless the brief foresees it. Only QA opens the human's browser: under a brief that names real-browser computer use, in the dedicated cland QA profile, closing its tabs afterwards. When the browser provider, profile or access is missing or refused, report the exact blocker to the item lead and stop there.
+
+## 19 Land a capability and restart before anything depends on it
+Scope: coordinator, lead, implementer
+Date: 2026-10-22
+Status: active
+Origin: message:general/d7517cf2-682e-43a9-8897-a8ccb78188e7
+Reason: T-991's tests needed a phase the live verifier lacked; a branch runner cannot prove the running hub's cloud-init template (T-993); compacted replies broke QA fixtures and completion observers (T-1027, T-1038); T-922 in A-7281 was the same lesson. Approved with rule batch A-8634 (R3). Row-membership sentence added with batch 2 (A-9063 R1): T-1027, T-1091 and T-1088 each broke QA count waits or the startup probe when the rows a reply carries changed.
+
+When an item depends on something the running hub or a prepared executor lacks (a verifier tier or phase, a protocol field, an admission policy, a runtime library in the prepared image), land that capability first, then restart the hub or re-prepare the executor, and only then enqueue the item. A change to a shared reply, snapshot or list shape adds fields and keeps the old ones until every consumer, QA fixtures and test observers included, has migrated. A change to which rows a shared reply or snapshot carries first lists every consumer that counts, waits for or asserts those rows, QA brief waits and startup probes included, and migrates them in the same item.
 

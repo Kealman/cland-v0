@@ -5,12 +5,12 @@ title: "Public launch: cland.app and the open repository"
 state: open
 labels: []
 assignee: null
-parent: R-377
+parent: R-1100
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:03:55.152Z
-updated: 2026-10-18T06:03:55.152Z
+updated: 2026-10-22T08:51:28.633Z
 ---
 
 ## Summary
@@ -37,3 +37,9 @@ Everything the landing, the docs and the README promise works on a fresh machine
 - [ ] Every docs page is checked against the shipped behaviour and corrected
 - [ ] The landing shows real web and phone screenshots instead of placeholders
 - [ ] cland.app serves the site over HTTPS from the Pages workflow
+
+## Comments
+
+### coord · 2026-10-22T08:51:28.633Z
+
+Moved out of R-377 (v0.2) into R-1100 "Public launch" on the human's decision (General, 2026-10-22 08:50Z, msg e175de7e): v0.2 ships without the public launch, and the launch follows separately.
