@@ -41,6 +41,7 @@
     "hub/test/artifacts-git.test.ts": "T3",
     "hub/test/artifacts.test.ts": "T2",
     "hub/test/ask-chain.test.ts": "T2",
+    "hub/test/ask-outcomes.test.ts": "T2",
     "hub/test/asks-cli.test.ts": "T2",
     "hub/test/asks.test.ts": "T2",
     "hub/test/bridge-grace.test.ts": "T1",

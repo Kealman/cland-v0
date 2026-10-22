@@ -64,6 +64,8 @@ export type InboxPort = {
 export class InboxBoard {
   readonly #port: InboxPort;
   readonly #clock: Clock;
+  /** Departures accumulated by reads or the coalesced rebuild, published once with the next inbox delta. */
+  #departures: InboxDeparture[] = [];
   /** The launched sessions (the adapters' process table): the approvals and their attach commands. */
   #processes: (() => HarnessProcessView[]) | null = null;
   /** When each session entered `waiting for approval`, by session id. */
@@ -353,8 +355,12 @@ export class InboxBoard {
     const text = row.text || (row.kind === 'approval' ? this.#processes?.().find(s => s.sessionId === row.id)?.approvalCommand ?? 'waiting for approval'
       : row.kind === 'plan' ? p.items().find(i => i.id === row.id)?.title
       : p.store.message(row.id)?.text ?? p.store.ask(row.id)?.question) || '';
-    const departure = p.store.departInbox(row, reason, at ?? p.now().toISOString(), text.split(/\r?\n/, 1)[0]);
-    if (departure) this.#port.log({ event: 'inbox-departure', ...departure });
+    const outcome = row.kind === 'ask' ? p.store.ask(row.id)?.outcome : undefined;
+    const departure = p.store.departInbox(row, reason, at ?? outcome?.at ?? p.now().toISOString(), text.split(/\r?\n/, 1)[0], outcome);
+    if (departure) {
+      this.#departures.push(departure);
+      this.#port.log({ event: 'inbox-departure', ...departure });
+    }
   }
 
   /** Human review/QA verdicts reply to requests on the item, regardless of the request's topic. */
@@ -398,9 +404,11 @@ export class InboxBoard {
       try {
         const inbox = this.list();
         const signature = JSON.stringify(inbox);
-        if (signature === this.#published) return;
+        if (signature === this.#published && !this.#departures.length) return;
         this.#published = signature;
-        this.#port.emit({ type: 'inbox', inbox });
+        const departures = this.#departures;
+        this.#departures = [];
+        this.#port.emit({ type: 'inbox', inbox: { ...inbox, ...(departures.length ? { departures } : {}) } });
       } catch (err) {
         this.#port.log({ event: 'inbox-failed', error: err instanceof Error ? err.message : String(err) });
       }

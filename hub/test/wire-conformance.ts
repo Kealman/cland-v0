@@ -64,6 +64,7 @@ export type WireConformance = [
   Assert<Equal<import('../src/protocol.ts').AnswerAttribution, Wire.AnswerAttribution>>,
   Assert<Equal<import('../src/protocol.ts').AskAnswer, Wire.AskAnswer>>,
   Assert<Equal<import('../src/protocol.ts').Message, Wire.Message>>,
+  Assert<Equal<import('../src/protocol.ts').AskOutcome, Wire.AskOutcome>>,
   Assert<Equal<import('../src/protocol.ts').AskCard, Wire.AskCard>>,
   Assert<Equal<import('../src/protocol.ts').AskState, Wire.AskState>>,
   Assert<Equal<import('../src/protocol.ts').HygieneRefusal, Wire.HygieneRefusal>>,

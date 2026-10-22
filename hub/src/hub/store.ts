@@ -7,7 +7,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
-import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, TopicHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, TopicHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskOutcome, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
@@ -170,6 +170,7 @@ create table if not exists hygiene (
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
   { table: 'inbox_waits', column: 'text', type: "text not null default ''" },
   { table: 'inbox_departures', column: 'text', type: "text not null default ''" },
+  { table: 'inbox_departures', column: 'outcome_json', type: 'text' },
   { table: 'messages', column: 'request_kind', type: 'text' },
   { table: 'messages', column: 'request_subject', type: 'text' },
   { table: 'asks', column: 'to_name', type: 'text' },
@@ -178,6 +179,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'asks', column: 'from_session_id', type: 'text' },
   { table: 'asks', column: 'forwarded_id', type: 'text' },
   { table: 'asks', column: 'answer_attribution', type: 'text' },
+  { table: 'asks', column: 'outcome_json', type: 'text' },
   { table: 'messages', column: 'answer_attribution', type: 'text' },
   { table: 'sessions', column: 'status', type: 'text' },
   { table: 'sessions', column: 'role', type: 'text' },
@@ -296,6 +298,7 @@ const toAsk = (row: Row): AskRow => ({
   options: JSON.parse(row.options_json as string) as string[],
   free: row.free === 1,
   state: row.state as AskState,
+  ...(typeof row.outcome_json === 'string' ? { outcome: JSON.parse(row.outcome_json) as AskOutcome } : {}),
   ...attributionOf(row),
   ...(typeof row.to_name === 'string' ? { to: row.to_name as string } : {}),
   ...(typeof row.to_session_id === 'string' ? { toSessionId: row.to_session_id as string } : {}),
@@ -311,6 +314,7 @@ export const cardOf = (a: AskRow): AskCard => ({
   options: a.options,
   free: a.free,
   state: a.state,
+  ...(a.outcome ? { outcome: a.outcome } : {}),
   ...(a.answered_as !== undefined ? { answered_as: a.answered_as } : {}),
   ...(a.answered_by !== undefined ? { answered_by: a.answered_by } : {}),
   ...(a.relayed_by !== undefined ? { relayed_by: a.relayed_by } : {}),
@@ -1599,22 +1603,22 @@ export class Store implements HygieneMemory {
     return this.#prepare('select 1 from inbox_departures where kind = ? and id = ? limit 1').get(kind, id) !== undefined;
   }
 
-  departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = ''): InboxDeparture | null {
+  departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = '', outcome?: AskOutcome): InboxDeparture | null {
     return this.#transaction(() => {
       const waiting = this.#prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes;
       // A request replied to before the coalesced tick still belongs in the archive, once.
       if (!waiting && (row.kind !== 'request' || this.leftInbox(row.kind, row.id))) return null;
-      this.#prepare('insert into inbox_departures (kind, id, subject, since, ts, reason, text) values (?, ?, ?, ?, ?, ?, ?)').run(row.kind, row.id, row.subject, row.since, ts, reason, text);
-      return { ...row, ts, reason, text };
+      this.#prepare('insert into inbox_departures (kind, id, subject, since, ts, reason, text, outcome_json) values (?, ?, ?, ?, ?, ?, ?, ?)').run(row.kind, row.id, row.subject, row.since, ts, reason, text, outcome ? JSON.stringify(outcome) : null);
+      return { ...row, ts, reason, text, ...(outcome ? { outcome } : {}) };
     });
   }
 
   /** The later archive frame can read seven days directly, without scanning the journal. */
   inboxDepartures(after: string): InboxDeparture[] {
-    const rows = this.#prepare(`select d.kind, d.id, d.subject, d.since, d.ts, d.reason,
+    const rows = this.#prepare(`select d.kind, d.id, d.subject, d.since, d.ts, d.reason, d.outcome_json,
       coalesce(nullif(d.text, ''), (select m.text from messages m where m.id = d.id), '') as text
-      from inbox_departures d where d.ts >= ? order by d.ts desc, d.number desc`).all(after) as InboxDeparture[];
-    return rows.map(row => ({ ...row, text: row.text?.split(/\r?\n/, 1)[0] ?? '' }));
+      from inbox_departures d where d.ts >= ? order by d.ts desc, d.number desc`).all(after) as unknown as Array<InboxDeparture & { outcome_json: string | null }>;
+    return rows.map(({ outcome_json, ...row }) => ({ ...row, text: row.text?.split(/\r?\n/, 1)[0] ?? '', ...(outcome_json ? { outcome: JSON.parse(outcome_json) as AskOutcome } : {}) }));
   }
 
   inboxDeparturesToday(after: string): number {
@@ -1658,13 +1662,13 @@ export class Store implements HygieneMemory {
   }
 
   /** An open ask leaves `open` (answered, withdrawn, cancelled); false when it was no longer open. */
-  closeAsk(id: string, state: Exclude<AskState, 'open'>, at: string, answer?: { id: string; option?: number; attribution?: AnswerAttribution }): boolean {
-    return this.#prepare("update asks set state = ?, closed_at = ?, answer_id = ?, option = ?, answer_attribution = ? where id = ? and state = 'open'").run(state, at, answer?.id ?? null, answer?.option ?? null, answer?.attribution ? JSON.stringify(answer.attribution) : null, id).changes > 0;
+  closeAsk(id: string, state: Exclude<AskState, 'open'>, at: string, answer?: { id: string; option?: number; attribution?: AnswerAttribution; outcome?: AskOutcome }): boolean {
+    return this.#prepare("update asks set state = ?, closed_at = ?, answer_id = ?, option = ?, answer_attribution = ?, outcome_json = ? where id = ? and state = 'open'").run(state, at, answer?.id ?? null, answer?.option ?? null, answer?.attribution ? JSON.stringify(answer.attribution) : null, answer?.outcome ? JSON.stringify(answer.outcome) : null, id).changes > 0;
   }
 
   /** An answer that could not be sent: the ask is open again. */
   reopenAsk(id: string): void {
-    this.#prepare("update asks set state = 'open', closed_at = null, answer_id = null, option = null, answer_attribution = null where id = ?").run(id);
+    this.#prepare("update asks set state = 'open', closed_at = null, answer_id = null, option = null, answer_attribution = null, outcome_json = null where id = ?").run(id);
   }
 
   /** Recorded answer origins for an item's topic, independent of history pagination. */

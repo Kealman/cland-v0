@@ -187,6 +187,12 @@ export type TopicMessage = Message & { seq: number; topic: string; stage?: Deliv
  *  item closes (cancelled). */
 export type AskState = 'open' | 'answered' | 'withdrawn' | 'cancelled';
 
+/** The durable decision carried by an ask and its inbox departure. */
+export type AskOutcome = { by: string; at: string } & (
+  | { status: 'answered'; text: string; option?: number }
+  | { status: 'declined'; reason: string }
+);
+
 /** An ask as its message carries it: the question is the message's text. */
 export type AskCard = {
   question: string;
@@ -203,6 +209,8 @@ export type AskCard = {
   answer?: string;
   /** The option the human chose (1-based), absent for a free answer. */
   option?: number;
+  /** Present once an answer is recorded, independent of the answer message's retention. */
+  outcome?: AskOutcome;
 } & Partial<AnswerAttribution>;
 
 /** An open ask as the inbox lists it. */
@@ -214,12 +222,12 @@ export type InboxPlan = { layer?: Layer; id: string; subject: string; title: str
 export type InboxRequest = { layer?: Layer; id: string; from: string; fromRole?: string; request: RequestKind; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxMessage = { layer?: Layer; severity?: 'warn'; id: string; from: string; fromRole?: string; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxRowKind = 'ask' | 'approval' | 'plan' | 'request' | 'message';
-export type InboxDeparture = { kind: InboxRowKind; id: string; subject: string; since: string; ts: string; text?: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'declined' | 'read' };
+export type InboxDeparture = { outcome?: AskOutcome; kind: InboxRowKind; id: string; subject: string; since: string; ts: string; text?: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'declined' | 'read' };
 
 export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-stalled' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
 /** The four now sections (§3.7); waiting remains as topic metadata for older clients. */
-export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[] };
+export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
 
 /** Journal rows, newest first; cursors are opaque continuations over the append-only file. */
 export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat', 'rule'] as const;

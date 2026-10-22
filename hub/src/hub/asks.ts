@@ -81,7 +81,11 @@ export class Asks {
       ...(message.answered_by ? { answered_by: message.answered_by } : {}),
       ...(message.relayed_by ? { relayed_by: message.relayed_by } : {}),
     } : undefined;
-    this.#port.store.closeAsk(message.answerTo, 'answered', message.ts, { id: message.id, ...(attribution ? { attribution } : {}) });
+    this.#port.store.closeAsk(message.answerTo, 'answered', message.ts, {
+      id: message.id,
+      outcome: { status: 'answered', text: message.text, by: message.answered_as === 'human' ? 'human' : message.answered_by ?? message.from, at: message.ts },
+      ...(attribution ? { attribution } : {}),
+    });
   }
 
   #incoming(from: string, id: string, tool: string): AskRow {
@@ -185,6 +189,9 @@ export class Asks {
     p.store.transaction(() => {
       p.store.record(message, [], now.getTime());
       p.store.createAsk({ id: message.id, topic: topic.id, from, question: q, options: opts, free, ts: message.ts });
+      // An answer may arrive before any inbox projection. Persist the wait with the ask,
+      // so its departure never depends on the journal or a client first reading the inbox.
+      p.store.waitInInbox({ kind: 'ask', id: message.id, subject: topic.item ?? topic.id, since: message.ts, text: q });
       if (replyTo !== undefined) p.store.forwardAsk(replyTo, message.id);
     });
     p.store.touchTopic(topic.id, message.ts);
@@ -223,7 +230,12 @@ export class Asks {
     }
     const attribution: AnswerAttribution = standIn === undefined ? { answered_as: 'human' } : { answered_as: 'stand-in', answered_by: standIn };
     // closed first: the topic's status after the answer reads the asks still open
-    p.store.closeAsk(a.id, 'answered', p.now().toISOString(), { id: '', attribution, ...(option !== undefined ? { option } : {}) });
+    const at = p.now().toISOString();
+    p.store.closeAsk(a.id, 'answered', at, {
+      id: '', attribution,
+      outcome: { status: 'answered', text: body, by: standIn ?? 'human', at, ...(option !== undefined ? { option } : {}) },
+      ...(option !== undefined ? { option } : {}),
+    });
     let sent: { message: TopicMessage; outcomes: SendOutcome[] };
     try {
       // to the session that asked, unless it has since handed the role it asked as over (#31): then to the role,

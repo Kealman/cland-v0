@@ -8,7 +8,7 @@ import { connectUi, connectWsUi, eventually, inProcessSpoke, projectHub, startHu
 
 type Topic = { id: string; title: string; status: string; item: string | null };
 type Card = { question: string; options: string[]; free: boolean; state: string; answer?: string; option?: number };
-type TopicMessage = { id: string; topic: string; from: string; fromKind: string; to: string[]; text: string; answerTo?: string; ask?: Card };
+type TopicMessage = { id: string; topic: string; from: string; fromKind: string; to: string[]; text: string; ts: string; answerTo?: string; ask?: Card };
 type InboxAsk = { id: string; topic: { id: string; title: string }; question: string; options: string[]; free: boolean; from: string; label: string };
 type Approval = { session: string; label: string; harness: string | null; attach: string | null };
 type Inbox = { asks: InboxAsk[]; approvals: Approval[]; waiting: Topic[]; needsYou: number };
@@ -96,7 +96,8 @@ test('only the Coordinator asks: an Implementer is refused with the typed forbid
 });
 
 test('answering with option 2 posts the option as a message with answer_to, delivers it to the asker, clears the wait and the inbox row; the card shows the answer', async (t) => {
-  const hub = await hubFor(t);
+  const clock = new FakeClock();
+  const hub = await hubFor(t, { clock });
   const coord = await spoke(t, hub, 'coord', 'coordinator');
   await coord.waitForPresence(['coord']);
   const ui = await connectWsUi(t, hub);
@@ -122,7 +123,8 @@ test('answering with option 2 posts the option as a message with answer_to, deli
   await ui.waitFor((f) => f.type === 'topic' && (f.topic as Topic).id === 'general' && (f.topic as Topic).status === 'waiting for agent' && ui.frames.indexOf(f) >= mark);
   const card = (await ui.waitFor((f) => f.type === 'ask' && f.ask === asked.ask && ui.frames.indexOf(f) >= mark)) as { topic: string; card: Card };
   assert.equal(card.topic, 'general');
-  assert.deepEqual(card.card, { question: 'Which port?', options: ['a fixed one', 'a free one, picked at start'], free: true, state: 'answered', answer: answered.message.id, option: 2, answered_as: 'human' });
+  assert.deepEqual(card.card, { question: 'Which port?', options: ['a fixed one', 'a free one, picked at start'], free: true, state: 'answered', answer: answered.message.id, option: 2, answered_as: 'human', outcome: { status: 'answered', text: 'a free one, picked at start', option: 2, by: 'human', at: answered.message.ts } });
+  await clock.advance(250);
   await inboxEvent(ui, (i) => i.asks.length === 0 && i.needsYou === 0, mark);
   const messages = await history(ui, 'general');
   assert.deepEqual(messages.find((m) => m.id === asked.ask)?.ask, card.card);

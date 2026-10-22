@@ -2105,3 +2105,15 @@ A serving receipt precedes requests, each has a 60-second bound, and a failed
 request is recorded before continuing. Shutdown completes before root removal.
 Publish the output as an artifact with head/tree and platform. This is diagnostic
 measurement, not suite evidence; local runs require cover-quiet admission.
+
+
+`hub/test/ask-outcomes.test.ts` covers E-413's answered asks at the T2 public
+frame seam with `FakeClock`: C1 retains the chosen option, answerer and time in
+live cards and later history; C2 compares the same outcome in the inbox departure
+and archive. Both use a disposable `projectHub`. C3 uses the existing `startHub`
+frame fixture without a journal, so an incidental journal projection cannot read
+the inbox before its rapid free-text/stand-in answer. It observes exactly one
+matching departure/archive outcome, then checks that the next inbox publication
+does not repeat the departure. Observers are armed before answering. A T1 test
+in `hub/src/hub/store.test.ts` proves option/free-text outcomes survive Store
+reopen, without restarting a hub. These cases add no native process.

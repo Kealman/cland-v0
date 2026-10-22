@@ -8,9 +8,45 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from './store.ts';
 import { HubCore } from './core.ts';
-import { isClientRequest, type Message, type TopicHistoryFilter, type TopicMessage } from '../protocol.ts';
+import { isClientRequest, type AskOutcome, type Message, type TopicHistoryFilter, type TopicMessage } from '../protocol.ts';
 
 const message = (id: string, from: string, to: string[], text: string, ts = '2026-10-08T12:00:00.000Z'): Message => ({ id, from, fromKind: 'agent', via: 'session', to, text, ts });
+
+test('ask outcomes and inbox departures preserve option and free-text decisions across Store reopen', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'cland-ask-outcomes-'));
+  const file = join(dir, 'hub.db');
+  const at = '2026-10-22T09:00:00.000Z';
+  const outcomes: AskOutcome[] = [
+    { status: 'answered', text: 'allocated', option: 2, by: 'human', at },
+    { status: 'answered', text: 'Wait for QA.\nThen ship.', by: 'stand-in', at },
+  ];
+  let store = new Store(file);
+  try {
+    store.createTopic('general', 'General', null, at);
+    for (const [i, outcome] of outcomes.entries()) {
+      const id = `ask-${i}`, question = `Decision ${i}`;
+      store.record({ ...message(id, 'coord', [], question, at), topic: 'general' }, [], Date.parse(at));
+      store.createAsk({ id, topic: 'general', from: 'coord', question, options: ['fixed', 'allocated'], free: true, ts: at });
+      const wait = { kind: 'ask' as const, id, subject: 'general', since: at, text: question };
+      store.waitInInbox(wait);
+      assert.equal(store.closeAsk(id, 'answered', at, { id: `reply-${i}`, outcome }), true);
+      store.departInbox(wait, 'answered', at, question, outcome);
+    }
+    store.close();
+    store = new Store(file);
+    for (const [i, outcome] of outcomes.entries()) {
+      assert.deepEqual(store.ask(`ask-${i}`)?.outcome, outcome);
+      assert.deepEqual(store.topicMessages('general', 10).find(m => m.id === `ask-${i}`)?.ask?.outcome, outcome);
+      const departure = store.inboxDepartures(at).find(d => d.id === `ask-${i}`);
+      assert.equal(departure?.reason, 'answered');
+      assert.deepEqual(departure?.outcome, outcome);
+      assert.equal(store.message(`reply-${i}`), null, 'outcomes do not require a retained reply message');
+    }
+  } finally {
+    store.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 test('store reuses prepared SQL with fresh bindings and keeps connections and rollback isolated', () => {
   const counts: Map<string, number>[] = [];

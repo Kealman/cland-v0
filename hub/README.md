@@ -670,6 +670,33 @@ An **ask** is a question the Coordinator puts to the human inside a topic (spec 
 
 `AskCard` is `{"question","options":[…],"free","state":"open|answered|withdrawn|cancelled","answer"?:"<message id>","option"?:n}`.
 
+### Answered ask outcomes
+
+An answered `AskCard` also carries `outcome`, both in the live `ask` event and on
+later `topic.history` pages. Its shape is
+`{status: "answered", text: "<full answer>", option?: n, by: "<answerer>", at: "<ISO time>"}`.
+`option` is 1-based and absent for a free answer; `text` is the chosen option's
+text or the trimmed free answer, including every line. `by` is `human`, the
+self-declared stand-in name, or the answering agent's name; forwarded decisions
+preserve a recorded stand-in. `at` is the answer time. The outcome is stored on
+the ask, independently of the reply message, and survives hub restarts. Existing
+`answer`, `option` and attribution fields stay available. Legacy rows without a
+stored outcome omit it. The outcome union also reserves
+`{status: "declined", reason: "<reason>", by, at}` for declining; this slice does
+not add a decline action.
+
+A human ask records its inbox wait atomically at creation, even before a client
+or journal projection first reads the inbox. When an answered ask leaves the inbox, its `InboxDeparture` has
+`reason: "answered"` and the same `outcome`. The next coalesced `inbox` event
+includes `inbox.departures`, the rows settled since the preceding publication,
+so clients can fold a row in place with its answer before archiving it. Explicit
+`inbox.list` reads do not consume these pending departures. Subsequent events
+omit `departures` unless more rows settle. Ordinary lists and initial snapshots
+contain current rows; `inbox.list {archive: true}` retrieves the durable outcomes
+in the seven-day archive, including after reconnect or restart. The client
+chooses how long to retain a folded row. Departure outcomes also reach the
+`inbox-departure` journal record and survive reply-message retention.
+
 Answer origin is stored on the ask card and answer message as `answered_as: human` or `answered_as: stand-in` with `answered_by: <name>`. `cland topic answer <ask> 2 --as cland-impl` (or `--text "..." --as cland-impl`) declares a named stand-in; without `--as` the human shell records `human`. The trust model is self-declaration in the human's shell, which already has human authority: the label is not an authenticated hub session or a new role. Names use the session-name grammar. Every known hub session, Aides included, remains refused by `topic.answer`; a session's own shell identity takes precedence over `--as` and cannot be relabelled as human. The UI/frame equivalent supplies `as: {name: "cland-impl"}`. Supplied `answered_as` fields are not trusted.
 
 `ask.answer` relays preserve the forwarded answer's `answered_as` and `answered_by`, with `relayed_by` naming the lead returning the decision. Agent decisions without a forwarded human answer have no human/stand-in attribution. The origin survives hub restarts, appears in `topic.history`, spoke/channel answer metadata and `ask-answered` journal entries. `task view` shows answer origins from the bound topic (`item.answers` in JSON, containing `ask`, `answer` and attribution); these are hub state, separate from item frontmatter. Legacy asks without recorded origin stay unattributed.
@@ -704,7 +731,7 @@ Each departure passes through the existing log tap as `{"event":"inbox-departure
 | --- | --- |
 | `{"type":"topic.answer","id":…,"ask":"<ask id>","option":2}` or `"text":"…"` | `{"message":TopicMessage,"outcomes":[…]}` |
 | `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","plans","requests","messages","waiting","needsYou"}`. Response rows carry their classified layers before the hub compares inbox publications, so a pin/mute publishes new placement even when `needsYou` stays unchanged (T-235). |
-| `{"type":"inbox.list","id":…, "archive":true}` | `Inbox` with `archive`: rows carry `kind`, `id`, `subject`, first-line `text`, wait start `since`, departure time `ts` and `reason`. |
+| `{"type":"inbox.list","id":…, "archive":true}` | `Inbox` with `archive`: rows carry `kind`, `id`, `subject`, first-line `text`, wait start `since`, departure time `ts`, `reason`, and an answered ask’s `outcome`. |
 | `{"type":"inbox.decline","id":…, "request":"<message id>"}` | `Inbox`; human-only. Declines one waiting request and queues a named hub notice to its sender, including an offline sender. An unknown or already-left id is refused by name. |
 | `{"type":"inbox.read","id":…, "message":"<message id>"}` | `Inbox`; human-only. Marks only that waiting message read; other messages in its topic keep their rows and unread counts. An unknown or already-left id is refused by name. |
 
