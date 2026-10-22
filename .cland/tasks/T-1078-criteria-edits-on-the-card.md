@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-844
 branch: t/T-1078-criteria-edits-on-the-card
 created: 2026-10-21T17:32:17.135Z
-updated: 2026-10-22T10:40:18.593Z
+updated: 2026-10-22T10:50:02.368Z
 ---
 
 ## Summary

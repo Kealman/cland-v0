@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-843
 branch: t/T-1077-the-plan-view-with-approval-on-a
 created: 2026-10-21T17:32:16.973Z
-updated: 2026-10-22T10:41:12.667Z
+updated: 2026-10-22T10:51:45.346Z
 ---
 
 ## Summary
@@ -34,7 +34,7 @@ The Plan view shows the selected epic's plan: its stages, lanes and QA policy, w
 ## Acceptance criteria
 
 - [x] C1. In a scratch project with `[plan] approval = "human"`, `a` in the Plan view approves a waiting plan, and `cland task plan show` reads it approved by the human (Web test).
-  - done: impl-1077 · 2026-10-22T10:40:24.053Z
+  - done: impl-1077 · 2026-10-22T10:51:38.858Z
 - [x] C2. A plan change made after the human's last look shows in the watch colour, and opening the view moves the plan's mark (Web test).
   - done: impl-1077 · 2026-10-22T10:31:36.822Z
 - [x] C3. Below desktop width `a` is not offered (Web test).
@@ -88,3 +88,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear; A-9099 incorporates A-9091/A-9096. M1 resolved: retain all required Plan members before missing filtering, keep bounded <=100 summary reads/revision fence and subsequent closed deltas. Closed-at-entry and selected-open→closed regressions preserve full facts/no-body; same epic DOM visit/no extra marks.set prove no hidden reentry. Human approval/CLI, Lead discussion, watch/shared marks/live changes and 1279/1280/phone guards retained. Standards0;Spec0. A-9098 original residual-red followed by localmacOS HeadlessShell4/4green/check0 is qualified precommit working-tree evidence; no dirty-tree hash/exact-head configured proof inferred. All C1–C3 remain run-dependent/unverified. Submit mode-free verification at unchanged44e72f4d; no T3/T4/full-lifecycle/stageQA claim, changed head needs new source review.
+
+### rev-26 · 2026-10-22T10:51:23.541Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261022-1077-evidence-1
+commit: 44e72f4d593f1d2d1b318e7e6f225f1c27269c09
+scope: evidence
+findings: [{"severity":"medium","text":"Run3f8c3d6c/A-9103 exits1 on enforced owned identity duration: `the Plan view in Items 5.449 s > 5 s`. All assertions passed; correct duration policy under launch brief, then fresh source review/new configured receipt. Generic tier warnings are report-only; this gate is enforced.","file":"web/test/plan.test.ts"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-9105 independently audits exact source-clear44e72f4d/A-9103. Actual parent enforced failure quoted; C1/C2/C3ordinary pass1.812154/1.185217/1.196273s,parent5.448538s.2439passed/0fail/cancel/skip,T1/allT2exit0,Webexit1; no new functional source finding. Linuxx64 c8lon1,workers2(Web4),518s/$0.0360,hosta0c8865c reused/notrepeated,lint132/59/0refusals andgenericdiagnosticsreport-only. No Webload/T3/T4/full-lifecycle/stageQA pass. Allcriteriaunverified; owned allowance correction per brief needs fresh pushed-head source review before next mode-free verify. A-9103 stays failed.
+
+Criteria: C1 failed (Required configured acceptance failed solely on owned parent duration5.448537630s>5s; C1–C3 assertions passed, but overall run is not clear.).

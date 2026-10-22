@@ -2,8 +2,8 @@
 id: T-1099
 kind: task
 title: Fold rule batches A-8634 (R3 technique, R4–R13, R15) and A-9063 (R1–R6) into the docs, skills and brief templates
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-846
 branch: t/T-1099-fold-rule-batch-a-8634-r4-r13-and-r15
 created: 2026-10-22T08:50:55.821Z
-updated: 2026-10-22T10:47:03.353Z
+updated: 2026-10-22T10:51:47.667Z
+closed: 2026-10-22T10:51:47.667Z
 ---
 
 ## Summary
@@ -78,3 +79,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear C1–C4 at unchanged23c4154d/treee9fb0578. A-9101 audits exact-head ca43d275/A-9100:2435/2435,LinuxT1/fullfallbackT2/Weball0; host check typecheck/build/static/provenance completed,0refusals. Original four-skill frontmatter and QA-lint receipts A-9092 retained with source limits; source folds/rule compatibility A-9093. Docs-only,no new test/load repetition claim; T3/T4/QA not claimed. Report-only diagnostics qualified. No merge/enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-22T10:51:47.667Z
+
+Merged 08489d383cca916b784823b54ad57fc4b793847b onto dev.
