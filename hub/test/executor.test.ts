@@ -1,4 +1,5 @@
 // T3: real PATH-selected Node worker launch and recovery of a live worker across hub process restarts.
+import { completeJournalLines } from './journal-lines.ts';
 import { verificationFixture } from './verification-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -75,7 +76,7 @@ test('verify reports the worker PATH Node, candidate Neovim pin and platform in 
   assert.ok(log.indexOf('platform ') < log.indexOf('$ npm run typecheck'));
   const view = JSON.parse((await cland(f.root, 'task', 'view', f.item, '--json')).stdout);
   assert.equal(view.item.verify.executor, 'local');
-  const journal = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   for (const event of ['suite-result', 'verification-timing']) {
     const entry = journal.find(entry => entry.event === event && entry.id === job.id);
     assert.equal(entry.executor, 'local');

@@ -1,4 +1,5 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -52,7 +53,7 @@ process.exitCode = await runPackageSuite(process.env.CLAND_SUITE_LEASE ? 'all' :
   const queue = async () => (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   const journal = async () => {
     assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    return (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>);
+    return completeJournalLines(await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line) as Record<string, unknown>);
   };
   return { ...f, start, queue, journal, locks };
 }

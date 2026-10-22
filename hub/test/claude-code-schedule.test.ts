@@ -1,6 +1,7 @@
 // T2: production ClaudeCodeAdapter scheduling/latch with FakeClock and a replaced execFile edge.
 // Scheduler cases need only an in-memory host; the sender/journal case reopens projectHub's store.
 // No harness binary, child process or wall-clock sleep is used; native deadlines remain real.
+import { completeJournalLines } from './journal-lines.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
@@ -165,7 +166,7 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
   };
   async function records(ui: Awaited<ReturnType<typeof connectUi>>) {
     await receipt(ui.request({ type: 'hub.status', flushLogs: true }));
-    return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string });
+    return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as { event: string });
   }
   async function nextPoll() {
     const before = polls;

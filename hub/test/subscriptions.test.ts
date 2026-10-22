@@ -1,4 +1,5 @@
 // T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -343,7 +344,10 @@ test('events and progress keep one ordered digest across flavour restarts', asyn
       await idle();
       assert.equal((await inputLog()).split('Turn digest (3 entries, oldest first):').length - 1, restart ? 2 : 1);
       assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-      const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { event: string; id?: string; text?: string });
+      const journal = await eventually('event-delivery and injected journal receipts for the message', async () => {
+        const records = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line) as { event: string; id?: string; text?: string });
+        return records.some(e => e.event === 'event-delivery' && e.id === id) && records.some(e => e.event === 'injected' && e.id === id) ? records : undefined;
+      });
       assert.ok(journal.some(entry => entry.event === 'event-delivery' && entry.id === id));
       assert.ok(journal.some(entry => entry.event === 'injected' && entry.id === id));
       assert.ok(journal.filter(entry => entry.event === 'event-delivery').every(entry => entry.text === undefined));

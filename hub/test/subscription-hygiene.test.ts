@@ -1,4 +1,5 @@
 // T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -153,7 +154,7 @@ test('events have their own durable limit, preserve final events, and consume no
   assert.match(delivered.params.content, /closed/);
   assert.doesNotMatch(delivered.params.content, /review → planned|review → done/);
   await ui.request({ type: 'hub.status', flushLogs: true });
-  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.equal(journal.filter(e => e.event === 'event-limited').length, 3);
   assert.ok(journal.filter(e => e.event === 'event-delivery').every(e => e.count === 1 && e.text === undefined));
   const inbox = await ui.request({ type: 'inbox.list' });

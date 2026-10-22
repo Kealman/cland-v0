@@ -1,4 +1,5 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { mkdir, open, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -31,7 +32,7 @@ test('a real spoke verdict produces one event on pushes and journal pages, inclu
     assert.equal(page.rows.filter(r => r.text.includes(`review ${result} ·`)).length, 1, JSON.stringify(page.rows));
   }
   // Keep both durable source records: other subscribers still receive the task announcement.
-  const journal = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line));
   assert.equal(journal.filter(r => r.event === 'notification' && r.kind === 'verdict').length, 2);
   assert.equal(journal.filter(r => r.event === 'event-announced' && r.text?.includes('verdict posted')).length, 2);
   const before = (await ui.request({ type: 'events.list', filter: { kinds: ['verdict'] } })).value as EventsPage;

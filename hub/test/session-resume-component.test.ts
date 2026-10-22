@@ -1,4 +1,5 @@
 // T2 component: resume restores only available work, using in-process harnesses and protocol peers.
+import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -142,7 +143,7 @@ test('native and fresh resumes report unavailable claims, closed work, exclusive
     assert.deepEqual(view.item.holds, []);
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
-    const entry = journal.split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>).find(e => e.event === 'session-resumed' && e.session === name);
+    const entry = completeJournalLines(journal).map(line => JSON.parse(line) as Record<string, unknown>).find(e => e.event === 'session-resumed' && e.session === name);
     assert.ok(entry);
     assert.deepEqual(entry.notes, value.notes);
     assert.equal(entry.relaunched, true);

@@ -1,5 +1,6 @@
 // T3: native hard-limit error/hook contracts and an end-to-end account-limit hit.
 // Deferred eligibility uses FakeClock; permission permutations are T1 in account-permissions.test.ts.
+import { completeJournalLines } from './journal-lines.ts';
 import { accountBinaries, accountClaude, accountCodex } from './account-fixture-env.ts';
 import { FakeClock } from './fake-clock.ts';
 import { inProcessSpoke } from './harness.ts';
@@ -57,7 +58,7 @@ async function send(ui: FrameClient, name: string, text: string) {
 }
 async function journal(root: string, ui: FrameClient) {
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)) as Array<Record<string, unknown>>;
+  return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)) as Array<Record<string, unknown>>;
 }
 async function idle(ui: FrameClient, name: string) {
   return eventually(`${name} idle`, async () => {

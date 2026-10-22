@@ -1,5 +1,6 @@
 // A native app-server connection double. It scripts RPC replies and emits production protocol
 // notifications; the Codex adapter still owns admission, snapshots, readback and recovery.
+import { completeJournalLines } from '../journal-lines.ts';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
@@ -123,7 +124,7 @@ export async function scriptedCodex(t: TestContext) {
   }
   async function records() {
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; ids?: string[]; session?: string; error?: string });
+    return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; ids?: string[]; session?: string; error?: string });
   }
   async function log() { await records(); return readFile(join(root, '.cland/log/hub.log'), 'utf8'); }
   async function agents() { return ((await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> }).messages; }

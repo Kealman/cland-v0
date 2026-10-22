@@ -1,4 +1,5 @@
 // T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import { completeJournalLines } from './journal-lines.ts';
 import { FakeClock } from './fake-clock.ts';
 import { componentHub } from './subscription-hub.ts';
 // Archive through the real hub, a real spoke and the human CLI; fakes sit at the harness boundary.
@@ -71,7 +72,7 @@ for (const equalHeldAt of [false, true]) test(equalHeldAt
   const closed = (await ui.request({ type: 'task.view', item: 'T-3' })).value as { item: { holds: unknown[] } };
   assert.deepEqual(closed.item.holds, [], 'stop releases verifier holds');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const records = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+  const records = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
   assert.deepEqual(records.filter(r => r.event === 'session-archived').map(r => [r.session, r.by, r.rule]).sort(), [['impl', 'rule', 'item'], ['rev', 'rule', 'item'], ['tester', 'rule', 'item']]);
 });
 
@@ -283,7 +284,7 @@ test('prune CLI and Coordinator tool delete only old archived records and retain
   assert.equal(journal.code, 0, journal.stderr);
   assert.match(journal.stdout, /session-launched/);
   assert.match(journal.stdout, /old/);
-  const records = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+  const records = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
   assert.deepEqual(records.filter(r => r.event === 'sessions-pruned').map(r => r.names), [['old']]);
 });
 
@@ -367,7 +368,7 @@ test('archive refuses live and unlaunched rows, hides stopped rows, retains thei
   const repeat = await cland(root, 'session', 'archive', 'old', '--json');
   assert.equal(repeat.code, 0, repeat.stderr);
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+  const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
   for (const event of ['session-launched', 'session-stopped', 'session-archived']) assert.ok(journal.some(e => e.event === event && e.session === 'old'), event);
   const mark = journal.filter(e => e.event === 'session-archived' && e.session === 'old');
   assert.equal(mark.length, 1);
@@ -430,7 +431,7 @@ for (const by of ['hand', 'rule'] as const) test(`fresh resume clears a durable 
   assert.equal(after.process.sessionId, 'old-id');
   assert.deepEqual(((await ui.request({ type: 'session.list', archived: true })).value as List).processes, []);
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+  const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
   const unarchived = journal.find(e => e.event === 'session-unarchived');
   assert.equal(unarchived?.by, by);
 });

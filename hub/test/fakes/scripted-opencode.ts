@@ -1,5 +1,6 @@
 // Native HTTP/SSE transport double. Production OpenCode watch/inject and the real hub/spoke
 // handle every frame; only process lifecycle and the server's transport are scripted.
+import { completeJournalLines } from '../journal-lines.ts';
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -161,7 +162,7 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false,
   await coord.waitForPresence(['coord']);
   async function records() {
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; session?: string });
+    return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; session?: string });
   }
   async function log() { await records(); return readFile(join(root, '.cland/log/hub.log'), 'utf8'); }
   async function send(text: string, bySender = false) {

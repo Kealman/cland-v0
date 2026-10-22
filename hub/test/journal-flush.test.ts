@@ -1,4 +1,5 @@
 // T1: dispatcher/core/store assertions run in-process with deterministic time.
+import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHubBase } from '../src/hub/server.ts';
@@ -82,4 +83,18 @@ test('a log drain barrier waits, drains again on repetition, and times out while
   assert.equal(result?.ok, false);
   assert.match(String(result?.error), /log drain exceeded 5000 ms/);
   assert.equal((await request('after-timeout')).ok, true);
+});
+
+// A producer may start another append after the barrier has drained its prefix.
+test('live journal observations defer every unfinished tail and retain malformed complete records', () => {
+  const first = '{"event":"event-delivery","id":"message"}\n';
+  const next = '{"event":"injected","id":"message"}\n';
+  for (let end = 0; end < next.length; end++) {
+    const records = completeJournalLines(first + next.slice(0, end)).map(line => JSON.parse(line));
+    assert.deepEqual(records, [{ event: 'event-delivery', id: 'message' }]);
+  }
+  assert.deepEqual(completeJournalLines(first + next).map(line => JSON.parse(line)), [
+    { event: 'event-delivery', id: 'message' }, { event: 'injected', id: 'message' },
+  ]);
+  assert.throws(() => completeJournalLines(first + '{broken}\n').map(line => JSON.parse(line)), SyntaxError);
 });

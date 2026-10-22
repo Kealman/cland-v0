@@ -1,4 +1,5 @@
 // T2: real CLI and MCP frames close during gated inspection; no worker or native process runs.
+import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
@@ -85,7 +86,7 @@ for (const [transport, change] of [['cli', 'none'], ['mcp', 'none'], ['mcp', 'ro
   if (change === 'claim') assert.match(receipt.text, /own item topic/);
   if (change === 'candidate') assert.match(receipt.text, /candidate inspection refused/);
   if (change === 'reserved') assert.match(receipt.text, /verify-all-reserved.*mode hub-only/);
-  const journal = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.ok(journal.some(e => e.event === 'audit' && e.error === 'the connection closed before the answer'));
   assert.equal(journal.filter(e => e.event === 'verification-submission' && e.request === 'submission' && e.outcome === outcome).length, 1);
   await hub.stop();

@@ -39,7 +39,10 @@ async function writeConfig(root: string, hygiene: Record<string, number>): Promi
 
 /** Every line of the journal, each parsed (a line that does not parse fails the test). */
 async function journalLines(root: string): Promise<Array<Record<string, unknown> & { ts: string; event: string }>> {
-  const text = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  const text = await eventually('a complete journal snapshot after the accepted records drain', async () => {
+    const text = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+    return text.endsWith('\n') ? text : undefined;
+  });
   assert.ok(text.endsWith('\n'), 'every record is a whole line');
   return text
     .split('\n')

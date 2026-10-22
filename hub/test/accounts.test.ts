@@ -1,4 +1,5 @@
 // T3: Codex/OpenCode native launch and attach environment contracts; retained native conversations are re-found after hub teardown.
+import { completeJournalLines } from './journal-lines.ts';
 import { accountBinaries } from './account-fixture-env.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -174,7 +175,7 @@ test('launch and usage journal rows carry the account after the flush barrier; a
   const p = await f.launch('journalled', { role: 'implementer', account: 'codex-b' });
   await f.ui.waitFor(frame => frame.type === 'session.usage' && frame.sessionId === p.sessionId);
   assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const records = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const records = completeJournalLines(await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.equal(records.find(r => r.event === 'session-launched' && r.sessionId === p.sessionId)?.account, 'codex-b');
   assert.equal(records.find(r => r.event === 'session-usage' && r.sessionId === p.sessionId)?.account, 'codex-b');
   const read = await clandWithEnv(f.root, { CLAND_SESSION_ID: p.sessionId, CLAND_SESSION_NAME: p.name }, 'account', 'list', '--json');
@@ -258,7 +259,7 @@ for (const xdg of [true, false]) test(`unassigned OpenCode launches retain the p
   assert.ok(p.attach?.includes(`OPENCODE_DB='${database}'`));
   assert.equal(p.account, null);
   await f.ui.request({ type: 'hub.status', flushLogs: true });
-  const journal = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.equal(journal.find(r => r.event === 'session-launched' && r.sessionId === p.sessionId)?.database, database);
   await f.stop();
   const { discovery } = await projectHub(t, f.root, { ...f.env, XDG_DATA_HOME: join(f.root, 'changed-data') }, { scratchAccountPaths: f.scratchAccountPaths });

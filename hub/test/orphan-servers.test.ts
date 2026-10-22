@@ -1,4 +1,5 @@
 // T3: hub startup orphan sweeping, verified PID ownership, server stop/relaunch and deleted-root lifecycle.
+import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
@@ -187,7 +188,7 @@ test('stop and relaunch await server death across the harness adapters', async t
     assert.equal(pidAlive(second.pid), false, 'stop awaits the replacement server');
     if (child !== null) assert.equal(pidAlive(child), false, 'stop also ends a descendant that ignores SIGTERM');
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; pid?: number; forced?: boolean });
+    const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as { event: string; pid?: number; forced?: boolean });
     assert.ok(journal.some(entry => entry.event === 'harness-ended' && entry.pid === first.pid && entry.forced));
     assert.ok(journal.some(entry => entry.event === 'harness-ended' && entry.pid === second.pid && entry.forced));
     assert.equal(journal.some(entry => entry.event === 'harness-exited'), false, 'an intentional stop/relaunch is not a crash');

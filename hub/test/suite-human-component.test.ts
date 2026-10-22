@@ -1,6 +1,7 @@
 // T2: real socket frames prove human-slot TTL and integrated/human/item queue order.
 // FakeClock and semantic local completion receipts replace package workers; native
 // compatibility leases, --force, fallback and signals stay in suite-human.
+import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
@@ -48,7 +49,7 @@ async function fixture(t: TestContext) {
     receipts.set(id, { state: 'done', code: 0, finished: clock.now().toISOString() });
     await tick();
   };
-  const journal = async () => { await ui.request({ type: 'hub.status', flushLogs: true }); return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)); };
+  const journal = async () => { await ui.request({ type: 'hub.status', flushLogs: true }); return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)); };
   const results = async () => ((await ui.request({ type: 'topic.history', topic })).value as { messages: { text: string }[] }).messages.filter(m => m.text.startsWith('suite result '));
   return { root, clock, discovery: hub.discovery, ui, queue, tick, launch, delivered, finish, journal, results, head, hold: (value: boolean) => { held = value; } };
 }

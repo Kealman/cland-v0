@@ -1,5 +1,6 @@
 // T2: provider-list races and foreign lease/key ownership use scripted machines.
 // Candidate, snapshot and process facts are injected; no hub, spoke, SSH or watchdog child.
+import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -127,7 +128,7 @@ async function sameNameCase(t: TestContext, failBeforeRelease = false) {
   } catch (error) {
     if (!failBeforeRelease) for (const f of [first, second]) {
       await flushProjectLogs(t, f.root);
-      t.diagnostic((await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(line => /executor-|suite-/.test(line)).join('\n'));
+      t.diagnostic(completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).filter(line => /executor-|suite-/.test(line)).join('\n'));
     }
     throw error;
   } finally {
@@ -239,7 +240,7 @@ test('all remote admission refusals persist a local job, one warn notice and one
   const notices = history.filter(m => m.text.includes('droplet unavailable'));
   assert.equal(notices.length, 1); assert.equal(notices[0]!.severity, 'warn');
   assert.match(notices[0]!.text, /422/);
-  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.equal(journal.filter(r => r.event === 'verification-executor-fallback' && r.id === run.id).length, 1);
   assert.equal(warningSeverity('inbox', { kind: 'executor-fallback' }), 'warn');
   const events = JSON.stringify((await f.ui.request({ type: 'events.list' })).value);

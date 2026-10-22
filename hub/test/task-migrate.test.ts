@@ -1,4 +1,5 @@
 // T3: offline lock/PID admission, real restart ID recovery and Git landing of pre-migration branches.
+import { completeJournalLines } from './journal-lines.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { runTask } from '../src/cli/task.ts';
 import { inProcessSpoke, projectHub } from './harness.ts';
@@ -183,7 +184,7 @@ test('offline migration matches its preview, preserves prose and resolves old id
   assert.equal(list.code, 0, list.stderr);
   assert.deepEqual(JSON.parse(list.stdout).items.map((i: { id: string }) => i.id), ['R-1', 'E-2', 'C-3', 'T-4', 'T-5', 'C-6', 'C-7', 'C-8']);
   assert.equal((await newUi.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const rows = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const rows = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   const records = rows.filter(row => row.event === 'task-migrated');
   assert.equal(records.length, 1);
   assert.equal(records[0].by, 'human');

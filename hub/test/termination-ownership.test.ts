@@ -1,5 +1,6 @@
 // T3: process lifecycle: concurrent session stop and doctor terminate one harness tree;
 // competing doctors reap one deleted hub process and its descendants exactly once.
+import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from '../src/database.ts';
@@ -32,11 +33,11 @@ test('session stop and doctor share one termination owner and report the tree on
   assert.equal(pidAlive(pid), false);
   assert.equal((await readFile(log, 'utf8')).match(/SIGTERM/g)?.length, 1, 'only the owner signals the harness');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const events = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const events = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.equal(events.filter(e => e.pid === pid && ['harness-ended', 'orphan-ended'].includes(e.event)).length, 1, 'one completion result');
   await sleep(100);
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const settled = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const settled = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.equal(settled.filter(e => e.pid === pid && ['harness-ended', 'orphan-ended'].includes(e.event)).length, 1, 'still one completion after settling');
   assert.ok(events.find(e => e.pid === pid && e.event === 'harness-ended').pids.every((child: number) => !pidAlive(child)), 'no captured descendant survives');
   assert.doesNotMatch(fixed.stdout, new RegExp(`ended pid ${pid}:`), 'the doctor observes settlement without reporting another kill');

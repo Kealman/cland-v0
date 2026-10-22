@@ -1,5 +1,6 @@
 // T2: one real CLI/socket frame proof for cover permissions, queue/status rendering
 // and reload. Seeded suite receipts avoid workers; class permutations live in T1.
+import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import { verificationFixture } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
@@ -209,7 +210,7 @@ test('cover CLI enforces role permissions, journals classifications and renders 
   const human = await cland(f.root, 'verify', 'classify', 'cover-11', 'load-flake', '--note', 'Human confirms load evidence', '--json'); assert.equal(human.code, 0, human.stderr);
   assert.equal(JSON.parse(human.stdout).cover.derivedCause, 'test-failure');
   await f.ui.request({ type: 'hub.status', history: true, flushLogs: true });
-  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   const changes = journal.filter(e => e.event === 'verification-cover-classified'); assert.equal(changes.length, 2); assert.deepEqual(changes[0].cover, record); assert.deepEqual(changes[1].cover, JSON.parse(human.stdout).cover);
   await spoke.close(); await f.hub.stop();
   const next = await projectHub(t, f.root, {}, { clock: f.clock, compatibility: f.compatibility, durationContext: null }); const ui = await connectUi(t, next.discovery);
@@ -255,7 +256,7 @@ test('a recovered integrated receipt posts the derived cover to the domain journ
   await f.clock.advance(1000);
   await f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { id: string }).id === 'suite:cover-0');
   const status = (await f.ui.request({ type: 'hub.status', history: true, flushLogs: true })).value as HubStatus;
-  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   const receipt = journal.find(e => e.event === 'suite-result' && e.id === 'cover-0');
   assert.deepEqual(receipt.cover, status.suites![0]!.cover); assert.equal(receipt.executor, 'local');
   for (const event of ['suite-result', 'verification-timing']) { const entry = journal.find(e => e.event === event && e.id === 'cover-0'); assert.equal(entry.executor, 'local'); assert.deepEqual(entry.platform, status.suites![0]!.platform); }

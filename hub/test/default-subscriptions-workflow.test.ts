@@ -1,4 +1,5 @@
 // T3: native Git worktree lifecycle and committed-head review/QA provenance drive the ready event.
+import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -83,15 +84,15 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   assert.equal(deliveries.length, 1, JSON.stringify(deliveries));
   assert.equal(deliveries[0]?.detail?.digest, 'now');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line));
   assert.equal(journal.filter(e => e.event === 'event-delivery' && e.id === plannedEvent.id && e.to?.includes('coord') && e.digest === 'turn').length, 1, 'the setup planned event is accounted for separately');
   assert.equal(journal.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord') && e.id !== plannedEvent.id).length, 1);
   await eventually('ready acknowledgement recorded', async () => {
     await ui.request({ type: 'hub.status', flushLogs: true });
-    const records = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const records = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line));
     return records.some(e => e.event === 'acked' && e.id === deliveries[0]?.id) || undefined;
   });
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  const settled = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line));
   assert.equal(settled.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord') && e.id !== plannedEvent.id).length, 1, 'still one ready delivery after settling');
 });

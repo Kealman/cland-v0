@@ -747,6 +747,15 @@ assert.ok(after !== undefined && after !== before);
 assert.equal(await connectedAt('beta'), betaBefore);
 ```
 
+For live journal file observations, `hub.status { flushLogs: true }` drains the
+accepted prefix; later producers can already be appending when the reply arrives.
+Use `completeJournalLines` from `hub/test/journal-lines.ts` before parsing: it
+defers only the unterminated tail and still fails on malformed complete JSON.
+Wait with `eventually` for the exact record ids/events being asserted, keeping the
+final assertions. `subscription-frame.test.ts` and `subscriptions.test.ts` wait
+for both `event-delivery` and `injected` for their message id; the T1 regression
+in `journal-flush.test.ts` exercises every cut of a following record.
+
 Prefer a frame, journal receipt or fake clock when one exists. A negative assertion
 needs a positive completion boundary or fake time; an already-true predicate does
 not prove that nothing happens later. Existing intentional expiry waits remain

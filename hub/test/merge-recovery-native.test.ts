@@ -1,4 +1,5 @@
 // T3: native Git publication/rollback and session-worktree cleanup; SIGKILL after ref movement proves process restart recovery.
+import { completeJournalLines } from './journal-lines.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -81,7 +82,7 @@ test('restart after local ref movement but before territory push republishes the
   const retried = json<{ commit: string; cleanup: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
   const diagnostics = async () => {
     await flushProjectLogs(t, root);
-    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(line => /merge|worktree|cleanup-peer/.test(line));
+    const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(line => /merge|worktree|cleanup-peer/.test(line));
     return `${JSON.stringify(retried)}\n${journal.join('\n')}`;
   };
   assert.equal(retried.commit, local);

@@ -1,5 +1,6 @@
 // T2: usage journal policy with fake adapters, fake publication time and real socket edges.
 // Native token/price parsing is in the adapter contracts; restart recovery remains in session-native-lifecycle.
+import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -12,7 +13,7 @@ import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
 
 async function records(root: string, ui: FrameClient): Promise<Array<Record<string, unknown>>> {
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(r => r.event === 'session-usage');
+  return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line)).filter(r => r.event === 'session-usage');
 }
 const total = (n: number) => ({ totalTokens: n * 12, inputTokens: n * 4, outputTokens: n * 2, reasoningTokens: n, cacheReadTokens: n * 6, cacheWriteTokens: 0 });
 const limits = (usedPercent: number) => ({ primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null });

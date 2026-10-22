@@ -10,6 +10,7 @@
 // - uncertain native input: native missing-result classification (hub retry policy is T2).
 // Parsing/reconciliation tables live in codex-native.test.ts; hub composition lives in
 // adapter-composition.test.ts. Sparse account-read ordering remains in account-limits.test.ts.
+import { completeJournalLines } from './journal-lines.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,7 +51,7 @@ test('an Implementer begins on its launch brief after the clause in the first Co
   assert.equal(recorded?.stage, 'injected');
   await eventually('carried brief stages journalled', async () => {
     assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
-    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
+    const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
     return ['send', 'acked', 'injected'].every(event => journal.some(entry => entry.id === recorded!.id && entry.event === event)) || undefined;
   });
 });
@@ -71,7 +72,7 @@ test('an early Codex hello does not inject its brief when the native first turn 
   assert.ok(!ui.frames.some(frame => frame.type === 'delivery' && frame.message === recorded!.id && frame.stage === 'injected'));
   await eventually('refused brief journalled as dropped', async () => {
     assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
-    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
+    const journal = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
     assert.ok(!journal.some(entry => entry.id === recorded!.id && entry.event === 'injected'));
     return journal.some(entry => entry.id === recorded!.id && entry.event === 'dropped') || undefined;
   });

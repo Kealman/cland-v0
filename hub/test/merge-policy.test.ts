@@ -1,4 +1,5 @@
 // T3: native Git worktrees, refs and rebases prove merge admission and repository landing boundaries.
+import { completeJournalLines } from './journal-lines.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -150,7 +151,7 @@ test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   assert.match(journal, /"override":"Human checked rescue output"/);
-  const skipped = journal.split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; criteria?: string[]; override?: string }).filter(event => event.event === 'merge-criteria-overridden');
+  const skipped = completeJournalLines(journal).map(line => JSON.parse(line) as { event: string; id?: string; criteria?: string[]; override?: string }).filter(event => event.event === 'merge-criteria-overridden');
   assert.ok(skipped.length > 0);
   assert.ok(skipped.every(event => event.id === work.id && event.override === 'Human checked rescue output'));
   assert.deepEqual(skipped[0]!.criteria, ['C1: Works offline (not done, not verified)']);

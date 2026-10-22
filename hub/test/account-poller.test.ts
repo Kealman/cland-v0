@@ -1,5 +1,6 @@
 // T3: native usage-command contract, sanitized child environments and process-group timeout cleanup.
 // Scheduling rules live in account-poller-clock.test.ts; only native process deadlines use real time.
+import { completeJournalLines } from './journal-lines.ts';
 import { accountClaude, accountCodex } from './account-fixture-env.ts';
 import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
@@ -61,7 +62,7 @@ test('startup polls idle Claude and Codex through their harness and refresh keep
 });
 
 async function rows(path: string): Promise<Array<Record<string, unknown>>> {
-  return (await readFile(path, 'utf8').catch(() => '')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+  return completeJournalLines(await readFile(path, 'utf8').catch(() => '')).filter(Boolean).map(line => JSON.parse(line));
 }
 async function pollJournal(root: string, ui: Awaited<ReturnType<typeof connectUi>>) {
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);

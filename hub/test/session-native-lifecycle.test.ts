@@ -1,6 +1,7 @@
 // T3: real harness stop/relaunch and native cwd/thread/history migration during pool handoff;
 // child hooks/native events including a Codex child before launch admission; usage re-publication
 // after a hub-process restart, including held-progress recovery. Retained in T3 pending T-707/T-708 (T-695 Coordinator decision).
+import { completeJournalLines } from './journal-lines.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -19,7 +20,7 @@ function startUsageDaemon(t: TestContext, root: string, env: Record<string, stri
 
 async function records(root: string, ui: FrameClient): Promise<Array<Record<string, unknown>>> {
   assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
-  return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(r => ['session-launched', 'session-model', 'subagent-launched', 'session-usage'].includes(r.event));
+  return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line)).filter(r => ['session-launched', 'session-model', 'subagent-launched', 'session-usage'].includes(r.event));
 }
 async function usageRecords(root: string, ui: FrameClient) { return (await records(root, ui)).filter(r => r.event === 'session-usage'); }
 async function pooledHarness(t: TestContext, harness: string) {

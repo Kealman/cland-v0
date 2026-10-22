@@ -1,5 +1,6 @@
 // T3: native Codex rate-limit notification/read contract and Claude mod filtering contract.
 // Pure ordering and persistence live in account-limits-unit.test.ts; component coalescing uses fake time.
+import { completeJournalLines } from './journal-lines.ts';
 import { accountClaude, accountCodex } from './account-fixture-env.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +29,7 @@ async function accounts(ui: FrameClient) {
 }
 async function journal(root: string, ui: FrameClient) {
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  return (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)).filter(r => r.event === 'account-limits');
+  return completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).filter(r => r.event === 'account-limits');
 }
 const five = (percentUsed: number) => ({ kind: 'five_hour', percentUsed, resetsAt: '2026-10-15T04:03:00.000Z' });
 test('fake Codex pushes account windows and sparse per-model updates while reads are held', async t => {

@@ -1,6 +1,7 @@
 // T3: one Claude Code process/spoke frame proof confirms native ordered digest consumption.
 // Harness-specific steering transport is covered by codex-adapter and opencode-adapter;
 // subscription rules and restart permutations live in subscriptions/subscription-hygiene (T2).
+import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -58,7 +59,10 @@ test('Claude Code consumes one ordered subscription digest through the native fr
   await idle();
   assert.equal((await inputLog()).split('Turn digest (3 entries, oldest first):').length - 1, 1);
   assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
-  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = await eventually('event-delivery and injected journal receipts for the message', async () => {
+    const records = completeJournalLines(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
+    return records.some(e => e.event === 'event-delivery' && e.id === id) && records.some(e => e.event === 'injected' && e.id === id) ? records : undefined;
+  });
   assert.ok(journal.some(e => e.event === 'event-delivery' && e.id === id));
   assert.ok(journal.some(e => e.event === 'injected' && e.id === id));
   assert.ok(journal.filter(e => e.event === 'event-delivery').every(e => e.text === undefined));

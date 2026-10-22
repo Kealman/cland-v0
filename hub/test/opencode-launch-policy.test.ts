@@ -1,4 +1,5 @@
 // T2: production launch against an in-process HTTP server; native process creation/identity are faked.
+import { completeJournalLines } from './journal-lines.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
@@ -130,7 +131,7 @@ test('OpenCode role launch frames preserve native policy for inherited and expli
     assert.deepEqual(Object.keys(config).sort(), ['$schema', 'mcp']);
   }
   await ui.request({ type: 'hub.status', flushLogs: true });
-  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line));
   const records = journal.filter(row => row.event === 'session-launched');
   assert.equal(records.length, 2);
   for (const record of records) assert.deepEqual(record.policy.rules, []);

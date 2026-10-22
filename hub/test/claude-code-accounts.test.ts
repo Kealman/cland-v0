@@ -1,5 +1,6 @@
 // T3: native Claude supervisor contract: per-directory commands, authentication hooks, PID discovery and re-find after hub teardown.
 // FakeClock owns directory schedules; child transport deadlines remain real.
+import { completeJournalLines } from './journal-lines.ts';
 import { accountClaude, accountFixtureEnvironment } from './account-fixture-env.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -264,7 +265,7 @@ test('a signed-out account has one directory notice and event while another acco
   assert.equal(rows.find(p => p.name === b.name)?.stateReason, 'signed-out');
   assert.equal(rows.find(p => p.name === a.name)?.stateReason, undefined);
   assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   const events = journal.filter(e => e.event === 'claude-signed-out');
   assert.equal(events.length, 1);
   assert.equal(events[0].account, 'claude-b');
@@ -322,7 +323,7 @@ test('logged-out turns fail authentication and a per-account latch survives the 
     assert.equal(current.stateReason, 'signed-out');
   }
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   assert.equal(journal.filter(e => e.event === 'claude-signed-out' && e.configDir === f.dirs.b).length, 1);
   const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string }> };
   assert.equal(history.messages.filter(m => m.kind === 'claude-signed-out').length, 1);

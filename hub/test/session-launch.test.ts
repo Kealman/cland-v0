@@ -1,5 +1,6 @@
 // T2: launch role/brief policy through an in-process adapter and MCP peer; CLI forwarding is the CLI subject.
 // Native first-turn hook ordering and environment-free MCP identity live in session-launch-lifecycle.test.ts.
+import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -32,7 +33,7 @@ test('in-process launch carries the Implementer clause and brief exactly once', 
   await peer.waitForPresence(['impl-brief']);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { event: string; id?: string; from?: string; to?: string[] });
+  const journal = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line) as { event: string; id?: string; from?: string; to?: string[] });
   const sent = journal.find(event => event.event === 'send' && event.from === 'hub' && event.to?.includes('impl-brief'))!;
   assert.ok(sent);
   assert.ok(journal.some(event => event.event === 'acked' && event.id === sent.id));

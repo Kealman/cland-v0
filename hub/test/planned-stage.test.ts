@@ -1,4 +1,5 @@
 // T2: stage rules through injected Git, store reopen and in-process spoke/socket edges.
+import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import { beforeDirectories } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -102,7 +103,7 @@ test('pending approval moves nothing; approval moves backlog tasks and journals 
     return moves.length === 2 ? moves : undefined;
   }).then(moves => assert.deepEqual(moves.map(m => m.text).sort(), [f.a, f.b].map(i => `event · task · ${i.id} status changed backlog → planned`).sort()));
   assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
   const moves = journal.filter(row => row.event === 'task-written' && row.op === 'planned');
   assert.deepEqual(moves.map(row => [row.id, row.by]), [[f.a.id, 'hub'], [f.b.id, 'hub']]);
 });

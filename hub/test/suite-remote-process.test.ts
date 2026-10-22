@@ -1,6 +1,7 @@
 // T3: delivered remote workers exit before their receipts release provider capacity.
 // Real shell completion with failed spend settlement proves the process receipt
 // boundary; unconfirmed deletion policy lives in suite-accounting (T2).
+import { completeJournalLines } from './journal-lines.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -76,7 +77,7 @@ test('finished remote runs free both budget slots despite failed spend settlemen
     assert.match((await finished(f, failing.topic, b.id)).text, /exit 1/);
     await eventually('both remote waiters admitted', async () => {
       await f.ui.request({ type: 'hub.status', flushLogs: true });
-      const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+      const journal = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
       return pending.every(job => journal.some(entry => entry.event === 'verification-admitted' && entry.id === job.id)) ? true : undefined;
     }, 20000);
     const q = await queue(f);

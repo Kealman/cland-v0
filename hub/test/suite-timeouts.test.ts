@@ -1,5 +1,6 @@
 // T3: command stall, cancellation and inherited-pipe cleanup prove real process-tree termination.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -211,7 +212,7 @@ clearInterval(heartbeat);process.exit(0);`);
   assert.equal(pidAlive(foreign.pid!),true);
   assert.match((await eventually('successor after incomplete cleanup',async()=>(await f.results()).find(m=>m.id===`suite:${next.id}`))).text,/exit 0/);
   await f.ui.request({type:'hub.status', history: true,flushLogs:true});
-  const journal=(await readFile(join(f.root,'.cland/journal.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line));
+  const journal=completeJournalLines(await readFile(join(f.root,'.cland/journal.jsonl'), 'utf8')).map(line=>JSON.parse(line));
   assert.equal(journal.filter(r=>r.event==='verification-cleanup-incomplete'&&r.id===job.id).length,1);
   assert.equal((await warnings()).length,1);
 });

@@ -1,5 +1,6 @@
 // T2: model journal rules over in-process flavours and real protocol frames.
 // Native model selection and child parsing: session-native-lifecycle.test.ts and each adapter contract.
+import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -11,7 +12,7 @@ import type { HarnessProcessView } from '../src/protocol.ts';
 
 async function records(root: string, ui: FrameClient): Promise<Array<Record<string, unknown>>> {
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+  return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line));
 }
 
 test('model changes journal once with their launch identity across flavours', async t => {
