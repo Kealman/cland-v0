@@ -58,4 +58,6 @@ export const treeActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
   { action: 'tree-open', label: 'Unfold or enter children' }, { action: 'tree-close', label: 'Fold or go to parent' },
   { action: 'tree-toggle', label: 'Toggle item fold' }, { action: 'tree-done', label: 'Hide done items' },
   { action: 'tree-archive', label: 'Show archived roots' },
+  { action: 'accept', label: 'Enter card or return to tree' },
+  { action: 'dismiss', label: 'Return from card or close drawer' },
 ];

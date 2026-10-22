@@ -21,7 +21,9 @@ export function listenForShortcuts(run: (action: Shortcut) => void, context: () 
     if (!action) return;
     if (action === 'leader' && event.target instanceof Element && event.target.closest('[data-fold-toggle]')) return;
     if ((action === 'fold-close' || action === 'fold-open') && !(event.target instanceof Element && event.target.closest('[data-fold-block]'))) return;
-    if (inShell && ['accept', 'next-kind', 'previous-kind', 'next-result', 'previous-result'].includes(action)) return;
+    const cardAccept = mode === 'items' && action === 'accept' && event.target instanceof Element &&
+      (event.target.getAttribute('role') === 'treeitem' || event.target.getAttribute('aria-label') === 'Item card');
+    if (inShell && !cardAccept && ['accept', 'next-kind', 'previous-kind', 'next-result', 'previous-result'].includes(action)) return;
     if (mode === 'help' && action !== 'dismiss' && action !== 'palette') return;
     event.preventDefault();
     if (action === 'leader') { prefix = true; leaderTarget = event.repeat ? null : event.target; return; }

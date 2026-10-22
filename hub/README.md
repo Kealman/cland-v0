@@ -2380,6 +2380,13 @@ For open items, card facts also travel in snapshots, summary lists and task delt
   or `Decided` (optional Markdown heading/emphasis), using the Lua card's summary
   rule. Its single-line text preview is capped at 300 code points. Both prose
   previews end with `…` when truncated; full comments stay in `task.view`.
+- `created`, `branch`, `regression_of` and `follows` supply the card's dates and
+  relations. `verify` is null or the latest compact receipt: `{id, executor,
+  state, result, head, finished, cached?:true}`. It omits artifact paths and the
+  full cache lineage. These transport-only fields travel in open item snapshots
+  and deltas; ordinary `task.list` summaries omit them to protect Neovim's first
+  payload budget. By-id pages include them for any item; closed rows receive
+  them only on that page.
 - `agents_text: {sections, words}` lists the body's level-two headings in order
   and its whitespace-delimited word count, matching `explorer_summary.outline`.
 - Every container with an accepted plan, open or closed, carries `stages`, in plan order:
@@ -2412,7 +2419,7 @@ The 2026-10-21 T-1052 decision keeps the items snapshot cap at 1 MiB. Only open
 items carry `summary.text` in ordinary snapshots, lists and deltas. Closed items
 retain provenance and the inexpensive fields. Read their full text in batches:
 `{type:"task.list", id:"closed-text", projection:"summary", ids:["T-12","T-14"]}`
-returns `{items:[{id,summary,agents_text,decision?,verdicts}], remaining:[...]}`.
+returns `{items:[{id,summary,agents_text,decision?,verdicts,created,branch,regression_of?,follows?,verify}], remaining:[...]}`.
 The 2026-10-21 T-1058 Coordinator decision puts closed items' card facts on these
 same pages: verdict reasons, rounds and scopes, Decision previews and text outlines
 stay out of closed snapshot/list/delta rows. Stage facts remain on all planned

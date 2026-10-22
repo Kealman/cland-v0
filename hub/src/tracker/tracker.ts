@@ -159,8 +159,16 @@ export type CardVerdict = IndexedVerdict & { reason?: string; round?: number };
 
 export type ItemSummary = CardFields & IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & Partial<ExplorerFields> & { child_counts?: ChildCounts; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: CardVerdict[]; verdictBase: string | null };
 
-/** Explorer rows; detail, plans, verification and index bookkeeping stay in task.view. */
-export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer' | 'agents_text' | 'decision' | 'stages'> & {
+/** Compact transport facts; closed cards receive these only in bounded by-id pages. */
+export type CardTransport = {
+  created?: string;
+  branch?: string | null;
+  regression_of?: string;
+  follows?: string[];
+  verify?: Pick<VerifyResult, 'id' | 'executor' | 'state' | 'result' | 'head' | 'finished'> & { cached?: boolean } | null;
+};
+
+export type ExplorerSummary = CardTransport & Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer' | 'agents_text' | 'decision' | 'stages'> & {
   open_blockers: string[];
   rank?: number;
   verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round?: number; reason?: string }>;
@@ -2104,10 +2112,20 @@ export class Tracker {
       ...(card ? {round:v.round,...(v.scope ? {scope:v.scope} : {}),...(v.reason !== undefined ? {reason:v.reason} : {})} : {})}));
   }
 
-  listSummaries(filter: ListFilter = {}): ExplorerSummary[] {
+  #cardTransport(i: ItemSummary): CardTransport {
+    const verify = i.verify;
+    return {created:i.created,branch:i.branch,
+      ...(i.regression_of ? {regression_of:i.regression_of} : {}),
+      ...(i.follows?.length ? {follows:i.follows} : {}),
+      ...(verify ? {verify:{id:verify.id,executor:verify.executor,state:verify.state,result:verify.result,
+        head:verify.head,finished:verify.finished,...(verify.cached ? {cached:true} : {})}} : {verify:null})};
+  }
+
+  listSummaries(filter: ListFilter = {}, { card = false }: { card?: boolean } = {}): ExplorerSummary[] {
     return this.list(filter).map(i => {
       return {
         id:i.id,kind:i.kind,title:i.title,state:i.state,
+        ...(card && i.state === 'open' ? this.#cardTransport(i) : {}),
         ...(i.child_counts ? {child_counts:i.child_counts} : {}),
         ...(i.summary ? {summary:i.summary} : {}),...(i.agents_text ? {agents_text:i.agents_text} : {}),...(i.stages ? {stages:i.stages} : {}),...(i.decision ? {decision:i.decision} : {}),...(i.blocked !== undefined ? {blocked:i.blocked} : {}),
         ...(i.derived_status ? {derived_status:i.derived_status} : {}),...(i.glyph ? {glyph:i.glyph} : {}),...(i.layer ? {layer:i.layer} : {}),
@@ -2122,7 +2140,7 @@ export class Tracker {
   }
 
   /** Explicit by-id pages carry closed summary text and card facts; the envelope stays below 256 KiB. */
-  summaryPage(ids: string[]): { items: Array<Pick<CardFields,'agents_text' | 'decision'> & {id: string; summary: SummaryText; verdicts: ExplorerSummary['verdicts']}>; remaining: string[] } {
+  summaryPage(ids: string[]): { items: Array<CardTransport & Pick<CardFields,'agents_text' | 'decision'> & {id: string; summary: SummaryText; verdicts: ExplorerSummary['verdicts']}>; remaining: string[] } {
     this.#ensureExplorer();
     const resolved = [...new Set(ids.map(raw => {
       const id = this.resolveId(raw);
@@ -2134,7 +2152,7 @@ export class Tracker {
     for (const id of resolved) {
       const source = this.#ensureExplorer().rows.get(id)!;
       const {agents_text,decision} = this.#cards.get(id) ?? {};
-      const row = {id,summary:this.#summaries.get(id) ?? {text:'',from:null,provenance:null},
+      const row = {...this.#cardTransport(source),id,summary:this.#summaries.get(id) ?? {text:'',from:null,provenance:null},
         ...(agents_text ? {agents_text} : {}),...(decision ? {decision} : {}),verdicts:this.#compactVerdicts(source.verdicts,true)};
       const size = Buffer.byteLength(JSON.stringify(row)) + 1;
       if (bytes + size > 250 * 1024) {

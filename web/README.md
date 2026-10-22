@@ -130,6 +130,8 @@ using the hub's counts when only part of the closed child list is loaded.
 | `za` | Toggle the row's fold (a leaf folds its parent) |
 | `D` | Hide/show done items |
 | `A` | Show/hide archived roots |
+| `Enter` | Enter the card or return to the tree |
+| `Esc`, `h` in the card | Return to its tree row |
 | `?` | Show the active area's keys |
 
 Click a row to select it; click its chevron or double-click to fold/unfold it.
@@ -137,6 +139,20 @@ The current release stays unfolded. The browser keeps tree folds, `D` and `A`
 under `cland.ui.items.v1`, alongside the area's other fold preferences. Two panes
 share them; a different browser client starts independently. Folding and filtering
 send no hub writes. Cursor identity survives item reordering across deltas.
+
+The selected item's drawer shows its Summary and provenance, facts, progress,
+plan stages, latest verdict (reason, round, scope and freshness), relations,
+branch and latest verification, dates, last activity and Decision. The verdict
+box uses the clear or failed colour. Facts use snapshots and deltas; a closed
+item or closed verdict owner reads its deferred card facts through a bounded
+by-id summary page. Moving across open rows sends no `task.view`.
+
+**Agents’ text** starts folded, with section names and word count. Expanding it
+fetches the body once; folding or reselecting reuses it. Item deltas and reconnects
+invalidate the card/body cache and discard outstanding older replies. Enter on
+a tree row focuses the card; Enter on the card itself, Escape or `h` returns to
+that same row. In a split, Enter opens the card in the opposite pane; return keys restore the originating tree row, including after Swap. Buttons retain native Enter activation. Split and Close remain
+available, and a split detail pane shows the same card.
 
 `web/test/items.test.ts` copies the repository tracker into the scratch fixture
 before starting its hub, then adds deterministic rows for ordering, stage groups,
@@ -177,7 +193,7 @@ The rail collapses while split and restores the button choice on closing, subjec
 to the narrow-window rule. The split and ratio survive reloads in the shell's
 versioned browser key; unavailable storage leaves them usable for the current page.
 
-Selecting a row by click or keyboard focus opens its ID/title in the drawer.
+Selecting an item by click or keyboard focus opens its card in the drawer; other areas show the selected ID/title.
 Close and Escape dismiss it until selection moves. Split or `⌘Enter` opens the
 selected object in the other pane; the drawer stays closed during the split and
 when it closes until a row is selected again. Swap carries each pane's area and
@@ -211,7 +227,7 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 
 The top-strip Palette and Help buttons expose the same overlays. Help names the
 active pane’s area and lists the shell keys shared by all current stand-in areas;
-area-specific keys will join the same map as those areas land. Native modal
+area-specific keys use the same map. Help lists each action once, with the active area's label replacing the shared label for that action. Native modal
 focus containment keeps background controls inert; dismissal restores focus.
 The single `keyboard.ts` listener reads physical codes and exact modifiers,
 including both strokes of `Space p`, so Cyrillic key values do not change actions.
@@ -273,6 +289,7 @@ node --test web/test/palette.test.ts    # palette, prefixes, keys help and physi
 node --test web/test/folds.test.ts      # local folds, zero fold frames and visible-prose guard
 node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
 node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 300-item rebuild
+node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed deltas and focus
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```

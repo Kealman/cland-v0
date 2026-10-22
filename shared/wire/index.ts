@@ -516,7 +516,15 @@ export type CardVerdict = IndexedVerdict & { reason?: string; round?: number };
 
 export type ItemSummary = CardFields & IndexedItem & Partial<ExplorerFields> & { child_counts?: ChildCounts; plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: CardVerdict[]; verdictBase: string | null };
 
-export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer' | 'agents_text' | 'decision' | 'stages'> & {
+export type CardTransport = {
+  created?: string;
+  branch?: string | null;
+  regression_of?: string;
+  follows?: string[];
+  verify?: Pick<VerifyResult, 'id' | 'executor' | 'state' | 'result' | 'head' | 'finished'> & { cached?: boolean } | null;
+};
+
+export type ExplorerSummary = CardTransport & Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer' | 'agents_text' | 'decision' | 'stages'> & {
   open_blockers: string[];
   rank?: number;
   verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round?: number; reason?: string }>;

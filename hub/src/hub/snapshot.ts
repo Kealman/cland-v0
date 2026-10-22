@@ -31,7 +31,7 @@ export function composeSnapshot({ core, tracker, sessions, verification, events,
   const processes = sessions?.list() ?? [];
   return {
     tracker: { levels: tracker?.ladder.flat ?? [], ladder: tracker?.ladder.levels.map(level => [...level]) ?? [], prefixes: tracker ? Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])) : {} },
-    items: { items: tracker?.listSummaries() ?? [] },
+    items: { items: tracker?.listSummaries({}, { card: true }) ?? [] },
     sessions: { rows: core.sessionRows(processes), processes, presence: core.presence(), archived: sessions?.archivedCount() ?? 0, roles: core.roleList(), crew: { config: crew, summary: crewSummary(crew) }, coordinator: core.coordinator(), verification },
     topics: { topics: core.topics().filter(topic => topic.status !== 'closed' || Date.parse(topic.updatedAt) >= cutoff) },
     inbox: core.inbox.list(), events, accounts: core.accountLimits.list(registry),

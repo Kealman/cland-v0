@@ -12,7 +12,7 @@ function explorerItem(item: ItemSummary): ExplorerSummary {
     latest.delete(verdict.verdict);
     latest.set(verdict.verdict, { ...verdict, round: ++rounds[verdict.verdict] });
   }
-  return { ...item, open_blockers: item.open_blockers ?? [], verdicts: [...latest.values()] };
+  return { ...item, verify: item.verify ? { ...item.verify, cached: !!item.verify.cached } : null, open_blockers: item.open_blockers ?? [], verdicts: [...latest.values()] };
 }
 
 
@@ -28,6 +28,11 @@ export type ConnectionState = {
   /** Closed task children are read through this boundary; T-1081 can back it with pages. */
   closedTasks?: (parent: string) => readonly ExplorerSummary[];
   loadClosed?: (parent: string) => void;
+  cardFacts?: Record<string, Partial<ExplorerSummary>>;
+  cardErrors?: Record<string, string>;
+  bodies?: Record<string, { text?: string; error?: string }>;
+  loadCard?: (id: string) => void;
+  loadBody?: (id: string) => void;
   tracker?: SnapshotValues['tracker'];
   idleFrom?: string[];
   plansById?: Record<string, PlanStages>;
@@ -35,6 +40,25 @@ export type ConnectionState = {
   loadPlan?: (id: string) => void;
   rows?: Partial<Record<Area, ObjectRow[]>>;
 };
+
+/** Loaded closed rows remain outside the open snapshot set. */
+export function itemRows(connection: ConnectionState): ExplorerSummary[] {
+  const rows = new Map(connection.items?.map(row => [row.id, row]));
+  if (connection.closedTasks) for (const parent of ['', ...(connection.items?.map(row => row.id) ?? [])]) {
+    for (const row of connection.closedTasks(parent)) rows.set(row.id, row);
+  }
+  return [...rows.values()];
+}
+export function findItem(connection: ConnectionState, id: string | undefined): ExplorerSummary | undefined {
+  if (!id) return undefined;
+  const open = connection.items?.find(row => row.id === id);
+  if (open) return open;
+  for (const parent of ['', ...(connection.items?.map(row => row.id) ?? [])]) {
+    const closed = connection.closedTasks?.(parent).find(row => row.id === id);
+    if (closed) return closed;
+  }
+  return undefined;
+}
 
 /** Cookie-authenticated connection, retried from 250 ms up to 10 s between failures. */
 export function connectHub(changed: (state: ConnectionState) => void): () => void {
@@ -47,6 +71,26 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let backoff = 250;
   const requestedPlans = new Set<string>();
+  let cardSerial = 0;
+  const cardRequests = new Map<string, { item: string; body: boolean }>();
+  const pendingCards = new Set<string>();
+  const pendingBodies = new Set<string>();
+  function loadCardData(item: string, body: boolean) {
+    const pending = body ? pendingBodies : pendingCards;
+    if (socket.readyState !== WebSocket.OPEN || pending.has(item) ||
+        (body ? state.bodies?.[item] : state.cardFacts?.[item] || state.cardErrors?.[item])) return;
+    pending.add(item);
+    const id = `card:${++cardSerial}`;
+    cardRequests.set(id, { item, body });
+    request(body ? { type: 'task.view', id, item } : { type: 'task.list', id, ids: [item], projection: 'summary' });
+  }
+  function invalidateCard(id: string) {
+    const cardFacts = { ...state.cardFacts }, bodies = { ...state.bodies }, cardErrors = { ...state.cardErrors };
+    delete cardFacts[id]; delete bodies[id]; delete cardErrors[id];
+    pendingCards.delete(id); pendingBodies.delete(id);
+    for (const [key, value] of cardRequests) if (value.item === id) cardRequests.delete(key);
+    state = { ...state, cardFacts, bodies, cardErrors };
+  }
   function request(frame: WorkbenchRequest) { socket.send(JSON.stringify(frame)); }
   function rows(area: Area, value: ObjectRow[]) {
     state = { ...state, rows: { ...state.rows, [area]: value } };
@@ -87,6 +131,8 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   }
   function connect() {
     requestedPlans.clear();
+    cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
+    state = { ...state, cardFacts: {}, bodies: {}, cardErrors: {}, loadCard: id => loadCardData(id, false), loadBody: id => loadCardData(id, true) };
     state = { ...state, loadPlan: id => {
       if (requestedPlans.has(id) || socket.readyState !== WebSocket.OPEN) return;
       requestedPlans.add(id);
@@ -139,6 +185,15 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-inbox') {
         inbox(frame.value as Inbox);
+      } else if (frame.type === 'result' && cardRequests.has(frame.id)) {
+        const { item, body } = cardRequests.get(frame.id)!;
+        cardRequests.delete(frame.id);
+        (body ? pendingBodies : pendingCards).delete(item);
+        if (body) state = { ...state, bodies: { ...state.bodies, [item]: frame.ok
+          ? { text: (frame.value as { item: { body: string } }).item.body } : { error: frame.error ?? 'Body unavailable' } } };
+        else if (frame.ok) state = { ...state, cardFacts: { ...state.cardFacts, [item]: (frame.value as { items: Partial<ExplorerSummary>[] }).items[0] ?? {} } };
+        else state = { ...state, cardErrors: { ...state.cardErrors, [item]: frame.error ?? 'Card unavailable' } };
+        changed(state);
       } else if (frame.type === 'result' && frame.id.startsWith('tree-plan:')) {
         const id = frame.id.slice('tree-plan:'.length);
         state = { ...state, plansById: { ...state.plansById, [id]: frame.ok ? (frame.value as { stages: PlanStages }).stages : [] } };
@@ -159,6 +214,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         request({ type: 'hub.status', id: 'connection-status' });
         request({ type: 'session.list', id: 'shell-sessions' });
       } else if (frame.type === 'task') {
+        invalidateCard(frame.id);
         const value = new Map(state.items?.map(row => [row.id, row]));
         const oldParent = value.get(frame.id)?.parent ?? '';
         const newParent = frame.item?.parent ?? '';

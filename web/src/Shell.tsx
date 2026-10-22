@@ -1,12 +1,13 @@
 // The frame ported from Q-405's App.tsx, connected to the production web edge.
 import { useEffect, useRef, useState } from 'react';
-import { connectHub, type ConnectionState, type ObjectRow } from './connection.ts';
+import { connectHub, findItem, type ConnectionState, type ObjectRow } from './connection.ts';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
 import { areas, areaKey, actionKeys, displayKey, type Area, type Shortcut } from './keymap.ts';
 import { listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 import { Fold, runFoldShortcut } from './Fold.tsx';
+import { ItemCard } from './ItemCard.tsx';
 import { ItemsTree, type TreeControls } from './ItemsTree.tsx';
 
 const iconPaths = [
@@ -75,9 +76,39 @@ export function Shell() {
       : { ...previous, area: previous.secondary!, row: selected, detail: true });
   };
   const paletteControls = useRef<PaletteControls>(null);
+  const cardOrigin = useRef<{ item: string; pane: string } | null>(null);
   const primaryTree = useRef<TreeControls>(null);
   const secondaryTree = useRef<TreeControls>(null);
   const runShortcut = (action: Shortcut, fromPalette = false) => {
+    if (!overlay && area === 'Items') {
+      const focused = document.activeElement;
+      const inCard = focused?.closest('[aria-label="Item card"]');
+      if (inCard && (action === 'dismiss' || action === 'tree-close' || action === 'accept')) {
+        const item = inCard.getAttribute('data-item-id');
+        const origin = cardOrigin.current?.item === item ? cardOrigin.current : null;
+        const trees = [...workspace.current?.querySelectorAll<HTMLButtonElement>('[data-tree-key]') ?? []];
+        const matches = trees.filter(node => node.dataset.objectId === item);
+        const target = matches.find(node => node.closest('[data-pane]')?.getAttribute('data-pane') === origin?.pane) ?? matches[0];
+        target?.focus();
+        return;
+      }
+      if (action === 'accept' && focused?.getAttribute('role') === 'treeitem') {
+        const item = focused.getAttribute('data-object-id');
+        if (!item) return;
+        const pane = focused.closest('[data-pane]')?.getAttribute('data-pane') ?? active;
+        cardOrigin.current = { item, pane };
+        setDismissed(undefined);
+        if (split) setPreferences(previous => pane === 'primary'
+          ? { ...previous, secondary: 'Items', secondaryRow: item, secondaryDetail: true }
+          : { ...previous, area: 'Items', row: item, detail: true });
+        requestAnimationFrame(() => {
+          const cards = [...document.querySelectorAll<HTMLElement>('[aria-label="Item card"]')];
+          cards.find(node => node.dataset.itemId === item && (!split || node.closest('[data-pane]')?.getAttribute('data-pane') !== pane))?.focus();
+        });
+        return;
+      }
+      if (inCard && action.startsWith('tree-')) return;
+    }
     if (!overlay && area === 'Items' && (active === 'primary' ? primaryTree : secondaryTree).current?.run(action)) return;
     if (runFoldShortcut(action)) return;
     if (action === 'palette') setOverlay('palette');
@@ -111,7 +142,7 @@ export function Shell() {
         : { ...previous, area: target, row: row.id, detail: false, dismissed: undefined };
     });
   };
-  const selectedRow = connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
+  const selectedRow = preferences.area === 'Items' ? findItem(connection, preferences.row) : connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
   const drawerOpen = !split && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
   const release = releases.find(item => item.id === preferences.release) ?? releases[0];
@@ -178,7 +209,7 @@ export function Shell() {
             const selected = pane === 'primary' ? preferences.row : preferences.secondaryRow;
             const detail = pane === 'primary' ? preferences.detail : preferences.secondaryDetail;
             const rows = connection.rows?.[paneArea];
-            const row = rows?.find(object => object.id === selected);
+            const row = paneArea === 'Items' ? findItem(connection, selected) : rows?.find(object => object.id === selected);
             return <section key={pane} className={s.pane} data-pane={pane} aria-label={`${pane} pane`} tabIndex={-1}
               style={{ flex: split ? `${pane === 'primary' ? preferences.ratio : 1 - preferences.ratio} 1 0` : '1' }}
               onPointerDown={() => setActive(pane)} onFocus={() => setActive(pane)}>
@@ -197,7 +228,9 @@ export function Shell() {
                   <span className={s.mono}>{object.id}</span> <span>{object.title}</span>
                 </button></li>)}
               </ul>}
-              {detail && row && <div className={s.detail}><span className={s.mono}>{row.id}</span><p>{row.title}</p></div>}
+              {detail && row && (paneArea === 'Items' && findItem(connection, row.id)
+                ? <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} />
+                : <div className={s.detail}><span className={s.mono}>{row.id}</span><p>{row.title}</p></div>)}
               </Fold>
               {pane === 'primary' && split && <div className={s.divider} role="separator" aria-label="Pane divider"
                 aria-orientation="vertical" aria-valuemin={20} aria-valuemax={80} aria-valuenow={Math.round(preferences.ratio * 100)}
@@ -216,7 +249,9 @@ export function Shell() {
             <button title="Open in the other pane (⌘Enter)" onClick={openOther}>Split</button>
             <button onClick={() => { setDismissed(selectionKey); areaButtons.current[preferences.area]?.focus(); }}>Close</button>
           </div>}>
-          <div className={s.detail}><span className={s.mono}>{selectedRow.id}</span><p>{selectedRow.title}</p></div>
+          {preferences.area === 'Items' && findItem(connection, selectedRow.id)
+            ? <ItemCard key={selectedRow.id} item={findItem(connection, selectedRow.id)!} connection={connection} />
+            : <div className={s.detail}><span className={s.mono}>{selectedRow.id}</span><p>{selectedRow.title}</p></div>}
           </Fold>
         </aside>}
       </main>

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import files, { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { serializeItem } from '../src/tracker/item.ts';
+import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { Tracker, DEBOUNCE_MS, type ItemChange } from '../src/tracker/tracker.ts';
 import { FakeClock } from './fake-clock.ts';
 import { handleTaskRequest, type TaskRequest } from '../src/tracker/requests.ts';
@@ -167,7 +167,8 @@ test('summary projection bounds the first open payload in a thousand-item tracke
   assert.equal(all.items.length, 1000);
   t.diagnostic(`summary bytes: open=${Buffer.byteLength(JSON.stringify(open))}, all=${Buffer.byteLength(JSON.stringify(all))}`);
   for (const row of all.items) {
-    for (const field of ['body', 'comments', 'plan', 'verify', 'file', 'verdictBase']) assert.equal(Object.hasOwn(row, field), false, field);
+    for (const field of ['body', 'comments', 'plan', 'file', 'verdictBase']) assert.equal(Object.hasOwn(row, field), false, field);
+    assert.equal(Object.hasOwn(row, 'verify'), false);
     assert.equal((row.verdicts as Array<{ run: string }>).length, 1);
     assert.equal((row.verdicts as Array<{ run: string }>)[0]?.run, 'r3');
     const verdict=(row.verdicts as Array<{ round?: number; scope?: string; reason?: string }>)[0]!;
@@ -283,4 +284,35 @@ test('task events refresh both container paths when a child changes state or par
   await rm(join(root, extra.path));
   tracker.rescan();
   assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.total, 1);
+});
+
+test('card transport facts stay compact and defer closed facts to by-id pages', async t => {
+  const root = await tempProject(t);
+  const tracker = new Tracker({ root, db: ':memory:', clock: new FakeClock(), git: async () => null, readBase: async () => null });
+  t.after(() => tracker.stop());
+  const actor = { id: 'human', name: 'human', role: null };
+  const item = await tracker.create(actor, { title: 'Card transport', size: 'S', branch: 't/card', body: '## Summary\n\nCompact card.' });
+  const source = parseItem(await files.readFile(join(root, item.path), 'utf8'), item.file);
+  source.fm.regression_of = 'T-999'; source.fm.follows = ['T-998'];
+  await writeFile(join(root, item.path), serializeItem(source));
+  tracker.rescan();
+  tracker.useVerify(() => ({ id: 'verify-card', executor: 'local', state: 'finished', result: 'failed', head: 'a'.repeat(40), finished: null, artifact: 'private-log', cached: { run: 'prior', head: 'b'.repeat(40), tree: 'c'.repeat(40) } }));
+  const lean = tracker.listSummaries()[0]!;
+  for (const field of ['created', 'branch', 'verify', 'regression_of', 'follows']) assert.equal(Object.hasOwn(lean, field), false, `ordinary summary omits ${field}`);
+  const open = tracker.listSummaries({}, { card: true })[0]!;
+  assert.equal(open.branch, 't/card');
+  assert.equal(open.created, item.created);
+  assert.equal(open.regression_of, 'T-999');
+  assert.deepEqual(open.follows, ['T-998']);
+  assert.deepEqual(open.verify, { id: 'verify-card', executor: 'local', state: 'finished', result: 'failed', head: 'a'.repeat(40), finished: null, cached: true });
+  await tracker.edit(actor, item.id, { state: 'closed' });
+  const closed = tracker.listSummaries()[0]!;
+  for (const field of ['created', 'branch', 'verify', 'regression_of', 'follows']) assert.equal(Object.hasOwn(closed, field), false, field);
+  const page = tracker.summaryPage([item.id]).items[0]!;
+  assert.equal(page.branch, 't/card');
+  assert.equal(page.created, item.created);
+  assert.equal(page.regression_of, 'T-999');
+  assert.deepEqual(page.follows, ['T-998']);
+  assert.equal(page.verify?.head, 'a'.repeat(40));
+  assert.equal(Object.hasOwn(page.verify!, 'artifact'), false);
 });

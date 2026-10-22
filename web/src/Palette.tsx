@@ -80,11 +80,12 @@ export function PaletteDialog({ mode, area, connection, controls, close, run, op
   } }));
   const activeResult = useRef<HTMLDivElement>(null);
   useEffect(() => { activeResult.current?.scrollIntoView({ block: 'nearest' }); }, [selected, query]);
+  const helpActions = new Map([...shellActions, ...foldActions, ...(area === 'Items' ? treeActions : [])].map(row => [row.action, row]));
   return <dialog ref={dialog} className={s.dialog} data-keys-help={mode === 'help' ? '' : undefined} aria-label={mode === 'palette' ? 'Palette' : `${area} keys`}
     onCancel={event => { event.preventDefault(); close(); }}>
     {mode === 'help' ? <>
       <header className={s.header}><h2>{area} keys</h2><button autoFocus onClick={close}>Close</button></header>
-      <dl className={s.keys}>{[...shellActions, ...foldActions, ...(area === 'Items' ? treeActions : [])].map(row => <div key={row.action} data-key-action={row.action}>
+      <dl className={s.keys}>{[...helpActions.values()].map(row => <div key={row.action} data-key-action={row.action}>
         <dt>{row.label}</dt><dd><Keys action={row.action} /></dd>
       </div>)}</dl>
     </> : <>

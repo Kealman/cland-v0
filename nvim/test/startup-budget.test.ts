@@ -16,7 +16,9 @@ test('thousand-item workbench startup fits the time and first-payload budgets', 
   const fixture = await generateStartupTracker(root);
   assert.equal(fixture.total, 1000);
   assert.equal(fixture.open.length, 200);
-  enforceStartupBudget(await measureStartup(t, bin, root, fixture));
+  const result = await measureStartup(t, bin, root, fixture);
+  assert.ok(result.payloadBytes <= 120 * 1024, `first item payload margin: ${result.payloadBytes} bytes > 122880 bytes`);
+  enforceStartupBudget(result);
 });
 
 test('a slowed task.list trips the rendered startup time budget', { skip }, async t => {
