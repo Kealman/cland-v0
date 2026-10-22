@@ -11,10 +11,10 @@ assignee: null
 parent: R-377
 blocked_by:
   - E-416
-topic: null
+topic: topic-867
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-22T16:51:45.867Z
+updated: 2026-10-22T21:12:24.081Z
 ---
 
 ## Summary
@@ -110,6 +110,7 @@ stages:
         - T-1132
       - - T-1131
         - T-1147
+        - T-1155
   - name: acting, the queue, accounts and artifacts
     qa:
       scope: affected

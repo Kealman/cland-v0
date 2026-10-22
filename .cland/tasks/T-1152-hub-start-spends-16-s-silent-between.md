@@ -3,7 +3,7 @@ id: T-1152
 kind: task
 title: Hub start spends 16 s silent between binding listeners and restoring sessions when a lease needs recovery
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-865
 branch: t/T-1152-hub-start-spends-16-s-silent-between
 created: 2026-10-22T18:04:51.408Z
-updated: 2026-10-22T20:52:44.677Z
+updated: 2026-10-22T20:55:32.235Z
 ---
 
 ## Summary
@@ -29,11 +29,11 @@ Startup restores sessions without waiting on executor lease recovery or any prov
 ## Acceptance criteria
 
 - [x] C1. A hub start with a recorded lease whose provider calls hang reaches "restoring sessions" and serving within 2 s of listening, and recovery completes or defers afterwards (test).
-  - done: impl-1152 · 2026-10-22T19:59:43.732Z
   - verified: rev-23 [reviewer] · run rev-20261022-1152-final · 2026-10-22T20:11:16.154Z · commit 0db9a720911633bf5dd442c7d19f293de86a7b2e
+  - done: impl-1152 · 2026-10-22T20:54:20.441Z
 - [x] C2. Each startup step between listening and serving logs its duration (test).
-  - done: impl-1152 · 2026-10-22T19:43:36.552Z
   - verified: rev-23 [reviewer] · run rev-20261022-1152-final · 2026-10-22T20:11:16.155Z · commit 0db9a720911633bf5dd442c7d19f293de86a7b2e
+  - done: impl-1152 · 2026-10-22T20:54:20.503Z
 
 ## Comments
 
@@ -108,3 +108,20 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified against exact-head A-9443/9505067f plus source A-9437. Actual Linux x64 c-8 lon1 all T1/fallback hub+Neovim T2/Web passed: 2527 ordinary tests, zero fail/skip/cancel. Both new startup identities have five distinct repeated passes and explicit 5/5 receipts. C1 held-provider listening-to-serving diagnostic is 12.805 ms against unscaled 2000 ms, retaining restoration, held status reply and durable recovery completion assertions. C2 named monotonic phase-duration assertions pass. No startup-ready-component tier mismatch remains after synthetic process-table correction. Host check 6cf7964 reused, not remote repeated; generic timing/lint/ratchet/resource diagnostics report-only, Web 64.52 s > 40 s report budget, T3/T4/QA absent. Historical 16-second cause remains unproven. Final evidence artifact posted in topic-865 records exact counts, identities and limits. Landing/freeze remains Coordinator-owned.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1152 · 2026-10-22T20:54:20.799Z
+
+Coordinator-requested origin/dev merge made without conflicts: ebe47ab87226fb664d96fcead5702a2fd8bc5dbe (dev 5cdfb704, prior head 0db9a720). Pushed and requested delta source review with A-9455. C1/C2 done again; old verified marks are not current evidence. At exact merge head on local Darwin/arm64: 27 targeted T1/T2/T3 tests passed, startup T2 tripwire enforced, T0 npm run check passed (lint report-only). Imported T-1151 shutdown abort composes with delayed startup admission; imported T-1150 human-queue/agent-steer fixture passes. A-9454 full run is failed/partial at old head: T1/T2 green, T3 old OpenCode assertion failed, Web absent. Coordinator owns the new full verification after source clear and landing after freeze.
+
+### rev-23 · 2026-10-22T20:55:32.235Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1152-source-3
+commit: ebe47ab87226fb664d96fcead5702a2fd8bc5dbe
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear at the Coordinator-authorized dev merge. No findings. T-1152 production/fixture/measurement blobs are unchanged; docs/provenance retain startup and shutdown guidance. Imported T-1150 test blobs exactly match accepted 407a78ae and correct the obsolete human-steers expectation. Inspected T-1151 production/test blobs match accepted ab354a67; dispatcher closed-before-gate release and executor abort-before-recovery join compose with Suites closing its separate executor before scheduler joins. Detailed audit posted in topic-865. C1/C2 remain unverified at this new head pending Coordinator verify all. A-9454 is old-head failed/partial T3 evidence with no Web; A-9455 is local targeted evidence only. Prior passing receipt is not transferred. Historical 16-second cause remains unproven; no landing during freeze.
