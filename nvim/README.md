@@ -719,15 +719,15 @@ Categories names each open category with its open count, in id order. Each categ
 
 Unscheduled holds items with no parent: maps first, then the other items, each group by rank. Its folded row previews the first two ids and titles. Other releases names the open releases beyond the current root in version order, and names closed releases behind `A`. `A` adds closed releases newest first and closed Unscheduled items in closing order. Categories, Unscheduled, Other releases, Direct tasks and `N more` each have a card describing their holdings, with up to twelve referenced item lines and a remaining count. Enter on a holding reveals it in the tree.
 
-Startup requests only open item summaries, without bodies, history, plans or suite
+Startup requests open item summaries and their ancestors, without bodies, history, plans or suite
 details. Blocked badges use the hub's resolved `open_blockers`, so an unloaded closed
 task does not leave its dependents blocked. Expanding **Closed items**, expanding all with `zR`, showing done items with
 `D`, enabling archive with `A`, or searching items in the palette fetches closed
-summaries once. Closed descendants then appear beneath their parents; Closed items
-holds archived roots not already shown by `A`. Counts and container progress reflect
-the loaded summaries until this fetch completes. `zR` keeps the archived-root group
+summaries through per-parent pages. Closed descendants then appear beneath their parents; Closed items
+holds archived roots not already shown by `A`. Counts and container progress use
+the hub's full roll-ups from the snapshot before closed pages load. `zR` keeps the archived-root group
 folded; expand Closed items itself to show those roots. Item events keep loaded rows current;
-a reconnect or explicit refresh renews the requested closed list. A failed closed
+a reconnect or explicit refresh reloads requested parents. A failed closed
 fetch reports the error and waits for refresh/reconnect, without polling. Selecting a
 card reads its body, criteria, comments, branch, dates and suite detail through the
 shared `task.view` cache.
