@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-804
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-22T12:32:35.675Z
+updated: 2026-10-22T13:53:17.609Z
 ---
 
 ## Summary
@@ -353,3 +353,7 @@ Linux platform x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5. Shard 1 A-9
 Rule proposal sent to Coordinator: cross-surface outcome checks should compare one immutable outcome tuple by ask id across card, history, departure and archive, never correlate by arrival order.
 
 Evidence: A-9086 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9086-e-413-marks-and-threads-at-7887f694-all-22-checks-pass/report.md
+
+### hub · 2026-10-22T13:53:17.609Z
+
+demo 31975670-6f81-4518-ab65-acc989dc65af created: droplet cland-v0-31975670, commit 4fd2ac6770cd299e0dee23921662a55b597b2d65, deadline 2026-10-22T15:07:01.541Z.
