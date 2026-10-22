@@ -615,6 +615,7 @@
     "web/test/items-order.test.ts": "Web",
     "web/test/items.test.ts": "Web",
     "web/test/key-contexts.test.ts": "Web",
+    "web/test/messages.test.ts": "Web",
     "web/test/palette.test.ts": "Web",
     "web/test/plan.test.ts": "Web",
     "web/test/sessions.test.ts": "Web",

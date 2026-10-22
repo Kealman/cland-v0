@@ -67,7 +67,12 @@ test('a rejected earlier page retries with its old top message anchored', async 
     const thread = page.getByRole('log', { name: 'General thread', exact: true });
     await thread.locator('[data-message-id]').nth(99).waitFor();
     const anchor = await thread.locator('[data-message-id]').first().getAttribute('data-message-id');
-    await thread.evaluate(node => { node.scrollTop = 0; node.dispatchEvent(new Event('scroll')); });
+    const anchorTop = await thread.evaluate(node => {
+      node.scrollTop = 0;
+      const top = node.querySelector('[data-message-id]')!.getBoundingClientRect().top - node.getBoundingClientRect().top;
+      node.dispatchEvent(new Event('scroll'));
+      return top;
+    });
     const retry = page.getByRole('button', { name: 'Retry', exact: true });
     await retry.waitFor();
     assert.equal(await retry.getAttribute('title'), 'Rejected earlier page');
@@ -75,7 +80,7 @@ test('a rejected earlier page retries with its old top message anchored', async 
     await until(() => !!release, { what: 'retried earlier reply held', timeoutMs: 3000 });
     release!();
     await thread.locator('[data-message-id]').nth(149).waitFor();
-    assert.equal(await thread.locator(`[data-message-id="${anchor}"]`).evaluate(node => Math.abs(node.getBoundingClientRect().top - node.parentElement!.getBoundingClientRect().top) < 3), true, 'successful retry preserves the old top message');
+    assert.equal(await thread.locator(`[data-message-id="${anchor}"]`).evaluate((node, top) => Math.abs(node.getBoundingClientRect().top - node.parentElement!.getBoundingClientRect().top - top) < 3, anchorTop), true, 'successful retry preserves the old top message');
     assert.deepEqual(await thread.locator('[data-message-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-message-id'))), expected);
   }, async page => {
     await page.routeWebSocket('**/ws', route => {
@@ -151,7 +156,7 @@ test('reading the top of a long thread marks only the last message on screen', a
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await inProcessSpoke(t, { discover: true, cwd: fixture.root, name: 'coord', sessionId: 'coord-partial', role: 'coordinator' });
   await coord.waitForPresence(['coord']);
-  const long = await coord.call<{ ok: boolean; message: { id: string } }>('send', { topic: 'general', text: Array.from({ length: 100 }, (_, n) => `Line ${n}`).join('\n') });
+  const long = await coord.call<{ ok: boolean; message: { id: string } }>('send', { topic: 'general', text: Array.from({ length: 100 }, (_, n) => `Line ${n}`).join('\n\n') });
   assert.equal(long.ok, true);
   assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'Offscreen tail' })).ok, true);
   const reads: Array<{ upTo?: string }> = [];
@@ -225,13 +230,18 @@ test('held history pages retain live messages, newer ask state and the scrolling
     const thread = page.getByRole('log', { name: 'General thread', exact: true });
     const anchor = await thread.locator('[data-message-id]').first().getAttribute('data-message-id');
     hold = true;
-    await thread.evaluate(node => { node.scrollTop = 0; node.dispatchEvent(new Event('scroll')); });
+    const anchorTop = await thread.evaluate(node => {
+      node.scrollTop = 0;
+      const top = node.querySelector('[data-message-id]')!.getBoundingClientRect().top - node.getBoundingClientRect().top;
+      node.dispatchEvent(new Event('scroll'));
+      return top;
+    });
     await until(() => !!release, { what: 'earlier history reply held', timeoutMs: 3000 });
     assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'Live across earlier page' })).ok, true);
     await thread.locator('[data-message-id]').filter({ hasText: 'Live across earlier page' }).waitFor();
     release!(); release = undefined; hold = false;
     await thread.locator('[data-message-id]').nth(202).waitFor();
-    assert.equal(await thread.locator(`[data-message-id="${anchor}"]`).evaluate(node => Math.abs(node.getBoundingClientRect().top - node.parentElement!.getBoundingClientRect().top) < 3), true, 'a live append cannot consume the pending page anchor');
+    assert.equal(await thread.locator(`[data-message-id="${anchor}"]`).evaluate((node, top) => Math.abs(node.getBoundingClientRect().top - node.parentElement!.getBoundingClientRect().top - top) < 3, anchorTop), true, 'a live append cannot consume the pending page anchor');
     await thread.evaluate(node => { node.scrollTop = 0; node.dispatchEvent(new Event('scroll')); });
     await thread.locator('[data-message-id]').nth(208).waitFor();
     const fresh = await ui.request({ type: 'topic.history', topic: 'general', limit: 200 });
@@ -403,10 +413,15 @@ test('300 messages open at the end and page backwards without gaps, repeats or a
     assert.equal(await thread.locator('[data-message-id]').count(), 100);
     for (const total of [200, 300]) {
       const anchor = await thread.locator('[data-message-id]').first().getAttribute('data-message-id');
-      await thread.evaluate(node => { node.scrollTop = 0; node.dispatchEvent(new Event('scroll')); });
+      const anchorTop = await thread.evaluate(node => {
+        node.scrollTop = 0;
+        const top = node.querySelector('[data-message-id]')!.getBoundingClientRect().top - node.getBoundingClientRect().top;
+        node.dispatchEvent(new Event('scroll'));
+        return top;
+      });
       // The load completion is the DOM count, independently of the transport receipt.
       await thread.locator('[data-message-id]').nth(total - 1).waitFor();
-      assert.equal(await thread.locator(`[data-message-id="${anchor}"]`).evaluate(node => Math.abs(node.getBoundingClientRect().top - node.parentElement!.getBoundingClientRect().top) < 3), true, 'prepending retains the former top line');
+      assert.equal(await thread.locator(`[data-message-id="${anchor}"]`).evaluate((node, top) => Math.abs(node.getBoundingClientRect().top - node.parentElement!.getBoundingClientRect().top - top) < 3, anchorTop), true, 'prepending retains the former top line');
     }
     assert.deepEqual(await thread.locator('[data-message-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-message-id'))), expected);
     assert.equal(history.length, 3);

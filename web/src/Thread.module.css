@@ -4,9 +4,5 @@
 .heading span { color: var(--muted); }
 .messages { overflow: auto; overflow-anchor: none; flex: 1; min-height: 0; }
 .messages:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
-.message { padding: 16px 20px; border-bottom: 1px solid var(--border-soft); }
-.message:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
-.message header { display: flex; gap: 12px; align-items: baseline; color: var(--muted); font: 11px var(--mono); }
-.message strong { color: var(--text); }
-.message time { margin-left: auto; }
-.message p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; }
+.date { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--muted); font-size: 12px; }
+.date::before, .date::after { content: ''; height: 1px; background: var(--border); flex: 1; }

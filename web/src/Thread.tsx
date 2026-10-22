@@ -1,6 +1,6 @@
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react';
+import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react';
 import type { ConnectionState } from './connection.ts';
-import { ItemText } from './ItemText.tsx';
+import { MessageBlock } from './MessageBlock.tsx';
 import s from './Thread.module.css';
 import { useTopicRead } from './use-topic-read.ts';
 import type { Shortcut } from './keymap.ts';
@@ -46,11 +46,11 @@ export function Thread({ connection, topic, controls }: { connection: Connection
       {state?.error && <button title={state.error} onClick={() => { if (state.loaded) earlier(); else void connection.threads?.load(topic); }}>Retry</button>}</header>
     <div ref={node} className={s.messages} data-loaded={!!state?.loaded} role="log" aria-label={`${title} thread`} tabIndex={0}
       onScroll={() => { const log = node.current!; atEnd.current = log.scrollHeight - log.clientHeight - log.scrollTop < 2; if (log.scrollTop === 0) earlier(); }}>
-      {state?.messages.map(message => <article key={message.id} tabIndex={-1} data-message-id={message.id} data-message-seq={message.seq} className={s.message}>
-        <header><strong>{message.from}</strong><time dateTime={message.ts}>{new Date(message.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
-          {message.stage && <span data-delivery-stage>{message.stage}</span>}{message.ask && <span data-ask-state>{message.ask.state}</span>}</header>
-        <p><ItemText text={message.text} /></p>
-      </article>)}
+      {state?.messages.map((message, index, messages) => <Fragment key={message.id}>
+        {(index === 0 || new Date(messages[index - 1]!.ts).toDateString() !== new Date(message.ts).toDateString()) &&
+          <div role="separator" className={s.date}>{new Date(message.ts).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+        <MessageBlock message={message} />
+      </Fragment>)}
     </div>
   </section>;
 }

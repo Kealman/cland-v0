@@ -1,0 +1,30 @@
+.message { --role: var(--role-other); display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; padding: 8px 20px; }
+.message[data-role="human"] { --role: var(--role-human); }
+.message[data-role="aide"] { --role: var(--role-aide); }
+.message[data-role="coordinator"] { --role: var(--role-coordinator); }
+.message[data-role="lead"] { --role: var(--role-lead); }
+.message[data-role="implementer"] { --role: var(--role-implementer); }
+.message[data-role="reviewer"] { --role: var(--role-reviewer); }
+.message[data-role="qa"] { --role: var(--role-qa); }
+.message[data-role="hub"] { --role: var(--role-hub); }
+.message:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.gutter { background: var(--role); border-radius: 2px; }
+.content { min-width: 0; }
+.header { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; color: var(--muted); font-size: 12px; }
+.header strong { color: var(--text-quiet); font-weight: 600; }
+.role { color: var(--role); }
+.state { margin-left: auto; display: flex; gap: 8px; }
+.header time { font: 11px var(--mono); }
+.body { margin: 4px 0 0; }
+.message[data-role="human"], .message[data-role="aide"] { background: var(--human-band); }
+.message[data-role="human"] .header strong { color: var(--role-human); }
+.message[data-role="aide"] .gutter { background: none; border-left: 3px dashed var(--role-aide); }
+.message[data-layer="watch"] .body { color: var(--text-soft); }
+.message[data-layer="watch"] .gutter { opacity: 0.45; }
+.message[data-compact="true"] .header { flex-wrap: nowrap; white-space: nowrap; overflow-x: auto; }
+.verified { color: var(--done-glyph); }
+.failed { color: var(--failed); }
+.criteria { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 12px; }
+.artifacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px; border: 1px solid var(--control-border); border-radius: 5px; background: var(--control); padding: 3px 8px; font-size: 12px; overflow-wrap: anywhere; }
+.artifactId { font: 11px var(--mono); color: var(--muted); white-space: nowrap; }

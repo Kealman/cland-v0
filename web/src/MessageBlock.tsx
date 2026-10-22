@@ -1,0 +1,46 @@
+import type { TopicMessage } from '../../shared/wire/index.ts';
+import { ItemText } from './ItemText.tsx';
+import { MarkdownBody } from './MarkdownBody.tsx';
+import s from './MessageBlock.module.css';
+
+const roles: Record<string, string> = { human: 'Human', aide: 'Aide', coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', hub: 'Hub', other: 'Other' };
+
+function verdictOf(message: TopicMessage): { kind: string; result: 'clear' | 'not clear' } | undefined {
+  const detail = message.detail;
+  if (message.fromKind === 'hub' && message.kind === 'report' && (detail?.verdict === 'review' || detail?.verdict === 'qa') && (detail.result === 'clear' || detail.result === 'not clear')) return { kind: detail.verdict, result: detail.result };
+  if (message.fromKind !== 'agent') return;
+  const match = message.text.split(/[\r\n]/)[0]?.toLowerCase().match(/^(review|qa) (not clear|clear)(?=$|[^a-z])/);
+  if (match) return { kind: match[1]!, result: match[2] as 'clear' | 'not clear' };
+}
+
+export function MessageBlock({ message }: { message: TopicMessage }) {
+  const role = message.fromKind === 'human' ? 'human' : message.fromKind === 'hub' ? 'hub' : message.fromRole && Object.hasOwn(roles, message.fromRole) ? message.fromRole : 'other';
+  const kind = message.kind ?? (message.fromKind === 'human' ? 'message' : 'report');
+  const shownKind = message.fromKind === 'human' ? kind[0]!.toUpperCase() + kind.slice(1) : kind;
+  const verdict = verdictOf(message);
+  const criteria = message.criteria?.map(criterion => <span key={criterion.id} data-criterion={criterion.id} className={criterion.mark === 'failed' ? s.failed : s.verified}>
+    {criterion.mark === 'failed' ? '✗' : '✓'} {criterion.id} {criterion.mark}{criterion.note && <> · {criterion.note}</>}
+  </span>);
+  const artifacts = [...new Map([...(message.artifact ? [message.artifact] : []), ...message.artifacts ?? []].map(artifact => [artifact.id, artifact])).values()];
+  return <article tabIndex={-1} data-message-id={message.id} data-message-seq={message.seq} data-role={role} data-layer={message.layer} data-compact={verdict?.result === 'clear'} className={s.message}>
+    <span aria-hidden="true" data-role-gutter className={s.gutter} />
+    <div className={s.content}>
+      <header className={s.header}><strong>{message.fromKind === 'human' ? 'you' : message.from}</strong>
+        <span data-message-role className={s.role}>{roles[role]}</span>
+        <span>→ {message.to.length ? message.to.map(name => name === 'human' ? 'you' : name).join(', ') : 'you'}</span>
+        <span>{shownKind}</span>
+        {verdict && <span data-verdict={verdict.result} className={verdict.result === 'clear' ? s.verified : s.failed}>
+          {verdict.result === 'clear' && message.fromKind === 'agent' ? <ItemText text={message.text.split(/[\r\n]/)[0]!} /> : `${verdict.kind} ${verdict.result}`}
+        </span>}
+        {verdict?.result === 'clear' && <>{typeof message.detail?.item === 'string' && <ItemText text={message.detail.item} />}{criteria}</>}
+        <span className={s.state}>{message.stage && <span data-delivery-stage>{message.stage}</span>}{message.ask && <span data-ask-state>{message.ask.state}</span>}</span>
+        <time dateTime={message.ts}>{new Date(message.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+      </header>
+      {verdict?.result !== 'clear' && <div className={s.body}><MarkdownBody text={message.text} /></div>}
+      {verdict?.result === 'not clear' && <div className={s.criteria}>{criteria}</div>}
+      {artifacts.length > 0 && <div className={s.artifacts}>{artifacts.map(artifact => <span key={artifact.id} data-artifact-id={artifact.id} className={s.chip}>
+        <span className={s.artifactId}>{artifact.id} {artifact.kind}{artifact.folder ? ' · folder' : ''}</span><span>{artifact.title}</span>
+      </span>)}</div>}
+    </div>
+  </article>;
+}

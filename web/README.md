@@ -96,6 +96,19 @@ method aliases. Ordinary strings and comments are allowed. This is a source
 guard, not a runtime HTML sanitizer. The T1 token contracts run with
 `node --test hub/test/web-markdown.test.ts`.
 
+`MessageBlock.tsx` renders the P12 message header, the 3 px role gutter, the
+human/Aide band and the hub's watch layer. Watch text uses `--text-soft`; only
+the decorative gutter uses opacity. Recorded review/QA results and criterion
+marks read the hub's structured facts; legacy agent verdicts retain the first-line
+convention. A clear verdict stays on one row. `Thread.tsx` inserts local-day
+separators without changing message ids or the scrolling anchor.
+
+`MarkdownBody.tsx` renders the parser tokens as React elements, with external
+links underlined and opened using `_blank` and `noopener noreferrer`. Whole item
+tokens use the shared item navigation and never wrap at the hyphen; code stays
+literal. Every attached or posted artifact is a chip with its id, kind and title,
+including folder and HTML artifacts until the inline-artifact slice.
+
 All 23 normal foreground tokens, including every role, reach 4.5:1 on ground and
 selection. The two dark ink tokens are inverse badge text checked on their bright
 badge surfaces. Surface/line tokens are not text. Role colours match
@@ -568,6 +581,7 @@ node --test web/test/items-actions.test.ts # scope, selection, quick messages an
 node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
+node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```
 
