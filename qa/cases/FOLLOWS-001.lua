@@ -48,13 +48,15 @@ return {
     end, 5000, 'both epics in the tree')
     qa.wait_for(function() return select_row('E-4') end, 5000, 'the E-4 row')
     qa.keys('<CR>')
+    local follower
     qa.wait_for(function()
       local e = require('cland.explorer')
       local c = card()
-      return e.card.key == 'E-4' and c:find('follows', 1, true) and c:find('E-2', 1, true)
+      -- The summary can render the relation before the whole-item reply arrives.
+      follower = require('cland.item_view').get('E-4', {summary_only=true})
+      return e.card.key == 'E-4' and c:find('follows E-2', 1, true)
+        and follower and type(follower.follows) == 'table' and follower.follows[1] == 'E-2'
     end, 5000, 'the card of E-4 with its follows')
-    -- Relations are card facts, fetched when the card opens.
-    local follower = require('cland.item_view').get('E-4', {summary_only=true})
     qa.expect(follower and type(follower.follows) == 'table' and follower.follows[1] == 'E-2', 'the hub reports E-4 follows E-2')
     qa.expect(#(follower.blocked_by or {}) == 0, 'the follow is not a blocker')
     local c = card()
