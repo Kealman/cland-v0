@@ -463,7 +463,18 @@ function answer(f: Frame) {
     case 'task.list': {
       let items = scenario.items ?? [];
       if (scenario.summaryLists) {
-        items = items.filter(i => !f.state || i.state === f.state || f.include_containers && i.kind !== 'task');
+        if (f.include_containers && f.state === 'open') {
+          const byId = new Map(items.map(item=>[item.id,item]));
+          const retained = new Set<unknown>();
+          for (const item of items) if (item.state === 'open') {
+            let ancestor: Record<string,unknown> | undefined = item;
+            while (ancestor && !retained.has(ancestor.id)) {
+              retained.add(ancestor.id);
+              ancestor = typeof ancestor.parent === 'string' ? byId.get(ancestor.parent) : undefined;
+            }
+          }
+          items = items.filter(item=>retained.has(item.id));
+        } else items = items.filter(i => !f.state || i.state === f.state);
         if (f.projection === 'summary') {
           const fields = new Set(['id','kind','title','state','status','size','labels','parent','blocked_by','open_blockers','claim','holds','criteria','updated','closed','version','rank','rank_set','verdicts','child_counts','stages']);
           items = items.map(i => {
@@ -480,7 +491,7 @@ function answer(f: Frame) {
         }
       }
       if (typeof f.parent === 'string') {
-        items = items.filter(i => i.kind === 'task' && i.state === 'closed' && (i.parent ?? '') === f.parent)
+        items = items.filter(i => i.state === 'closed' && (i.parent ?? '') === f.parent)
           .sort((a,b)=>Number(String(a.id).slice(2))-Number(String(b.id).slice(2)));
         const total=items.length;
         items=items.filter(i=>!f.cursor || Number(String(i.id).slice(2))>Number(String(f.cursor).slice(2)));

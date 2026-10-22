@@ -1,5 +1,5 @@
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
-import type { ConnectionState, PlanStages } from './connection.ts';
+import { itemRows, type ConnectionState, type PlanStages } from './connection.ts';
 
 export type TreePreferences = { open: Record<string, boolean>; hideDone: boolean; archive: boolean };
 export type TreeRow = {
@@ -22,7 +22,7 @@ export function currentRelease(items: ExplorerSummary[], top = 'release', select
 
 /** Whole-model rebuild; the hub owns all status/roll-up derivation. */
 export function buildItemsTree(connection: ConnectionState, preferences: TreePreferences, releaseId?: string): TreeRow[] {
-  const items = connection.items ?? [];
+  const items = itemRows(connection);
   const by = new Map(items.map(item => [item.id, item]));
   const kids = new Map<string, ExplorerSummary[]>();
   const ordinal = new Map<string, number>();
@@ -32,13 +32,8 @@ export function buildItemsTree(connection: ConnectionState, preferences: TreePre
   const isRelease = (item: ExplorerSummary) => levels.length > 1 && item.kind === levels[0];
   const isCategory = (item: ExplorerSummary) => ladder[0]?.includes(item.kind) && item.kind !== levels[0];
   const container = (item: ExplorerSummary) => kinds.has(item.kind) || item.kind === 'map' || !!kids.get(item.id)?.length;
-  const loaded = items.filter(item => !connection.closedTasks || item.kind !== 'task' || !done(item));
-  if (connection.closedTasks) for (const parent of ['', ...by.keys()]) for (const item of connection.closedTasks(parent)) {
-    by.set(item.id, item);
-    loaded.push(item);
-  }
   const next = new Set(items.flatMap(item => item.next ? [item.next] : []));
-  for (const item of loaded) {
+  for (const item of items) {
     const parent = item.parent && by.has(item.parent) ? item.parent : '';
     if (!kids.has(parent)) kids.set(parent, []);
     kids.get(parent)!.push(item);

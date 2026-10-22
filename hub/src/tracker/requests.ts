@@ -121,9 +121,9 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       if (f.parent !== undefined) {
         if (typeof f.parent !== 'string' || frame.projection !== 'summary' || frame.state !== 'closed') throw new TrackerError('parent requires a closed summary page');
         if (['ids','under','labels','kind','assignee','verdict','include_containers'].some(key => f[key] !== undefined)) throw new TrackerError('closed pages accept only parent, cursor and limit');
-        if (f.cursor !== undefined && (typeof f.cursor !== 'string' || !/^T-[1-9][0-9]*$/.test(f.cursor))) throw new TrackerError('invalid closed page cursor');
+        if (f.cursor !== undefined && (typeof f.cursor !== 'string' || !/^[A-Z]-[1-9][0-9]*$/.test(f.cursor))) throw new TrackerError('invalid closed page cursor');
         if (f.limit !== undefined && (!Number.isInteger(f.limit) || Number(f.limit) < 1 || Number(f.limit) > 100)) throw new TrackerError('closed page limit must be 1–100');
-        return tracker.closedTaskPage(frame.parent!, frame.cursor, frame.limit);
+        return tracker.closedItemPage(frame.parent!, frame.cursor, frame.limit);
       }
       if (f.include_containers !== undefined) {
         if (f.include_containers !== true || frame.projection !== 'summary' || frame.state !== 'open') throw new TrackerError('include_containers requires open summaries');

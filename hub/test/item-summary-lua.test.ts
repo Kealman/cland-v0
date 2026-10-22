@@ -117,16 +117,27 @@ test('snapshot summaries and roll-ups equal Lua on every copied live tracker bod
   assert.ok(snapshotBytes <= 512*1024, `${snapshotBytes} bytes exceeds T-1081's 50% copied-state ceiling`);
   assert.ok(snapshotBytes <= 1024*1024, `${snapshotBytes} bytes exceeds the 1 MiB items cap`);
   const ui = await connectUi(t, hub.discovery);
-  for (const parent of ['', ...items.map(item => String(item.id))]) {
+  const restored = new Map(items.map(item => [String(item.id),item]));
+  const container = (row:Record<string,unknown>) => !['task','question','spec'].includes(String(row.kind));
+  const parents = ['', ...items.filter(container).map(row=>String(row.id))];
+  const visited = new Set<string>();
+  for (const parent of parents) {
+    if (visited.has(parent)) continue;
+    visited.add(parent);
     let cursor:string|undefined;
     do {
       const reply=await ui.request({type:'task.list',projection:'summary',state:'closed',parent,...(cursor?{cursor}:{})});
       assert.equal(reply.ok,true,reply.error);
       assert.ok(Buffer.byteLength(JSON.stringify(reply)+'\n')<=256*1024);
       const page=reply.value as {items:typeof items;next:string|null};
-      items.push(...page.items); cursor=page.next??undefined;
+      for (const row of page.items) {
+        if (!restored.has(String(row.id)) && container(row)) parents.push(String(row.id));
+        restored.set(String(row.id),row);
+      }
+      cursor=page.next??undefined;
     } while(cursor);
   }
+  items=[...restored.values()];
   assert.equal(items.length,Object.keys(bodies).length);
   const closed = items.filter(item => item.state === 'closed');
   assert.ok(closed.every(item => !Object.hasOwn(item.summary as object,'text')&&!Object.hasOwn(item,'agents_text')&&!Object.hasOwn(item,'decision')));

@@ -58,7 +58,8 @@ test('board fractions and header include closed children before loading closed r
   assert.match(board, /E-5 Planned epic[^\n]*0\/1/);
   assert.match(board, /Direct tasks \(1 loaded\)[^\n]*0\/1 loaded/);
   assert.match((await c.screen()).join('\n'), /board · epics: 2 in work · 1 done/);
-  assert.match(board, /Closed epic/);
+  assert.doesNotMatch(board, /Closed epic/,'fully closed epic is absent while release retains its1/4 progress');
+  assert.equal(await c.lua("return require('cland.state').item('E-4') ~= nil"), false);
   assert.doesNotMatch(board, /Child 1[01567]|Child 20/);
   assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);
   await c.input('p');
@@ -142,7 +143,7 @@ test('a release with only closed epics does not count blocked direct tasks as pr
   const text = await c.lua<string>("return table.concat(require('cland.explorer').card.lines,'\\n')");
   assert.match(text, /1 of 1 done/);
   assert.doesNotMatch(text, /blocked\n|\d+ blocked/);
-  assert.equal(await c.lua("return require('cland.state').item('E-2') ~= nil"), true);
+  assert.equal(await c.lua("return require('cland.state').item('E-2') ~= nil"), false,'fully closed epic stays unloaded while its release counts remain complete');
   assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);
 });
 

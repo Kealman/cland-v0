@@ -376,7 +376,8 @@ Queue-enabled task verification still defers all T3 to the configured process
 occasions; smoke membership does not override that tier filter.
 
 The fixture generates 1,000 Markdown items in a disposable project: 200 open,
-800 closed, a release/epic/task tree, roughly 1.7 KB bodies, two criteria and an
+800 closed (200 releases, 200 epics and 400 tasks), a release/epic/task tree,
+roughly 1.7 KB bodies, two criteria and an
 implementation comment per item. No generated tracker is committed. Hub,
 Neovim and spoke fixtures use scratch HOME/XDG/Git/account state with credentials
 filtered from launch environments. The Coordinator and Implementer spokes run
@@ -387,9 +388,11 @@ The hard limits are **3,000 ms**, **131,072 bytes (128 KiB)** for the first item
 socket relay counts UTF-8 bytes of the *first task.list response*, including the
 JSON result envelope and trailing newline. It also checks that exactly one
 open-summary request with `include_containers:true` returns precisely the open
-items plus every non-task row (including closed containers), and that Neovim
+items and their ancestor chain (including closed ancestors of open work), and that Neovim
 installs them all. `hub/test/startup-budget.test.ts` exercises these shared probe
-assertions at T1, including missing, extra and duplicate wire or installed rows.
+assertions at T1, including missing ancestors, fully closed subtrees, extra and duplicate wire or installed rows.
+The generated fixture and copied-live manual probe also assert a 120 KiB first-item
+margin while retaining the hard 128 KiB budget policy.
 The startup clock runs from delivery of the authenticated
 hub welcome to observation of the explorer item row, Coordinator header,
 header session count and both session rows in their physical screen columns.
@@ -1912,7 +1915,8 @@ remain in `startup-replies-scale.test.ts`.
 `item-summary-lua.test.ts` is T3 because its independent oracle executes the real
 Lua through headless Neovim. It copies every live tracker file into a disposable
 project, adds a guaranteed closed-release/open-epic/planned-task regression,
-restores closed tasks through bounded parent pages, then compares every summary
+recursively restores closed containers and tasks through bounded parent pages,
+deduplicating retained ancestors by identity, then compares every summary
 and the Lua roll-up rules with the snapshot plus bounded by-id closed-text reads, and asserts the copied items
 frame fits 1 MiB.
 It also feeds separate plan reads to Lua's stage selector. The dated E-880
@@ -1920,14 +1924,24 @@ allowance preserves this all-body differential guard. Neither the source tracker
 nor the human's HOME, accounts or Git configuration is used for execution.
 
 
-`item-summary.test.ts` tests parent cursors, limits, closed-container retention and
-the close-delta/open-set boundary through public frames. A second client that
+`item-summary.test.ts` tests parent cursors, limits, closed-ancestor retention and
+the close-delta/open-set boundary through public frames. The recorded stdio stub
+returns every closed kind on parent pages as well; its
+legacy full-list scenarios retain closed container and question identities through
+archive replacement. Its summary mode retains open rows and their ancestor
+chain, including closed legacy parents. The many-closed-container forest asserts
+a first-item reply at or below 120 KiB independently of task density,
+complete release roll-ups, bounded container pages and nested task retrieval. A second client that
 has never fetched closed pages observes an unloaded closed task's removal and
 its authoritative done total, then compares a fresh snapshot. `nvim/test/closed-pages.test.ts`
 copies the live tracker into a disposable project and renders 105 paged closed
-children in a real headless explorer, board and card. It is T3 for the real client
+children in a real headless explorer, board and card. It also keeps release counts
+while a closed epic is unloaded, unfolds that epic and recursively discovers a
+closed release/epic/task archive without duplicate identities. It is T3 for the real client
 boundary. `web/test/items.test.ts` observes a 105-child page continuation, close
-delta and reload through the real browser. A D-hidden regression holds closed
+delta and reload through the real browser. Its separate 105-closed-epic fixture
+asserts release progress before loading, container cursor continuation, nested
+closed tasks, archived roots and unique rows after reload. A D-hidden regression holds closed
 rows unloaded while asserting stage merged/state and global done totals, then
 reopens a closed child and retains the final fraction/state assertions. New closed-page screen frames can be
 recorded by naming their individual component file; regenerate existing Neovim

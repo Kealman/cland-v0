@@ -201,8 +201,8 @@ end)
 
 M.refresh_sessions = refresh_sessions
 
--- Open rows and every container arrive first; direct closed-task children are paged on demand.
-local closed_requested, closed_all, closed_failed = {}, false, {}
+-- Open rows and their ancestors arrive first; closed children are paged on demand.
+local closed_requested, closed_all, closed_failed, closed_scopes = {}, false, {}, {}
 local function closed_parent(it)
   return it.parent and it.parent ~= vim.NIL and state.item(it.parent) and it.parent or ''
 end
@@ -218,6 +218,7 @@ function M.load_closed_items(parent)
   closed_requested[parent] = true
   if state.S.closed_pages[parent] or state.S.closed_loads[parent] or closed_failed[parent] or not state.S.items_loaded
     or not (M.client and M.client:connected()) then return end
+  state.S.closed_items_loaded = false
   local load = {rows={}, events={}}
   state.S.closed_loads[parent] = load
   local function page(cursor)
@@ -239,7 +240,7 @@ function M.load_closed_items(parent)
         positions[id], merged[at] = at, it
       end
       for _, it in ipairs(state.S.items) do
-        if not (it.kind == 'task' and it.state == 'closed' and closed_parent(it) == parent) then put(it) end
+        if not (it.state == 'closed' and closed_parent(it) == parent) then put(it) end
       end
       for _, it in pairs(load.rows) do put(it) end
       state.S.items = merged
@@ -251,6 +252,9 @@ function M.load_closed_items(parent)
         if not state.S.closed_pages[owner] then state.S.closed_items_loaded = false end
       end
       state.changed()
+      -- Newly discovered containers may own further pages in a requested scope.
+      if closed_all then M.load_closed_items()
+      else for scope in pairs(closed_scopes) do M.load_closed_scope(scope) end end
     end)
   end
   page()
@@ -258,6 +262,7 @@ end
 
 function M.load_closed_scope(scope)
   if not scope then return M.load_closed_items() end
+  closed_scopes[scope] = true
   M.load_closed_items(scope)
   for _, it in ipairs(state.S.items) do
     if it.kind ~= 'task' and require('cland.vboard').under(it, scope) then M.load_closed_items(it.id) end

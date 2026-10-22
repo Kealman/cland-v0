@@ -8,12 +8,21 @@ export const STARTUP_TOTAL_BYTES = 1024 * 1024;
 export const STARTUP_REQUESTS = ['hub.status', 'rule.list', 'topic.history', 'artifact.list', 'task.list', 'events.list', 'session.list', 'account.list'] as const;
 
 export type StartupMeasurement = { startupMs: number; payloadBytes: number; total: number; open: number; replies: Record<string, number> };
-export type StartupItem = { id: string; kind: string; state: string };
+export type StartupItem = { id: string; kind: string; state: string; parent?: string | null };
 
 /** Check both sides of the probe's first open-summary response. */
 export function assertStartupItems(items: readonly StartupItem[], payloadIds: readonly string[], installedIds: readonly string[]): void {
-  const expected = items.filter(item => item.state === 'open' || item.kind !== 'task').map(item => item.id).sort();
-  assert.deepEqual([...payloadIds].sort(), expected, 'first wire payload contains open items plus every container');
+  const byId = new Map(items.map(item=>[item.id,item]));
+  const retained = new Set<string>();
+  for (const item of items) if (item.state === 'open') {
+    let ancestor: StartupItem | undefined = item;
+    while (ancestor && !retained.has(ancestor.id)) {
+      retained.add(ancestor.id);
+      ancestor = ancestor.parent ? byId.get(ancestor.parent) : undefined;
+    }
+  }
+  const expected = [...retained].sort();
+  assert.deepEqual([...payloadIds].sort(), expected, 'first wire payload contains open items and their ancestors');
   assert.deepEqual([...installedIds].sort(), expected, 'all startup summaries are installed');
 }
 

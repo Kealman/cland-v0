@@ -15,5 +15,7 @@ assert.ok('bin' in found, 'C4 requires the real Neovim binary');
 test('local macOS copied-tracker startup evidence', async t => {
   const root = await tempProject(t);
   const fixture = await copyStartupTracker(source, root);
-  enforceStartupBudget(await measureStartup(t, found.bin, root, fixture));
+  const result = await measureStartup(t, found.bin, root, fixture);
+  assert.ok(result.payloadBytes <= 120*1024, `first item payload margin: ${result.payloadBytes} bytes > 122880 bytes`);
+  enforceStartupBudget(result);
 });

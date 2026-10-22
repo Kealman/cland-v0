@@ -155,7 +155,10 @@ test('snapshot supplies summary provenance, container progress, stage, blocked a
   const actor=await connectUi(t,hub.discovery);
   const initial=await featured(t,hub.discovery);
   assert.equal(initial.items.find(i=>i.id==='E-2')!.rollup?.layer,'watch','startup layer is ready before any mutation');
-  assert.deepEqual(initial.items.find(i=>i.id==='E-6')!.stages,[{name:'closed',state:'closed',qa:{scope:'none',when:'per-item'},merged:0,total:1,statuses:{done:1}}]);
+  assert.equal(initial.items.find(i=>i.id==='E-6'),undefined);
+  const closedEpics=await actor.request({type:'task.list',projection:'summary',state:'closed',parent:'R-1'});
+  assert.equal(closedEpics.ok,true,closedEpics.error);
+  assert.deepEqual((closedEpics.value as {items:ItemSummary[]}).items.find(i=>i.id==='E-6')!.stages,[{name:'closed',state:'closed',qa:{scope:'none',when:'per-item'},merged:0,total:1,statuses:{done:1}}]);
   assert.equal((await actor.request({type:'task.link',item:'T-3',blocked_by:['T-4']})).ok,true);
   const {items}=await featured(t,hub.discovery);
   const task=items.find(i=>i.id==='T-3')!, epic=items.find(i=>i.id==='E-2')!, release=items.find(i=>i.id==='R-1')!;
@@ -353,9 +356,9 @@ test('closed children page per parent under the reply budget and a closing delta
   assert.equal(closedFrame.done_items,107);
   const open=await ui.request({type:'task.list',projection:'summary',state:'open',include_containers:true});
   assert.equal(open.ok,true,open.error);
-  assert.deepEqual((open.value as {items:ItemSummary[]}).items.map(i=>i.id),['E-1']);
+  assert.deepEqual((open.value as {items:ItemSummary[]}).items.map(i=>i.id),[]);
   const fresh=(await featured(t,hub.discovery)).items;
-  assert.deepEqual(fresh.map(i=>i.id),['E-1']);
+  assert.deepEqual(fresh.map(i=>i.id),[]);
   const page=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-1',cursor:'T-106'});
   assert.equal(page.ok,true,page.error);
   assert.deepEqual((page.value as {items:ItemSummary[]}).items.map(i=>i.id),['T-107']);
@@ -380,4 +383,44 @@ test('closed children page per parent under the reply budget and a closing delta
   assert.equal(removal.item,null);assert.equal(removal.done_items,105);
   const afterRemoval=await featured(t,hub.discovery);
   assert.equal((afterRemoval.ui.frames.find(f=>f.type==='snapshot'&&f.domain==='items')!.value as {done_items:number}).done_items,105);
+});
+
+
+test('open payload prunes closed container forests while preserving ancestors and bounded archive pages',async t=>{
+  const root=await tempProject(t);
+  await source(root,'R-1','release',null);
+  await source(root,'E-2','epic','R-1','done');
+  await source(root,'T-3','task','E-2','planned');
+  await source(root,'C-4','category',null);
+  await Promise.all(Array.from({length:160},async(_,n)=>{
+    await source(root,`E-${10+n}`,'epic','R-1','done');
+    await source(root,`T-${1000+n}`,'task',`E-${10+n}`,'done');
+    await source(root,`R-${2000+n}`,'release',null,'done');
+  }));
+  const hub=await projectHub(t,root,{}, {clock:new FakeClock()});
+  const {ui,items}=await featured(t,hub.discovery);
+  const first=await ui.request({type:'task.list',projection:'summary',state:'open',include_containers:true});
+  assert.equal(first.ok,true,first.error);
+  const bytes=Buffer.byteLength(JSON.stringify(first)+'\n');
+  t.diagnostic(`closed-container forest first item payload: ${bytes} bytes; ceiling 122880`);
+  assert.ok(bytes<=120*1024,`first item payload margin: ${bytes} bytes > 122880 bytes`);
+  assert.deepEqual(items.map(i=>i.id).sort(),['C-4','E-2','R-1','T-3']);
+  assert.deepEqual((first.value as {items:ItemSummary[]}).items.map(i=>i.id).sort(),items.map(i=>i.id).sort());
+  assert.deepEqual(items.find(i=>i.id==='R-1')!.child_counts,{total:161,done:161,statuses:{done:161},work:{'in progress':0,review:0,qa:0}});
+  const archived:ItemSummary[]=[];let cursor:string|undefined;
+  do {
+    const reply=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'R-1',limit:40,...(cursor?{cursor}:{})});
+    assert.equal(reply.ok,true,reply.error);
+    assert.ok(Buffer.byteLength(JSON.stringify(reply)+'\n')<=256*1024);
+    const page=reply.value as {items:ItemSummary[];total:number;next:string|null};
+    assert.equal(page.total,161);assert.ok(page.items.length<=40);
+    archived.push(...page.items);cursor=page.next??undefined;
+  } while(cursor);
+  assert.equal(new Set([...items,...archived].map(i=>i.id)).size,164,'retained ancestor overlaps its page by identity');
+  assert.equal(archived.find(i=>i.id==='E-10')!.child_counts?.done,1);
+  const children=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-10'});
+  assert.deepEqual((children.value as {items:ItemSummary[]}).items.map(i=>i.id),['T-1000']);
+  const roots=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'',limit:100});
+  assert.equal((roots.value as {total:number}).total,160);
+  assert.equal((roots.value as {items:ItemSummary[]}).items.length,100);
 });

@@ -26,7 +26,7 @@ export type ConnectionState = {
   releases?: ExplorerSummary[];
   items?: ExplorerSummary[];
   doneItems?: number | undefined;
-  /** Loaded closed task children from bounded parent pages. */
+  /** Loaded closed children from bounded parent pages. */
   closedTasks?: (parent: string) => readonly ExplorerSummary[];
   closedTasksLoaded?: (parent: string) => boolean;
   loadClosed?: (parent: string) => void;
@@ -46,20 +46,19 @@ export type ConnectionState = {
 /** Loaded closed rows remain outside the open snapshot set. */
 export function itemRows(connection: ConnectionState): ExplorerSummary[] {
   const rows = new Map(connection.items?.map(row => [row.id, row]));
-  if (connection.closedTasks) for (const parent of ['', ...(connection.items?.map(row => row.id) ?? [])]) {
-    for (const row of connection.closedTasks(parent)) rows.set(row.id, row);
+  const parents = ['', ...rows.keys()];
+  const visited = new Set<string>();
+  for (const parent of parents) {
+    if (visited.has(parent)) continue;
+    visited.add(parent);
+    for (const row of connection.closedTasks?.(parent) ?? []) {
+      if (!rows.has(row.id)) { rows.set(row.id, row); parents.push(row.id); }
+    }
   }
   return [...rows.values()];
 }
 export function findItem(connection: ConnectionState, id: string | undefined): ExplorerSummary | undefined {
-  if (!id) return undefined;
-  const open = connection.items?.find(row => row.id === id);
-  if (open) return open;
-  for (const parent of ['', ...(connection.items?.map(row => row.id) ?? [])]) {
-    const closed = connection.closedTasks?.(parent).find(row => row.id === id);
-    if (closed) return closed;
-  }
-  return undefined;
+  return id ? itemRows(connection).find(row => row.id === id) : undefined;
 }
 
 /** Cookie-authenticated connection, retried from 250 ms up to 10 s between failures. */
@@ -82,7 +81,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     closedLoads.set(parent,{rows:new Map(),deltas:new Map()});
     request({type:'task.list',id:`tree-closed:${parent}`,projection:'summary',state:'closed',parent});
   }
-  function closedParent(row:ExplorerSummary) { return row.parent && state.items?.some(item=>item.id===row.parent) ? row.parent : ''; }
+  function closedParent(row:ExplorerSummary) { return row.parent && findItem(state,row.parent) ? row.parent : ''; }
   let cardSerial = 0;
   const cardRequests = new Map<string, { item: string; body: boolean }>();
   const pendingCards = new Set<string>();
@@ -248,10 +247,10 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         if (frame.siblings) siblingOrders[newParent] = frame.siblings;
         state = { ...state, siblingOrders };
         const row=frame.item ? explorerItem(frame.item) : null;
-        for (const [parent,load] of closedLoads) load.deltas.set(frame.id,row?.kind==='task'&&row.state==='closed'&&closedParent(row)===parent ? row : null);
+        for (const [parent,load] of closedLoads) load.deltas.set(frame.id,row?.state==='closed'&&closedParent(row)===parent ? row : null);
         for (const [parent,rows] of closed) {
           const next=rows.filter(item=>item.id!==frame.id);
-          if (row?.kind==='task'&&row.state==='closed'&&closedParent(row)===parent) next.push(row);
+          if (row?.state==='closed'&&closedParent(row)===parent) next.push(row);
           closed.set(parent,next);
         }
         if (row && !(row.kind==='task'&&row.state==='closed')) value.set(frame.id,row);

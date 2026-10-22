@@ -838,12 +838,15 @@ the rows in that section. Older frames without `child_counts` retain their
 loaded-row fallback.
 
 
-Closed task rows stay outside the initial item payload. Neovim requests open
-summaries with `include_containers:true`, retaining closed containers and their
-complete roll-ups. Expanding an epic or its direct-task group reads closed tasks
-for that parent through `task.list` summary pages (`state:"closed", parent:id`).
+Neovim requests open summaries with `include_containers:true`: open rows and
+their ancestors, including closed ancestors of open work. Fully closed containers
+and tasks stay outside the initial item payload. Expanding a release, epic or
+direct-task group reads closed children of every kind for that parent through
+`task.list` summary pages (`state:"closed", parent:id`). Hub roll-ups count the
+complete tracker before these pages load.
 `D` showing done work loads the selected scope; the board loads its scope, and
-item search loads all parents. The Closed items group loads root tasks. Each
+item search and `A` load all parents, following newly discovered containers.
+The Closed items group loads closed roots. Each
 reply is bounded at 100 rows and below 256 KiB, continuing with `cursor:next`.
 The explorer, board and card share loaded rows. A close delta leaves the open
 set and updates a loaded page; deltas received during paging win over page

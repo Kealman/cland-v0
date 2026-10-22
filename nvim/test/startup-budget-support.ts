@@ -23,19 +23,24 @@ export async function generateStartupTracker(root: string): Promise<TrackerFixtu
   const bodies = new Map<string, string>(), open: string[] = [], items: StartupItem[] = [];
   const at = '2026-10-01T12:00:00.000Z';
   for (let n = 1; n <= 1000; n++) {
-    const id = n === 1 ? 'R-1' : n === 2 ? 'E-2' : `T-${n}`;
+    // Keep open-item density independent from the closed-container history.
+    const kind = n === 1 || n > 200 && (n-201)%4 === 0 ? 'release'
+      : n === 2 || n > 200 && (n-201)%4 === 1 ? 'epic' : 'task';
+    const id = `${kind === 'release' ? 'R' : kind === 'epic' ? 'E' : 'T'}-${n}`;
+    const parent = n <= 200 ? n === 1 ? null : n === 2 ? 'R-1' : 'E-2'
+      : kind === 'release' ? null : kind === 'epic' ? `R-${n-1}` : `E-${n - (n-202)%4}`;
     const body = `## Summary\n\nItem ${id} keeps the workbench responsive as the tracker grows.\n\n## Implementation\n\n`
       + 'Read summaries first, preserve item identity during events, and fetch the detailed body when the human opens the card. Record a bounded receipt before asserting the rendered result.\n\n'.repeat(8)
       + '## Acceptance criteria\n\n- [ ] C1. Open items render from the first summary payload.\n- [ ] C2. Sessions remain visible while tracker data arrives.\n';
     bodies.set(id, body);
     if (n <= 200) open.push(id);
-    const membership = { id, kind: n === 1 ? 'release' : n === 2 ? 'epic' : 'task', state: n <= 200 ? 'open' : 'closed' } as const;
+    const membership = { id, kind, parent, state: n <= 200 ? 'open' : 'closed' } as const;
     items.push(membership);
     await writeFile(join(dir, `${id}-startup.md`), serializeItem({
       fm: { ...membership,
         title: n === 1 ? 'Startup tracker' : n === 2 ? 'Summary performance' : `Keep item ${n} responsive`,
-        ...(n > 2 ? { status: n <= 200 ? 'planned' : 'done', size: 'S' } as const : {}),
-        labels: ['workbench'], assignee: null, parent: n === 1 ? null : n === 2 ? 'R-1' : 'E-2',
+        ...(kind === 'task' ? { status: n <= 200 ? 'planned' : 'done', size: 'S' } as const : {}),
+        labels: ['workbench'], assignee: null, parent,
         blocked_by: [], topic: null, branch: null, created: at, updated: at },
       body, comments: [{ author: 'implementer', at, text: 'Source review checks the rendered receipt and the response size before verification.' }],
     }));
@@ -54,7 +59,7 @@ export async function copyStartupTracker(source: string, root: string): Promise<
     const text = await readFile(join(source, name), 'utf8');
     const item = parseItem(text);
     bodies.set(item.fm.id, item.body);
-    items.push({ id: item.fm.id, kind: item.fm.kind, state: item.fm.state });
+    items.push({ id: item.fm.id, kind: item.fm.kind, state: item.fm.state, parent:item.fm.parent });
     if (item.fm.state === 'open') {
       open.push(item.fm.id);
       if (item.fm.kind === 'release' && !row) row = { id: item.fm.id, title: item.fm.title };

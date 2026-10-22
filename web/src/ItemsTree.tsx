@@ -93,10 +93,10 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
     }
     previousRows.current = rows;
     for (const row of rows) if (row.open) {
-      if (!preferences.hideDone) connection.loadClosed?.(row.item ? row.key : row.parent ?? '');
+      if (!preferences.hideDone || preferences.archive && row.key === ':releases') connection.loadClosed?.(row.item ? row.key : row.parent ?? '');
       if (row.item?.kind === connection.tracker?.levels[1]) connection.loadPlan?.(row.key);
     }
-  }, [rows, connection, preferences.hideDone]);
+  }, [rows, connection, preferences.hideDone, preferences.archive]);
   useImperativeHandle(controls, () => ({ run(action) {
     if (!['tree-next','tree-previous','tree-open','tree-close','tree-toggle','tree-done','tree-archive'].includes(action)) return false;
     if (action === 'tree-done') save({ ...preferences, hideDone: !preferences.hideDone });

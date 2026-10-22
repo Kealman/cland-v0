@@ -389,13 +389,17 @@ task T0–T2 verification defers it to integrated/stage process occasions. Small
 literal geometry contracts run in T1 (`hub/test/web-graph-layout.test.ts`).
 
 
-The Items tree reads closed task children through `ConnectionState.closedTasks(parent)`
+The open snapshot holds open rows and their ancestors; fully closed container
+subtrees remain on demand. The Items tree reads closed children of every kind through `ConnectionState.closedTasks(parent)`
 and `loadClosed(parent)`. Unfolding a parent while done work is shown loads
 `task.list` summary pages with `state:"closed", parent`, at most 100 rows per
 reply and below 256 KiB. The connection follows `next` cursors, merges task deltas
 received during the load and caches completed parent pages. A closing task leaves
 `connection.items` and joins any loaded closed parent page. Reconnection renews
-requested parents. Container roll-ups supply counts before children load.
+requested parents. Newly loaded containers expose their own pages on expansion;
+`A` reads closed roots. The tree and card traverse these nested pages and
+deduplicate snapshot/page overlaps by identity. Container roll-ups supply counts
+before children load.
 
 The done-hidden total reads the hub's `done_items` inventory from the items
 snapshot and task deltas. Stage fractions and derived stage state read the

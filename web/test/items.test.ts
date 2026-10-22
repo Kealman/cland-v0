@@ -287,3 +287,61 @@ test('hidden done rows retain hub stage and total counts without loading closed 
     assert.equal(sent.filter(f=>f.type==='task.list'&&f.parent==='E-2').length,0);
   },page=>{page.on('websocket',socket=>socket.on('framesent',event=>sent.push(JSON.parse(String(event.payload)))));});
 });
+
+test('closed container pages restore nested archives once and preserve unloaded release progress',async t=>{
+  const {seedItem}=await import('./items-fixture.ts');
+  const fixture=await webFixture(t,{prepare:async root=>{
+    await seedItem(root,'R-1','release','Container release',{version:'1.0.0'});
+    await seedItem(root,'E-2','epic','Open container',{parent:'R-1'});
+    for(let n=10;n<115;n++) await seedItem(root,`E-${n}`,'epic',`Closed container ${n}`,{parent:'R-1',state:'closed'});
+    await seedItem(root,'T-200','task','Nested archived task',{parent:'E-114',state:'closed',status:'done'});
+    await seedItem(root,'R-300','release','Closed root',{version:'0.1.0',state:'closed'});
+    await seedItem(root,'E-301','epic','Archived root epic',{parent:'R-300',state:'closed'});
+    await seedItem(root,'T-302','task','Archived root task',{parent:'E-301',state:'closed',status:'done'});
+  }});
+  const sent:Array<Record<string,unknown>>=[],received:Array<Record<string,unknown>>=[];
+  await fixture.pageCase(t,async page=>{
+    await page.keyboard.press('2');
+    const tree=page.getByRole('tree',{name:'Items tree'});
+    const release=tree.locator('[data-object-id="R-1"]');
+    await release.waitFor();
+    assert.match(await release.textContent()??'',/105\/106/);
+    assert.equal(await tree.locator('[data-object-id="E-114"]').count(),0);
+    const snapshot=received.find(f=>f.type==='snapshot'&&f.domain==='items')!;
+    assert.deepEqual((snapshot.value as {items:Array<{id:string}>}).items.map(i=>i.id).sort(),['E-2','R-1']);
+    assert.equal(sent.filter(f=>f.type==='task.list'&&f.parent==='R-1').length,0);
+    const last=tree.locator('[data-object-id="E-114"]');
+    const lastVisible=last.waitFor();void lastVisible.catch(()=>{});
+    await page.getByRole('button',{name:'D · Done hidden',exact:true}).click();
+    await lastVisible;
+    assert.ok(sent.filter(f=>f.type==='task.list'&&f.parent==='R-1').length>=2);
+    assert.equal(await tree.locator('[data-object-id^="E-"]').count(),106);
+    assert.match(await release.textContent()??'',/105\/106/);
+    const childVisible=tree.locator('[data-object-id="T-200"]').waitFor();void childVisible.catch(()=>{});
+    await last.click();await page.keyboard.press('l');
+    await childVisible;
+    assert.match(await last.textContent()??'',/1\/1/);
+    await tree.locator('[data-tree-key=":releases"]').focus();await page.keyboard.press('l');
+    const root=tree.locator('[data-object-id="R-300"]');
+    const rootVisible=root.waitFor();void rootVisible.catch(()=>{});
+    await page.getByRole('button',{name:'A · Archive hidden',exact:true}).click();
+    await rootVisible;
+    const epic=tree.locator('[data-object-id="E-301"]');
+    const epicVisible=epic.waitFor();void epicVisible.catch(()=>{});
+    await root.click();await page.keyboard.press('l');
+    await epicVisible;
+    const archivedChild=tree.locator('[data-object-id="T-302"]').waitFor();void archivedChild.catch(()=>{});
+    await epic.click();await page.keyboard.press('l');
+    await archivedChild;
+    const ids=await tree.locator('[data-object-id]').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-object-id')));
+    assert.equal(ids.length,new Set(ids).size,'one rendered row per identity across snapshot and nested pages');
+    await page.reload();await tree.locator('[data-object-id="T-302"]').waitFor();
+    assert.equal(await tree.locator('[data-object-id="T-302"]').count(),1);
+  },async page=>{
+    await page.addInitScript(()=>{if(!localStorage.getItem('cland.ui.items.v1')) localStorage.setItem('cland.ui.items.v1',JSON.stringify({tree:{hideDone:true,open:{}}}));});
+    page.on('websocket',socket=>{
+      socket.on('framesent',event=>sent.push(JSON.parse(String(event.payload))));
+      socket.on('framereceived',event=>received.push(JSON.parse(String(event.payload))));
+    });
+  });
+});

@@ -2118,7 +2118,7 @@ export class Tracker {
 
   doneItemCount(): number { return this.#index.doneItemCount(); }
 
-  /** The connection model retains open rows and all non-task rows (including closed containers). */
+  /** The connection model retains open rows and their ancestor chain. */
   snapshotSummaries({ card = false }: { card?: boolean } = {}): ExplorerSummary[] {
     return this.listSummaries({}, { snapshot: true, card });
   }
@@ -2135,7 +2135,16 @@ export class Tracker {
   listSummaries(filter: ListFilter = {}, { snapshot = false, card = false }: { snapshot?: boolean; card?: boolean } = {}): ExplorerSummary[] {
     this.#ensureExplorer();
     if (filter.under !== undefined) filter = {...filter, under:this.#require(filter.under).id};
-    return this.#index.list(filter).filter(i => !snapshot || i.kind !== 'task' || i.state !== 'closed').map(i => this.#compactSummary(this.#projected(i.id), card));
+    const rows = this.#index.list(filter);
+    const retained = new Set<string>();
+    if (snapshot) for (const row of rows) if (row.state === 'open') {
+      let current: IndexedItem | undefined = row;
+      while (current && !retained.has(current.id)) {
+        retained.add(current.id);
+        current = current.parent ? this.#index.get(current.parent) ?? undefined : undefined;
+      }
+    }
+    return rows.filter(i => !snapshot || retained.has(i.id)).map(i => this.#compactSummary(this.#projected(i.id), card));
   }
 
   #compactSummary(i: ItemSummary, card = false): ExplorerSummary {
@@ -2155,9 +2164,9 @@ export class Tracker {
   }
 
   /** Numeric identity order survives sibling re-ranking and a cursor row's removal. */
-  closedTaskPage(parent: string, cursor?: string, limit = 100): {items:ExplorerSummary[];next:string|null;total:number} {
+  closedItemPage(parent: string, cursor?: string, limit = 100): {items:ExplorerSummary[];next:string|null;total:number} {
     const owner = parent === '' ? '' : this.#require(parent).id;
-    const rows = this.#index.list({state:'closed',kind:'task'}).filter(i => (i.parent ?? '') === owner || owner === '' && i.parent && !this.#index.get(i.parent))
+    const rows = this.#index.list({state:'closed'}).filter(i => (i.parent ?? '') === owner || owner === '' && i.parent && !this.#index.get(i.parent))
       .sort((a,b) => idNumber(a.id)! - idNumber(b.id)!);
     const after = cursor ? idNumber(cursor)! : 0;
     const pending = rows.filter(i => idNumber(i.id)! > after);
