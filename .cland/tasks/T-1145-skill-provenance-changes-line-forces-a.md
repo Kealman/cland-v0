@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-859
 branch: t/T-1145-skill-provenance-changes-line-forces-a
 created: 2026-10-22T16:09:09.611Z
-updated: 2026-10-22T16:15:21.421Z
+updated: 2026-10-22T16:19:07.346Z
 ---
 
 ## Summary
@@ -41,3 +41,16 @@ Implementing conflict-free provenance with a per-skill CHANGES file and local .g
 ### impl-1145 · 2026-10-22T16:15:21.421Z
 
 Committed and pushed 7b6f984a23289fc4fa505a38ad56482d28d23219. C1/C2 done; source review requested from Reviewer in topic-859. Evidence A-9287 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9287-t-1145-provenance-migration-and-test-first-evidence.md. Targeted macOS checks passed; full exact-head verification awaits clear source verdict.
+
+### rev-26 · 2026-10-22T16:19:07.346Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1145-source-1
+commit: 7b6f984a23289fc4fa505a38ad56482d28d23219
+scope: full
+findings: [{"severity":"low","text":"L1: Scope the CHANGES/union-attribute wording to the 15 kept upstream skills; cland-owned curated skills do not carry those files. The opening init/skills.ts comment repeats the same overbroad wording.","file":"hub/README.md","line":1697}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Source clear at 7b6f984a; A-9294 records both axes. All 15 original provenance strings are preserved verbatim, with stable pointers and portable union attributes. Native Git test matches merge-tree/one-parent squash operations after provisioning; isolation, cleanup and T1/T3 membership are appropriate. L1 is documentation scope wording only. C1/C2 remain run-dependent and unverified pending unchanged-head configured evidence plus attributable native Git T3 execution; A-9287 is qualified precommit development evidence, not final proof.

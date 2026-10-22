@@ -2,8 +2,8 @@
 id: T-1117
 kind: task
 title: The human's message kinds and Withdraw in the hub
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T16:17:30.716Z
+updated: 2026-10-22T16:21:58.120Z
+closed: 2026-10-22T16:21:58.120Z
 ---
 
 ## Summary
@@ -34,24 +35,30 @@ The human's `topic.send` takes an optional kind, `message` by default, `decision
 - [x] C1. A Decision and a Question sent by the human carry their kind on the message, in a later history read and in the delta a second frame client receives (test).
   - done: impl-1117 · 2026-10-22T15:41:16.997Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.244Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final-2 · 2026-10-22T16:18:01.300Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
 - [x] C2. A Question addressed to a session leaves the topic waiting for that session, as `cland` reads the topic (test).
   - done: impl-1117 · 2026-10-22T16:01:03.386Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.244Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final-2 · 2026-10-22T16:18:01.300Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
 - [x] C3. Withdrawing a message queued for a busy fake session moves it to `withdrawn`, returns its text, and the session never receives it, also after the turn ends (test).
   - done: impl-1117 · 2026-10-22T15:41:17.167Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final-2 · 2026-10-22T16:18:01.301Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
 - [x] C4. A withdraw after the message was injected is refused naming the stage, and an agent's withdraw and another sender's message are refused (test).
   - done: impl-1117 · 2026-10-22T15:41:17.456Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final-2 · 2026-10-22T16:18:01.301Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
 - [x] C5. Neovim's thread shows a withdrawn message with the dropped glyph and colour (test).
   - done: impl-1117 · 2026-10-22T15:33:38.995Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final-2 · 2026-10-22T16:18:01.301Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
 - [x] C6. `hub/README.md` and `nvim/README.md` describe the kinds and the withdraw (docs).
   - done: impl-1117 · 2026-10-22T15:33:39.077Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-source-2 · 2026-10-22T15:42:06.382Z · commit 74e5f348ca0cc7196f2b413282f6f20cdc418925
   - verified: rev-32 [reviewer] · run rev-20261022-1117-source-3 · 2026-10-22T16:02:24.554Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
   - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
   - verified: rev-32 [reviewer] · run rev-20261022-1117-delta · 2026-10-22T16:12:30.101Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final-2 · 2026-10-22T16:18:01.301Z · commit 29230d6bb984a483052bdedcf166dbee096f7e64
 
 ## Comments
 
@@ -148,3 +155,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized dev merge delta source clear, A-9282; Coordinator920f0293 confirmed in item history. Both-parent/base audit:15 T-1117-only files retain old blobs;37 incoming-only files retain dev blobs. Eleven shared paths preserve independent withdrawal/approval/wire/docs/test/recording changes. Sessions adds approval callbacks, Store only inbox outcome typing; withdrawal state/fence/wait and regression assertions remain. Manual implement skill resolution retains all parent guidance and metadata.changes entries, with no fresh guidance. git diff --check clean. C6 docs verified at merged head; C1–C5 await fresh configured same-head evidence. Prior A-9275/A-9278 are previous-head evidence; A-9280 merged-tree targeted/check narrative is supplemental. No runtime/Linux/full-suite green claimed.
 
 Criteria: C6 verified.
+
+### rev-32 · 2026-10-22T16:18:01.301Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261022-1117-final-2
+commit: 29230d6bb984a483052bdedcf166dbee096f7e64
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear after authorized merge: A-9292 audits fresh same-head 61de8606/A-9290, exit 0, local Darwin arm64 automatic fallback, Node24.21.0/Neovim0.12.5. Host T0, T1, all-T2 hub+Neovim and Web complete; aggregate 2478 pass/0 fail/0 skip. All eleven new identities have completed 5/5 load receipts. Current kind/history/second-client, Question/addressee/handover, busy withdrawal/late ack/held progress/next turn, Store reopen/non-replay, injected/agent/other-sender/submission/broadcast refusals and Neovim glyph/colour/old-stage cases pass. C6 docs source audit A-9282 stands. All C1–C6 freshly verified, no findings. Diagnostic lint/generic budgets/ratchet report-only; zero lint refusals. No Linux/T3/T4 or integrated full-suite claim; affected/after-stage QA separate. Prior-head greens are historical; this settlement uses A-9290.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-22T16:21:58.120Z
+
+Merged 0c8c8c9a5ecfcb824ffae7c3a478897defe09d80 onto dev.

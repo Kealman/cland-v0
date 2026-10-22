@@ -3,8 +3,9 @@ id: T-1118
 kind: task
 title: The Topics area and the thread in pages, with read marks
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T16:09:12.856Z
+updated: 2026-10-22T16:22:13.227Z
 ---
 
 ## Summary
@@ -31,10 +32,14 @@ The Topics area shows the topics in groups (§3.2): those waiting for the human 
 
 ## Acceptance criteria
 
-- [ ] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
-- [ ] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
-- [ ] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
-- [ ] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
+- [x] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
+  - done: impl-1118 · 2026-10-22T16:22:06.595Z
+- [x] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
+  - done: impl-1118 · 2026-10-22T16:22:06.850Z
+- [x] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
+  - done: impl-1118 · 2026-10-22T16:22:07.989Z
+- [x] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
+  - done: impl-1118 · 2026-10-22T16:22:09.345Z
 
 ## Comments
 
