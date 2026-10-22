@@ -673,16 +673,23 @@ k13() {   # p1: Withdraw a message queued for a busy fake session; the refusals;
   q "$(cap s1)" '({w1: deltas("delivery",A[0]).map(f=>f.stage), w2: deltas("delivery",A[1]).map(f=>f.stage)})' "$W1" "$W2"
   touch "$Q/stop-s1"
 }
-mkids() {   # p1: the ids the walkthrough needs, from the seeding captures and k13's files
+mkids() {   # p1: the ids the walkthrough needs, from the seeding captures, the topics' history and k13's files
+  # A driver `send` to the human returns outcomes but no message id (run 1, A-9459): read the ids from history.
+  printf '{"type":"topic.history","topic":"%s"}\n{"type":"topic.history","topic":"%s"}\n' "$(cat "$QA_Q/t-read")" "$(cat "$QA_Q/t-hidden")" | fc > "$EV/E417S1-14-history.jsonl"
   node -e '
 const fs=require("fs"), Q=process.env.QA_Q, EV=process.argv[1];
 const t=n=>fs.readFileSync(`${Q}/t-${n}`,"utf8").trim();
 const lines=f=>fs.readFileSync(f,"utf8").split("\n").filter(Boolean).map(l=>JSON.parse(l));
 const long=lines(`${EV}/E417S1-11-long.jsonl`).filter(f=>f.type==="result").map(f=>f.value.message.id);
 const drv=lines(`${EV}/E417S1-11-drv.jsonl`).filter(l=>l.tool==="send");
-const sent=topic=>drv.filter(l=>l.args.topic===topic).map(l=>l.result.message.id);
+const hres=lines(`${EV}/E417S1-14-history.jsonl`).filter(f=>f.type==="result");
+const byId=id=>hres.find(f=>f.id===id)?.value?.messages ?? [];
+const hist={[t("read")]:byId("q1"),[t("hidden")]:byId("q2")};
+const idOf=(topic,text)=>{const m=(hist[topic]??[]).filter(x=>x.text===text).at(-1);if(!m)throw new Error(`no history message in ${topic} for ${text}`);return m.id;};
+const sent=topic=>drv.filter(l=>l.args.topic===topic).map(l=>idOf(topic,l.args.text));
 const read=sent(t("read")), hidden=sent(t("hidden"));
-const hostile=drv.find(l=>String(l.args.text).startsWith("QA hostile:")).result.message.id;
+const hostileSend=drv.find(l=>String(l.args.text).startsWith("QA hostile:"));
+const hostile=idOf(hostileSend.args.topic,hostileSend.args.text);
 const ids={topics:{item:t("item"),closed:t("closed"),waiting:t("waiting"),long:t("long"),read:t("read"),hidden:t("hidden"),kinds:t("kinds")},item:fs.readFileSync(`${Q}/item`,"utf8").trim(),long,readLast:read.at(-1),hiddenLast:hidden.at(-1),hostile,withdrawn:fs.readFileSync(`${Q}/m-withdrawn`,"utf8").trim(),injected:fs.readFileSync(`${Q}/m-injected`,"utf8").trim()};
 fs.writeFileSync(`${Q}/ids.json`, JSON.stringify(ids));
 console.log(JSON.stringify({long: long.length, read: read.length, hidden: hidden.length, hostile: Boolean(hostile)}));
