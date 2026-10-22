@@ -121,7 +121,7 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
     <div className={s.filters}>
       <button aria-pressed={preferences.hideDone} onClick={() => save({ ...preferences, hideDone: !preferences.hideDone })} title="Hide done items (D)">D · {preferences.hideDone ? 'Done hidden' : 'Done shown'}</button>
       <button aria-pressed={preferences.archive} onClick={() => save({ ...preferences, archive: !preferences.archive })} title="Show archived roots (A)">A · {preferences.archive ? 'Archive shown' : 'Archive hidden'}</button>
-      {preferences.hideDone && <span>{connection.items?.filter(done).length ?? 0} done hidden</span>}
+      {preferences.hideDone && <span>{connection.doneItems ?? connection.items?.filter(done).length ?? 0} done hidden</span>}
     </div>
     <div ref={root} role="tree" aria-label="Items tree" className={s.tree}>
       {rows.map(row => row.note ? <div key={row.key} className={s.stage} style={{ paddingLeft: 16 + row.depth * 20 }}>

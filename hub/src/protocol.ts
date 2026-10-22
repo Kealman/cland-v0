@@ -278,7 +278,7 @@ export type HubEvent =
   | { type: 'role.filled'; role: 'coordinator'; session: string; ts: string }
   /** The tracker's index changed (a hub write, a hand edit the watcher read, a removed file, a claim): the item as
    *  `task.list` shows it, or null when its file is gone. */
-  | { type: 'task'; id: string; item: ItemSummary | null; siblings?: string[]; layers?: Record<string, Layer> };
+  | { type: 'task'; id: string; item: ItemSummary | null; done_items?: number; siblings?: string[]; layers?: Record<string, Layer> };
 
 /** A role's clause as the hub delivers it to the holder (spec 4.4): on assignment and on every reconnect.
  *  `role` null: the session's role was revoked. */
@@ -533,7 +533,7 @@ export const SNAPSHOT_LIMITS = {
 } as const;
 export type SnapshotValues = {
   tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
-  items: { items: import('./tracker/tracker.ts').ExplorerSummary[] };
+  items: { items: import('./tracker/tracker.ts').ExplorerSummary[]; done_items?: number };
   sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: import('./crew.ts').CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
   topics: { topics: Topic[] };
   inbox: Inbox & { needsYou: number };

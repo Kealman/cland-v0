@@ -72,11 +72,13 @@ export function buildItemsTree(connection: ConnectionState, preferences: TreePre
     plan.forEach((stage, index) => stage.items.forEach(id => { if (!at.has(id)) at.set(id, index); }));
     plan.forEach((stage, index) => {
       const members = live(list).filter(item => at.get(item.id) === index);
-      const merged = stage.items.filter(id => by.has(id) && done(by.get(id)!)).length;
-      const state = stage.state === 'closed' ? 'closed' : merged || members.some(item => ['in progress','review','qa','ready'].includes(item.status ?? ''))
-        ? 'in work' : members.some(item => item.status === 'planned') ? 'planned' : 'backlog';
-      note(`${parent}:stage:${index}`, stage.name, depth, parent, [`S${index + 1}`, state, `${merged}/${stage.items.length} merged`,
-        stage.qa.scope === 'none' ? 'review only' : `qa ${stage.qa.scope}`, ...(stage.qa.scope === 'none' ? [] : [stage.qa.when === 'after-stage' ? 'after stage' : 'per item'])]);
+      const summary = by.get(parent)?.stages?.find(value => value.name === stage.name);
+      const busy = summary && ['in progress','review','qa','ready'].some(status => (summary.statuses[status] ?? 0) > 0);
+      const state = !summary ? stage.state : summary.state === 'closed' ? 'closed' : summary.merged || busy ? 'in work' : summary.statuses.planned ? 'planned' : 'backlog';
+      const progress = summary ? `${summary.merged}/${summary.total} merged` : '— merged';
+      const qa = summary?.qa ?? stage.qa;
+      note(`${parent}:stage:${index}`, stage.name, depth, parent, [`S${index + 1}`, state, progress,
+        qa.scope === 'none' ? 'review only' : `qa ${qa.scope}`, ...(qa.scope === 'none' ? [] : [qa.when === 'after-stage' ? 'after stage' : 'per item'])]);
       addList(members, depth, parent);
     });
     const outside = live(list).filter(item => !at.has(item.id));
@@ -105,7 +107,8 @@ export function buildItemsTree(connection: ConnectionState, preferences: TreePre
       addList(openItems.slice(0, 3), depth + 1, item.id);
       if (openItems.length > 3) group(`:more:${item.id}`, `${openItems.length - 3} more`, openItems.slice(3), depth + 1, item.id);
       addList(list.filter(done), depth + 1, item.id);
-      if (preferences.hideDone && list.some(done)) note(`${item.id}:hidden`, `D hides ${list.filter(done).length} done`, depth + 1, item.id);
+      const hidden = item.child_counts?.done ?? list.filter(done).length;
+      if (preferences.hideDone && hidden) note(`${item.id}:hidden`, `D hides ${hidden} done`, depth + 1, item.id);
     } else if (connection.plansById?.[item.id]?.length) stages(list, connection.plansById[item.id]!, depth + 1, item.id);
     else addList(list, depth + 1, item.id);
   }

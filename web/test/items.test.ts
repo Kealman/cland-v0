@@ -219,3 +219,71 @@ test('a delta rebuilds the 300-item browser tree within 15 ms', async t => {
     t.diagnostic(`300-item synchronous model rebuilds after CLI delta: ${JSON.stringify(measurements)} ms; excludes setup, transport and React DOM commit`);
   });
 });
+
+test('closed epic children arrive through bounded pages and remain current after close and reconnect', async t => {
+  const {seedItem}=await import('./items-fixture.ts');
+  const fixture=await webFixture(t,{prepare:async root=>{
+    await seedItem(root,'R-1','release','Paged release',{version:'1.0.0'});
+    await seedItem(root,'E-2','epic','Paged epic',{parent:'R-1'});
+    await seedItem(root,'T-3','task','Closing child',{parent:'E-2',status:'planned'});
+    for(let n=4;n<=108;n++) await seedItem(root,`T-${n}`,'task',`Archived child ${n}`,{parent:'E-2',state:'closed',status:'done'});
+  }});
+  const ui=await connectUi(t,fixture.hub.discovery);
+  const sent:Array<Record<string,unknown>>=[],received:Array<Record<string,unknown>>=[];
+  await fixture.pageCase(t,async page=>{
+    await page.keyboard.press('2');
+    const tree=page.getByRole('tree',{name:'Items tree'});
+    const epic=tree.locator('[data-object-id="E-2"]');
+    await epic.click();await page.keyboard.press('l');
+    await tree.locator('[data-object-id="T-108"]').waitFor();
+    assert.equal(await tree.locator('[data-object-id^="T-"]').count(),106);
+    assert.ok(sent.filter(f=>f.type==='task.list'&&f.parent==='E-2').length>=2);
+    const snapshot=received.find(f=>f.type==='snapshot'&&f.domain==='items')!;
+    assert.equal((snapshot.value as {items:Array<{state:string;kind:string}>}).items.filter(i=>i.kind==='task'&&i.state==='closed').length,0);
+    const closed=tree.locator('[data-object-id="T-3"][data-status="done"]').waitFor();void closed.catch(()=>{});
+    assert.equal((await ui.request({type:'task.edit',item:'T-3',state:'closed'})).ok,true);await closed;
+    assert.equal(await tree.locator('[data-object-id^="T-"]').count(),106);
+    await page.reload();await tree.locator('[data-object-id="T-108"]').waitFor();
+    assert.equal(await tree.locator('[data-object-id^="T-"]').count(),106);
+  },page=>{ page.on('websocket',socket=>{
+    socket.on('framesent',event=>sent.push(JSON.parse(String(event.payload))));
+    socket.on('framereceived',event=>received.push(JSON.parse(String(event.payload))));
+  }); });
+});
+
+test('hidden done rows retain hub stage and total counts without loading closed pages', async t=>{
+  const {seedItem}=await import('./items-fixture.ts');
+  const {withPlan}=await import('../../hub/src/tracker/plan.ts');
+  const {TrackerIndex}=await import('../../hub/src/tracker/index-db.ts');
+  const fixture=await webFixture(t,{prepare:async root=>{
+    await seedItem(root,'R-1','release','Count release',{version:'1.0.0'});
+    await seedItem(root,'E-2','epic','Count epic',{parent:'R-1'},withPlan('## Summary\n\nComplete counts.',{
+      stages:[{name:'Partially merged',qa:{scope:'none',when:'per-item'},lanes:[['T-3','T-4','T-5']]}],
+    }));
+    await seedItem(root,'E-6','epic','Closed count epic',{parent:'R-1',state:'closed'});
+    for(const n of [3,4,5]) await seedItem(root,`T-${n}`,'task',`Count child ${n}`,{parent:'E-2',state:n<5?'closed':'open',status:n<5?'done':'planned'});
+    const index=new TrackerIndex(join(root,'.cland/hub.db'));
+    index.recordMerge('T-3',{branch:'t/landed',tip:'a'.repeat(40),commit:'a'.repeat(40),base:'dev'});index.close();
+  }});
+  const ui=await connectUi(t,fixture.hub.discovery);
+  const sent:Array<Record<string,unknown>>=[];
+  await fixture.pageCase(t,async page=>{
+    await page.keyboard.press('2');
+    await page.getByRole('button',{name:'D · Done shown',exact:true}).click();
+    const tree=page.getByRole('tree',{name:'Items tree'});
+    await tree.locator('[data-object-id="E-2"]').click();await page.keyboard.press('l');
+    const stage=tree.getByText('Partially merged',{exact:true}).locator('..');
+    await stage.waitFor();
+    assert.match(await stage.textContent()??'',/1\/3 merged/);
+    assert.match(await stage.textContent()??'',/in work/);
+    assert.equal(await tree.locator('[data-object-id="T-3"]').count(),0);
+    assert.equal(await tree.locator('[data-object-id="T-4"]').count(),0);
+    assert.equal(sent.filter(f=>f.type==='task.list'&&f.parent==='E-2').length,0,'D-hidden counts do not fetch closed child pages');
+    await page.getByText('3 done hidden',{exact:true}).waitFor();
+    const changed=page.getByText('2 done hidden',{exact:true}).waitFor();void changed.catch(()=>{});
+    assert.equal((await ui.request({type:'task.edit',item:'T-4',state:'open',status:'planned'})).ok,true);await changed;
+    assert.match(await stage.textContent()??'',/1\/3 merged/);
+    assert.match(await stage.textContent()??'',/in work/);
+    assert.equal(sent.filter(f=>f.type==='task.list'&&f.parent==='E-2').length,0);
+  },page=>{page.on('websocket',socket=>socket.on('framesent',event=>sent.push(JSON.parse(String(event.payload)))));});
+});

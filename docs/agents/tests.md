@@ -1844,11 +1844,12 @@ that buffer with an independently armed PerformanceObserver capture.
 
 `item-summary.test.ts` also proves card verdict reasons/rounds/scopes, Decision
 previews and agents' text outlines through snapshots and mutation deltas, without
-body/comment reads. Closing a row removes its card facts from the snapshot and
-delta; a bounded by-id page restores them without a body/comment payload. Scoped
+body/comment reads. Closing a task removes its row from the open snapshot; its final delta still
+carries the compact closed row. Closing other rows removes card facts from their
+snapshot and delta; a bounded by-id page restores them without a body/comment payload. Scoped
 verdict history must not emit posted-verdict notifications on close/reopen; the
 frame regression retains one genuine new-verdict subscription delivery. The
-copied-live boundary asserts its measured items size below 97.9% of 1 MiB. Stage summaries and cover-settlement deltas retain complete
+copied-live boundary asserts its measured items size at or below 50% of 1 MiB. Stage summaries and cover-settlement deltas retain complete
 merged/total/status counts; closed tasks without landing receipts do not count
 as merged. `progress-counts-component.test.ts` renders unloaded closed stage
 members in the plan, explorer and card, then observes a stage-count delta. The
@@ -1869,11 +1870,27 @@ remain in `startup-replies-scale.test.ts`.
 `item-summary-lua.test.ts` is T3 because its independent oracle executes the real
 Lua through headless Neovim. It copies every live tracker file into a disposable
 project, adds a guaranteed closed-release/open-epic/planned-task regression,
-then compares every summary and the Lua roll-up rules with the snapshot and
-bounded by-id closed-text reads, and asserts the copied items frame fits 1 MiB.
+restores closed tasks through bounded parent pages, then compares every summary
+and the Lua roll-up rules with the snapshot plus bounded by-id closed-text reads, and asserts the copied items
+frame fits 1 MiB.
 It also feeds separate plan reads to Lua's stage selector. The dated E-880
 allowance preserves this all-body differential guard. Neither the source tracker
 nor the human's HOME, accounts or Git configuration is used for execution.
+
+
+`item-summary.test.ts` tests parent cursors, limits, closed-container retention and
+the close-delta/open-set boundary through public frames. A second client that
+has never fetched closed pages observes an unloaded closed task's removal and
+its authoritative done total, then compares a fresh snapshot. `nvim/test/closed-pages.test.ts`
+copies the live tracker into a disposable project and renders 105 paged closed
+children in a real headless explorer, board and card. It is T3 for the real client
+boundary. `web/test/items.test.ts` observes a 105-child page continuation, close
+delta and reload through the real browser. A D-hidden regression holds closed
+rows unloaded while asserting stage merged/state and global done totals, then
+reopens a closed child and retains the final fraction/state assertions. New closed-page screen frames can be
+recorded by naming their individual component file; regenerate existing Neovim
+protocol/live fixtures with `npm run test:nvim-fixtures -- --from-recordings`.
+
 
 Resume coverage adds `model-ring.test.ts` (T1 fake-clock age/UTF-8 byte bounds,
 including terminal close after a late disconnect publication) and
@@ -1948,9 +1965,10 @@ rendered Neovim receipt.
 8,163 artifacts, 200 General messages and 200 event records. It also restores
 1,645 completed suite receipts, 217 stopped sessions, four plans with 250 children
 each, and 800 closed topics. The first completed status reply must arrive within
-15 seconds of embedded startup, excluding fixture creation. This T3 guard is
-three times the local five-second target to allow loaded Linux shards, while
-remaining well below the 39-second production regression (Coordinator decision
+10 seconds of embedded startup for T-1081, excluding fixture creation; the original
+15-second status margin assertion remains too. The original T3 guard was
+three times the local five-second target to allow loaded Linux shards, remaining
+well below the 39-second production regression (Coordinator decision
 `a6b632c3`, after run `26993a9e` measured 5,275.8 ms on a two-worker Linux droplet).
 The separate copied-state CLI measurement still enforces five seconds. The
 original generated-fixture red was 14,443.6 ms, so the 15-second guard does not
@@ -1961,6 +1979,13 @@ T-1039 removes the C-325 duration allowance after the expanded file ran in
 2.768 seconds on local Darwin arm64; this is targeted local T3 evidence, not
 a new Linux or integrated receipt. A-8181's original 6.636-second Linux T2 result
 remains historical evidence.
+At startup, unbranched non-ready tasks with retained verdicts skip readiness I/O:
+the merge gate cannot promote them without a branch. A branchless `ready` row
+still runs its check and demotes. `startup-ready-component.test.ts` observes both
+filesystem boundaries and final frame statuses; `startup-replies-scale.test.ts`
+retains the original durable-scale fixture and measures first completed status.
+
+
 The recorded artifact screen file checks browser/palette page reads and General
 archive continuation when byte-capped pages contain fewer than 200 messages.
 It also opens older-page rendered centre/split folder-child views, holds detail

@@ -89,7 +89,7 @@ needs-you count prefixes the tab title. The Coordinator and needs-you controls
 navigate to Sessions and Inbox respectively.
 
 The connection negotiates snapshots, numbered deltas and slim frames. The initial
-snapshot supplies tracker configuration, item summaries, sessions, topics, inbox,
+snapshot supplies tracker configuration, open item summaries and all non-task rows, sessions, topics, inbox,
 events and accounts; `hub.status` supplies the project name and `artifact.list`
 the artifact inventory. Item deltas replace or remove rows directly, without a
 `task.list` reread. Reconnection takes a fresh snapshot, retaining the previous
@@ -118,8 +118,7 @@ open items, a folded **N more**, open/done counts, the `idle_from` mark and a
 count of done items hidden by `D`.
 
 Closed task children pass through `ConnectionState.closedTasks(parent)` and
-`loadClosed(parent)`. T-1071 backs these with snapshot rows; T-1081 can replace
-that source with bounded container pages. Progress and category totals keep
+`loadClosed(parent)`, backed by bounded per-parent cursor pages. Progress and category totals keep
 using the hub's counts when only part of the closed child list is loaded.
 
 | Physical keys | Action |
@@ -146,6 +145,10 @@ branch and latest verification, dates, last activity and Decision. The verdict
 box uses the clear or failed colour. Facts use snapshots and deltas; a closed
 item or closed verdict owner reads its deferred card facts through a bounded
 by-id summary page. Moving across open rows sends no `task.view`.
+The card's ordinal stays `—` until a full sibling-order receipt or completed
+closed parent page supplies its position and total. It does not fetch hidden
+siblings just to fill that fact. Changes with an unknown previous parent discard
+cached sibling orders; loaded pages continue to follow the deltas.
 
 **Agents’ text** starts folded, with section names and word count. Expanding it
 fetches the body once; folding or reselecting reuses it. Item deltas and reconnects
@@ -384,3 +387,18 @@ every epic/release in a scratch copy of `.cland/tasks`, seeded cyclic/ranked/den
 graphs and narrow-band wrapping. It is T3 because the oracle is a real binary;
 task T0–T2 verification defers it to integrated/stage process occasions. Small
 literal geometry contracts run in T1 (`hub/test/web-graph-layout.test.ts`).
+
+
+The Items tree reads closed task children through `ConnectionState.closedTasks(parent)`
+and `loadClosed(parent)`. Unfolding a parent while done work is shown loads
+`task.list` summary pages with `state:"closed", parent`, at most 100 rows per
+reply and below 256 KiB. The connection follows `next` cursors, merges task deltas
+received during the load and caches completed parent pages. A closing task leaves
+`connection.items` and joins any loaded closed parent page. Reconnection renews
+requested parents. Container roll-ups supply counts before children load.
+
+The done-hidden total reads the hub's `done_items` inventory from the items
+snapshot and task deltas. Stage fractions and derived stage state read the
+parent item's authoritative stage summaries (`merged`, `total`, `statuses`,
+`state`); an absent legacy summary displays unavailable merged progress. These
+facts remain complete with D hiding done and closed child pages still unloaded.

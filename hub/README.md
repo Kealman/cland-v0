@@ -2350,7 +2350,28 @@ the bounded by-id read below. Findings, bodies, comments, full criteria, plans, 
 and index bookkeeping are excluded; clients read those details through `task.view`. State and other existing
 filters combine normally. Unknown projections refuse. Omitting `projection` preserves
 the existing response, including the CLI's `cland task list --json`; the CLI adds no
-projection flag. Neovim requests open summaries first and closed summaries on demand.
+projection flag. Neovim requests `state:"open", include_containers:true` first: this
+returns the same item set as the connection snapshot, including closed containers.
+The flag accepts only an open summary request without other list filters.
+
+The items snapshot contains open rows and every non-task row, including closed
+containers with complete roll-ups. The items domain also carries `done_items`,
+the complete number of rows whose state is closed or task status is done. Task
+mutation deltas, including file removals with `item:null`, carry the same
+authoritative count, so hiding unloaded rows
+preserves the total without client counting. Closed tasks are read per direct parent:
+`{type:"task.list", id:"closed", projection:"summary", state:"closed", parent:"E-12", limit:100}`
+returns `{items:[...], total, next}`. `parent:""` selects root tasks and tasks whose
+parent is missing. A page contains at most 100 compact rows and reserves envelope
+space below the 256 KiB reply budget; one oversized row refuses explicitly. Repeat
+with `cursor:next` until `next:null`. Numeric task identity orders the cursor, so
+re-ranking or deleting the cursor row does not skip later identities. `total`
+counts matching closed tasks at that read; concurrent changes arrive as normal
+task deltas. Clients replay those changes over a page in flight and deduplicate by
+item identity. Closing tasks still arrive in deltas, leave the client's open set,
+and update any loaded closed parent page. Reconnection renews requested pages.
+Parent pages accept only parent, cursor and limit alongside the summary/closed
+selector; ids and other list filters cannot combine with them.
 Container summaries (including default lists and task events) include `child_counts`:
 `total`, `done`, a sparse `statuses` histogram and `work` counts for `in progress`,
 `review` and `qa`. The complete tracker index supplies these before list filters
@@ -2424,7 +2445,8 @@ The 2026-10-21 T-1058 Coordinator decision puts closed items' card facts on thes
 same pages: verdict reasons, rounds and scopes, Decision previews and text outlines
 stay out of closed snapshot/list/delta rows. Stage facts remain on all planned
 containers. The copied-live boundary test measures and asserts the items snapshot
-below 97.9% of 1 MiB; T-1081 owns closed-item paging and further snapshot reduction.
+at or below 50% of 1 MiB after excluding closed task rows. The Lua differential
+guard restores those rows through parent pages before comparing every body.
 Supply at most 100 ids and repeat
 with `remaining` until empty. Each page reserves envelope space within the 256 KiB
 reply budget; an individual text-and-card row exceeding that budget refuses explicitly.

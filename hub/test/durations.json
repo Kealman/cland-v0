@@ -5729,7 +5729,7 @@
     "hub/test/tracker-summary.test.ts::open summaries count closed children in mixed and completed epics": 0.0471,
     "hub/test/tracker-summary.test.ts::task events refresh both container paths when a child changes state or parent": 0.039017,
     "nvim/test/explorer-component.test.ts::container progress includes unloaded closed children and follows parent task events": 0.251475,
-    "nvim/test/progress-counts-component.test.ts::a release with only unloaded closed epics does not count blocked direct tasks as progress members": 0.339514,
+    "nvim/test/progress-counts-component.test.ts::a release with only closed epics does not count blocked direct tasks as progress members": 0.339514,
     "nvim/test/progress-counts-component.test.ts::board fractions and header include closed children before loading closed rows": 0.259165,
     "nvim/test/progress-counts-component.test.ts::graph container badges and plan panel fractions include unloaded closed children": 0.275387,
     "nvim/test/progress-counts-component.test.ts::release and epic cards preserve aggregate progress and open blocker counts across wrapped resizes": 0.647774,
@@ -5738,6 +5738,13 @@
     "web/test/palette.test.ts::the palette and area keys help": 5.081626
   },
   "allow": {
+    "nvim/test/closed-pages.test.ts::copied tracker explorer, board and card render closed children from parent pages": {
+      "seconds": 22,
+      "owner": "E-880",
+      "added": "2026-10-21",
+      "expires": "2026-10-28",
+      "reason": "T-1081 C4 requires all copied live tracker bodies plus 105 closed children through bounded parent pages in the real headless explorer, board and card, including a reopened child. Linux x64 c-8 lon1 full run 3f3ef7d9 at 7abc0af7 (A-8792) passed this identity in 14.616116916 s; the full receipt exited 1 solely on its missing new-identity allowance. The 22 s cap rounds up about 1.5 times that measured Linux time. Retains page/count/render assertions, bounded observers and teardown; E-880 owns copied-fixture setup cost."
+    },
     "hub/test/item-summary-lua.test.ts::snapshot summaries and roll-ups equal Lua on every copied live tracker body": {
       "seconds": 20,
       "owner": "E-880",

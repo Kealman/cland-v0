@@ -275,6 +275,7 @@ function M.children(ix, node)
     return out
   end
   local it = node.it
+  if not M.ui().hide_done and not M.is_release(it) then require('cland').load_closed_items(it.id) end
   local kids = M.kids(ix, it.id)
   if M.is_release(it) then
     -- a release: its epics by rank, the done ones after; its direct tasks under one folded row
@@ -298,7 +299,10 @@ function M.children(ix, node)
     end
     add(dn)
     local hidden = 0
-    for _, k in ipairs(dn) do if M.ui().hide_done and not M.reveal_open[k.id] then hidden = hidden + 1 end end
+    if M.ui().hide_done then
+      hidden = type(it.child_counts)=='table' and it.child_counts.done or #dn
+      for _, k in ipairs(dn) do if M.reveal_open[k.id] then hidden = hidden - 1 end end
+    end
     if hidden > 0 then out[#out + 1] = label_row({{'D hides ' .. hidden .. ' done', 'ClandFaint'}}) end
     return out
   end
@@ -824,7 +828,11 @@ end
 function M.set_open(key, open)
   M.reveal_open[key] = nil
   M.ui().folds[key] = open
-  if key == ':closed' and open then require('cland').load_closed_items() end
+  if open then
+    if key == ':closed' then require('cland').load_closed_items('')
+    elseif state.item(key) then require('cland').load_closed_items(key)
+    elseif key:match('^:direct:') then require('cland').load_closed_items(key:sub(9)) end
+  end
   state.changed()
 end
 function M.move(step)
@@ -892,7 +900,7 @@ function M.scope_here()
 end
 function M.toggle_done()
   M.ui().hide_done = not M.ui().hide_done
-  if not M.ui().hide_done then require('cland').load_closed_items() end
+  if not M.ui().hide_done then require('cland').load_closed_scope(M.scope_key() or (items.scope() and items.scope().id)) end
   state.changed()
 end
 function M.toggle_archive()

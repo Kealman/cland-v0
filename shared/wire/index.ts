@@ -303,7 +303,7 @@ export type HubEvent =
   | { type: 'role.filled'; role: 'coordinator'; session: string; ts: string }
   /** The tracker's index changed (a hub write, a hand edit the watcher read, a removed file, a claim): the item as
    *  `task.list` shows it, or null when its file is gone. */
-  | { type: 'task'; id: string; item: ItemSummary | null; siblings?: string[]; layers?: Record<string, Layer> };
+  | { type: 'task'; id: string; item: ItemSummary | null; done_items?: number; siblings?: string[]; layers?: Record<string, Layer> };
 
 // hub/src/protocol.ts
 export type VerificationQueue = {
@@ -762,7 +762,8 @@ export const SNAPSHOT_LIMITS = {
 } as const;
 export type SnapshotValues = {
   tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
-  items: { items: ExplorerSummary[] };
+  /** Open rows and all non-task rows. Closed tasks load through bounded parent pages. */
+  items: { items: ExplorerSummary[]; done_items?: number };
   sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
   topics: { topics: Topic[] };
   inbox: Inbox & { needsYou: number };
@@ -1090,7 +1091,7 @@ export type TaskRequest =
     }
   | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; reason?: string; allow_large?: Record<string, string>; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; include_containers?: boolean; parent?: string; cursor?: string; limit?: number; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {

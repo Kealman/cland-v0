@@ -100,21 +100,34 @@ test('snapshot summaries and roll-ups equal Lua on every copied live tracker bod
   socket.send({ type: 'hello', protocol: 2, secret: hub.discovery.secret, client: 'lua-differential', features: ['snapshot'] });
   let items: Array<Record<string, unknown>> = [];
   let tracker: unknown;
+  let snapshotBytes=0;
   for (;;) {
     const frame = await socket.next();
     assert.notEqual(frame.type, 'snapshot.refused', JSON.stringify(frame));
     if (frame.type === 'snapshot' && frame.domain === 'tracker') tracker=frame.value;
-    if (frame.type === 'snapshot' && frame.domain === 'items') items = (frame.value as {items:typeof items}).items;
+    if (frame.type === 'snapshot' && frame.domain === 'items') {
+      items = (frame.value as {items:typeof items}).items;
+      snapshotBytes=Buffer.byteLength(JSON.stringify(frame));
+    }
     if (frame.type === 'snapshot.end') break;
   }
-  assert.equal(items.length, Object.keys(bodies).length);
+  assert.ok(items.every(item => item.kind !== 'task' || item.state !== 'closed'));
   assert.ok(items.every(item => typeof item.layer === 'string'), 'every snapshot item has its hub layer');
-  // 2026-10-21 Darwin arm64: 1,063 copied rows plus 3 ancestor regressions occupied 833,088 bytes.
-  const snapshotBytes = Buffer.byteLength(JSON.stringify({type:'snapshot',epoch:'x'.repeat(36),seq:0,domain:'items',value:{items}}));
   t.diagnostic(`copied live items snapshot: ${snapshotBytes} bytes; cap 1048576 bytes`);
-  assert.ok(snapshotBytes <= Math.floor(1024*1024*0.979), `${snapshotBytes} bytes exceeds T-1058's 97.9% copied-state ceiling`);
+  assert.ok(snapshotBytes <= 512*1024, `${snapshotBytes} bytes exceeds T-1081's 50% copied-state ceiling`);
   assert.ok(snapshotBytes <= 1024*1024, `${snapshotBytes} bytes exceeds the 1 MiB items cap`);
   const ui = await connectUi(t, hub.discovery);
+  for (const parent of ['', ...items.map(item => String(item.id))]) {
+    let cursor:string|undefined;
+    do {
+      const reply=await ui.request({type:'task.list',projection:'summary',state:'closed',parent,...(cursor?{cursor}:{})});
+      assert.equal(reply.ok,true,reply.error);
+      assert.ok(Buffer.byteLength(JSON.stringify(reply)+'\n')<=256*1024);
+      const page=reply.value as {items:typeof items;next:string|null};
+      items.push(...page.items); cursor=page.next??undefined;
+    } while(cursor);
+  }
+  assert.equal(items.length,Object.keys(bodies).length);
   const closed = items.filter(item => item.state === 'closed');
   assert.ok(closed.every(item => !Object.hasOwn(item.summary as object,'text')&&!Object.hasOwn(item,'agents_text')&&!Object.hasOwn(item,'decision')));
   for (let n=0; n<closed.length; n+=100) {

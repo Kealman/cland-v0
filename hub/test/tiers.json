@@ -532,6 +532,7 @@
     "nvim/test/artifacts.test.ts": "T2",
     "nvim/test/client-component.test.ts": "T2",
     "nvim/test/client.test.ts": "T3",
+    "nvim/test/closed-pages.test.ts": "T3",
     "nvim/test/crew.test.ts": "T2",
     "nvim/test/criteria-component.test.ts": "T2",
     "nvim/test/criteria.test.ts": "T3",

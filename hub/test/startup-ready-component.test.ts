@@ -7,7 +7,7 @@ import childProcess, { type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
 import { runHub } from '../src/cli/hub.ts';
-import { Tracker } from '../src/tracker/tracker.ts';
+import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { join } from 'node:path';
 import { connectUi, eventually, projectHub, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -79,4 +79,33 @@ test('startup logs the persisted suite-jobs byte size before restoring suites', 
   const storage = entries.find(entry => entry.event === 'hub-startup-storage');
   assert.equal(storage?.suiteJobsBytes, 226304);
   assert.ok(entries.indexOf(storage!) < entries.findIndex(entry => entry.event === 'serving'));
+});
+
+test('unbranched historical verdicts need no ready-check read while a branchless ready row is demoted', async t=>{
+  const {serializeItem}=await import('../src/tracker/item.ts');
+  const root=await tempProject(t),at='2026-10-21T12:00:00Z';
+  await files.mkdir(join(root,'.cland/tasks'),{recursive:true});
+  for(const [id,status] of [['T-1','planned'],['T-2','ready']] as const) await files.writeFile(join(root,`.cland/tasks/${id}-fixture.md`),serializeItem({
+    fm:{id,kind:'task',title:id,state:'open',status,size:'S',labels:[],assignee:null,parent:null,blocked_by:[],topic:null,branch:null,created:at,updated:at},
+    body:'## Summary\n\nHistorical verdict without a task branch.',comments:[{author:'reviewer',at,text:'A historical review.',verdict:{verdict:'review',result:'clear',run:'old',by:'reviewer'}}],
+  }));
+  let tracker:Tracker|undefined;
+  const start=Tracker.prototype.start;
+  t.mock.method(Tracker.prototype,'start',function(this:Tracker,...args:Parameters<Tracker['start']>){tracker=this;return start.apply(this,args);});
+  const original=files.readFile,reads:string[]=[];
+  files.readFile=(async (...args:Parameters<typeof files.readFile>)=>{
+    if(tracker?.storageStatus().active?.operation==='ready check') reads.push(String(args[0]));
+    return original(...args);
+  }) as typeof files.readFile;
+  onCleanup(t,()=>{files.readFile=original;});
+  const hub=await projectHub(t,root);
+  const ui=await connectUi(t,hub.discovery);
+  const planned=await ui.request({type:'task.view',item:'T-1'});
+  const demoted=await ui.request({type:'task.view',item:'T-2'});
+  assert.equal(planned.ok,true,planned.error);assert.equal(demoted.ok,true,demoted.error);
+  assert.equal((planned.value as {item:ItemView}).item.status,'planned');
+  assert.equal((demoted.value as {item:ItemView}).item.status,'in progress');
+  await hub.stop();await hub.stopped;
+  assert.ok(reads.some(path=>path.endsWith('T-2-fixture.md')),'ready row still gets its durable readiness check');
+  assert.ok(!reads.some(path=>path.endsWith('T-1-fixture.md')),'no read for an unbranched planned row');
 });

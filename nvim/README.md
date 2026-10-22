@@ -836,3 +836,16 @@ The board's release direct-task group still says `loaded`. Done rows retain thei
 existing hiding and loading behaviour; visible-row section counts still count
 the rows in that section. Older frames without `child_counts` retain their
 loaded-row fallback.
+
+
+Closed task rows stay outside the initial item payload. Neovim requests open
+summaries with `include_containers:true`, retaining closed containers and their
+complete roll-ups. Expanding an epic or its direct-task group reads closed tasks
+for that parent through `task.list` summary pages (`state:"closed", parent:id`).
+`D` showing done work loads the selected scope; the board loads its scope, and
+item search loads all parents. The Closed items group loads root tasks. Each
+reply is bounded at 100 rows and below 256 KiB, continuing with `cursor:next`.
+The explorer, board and card share loaded rows. A close delta leaves the open
+set and updates a loaded page; deltas received during paging win over page
+contents. Reconnects reload requested parents. Card text remains a cached
+`task.view` read, and counts always come from the container's hub roll-up.

@@ -199,3 +199,46 @@ test('closed container retains its open verdict owner facts through deltas', asy
     assert.equal(frames.filter(frame => frame.type === 'task.view').length, 0);
   }, page => { page.on('websocket', socket => socket.on('framesent', event => frames.push(JSON.parse(String(event.payload))))); });
 });
+
+test('hidden closed siblings defer card ordinal until a complete order or parent page arrives', async t => {
+  const fixture = await webFixture(t, { prepare: async root => {
+    await seedItem(root, 'R-900000', 'release', 'Ordinal release', { version: '1.0.0' });
+    await seedItem(root, 'E-900010', 'epic', 'Ordinal epic', { parent: 'R-900000' });
+    for (let n = 1; n <= 3; n++) await seedItem(root, `T-${900000 + n}`, 'task', `Ordinal sibling ${n}`, {
+      parent: 'E-900010', rank: n * 10, state: n === 2 ? 'open' : 'closed', status: n === 2 ? 'planned' : 'done',
+    });
+  } });
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const frames: Array<{ type: string; parent?: string }> = [];
+  await fixture.pageCase(t, async page => {
+    await page.keyboard.press('2');
+    await page.getByRole('button', { name: 'D · Done shown', exact: true }).click();
+    const tree = page.getByRole('tree', { name: 'Items tree' });
+    await tree.locator('[data-object-id="E-900010"]').click();
+    await page.keyboard.press('l');
+    await tree.locator('[data-object-id="T-900002"]').click();
+    const card = page.getByRole('region', { name: 'Item card' });
+    await card.waitFor();
+    const ordinal = card.locator('dt').filter({ hasText: /^Ordinal$/ }).locator('xpath=following-sibling::dd[1]');
+    assert.equal(frames.filter(frame => frame.type === 'task.list' && frame.parent === 'E-900010').length, 0);
+    assert.equal(await ordinal.innerText(), '—', 'an unloaded sibling set cannot supply a position or total');
+    const ranked = card.getByText('3 of 3 E-900010', { exact: true }).waitFor();
+    void ranked.catch(() => {});
+    const result = await ui.request({ type: 'task.rank', item: 'T-900002', after: 'T-900003' });
+    assert.equal(result.ok, true, result.error);
+    await ranked;
+    assert.equal(frames.filter(frame => frame.type === 'task.list' && frame.parent === 'E-900010').length, 0);
+    const deferred = card.getByTitle('Full sibling order is not available yet', { exact: true }).waitFor();
+    void deferred.catch(() => {});
+    const moved = await ui.request({ type: 'task.link', item: 'T-900003', parent: 'R-900000' });
+    assert.equal(moved.ok, true, moved.error);
+    assert.equal((moved.value as {item:{parent:string}}).item.parent, 'R-900000');
+    await deferred;
+    const complete = card.getByText('2 of 2 E-900010', { exact: true }).waitFor();
+    void complete.catch(() => {});
+    await page.getByRole('button', { name: 'D · Done hidden', exact: true }).click();
+    await complete;
+    assert.equal(await ordinal.innerText(), '2 of 2 E-900010');
+    assert.ok(frames.some(frame => frame.type === 'task.list' && frame.parent === 'E-900010'));
+  }, page => { page.on('websocket', socket => socket.on('framesent', event => frames.push(JSON.parse(String(event.payload))))); });
+});

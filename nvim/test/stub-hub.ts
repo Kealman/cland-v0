@@ -88,6 +88,8 @@ export type Scenario = {
   rankError?: string;
   /** Capture these snapshot answers now, but deliver them only after `releaseSnapshots` on the control socket. */
   holdSnapshots?: string[];
+  /** Keep parent pages pending while testing complete counts before child rows load. */
+  holdClosedPages?: boolean;
   rules?: Rule[];
   /** The inbox (#33): `inbox.list` answers it, `topic.answer`, `inbox.decline` and `inbox.read` change it and push an `inbox` event.
    * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
@@ -167,10 +169,11 @@ const initialReplay = new Set(['hub.status', 'task.list', 'role.list']);
 const snapshotDelayMs = Number(process.env.CLAND_STUB_SNAPSHOT_DELAY_MS ?? 0);
 const roleDelayMs = Number(process.env.CLAND_STUB_ROLE_DELAY_MS ?? 0);
 const ok = (id: unknown, value: unknown) => {
-  const type = requests.find((f) => f.id === id)?.type;
+  const request = requests.find((f) => f.id === id);
+  const type = request?.type;
   const frame = { type: 'result', id, ok: true, value };
   const initial = type && initialReplay.delete(type);
-  if (type && scenario.holdSnapshots?.includes(type)) {
+  if (type && (scenario.holdSnapshots?.includes(type) || scenario.holdClosedPages && type === 'task.list' && request?.parent !== undefined)) {
     const deferred = Promise.withResolvers<string | undefined>();
     const captured = structuredClone(frame);
     snapshots.push({ type, release: deferred.resolve });
@@ -460,7 +463,7 @@ function answer(f: Frame) {
     case 'task.list': {
       let items = scenario.items ?? [];
       if (scenario.summaryLists) {
-        items = items.filter(i => !f.state || i.state === f.state);
+        items = items.filter(i => !f.state || i.state === f.state || f.include_containers && i.kind !== 'task');
         if (f.projection === 'summary') {
           const fields = new Set(['id','kind','title','state','status','size','labels','parent','blocked_by','open_blockers','claim','holds','criteria','updated','closed','version','rank','rank_set','verdicts','child_counts','stages']);
           items = items.map(i => {
@@ -475,6 +478,14 @@ function answer(f: Frame) {
             return row;
           });
         }
+      }
+      if (typeof f.parent === 'string') {
+        items = items.filter(i => i.kind === 'task' && i.state === 'closed' && (i.parent ?? '') === f.parent)
+          .sort((a,b)=>Number(String(a.id).slice(2))-Number(String(b.id).slice(2)));
+        const total=items.length;
+        items=items.filter(i=>!f.cursor || Number(String(i.id).slice(2))>Number(String(f.cursor).slice(2)));
+        const rows=items.slice(0,Number(f.limit??100));
+        return ok(f.id,{items:rows,next:rows.length<items.length?rows.at(-1)!.id:null,total});
       }
       return ok(f.id, { items });
     }

@@ -580,7 +580,11 @@ export class Tracker {
     const indexed = this.#index.get(id);
     if (this.#readyRetries.has(id)) return;
     if (this.#readyChecks.has(id)) { this.#readyAgain.add(id); return; }
+    // Without a branch the merge gate cannot make a task ready. Retained verdicts
+    // alone must not reread its whole ancestor plan on every startup. A stale
+    // ready row still needs the check that demotes it.
     if (this.#stopping || indexed?.kind !== 'task' || indexed.state !== 'open'
+      || (!indexed.branch && indexed.status !== 'ready')
       || (!indexed.branch && !this.#index.verdicts(id).get(id)?.length) || (!this.#index.verdicts(id).get(id)?.length && indexed.status !== 'ready')) return;
     this.#readyChecks.add(id);
     this.#runBackground(() => this.#serial(async resumed => {
@@ -2112,6 +2116,13 @@ export class Tracker {
       ...(card ? {round:v.round,...(v.scope ? {scope:v.scope} : {}),...(v.reason !== undefined ? {reason:v.reason} : {})} : {})}));
   }
 
+  doneItemCount(): number { return this.#index.doneItemCount(); }
+
+  /** The connection model retains open rows and all non-task rows (including closed containers). */
+  snapshotSummaries({ card = false }: { card?: boolean } = {}): ExplorerSummary[] {
+    return this.listSummaries({}, { snapshot: true, card });
+  }
+
   #cardTransport(i: ItemSummary): CardTransport {
     const verify = i.verify;
     return {created:i.created,branch:i.branch,
@@ -2121,8 +2132,13 @@ export class Tracker {
         head:verify.head,finished:verify.finished,...(verify.cached ? {cached:true} : {})}} : {verify:null})};
   }
 
-  listSummaries(filter: ListFilter = {}, { card = false }: { card?: boolean } = {}): ExplorerSummary[] {
-    return this.list(filter).map(i => {
+  listSummaries(filter: ListFilter = {}, { snapshot = false, card = false }: { snapshot?: boolean; card?: boolean } = {}): ExplorerSummary[] {
+    this.#ensureExplorer();
+    if (filter.under !== undefined) filter = {...filter, under:this.#require(filter.under).id};
+    return this.#index.list(filter).filter(i => !snapshot || i.kind !== 'task' || i.state !== 'closed').map(i => this.#compactSummary(this.#projected(i.id), card));
+  }
+
+  #compactSummary(i: ItemSummary, card = false): ExplorerSummary {
       return {
         id:i.id,kind:i.kind,title:i.title,state:i.state,
         ...(card && i.state === 'open' ? this.#cardTransport(i) : {}),
@@ -2136,7 +2152,27 @@ export class Tracker {
         blocked_by:i.blocked_by,open_blockers:i.open_blockers ?? [],claim:i.claim,holds:i.holds,criteria:i.criteria,
         verdicts:this.#compactVerdicts(i.verdicts,i.state !== 'closed'),
       };
-    });
+  }
+
+  /** Numeric identity order survives sibling re-ranking and a cursor row's removal. */
+  closedTaskPage(parent: string, cursor?: string, limit = 100): {items:ExplorerSummary[];next:string|null;total:number} {
+    const owner = parent === '' ? '' : this.#require(parent).id;
+    const rows = this.#index.list({state:'closed',kind:'task'}).filter(i => (i.parent ?? '') === owner || owner === '' && i.parent && !this.#index.get(i.parent))
+      .sort((a,b) => idNumber(a.id)! - idNumber(b.id)!);
+    const after = cursor ? idNumber(cursor)! : 0;
+    const pending = rows.filter(i => idNumber(i.id)! > after);
+    const items: ExplorerSummary[] = [];
+    let bytes = 0;
+    for (const row of pending) {
+      const item = this.#compactSummary(this.#projected(row.id));
+      const size = Buffer.byteLength(JSON.stringify(item)) + 1;
+      if (items.length >= limit || bytes + size > 250 * 1024) {
+        if (!items.length) throw new TrackerError(`${row.id}: summary exceeds the 256 KiB reply budget`);
+        break;
+      }
+      items.push(item); bytes += size;
+    }
+    return {items,next:items.length < pending.length ? items.at(-1)!.id : null,total:rows.length};
   }
 
   /** Explicit by-id pages carry closed summary text and card facts; the envelope stays below 256 KiB. */

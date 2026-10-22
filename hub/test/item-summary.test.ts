@@ -1,7 +1,7 @@
 // T2: explorer facts through snapshots and task deltas of an embedded project hub.
 import test, {type TestContext} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdir,writeFile,readFile} from 'node:fs/promises';
+import {mkdir,writeFile,readFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {createConnection} from 'node:net';
 import {once} from 'node:events';
@@ -47,6 +47,13 @@ test('card facts arrive in snapshots and deltas while body and comments stay on 
   const hub=await projectHub(t,root,{}, {clock:new FakeClock()});
   const {ui,items}=await featured(t,hub.discovery);
   const task=items.find(i=>i.id==='T-1')!;
+  assert.equal(task.created,at,'open snapshot opts in to card transport dates');
+  assert.equal(task.branch,null);
+  const lean=await ui.request({type:'task.list',projection:'summary',state:'open',include_containers:true});
+  assert.equal(lean.ok,true,lean.error);
+  for(const field of ['created','branch','verify','regression_of','follows']) {
+    assert.equal(Object.hasOwn((lean.value as {items:ItemSummary[]}).items[0]!,field),false,`native list omits ${field}`);
+  }
   assert.deepEqual(task.verdicts.map(v=>({run:v.run,reason:v.reason,round:v.round,scope:v.scope})),
     [{run:'r2',reason:'Fixed the missing boundary.',round:2,scope:'delta'}]);
   assert.deepEqual(task.decision,{text:'Use the shared projection. Keep full prose on demand.',by:'human',at});
@@ -74,11 +81,12 @@ test('card facts arrive in snapshots and deltas while body and comments stay on 
   assert.equal(compact.agents_text,undefined);assert.equal(compact.decision,undefined);
   assert.ok(compact.verdicts.every(v=>v.reason===undefined&&v.round===undefined&&v.scope===undefined));
   const fresh=(await featured(t,hub.discovery)).items.find(i=>i.id==='T-1')!;
-  assert.equal(fresh.agents_text,undefined);assert.equal(fresh.decision,undefined);
-  assert.ok(fresh.verdicts.every(v=>v.reason===undefined&&v.round===undefined&&v.scope===undefined));
+  assert.equal(fresh,undefined,'closed task leaves the snapshot');
   const page=await ui.request({type:'task.list',projection:'summary',ids:['T-1']});
   assert.equal(page.ok,true,page.error);
   const full=(page.value as {items:ItemSummary[]}).items[0]!;
+  assert.equal(full.created,at,'closed by-id page retains card transport dates');
+  assert.equal(full.branch,null);
   assert.deepEqual(full.agents_text,{sections:['Summary'],words:5});assert.equal(full.decision?.text,'Choose the new path.');
   assert.deepEqual(full.verdicts.map(v=>({run:v.run,reason:v.reason,round:v.round,scope:v.scope})),
     [{run:'r3',reason:'A new evidence reason.',round:3,scope:'evidence'}]);
@@ -301,4 +309,75 @@ test('next excludes planned work below closed ancestors and follows reopening an
   const reopened=ui.waitFor(f=>ui.frames.indexOf(f)>=reopening&&f.type==='task'&&f.id==='E-2'&&(f.item as ItemSummary).next==='T-3');
   assert.equal((await ui.request({type:'task.edit',item:'R-4',state:'open'})).ok,true);await reopened;
   assert.equal((ui.frames.findLast(f=>f.type==='task'&&f.id==='E-2')!.item as ItemSummary).next,'T-3');
+});
+
+
+test('closed children page per parent under the reply budget and a closing delta leaves the open snapshot',async t=>{
+  const root=await tempProject(t);
+  await source(root,'E-1','epic',null,'done');
+  await Promise.all(Array.from({length:105},(_,n)=>source(root,`T-${n+2}`,'task','E-1','done')));
+  await source(root,'T-107','task','E-1','planned');
+  const {parseItem}=await import('../src/tracker/item.ts');
+  for(const id of ['T-2','T-3','T-4']) {
+    const path=join(root,`.cland/tasks/${id}-fixture.md`),row=parseItem(await readFile(path,'utf8'));
+    row.fm.title='é'.repeat(50000);await writeFile(path,serializeItem(row));
+  }
+  const hub=await projectHub(t,root,{}, {clock:new FakeClock()});
+  const {ui,items}=await featured(t,hub.discovery);
+  assert.deepEqual(items.map(i=>i.id).sort(),['E-1','T-107']);
+  assert.equal(items.find(i=>i.id==='E-1')!.child_counts?.done,105);
+  assert.equal((ui.frames.find(f=>f.type==='snapshot'&&f.domain==='items')!.value as {done_items:number}).done_items,106);
+  assert.equal((await featured(t,hub.discovery)).items.find(i=>i.id==='E-1')!.state,'closed');
+  const capped=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-1'});
+  assert.equal(capped.ok,true,capped.error);
+  assert.ok(Buffer.byteLength(JSON.stringify(capped)+'\n')<=256*1024);
+  assert.equal((capped.value as {items:ItemSummary[]}).items.length,2,'UTF-8 bytes end the page before its row limit');
+  for(const row of (capped.value as {items:ItemSummary[]}).items) for(const field of ['created','branch','verify','regression_of','follows']) {
+    assert.equal(Object.hasOwn(row,field),false,`closed parent page omits ${field}`);
+  }
+  assert.equal((capped.value as {next:string}).next,'T-3');
+  let cursor:string|undefined;const archived:ItemSummary[]=[];
+  do {
+    const reply=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-1',limit:40,...(cursor?{cursor}:{})});
+    assert.equal(reply.ok,true,reply.error);
+    assert.ok(Buffer.byteLength(JSON.stringify(reply)+'\n')<=256*1024);
+    const page=reply.value as {items:ItemSummary[];next:string|null;total:number};
+    assert.equal(page.total,105);assert.ok(page.items.length<=40);
+    archived.push(...page.items);cursor=page.next??undefined;
+  } while(cursor);
+  assert.equal(new Set(archived.map(i=>i.id)).size,105);
+  const closing=ui.waitFor(f=>f.type==='task'&&f.id==='T-107'&&(f.item as ItemSummary).state==='closed');
+  assert.equal((await ui.request({type:'task.edit',item:'T-107',state:'closed'})).ok,true);
+  const closedFrame=await closing;
+  assert.equal((closedFrame.item as ItemSummary).state,'closed');
+  assert.equal(closedFrame.done_items,107);
+  const open=await ui.request({type:'task.list',projection:'summary',state:'open',include_containers:true});
+  assert.equal(open.ok,true,open.error);
+  assert.deepEqual((open.value as {items:ItemSummary[]}).items.map(i=>i.id),['E-1']);
+  const fresh=(await featured(t,hub.discovery)).items;
+  assert.deepEqual(fresh.map(i=>i.id),['E-1']);
+  const page=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-1',cursor:'T-106'});
+  assert.equal(page.ok,true,page.error);
+  assert.deepEqual((page.value as {items:ItemSummary[]}).items.map(i=>i.id),['T-107']);
+  assert.equal((page.value as {total:number}).total,106);
+  assert.equal((await ui.request({type:'task.edit',item:'T-40',state:'open'})).ok,true);
+  const continuation=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-1',cursor:'T-40'});
+  assert.equal(continuation.ok,true,continuation.error);
+  assert.equal((continuation.value as {items:ItemSummary[]}).items[0]!.id,'T-41','a vanished cursor row does not skip the next identity');
+  assert.equal((await ui.request({type:'task.edit',item:'T-107',title:'é'.repeat(140000)})).ok,true);
+  const oversized=await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-1',cursor:'T-106'});
+  assert.equal(oversized.ok,false);assert.match(oversized.error??'',/reply budget/);
+  for(const bad of [{limit:0},{limit:101},{cursor:'garbage'},{ids:['T-2']}]) {
+    assert.equal((await ui.request({type:'task.list',projection:'summary',state:'closed',parent:'E-1',...bad})).ok,false);
+  }
+  // This client has never read a closed page; only the removal fact can update its total.
+  const unloaded=await featured(t,hub.discovery);
+  assert.ok(unloaded.items.every(row=>row.id!=='T-107'));
+  assert.equal((unloaded.ui.frames.find(f=>f.type==='snapshot'&&f.domain==='items')!.value as {done_items:number}).done_items,106);
+  const removed=unloaded.ui.waitFor(f=>f.type==='task'&&f.id==='T-107'&&f.item===null);
+  await rm(join(root,'.cland/tasks/T-107-fixture.md'));
+  const removal=await removed;
+  assert.equal(removal.item,null);assert.equal(removal.done_items,105);
+  const afterRemoval=await featured(t,hub.discovery);
+  assert.equal((afterRemoval.ui.frames.find(f=>f.type==='snapshot'&&f.domain==='items')!.value as {done_items:number}).done_items,105);
 });

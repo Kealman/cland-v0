@@ -31,7 +31,7 @@ export type TaskRequest =
     }
   | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; reason?: string; allow_large?: Record<string, string>; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; include_containers?: boolean; parent?: string; cursor?: string; limit?: number; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
@@ -118,6 +118,19 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       return { item: await tracker.viewAsync(needItem(f), resumed) };
     case 'task.list': {
       optList(f, 'ids');
+      if (f.parent !== undefined) {
+        if (typeof f.parent !== 'string' || frame.projection !== 'summary' || frame.state !== 'closed') throw new TrackerError('parent requires a closed summary page');
+        if (['ids','under','labels','kind','assignee','verdict','include_containers'].some(key => f[key] !== undefined)) throw new TrackerError('closed pages accept only parent, cursor and limit');
+        if (f.cursor !== undefined && (typeof f.cursor !== 'string' || !/^T-[1-9][0-9]*$/.test(f.cursor))) throw new TrackerError('invalid closed page cursor');
+        if (f.limit !== undefined && (!Number.isInteger(f.limit) || Number(f.limit) < 1 || Number(f.limit) > 100)) throw new TrackerError('closed page limit must be 1–100');
+        return tracker.closedTaskPage(frame.parent!, frame.cursor, frame.limit);
+      }
+      if (f.include_containers !== undefined) {
+        if (f.include_containers !== true || frame.projection !== 'summary' || frame.state !== 'open') throw new TrackerError('include_containers requires open summaries');
+        if (['ids','under','labels','kind','assignee','verdict','cursor','limit'].some(key => f[key] !== undefined)) throw new TrackerError('include_containers accepts no list filters');
+        return {items:tracker.snapshotSummaries()};
+      }
+      if (f.cursor !== undefined || f.limit !== undefined) throw new TrackerError('cursor and limit require a closed parent page');
       if (frame.ids !== undefined) {
         if (frame.projection !== 'summary') throw new TrackerError('ids requires projection: summary');
         if (frame.ids.length > 100) throw new TrackerError('summary ids accepts at most 100 items');

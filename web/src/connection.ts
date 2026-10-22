@@ -25,8 +25,10 @@ export type ConnectionState = {
   waitingTopics?: number;
   releases?: ExplorerSummary[];
   items?: ExplorerSummary[];
-  /** Closed task children are read through this boundary; T-1081 can back it with pages. */
+  doneItems?: number | undefined;
+  /** Loaded closed task children from bounded parent pages. */
   closedTasks?: (parent: string) => readonly ExplorerSummary[];
+  closedTasksLoaded?: (parent: string) => boolean;
   loadClosed?: (parent: string) => void;
   cardFacts?: Record<string, Partial<ExplorerSummary>>;
   cardErrors?: Record<string, string>;
@@ -71,6 +73,16 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let backoff = 250;
   const requestedPlans = new Set<string>();
+  const closed = new Map<string, ExplorerSummary[]>();
+  const closedLoads = new Map<string, {rows:Map<string,ExplorerSummary>;deltas:Map<string,ExplorerSummary|null>}>();
+  const closedWanted = new Set<string>();
+  function loadClosed(parent:string) {
+    if (closed.has(parent) || closedLoads.has(parent) || socket.readyState !== WebSocket.OPEN) return;
+    closedWanted.add(parent);
+    closedLoads.set(parent,{rows:new Map(),deltas:new Map()});
+    request({type:'task.list',id:`tree-closed:${parent}`,projection:'summary',state:'closed',parent});
+  }
+  function closedParent(row:ExplorerSummary) { return row.parent && state.items?.some(item=>item.id===row.parent) ? row.parent : ''; }
   let cardSerial = 0;
   const cardRequests = new Map<string, { item: string; body: boolean }>();
   const pendingCards = new Set<string>();
@@ -104,15 +116,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     request({ type: 'account.list', id: 'shell-accounts' });
   }
   function items(value: ExplorerSummary[]) {
-    const closed = new Map<string, ExplorerSummary[]>();
-    const ids = new Set(value.map(row => row.id));
-    for (const row of value) if (row.kind === 'task' && row.state === 'closed') {
-      const parent = row.parent && ids.has(row.parent) ? row.parent : '';
-      if (!closed.has(parent)) closed.set(parent, []);
-      closed.get(parent)!.push(row);
-    }
-    // Snapshot-backed today. A paged source replaces these two functions without changing the tree.
-    state = { ...state, items: value, closedTasks: parent => closed.get(parent) ?? [], loadClosed: () => {},
+    state = { ...state, items: value, closedTasks: parent => closed.get(parent) ?? [], closedTasksLoaded: parent => closed.has(parent), loadClosed,
       releases: value.filter(row => row.kind === state.tracker?.levels[0] && row.state === 'open')
       .sort((a, b) => (a.version ?? '').localeCompare(b.version ?? '', undefined, { numeric: true }) || (a.rank ?? 0) - (b.rank ?? 0)) };
     rows('Items', value);
@@ -131,6 +135,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   }
   function connect() {
     requestedPlans.clear();
+    closed.clear();closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
     state = { ...state, cardFacts: {}, bodies: {}, cardErrors: {}, loadCard: id => loadCardData(id, false), loadBody: id => loadCardData(id, true) };
     state = { ...state, loadPlan: id => {
@@ -164,7 +169,11 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         request({ type: 'artifact.list', id: 'shell-artifacts' });
       } else if (frame.type === 'snapshot') {
         if (frame.domain === 'tracker') state = { ...state, tracker: frame.value, siblingOrders: {}, plansById: {} };
-        else if (frame.domain === 'items') items(frame.value.items);
+        else if (frame.domain === 'items') {
+          state = {...state,doneItems:frame.value.done_items};
+          items(frame.value.items);
+          for (const parent of closedWanted) loadClosed(parent);
+        }
         else if (frame.domain === 'sessions') {
           state = { ...state, coordinator: frame.value.coordinator, idleFrom: frame.value.crew.config.idle_from ?? [] };
           rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
@@ -185,6 +194,18 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-inbox') {
         inbox(frame.value as Inbox);
+      } else if (frame.type === 'result' && frame.id.startsWith('tree-closed:')) {
+        const parent=frame.id.slice('tree-closed:'.length), load=closedLoads.get(parent);
+        if (!load) return;
+        if (!frame.ok) { closedLoads.delete(parent);return; }
+        const page=frame.value as {items:ExplorerSummary[];next:string|null};
+        for (const row of page.items) load.rows.set(row.id,row);
+        if (page.next) request({type:'task.list',id:frame.id,projection:'summary',state:'closed',parent,cursor:page.next});
+        else {
+          for (const [id,row] of load.deltas) { if(row) load.rows.set(id,row); else load.rows.delete(id); }
+          closed.set(parent,[...load.rows.values()]);closedLoads.delete(parent);
+          items(state.items??[]);
+        }
       } else if (frame.type === 'result' && cardRequests.has(frame.id)) {
         const { item, body } = cardRequests.get(frame.id)!;
         cardRequests.delete(frame.id);
@@ -214,16 +235,26 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         request({ type: 'hub.status', id: 'connection-status' });
         request({ type: 'session.list', id: 'shell-sessions' });
       } else if (frame.type === 'task') {
+        if (frame.done_items !== undefined) state = {...state,doneItems:frame.done_items};
         invalidateCard(frame.id);
         const value = new Map(state.items?.map(row => [row.id, row]));
-        const oldParent = value.get(frame.id)?.parent ?? '';
+        const previous = findItem(state, frame.id);
+        const oldParent = previous?.parent ?? '';
         const newParent = frame.item?.parent ?? '';
-        const siblingOrders = { ...state.siblingOrders };
+        // An unloaded row has no known old parent; any cached order may include it.
+        const siblingOrders = previous ? { ...state.siblingOrders } : {};
         delete siblingOrders[oldParent];
         delete siblingOrders[newParent];
         if (frame.siblings) siblingOrders[newParent] = frame.siblings;
         state = { ...state, siblingOrders };
-        if (frame.item) value.set(frame.id, explorerItem(frame.item));
+        const row=frame.item ? explorerItem(frame.item) : null;
+        for (const [parent,load] of closedLoads) load.deltas.set(frame.id,row?.kind==='task'&&row.state==='closed'&&closedParent(row)===parent ? row : null);
+        for (const [parent,rows] of closed) {
+          const next=rows.filter(item=>item.id!==frame.id);
+          if (row?.kind==='task'&&row.state==='closed'&&closedParent(row)===parent) next.push(row);
+          closed.set(parent,next);
+        }
+        if (row && !(row.kind==='task'&&row.state==='closed')) value.set(frame.id,row);
         else value.delete(frame.id);
         if (requestedPlans.delete(frame.id)) state.loadPlan?.(frame.id);
         items([...value.values()]);

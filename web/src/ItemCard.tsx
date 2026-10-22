@@ -22,8 +22,9 @@ export function ItemCard({ item: row, connection }: { item: ExplorerSummary; con
   }, [connection, row.id, row.state, needsOwner, rolled, bodyOpen]);
   const parent = items.find(value => value.id === item.parent);
   const siblings = (items.filter(value => value.parent === item.parent) ?? []).sort((a, b) => (a.rank ?? numberOf(a.id) * 10) - (b.rank ?? numberOf(b.id) * 10) || numberOf(a.id) - numberOf(b.id));
-  const order = connection.siblingOrders?.[item.parent ?? ''];
-  const ordinal = (order ?? siblings.map(value => value.id)).indexOf(item.id) + 1;
+  const order = connection.siblingOrders?.[item.parent ?? '']
+    ?? (connection.closedTasksLoaded?.(parent?.id ?? '') ? siblings.map(value => value.id) : undefined);
+  const ordinal = order ? order.indexOf(item.id) + 1 : 0;
   const activity = item.rollup?.last_activity;
   const relations = (ids: string[]) => ids.length ? ids.map(id => {
     const target = items.find(value => value.id === id);
@@ -47,7 +48,7 @@ export function ItemCard({ item: row, connection }: { item: ExplorerSummary; con
       <dt>Holds</dt><dd>{item.holds.map(value => `${value.session} · ${value.role}`).join('\n') || 'none'}</dd>
       {item.rollup?.claims.map(value => <div className={s.fact} key={`claim:${value.item}`}><dt>{value.item} claim</dt><dd>{value.claim.session} · {value.claim.role}</dd></div>)}
       {item.rollup?.holds.map(value => <div className={s.fact} key={`hold:${value.item}:${value.hold.role}`}><dt>{value.item} hold</dt><dd>{value.hold.session} · {value.hold.role}</dd></div>)}
-      <dt>Ordinal</dt><dd>{ordinal || '—'} of {siblings.length} {item.parent ?? 'at root'}</dd>
+      <dt>Ordinal</dt><dd title={ordinal ? undefined : 'Full sibling order is not available yet'}>{ordinal ? `${ordinal} of ${order!.length} ${item.parent ?? 'at root'}` : '—'}</dd>
       {item.rank_set && <><dt>Rank</dt><dd>{item.rank}</dd></>}
     </dl>
     <h3>Progress</h3>

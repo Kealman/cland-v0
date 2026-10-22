@@ -424,6 +424,11 @@ export class TrackerIndex {
     return rows.map((r) => this.#hydrate(r)).sort(compareRank);
   }
 
+  /** Complete done inventory, independent of the rows loaded by a client. */
+  doneItemCount(): number {
+    return Number((this.#db.prepare("select count(*) as count from tracker_items where state = 'closed' or status = 'done'").get() as Row).count);
+  }
+
   /** Resolve blockers in the index so an open-only client does not need the closed archive. */
   openBlockers(id: string): string[] {
     return this.#db.prepare(`select b.blocker from tracker_blocked_by b left join tracker_items i on i.id = b.blocker

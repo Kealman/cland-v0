@@ -98,7 +98,7 @@ test('explorer fetches open summaries first, closed summaries on expansion, and 
   await select(c,':closed'); await c.input('l');
   await c.waitScreen(s => s.includes('Closed lazy row'), 'cached closed group reopened');
   frames = (await control({requests:true})).requests.filter(r => r.type === 'task.list');
-  assert.deepEqual(frames.map(r => [r.projection,r.state]), [['summary','open'],['summary','closed']]);
+  assert.deepEqual(frames.map(r => [r.projection,r.state]), [['summary','open'],['summary','closed'],['summary','closed']]);
   await c.lua("require('cland.item_view').edit('T-2')");
   await c.waitScreen(s => s.includes('Editable item body.'), 'edit resolves file from task.view');
 });
@@ -150,7 +150,7 @@ test('item search loads closed summaries without a startup closed request', {ski
     const frames = (await control({requests:true})).requests.filter(r => r.type === 'task.list');
     return frames.some(r => r.state === 'closed') ? frames : undefined;
   });
-  assert.deepEqual(frames.map(r => [r.projection,r.state]), [['summary','open'],['summary','closed']]);
+  assert.deepEqual(frames.map(r => [r.projection,r.state]), [['summary','open'],['summary','closed'],['summary','closed']]);
 });
 
 test('a held closed snapshot replays a reopen as exactly one open item', {skip}, async t => {
@@ -453,6 +453,7 @@ test('status and stage changes move a row while its cursor and cached card keep 
 test('a folded burst rebuilds once without writes; visible counts write once; hidden trees do no work', {skip}, async t => {
   const closed=Array.from({length:20},(_,i)=>({id:`T-${100+i}`,kind:'task',title:'Folded closed task',parent:'E-4',state:'closed',status:'done'}));
   const {c,control}=await stub(t,{...fixture,items:[...fixture.items!,...closed]});
+  await c.lua("require('cland').load_closed_items('E-4');assert(vim.wait(5000,function() return require('cland.state').S.closed_pages['E-4'] end))");
   await select(c,'E-2'); await c.input('<CR>h');
   await c.lua("assert(vim.wait(5000,function() return require('cland.explorer').card.drawn_key=='E-2' and not next(require('cland.item_view').pending) and not next(require('cland.plan').pending) end))");
   const counts=()=>c.lua<number[]>("local e=require('cland.explorer');return {e.renders,e.writes,e.card.writes}");

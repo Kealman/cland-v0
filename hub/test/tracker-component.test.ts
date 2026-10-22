@@ -337,7 +337,7 @@ test('a subscribed UI hears a `task` event on every index change; task.list carr
   // a file removed
   await rm(file);
   ev = await nextTask();
-  assert.deepEqual(ev, { type: 'task', id: 'T-1', item: null });
+  assert.deepEqual(ev, { type: 'task', id: 'T-1', item: null, done_items: 0 });
 });
 
 test('the task.* tools work through a spoke over MCP, acting as the spoke\'s session', async (t) => {

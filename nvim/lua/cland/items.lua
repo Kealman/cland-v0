@@ -258,7 +258,12 @@ function M.apply_event(ev)
       if ev.layers[it.id] then it.layer = ev.layers[it.id] end
     end
   end
+  for _, load in pairs(state.S.closed_loads) do load.events[id] = ev end
   local item = type(ev.item) == 'table' and ev.item or nil
+  if item and item.kind == 'task' and item.state == 'closed' then
+    local parent = present(item.parent) and state.item(item.parent) and item.parent or ''
+    if not state.S.closed_pages[parent] then item = nil end
+  end
   for i, it in ipairs(state.S.items) do
     if tonumber(it.id:match('%-(%d+)$')) == tonumber(id:match('%-(%d+)$')) then
       state.S.sibling_orders[parent_key(it)] = nil
@@ -479,6 +484,7 @@ end
 
 function M.set_filter(f)
   state.S.ui.items_filter = f
+  if f == 'done' or f == 'all' then require('cland').load_closed_items() end
   state.say('items: ' .. M.LABEL[f])
   state.changed()
 end

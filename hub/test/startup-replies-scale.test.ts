@@ -77,7 +77,8 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     assert.equal(reply.ok, true, reply.error);
     if (request.type === 'hub.status') {
       const elapsed = performance.now() - started;
-      t.diagnostic(`first completed hub.status: ${elapsed.toFixed(1)} ms; budget 15000 ms`);
+      t.diagnostic(`first completed hub.status: ${elapsed.toFixed(1)} ms; budget 10000 ms (original 15000 ms guard retained)`);
+      assert.ok(elapsed < 10000, `first hub.status took ${elapsed.toFixed(1)} ms; T-1081 budget 10000 ms`); // lint-allow-wall-clock: C6 measures startup to the completed status receipt.
       // Coordinator decision a6b632c3: 3× the local 5 s target gives loaded T3
       // shards headroom while staying well below the 39 s production regression.
       assert.ok(elapsed < 15000, `first hub.status took ${elapsed.toFixed(1)} ms; budget 15000 ms`); // lint-allow-wall-clock: T-1039 guards end-to-end startup through the first completed status reply; the separate copied-state CLI evidence enforces the local 5 s target.
@@ -100,14 +101,14 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     if (frame.type==='snapshot' && frame.domain==='items') {
       itemBytes=Buffer.byteLength(JSON.stringify(frame));
       const rows=(frame.value as {items:Array<Record<string,unknown>>}).items;
-      assert.equal(rows.length,1004);
+      assert.equal(rows.length,108);
       assert.ok(rows.every(row=>!Object.hasOwn(row,'body')&&!Object.hasOwn(row,'comments')));
       assert.ok(rows.filter(row=>row.kind==='task'&&row.state==='open').every(row=>row.agents_text&&row.decision));
       assert.ok(rows.filter(row=>row.state==='closed').every(row=>!row.agents_text&&!row.decision));
     }
     if (frame.type==='snapshot.end') break;
   }
-  t.diagnostic(`startup replies: ${total} bytes; all-item card snapshot: ${itemBytes} bytes`);
+  t.diagnostic(`startup replies: ${total} bytes; open/container card snapshot: ${itemBytes} bytes`);
   assert.ok(itemBytes>0 && itemBytes<=1024*1024, `${itemBytes} items snapshot bytes exceeds 1 MiB`);
   for (let n = 0; n < 4; n++) {
     const reply = await ui.request({ type: 'task.view', item: `E-${1001 + n}` });

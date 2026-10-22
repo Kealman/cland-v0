@@ -897,7 +897,7 @@ test('a delayed items snapshot keeps a newer claim, new item and removed file', 
   ] });
   const newer = (x: string) => /^ +◐ T-7 Transport +impl-2\s*$/m.test(leftOf(x)) && x.includes('T-14 New item') && !leftOf(x).includes('T-13');
   await c.waitScreen(newer, 'the newer task events');
-  await c.control({ releaseSnapshots: ['task.list'] });
+  await c.control({ set:{holdSnapshots:[]}, releaseSnapshots: ['task.list'] });
   await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
   assert.ok(newer((await c.screen()).join('\n')), 'the late list must keep the newer board rows');
 });
@@ -921,7 +921,7 @@ test('events already reflected in a delayed items snapshot are idempotent; a fai
       { type: 'task', id: 'T-7', item: changed }, { type: 'task', id: 'T-14', item: added }, { type: 'task', id: 'T-13', item: null },
     ] });
     await c.waitScreen((x) => x.includes('T-14 New item') && !leftOf(x).includes('T-13'), 'the live updates');
-    await c.control({ releaseSnapshots: ['task.list'], snapshotError: error });
+    await c.control({ set:{holdSnapshots:[]}, releaseSnapshots: ['task.list'], snapshotError: error });
     await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
     const screen = leftOf((await c.screen()).join('\n'));
     assert.equal(screen.match(/T-14 New item/g)?.length, 1);
@@ -1573,9 +1573,9 @@ test('a reconnect reads each startup list once then settles for ten fake minutes
   await c.input('<Esc><Space>e');
   await c.input('zR');
   await c.lua("assert(vim.wait(5000,function() return require('cland.state').S.closed_items_loaded == true end), 'human-demand closed snapshot installed')");
-  const afterDemand = { ...expected, 'task.list': 2 };
-  assert.deepEqual(await counts(), afterDemand, 'expanding all deliberately fetches closed summaries once');
-  assert.deepEqual((await requestsOf(c, 'task.list')).map(f => [f.projection, f.state]), [['summary','open'],['summary','closed']]);
+  const afterDemand = { ...expected, 'task.list': 7 };
+  assert.deepEqual(await counts(), afterDemand, 'expanding all deliberately fetches each parent archive once');
+  assert.deepEqual((await requestsOf(c, 'task.list')).map(f => [f.projection, f.state]), [['summary','open'],...Array.from({length:6},()=>['summary','closed'])]);
   const latest = item('T-14', 'task', 'New item 3');
   await c.control({ set: { items: [latest] }, emit: { type: 'task', id: latest.id, item: latest } });
   await c.waitScreen(s => s.includes('New item 3'), 'task event renders its explorer row');

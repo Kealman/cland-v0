@@ -906,6 +906,8 @@ export class HubCore {
   }
 
   publishTask(change: ItemChange): void {
+    const done = this.#items?.doneItemCount?.();
+    const inventory = done === undefined ? {} : {done_items:done};
     if (change.item) this.#store.heartbeatItemSince(change.item.id, change.item.status ?? change.item.state, Date.parse(change.item.updated), this.#now().getTime());
     if (change.item) this.#itemSnapshots.set(`T-${idNumber(change.id)}`, change.item);
     else this.#itemSnapshots.delete(`T-${idNumber(change.id)}`);
@@ -915,7 +917,7 @@ export class HubCore {
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
       this.#defaultItems.delete(`T-${idNumber(change.id)}`);
-      this.#emit({ type: 'task', id: change.id, item: null, ...(change.siblings ? { siblings: change.siblings } : {}) });
+      this.#emit({ type: 'task', id: change.id, item: null, ...inventory, ...(change.siblings ? { siblings: change.siblings } : {}) });
       for (const item of contextChanged) this.#emit({type:'task',id:item.id,item});
       return;
     }
@@ -945,7 +947,7 @@ export class HubCore {
       }
     }
     if (change.item.state === 'closed') this.#defaultItems.delete(`T-${idNumber(change.id)}`);
-    this.#emit({ type: 'task', id: change.id, item: change.item, ...(change.siblings ? { siblings: change.siblings } : {}) });
+    this.#emit({ type: 'task', id: change.id, item: change.item, ...inventory, ...(change.siblings ? { siblings: change.siblings } : {}) });
     for (const item of contextChanged) if (item.id !== change.id) this.#emit({type:'task',id:item.id,item});
   }
 

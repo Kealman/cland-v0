@@ -201,47 +201,82 @@ end)
 
 M.refresh_sessions = refresh_sessions
 
--- Initial snapshots carry only open summaries. Closed rows load on human demand;
--- task events keep both sets current afterwards. Reconnects renew a requested archive.
-local closed_requested, closed_busy, closed_attempted = false, false, false
-function M.load_closed_items()
-  closed_requested = true
-  if state.S.closed_items_loaded or closed_busy or closed_attempted or not state.S.items_loaded
+-- Open rows and every container arrive first; direct closed-task children are paged on demand.
+local closed_requested, closed_all, closed_failed = {}, false, {}
+local function closed_parent(it)
+  return it.parent and it.parent ~= vim.NIL and state.item(it.parent) and it.parent or ''
+end
+function M.load_closed_items(parent)
+  if parent == nil then
+    closed_all = true
+    M.load_closed_items('')
+    for _, it in ipairs(state.S.items) do
+      if it.kind ~= 'task' then M.load_closed_items(it.id) end
+    end
+    return
+  end
+  closed_requested[parent] = true
+  if state.S.closed_pages[parent] or state.S.closed_loads[parent] or closed_failed[parent] or not state.S.items_loaded
     or not (M.client and M.client:connected()) then return end
-  closed_busy, closed_attempted = true, true
-  M.client:snapshot({type='task.list',projection='summary',state='closed'},function(err,value,events)
-    closed_busy = false
-    if err then
-      state.S.items_note = 'closed items: ' .. tostring(err)
-    else
+  local load = {rows={}, events={}}
+  state.S.closed_loads[parent] = load
+  local function page(cursor)
+    M.client:snapshot({type='task.list',projection='summary',state='closed',parent=parent,cursor=cursor},function(err,value,events)
+      if state.S.closed_loads[parent] ~= load then return end
+      if err then
+        state.S.closed_loads[parent], closed_failed[parent] = nil, true
+        state.S.items_note = 'closed items: ' .. tostring(err)
+        state.changed()
+        return
+      end
+      for _, it in ipairs(value and value.items or {}) do load.rows[it.id] = it end
+      for _, ev in ipairs(events or {}) do load.events[ev.id] = ev end
+      if value and value.next and value.next ~= vim.NIL then return page(value.next) end
       local merged, positions = {}, {}
       local function put(it)
-        local identity = state.item_number(it.id) or it.id
-        local at = positions[identity] or (#merged+1)
-        positions[identity], merged[at] = at, it
+        local id = state.item_number(it.id) or it.id
+        local at = positions[id] or (#merged+1)
+        positions[id], merged[at] = at, it
       end
-      for _, it in ipairs(state.S.items) do if it.state ~= 'closed' then put(it) end end
-      for _, it in ipairs(value and value.items or {}) do
-        if it.state == 'closed' then put(it) end
+      for _, it in ipairs(state.S.items) do
+        if not (it.kind == 'task' and it.state == 'closed' and closed_parent(it) == parent) then put(it) end
       end
-      state.S.items, state.S.closed_items_loaded, state.S.items_note = merged, true, nil
-      for _, event in ipairs(events) do
-        if event.type == 'task' then require('cland.items').apply_event(event) end
+      for _, it in pairs(load.rows) do put(it) end
+      state.S.items = merged
+      state.S.closed_pages[parent], state.S.closed_loads[parent], state.S.items_note = true, nil, nil
+      -- A close/reopen/reparent received during any page wins over stale page contents.
+      for _, ev in pairs(load.events) do require('cland.items').apply_event(ev) end
+      state.S.closed_items_loaded = state.S.closed_pages[''] == true
+      for owner in pairs(closed_requested) do
+        if not state.S.closed_pages[owner] then state.S.closed_items_loaded = false end
       end
-    end
-    state.changed()
-  end)
+      state.changed()
+    end)
+  end
+  page()
+end
+
+function M.load_closed_scope(scope)
+  if not scope then return M.load_closed_items() end
+  M.load_closed_items(scope)
+  for _, it in ipairs(state.S.items) do
+    if it.kind ~= 'task' and require('cland.vboard').under(it, scope) then M.load_closed_items(it.id) end
+  end
 end
 
 local refresh_items = single_flight(function(done)
-  M.client:snapshot({ type = 'task.list', projection = 'summary', state = 'open' }, function(err, value, events)
+  M.client:snapshot({ type = 'task.list', projection = 'summary', state = 'open', include_containers = true }, function(err, value, events)
     if err then
       state.S.items_note = 'items: ' .. tostring(err)
     else
       state.S.items_loaded = true
       state.S.closed_items_loaded = false
-      closed_attempted = false
+      state.S.closed_pages, state.S.closed_loads, closed_failed = {}, {}, {}
       state.S.items, state.S.items_note = value and value.items or {}, nil
+      -- A legacy full-list producer can already have supplied an archive.
+      for _, it in ipairs(state.S.items) do
+        if it.kind == 'task' and it.state == 'closed' then state.S.closed_pages[closed_parent(it)] = true end
+      end
       state.S.sibling_orders = {}
       for _, event in ipairs(events) do
         if event.type == 'task' then require('cland.items').apply_event(event) end
@@ -249,7 +284,8 @@ local refresh_items = single_flight(function(done)
     end
     state.changed()
     done()
-    if closed_requested then M.load_closed_items() end
+    if closed_all then M.load_closed_items()
+    else for parent in pairs(closed_requested) do M.load_closed_items(parent) end end
   end)
 end)
 

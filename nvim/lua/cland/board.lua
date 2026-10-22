@@ -187,6 +187,7 @@ function M.buf()
 end
 
 function M.render()
+  require('cland').load_closed_scope(items.scope() and items.scope().id)
   local b = M.buf()
   local win = vim.fn.bufwinid(b)
   local width = api.nvim_win_get_width(win ~= -1 and win or require('cland.layout').centre())

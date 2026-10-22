@@ -1,4 +1,4 @@
-// T2: real headless Neovim renders an open-only recorded snapshot, without a hub.
+// T2: real headless Neovim renders complete container counts while closed task pages are held.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +41,7 @@ const fixture: Scenario = { summaryLists: true, items: [
 async function start(t: test.TestContext, scenario = fixture) {
   const root = await tempProject(t);
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio',
-    CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario), CLAND_STUB_CONTROL: root+'/control.sock' });
+    CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({...scenario,holdClosedPages:true}), CLAND_STUB_CONTROL: root+'/control.sock' });
   await waitInitialSnapshots(c);
   await c.input('<Esc><Space>i');
   await c.lua("local l=require('cland.layout'); vim.api.nvim_win_set_width(l.win.left,90)");
@@ -58,7 +58,8 @@ test('board fractions and header include closed children before loading closed r
   assert.match(board, /E-5 Planned epic[^\n]*0\/1/);
   assert.match(board, /Direct tasks \(1 loaded\)[^\n]*0\/1 loaded/);
   assert.match((await c.screen()).join('\n'), /board · epics: 2 in work · 1 done/);
-  assert.doesNotMatch(board, /Closed epic|Child 1[01567]|Child 20/);
+  assert.match(board, /Closed epic/);
+  assert.doesNotMatch(board, /Child 1[01567]|Child 20/);
   assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);
   await c.input('p');
   await c.waitScreen(s => s.includes('epic all · E-2') && s.includes('IN PROGRESS'), 'epic board');
@@ -125,7 +126,7 @@ test('release and epic cards preserve aggregate progress and open blocker counts
   assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);
 });
 
-test('a release with only unloaded closed epics does not count blocked direct tasks as progress members', { skip }, async t => {
+test('a release with only closed epics does not count blocked direct tasks as progress members', { skip }, async t => {
   const c = await start(t, { summaryLists: true, items: [
     { id: 'R-1', kind: 'release', title: 'Completed release', state: 'open',
       child_counts: { total: 1, done: 1, statuses: { done: 1 }, work } },
@@ -141,7 +142,7 @@ test('a release with only unloaded closed epics does not count blocked direct ta
   const text = await c.lua<string>("return table.concat(require('cland.explorer').card.lines,'\\n')");
   assert.match(text, /1 of 1 done/);
   assert.doesNotMatch(text, /blocked\n|\d+ blocked/);
-  assert.equal(await c.lua("return require('cland.state').item('E-2') ~= nil"), false);
+  assert.equal(await c.lua("return require('cland.state').item('E-2') ~= nil"), true);
   assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);
 });
 
