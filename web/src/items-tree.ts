@@ -1,3 +1,5 @@
+import { currentRelease } from './current-release.ts';
+export { currentRelease } from './current-release.ts';
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
 import { itemRows, type ConnectionState, type PlanStages } from './connection.ts';
 
@@ -14,11 +16,6 @@ const rank = (item: ExplorerSummary) => item.rank ?? numberOf(item.id) * 10;
 const byRank = (a: ExplorerSummary, b: ExplorerSummary) => rank(a) - rank(b) || numberOf(a.id) - numberOf(b.id);
 const closedOrder = (a: ExplorerSummary, b: ExplorerSummary) => Number(!!a.closed) - Number(!!b.closed)
   || (a.closed ?? a.updated).localeCompare(b.closed ?? b.updated) || byRank(a, b);
-export function currentRelease(items: ExplorerSummary[], top = 'release', selected?: string): ExplorerSummary | undefined {
-  const releases = items.filter(item => item.kind === top && !done(item));
-  return releases.find(item => item.id === selected) ?? releases.sort((a, b) =>
-    (a.version ?? '').localeCompare(b.version ?? '', undefined, { numeric: true }) || byRank(a, b))[0];
-}
 
 /** Whole-model rebuild; the hub owns all status/roll-up derivation. */
 export function buildItemsTree(connection: ConnectionState, preferences: TreePreferences, releaseId?: string, scopeId?: string): TreeRow[] {

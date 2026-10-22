@@ -528,6 +528,7 @@
     "hub/test/web-keymap.test.ts": "T1",
     "hub/test/web-network-unit.test.ts": "T1",
     "hub/test/web-phase.test.ts": "T1",
+    "hub/test/web-release.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",
     "nvim/test/agents-filters.test.ts": "T2",

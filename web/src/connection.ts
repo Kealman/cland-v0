@@ -1,5 +1,6 @@
 import { PROTOCOL_VERSION, type AccountList, type Artifact, type ClientHello, type EventsPage, type HarnessProcessView, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import type { Area } from './keymap.ts';
+import { compareReleases } from './current-release.ts';
 
 export type ObjectRow = { id: string; title: string };
 type Command<T> = T extends unknown ? Omit<T, 'id'> : never;
@@ -160,7 +161,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   function items(value: ExplorerSummary[]) {
     state = { ...state, items: value, closedTasks: parent => closed.get(parent) ?? [], closedTasksLoaded: parent => closed.has(parent), loadClosed,
       releases: value.filter(row => row.kind === state.tracker?.levels[0] && row.state === 'open')
-      .sort((a, b) => (a.version ?? '').localeCompare(b.version ?? '', undefined, { numeric: true }) || (a.rank ?? 0) - (b.rank ?? 0)) };
+      .sort(compareReleases) };
     rows('Items', value);
   }
   function inbox(value: Inbox) {

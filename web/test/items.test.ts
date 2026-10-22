@@ -2,14 +2,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cp, mkdir } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { webFixture, pageUntil } from './harness.ts';
 import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
-import { seedTree } from './items-fixture.ts';
+import { seedItem, seedTree } from './items-fixture.ts';
 
 test('the Items tree reads the copied live tracker snapshot', async t => {
   const fixture = await webFixture(t, { prepare: async root => {
-    await cp(resolve(import.meta.dirname, '../../.cland/tasks'), join(root, '.cland/tasks'), { recursive: true });
+    await cp(resolve(import.meta.dirname, '../../.cland/tasks'), join(root, '.cland/tasks'), {
+      recursive: true, filter: source => !basename(source).startsWith('R-1100-'),
+    });
+    // Plant the live regression even when this checkout predates Public launch.
+    await seedItem(root, 'R-1100', 'release', 'Public launch');
     await seedTree(root);
   } });
   await fixture.pageCase(t, async page => {
@@ -34,6 +38,12 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     const output = resolve(import.meta.dirname, '../test-results');
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, 'items-tree.png') });
+    for (const view of ['Board', 'Graph']) {
+      await page.getByRole('button', { name: view, exact: true }).click();
+      const scope = page.getByLabel(`${view} scope`, { exact: true });
+      await scope.waitFor();
+      assert.match(await scope.textContent() ?? '', /R-377/);
+    }
   });
   await t.test('CLI status deltas reorder a focused task and change its hub roll-up', async t => {
     const ui = await connectUi(t, fixture.hub.discovery);
