@@ -3,7 +3,7 @@ id: T-1116
 kind: task
 title: Markdown for messages as a safe pure parser
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-417
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1116-markdown-for-messages-as-a-safe-pure
 created: 2026-10-22T15:16:12.285Z
-updated: 2026-10-22T15:16:22.332Z
+updated: 2026-10-22T15:17:01.652Z
 ---
 
 ## Summary

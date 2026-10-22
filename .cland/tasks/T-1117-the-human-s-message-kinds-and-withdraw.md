@@ -3,7 +3,7 @@ id: T-1117
 kind: task
 title: The human's message kinds and Withdraw in the hub
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-417
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T15:16:22.563Z
+updated: 2026-10-22T15:17:06.018Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1115
 kind: task
 title: Key contexts per area and field, and one area slot in the shell
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-417
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1115-key-contexts-per-area-and-field-and-one
 created: 2026-10-22T15:16:12.148Z
-updated: 2026-10-22T15:16:22.105Z
+updated: 2026-10-22T15:16:58.511Z
 ---
 
 ## Summary

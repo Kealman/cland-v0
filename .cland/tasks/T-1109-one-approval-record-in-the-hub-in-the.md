@@ -3,7 +3,7 @@ id: T-1109
 kind: task
 title: One approval record in the hub, in the snapshot and the deltas
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-414
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1109-one-approval-record-in-the-hub-in-the
 created: 2026-10-22T15:16:11.019Z
-updated: 2026-10-22T15:16:21.359Z
+updated: 2026-10-22T15:16:55.142Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1131
 kind: task
 title: The hub requests the web's sessions and profile need
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-418
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T15:16:23.393Z
+updated: 2026-10-22T15:17:09.750Z
 ---
 
 ## Summary
