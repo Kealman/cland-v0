@@ -306,6 +306,29 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 | `↓`, `↑` | Native control behaviour | Next/previous result |
 | `Esc` | Close help or drawer | Close without acting |
 
+`src/keymap.ts` partitions the physical-code table into shell, Items (including
+Plan), Topics, thread, inbox, events, composer, Sessions, Artifacts, Accounts and
+modal contexts. The focused context resolves first, then the shell. Modifiers
+must match exactly. The shell asks `focusedKeyContext` for a nested
+`data-key-context` declaration, falling back to the active pane's area. A field
+uses context bindings only when the field itself explicitly declares
+one, for example `data-key-context="composer"`; ordinary fields keep native keys
+and only `⌘K` opens the palette. Composer Enter, Shift+Enter and `⌘Enter` are
+declared now, for the composer ticket to handle.
+
+Every non-Items area renders through `src/AreaSlot.tsx`. Its `AreaModule` supplies
+`Pane` and `Drawer` components, receives rows, selected identity and a selection
+callback, and declares `handledActions`. A pane exposes its `AreaControls.run`
+through the supplied controls ref. The stand-in modules handle no area actions.
+Adding a key to an area's table reserves it but does not enable it: an unhandled
+context key runs no action and never falls back to a shell binding; native
+control activation is preserved. Declared fields reserve their context chords. An area opts in with `handledActions` when its component implements the
+action. Labels live in `contextActions`; help and palette combine shell actions
+with the handled actions, and derive the displayed chords from the focused
+context's table. Sessions and Artifacts already declare their future keys and
+labels, including Artifacts' `k` for Keep and `↑` for moving up, but their
+stand-ins expose none of those actions.
+
 The top-strip Palette and Help buttons expose the same overlays. Help names the
 active pane’s area and lists the shell keys shared by all current stand-in areas;
 area-specific keys use the same map. Help lists each action once, with the active area's label replacing the shared label for that action. Native modal
@@ -314,7 +337,7 @@ The single `keyboard.ts` listener reads physical codes and exact modifiers,
 including both strokes of `Space p`, so Cyrillic key values do not change actions.
 Composition, already-handled events and ordinary field typing remain untouched.
 The leader survives ordinary hub updates at the same focus target; it only
-resolves in the shell outside fields and is cleared by the next stroke.
+resolves outside fields and modals, in the same context, and is cleared by the next stroke.
 Reserved browser window/tab shortcuts remain unbound.
 
 ## Folds and factual labels

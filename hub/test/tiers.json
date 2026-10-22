@@ -607,6 +607,7 @@
     "web/test/items-actions.test.ts": "Web",
     "web/test/items-order.test.ts": "Web",
     "web/test/items.test.ts": "Web",
+    "web/test/key-contexts.test.ts": "Web",
     "web/test/palette.test.ts": "Web",
     "web/test/plan.test.ts": "Web",
     "web/test/shell.test.ts": "Web",

@@ -21,3 +21,39 @@ test('browser tab/window chords remain unbound and area shortcuts require exact 
     assert.equal(shortcut(key('Digit3', { [modifier]: true })), undefined);
   }
 });
+
+test('focused contexts resolve before shell keys without changing Items or Plan chords', () => {
+  assert.equal(shortcut(key('KeyD'), false, 'items'), 'plan-discuss');
+  assert.equal(shortcut(key('KeyD'), false, 'sessions'), 'session-archive');
+  assert.equal(shortcut(key('KeyK'), false, 'items'), 'tree-previous');
+  assert.equal(shortcut(key('KeyK'), false, 'artifacts'), 'artifact-keep');
+  assert.equal(shortcut(key('Enter'), false, 'composer'), 'composer-send');
+  assert.equal(shortcut(key('Enter', { shiftKey: true }), false, 'composer'), 'composer-newline');
+  assert.equal(shortcut(key('Enter', { metaKey: true }), false, 'composer'), 'composer-send');
+  for (const context of ['shell', 'items', 'sessions', 'artifacts', 'composer'] as const) {
+    assert.equal(shortcut(key('KeyK', { metaKey: true }), false, context), 'palette');
+    for (const modifier of ['ctrlKey', 'altKey', 'shiftKey']) {
+      assert.equal(shortcut(key('KeyD', { [modifier]: true, metaKey: true }), false, context), undefined);
+    }
+  }
+  const existing = {
+    KeyA: 'plan-approve', KeyD: 'plan-discuss', KeyS: 'tree-scope', KeyG: 'jump-leader',
+    KeyX: 'tree-select', 'Shift+KeyJ': 'tree-extend-next', 'Shift+KeyK': 'tree-extend-previous',
+    KeyM: 'tree-message', 'Shift+KeyM': 'tree-topic-message', KeyE: 'tree-edit-criteria',
+    KeyJ: 'tree-next', KeyK: 'tree-previous', KeyL: 'tree-open', KeyH: 'tree-close',
+    KeyZ: 'tree-leader', 'Shift+KeyD': 'tree-done', 'Shift+KeyA': 'tree-archive', Enter: 'accept',
+  };
+  for (const [chord, action] of Object.entries(existing)) {
+    assert.equal(shortcut(key(chord.replace('Shift+', ''), { shiftKey: chord.startsWith('Shift+') }), false, 'items'), action, chord);
+  }
+  for (const [prefix, code, action] of [
+    [true, 'Space', 'tree-back'], ['KeyG', 'KeyI', 'jump-item'], ['KeyG', 'KeyT', 'jump-topic'],
+    ['KeyG', 'KeyS', 'jump-session'], ['KeyZ', 'KeyA', 'tree-toggle'],
+  ] as const) assert.equal(shortcut(key(code), prefix, 'items'), action);
+  for (const [index, area] of ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'].entries()) {
+    assert.equal(shortcut(key(`Digit${index + 1}`), false, 'shell'), area);
+    assert.equal(shortcut(key(`Digit${index + 1}`, { shiftKey: true }), false, 'shell'), undefined);
+  }
+  assert.equal(shortcut(key('KeyD'), false, 'shell'), undefined, 'Items bindings stay in Items');
+  assert.equal(shortcut(key('KeyI'), 'KeyG', 'topics'), 'jump-item', 'the shared jump leader still works from Topics');
+});

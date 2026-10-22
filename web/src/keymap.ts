@@ -1,43 +1,65 @@
 export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'] as const;
 export type Area = typeof areas[number];
 export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
+  | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
+  | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
+  | 'composer-send' | 'composer-newline'
   | 'plan-approve' | 'plan-discuss' | 'tree-scope' | 'tree-back' | 'jump-leader' | 'jump-item' | 'jump-topic' | 'jump-session'
   | 'tree-select' | 'tree-extend-next' | 'tree-extend-previous' | 'tree-message' | 'tree-topic-message' | 'tree-edit-criteria'
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
-/** The single physical-code/modifier table; also the source for displayed area keys. */
-export const keyMap: Readonly<Record<string, Shortcut>> = {
-  Digit1: 'Inbox', Digit2: 'Items', Digit3: 'Sessions', Digit4: 'Topics',
-  Digit5: 'Events', Digit6: 'Artifacts', Digit7: 'Accounts',
-  'Meta+Backslash': 'split', 'Meta+Enter': 'open-other', Escape: 'dismiss',
-  'Meta+KeyK': 'palette', Space: 'leader', 'Space KeyP': 'palette', 'Shift+Slash': 'help',
-  Enter: 'accept', Tab: 'next-kind', 'Shift+Tab': 'previous-kind',
-  ArrowDown: 'next-result', ArrowUp: 'previous-result',
-  ArrowLeft: 'fold-close', ArrowRight: 'fold-open',
-  // Items selection, scope and message bindings (T-1074).
-  KeyA: 'plan-approve', KeyD: 'plan-discuss',
-  KeyS: 'tree-scope', 'Space Space': 'tree-back',
-  KeyG: 'jump-leader', 'KeyG KeyI': 'jump-item', 'KeyG KeyT': 'jump-topic', 'KeyG KeyS': 'jump-session',
-  KeyX: 'tree-select', 'Shift+KeyJ': 'tree-extend-next', 'Shift+KeyK': 'tree-extend-previous',
-  KeyM: 'tree-message', 'Shift+KeyM': 'tree-topic-message',
-  KeyE: 'tree-edit-criteria',
-  KeyJ: 'tree-next', KeyK: 'tree-previous', KeyL: 'tree-open', KeyH: 'tree-close',
-  KeyZ: 'tree-leader', 'KeyZ KeyA': 'tree-toggle', 'Shift+KeyD': 'tree-done', 'Shift+KeyA': 'tree-archive',
+export type KeyContext = 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help';
+export type KeyAction = { action: Shortcut; label: string };
+
+/** One physical-code/modifier map, partitioned by focused context. */
+export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcut>>>> = {
+  shell: {
+    Digit1: 'Inbox', Digit2: 'Items', Digit3: 'Sessions', Digit4: 'Topics',
+    Digit5: 'Events', Digit6: 'Artifacts', Digit7: 'Accounts',
+    'Meta+Backslash': 'split', 'Meta+Enter': 'open-other', Escape: 'dismiss',
+    'Meta+KeyK': 'palette', Space: 'leader', 'Space KeyP': 'palette', 'Shift+Slash': 'help',
+    ArrowLeft: 'fold-close', ArrowRight: 'fold-open',
+    KeyG: 'jump-leader', 'KeyG KeyI': 'jump-item', 'KeyG KeyT': 'jump-topic', 'KeyG KeyS': 'jump-session',
+  },
+  items: {
+    Enter: 'accept',
+    // Items selection, scope and message bindings (T-1074).
+    KeyA: 'plan-approve', KeyD: 'plan-discuss',
+    KeyS: 'tree-scope', 'Space Space': 'tree-back',
+    KeyX: 'tree-select', 'Shift+KeyJ': 'tree-extend-next', 'Shift+KeyK': 'tree-extend-previous',
+    KeyM: 'tree-message', 'Shift+KeyM': 'tree-topic-message',
+    KeyE: 'tree-edit-criteria',
+    KeyJ: 'tree-next', KeyK: 'tree-previous', KeyL: 'tree-open', KeyH: 'tree-close',
+    KeyZ: 'tree-leader', 'KeyZ KeyA': 'tree-toggle', 'Shift+KeyD': 'tree-done', 'Shift+KeyA': 'tree-archive',
+  },
+  topics: {}, thread: {}, inbox: {}, events: {},
+  composer: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send' },
+  sessions: { KeyJ: 'session-next', ArrowDown: 'session-next', KeyK: 'session-previous', ArrowUp: 'session-previous',
+    Enter: 'session-open', KeyL: 'session-launch', KeyA: 'session-aide', KeyX: 'session-stop', KeyR: 'session-resume',
+    KeyD: 'session-archive', KeyC: 'session-capabilities', 'Shift+KeyA': 'session-archive-toggle' },
+  artifacts: { KeyJ: 'artifact-next', ArrowDown: 'artifact-next', ArrowUp: 'artifact-previous', Enter: 'artifact-open',
+    KeyS: 'artifact-compose', KeyK: 'artifact-keep', KeyD: 'artifact-archive', 'Shift+KeyA': 'artifact-archive-toggle' },
+  accounts: {},
+  palette: { Enter: 'accept', Tab: 'next-kind', 'Shift+Tab': 'previous-kind', ArrowDown: 'next-result', ArrowUp: 'previous-result' },
+  help: {},
 };
 
-export function shortcut(event: KeyStroke, leader: boolean | 'KeyZ' | 'KeyG' = false): Shortcut | undefined {
+export function shortcut(event: KeyStroke, leader: boolean | 'KeyZ' | 'KeyG' = false, context: KeyContext = 'shell'): Shortcut | undefined {
   const chord = `${event.metaKey ? 'Meta+' : ''}${event.ctrlKey ? 'Control+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''}${event.code}`;
-  return keyMap[leader ? `${leader === true ? 'Space' : leader} ${chord}` : chord];
+  const stroke = leader ? `${leader === true ? 'Space' : leader} ${chord}` : chord;
+  return keyMap[context][stroke] ?? keyMap.shell[stroke];
 }
 
 export function areaKey(area: Area): string {
-  return Object.entries(keyMap).find(([, action]) => action === area)![0].replace('Digit', '');
+  return Object.entries(keyMap.shell).find(([, action]) => action === area)![0].replace('Digit', '');
 }
 
 
-export function actionKeys(action: Shortcut): string[] {
-  return Object.entries(keyMap).filter(([, value]) => value === action).map(([chord]) => chord);
+export function actionKeys(action: Shortcut, context?: KeyContext): string[] {
+  // Without a context retain all aliases, including actions shadowed elsewhere.
+  const entries = context ? Object.entries({ ...keyMap.shell, ...keyMap[context] }) : Object.values(keyMap).flatMap(table => Object.entries(table));
+  return [...new Set(entries.filter(([, value]) => value === action).map(([chord]) => chord))];
 }
 export function displayKey(chord: string): string {
   if (/^Key[A-Z]$/.test(chord)) return chord.slice(3).toLowerCase();
@@ -80,3 +102,27 @@ export const treeActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
 export const planActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
   { action: 'plan-approve', label: 'Approve plan' }, { action: 'plan-discuss', label: 'Discuss plan with Lead' },
 ];
+
+
+/** Future views opt in action by action; declaring a chord alone never enables it. */
+export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<KeyAction>>>> = {
+  items: [...treeActions, ...planActions],
+  composer: [{ action: 'composer-send', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }],
+  sessions: [
+    { action: 'session-next', label: 'Next session' }, { action: 'session-previous', label: 'Previous session' },
+    { action: 'session-open', label: 'Open session' }, { action: 'session-launch', label: 'Launch a session' },
+    { action: 'session-aide', label: 'New Aide' }, { action: 'session-stop', label: 'Stop session' },
+    { action: 'session-resume', label: 'Resume session' }, { action: 'session-archive', label: 'Archive session' },
+    { action: 'session-capabilities', label: 'Capabilities' }, { action: 'session-archive-toggle', label: 'Show archived sessions' },
+  ],
+  artifacts: [
+    { action: 'artifact-next', label: 'Next artifact' }, { action: 'artifact-previous', label: 'Previous artifact' },
+    { action: 'artifact-open', label: 'Open artifact' }, { action: 'artifact-compose', label: 'Attach to composer' },
+    { action: 'artifact-keep', label: 'Keep artifact' }, { action: 'artifact-archive', label: 'Archive artifact' },
+    { action: 'artifact-archive-toggle', label: 'Show archived artifacts' },
+  ],
+};
+
+export function areaContext(area: Area): KeyContext {
+  return area.toLowerCase() as KeyContext;
+}

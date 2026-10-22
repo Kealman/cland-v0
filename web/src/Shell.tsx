@@ -2,17 +2,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { connectHub, findItem, type ConnectionState, type ObjectRow } from './connection.ts';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
-import { areas, areaKey, actionKeys, displayKey, type Area, type Shortcut } from './keymap.ts';
-import { listenForShortcuts } from './keyboard.ts';
+import { areas, areaKey, actionKeys, displayKey, treeActions, planActions, contextActions, areaContext, type KeyContext, type Area, type Shortcut } from './keymap.ts';
+import { focusedKeyContext, listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 import { Fold, runFoldShortcut } from './Fold.tsx';
 import { ItemCard } from './ItemCard.tsx';
-import { ItemNavigation, ItemText } from './ItemText.tsx';
+import { ItemNavigation } from './ItemText.tsx';
 import { itemsSnapshot, saveItems, subscribeItems } from './items-state.ts';
 import type { MessageTarget } from './QuickMessage.tsx';
 import { type TreeControls } from './ItemsTree.tsx';
-import { ItemsView, ItemsViewSwitcher, showItemsView } from './ItemsView.tsx';
+import { ItemsView, ItemsViewSwitcher, showItemsView, useItemsView } from './ItemsView.tsx';
+
+import { AreaSlot, areaModules, type AreaControls } from './AreaSlot.tsx';
+import { useDesktop } from './desktop.ts';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -50,6 +53,8 @@ export function Shell() {
   const [preferences, setPreferences] = useState(savedShell);
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
   const [overlay, setOverlay] = useState<'palette' | 'help' | undefined>();
+  const pendingPaletteAction = useRef<Shortcut | undefined>(undefined);
+  const [overlayContext, setOverlayContext] = useState<KeyContext>('shell');
   const [active, setActive] = useState<'primary' | 'secondary'>('primary');
   const navigationSerial = useRef(0);
   useEffect(() => subscribeItems(() => { navigationSerial.current++; }), []);
@@ -90,13 +95,25 @@ export function Shell() {
       ? { ...previous, secondary: previous.area, secondaryRow: selected, secondaryDetail: true, ratio: split ? previous.ratio : 2 / 3 }
       : { ...previous, area: previous.secondary!, row: selected, detail: true });
   };
+  const primaryArea = useRef<AreaControls>(null);
+  const secondaryArea = useRef<AreaControls>(null);
+  const view = useItemsView();
+  const desktop = useDesktop();
+  const focusedContext = overlay ? overlayContext : areaContext(area);
+  const handledActions = area === 'Items'
+    ? (view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
+    : (contextActions[focusedContext] ?? []).filter(row => areaModules[area].handledActions.includes(row.action));
   const paletteControls = useRef<PaletteControls>(null);
   const cardOrigin = useRef<{ item: string; pane: string } | null>(null);
   const primaryTree = useRef<TreeControls>(null);
   const secondaryTree = useRef<TreeControls>(null);
   const [navigationError, setNavigationError] = useState('');
   const [message, setMessage] = useState<MessageTarget>();
-  const runShortcut = (action: Shortcut, fromPalette = false) => {
+  const openOverlay = (mode: 'palette' | 'help') => {
+    if (!overlay) setOverlayContext(focusedKeyContext(document.activeElement, areaContext(area)));
+    setOverlay(mode);
+  };
+  const runShortcut = (action: Shortcut) => {
     if (!overlay && action.startsWith('jump-')) {
       const focused = document.activeElement?.closest('[data-item-link]')?.getAttribute('data-item-link');
       const selectedId = focused ?? (active === 'primary' ? preferences.row : preferences.secondaryRow);
@@ -156,10 +173,11 @@ export function Shell() {
       if (inCard && action.startsWith('tree-')) return;
     }
     if (!overlay && area === 'Items' && (active === 'primary' ? primaryTree : secondaryTree).current?.run(action)) return;
+    if (!overlay && area !== 'Items' && areaModules[area].handledActions.includes(action) && (active === 'primary' ? primaryArea : secondaryArea).current?.run(action)) return;
     if (runFoldShortcut(action)) return;
-    if (action === 'palette') setOverlay('palette');
-    else if (overlay && !fromPalette) paletteControls.current?.run(action);
-    else if (action === 'help') setOverlay('help');
+    if (action === 'palette') openOverlay('palette');
+    else if (overlay) paletteControls.current?.run(action);
+    else if (action === 'help') openOverlay('help');
     else if (action === 'split') {
       if (split) closePane('secondary');
       else setPreferences(previous => ({ ...previous, secondary: previous.area, secondaryRow: undefined, secondaryDetail: false, ratio: 2 / 3 }));
@@ -172,7 +190,21 @@ export function Shell() {
   };
   const keyboard = useRef({ run: runShortcut, overlay, area });
   useEffect(() => { keyboard.current = { run: runShortcut, overlay, area }; });
-  useEffect(() => listenForShortcuts(action => keyboard.current.run(action), () => keyboard.current.overlay ?? (keyboard.current.area === 'Items' ? 'items' : 'shell')), []);
+  // Modal cleanup restores the originating focus before contextual actions run.
+  useEffect(() => {
+    if (overlay || !pendingPaletteAction.current) return;
+    const action = pendingPaletteAction.current;
+    pendingPaletteAction.current = undefined;
+    keyboard.current.run(action);
+  }, [overlay]);
+  useEffect(() => listenForShortcuts(action => keyboard.current.run(action), target => {
+    const current = keyboard.current;
+    return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
+  }, (action, context) => {
+    if (context === 'items' || context === 'palette' || context === 'help') return true;
+    const current = keyboard.current.area;
+    return current !== 'Items' && areaModules[current].handledActions.includes(action);
+  }), []);
   const [connection, setConnection] = useState<ConnectionState>({ project: 'Workbench', live: false });
   useEffect(() => connectHub(setConnection), []);
   useEffect(() => {
@@ -222,10 +254,10 @@ export function Shell() {
   };
   return <ItemNavigation.Provider value={{ open: id => { void openItem(id); }, prefixes: ['T', ...Object.values(connection.tracker?.prefixes ?? {})] }}><div className={s.app}>
     {navigationError && <div role="alert" title={`Could not open ${navigationError}`}>Item unavailable · {navigationError}</div>}
-    {overlay && <PaletteDialog mode={overlay} area={area} connection={connection} controls={paletteControls}
+    {overlay && <PaletteDialog mode={overlay} area={area} context={overlayContext} actions={handledActions} connection={connection} controls={paletteControls}
       close={() => setOverlay(undefined)} run={action => {
-        if (action === 'palette' || action === 'help') setOverlay(action);
-        else { setOverlay(undefined); runShortcut(action, true); }
+        if (action === 'palette' || action === 'help') openOverlay(action);
+        else { pendingPaletteAction.current = action; setOverlay(undefined); }
       }} open={openResult} />}
     <header className={s.top}>
       <span className={s.brand}>cland</span>
@@ -238,7 +270,7 @@ export function Shell() {
           {releases.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
       </label>
-      <button className={s.search} aria-label="Palette" title={`Palette (${actionKeys('palette').map(displayKey).join(' / ')})`} onClick={() => setOverlay('palette')}>Search<kbd>{displayKey(actionKeys('palette')[0]!)}</kbd></button>
+      <button className={s.search} aria-label="Palette" title={`Palette (${actionKeys('palette').map(displayKey).join(' / ')})`} onClick={() => openOverlay('palette')}>Search<kbd>{displayKey(actionKeys('palette')[0]!)}</kbd></button>
       <div className={s.right}>
         <button className={s.coordinator} aria-label="Coordinator" title="Open Coordinator in Sessions" onClick={() => setArea('Sessions')}>
           Coordinator<span className={s.mono}>{connection.coordinator ?? '—'}</span>
@@ -249,7 +281,7 @@ export function Shell() {
         <span className={s.live} role="status" aria-label="Hub connection">
           <span className={s.dot} data-live={connection.live} />{connection.restartRequired ? 'Restart hub' : connection.live ? 'Live' : 'Offline'}
         </span>
-        <button className={s.help} aria-label="Help" title="Area keys" onClick={() => setOverlay('help')}>?</button>
+        <button className={s.help} aria-label="Help" title="Area keys" onClick={() => openOverlay('help')}>?</button>
       </div>
     </header>
     <div className={s.body}>
@@ -293,15 +325,10 @@ export function Shell() {
                 </div>}</>}>
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
-              {!detail && paneArea !== 'Items' && <ul className={s.objects} aria-label={`${paneArea} objects`}>
-                {rows?.map(object => <li key={object.id}><button className={s.object} data-object-id={object.id}
-                  title={object.title} aria-pressed={selected === object.id} onFocus={() => selectRow(pane, object.id)} onClick={() => selectRow(pane, object.id)}>
-                  <span className={s.mono}>{object.id}</span> <span>{object.title}</span>
-                </button></li>)}
-              </ul>}
-              {detail && row && (paneArea === 'Items' && findItem(connection, row.id)
-                ? <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />
-                : <div className={s.detail}><span className={s.mono}>{row.id}</span><p><ItemText text={row.title} /></p></div>)}
+              {paneArea !== 'Items' && <AreaSlot area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
+                controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'drawer' : 'pane'} />}
+              {detail && row && paneArea === 'Items' && findItem(connection, row.id) &&
+                <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />}
               </Fold>
               {pane === 'primary' && split && <div className={s.divider} role="separator" aria-label="Pane divider"
                 aria-orientation="vertical" aria-valuemin={20} aria-valuemax={80} aria-valuenow={Math.round(preferences.ratio * 100)}
@@ -322,7 +349,8 @@ export function Shell() {
           </div>}>
           {preferences.area === 'Items' && findItem(connection, selectedRow.id)
             ? <ItemCard key={selectedRow.id} item={findItem(connection, selectedRow.id)!} connection={connection} message={message?.card === selectedRow.id ? message : undefined} />
-            : <div className={s.detail}><span className={s.mono}>{selectedRow.id}</span><p><ItemText text={selectedRow.title} /></p></div>}
+            : preferences.area !== 'Items' && <AreaSlot area={preferences.area} rows={connection.rows?.[preferences.area]} selected={selectedRow.id}
+              select={id => selectRow('primary', id)} surface="drawer" />}
           </Fold>
         </aside>}
       </main>

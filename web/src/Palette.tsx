@@ -1,8 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { actionKeys, displayKey, shellActions, paletteActions, foldActions, treeActions, planActions, type Area, type Shortcut } from './keymap.ts';
+import { actionKeys, displayKey, shellActions, paletteActions, foldActions, areaContext, type KeyContext, type KeyAction, type Area, type Shortcut } from './keymap.ts';
 import type { ConnectionState, ObjectRow } from './connection.ts';
-import { useItemsView } from './ItemsView.tsx';
-import { useDesktop } from './desktop.ts';
 import s from './Palette.module.css';
 
 const kinds = [
@@ -27,16 +25,13 @@ function match(text: string, query: string): number[] | undefined {
   }
   return [...new Set(positions)];
 }
-function Keys({ action }: { action: Shortcut }) {
-  return <kbd>{actionKeys(action).map(displayKey).join(' / ') || 'No key'}</kbd>;
+function Keys({ action, context }: { action: Shortcut; context?: KeyContext }) {
+  return <kbd>{actionKeys(action, context).map(displayKey).join(' / ') || 'No key'}</kbd>;
 }
-export function PaletteDialog({ mode, area, connection, controls, close, run, open }: {
-  mode: 'palette' | 'help'; area: Area; connection: ConnectionState; controls: Ref<PaletteControls>;
+export function PaletteDialog({ mode, area, actions, context = areaContext(area), connection, controls, close, run, open }: {
+  mode: 'palette' | 'help'; area: Area; actions: readonly KeyAction[]; context?: KeyContext; connection: ConnectionState; controls: Ref<PaletteControls>;
   close: () => void; run: (action: Shortcut) => void; open: (area: Area, row: ObjectRow, pane: boolean) => void;
 }) {
-  const view = useItemsView();
-  const desktop = useDesktop();
-  const itemActions = area !== 'Items' ? [] : view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions;
   const dialog = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -50,7 +45,7 @@ export function PaletteDialog({ mode, area, connection, controls, close, run, op
   const results: Result[] = [];
   for (const candidate of kinds) {
     if (kind && candidate !== kind) continue;
-    const objects = candidate.name === 'Actions' ? shellActions.map(row => ({ id: row.action, title: row.label, action: row.action }))
+    const objects = candidate.name === 'Actions' ? [...new Map([...shellActions, ...actions].map(row => [row.action, row])).values()].map(row => ({ id: row.action, title: row.label, action: row.action }))
       : connection.rows?.[candidate.name] ?? [];
     for (const object of objects) {
       const action = 'action' in object ? object.action : undefined;
@@ -85,13 +80,13 @@ export function PaletteDialog({ mode, area, connection, controls, close, run, op
   } }));
   const activeResult = useRef<HTMLDivElement>(null);
   useEffect(() => { activeResult.current?.scrollIntoView({ block: 'nearest' }); }, [selected, query]);
-  const helpActions = new Map([...shellActions, ...foldActions, ...itemActions].map(row => [row.action, row]));
+  const helpActions = new Map([...shellActions, ...foldActions, ...actions].map(row => [row.action, row]));
   return <dialog ref={dialog} className={s.dialog} data-keys-help={mode === 'help' ? '' : undefined} aria-label={mode === 'palette' ? 'Palette' : `${area} keys`}
     onCancel={event => { event.preventDefault(); close(); }}>
     {mode === 'help' ? <>
       <header className={s.header}><h2>{area} keys</h2><button autoFocus onClick={close}>Close</button></header>
-      <dl className={s.keys}>{[...helpActions.values()].map(row => <div key={row.action} data-key-action={row.action}>
-        <dt>{row.label}</dt><dd><Keys action={row.action} /></dd>
+      <dl className={s.keys}>{[...helpActions.values()].filter(row => actionKeys(row.action, context).length).map(row => <div key={row.action} data-key-action={row.action}>
+        <dt>{row.label}</dt><dd><Keys action={row.action} context={context} /></dd>
       </div>)}</dl>
     </> : <>
       <input aria-label="Search palette" autoFocus value={query} onChange={event => { setQuery(event.target.value); setCursor(-1); }}
@@ -113,14 +108,14 @@ export function PaletteDialog({ mode, area, connection, controls, close, run, op
                 ref={selected === index ? activeResult : undefined} className={s.result} onPointerMove={() => setCursor(index)}
                 onClick={() => choose(row, false)}>
                 <span>{Array.from(text).map((character, index) => row.positions.includes(index) ? <mark key={index}>{character}</mark> : character)}</span>
-                {row.action && <Keys action={row.action} />}
+                {row.action && <Keys action={row.action} context={context} />}
               </div>;
             })}
           </section>;
         })}
         {!results.length && <p className={s.empty}>0 results</p>}
       </div>
-      <footer className={s.footer}>{paletteActions.map(row => <span key={row.action} title={row.label}><Keys action={row.action} /> {row.label}</span>)}</footer>
+      <footer className={s.footer}>{paletteActions.map(row => <span key={row.action} title={row.label}><Keys action={row.action} context="palette" /> {row.label}</span>)}</footer>
     </>}
   </dialog>;
 }

@@ -1822,6 +1822,14 @@ Edge fixtures bind only loopback aliases. Revocation checks observe socket-close
 
 Standalone generated-asset and bundle consumers declare their build prerequisites and check them themselves, independent of prior files or shard order; use fixture-owned present/missing output directories and derive asset lists from shipped scripts and workspace metadata (A-8634 R11; T-955, T-978, T-1019, T-1023, T-1031; A-9063 R8 source T-1096).
 
+`web/test/key-contexts.test.ts` covers T-1115 through the production shell: an
+explicit composer field reserves its Enter chords while ordinary fields inside
+a declared block keep native input; stand-in area selection, drawers and split
+content remain intact; unhandled Sessions actions stay out of help and palette;
+and a handled Items palette action runs after modal focus restoration. The pure
+resolver cases stay in T1 `hub/test/web-keymap.test.ts`. Existing shell, palette,
+fold and Items Web tests remain unchanged.
+
 `web/test/item-criteria.test.ts` owns T-1078's three card-edit seams, one Web
 case per criterion against one sealed scratch hub and Headless Shell. C1 adds,
 edits and removes with `cland task view` readback, preserving other ids and

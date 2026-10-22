@@ -1,34 +1,57 @@
-import { shortcut, type Shortcut } from './keymap.ts';
+import { keyMap, shortcut, type KeyContext, type Shortcut } from './keymap.ts';
 
-export type KeyContext = 'shell' | 'items' | 'palette' | 'help';
-/** The shell's only key listener, including modal controls and leader sequences. */
-export function listenForShortcuts(run: (action: Shortcut) => void, context: () => KeyContext = () => 'shell'): () => void {
+export type { KeyContext } from './keymap.ts';
+
+const fieldSelector = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]';
+
+/** Only explicit declarations give a field (or nested thread) its own context. */
+export function focusedKeyContext(target: EventTarget | null, fallback: KeyContext): KeyContext {
+  const field = target instanceof Element ? target.closest(fieldSelector) : null;
+  const owner = field ?? (target instanceof Element ? target.closest('[data-key-context]') : null);
+  const declared = owner?.getAttribute('data-key-context');
+  return declared && Object.hasOwn(keyMap, declared) ? declared as KeyContext : fallback;
+}
+
+/** The shell's only raw key listener. Unhandled context chords never run shell actions. */
+export function listenForShortcuts(
+  run: (action: Shortcut) => void,
+  context: (target: EventTarget | null) => KeyContext = () => 'shell',
+  handles: (action: Shortcut, context: KeyContext) => boolean = () => true,
+): () => void {
   let leaderTarget: EventTarget | null = null;
+  let leaderContext: KeyContext = 'shell';
   let prefix: boolean | 'KeyZ' | 'KeyG' = true;
   const keydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) { leaderTarget = null; return; }
-    const mode = context();
-    const field = event.target instanceof Element && event.target.closest(
-      'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]',
-    );
-    const inShell = mode === 'shell' || mode === 'items';
-    const pendingLeader = inShell && !field && leaderTarget !== null && leaderTarget === event.target;
-    const action = shortcut(event, pendingLeader ? prefix : false) ?? shortcut(event);
+    const mode = context(event.target);
+    const field = event.target instanceof Element && event.target.closest(fieldSelector);
+    const declaredField = field && field.getAttribute('data-key-context') === mode;
+    const modal = mode === 'palette' || mode === 'help';
+    const pendingLeader = !modal && !field && leaderTarget !== null && leaderTarget === event.target && leaderContext === mode;
+    const action = shortcut(event, pendingLeader ? prefix : false, mode) ?? shortcut(event, false, mode);
     leaderTarget = null;
-    if (action === 'leader' && !inShell) return;
-    if ((action?.startsWith('tree-') || action?.startsWith('plan-')) && mode !== 'items') return;
-    if (field && action !== 'palette' && !(mode === 'palette' && ['dismiss', 'accept', 'open-other', 'next-kind', 'previous-kind', 'next-result', 'previous-result'].includes(action ?? ''))) return;
     if (!action) return;
+    const local = Object.values(keyMap[mode]).includes(action);
+    const paletteControl = mode === 'palette' && (local || action === 'dismiss' || action === 'open-other');
+    if (field && action !== 'palette' && !paletteControl && !(declaredField && local)) return;
+    if (action === 'leader' && modal) return;
     if (action === 'leader' && event.target instanceof Element && event.target.closest('[data-fold-toggle]')) return;
     if ((action === 'fold-close' || action === 'fold-open') && !(event.target instanceof Element && event.target.closest('[data-fold-block]'))) return;
     const cardAccept = mode === 'items' && action === 'accept' && event.target instanceof Element &&
       (event.target.getAttribute('role') === 'treeitem' || event.target.getAttribute('aria-label') === 'Item card');
-    if (inShell && !cardAccept && ['accept', 'next-kind', 'previous-kind', 'next-result', 'previous-result'].includes(action)) return;
+    if (mode === 'items' && action === 'accept' && !cardAccept) return;
     if (mode === 'help' && action !== 'dismiss' && action !== 'palette') return;
+    if (local && !handles(action, mode)) {
+      if (declaredField) event.preventDefault();
+      return;
+    }
     event.preventDefault();
-    if (action === 'leader') { prefix = true; leaderTarget = event.repeat ? null : event.target; return; }
-    if (action === 'jump-leader') { prefix = 'KeyG'; leaderTarget = event.repeat ? null : event.target; return; }
-    if (action === 'tree-leader') { prefix = 'KeyZ'; leaderTarget = event.repeat ? null : event.target; return; }
+    if (action === 'leader' || action === 'jump-leader' || action === 'tree-leader') {
+      prefix = action === 'leader' ? true : action === 'jump-leader' ? 'KeyG' : 'KeyZ';
+      leaderTarget = event.repeat ? null : event.target;
+      leaderContext = mode;
+      return;
+    }
     prefix = true;
     run(action);
   };
