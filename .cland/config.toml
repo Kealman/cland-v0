@@ -57,6 +57,9 @@ dev_t3_every = "2h"
 [verification.droplet]
 # D53 (2026-10-16): 2 workers per c-8 (T-655: green at peak load 9; 4 workers peaked at 16 and went red).
 workers = 2
+# 2026-10-22 (stand-in under D24, ask d5820b85): DigitalOcean had no c-8 in lon1, nyc1 or sfo2 from 15:21Z,
+# so fra1 and ams3 join the snapshot regions. Droplets are chosen and reaped by the cland tags, never by region.
+regions = ["lon1", "fra1", "ams3", "nyc1", "sfo2"]
 
 [sessions]
 # Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.
