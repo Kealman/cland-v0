@@ -2,8 +2,8 @@
 id: T-1090
 kind: task
 title: Refresh the recorded Neovim fixture counts after the open-snapshot changes
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-845
 branch: t/T-1090-refresh-the-recorded-neovim-fixture
 created: 2026-10-22T01:06:41.895Z
-updated: 2026-10-22T11:08:21.428Z
+updated: 2026-10-22T11:13:22.756Z
+closed: 2026-10-22T11:13:22.756Z
 ---
 
 ## Summary
@@ -83,3 +84,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, A-9125. Exact reviewed head: mode-free b267f51e/A-9124 exit0, 2436/2436, zero failure/cancel/skip; Linux T1/all-T2 fallback/Web complete. Raw selector identity has five distinct passing load IDs and explicit5/5; modified explorer case passes. A-9107/A-9112/A-9114 supply qualified full local maintenance/publication, all count causes, replay and original command/source provenance; A-9113 independently audits guards and reductions. Host check not repeated remotely; lint/duration gates report-only; T3 periodic/integrated deferred, no T4 or QA claim. All criteria verified; no merge authorization or enqueue.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T11:13:22.756Z
+
+Merged 1daf1bda7811277ec5068a8a90bd3bb1a6d0dc99 onto dev.
