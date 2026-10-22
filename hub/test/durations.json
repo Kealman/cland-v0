@@ -5966,11 +5966,11 @@
       "reason": "Three real hub/Headless Shell criterion cases share one fixture and observe browser/hub teardown; Linux c-8 nyc1 run a25ed72e (A-8928) observed 6.456065132 s. Temporary 1.5x headroom while E-880 restores tier budgets; assertions and fixture boundaries retained."
     },
     "web/test/area-slots.test.ts::area modules keep their slots and live hub state across a restart": {
-      "seconds": 7,
+      "seconds": 9,
       "owner": "E-880",
       "added": "2026-10-22",
       "expires": "2026-10-29",
-      "reason": "T-1130 Web identity measured 2.80 s on local macOS (A-9330) with no Linux sample (verified during the DO c-8 outage); Linux Web runs have measured up to about 2.5x macOS today. Headroom until a Linux sample and E-880 restore Web tier budgets."
+      "reason": "T-1130 Web identity measured 2.80 s on local macOS (A-9330) and 6.017 s on a Linux c-8 lon1 droplet (run a5f7f2e3, A-9355) against the 5 s new-identity gate; about 1.5x the Linux sample until E-880 restores Web tier budgets."
     },
     "web/test/graph.test.ts::the Graph view in Items": {
       "seconds": 8,
