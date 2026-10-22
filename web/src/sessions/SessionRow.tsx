@@ -1,5 +1,8 @@
 import type { SessionRow as Row } from '../../../shared/wire/index.ts';
 import type { ConnectionState } from '../connection.ts';
+import type { Ref } from 'react';
+import type { AreaControls } from '../AreaSlot.tsx';
+import { SessionActions } from './SessionActions.tsx';
 import s from './Sessions.module.css';
 
 function sessionAge(since: string | null | undefined, now: number): string {
@@ -15,8 +18,10 @@ function usage(row: Row) {
 }
 const harnesses: Record<string, string> = { 'claude-code': 'Claude Code', codex: 'Codex', opencode: 'OpenCode' };
 
-export function SessionRow({ row, selected, select, connection, now }: {
+export function SessionRow({ row, selected, select, connection, now, controls, openPage }: {
   row: Row; selected: boolean; select: (id: string) => void; connection: ConnectionState; now: number;
+  controls?: Ref<AreaControls> | undefined;
+  openPage?: ((id: string) => void) | undefined;
 }) {
   const state = !row.live ? (row.status === 'stopped' ? 'stopped' : 'died') : row.state;
   const glyph = !row.live ? (row.status === 'stopped' ? '×' : '✗') : row.state === 'busy' || row.state === 'waiting for human' ? '●'
@@ -25,7 +30,8 @@ export function SessionRow({ row, selected, select, connection, now }: {
   const topics = row.state === 'waiting for human' ? connection.sessionAsks?.filter(ask => ask.from === row.name).map(ask => ask.topic) ?? [] : [];
   return <div className={s.session} data-state={state}>
     <button className={s.row} data-object-id={row.name} aria-pressed={selected}
-      onFocus={() => select(row.name)} onClick={() => select(row.name)}>
+      onPointerDown={event => { if (window.matchMedia('(max-width: 639px)').matches) event.preventDefault(); }}
+      onFocus={() => select(row.name)} onClick={() => { select(row.name); if (window.matchMedia('(max-width: 639px)').matches) openPage?.(row.name); }}>
       <span className={s.glyph} aria-label={state}>{glyph}</span>
       <span className={s.name}>{row.name}</span>
       <span className={s.role} data-session-role={row.role ?? 'other'}>{role}</span>
@@ -43,6 +49,7 @@ export function SessionRow({ row, selected, select, connection, now }: {
       {row.approvalCommand && <code>{row.approvalCommand}</code>}
       {[...new Map(topics.map(topic => [topic.id, topic])).values()].map(topic => <span key={topic.id}>{topic.title}</span>)}
       {!row.approvalCommand && topics.length === 0 && <span>{state}</span>}
+      <SessionActions row={row} connection={connection} controls={controls} />
     </div>}
   </div>;
 }

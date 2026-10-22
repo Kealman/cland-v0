@@ -326,6 +326,8 @@ export function Shell() {
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {paneArea !== 'Items' && <AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
+                openPage={id => { navigationSerial.current++; setPreferences(previous => pane === 'primary'
+                  ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}
                 controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'page' : 'pane'} />}
               {detail && row && paneArea === 'Items' && findItem(connection, row.id) &&
                 <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />}

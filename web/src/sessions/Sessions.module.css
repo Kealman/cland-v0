@@ -25,6 +25,19 @@
 .session[data-state="stopped"] .glyph, .session[data-state="died"] .glyph { color: var(--failed); }
 .detail { display: flex; flex-direction: column; gap: 6px; padding: 8px 34px 12px; color: var(--muted); background: var(--selection); border-radius: 0 0 6px 6px; }
 .detail code { font-family: var(--mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.actions { display: flex; flex-direction: column; gap: 8px; color: var(--text); }
+.buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.actions button { padding: 4px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); }
+.actions button:hover { background: var(--control-hover); }
+.actions button:disabled { color: var(--muted); cursor: default; }
+.capabilities { border-collapse: collapse; color: var(--text); font-size: 12px; }
+.capabilities th, .capabilities td { padding: 4px 12px 4px 0; text-align: left; font-weight: normal; }
+.capabilities td { font-family: var(--mono); color: var(--muted); }
+.page { padding: 16px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; font-size: 13px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 639px) { .detail { display: none; } }
 .header button { margin-left: auto; padding: 3px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--muted); }
 .header button:hover { background: var(--control-hover); }
 .header button[aria-pressed="true"] { background: var(--selection); color: var(--text); }

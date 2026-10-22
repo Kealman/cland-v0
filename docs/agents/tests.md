@@ -1892,8 +1892,8 @@ Standalone generated-asset and bundle consumers declare their build prerequisite
 `web/test/key-contexts.test.ts` covers T-1115 through the production shell: an
 explicit composer field reserves its Enter chords while ordinary fields inside
 a declared block keep native input; stand-in area selection, drawers and split
-content remain intact; unimplemented Sessions actions stay out of help and
-palette (navigation and archive are enabled);
+content remain intact; unimplemented Sessions launch actions stay out of help and
+palette (navigation, session actions and archive are enabled);
 and a handled Items palette action runs after modal focus restoration. The pure
 resolver cases stay in T1 `hub/test/web-keymap.test.ts`. Existing shell, palette,
 fold and Items Web tests retain their existing coverage.
@@ -1910,6 +1910,15 @@ group/header counts, browser-only fold persistence, merged row facts and live
 hold/request changes, full waiting commands and human-ask topics, visible-row
 physical navigation, stopped/archived inventories and `gs` into a folded group.
 Archive reads consume the additive hub-merged `session.list.rows` field.
+
+`web/test/session-actions.test.ts` owns Stop confirmation/cancellation, Resume
+identity/role/claim retention, Archive, adapter capabilities and missing adapters,
+the session page at desktop and narrow widths, and the fresh-launch brief after
+unavailable resume. It uses sealed in-process fake harnesses and Headless Shell,
+with CLI `session list` readback for Stop/Resume. The held fake Stop observes
+adapter submission with a separate bound, checks duplicate Enter is inert until
+the receipt, releases the gate in cleanup and retains the final stopped row.
+Failed actions retain the hub's reason. No real harness or live hub is used.
 
 `web/test/item-criteria.test.ts` owns T-1078's three card-edit seams, one Web
 case per criterion against one sealed scratch hub and Headless Shell. C1 adds,

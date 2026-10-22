@@ -6,6 +6,7 @@ import { SessionsHeader } from './SessionsHeader.tsx';
 import { AccountsStrip } from './AccountsStrip.tsx';
 import { VerifyLine } from './VerifyLine.tsx';
 import { SessionGroups } from './SessionGroups.tsx';
+import { SessionPage } from './SessionPage.tsx';
 
 function SessionsArea(props: AreaContentProps) {
   const [archived, setArchived] = useState(false);
@@ -22,10 +23,7 @@ function SessionsArea(props: AreaContentProps) {
     <SessionsHeader connection={props.connection} archived={archived} toggle={toggle} /><AccountsStrip {...props} /><VerifyLine {...props} /><SessionGroups {...props} controls={groups} archived={archived} />
   </section>;
 }
-function SessionPage(props: AreaContentProps) {
-  return <section data-area-module="Sessions" data-area-surface="page" data-key-context="sessions"><AreaObjectDetail {...props} /></section>;
-}
 function SessionDrawer(props: AreaContentProps) {
   return <section data-area-module="Sessions" data-area-surface="drawer" data-key-context="sessions"><AreaObjectDetail {...props} /></section>;
 }
-export const sessionsModule: AreaModule = { context: 'sessions', handledActions: ['session-next', 'session-previous', 'session-archive-toggle'], Pane: SessionsArea, Page: SessionPage, Drawer: SessionDrawer };
+export const sessionsModule: AreaModule = { context: 'sessions', handledActions: ['session-next', 'session-previous', 'session-archive-toggle', 'session-stop', 'session-resume', 'session-archive', 'session-capabilities', 'session-open', 'dismiss'], Pane: SessionsArea, Page: SessionPage, Drawer: SessionDrawer };

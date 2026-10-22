@@ -40,6 +40,9 @@ export function listenForShortcuts(
     const cardAccept = mode === 'items' && action === 'accept' && event.target instanceof Element &&
       (event.target.getAttribute('role') === 'treeitem' || event.target.getAttribute('aria-label') === 'Item card');
     if (mode === 'items' && action === 'accept' && !cardAccept) return;
+    // Session Enter owns rows, confirmations and the queue; other buttons keep native activation.
+    if (mode === 'sessions' && action === 'session-open' && event.target instanceof Element &&
+        event.target.closest('button') && !event.target.closest('[data-object-id], [data-session-actions], [data-session-slot="verification"]')) return;
     if (mode === 'help' && action !== 'dismiss' && action !== 'palette') return;
     if (local && !handles(action, mode)) {
       if (declaredField) event.preventDefault();

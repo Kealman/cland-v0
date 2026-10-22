@@ -193,8 +193,10 @@ The shell's shared dispatcher, help and palette use those declarations. Declared
 
 Sessions, Accounts and Artifacts live in `src/sessions/`, `src/accounts/` and
 `src/artifacts/`. Sessions owns its counts, grouped rows and unfolded selection
-through `SessionsHeader` and `SessionGroups`. Its page/drawer and the Accounts
-area and Artifacts page/drawer retain the ID/title details from `AreaObjects.tsx`.
+through `SessionsHeader` and `SessionGroups`. `SessionPage` shows the session's
+model, account, usage and capabilities; it shares `SessionActions` with the
+selected row. Its drawer, the Accounts area and Artifacts page/drawer retain
+the ID/title details from `AreaObjects.tsx`.
 `AccountsStrip` and `VerifyLine` remain reserved slots for their following slices.
 Inbox and Events keep their existing stand-ins; Topics owns its grouped list and
 thread module. Items retains its tree, views and card.
@@ -503,12 +505,36 @@ account, item, state and age, and cost or token usage. The hub supplies the clai
 or latest verifier hold with its role and additional-hold count. Requested work
 stays muted until a hold exists. Unknown facts show a dash. Selecting a row
 unfolds its full pending approval command or the topic of its open human ask.
-The launch, session actions and thread drawer arrive in following slices.
+The selected row offers Capabilities and, for a session launched by cland, Stop
+while live or Resume and Archive while stopped. Stop and Archive replace the
+actions with an in-place confirmation naming the session: Enter or Confirm runs
+it, Esc or Cancel leaves it. Enter on a focused button activates that button.
+Only one request is submitted while its receipt is pending; failures and refused
+actions show the hub's reason in place. Offline writes are disabled and never
+queued for reconnect. Resume uses the harness's own conversation and retains
+the name, role and claim. If the hub cannot resume it and offers a fresh launch,
+the reason appears with Launch fresh, which reuses the recorded brief.
+
+Capabilities is a read-only table of state signals, history, usage, model
+change, approval relay and terminal support, or a message that no adapter/table
+exists. Its reliability values come from the hub, including the web terminal's
+`none`. `c` toggles the table and Esc closes it. The session's page opens in the
+other pane with ⌘Enter and shows model, account, total tokens, cost when known,
+and capabilities with the same actions and confirmations. Below 640 px, tap or
+Enter opens the page in the current pane; the list shows no row actions.
+The launch and thread drawer arrive in following slices.
 
 | Key | Action |
 | --- | --- |
 | `j`, `↓` | Next visible session |
 | `k`, `↑` | Previous visible session |
+| `x` | Confirm Stop on a live launched session |
+| `r` | Resume a stopped launched session |
+| `d` | Confirm Archive on a stopped launched session |
+| `c` | Toggle capabilities |
+| `Enter` | Confirm the pending action; open the session page below 640 px |
+| `⌘Enter` | Open the session page in the other pane |
+| `Esc` | Cancel a confirmation or close capabilities |
 | `←`, `→` | Fold or unfold the focused group |
 | `A` | Show or hide archived sessions |
 | `?` | Sessions keys |
