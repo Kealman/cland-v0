@@ -3,7 +3,7 @@ id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-837
 branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-22T06:59:34.374Z
+updated: 2026-10-22T07:10:09.659Z
 ---
 
 ## Summary
@@ -33,15 +33,20 @@ A run is consecutive agent-to-agent messages with nothing between them that neve
 
 - [x] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
   - done: impl-1056 · 2026-10-22T06:58:07.248Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
 - [x] C2. A fifth message updates the same run id in a delta, without a history re-read (test).
   - done: impl-1056 · 2026-10-22T06:58:07.318Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
 - [x] C3. An ask, a verdict, an answer, or a message to or from the human or an Aide ends a run, and the next agent message starts a new one (test).
   - done: impl-1056 · 2026-10-22T06:58:07.482Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
 - [x] C4. A history page that starts mid-run carries that run's id and its full fold line (test).
   - done: impl-1056 · 2026-10-22T06:58:07.553Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
 - [x] C5. `hub/README.md` describes runs and fold lines.
   - done: impl-1056 · 2026-10-22T06:58:07.628Z
   - verified: rev-23 [reviewer] · run rev-20261022-1056-source-2 · 2026-10-22T06:59:34.374Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
+  - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
 
 ## Comments
 
@@ -82,3 +87,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected full source clear; A-8989 re-audits M1/M2 over A-8984/fixed689b6f95. Per-message eligibility survives retention; queued assignment refreshes only affected run facts from durable recipients, preserving id/count/tail. Corrected Store retention/reopen and public queued-assignment tests cover both exact gaps. A-8987 captured M2 red/T2 5/5/T1 3/3 local green inspected; M1 red excerpt labelled partial, verifier/typecheck/lint summarized only. No findings; C5 docs source-verified. C1–C4 pending fresh exact-head configured mode-free receipt, no Linux/load/T3/T4/QA pass inferred. After-stage QA separate.
 
 Criteria: C5 verified.
+
+### impl-1056 · 2026-10-22T07:09:46.513Z
+
+Green exact-head configured run 17ba1a5f-3e25-4b73-8fb6-6eb4141b7eab (A-8996) at e15737c55b0b7372a1761517cdca8bf0946a03da. Linux x64 6.8.0-142-generic, c-8 lon1 droplet, Node v24.21.0/Neovim v0.12.5, lifetime 514s/$0.0357. T1 exit0 (57s), fallback all T2 across hub/Neovim exit0 (321s), Web exit0 (45s); base 2417/2417, no failures/cancellations/skips. Original log confirms all eight owned run identities 5/5 load receipts. Host gate c9b9416c reused, not repeated. Existing lint132/59, generic tier/duration/ratchet diagnostics are report-only; enforced owned-new-identity/load gates pass without new allowance. Missing duration baselines are projections, not timings. T3/T4 remain deferred to periodic/integrated/close occasions, absent from task/batch tiers. Awaiting Reviewer's final same-head settlement; cover-quiet obeyed, head unchanged, claim retained, no merge.
+
+### rev-23 · 2026-10-22T07:10:09.198Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1056-final
+commit: e15737c55b0b7372a1761517cdca8bf0946a03da
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-8997 audits original A-8996/17ba1a5f against A-8989 source. Census2417ordinary tests/368files+40scoped load tests/files pass,zero fail/cancel/skip. All8 owned identities have ordinary+5distinct passing load ids+explicit5/5; C1–C4 and M1/M2 proved,max load0.586348s. C5 source docs current; allC1–C5 verified,no findings. Linux c-8lon1,T1/all hub+NeovimT2/actualWeb exit0; hostc9b9416c reused,lint/duration/ratchet report-only,13missing baselines,Web40.79s no enforcing40s-budget pass. No T3/T4/stage/QA claim; retain claim under Coordinator freeze.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

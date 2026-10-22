@@ -3,7 +3,7 @@ id: T-1057
 kind: task
 title: The answered ask's outcome in the thread and the inbox departure
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-836
 branch: t/T-1057-the-answered-ask-s-outcome-in-the-thread
 created: 2026-10-21T14:04:15.186Z
-updated: 2026-10-22T06:55:36.643Z
+updated: 2026-10-22T07:06:45.530Z
 ---
 
 ## Summary
@@ -33,13 +33,17 @@ An ask's record carries its outcome for good: the option or the free answer, who
 
 - [x] C1. Answering an ask with an option makes its thread entry carry the option, the answerer and the time, also on a later history read (test).
   - done: impl-1057 · 2026-10-22T06:52:43.954Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1057-final · 2026-10-22T07:06:45.296Z · commit 18709f18dc6b2a67f992c91bdb994d53a45c0c72
 - [x] C2. The inbox's departure for that row says `answered` with the same outcome (test).
   - done: impl-1057 · 2026-10-22T06:52:44.042Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1057-final · 2026-10-22T07:06:45.296Z · commit 18709f18dc6b2a67f992c91bdb994d53a45c0c72
 - [x] C3. A free-text answer is carried the same way (test).
   - done: impl-1057 · 2026-10-22T06:52:44.116Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1057-final · 2026-10-22T07:06:45.296Z · commit 18709f18dc6b2a67f992c91bdb994d53a45c0c72
 - [x] C4. `hub/README.md` describes the outcome fields and the departure.
   - done: impl-1057 · 2026-10-22T06:52:44.193Z
   - verified: rev-32 [reviewer] · run rev-20261022-1057-source-2 · 2026-10-22T06:55:36.643Z · commit 18709f18dc6b2a67f992c91bdb994d53a45c0c72
+  - verified: rev-32 [reviewer] · run rev-20261022-1057-final · 2026-10-22T07:06:45.296Z · commit 18709f18dc6b2a67f992c91bdb994d53a45c0c72
 
 ## Comments
 
@@ -80,3 +84,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected full source clear, Standards 0 findings / Spec 0 findings. Prior M1 resolved by atomic message+ask+inbox-wait registration before any projection; deterministic no-journal C3 observes the first completed departure, exact full outcome, one archive entry and no repeat at a later publication. M2 exact-card assertion now uses complete FakeClock with explicit coalesced publication advance. L1 persistence-only projectHub restarts removed; option/free-text reply-independent durability covered by T1 Store reopen. Full production/wire/rollback/departure/docs paths rechecked against base918951c2 and previous A-8976. C4 README source verified; C1–C3 run-dependent marks pending unchanged-head mode-free verify. Local A-8979/A-8980/A-8982 are labelled prior dirty-tree targeted support, not Linux/configured evidence. No reviewer execution. After-stage QA remains separate. Audit A-8985: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8985-t-1057-corrected-source-clear-at-18709f18.md.
 
 Criteria: C4 verified.
+
+### impl-1057 · 2026-10-22T07:06:40.268Z
+
+Configured verification 19899dec-2144-4db3-ade4-b674b18cdbd9 passed at unchanged source-clear head 18709f18dc6b2a67f992c91bdb994d53a45c0c72. A-8994 is the original receipt/log. Linux x64 droplet c-8 lon1, 2 workers (Web runner used 4), lifetime 563 s, provider cost $0.0391. T0 host check completed; shared protocol changes forced all T1/all hub+Neovim T2 plus full Web. Reported 2,413 tests passed, zero failed/cancelled/skipped. T3 absent from configured batch tiers and deferred to periodic dev/integrated occasions; no T3 pass claimed. Duration budgets and test lint are report-only; receipt records unrelated report-only duration findings and missing baselines. Reading the original log, each of the four new identities has its base pass plus 5/5 load passes: worst Linux samples Store reopen 0.036133 s, C1 0.333564 s, C2 0.304950 s, C3 0.146066 s. No new identity exceeds 5 s, so no E-880 allowance is needed. Reviewer owns final C1–C3 runtime settlement and ready gate. Cover-quiet remains in force; claim retained and no merge requested.
+
+### rev-32 · 2026-10-22T07:06:45.296Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261022-1057-final
+commit: 18709f18dc6b2a67f992c91bdb994d53a45c0c72
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged source-reviewed 18709f18; C1–C4 verified. Fresh 19899dec/A-8994 passed Linux x64 c-8 lon1 T1/all fallback hub+Neovim T2/Web: 2413 ordinary tests, zero failed/skipped/cancelled. Option live/history C1, exact answered departure/archive C2, deterministic no-journal rapid free-text C3 and T1 Store reopen each passed ordinary plus 5/5 load repetitions (20 total); original FakeClock exact-card assertion passed. C4 source docs unchanged. Host check 8d3d5ed7 reused, not repeated remotely. No T3/T4 or after-stage QA claim; affected QA on dev remains separate. Lint/duration/tier/ratchet report-only; inherited overages, 12 missing baselines/incomplete timing projections are not budget passes. No findings. A-8995 audit: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8995-t-1057-final-clear-at-18709f18.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
