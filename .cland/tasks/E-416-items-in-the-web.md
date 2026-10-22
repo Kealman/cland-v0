@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-830
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-22T09:25:08.416Z
+updated: 2026-10-22T10:22:03.157Z
 ---
 
 ## Summary
@@ -182,3 +182,65 @@ HEAD=dev=request and clean before/after; stage cover complete. No epic criterion
 ### coord · 2026-10-22T06:45:25.677Z
 
 Stage "views and messages" QA run qa-s2-2026-10-22-1 at dev 918951c2 (qa-676, evidence A-8971): 23 checks PASS and E416S2-23 FAIL (medium). In real Chrome at the unchanged window size, the Items help dialog's last two rows (A, Enter) stay below the visible window after scrolling. 74/74 targeted tests passed. The verdict was not recorded: the hub refused it because T-1095, the fix for this finding, had already been added to the stage by the Coordinator before the verdict ("all stage items must merge onto dev before stage QA"). That was the Coordinator's ordering error, not QA's, and the stage stays open either way. A fresh run follows after T-1095 lands.
+
+### qa-676 · 2026-10-22T10:22:03.157Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s2-2026-10-22-2
+commit: 7887f694ace91db414735b9af93ab20bedbc8c45
+stage: views and messages
+stage_hash: 261f8b285d4e0f13697d92f47a06bcb6807509147c14f4da28108753aac42e70
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Observation |
+| --- | --- | --- |
+| E416S2-00 | PASS | HEAD/dev equal S and clean; all six stage merges and ten files exist. Full fixtureEnvironment after overlays, 37 inherited names removed, credential-prefix count 0; system TMPDIR retained. |
+| E416S2-01 | PASS | Web build exit 0; source digest e1fef2bb4cf8aaaf0735df6c5097ce7abcf52dc1383709e90755cc73080e052e; clean tree. |
+| E416S2-02 | PASS | 7/7 action tests pass; three selected items sent once to the fake Coordinator in General; seven fixture censuses after 0. |
+| E416S2-03 | PASS | Action test confirms missing item topic created once and two messages persisted with correct attribution. |
+| E416S2-04 | PASS | Scope/back/closed-link ancestor test passes; screenshot shows T-900012 below unfolded C-900010/E-900011 and matching card. |
+| E416S2-05 | PASS | Delayed-link navigation and non-first Board/Graph selections pass; later navigation supersedes lookup. |
+| E416S2-06 | PASS | Tracker summary 12/12 and item summary 10/10 pass, including compact by-id rows and bounded large pages. |
+| E416S2-07 | PASS | Board 4/4 pass; screenshot confirms authoritative 2/9 progress, status groups, blocked/next marks; census after 0. |
+| E416S2-08 | PASS | Board scope/filter/selected-task round trip passes in E416S2-07. |
+| E416S2-09 | PASS | Board inert rank/move test passes; static draggable/onDrag/task.rank/task.move grep has no matches. |
+| E416S2-10 | PASS | Graph 4/4 pass; screenshot shows closed 1/1, 0 in work, check glyph; open 1/6, 4 in work and routed edge; census after 0. |
+| E416S2-11 | PASS | Graph shared scope, filter, selection, card and Tree round trip passes in E416S2-10. |
+| E416S2-12 | PASS | Token guard clean exit 0; planted colour refused exit 1 at ItemsGraph.module.css:16; checkout restores 0 changed paths. |
+| E416S2-13 | PASS | Tree 8/8, card 6/6 and order 1/1 pass; all 12 fixture censuses after 0. |
+| E416S2-14 | PASS | Shell 9/9, palette 11/11 and connection 4/4 pass. Both complete help-scroll viewport cases pass; 32-key marker count 1; four fixture censuses after 0. |
+| E416S2-15 | PASS | Keymap 1/1; listeners only keyboard.ts; bindings only keymap.ts/keyboard.ts; storage only interface-state plus reload guard; no manifest/lock changes. |
+| E416S2-16 | PASS | Typecheck, colour/contrast/hooks guards and tier lint exit 0; six classifications correct. Board 9.7 s allowance confirmed as report-only. |
+| E416S2-17 | PASS | Twenty documentation markers each 1 and 15 key rows; surrounding README Items tree/views and hub by-id paragraphs have no observed contradiction. |
+| E416S2-18 | PASS | Committed brief lint passes exit 0. |
+| E416S2-19 | PASS | Both Coordinator stage covers green at S; stage plan lists all six merged items and cover complete at tree 49f40ab16197e914336f63b7a3999bf31b2c28a7. |
+| E416S2-21 | PASS | Live index/stamp 200, tested/live/root source digests equal, hub code diff empty. Anonymous cland QA profile shows Offline, Items Tree, disabled Plan, Items breadcrumb, three folded roots and no card. |
+| E416S2-22 | PASS | Board/Graph/Tree share D filter. Graph survives reload. Isolated second client starts Tree with null items record, Offline, off-origin 0 and owned process census after 0. |
+| E416S2-23 | PASS | All 32 key labels present, exactly one Esc row and no rank/move action. At unchanged window size, scrolling shows the complete final Enter row inside the dialog; Escape closes it. |
+| E416S2-24 | PASS | Offline root chords s,x,m,Shift+M,Space Space,gs,gt,gi preserve Unscheduled focus/fold with no composer/card/alert or browser chrome action; Escape focuses rail Items. Defaults restored and own tab closed. |
+
+**Clear: all 24 scoped cases PASS.** Stage `views and messages`; no epic criterion marks. Findings: none.
+
+Run **qa-s2-2026-10-22-2** at **7887f694ace91db414735b9af93ab20bedbc8c45** on a clean detached worktree. Dev remained at that SHA. Six merged stage items: T-1074, T-1095, T-1097, T-1102, T-1075 and T-1076. The printed plan governs the count. This is a fresh run; the earlier qa-s2-2026-10-22-1 evidence A-8971 remains historical, with no verdict retry.
+
+77/77 targeted tests across 12 files passed locally on macOS arm64, Node v24.21.0, using pinned Chrome Headless Shell where applicable. Zero failures, cancelled tests or skips. These are targeted files, not a full suite. The palette total is now 11 (the new parent and two small-viewport subtests); tracker-summary totals 12 with parameterized expansion. Build, typecheck including colour/contrast/hooks guards, tier lint and brief lint pass. The colour plant failed as expected and was reverted. The brief-authorized root node_modules symlink supplied the prerequisite's fixed relative path; no dependency install or product fix.
+
+Native computer use inspected only http://127.0.0.1:56935/ in the existing cland QA Chrome profile, normal HOME/keychain, anonymously. The live and tested bundle sources digest is e1fef2bb4cf8aaaf0735df6c5097ce7abcf52dc1383709e90755cc73080e052e; hub-code diff empty. Final help row is visibly complete, not just present in the accessibility tree. Native JPEGs and fixture PNGs are unedited. Shared-filter screenshots were supplemented after the initial AX captures; a stale native element-id error during restoration changed no product result, and a fresh AX read supplied the valid control. No window resize, sign-in, live write, settings/profile/keychain/layout change. Signed-in live-data checks remain out of scope, as the brief says.
+
+Isolation: full fixtureEnvironment after scratch overlays; 37 inherited names removed, credential-prefix count 0, disposable HOME/XDG/Git configuration, system TMPDIR. Targeted files ran serially after the local queue was quiet. All 25 Web fixture census lines end `after 0; scratch hub stopped`; second client group 32927 ends after 0. Tree/Items defaults, folded roots, Done shown/Archive hidden, one unfolded Inbox and unchanged rail restored; only the opened QA tab was closed. Clean-tree receipt retained. Scratch removal is recorded in cleanup.txt; evidence stays durable.
+
+Existing Coordinator stage covers at the same full S (verification tree 49f40ab16197e914336f63b7a3999bf31b2c28a7), with check/typecheck and T1, T2, T3, T4 base and Web completed:
+
+- Linux droplet df7383e5-83bc-4b0e-821c-0ac075464999, A-9079; 3732 tests, 3724 passed, 8 platform skips, 0 failed. Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, two shards. Web 11 files / 27 tests. Queued 09:47:40.879Z to finished 10:07:23.696Z: **1182.817 s queued-to-finish wall**.
+- Shard 1 A-9080: cland-v0-b8140030, c-8 lon1; admission-to-remote-finish 1160.28 s; lifetime 1144 s; $0.0795.
+- Shard 2 A-9081: cland-v0-2ae4caec, c-8 lon1; admission-to-remote-finish 988.27 s; lifetime 974 s; $0.0676. **Total droplet cost $0.1471.**
+- Local macOS 309b6c7a-cbe2-4d28-b1da-02ed7484d9a9, A-9083; 3732/3732 passed, no skips, darwin arm64, Node v24.21.0, Neovim v0.12.5, workers 2. Web 11 files / 27 tests. Queued 09:47:48.056Z to finished 10:08:16.277Z: **1228.221 s queued-to-finish wall**; cost not applicable.
+
+T4 repetitions were skipped by the load gate; its 10 files ran in base phase only. Test lint, budgets, duration allowances and T3 ratchet are report-only. Projections are not measured wall times and are not claimed as timing passes. No full suite submitted by QA. Full merged/shard logs remain in their durable artifacts; cover-reports.json preserves hub results.
+
+Rule proposal: real-browser help acceptance must demonstrate that the final row is visibly reachable at the unchanged window size; accessibility counts alone are insufficient. This run establishes both.
+
+Evidence: A-9085 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9085-e-416-views-and-messages-at-7887f694-24-pass-final-help-row-visible/report.md

@@ -3,7 +3,7 @@ id: T-1090
 kind: task
 title: Refresh the recorded Neovim fixture counts after the open-snapshot changes
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T01:06:41.895Z
-updated: 2026-10-22T08:51:32.036Z
+updated: 2026-10-22T10:29:44.481Z
 ---
 
 ## Summary

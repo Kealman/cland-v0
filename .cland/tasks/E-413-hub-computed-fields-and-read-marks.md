@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-804
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-22T08:51:32.217Z
+updated: 2026-10-22T10:29:43.782Z
 ---
 
 ## Summary
@@ -293,3 +293,62 @@ Cleanup completed: scratch hubs pids 58076 and 58833 stopped with their own CLI;
 All 30 checks recorded once via qa-record.sh into project runs.jsonl. No epic criterion verification/failure marks. Rule proposal in topic-804: exact-copy setup and assertions should enumerate the same file set, including committed dotfiles.
 
 Evidence: A-8969, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8969-e-413-stage-fields-rerun-at-918951c2-30-pass-readme-fix-verified/report.md
+
+### qa-676 · 2026-10-22T10:29:43.782Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s2-2026-10-22-1
+commit: 7887f694ace91db414735b9af93ab20bedbc8c45
+stage: marks and threads
+stage_hash: 0875b1bedee7573454fbf54146412f87144c54f004a9a5d48467581eee01abf4
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Observation |
+| --- | --- | --- |
+| E413S2-00 | PASS | HEAD/dev equal S; clean detached worktree. Printed stage has four merged members, one landing each. Exact committed tracker copy 1103/1103, diff empty; p1 snapshot 105 rows, no extra init category. Credential-prefix count 0 before process start. |
+| E413S2-01 | PASS | Human marks tests 2/2 pass: shared forward-only events, plan receipts and topic reads; reopen persistence. |
+| E413S2-02 | PASS | New E-1103/T-1104 and two distinct receipts. Newer R2 mark wins over later older write; unknown receipt refused. Passive peer receives exactly one marks delta; fresh snapshot agrees; topic reads remain 44 then 44. |
+| E413S2-03 | PASS | First import merges forward and sets imported true; second import ignored. Old hub 48043 exited, new 52361. After restart snapshot/get retain R2 and readSeq 44. |
+| E413S2-04 | PASS | Neovim marks 3/3 pass: shared events/topic reads, one-time legacy import with cleanup, and held-old-response ordering. |
+| E413S2-05 | PASS | 42/42 Neovim/snapshot regression tests pass; recorded-protocol fixture drift test 1/1 passes against the real hub. |
+| E413S2-06 | PASS | All 11 marks documentation markers present; surrounding hub/Neovim text agrees with observed monotonicity, durability and import. |
+| E413S2-07 | PASS | Thread-run and store tests 8/8 pass, including factual fold line, same-id growth, boundaries, mid-run pages, verifier reassignment and reopen/backfill. |
+| E413S2-08 | PASS | Four messages share one factual run, no intruders; age 3490 ms / 3s. Two-message page carries same full run. Passive peer receives steps 1–5 with one id and counts 1–5; fifth once, age 2 ms / 0s. Drivers have zero errors. |
+| E413S2-09 | PASS | Verdict/human frames have no run id; following agent messages form distinct one-message runs. Final history matches; named day/Aide/ask/answer boundary test passes. |
+| E413S2-10 | PASS | All seven thread-run documentation markers present; surrounding complete-run/delta/boundary text matches observations. |
+| E413S2-11 | PASS | 45/45 ask/outcome/store tests pass, including option/free text outcomes, atomic departure, reopen persistence and delivery to asker. |
+| E413S2-12 | PASS | Two scratch asks answered with allocated/option 2/human and trimmed multiline Wait for QA. / Then ship./qa-standin. Live cards and history retain exact outcome and answer id; both delivered, driver errors 0. |
+| E413S2-13 | PASS | Each answered ask appears in exactly one inbox departure with identical outcome; waiting count 0, explicit list has no departures, archive has one equal row each. |
+| E413S2-14 | PASS | All six answered-outcome documentation markers present; durable thread outcome and coalesced departure/archive text agrees. |
+| E413S2-15 | PASS | All three named declining C1–C3 tests are ok in the 45-test receipt: forwarded delivery, invalid reason refusal and retained outcome. |
+| E413S2-16 | PASS | Forwarded decline reaches original Implementer through Coordinator; missing/blank reasons and option-with-reason refused, ask still listed before valid answer. Original and forwarded outcome identical; next ask open, topic waiting for agent. |
+| E413S2-17 | PASS | Live declined card, single declined departure and archive retain identical reason/by/time. All asks and answers have null run id. |
+| E413S2-18 | PASS | Neovim declined-ask test 1/1 passes: one folded reason row on history/live, no answer keys or duplicate answer row. Recorded fixture drift receipt also passes. |
+| E413S2-19 | PASS | 27/27 clause tests pass. All 12 default/project clauses contain decline-is-not-consent and fit ceiling 6528 bytes (max 6526). Six sentence copies per source; seven docs markers present. |
+| E413S2-20 | PASS | Wire import lint exit 0; full typecheck exit 0, no diagnostics. |
+| E413S2-21 | PASS | Both scratch hubs stopped. Census of 35 fixture-owned pids has no alive lines. No browser/GUI launched; clean build/dev retained. |
+
+**Clear: all 22 scoped checks PASS.** Stage `marks and threads` only; no epic criterion marks. Findings: none.
+
+Run **qa-s2-2026-10-22-1** at **7887f694ace91db414735b9af93ab20bedbc8c45**, clean detached worktree, dev unchanged before/after. Printed stage members are T-1054 (c6396710), T-1056 (3f13960a), T-1057 (55465447), T-1059 (826445ad), 4/4 merged. The plan also lists a later `fixture refresh` stage; it is outside this run. No stage member count was inferred from the brief's draft date.
+
+129/129 targeted tests passed across 15 named files in eight TAP reports on local macOS arm64, Node v24.21.0, pinned Neovim v0.12.5. No failures, cancellations, skips or todo. Files ran sequentially with `--test-concurrency=1`, after the local verify queue was quiet. The one name-filtered fixture check reports exactly one test, not zero. These targeted tests and scratch protocol checks are not a new full-suite run. Wire import lint and typecheck pass; timings are not acceptance criteria here.
+
+Live behavior was exercised only on two disposable Unix-socket hubs under /tmp/qa-e413s2-lfr1HC. p1 held the exact committed .cland/tasks directory, including .gitkeep, 1103 files with empty diff and no extra init categories; p2 held the empty fixture. cland init started no hub. Full fixtureEnvironment applied after overlays, 37 inherited names removed and credential-prefix count 0 before scratch process start; own HOME/XDG/Git configuration, synthesized fixture identity, system TMPDIR retained. No real browser, GUI, real harness account, live tracker mutation or provider operation. The scratch driver roles and their messages are test fixtures, not role changes in this QA session.
+
+Protocol evidence is retained by request id, ask id and run id. Unknown plan receipt and invalid decline errors are the brief's expected negative checks, not permission workarounds. The decline's immutable status/reason/by/at tuple is identical through the original and forwarded asks, live card, single departure and archive. Ordinary and free answers preserve full text, option when applicable, answerer and timestamp. Neovim uses the recorded hub frames, and the real-hub fixture drift check passes.
+
+No probe correction or product change was needed. E413S2-15's grep includes the three TAP Subtest headers and their three corresponding ok lines; all three named tests passed. The stage-1 setup corrections were applied from the outset. Full commands are in the per-case scripts and recorder notes; observations, raw frames, driver stdout/stderr, TAP and docs receipts are retained beside this report.
+
+Cleanup: both scratch hubs stopped; old restart pid 48043 was observed exited before restart. Final fixture-owned census lists 35 pids and no alive line. Scratch process and frame-client metadata remain in fixture-pids.txt; no machine-wide process count used. Scratch deletion is recorded in cleanup.txt. Detached worktree is clean at S and removed after the accepted verdict; durable evidence remains.
+
+Existing Coordinator stage covers at S (verification tree 49f40ab16197e914336f63b7a3999bf31b2c28a7) are cited, not rerun: Linux df7383e5-83bc-4b0e-821c-0ac075464999 / A-9079, macOS 309b6c7a-cbe2-4d28-b1da-02ed7484d9a9 / A-9083. Both completed check/typecheck and T1–T3, T4 base and Web. T4 repetitions were skipped; 10 T4 files ran in base phase. Linux has 3732 tests / 3724 pass / 8 platform skips / 0 fail; macOS 3732/3732 pass, no skips. Both Web phases have 11 files / 27 tests; this stage itself has no Web checks. Budget/lint/T3-ratchet findings are report-only, not timing passes.
+
+Linux platform x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5. Shard 1 A-9080: cland-v0-b8140030, c-8 lon1, 1160.28 s admission-through-remote-finish, lifetime 1144 s, $0.0795. Shard 2 A-9081: cland-v0-2ae4caec, c-8 lon1, 988.27 s admission-through-remote-finish, lifetime 974 s, $0.0676. Total cost $0.1471; merged queued-to-finish wall 1182.817 s (09:47:40.879Z–10:07:23.696Z). macOS local darwin arm64, same Node/Neovim, workers 2, queued-to-finish wall 1228.221 s (09:47:48.056Z–10:08:16.277Z); cost not applicable. Projections are not measured wall times. Hub reports and accounting are copied as same-head supporting evidence; durable merged and shard logs remain in the cited artifacts.
+
+Rule proposal sent to Coordinator: cross-surface outcome checks should compare one immutable outcome tuple by ask id across card, history, departure and archive, never correlate by arrival order.
+
+Evidence: A-9086 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9086-e-413-marks-and-threads-at-7887f694-all-22-checks-pass/report.md

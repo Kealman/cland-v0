@@ -3,7 +3,7 @@ id: T-1077
 kind: task
 title: The Plan view with approval on a
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-416
 blocked_by:
   - T-1075
   - T-1054
-topic: null
-branch: null
+topic: topic-843
+branch: t/T-1077-the-plan-view-with-approval-on-a
 created: 2026-10-21T17:32:16.973Z
-updated: 2026-10-21T17:32:16.973Z
+updated: 2026-10-22T10:22:40.074Z
 ---
 
 ## Summary
