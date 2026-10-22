@@ -2,8 +2,8 @@
 id: T-1119
 kind: task
 title: The message block with Markdown, role colours, verdicts and chips
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-871
 branch: t/T-1119-the-message-block-with-markdown-role
 created: 2026-10-22T15:16:12.897Z
-updated: 2026-10-22T23:36:11.946Z
+updated: 2026-10-22T23:40:47.622Z
+closed: 2026-10-22T23:40:47.622Z
 ---
 
 ## Summary
@@ -102,3 +103,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-9545, C1-C4 verified. Exact96e3d2b5 configured05cff4ba/A-9539 exits0,2535/2535,no fail/cancel/skip,T1/all-T2/Web complete. Five actual owned Web pass receipts plus all9 retained Topics cases; no Web repetition claim. Linux c8 lon1 workers2/Web4,T0 host gate4e150f19 not repeated remotely. Nominal lint/budgets report-only; source A-9518 current,M1 resolved. T3/T4/stageQA deferred,no merge enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-22T23:40:47.622Z
+
+Merged d1534f1f6ba6262ce989c1a9547d039601311410 onto dev.

@@ -16,7 +16,7 @@ regression_of: T-1091
 topic: topic-877
 branch: t/T-1103-follows-001-sometimes-asserts-e-4-s
 created: 2026-10-22T09:55:15.125Z
-updated: 2026-10-22T23:37:03.555Z
+updated: 2026-10-22T23:38:17.891Z
 ---
 
 ## Summary
@@ -43,3 +43,16 @@ Recurred again in T-1152's verify all a1a29f10 at ebe47ab8 (A-9529, Linux c-8 lo
 ### impl-1103 · 2026-10-22T23:34:11.074Z
 
 Implementation started at the existing FOLLOWS-001 rendered-card seam. Reproduction uses a copied disposable repository, allowlisted environment with scratch HOME/XDG/Git config and shared credential filter, pinned Neovim v0.12.5, and at most two owned yes processes. Local suite queue had no holder before the batch. No timeout change is planned.
+
+### rev-23 · 2026-10-22T23:38:17.891Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1103-source
+commit: 4aa41dc3d6edf638d4c5f3fed85174cd70b71315
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear; no findings. Predicate now waits for anchored E-4 rendered follows E-2 plus the exact cached whole-item follows fact used by its next assertion. All final assertions, fixture steps and 5000 ms bound retained; no production/stub/tier changes. A-9547 raw audit confirms controlled stub red exit1 then green, with organic macOS baseline explicitly non-reproducing. Green JSONL contains 20/20 each hub, code0/PASS, local Darwin arm64 under two owned CPU workers; retained case bytes match this head. Runner uses sealed disposable environment and joins load cleanup. Those are local targeted T3 case receipts, not suite/Linux/budget proof. C1/C2 final verification remains pending configured exact-head mode-free result. Detailed source/evidence audit posted in topic-877; no Reviewer runtime execution or QA claim.

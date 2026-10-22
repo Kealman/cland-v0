@@ -3,7 +3,7 @@ id: T-1136
 kind: task
 title: "Acting on a session: Stop, Resume, Archive, Capabilities and the session's page"
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-873
 branch: t/T-1136-acting-on-a-session-stop-resume-archive
 created: 2026-10-22T15:16:15.750Z
-updated: 2026-10-22T23:36:00.650Z
+updated: 2026-10-22T23:41:06.653Z
 ---
 
 ## Summary
@@ -60,6 +60,8 @@ A refused or failed action shows its reason in place; the cookie's refused actio
   - done: impl-1136 · 2026-10-22T23:21:47.568Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-source-1 · 2026-10-22T23:25:17.610Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-source-2 · 2026-10-22T23:40:22.844Z · commit 57b26eed5f4d27bc197435452094b909e40a85d0
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-source-3 · 2026-10-22T23:41:06.653Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 
 ## Comments
 
@@ -96,3 +98,33 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C7 verified. A-9541 audits same-head 38e66ace/A-9537: exit 0, 2539 passed with zero failed/cancelled/skipped, Linux c-8 lon1 T1/all-T2 hub+Neovim/Web and host T0 reused, not repeated remotely. All nine owned Web action cases have successful distinct receipts (1.053–2.495s); no owned 5/5 load or allowance claimed. Generic lint/duration/ratchet warnings retained in report mode, including actual Web wall 56.913s>40s and missing owned file baseline. Source clear A-9513 plus runtime settles all criteria; precommit A-9517 remains supporting provenance. No T3/T4/QA pass or merge claimed; affected QA remains after-stage.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-26 · 2026-10-22T23:40:22.844Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1136-source-2
+commit: 57b26eed5f4d27bc197435452094b909e40a85d0
+scope: delta
+findings: [{"severity":"low","text":"L1: Area overview still describes the Sessions page as AreaObjects ID/title details, while SessionPage now renders facts and shared actions. The dedicated Sessions section is correct; update the overview to remove the contradiction.","file":"web/README.md","line":183}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Delta source clear at57b26eed; A-9556 audits Coordinator-authorized conflict merge. Session actions, Enter guard, Shell callback and tests unchanged; accepted Artifacts source retained. Palette keeps Sessions22/Artifacts20 plus both labels; combined docs and tier entries retain both features. One low overview docs contradiction at README:183, no high/medium findings. C7 established by correct dedicated section; C1–C6 await fresh configured mode-free same-head evidence. A-9552 remains supporting merged precommit targeted provenance, old A-9537/A-9541 historical at c361576f. No merge/QA pass claimed.
+
+Criteria: C7 verified.
+
+### rev-26 · 2026-10-22T23:41:06.653Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1136-source-3
+commit: 810fb3413ceabdba1dc020f217cfc7dd514a45c8
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Docs-only delta clear at810fb341; A-9560. L1 resolved: overview now correctly describes SessionPage facts/capabilities and shared SessionActions. Only README changed from source-clear57b26eed; no runtime/test or merge changes, no new tests needed for prose. C7 verified; C1–C6 await new mode-free configured same-head evidence. Existing source audits carry forward; old runtime receipt remains historical atc361576f. No remaining findings, QA or merge claim.
+
+Criteria: C7 verified.

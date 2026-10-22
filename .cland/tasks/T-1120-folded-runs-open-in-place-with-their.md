@@ -3,7 +3,7 @@ id: T-1120
 kind: task
 title: Folded runs open in place with their anchor
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-417
 blocked_by:
   - T-1119
-topic: null
-branch: null
+topic: topic-879
+branch: t/T-1120-folded-runs-open-in-place-with-their
 created: 2026-10-22T15:16:13.033Z
-updated: 2026-10-22T23:07:35.520Z
+updated: 2026-10-22T23:41:22.445Z
 ---
 
 ## Summary

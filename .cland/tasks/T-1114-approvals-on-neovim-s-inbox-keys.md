@@ -3,7 +3,7 @@ id: T-1114
 kind: task
 title: Approvals on Neovim's inbox keys
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-872
 branch: t/T-1114-approvals-on-neovim-s-inbox-keys
 created: 2026-10-22T15:16:11.910Z
-updated: 2026-10-22T23:31:43.623Z
+updated: 2026-10-22T23:40:31.815Z
 ---
 
 ## Summary
@@ -32,8 +32,8 @@ In Neovim's inbox, in both the panel and the full-width view, a relayed approval
 
 ## Acceptance criteria
 
-- [x] C1. In headless Neovim on recorded frames, `1` on a relayed approval row sends one `approval.answer` with `once`, and the row folds to "approved once by the human" with its time (test).
-  - done: impl-1114 · 2026-10-22T23:30:35.163Z
+- [ ] C1. In headless Neovim on recorded frames, `1` on a relayed approval row sends one `approval.answer` with `once`, and the row folds to "approved once by the human" with its time (test).
+  - failed: rev-31 [reviewer] · 2026-10-22T23:40:31.815Z · note Required configured c88cd262 fails shell-component final /answered in your words/ screen assertion; own approval identities5/5, no owning source defect established.
 - [x] C2. `d` on a relayed row opens the note field, and Enter sends `deny` with the typed note (test).
   - done: impl-1114 · 2026-10-22T23:21:16.832Z
 - [x] C3. A refused answer folds the row to the winner's outcome and says who answered and when (test).
@@ -83,3 +83,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; A-9530, no findings. M1 fixed by visit-leave retirement retaining movement/switches; M2 exact-winner-only lookup preserves current rows/counts. Panel/full leave and held archive regressions retain final assertions. A-9524 original red/green and exact-head21/21+4/4+1/1+singleT3/static receipts audited; recorded correction adds2 with0 old changes. C5 source verified, C1-C4 await exact-head mode-free configured result. T-1156 remains separate; no dev merge after review or merge enqueue.
 
 Criteria: C5 verified.
+
+### rev-31 · 2026-10-22T23:40:31.815Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-runtime-failure
+commit: c781c316df6095789ab28dd8654a13598d7342c2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Configured runtime not clear; A-9557. A-9553 exact failure at14145, existing shell-component1289 checks old screen s after a separate disarmed wait; possible observer gap needs Coordinator triage, not classified/reproduced by Reviewer. All16 new approval identities have actual5 distinct load passes+5/5; overall T2exit1/Web unrun. Source A-9530/C5 remains clear. S Bugs candidate reported to lead; await shared/task-owned disposition, no independent retry or edit requested. Restore claimant C1 before later final settlement.
+
+Criteria: C1 failed (Required configured c88cd262 fails shell-component final /answered in your words/ screen assertion; own approval identities5/5, no owning source defect established.).

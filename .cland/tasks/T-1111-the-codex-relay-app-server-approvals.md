@@ -3,7 +3,7 @@ id: T-1111
 kind: task
 title: "The Codex relay: app-server approvals answered through the gate"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 9
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-870
 branch: t/T-1111-the-codex-relay-app-server-approvals
 created: 2026-10-22T15:16:11.398Z
-updated: 2026-10-22T23:36:11.404Z
+updated: 2026-10-22T23:41:24.215Z
 ---
 
 ## Summary
@@ -48,8 +48,8 @@ The scripted app-server double also takes responses.
   - done: impl-1111 · 2026-10-22T23:20:56.495Z
 - [x] C3. A file-change request becomes a record of kind file change, and its answer reaches the app-server the same way (test).
   - done: impl-1111 · 2026-10-22T23:27:43.923Z
-- [ ] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T23:36:11.404Z · note The exact external closed outcome is still lost at host admission after terminal transition or before first-turn process publication.
+- [x] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
+  - done: impl-1111 · 2026-10-22T23:39:46.208Z
 - [x] C5. A request missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event (test).
   - done: impl-1111 · 2026-10-22T23:27:44.184Z
 - [x] C6. After the adapter's connection drops and returns, the replayed pending request keeps the same record id, and an answer given then reaches the app-server (test).
@@ -60,6 +60,7 @@ The scripted app-server double also takes responses.
   - done: impl-1111 · 2026-10-22T23:20:57.082Z
 - [x] C9. `hub/README.md`'s Codex capability row describes the relay, the three choices and their Codex decisions, and where the note goes (docs).
   - done: impl-1111 · 2026-10-22T23:20:57.266Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-source-4 · 2026-10-22T23:41:24.215Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
 
 ## Comments
 
@@ -119,3 +120,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Third source review not clear: one remaining M3 publication-lifecycle finding. Socket-only disconnect and L1 chronology are fixed; M1/M2 retained. New complete serialized UTF-8 cap meets Coordinator's binding rule, with exact boundary/hidden-operation tests and matching README/docs/skill provenance. Terminal process closed-first requests are rejected by Inbox's running filter, and early closed requests are removed before watch can replay them. Add both host-boundary regressions and preserve closed history without pending resurrection. No other findings. A-9533 local exact-head targeted contract 12-pass output and reported native25/gate18 checks are not full/Linux or working-tree-fix evidence. C4 failed; other run criteria pending. Detailed audit posted in topic-870; no Reviewer test execution.
 
 Criteria: C4 failed (The exact external closed outcome is still lost at host admission after terminal transition or before first-turn process publication.).
+
+### impl-1111 · 2026-10-22T23:39:46.133Z
+
+Fourth source-review head 41bedb404306194cc1873cabd0426e79db0c455c fixes the remaining C4 host-admission boundaries. The optional closed-first path admits known terminal rows but ordinary pending requests remain running-only. Internal approvalRequested returns a boolean admission receipt; Codex retains resolved entries through disconnect/failed admission until watch can replay them, and never answers an already-resolved entry. New tests observe a durable stopped process through public session.stop before held read rejection, refuse terminal pending publication, and simulate first-turn native command/resolved before process-row publication. Red receipts: terminal case no matching frame; early closure absent from archive. Exact committed-head local Darwin arm64: native T2 27/27, C8 Codex T3 contract 12/12 (19.562526334 s file wall), artifacts in topic; gate regression 18/18 and full typecheck passed on identical precommit tree after correcting an archive-union test typing error. Lint/diff check pass (findings report-only, 0 refusals). Wire shape/OpenCode unchanged; no post-review dev merge or verification.
+
+### rev-23 · 2026-10-22T23:41:24.215Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1111-source-4
+commit: 41bedb404306194cc1873cabd0426e79db0c455c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear against C1–C9 and binding payload-cap decision. All prior M1/M2/M3/L1 findings resolved: invalid routing fallback, validation-ready answer fence, exact closed outcome across read/disconnect/terminal/early publication, valid chronology. Internal host admission receipt preserves ready closures until watch; pending remains running-only. Full serialized UTF-8 subject cap forces oversized TUI/no choices/native refusal; exact-boundary/hidden-operation regressions retained. C9 verified from matching README. C1–C8 runtime marks await configured same-head mode-free evidence; A-9554 local exact-head contract12 and A-9555 native27 are targeted receipts only. Under Coordinator bar2560269e: no prior finding moved out, all were within named criteria and are fixed; no unnamed lifecycle blocker added. T-1112 optional migration stays the existing separate follow-up. Public wire/OpenCode unchanged; docs/provenance match; no Reviewer runtime execution. Detailed final source audit posted in topic-870.
+
+Criteria: C9 verified.

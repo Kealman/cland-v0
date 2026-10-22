@@ -11,10 +11,10 @@ assignee: null
 parent: E-418
 blocked_by:
   - T-1139
-topic: null
+topic: topic-878
 branch: t/T-1140-opening-pages-and-files-from-the
 created: 2026-10-22T15:16:16.302Z
-updated: 2026-10-22T23:37:15.043Z
+updated: 2026-10-22T23:37:32.948Z
 ---
 
 ## Summary
