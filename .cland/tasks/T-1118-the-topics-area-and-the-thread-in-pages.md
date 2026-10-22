@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T16:51:44.734Z
+updated: 2026-10-22T16:52:57.665Z
 ---
 
 ## Summary
@@ -33,13 +33,13 @@ The Topics area shows the topics in groups (§3.2): those waiting for the human 
 ## Acceptance criteria
 
 - [x] C1. The Topics area lists waiting topics first, then General and Agents with their own look, then item topics, then closed topics folded, and a group's fold survives a reload (Web test).
-  - done: impl-1118 · 2026-10-22T16:22:06.595Z
+  - done: impl-1118 · 2026-10-22T16:52:25.656Z
 - [x] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
   - done: impl-1118 · 2026-10-22T16:29:17.966Z
 - [x] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
   - done: impl-1118 · 2026-10-22T16:22:07.989Z
 - [x] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
-  - done: impl-1118 · 2026-10-22T16:22:09.345Z
+  - done: impl-1118 · 2026-10-22T16:52:25.750Z
 
 ## Comments
 
@@ -87,3 +87,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear over rev-26 acceptedeb8fe250/A-9313: authorized incomingT-1117+shared26e74e4d+tracker records, no conflicts or web implementation/test/doc changes. DeliveryStage.withdrawn is retained by TopicThreads delivery patches and rendered as plain stage text; human-kind metadata/topic wait additions do not change paging identities/resume generations/retry anchors. Two dated11s/E-880 startup allowances retain behavioral assertions; original skill entries plus incoming guidance preserved. Standards0/Spec0; prior corrected full source audit retained. C1–C4 await new exact-head mode-free receipt, no runtime marks yet. Local merged-head9Topics/check claims qualified; cancelledoldrun not a pass. No Reviewer execution/T3/T4/QA claim.
+
+### rev-23 · 2026-10-22T16:52:13.461Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-web-evidence
+commit: d4931e3cf1013c547404ae9ab61d02750bf7cb5a
+scope: evidence
+findings: [{"severity":"medium","text":"Topics adds four contextual actions but compatibility coverage still expects 14 rows for every non-Items area; Linux fails 18 !== 14.","file":"web/test/palette.test.ts","line":121},{"severity":"medium","text":"Observing outgoing topic.read does not establish hub application before a separate client's topic.list; await the exact peer readSeq/unread receipt while retaining the final assertion.","file":"web/test/topics.test.ts","line":171}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-9335 is failed evidence: T1/all-T2 pass, actual Web exit1; two leaf assertions plus palette parent fail. Source review retained; no product read-mark diagnosis inferred. C2/C3 unverified. Superseding corrected-head request 2d424d78 will be reviewed next; this historical result is not a retry instruction.
+
+Criteria: C1 failed (Linux Web compatibility help assertion fails: Topics has 18 rows, expected 14.), C4 failed (Partial-read Web assertion fails unread 3 versus 2; outgoing frame observation does not fence hub application.).
+
+### rev-23 · 2026-10-22T16:52:57.665Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-source-4
+commit: 2d424d780595987af6f2825280f5d7a5d85eaadf
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear, A-9343; incorporates accepted full source A-9313 and integration A-9329. Palette now checks Topics18 and four literal labels while retaining all compatibility assertions. Partial-read regression holds the outgoing frame, confirms unread3, arms exact peer readSeq/unread2 before release, and retains final list assertion; Rule9 docs match. Standards0/Spec0. A-9339 exact-head local check plus targeted11/11 palette and9/9 Topics qualify as targeted evidence only. C1–C4 remain unverified until fresh mode-free exact-head run with actual Web. Historical A-9335 remains failed; restore C1/C4 claimant done marks before submission.

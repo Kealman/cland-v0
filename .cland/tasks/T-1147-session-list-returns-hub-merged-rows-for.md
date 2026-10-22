@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-418
 blocked_by: []
-topic: null
+topic: topic-861
 branch: t/T-1147-session-list-returns-hub-merged-rows-for
 created: 2026-10-22T16:51:34.536Z
-updated: 2026-10-22T16:51:57.854Z
+updated: 2026-10-22T16:52:16.287Z
 ---
 
 ## Summary

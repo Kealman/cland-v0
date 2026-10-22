@@ -3,7 +3,7 @@ id: T-1145
 kind: task
 title: Skill provenance 'changes' line forces a merge conflict on every ticket that edits a skill
 state: open
-status: ready
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-859
 branch: t/T-1145-skill-provenance-changes-line-forces-a
 created: 2026-10-22T16:09:09.611Z
-updated: 2026-10-22T16:49:48.816Z
+updated: 2026-10-22T16:53:02.914Z
 ---
 
 ## Summary

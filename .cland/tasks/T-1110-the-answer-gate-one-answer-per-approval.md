@@ -2,8 +2,8 @@
 id: T-1110
 kind: task
 title: "The answer gate: one answer per approval, and the first wins"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-856
 branch: t/T-1110-the-answer-gate-one-answer-per-approval
 created: 2026-10-22T15:16:11.165Z
-updated: 2026-10-22T16:46:56.117Z
+updated: 2026-10-22T16:52:27.151Z
+closed: 2026-10-22T16:52:27.151Z
 ---
 
 ## Summary
@@ -177,3 +178,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head clear from 68fb5b00/A-9332 plus source A-9323. Parsed 2491 ordinary tests/379 files passed; zero fail/cancel/skip. Approval18/18, clock12/project-clock4, web-authority34/unit4 and withdrawal6 file receipts inspected. Thirteen new identities each five unique load passes+explicit5/5,65total,max0.377776975s. Actual Linuxx64 c-8blr1,Node24.21.0/Neovim0.12.5,T2workers2/Web4; allT1/fallback allT2 both packages/actualWeb exit0. Host2d055f26check reused, not repeated remotely. General lint/duration/ratchet/6missing baselines remain report-only; Web48.28s>40s report budget, not an enforcing-budget pass. Reviewed startup11s allowances retain behavior assertions. C1–C8 verified, no remaining Standards/Spec findings. Historical old-head failures retained; no Reviewer execution, Web repetitions, native relay,T3/T4/QA/full-cover claim; after-stage QA/landing Coordinator-owned.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-22T16:52:27.151Z
+
+Merged 1db66120ceea49ef40eaae8aa4352c1fe14bd06b onto dev.
