@@ -2,8 +2,8 @@
 id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-837
 branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-22T08:29:09.667Z
+updated: 2026-10-22T08:33:52.001Z
+closed: 2026-10-22T08:33:52.001Z
 ---
 
 ## Summary
@@ -188,3 +189,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; A-9055 audits original A-9054/d53099cb at source-clear35323740.2429ordinary tests/371files+40scopedload tests/files pass,zero fail/cancel/skip. All8 run identities have base+5/5 explicit load proofs(max0.502511s),establishing C1–C4 and prior retention/assignment fixes; C5 source docs current. Former blocker palette now passes both viewport cases and parent4.545799s within posted7.5s allowance; no Web load claim. T1/all hub+NeovimT2/actualWeb exit0,Linuxc8lon1 Node24.21/Neovim0.12.5,workers2(Web4),508s/$0.0353. Host98805da1 reused not repeated; genericlint132/59,0refusals,tier/duration/ratchet report-only,5missing baselines retained. A-9018 stays historical failed; local missing-playwright setup not a pass. No T3/T4/full-lifecycle/stageQA claim. Standards0;Spec0.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-22T08:33:52.001Z
+
+Merged 3f13960acdc277ffe2a567fc728fe3a6bb62c9a7 onto dev.
