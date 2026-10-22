@@ -2,13 +2,14 @@ import { useSyncExternalStore, type ComponentProps } from 'react';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
 import { ItemsTree } from './ItemsTree.tsx';
 import { ItemsBoard } from './ItemsBoard.tsx';
+import { ItemsGraph } from './ItemsGraph.tsx';
 import s from './ItemsView.module.css';
 
 // Later views enable one entry and provide their component here.
 export const itemViews = [
   { id: 'tree', label: 'Tree', enabled: true },
   { id: 'board', label: 'Board', enabled: true },
-  { id: 'graph', label: 'Graph', enabled: false },
+  { id: 'graph', label: 'Graph', enabled: true },
   { id: 'plan', label: 'Plan', enabled: false },
 ] as const;
 type View = typeof itemViews[number]['id'];
@@ -37,5 +38,5 @@ export function ItemsViewSwitcher() {
 }
 export function ItemsView(props: ComponentProps<typeof ItemsTree>) {
   const view = useSyncExternalStore(subscribe, snapshot);
-  return view === 'board' ? <ItemsBoard {...props} /> : <ItemsTree {...props} />;
+  return view === 'graph' ? <ItemsGraph {...props} /> : view === 'board' ? <ItemsBoard {...props} /> : <ItemsTree {...props} />;
 }

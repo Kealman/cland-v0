@@ -5738,6 +5738,13 @@
     "web/test/palette.test.ts::the palette and area keys help": 5.081626
   },
   "allow": {
+    "web/test/board.test.ts::the Board view and Items view switcher": {
+      "seconds": 9.7,
+      "owner": "E-880",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "Three real hub/Headless Shell criterion cases share one fixture and observe browser/hub teardown; Linux c-8 nyc1 run a25ed72e (A-8928) observed 6.456065132 s. Temporary 1.5x headroom while E-880 restores tier budgets; assertions and fixture boundaries retained."
+    },
     "nvim/test/closed-pages.test.ts::copied tracker explorer, board and card render closed children from parent pages": {
       "seconds": 22,
       "owner": "E-880",

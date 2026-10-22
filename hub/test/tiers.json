@@ -593,6 +593,7 @@
     "web/test/board.test.ts": "Web",
     "web/test/connection.test.ts": "Web",
     "web/test/folds.test.ts": "Web",
+    "web/test/graph.test.ts": "Web",
     "web/test/item-card.test.ts": "Web",
     "web/test/items-order.test.ts": "Web",
     "web/test/items.test.ts": "Web",

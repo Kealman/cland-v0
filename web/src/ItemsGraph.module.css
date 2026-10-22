@@ -1,0 +1,13 @@
+.graph { padding: 12px 20px 24px; }
+.scope { color: var(--text-soft); font-size: 12px; margin-bottom: 12px; }
+.edge { stroke: var(--muted); fill: none; stroke-width: 1.5px; }
+.node { cursor: pointer; font: 12px var(--mono); outline: none; }
+.node rect { fill: var(--ground); stroke: var(--control-border); }
+.node:hover rect { fill: var(--row-hover); }
+.node[aria-selected="true"] rect { fill: var(--selection); }
+.node:focus-visible rect { stroke: var(--link); stroke-width: 2px; }
+.title { fill: var(--text); }
+.id, .fact, .glyph { fill: var(--text-soft); color: var(--text-soft); }
+.node[data-status="done"] .title { fill: var(--done-text); }
+.node[data-status="done"] .glyph { fill: var(--done-glyph); }
+.node[data-status="in work"] .glyph, .node[data-status="in progress"] .glyph { fill: var(--active); }

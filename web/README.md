@@ -189,13 +189,14 @@ never writes the hub's or Neovim's interface state.
 
 ## Items views
 
-The Items header switches between Tree and Board. Graph and Plan are disabled
-until their views land. The view is a browser preference under
+The Items header switches between Tree, Board and Graph. Plan is disabled
+until its view lands. The view is a browser preference under
 `cland.ui.items.v1`; changing it preserves the shared scope, done/archive filters
 and selected item, including its drawer card. Split panes share the view preference.
 
 Board groups tasks into status sections with counts. Rows carry the parent ID,
 claim/hold and verdict marks, verified/total, blocked and next facts from the hub.
+
 At release scope, epics start folded with authoritative done/total and status
 breakdowns, including closed children that have not been loaded. Unfolding reads
 closed children through bounded parent pages. Epic tabs narrow the Board without
@@ -212,6 +213,17 @@ the visible rows.
 context for each criterion: the scoped Tree/Board round trip; folded release
 counts, closed-child unfolding and epic tabs; and inert rank keys/mouse gestures
 with unchanged hub ranks and parents.
+
+Graph draws the current scope's direct children as SVG using the ported Neovim
+layout and token colours. Sibling dependencies route between layers; unlinked
+children sit below in a tray. Containers show hub done/total and in-work counts
+(in progress, review, QA and ready); tasks show verified/total. Done nodes use
+the done text colour and green check. Closed siblings load through bounded parent
+pages; their progress uses hub totals without fetching their own children.
+Clicking or focusing a node selects its item and drawer. `j`/`k` move between
+nodes, Enter opens the card and Escape returns to that node. The shared `D`/`A`
+filters, scope and selected item survive view changes; Tree and Board folds stay
+independent from Graph.
 
 ## Split and drawer
 
