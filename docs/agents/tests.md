@@ -1960,7 +1960,7 @@ For human-only sign-in, session management and web authority policy tests, follo
 Browser tests carry `Web` in `hub/test/tiers.json`, outside T0–T3, with a separate
 4 s/test and 40 s/phase budget in `hub/test/durations.json` (report mode follows
 the repository budget setting). The package runner reports actual phase wall time
-separately from tier projections and keeps a 60 s gross hang guard. Web runs after
+separately from tier projections and keeps a 180 s gross hang guard. Web runs after
 the hub phases with resource `machine`, two workers locally and four on droplets.
 It keeps the suite's joint lease and never runs in load-gate repetition lanes.
 

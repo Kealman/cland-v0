@@ -229,11 +229,13 @@ process.chdir(cwd);`);
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
       }) : Promise.resolve({ failed: false, extraWallMs: 0 });
-      // A gross hang guard is separate from the measured 40 s Web budget.
+      // A gross hang guard is separate from the measured 40 s Web budget. It allows 180 s: on Linux c-8
+      // droplets the grown Web phase (16 files, items.test.ts alone about 40 s) passed 60 s of wall
+      // and the guard killed healthy runs mid-file (A-9371, A-9419).
       const phaseGuard = webPhase ? setTimeout(() => {
-        process.stderr.write('Web phase exceeded 60 s gross hang guard\n');
+        process.stderr.write('Web phase exceeded 180 s gross hang guard\n');
         if (activeIdentity) void cleanupOwnedProcesses([activeIdentity]);
-      }, 60_000) : undefined;
+      }, 180_000) : undefined;
       const [phaseOutcome, gateOutcome] = await Promise.allSettled([done, repeats]);
       clearTimeout(phaseGuard);
       if (phaseOutcome.status === 'rejected') throw phaseOutcome.reason;
