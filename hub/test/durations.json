@@ -8026,6 +8026,13 @@
       "added": "2026-10-21",
       "expires": "2026-10-28",
       "reason": "T-996 palette test measured 5.98 to 8.285 s on Linux c-8 droplets (runs 8c9946b8, 57da3ffe, 9e25e121) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web shell and palette tests under budget"
+    },
+    "web/test/item-card.test.ts::drawer cards use summary facts across ten rows without task.view": {
+      "seconds": 8,
+      "owner": "E-880",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "T-1073 drawer card test measured 3.49 to 5.073 s on Linux c-8 droplets (runs 1a5b7020, d313ff6a, 5fdaa16a) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web tests under budget"
     }
   }
 }
