@@ -68,6 +68,34 @@ The typecheck runs that guard, contrast/role checks and oxlint with
 fixture must fail the actual configured linter. No UI library or Tailwind is used;
 the human approves every new dependency. See the root AGENTS.md web rule.
 
+## Message Markdown
+
+`src/markdown.ts` exports `parseMarkdown(message, { itemPrefixes })` and the
+`MarkdownBlock`/`MarkdownInline` token unions. It has only ECMAScript types
+(`tsconfig.markdown.json`), with no React, browser or package dependency. Parse
+each message separately: even an unclosed fence ends at that message's end.
+The default prefixes are T, E, R, Q, M, S and C; pass the configured tracker
+prefixes (including T) for the current project. An item token carries the whole
+id for the renderer's navigation and non-wrapping treatment.
+
+Blocks are `heading` (level), `paragraph`, `quote`, `list` (ordered/start/items),
+`code` (language/text) and `table` (literal text). Inline tokens are `text`,
+`code`, `strong`, `em`, `link` (href/text) and `item` (id). Headings, paragraphs
+and quotes carry inline `children`; each list item is an inline token array.
+Render tokens as elements and text. Raw HTML and image syntax stay text; tables
+and code bodies stay literal. Links allow only explicit http/https addresses;
+unsupported destinations and syntax remain visible text. This subset does not
+implement full CommonMark, nested lists, reference links or syntax highlighting.
+
+Typecheck runs `check-html.ts` with seeded hostile-source fixtures, then scans
+every source under `src/`. It refuses references to `dangerouslySetInnerHTML`,
+`innerHTML`, `outerHTML` and `insertAdjacentHTML`, including bracket properties
+and spread-object props through parentheses, assertions and non-null wrappers.
+Named sink references are forbidden even for reads or
+method aliases. Ordinary strings and comments are allowed. This is a source
+guard, not a runtime HTML sanitizer. The T1 token contracts run with
+`node --test hub/test/web-markdown.test.ts`.
+
 All 23 normal foreground tokens, including every role, reach 4.5:1 on ground and
 selection. The two dark ink tokens are inverse badge text checked on their bright
 badge surfaces. Surface/line tokens are not text. Role colours match

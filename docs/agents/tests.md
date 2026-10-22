@@ -1818,6 +1818,15 @@ Clause procedure (defaults implementer, project implementer):
 
 ## Web phase
 
+Message Markdown has a lower-tier seam: `hub/test/web-markdown.test.ts` (T1)
+imports the pure `web/src/markdown.ts` parser. Literal contracts cover blocks,
+inline tokens, configured whole item ids, message-local fences and hostile
+HTML/images/URL schemes. No browser or hub fixture is needed for parsing.
+Web typecheck runs `web/check-html.ts` (T0): seeded source fixtures exercise the
+same AST guard that scans `web/src`, refusing named raw-HTML sink references
+(`dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`).
+Renderers still need their own element/navigation/browser evidence.
+
 Edge fixtures bind only loopback aliases. Revocation checks observe socket-close receipts after admission closes; no-follow filesystem regressions also prove an authorized read beneath a symlinked trusted ancestor on every supported OS (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
 
 Standalone generated-asset and bundle consumers declare their build prerequisites and check them themselves, independent of prior files or shard order; use fixture-owned present/missing output directories and derive asset lists from shipped scripts and workspace metadata (A-8634 R11; T-955, T-978, T-1019, T-1023, T-1031; A-9063 R8 source T-1096).

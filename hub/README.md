@@ -84,6 +84,10 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 Classify each new human frame in the web authority table before admitting it; the default is refusal. Validate routing inputs before permission classification, apply the sandbox response policy to executable artifacts as well as their iframe, and close credential admission before closing sockets and observing their close receipts (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
 
 The sibling `web/` workspace builds the browser bundle with React 19 and Vite.
+Message Markdown uses the pure token parser in `web/src/markdown.ts`; renderers
+create elements from its tokens. Web typecheck rejects named raw-HTML sinks
+(`dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`) with
+seeded source fixtures. See [Message Markdown](../web/README.md#message-markdown).
 Keep development dependencies installed: the prepare hook needs Vite even for a
 release checkout. Root `npm install` builds `web/dist` through `prepare`. Verification's `npm run check`
 runs the shared strict typecheck, builds the bundle, then static/test lint, on local

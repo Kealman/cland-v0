@@ -527,6 +527,7 @@
     "hub/test/web-edge.test.ts": "T2",
     "hub/test/web-graph-layout.test.ts": "T1",
     "hub/test/web-keymap.test.ts": "T1",
+    "hub/test/web-markdown.test.ts": "T1",
     "hub/test/web-network-unit.test.ts": "T1",
     "hub/test/web-phase.test.ts": "T1",
     "hub/test/web-release.test.ts": "T1",
