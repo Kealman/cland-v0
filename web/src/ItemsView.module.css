@@ -1,0 +1,5 @@
+.switcher { display: flex; gap: 4px; align-items: center; }
+.switcher button { border: 1px solid var(--control-border); border-radius: 4px; padding: 4px 8px; background: var(--control); color: var(--text-soft); font-size: 12px; }
+.switcher button[aria-pressed="true"] { background: var(--selection); color: var(--text-strong); }
+.switcher button:disabled { color: var(--muted); cursor: default; }
+.switcher button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }

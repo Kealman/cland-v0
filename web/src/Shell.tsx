@@ -8,7 +8,8 @@ import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 import { Fold, runFoldShortcut } from './Fold.tsx';
 import { ItemCard } from './ItemCard.tsx';
-import { ItemsTree, type TreeControls } from './ItemsTree.tsx';
+import { type TreeControls } from './ItemsTree.tsx';
+import { ItemsView, ItemsViewSwitcher } from './ItemsView.tsx';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -215,12 +216,12 @@ export function Shell() {
               onPointerDown={() => setActive(pane)} onFocus={() => setActive(pane)}>
               <Fold area={paneArea.toLowerCase()} id={detail ? `detail:${selected}` : 'objects'}
                 label={detail && row ? row.title : paneArea} count={detail ? 1 : rows?.length ?? '—'} level={1}
-                actions={split && <div className={s.actions}>
+                actions={<>{!detail && paneArea === 'Items' && <ItemsViewSwitcher />}{split && <div className={s.actions}>
                   <button onClick={() => setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
                     row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail }))}>Swap</button>
                   <button onClick={() => closePane(pane)}>Close</button>
-                </div>}>
-              {!detail && paneArea === 'Items' && <ItemsTree connection={connection} release={release?.id} selected={selected}
+                </div>}</>}>
+              {!detail && paneArea === 'Items' && <ItemsView connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {!detail && paneArea !== 'Items' && <ul className={s.objects} aria-label={`${paneArea} objects`}>
                 {rows?.map(object => <li key={object.id}><button className={s.object} data-object-id={object.id}

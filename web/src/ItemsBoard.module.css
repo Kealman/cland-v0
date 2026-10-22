@@ -1,0 +1,7 @@
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 12px; }
+.tabs button { border: 1px solid var(--control-border); border-radius: 4px; background: var(--control); padding: 4px 8px; color: var(--text-soft); font-size: 12px; }
+.tabs button[aria-pressed="true"] { background: var(--selection); color: var(--text-strong); }
+.tabs button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.scope { display: flex; gap: 16px; padding: 8px; font-weight: 600; }
+.scope span:last-child { color: var(--text-soft); }
+.categories { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px 8px; color: var(--muted); font-size: 12px; }

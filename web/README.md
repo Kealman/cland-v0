@@ -187,6 +187,32 @@ property) are guarded; invalid fields fall back independently and denied
 storage leaves navigation working. This state is local to the browser and
 never writes the hub's or Neovim's interface state.
 
+## Items views
+
+The Items header switches between Tree and Board. Graph and Plan are disabled
+until their views land. The view is a browser preference under
+`cland.ui.items.v1`; changing it preserves the shared scope, done/archive filters
+and selected item, including its drawer card. Split panes share the view preference.
+
+Board groups tasks into status sections with counts. Rows carry the parent ID,
+claim/hold and verdict marks, verified/total, blocked and next facts from the hub.
+At release scope, epics start folded with authoritative done/total and status
+breakdowns, including closed children that have not been loaded. Unfolding reads
+closed children through bounded parent pages. Epic tabs narrow the Board without
+changing its scope or replacing the release's next task. Direct tasks have their
+own folded group; categories show their counts below the release.
+
+Board uses the same `j`, `k`, `h`, `l`, `za`, `D`, `A` and card keys as Tree.
+Its group folds are browser preferences independent of the tree folds. Board
+offers no rank, top, move or drag action. Order follows the hub's hierarchy,
+rank facts and sibling-order receipts; blocked and next are never inferred from
+the visible rows.
+
+`web/test/board.test.ts` uses one sealed hub and Headless Shell with a fresh
+context for each criterion: the scoped Tree/Board round trip; folded release
+counts, closed-child unfolding and epic tabs; and inert rank keys/mouse gestures
+with unchanged hub ranks and parents.
+
 ## Split and drawer
 
 `⌘\` toggles a split of the main area, initially 2:1. Drag the divider to resize

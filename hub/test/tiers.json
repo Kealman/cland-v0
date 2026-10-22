@@ -590,6 +590,7 @@
     "nvim/test/verification-queue.test.ts": "T2",
     "nvim/test/verification-view.test.ts": "T2",
     "nvim/test/web-graph-layout.test.ts": "T3",
+    "web/test/board.test.ts": "Web",
     "web/test/connection.test.ts": "Web",
     "web/test/folds.test.ts": "Web",
     "web/test/item-card.test.ts": "Web",

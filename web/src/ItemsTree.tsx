@@ -2,29 +2,11 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState, useSyncExter
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
 import type { ConnectionState } from './connection.ts';
 import type { Shortcut } from './keymap.ts';
-import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
-import { buildItemsTree, done, type TreePreferences } from './items-tree.ts';
+import { itemsSnapshot, subscribeItems, saveItems as save } from './items-state.ts';
+import { buildItemsTree, done } from './items-tree.ts';
 import s from './ItemsTree.module.css';
 
 export type TreeControls = { run: (action: Shortcut) => boolean };
-const listeners = new Set<() => void>();
-let stored: TreePreferences | undefined;
-function snapshot(): TreePreferences {
-  if (!stored) {
-    const value = readInterfaceState('items') as { tree?: Partial<TreePreferences> } | null;
-    const tree = value?.tree;
-    stored = { open: tree?.open && typeof tree.open === 'object' && !Array.isArray(tree.open)
-      ? Object.fromEntries(Object.entries(tree.open).filter(([, value]) => typeof value === 'boolean')) : {}, hideDone: tree?.hideDone === true, archive: tree?.archive === true };
-  }
-  return stored;
-}
-function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
-function save(value: TreePreferences) {
-  stored = value;
-  const previous = readInterfaceState('items');
-  writeInterfaceState('items', { ...(previous && typeof previous === 'object' ? previous : {}), tree: value });
-  listeners.forEach(listener => listener());
-}
 const statusOrder = ['done', 'ready', 'qa', 'review', 'in progress', 'planned', 'backlog'] as const;
 function Progress({ item }: { item: ExplorerSummary }) {
   const counts = item.child_counts;
@@ -41,7 +23,7 @@ function Progress({ item }: { item: ExplorerSummary }) {
     {(['in progress', 'review', 'qa'] as const).map(status => <span key={status} className={s.fact} title={status}>{status === 'in progress' ? '◐' : status} {counts.work[status]}</span>)}
   </>;
 }
-function Facts({ item, coordinator }: { item: ExplorerSummary; coordinator: string | null | undefined }) {
+export function ItemFacts({ item, coordinator, showRank = true }: { item: ExplorerSummary; coordinator: string | null | undefined; showRank?: boolean }) {
   const stage = item.rollup?.stage;
   const claims = item.rollup?.claims.map(value => value.claim) ?? (item.claim ? [item.claim] : []);
   const holds = item.rollup?.holds.map(value => value.hold) ?? item.holds;
@@ -57,7 +39,7 @@ function Facts({ item, coordinator }: { item: ExplorerSummary; coordinator: stri
       {verdict.result === 'clear' ? '✓' : '✗'} {verdict.verdict} r{verdict.round}
     </span>)}
     <span className={s.fact} title="Criteria verified / total">{item.criteria.verified}/{item.criteria.total}</span>
-    {item.rank_set && <span className={s.fact}>rank {item.rank}</span>}
+    {showRank && item.rank_set && <span className={s.fact}>rank {item.rank}</span>}
     {done(item) && <span className={s.fact} title="Closed">{item.closed?.slice(0, 10) ?? '—'}</span>}
   </>;
 }
@@ -67,10 +49,10 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
   connection: ConnectionState; release: string | undefined; selected: string | undefined;
   select: (id: string) => void; controls: Ref<TreeControls>;
 }) {
-  const preferences = useSyncExternalStore(subscribe, snapshot);
+  const preferences = useSyncExternalStore(subscribeItems, itemsSnapshot);
   const rows = useMemo(() => {
     const start = performance.now();
-    const result = buildItemsTree(connection, preferences, release);
+    const result = buildItemsTree(connection, preferences, release, preferences.scope);
     performance.measure('cland.items.rebuild', { start, end: performance.now(), detail: { items: connection.items?.length ?? 0 } });
     return result;
   }, [connection, preferences, release]);
@@ -143,7 +125,7 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
         {row.item?.blocked && <span className={s.fact} title={`Blocked by ${row.item.open_blockers.join(', ')}`}>blocked</span>}
         {row.item?.next && <span className={s.next} title={`Next ${row.item.next}`}>next {row.item.next}</span>}
         {row.next && <span className={s.next} title="Next planned task">next</span>}
-        {row.item && <Facts item={row.item} coordinator={connection.coordinator} />}
+        {row.item && <ItemFacts item={row.item} coordinator={connection.coordinator} />}
       </button>)}
     </div>
   </div>;

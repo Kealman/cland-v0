@@ -21,7 +21,7 @@ export function currentRelease(items: ExplorerSummary[], top = 'release', select
 }
 
 /** Whole-model rebuild; the hub owns all status/roll-up derivation. */
-export function buildItemsTree(connection: ConnectionState, preferences: TreePreferences, releaseId?: string): TreeRow[] {
+export function buildItemsTree(connection: ConnectionState, preferences: TreePreferences, releaseId?: string, scopeId?: string): TreeRow[] {
   const items = itemRows(connection);
   const by = new Map(items.map(item => [item.id, item]));
   const kids = new Map<string, ExplorerSummary[]>();
@@ -107,6 +107,8 @@ export function buildItemsTree(connection: ConnectionState, preferences: TreePre
     } else if (connection.plansById?.[item.id]?.length) stages(list, connection.plansById[item.id]!, depth + 1, item.id);
     else addList(list, depth + 1, item.id);
   }
+  const scoped = scopeId ? by.get(scopeId) : undefined;
+  if (scoped) { add(scoped, 0, undefined, true); return rows; }
   const release = levels.length > 1 ? currentRelease(items, levels[0], releaseId) : undefined;
   if (release) add(release, 0, undefined, true);
   const categories = items.filter(item => isCategory(item) && (!done(item) || preferences.archive)).sort((a, b) => numberOf(a.id) - numberOf(b.id));
