@@ -18,6 +18,8 @@ A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed 
 
 ## After-stage QA
 
+Keep conditional-check scope identical in the request and committed brief, stating whether missing authorization means out of scope or BLOCKED. Read stage member counts and other plan facts from `task plan show` at the run rather than hard-coding totals (A-9063 R3; E-416 stage 1, E-413 stage 1/T-1093).
+
 The Coordinator or epic's Lead writes `qa/briefs/T-<epic>-stage-<index>.md` from `STAGE-BRIEF.md` after reading `task.plan show` and the stage's merged items. Fill every section: exact stage name, ordered item ids, effective stage scope (`affected` or `full`, including after-stage item overrides), commands/cases and expected results, evidence, out of scope and grants. `affected` covers the stage's combined changes; `full` covers the product's complete QA scope. Commit the brief on dev before requesting the run. A stage uses no stage QA verdict when neither its default nor any item override requires after-stage QA.
 
 Once all stage items are merged onto dev, its Lead or the Coordinator sends to QA in the epic's topic: first line `qa request T-<epic> stage <exact stage name>`, then the committed stage brief and full dev SHA. Keep the next stage's launches held until `task.plan show` reports this stage `closed`. A not-clear verdict keeps it open: file the findings, add their items to this stage through `task.plan set`, merge their fixes, then request a new run on dev.
@@ -40,6 +42,8 @@ sh .agents/skills/qa/qa-record.sh note T-1011 qa-2026-10-20-1 WEB-001 real-brows
 ```
 
 ## Epic demos on a named dev commit
+
+Bind every human-visible Definition-of-done sentence to a concrete check and criterion, retaining explicit approval evidence when `plan show` says “not required”. Before naming the build, normalize DoD criterion ids, commit tracker changes and pin the final SHA for both demo and occasion suite. If a QA hold creates a tracker-only commit, name it next to the tested source SHA in the request and receipt so clean-root admission cannot silently change the claimed build (A-8634 R12; E-412 stage 2, E-415 stage 3/DoD, E-1006; A-9063 R3; E-1006 DoD).
 
 For an epic's Definition of done (separate from after-stage QA), take its QA hold and resolve the requested full dev SHA. Start the demo with `cland demo start <epic> --commit <sha> --json`. Keep the returned lease id, commit and deadline. The hub delivers that committed tree with the suite's dependencies and Neovim, under the shared remote budget and daily cap. Only QA holding the epic, the Coordinator and the human may use demo controls; sessions leave provider operations to the hub.
 
@@ -162,6 +166,8 @@ Each `qa/cases/<ID>.lua` opens with its catalogue header, a comment block of exa
 - Work: take a verifier hold with `task.hold` on the item (beside the Implementer's claim; it sets `qa`), then read the item with `task.view` and the brief, then run each case of the brief from the item's worktree (`cland --headless --qa`, through the skill's script, `sh .agents/skills/qa/qa-record.sh run T-<n> <run> <CASE-ID>`, which appends one line per case to `.cland/qa/runs.jsonl`, with evidence in `.cland/qa/T-<n>/<run>/`) and each manual check. Beyond the brief, the checks you can run yourself: shell-level checks (build, tests, the commands a user would run); the `cland task` CLI (`cland task list`, `cland task view`); and where UI is involved, a headless Neovim: one `nvim --headless` process running a Lua script that feeds keys with `nvim_input` and reads the grid with `screenstring()`, or the project's own test harness if it does that (`nvim --headless --listen` with `--remote-send` and `--remote-expr`). Keep what you ran and what you saw. Do not fix what you find.
 
 ## QA verdict procedure
+
+For rule 17 evidence, retain both tested-source and served-page stamps; differing stamps support load smoke only. Timing-sensitive checks retain local queue state and a short CPU-idle sample, separating deterministic assertions from timing diagnostics. A corrected probe keeps its unaltered capture and labels the correction separately from product failures (A-8634 R13; T-794, T-965, T-970, E-1006 stage 2, E-795, E-415/E-412 stage stamps, E-412 DoD; A-9063 R2; E-413 stage 1/T-1093).
 
 - Verdict: one `task.comment` on the item with `verdict` qa, `result` clear or not clear, and `run` an id of your own for this pass. Give `commit`, the full SHA you ran. The hub writes the header from them: `verdict: qa`, `result: clear | not clear`, `by: <name> [<role>]`, `run: <id>`. `clear` only when every case in scope passed; a FAIL, BLOCKED or INCONCLUSIVE case makes it `not clear` and the text names the case. The text is the case table, then the findings ranked by severity (high, medium, low), each with the case id or file:line, the command and what it showed.
 

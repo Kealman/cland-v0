@@ -81,6 +81,8 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 ## Web workspace
 
+Classify each new human frame in the web authority table before admitting it; the default is refusal. Validate routing inputs before permission classification, apply the sandbox response policy to executable artifacts as well as their iframe, and close credential admission before closing sockets and observing their close receipts (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
+
 The sibling `web/` workspace builds the browser bundle with React 19 and Vite.
 Keep development dependencies installed: the prepare hook needs Vite even for a
 release checkout. Root `npm install` builds `web/dist` through `prepare`. Verification's `npm run check`
@@ -431,6 +433,8 @@ An empty list receives `features: []`. Spoke hellos are unchanged.
 
 ### Liveness, version skew and terminal reservations
 
+A client marks the hub live after an authenticated reply. Keep version-mismatch reloads bounded per build, including when a late valid reply arrives after a watchdog or retry (A-8634 R8; T-984, T-985, T-986, T-989, T-992, T-1046, T-1055).
+
 The web edge sends a WebSocket ping every 30 seconds and terminates a socket
 at the first sweep with 60 seconds of silence. Pongs and incoming bytes refresh
 that deadline; an application frame still arriving is live traffic too.
@@ -504,6 +508,10 @@ connection usable; the client falls back to individual reads. An accepted
 feature in the welcome alone does not prove a completed snapshot.
 
 ### Numbered model deltas
+
+The hub computes item status, glyphs, blocked/next facts, roll-ups and progress over the complete tracker index; clients retain presentation ordering and folds. Label counts derived from fetched rows as “loaded”, and keep group metadata complete when a page begins inside a group (A-8634 R4; T-979, T-1044, T-1061, T-1053, T-1052, T-1072, T-1058, T-1071; A-9063 R7 sources T-1075, T-1076, T-1056).
+
+Use one committed publication order and frame-write boundary for live, cached and replayed bytes; connection filters apply to replay too. Snapshots and control frames consume no delta numbers; pagination uses durable monotonic ids and resume uses the client's last applied cursor (A-8634 R8; T-984, T-985, T-986, T-989, T-992, T-1046, T-1055).
 
 Every committed model publication, including tracker `task` changes, passes
 through the core's single emit point. A client accepting `numbered-deltas`
@@ -745,6 +753,8 @@ Agent/internal `history` retains its existing response shape; the additive run
 metadata is supplied on client `topic.history` pages and `message` events.
 
 ## Asks and the inbox
+
+Record a human action, its settlement inputs and its structured outcome (decision, reason, answerer and time) in one durable write, independently of reply-message retention. Relay the structured outcome; an answered or closed ask alone grants no consent. For client-state imports, commit state with its one-time import receipt, acknowledge before removing legacy keys and preserve unrelated preferences; see “Human last looks and read marks” (A-9063 R5; T-1057, T-1059, T-1054).
 
 An **ask** is a question the Coordinator puts to the human inside a topic (spec 4.5, decisions #7 and #10): a message whose text is the question, with a card in the store's `asks` table (the numbered options, whether a free answer is welcome, its state).
 
@@ -1899,6 +1909,10 @@ The project's `.cland/`:
 
 The Unix socket speaks the hub's frames as JSON lines, through the same dispatcher as the WebSocket: a spoke's hello works there too when it carries the secret. A client's hello works on the WebSocket only on a hub with no human side (`createHub`, the tests' in-process hub); a project's hub refuses it there. The first frame is `{"type":"hello","protocol":2,"secret":"…","client":"cli"}`; a wrong secret gets `{"type":"error","code":"unauthorized",…}` and the socket closes. After the `welcome`, a client sends `{"type":"hub.status","id":"…"}`, `{"type":"hub.stop","id":"…"}`, a UI request or a `task.*` request (below) and gets a `result` with the same id. Stdio (`cland hub serve --stdio`) speaks exactly the same frames; its hello needs no secret.
 
+### Background work
+
+Declare whether startup work is needed for the first protocol reply; defer history scans and maintenance until afterwards and keep them off stage and merge-gate paths. Native background commands check cancellation before each launch, settle teardown after child close/reap and record abandonment explicitly. Watchdogs distinguish byte progress from liveness and preserve valid late replies; maintenance sleeps until its next eligibility deadline (A-8634 R6; T-1008, T-1039, T-1060, T-1062, T-1050, T-1067; A-9063 R8 source T-1084).
+
 ### The UI's frames
 
 The Neovim workbench places its four panels with `:Cland panel items|inbox|sessions|topics left|right` or the palette's **<Panel> on the left/right** actions. Each panel has a home side, with one visible panel per side; moving a panel closes its old side. Buffer keys and hub events follow the panel. `gm` inside any of the four panels moves it to the other side; the action registry exposes **Move <kind> to the other side** in the palette and Keys. Panel toggles, top-bar chips, `gp` and scoped palette actions use its home side; centre `C-h`/`C-l` focus the panels currently on the left/right. Neovim's `CTRL-W H/L/r/x` remain native and are not panel placement controls. Optional `panel_homes` and `panels.left_kind` in version-2 `.cland/ui.json` save homes and occupants, including Items on the right; the restart snapshot carries them too. Older files keep default sides; invalid assignments fall back with one amber notice while retaining other preferences. Presets retain homes. Manual widths are per side (`sizes.left`/`sizes.right`) and follow the side through panel moves, view/preset changes and restarts. The Topics dock (`␣T`) stacks above whichever panel is on the right, appears only once and keeps `sizes.dock`; the explorer card can temporarily replace any right occupant without changing its home or visibility preference. `:Cland panel reset` and **Reset panel layout** restore default homes and side widths and save immediately, keeping the dock height and open panels. Panels move to default sides when possible; if both target the same side, both stay in place and subsequent toggles follow default homes. The default layout and wire frames are unchanged. See [Panels](../nvim/README.md#the-shell) for the client commands.
@@ -2643,6 +2657,8 @@ API. Adoption was gated on matching diagnostic codes, files and lines on both
 clean projects and planted strict-option/import errors (T-427).
 
 ### Verification commands
+
+Under rule 17, CLI and derived summaries distinguish unknown or pending evidence from failure; neither is a failed result (A-8634 R13; T-1049).
 
 Record the stack's commands with `cland config set verification.prepare|check|test`
 (one key per invocation). These are project commands, independent of the language:

@@ -251,6 +251,8 @@ independent from Graph.
 
 ## Split and drawer
 
+Open and move panels through the central panel-home and placement helpers: homes are semantic, sizes belong to physical sides, and each window owns its size, mode and reading position. Extend the area's versioned preference key with independent validation, falling back only the malformed extension without losing unrelated fields (A-8634 R10; T-796, T-1000, T-1001, T-1002, T-1004, T-1005, T-995, T-996, T-997).
+
 `⌘\` toggles a split of the main area, initially 2:1. Drag the divider to resize
 between 20% and 80%. Each pane has Swap and Close; closing the primary pane keeps
 the other pane's contents. Click or focus a pane to direct area navigation to it.
@@ -268,6 +270,8 @@ All three shortcuts use the shared physical-code map (`Meta+Backslash`,
 on matching hub frames and reconnection; they expose no domain mutations.
 
 ## Palette and keys
+
+Use native modal dialogs for overlays and keep stand-in objects free of mutation actions (A-8634 R10; T-1004, T-1005).
 
 `⌘K` or `Space p` opens the palette over the dimmed, inert shell. `⌘K` also
 works from a field without changing its draft. One input searches names and IDs
@@ -337,6 +341,10 @@ namespace strings and OFL licence links are metadata, not network requests.
 Browser request observation belongs to T-991's Web phase.
 
 ## Browser tests
+
+For rule 18's isolated-browser checks, stub every opener on PATH, assert the launched executable and profile, and retain a final owned process-group census (A-8634 R1 techniques; T-980, T-991, T-1011).
+
+Growing help overlays and lists get a small-viewport keyboard-scroll regression: collect rows actually visible over a bounded native scroll traversal, then assert the last row and its viewport containment. Avoid depending on the row after a single page-sized jump; a real-browser check proves visible reachability (A-9063 R6; T-1095, T-1097).
 
 The separate **Web** phase uses `node:test`, the pinned `playwright-core` and its
 Chrome Headless Shell. `npm install` builds the bundle and installs only the

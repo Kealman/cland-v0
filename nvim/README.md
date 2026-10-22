@@ -22,6 +22,8 @@ Neovim's state and `nvim.log` live in `${XDG_STATE_HOME:-~/.local/state}/cland-n
 
 ## The shell
 
+Shell changes use the central panel-home/placement helpers, keeping semantic homes separate from physical-side sizes. Each window retains its own size, mode and reading position; preference extensions validate independently within the area's versioned key and preserve unrelated fields on fallback. Row-count-changing projections publish source-line mappings, and file-backed view caches key by file identity and layout and bypass unsaved buffers (A-8634 R10; T-796, T-1000, T-1001, T-1002, T-1004, T-1005, T-995, T-996, T-997).
+
 ```
  cland <project> │ <centre view>        ● coord Coordinator · Claude Code · opus · busy   ✓ needs you 0   sessions 2
  ITEMS ␣i    │ centre view                        │ TOPICS (dock) ␣T

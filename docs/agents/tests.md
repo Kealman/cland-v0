@@ -367,6 +367,8 @@ HUB_SMOKE selects hub-lifecycle, startup-smoke and message-tracer. NVIM_SMOKE se
 
 ### Neovim workbench startup budget (T-1010)
 
+Correctness regressions bound counted operations, allocations or bytes; keep instrumentation inside a measured callback bounded too. Machine-speed ratios belong in deliberately unloaded benchmarks. Preserve the existing budget guards rather than raising them to accommodate a change (A-8634 R5; T-963, T-1007, T-1010, T-1003, T-983, T-1037, T-1038, T-1045).
+
 `nvim/test/startup-budget.test.ts` is T3: real headless Neovim consumes the
 production socket protocol from `projectHub`; there are zero hub or harness
 subprocesses. T1 tracker-summary and T2 shell-component cover projection and
@@ -784,6 +786,10 @@ completion receipt or use fake time. Record a declaration-by-declaration asserti
 map, before/after file seconds and process-start call sites in the review evidence.
 
 ## Fixtures
+
+Cleanup requires positive ownership receipts: a child-owning helper settles after its process and pipes close, including deadline and spawn-error paths. Close writer admission before draining a process-backed fixture, and register each invocation before its first write; regressions cover both present and missing ownership evidence. Missing evidence does not authorize orphan cleanup; see rule 12 for directory removal (A-8634 R7; T-552, T-972, T-974, T-1035).
+
+Tests consuming generated assets, build outputs or copied projects declare and check their own prerequisites on every shard, with fixture-owned output directories for present and missing cases. Resolve paths and lists from shipped scripts and workspace metadata. Put static wording/size contracts at T1 and only delivery at the live boundary; runner prerequisites name the consuming worker (A-8634 R11; T-955, T-978, T-1019, T-1023, T-1031; A-9063 R8 source T-1096).
 
 Rule 15: shared fixtures use the pure `test-support/fixture-environment.ts`
 (`hub/test/fixture-environment.ts` remains a compatibility export) to replace
@@ -1775,6 +1781,10 @@ Clause procedure (defaults implementer, project implementer):
 
 ## Web phase
 
+Edge fixtures bind only loopback aliases. Revocation checks observe socket-close receipts after admission closes; no-follow filesystem regressions also prove an authorized read beneath a symlinked trusted ancestor on every supported OS (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
+
+Standalone generated-asset and bundle consumers declare their build prerequisites and check them themselves, independent of prior files or shard order; use fixture-owned present/missing output directories and derive asset lists from shipped scripts and workspace metadata (A-8634 R11; T-955, T-978, T-1019, T-1023, T-1031; A-9063 R8 source T-1096).
+
 `web/test/items-actions.test.ts` owns the three Items interaction seams: selecting
 three rows, switching to Board and sending one General message received by an in-process fake
 Coordinator, creating and reusing a missing item topic, and scope/breadcrumb/back
@@ -1955,6 +1965,10 @@ contract and reads receipts from the hub rather than `ui.json`.
 
 ## Connection snapshots
 
+While client derivations or cross-client ports remain, retain an independent differential oracle (for example Lua against TypeScript), with a stated removal condition. Pair each delta-rebuilt row assertion with a fresh snapshot comparison, including hub totals while rows remain unloaded (A-8634 R4; T-979, T-1044, T-1061, T-1053, T-1052, T-1072, T-1058, T-1071; A-9063 R7 sources T-1075, T-1076, T-1056).
+
+Pagination regressions include tied and backdated timestamps, traverse at least two pages, race a state change against a held page and retain the final one-row-per-identity assertion after replay (A-8634 R8; T-984, T-985, T-986, T-989, T-992, T-1046, T-1055; A-9063 R4; T-1073, T-1081).
+
 `item-summary.test.ts` also proves card verdict reasons/rounds/scopes, Decision
 previews and agents' text outlines through snapshots and mutation deltas, without
 body/comment reads. Closing a task removes its row from the open snapshot; its final delta still
@@ -2073,6 +2087,12 @@ the implementation head/tree and platform; it is a measurement, not a suite pass
 
 
 ### Startup reply byte budgets (T-1038)
+
+Count UTF-8 bytes at the consuming boundary, including framing, with a separate budget for every startup reply; keep the budget guard unchanged (A-8634 R5; T-963, T-1007, T-1010, T-1003, T-983, T-1037, T-1038, T-1045).
+
+Before compacting a reply, inventory readers, count/wait assertions, QA brief waits and startup probes; use rule 19 for migration and capability landing order. Check budgets against a copied live tracker and synthetic fixtures varying closed-container density independently of task count. Add small probe-assertion fixtures for each retained state/kind and cover changed row kinds through both real stdio hub and recorded stub (A-8634 R3; T-1025, T-991, T-999, T-1027, T-1038, T-993; A-9063 R1; T-1088, T-1089, T-1091).
+
+When expanding verification phases, prove the command plans are unchanged when no file is classified into the new phase; use rule 19 before dependent work is enqueued (A-8634 R3; T-1025, T-991).
 
 The startup relay records exact UTF-8 JSON result frames, with envelope and
 newline, for status, rules, General history, artifacts, open item summaries,

@@ -10,9 +10,13 @@ Copy to `qa/briefs/T-<epic>-stage-<index>.md`; fill every section and commit on 
 - Policy: <affected or full>/after-stage.
 - Scope: <combined changed behavior for affected, complete product checks for full>.
 
+Read membership, counts and other plan facts from `task plan show` at the run; retain its output instead of writing numeric stage totals here (A-9063 R3; E-413 stage 1/T-1093).
+
 ## Build
 
 Use a clean detached worktree at the full dev SHA named in the request. HEAD must equal that SHA and refs/heads/dev before and after running. All listed items must have merged onto dev. A dirty build, missing merge or moved dev blocks this run; retain any collected evidence and report to the requester.
+
+In this repository, give the detached worktree a `node_modules` symlink to the project's installed dependencies before any Web steps; retain the build prerequisites of each standalone test (E-413 stage 2 setup; A-8634 R12).
 
 ## Cases
 
@@ -40,7 +44,11 @@ Before requesting QA, run `cland qa lint <brief>` with this filled brief at the 
 
 ## Probes that mislead
 
-- Process probes exclude their own shell: use `pgrep`'s bracket trick or exclude the probe's process tree.
+- Process cleanup probes use a fixture-owned pid/process-group census, registered at launch and checked through exit; a machine-wide `pgrep` counts other sessions too (A-9063 R2; E-413 stage 1/T-1093).
+- Edit existing keys in initialized configs, list standalone-test build prerequisites, enumerate regular files only for file probes, and identify events by seq/id. A second-client check allows only defaults the new client writes itself (A-8634 R12; E-412 stage 2, E-415 stage 3/DoD, E-1006).
+- Transcript assertions identify stable item/topic/frame ids, with intervals starting at the result frame of the state-changing request. Preserve unaltered captures when correcting a probe and label the correction separately from product failures (A-8634 R13; E-412/E-415/E-1006; A-9063 R2; E-413 stage 1/T-1093).
+- Exact tracker copies replace the initialized tracker directory after its writers stop; copy the committed directory whole, dotfiles included, and compare that same file set. Apply the full `fixtureEnvironment` result after overlays, including synthesized values; under rule 15, check zero credential-prefix names before launching scratch processes and report names/counts only (A-9063 R2; E-413 stage 1/T-1093).
+- An accessibility-tree count does not prove visible reachability: a real-browser check scrolls the final row into view and checks its viewport containment (A-9063 R6; T-1095, T-1097).
 - File-change probes use isolation; mtime alone is confounded by live sessions rewriting the same file.
 - A "ran" marker grep excludes the configuration echo line.
 - Successful droplet prepare logs are in the run's `delivery.log`, not the suite log.
@@ -52,6 +60,8 @@ Before requesting QA, run `cland qa lint <brief>` with this filled brief at the 
 ## Out of scope
 
 <explicit exclusions, or none>
+
+Match conditional-check scope to the request; say whether missing authorization excludes the check or makes it BLOCKED (A-9063 R3; E-416 stage 1).
 
 ## Grants
 

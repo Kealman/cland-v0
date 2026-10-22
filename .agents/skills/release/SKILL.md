@@ -5,6 +5,8 @@ description: Release a human-chosen version, publish marketing commits outside a
 
 The Coordinator performs this skill from its own shell. **Never delegate a release to a sub-agent:** a sub-agent in the Coordinator's shell inherits its authority. The human may also run `cland release` from their own shell.
 
+A release-version item updates the root package version and both lockfile version fields together, and proves `--version` in a sealed disposable copy under rule 15 (A-8634 R15; T-967).
+
 For `cland verify all --occasion release`, receipt reuse requires full matching
 coverage on the effective executor and OS, even with a configured default. A
 local macOS stage receipt cannot satisfy a droplet release request. Read the

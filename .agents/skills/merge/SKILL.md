@@ -54,4 +54,6 @@ Only the human's own shell may run `cland merge T-<n> --override "<reason>"`, fo
 
 Report the returned commit and cleanup status in the item's topic. If cleanup keeps uncommitted work or a branch moved since merge, preserve its branch and worktree. Use the human's `cland worktree prune` only after the work is safe to remove.
 
+A rollback retains an exact inverse-patch receipt; re-landing the work is a separate item. Attribute the receipt under rule 17 (A-8634 R13; T-970).
+
 If the result says `merged, follow-up failed: <step>`, the returned commit has already landed. Repair the named rollback, checkout, publish, close, release, topic or cleanup failure and retry `merge` for the same item. Checkout recovery preserves staged and untracked work; reconcile any changed index before retrying it. The hub verifies its durable prepared landing against Git and completes the remaining steps without creating another commit, including after a hub restart.
