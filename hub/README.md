@@ -690,6 +690,60 @@ Held notes and their digest membership live in the existing SQLite delivery queu
 
 Unbound progress keeps the existing queue TTL: expired notes are dropped and journalled before binding. Once bound, a note follows its trigger's TTL, and the batch expires together. Retention preserves every member of a pending batch. If a trigger is deleted, surviving pending notes are released to the same queue with their original TTL and the release is journalled. Injected or dropped notes lose their binding and stay settled. Renaming onto a name with any queued, delivered, uncertain or injected delivery is refused with the target and its unacknowledged count before any mutation. A rename also refuses any duplicate message delivery row between the source and target, regardless of state, naming the target and collision count. Other renames follow the existing behavior.
 
+## Thread runs and fold lines
+
+`topic.history` pages include `runs: ThreadRun[]`. Each foldable `TopicMessage`
+has `runId`; the page includes exactly one complete run for every referenced id,
+even when its first message is outside the page or an Agents filter selects only
+some members. Counts and the latest step describe the whole retained run, not
+just the loaded messages. Numeric and legacy message-id cursors keep their
+existing ordering and exclusive boundaries. Run metadata counts against the
+history byte budget; a single oversized message with its metadata retains the
+existing one-message exception.
+
+A run consists of consecutive agent-to-agent messages in one topic and one
+local calendar day on the hub host (the day-rule boundary from `thread.lua`).
+Asks, verdicts, answers, requests, and messages to or from the human or an Aide
+end it; the next eligible message starts a new run. Verdicts use the shared
+structured/first-line verdict classifier. An agent's unaddressed artifact
+creation chip can join the surrounding run. Ordinary unaddressed sends go to the
+human and cannot join. Run membership describes message facts independently of
+visibility preferences; this extension does not change Neovim's existing folds.
+
+`ThreadRun` carries:
+
+- `id` (`run:<first-message-id>`) and `firstSeq`, the first durable message number;
+- `participants`, the first three distinct sender/addressee names in encounter
+  order, and `otherParticipants`, the count of the remaining distinct names;
+- `messageCount` and `latest: {kind, preview, at}`, where `preview` is the latest
+  message's first 12 whitespace-separated words, capped at 120 characters;
+- `ageMs` at composition and `foldLine`, for example
+  `impl → rev · 4 messages · report: Checks complete · 2m`.
+
+The hub builds this line entirely from stored facts and its clock; no model
+supplies it. Ages use whole seconds, minutes, hours or days, with `0s` for the
+current message. A live `message` delta includes the message's `runId` and a
+complete `run` replacement with the same id each time the run grows. Consumers
+replace by id without re-reading history. Boundary messages omit both fields.
+The ordinary and numbered/replay delivery paths carry the same run facts;
+there are no timer-only age deltas. `latest.at` anchors the age between changes.
+
+The store updates its derived run tables as messages are recorded (questions
+finalize on publication, after the send transaction attaches any ask card), preserving
+membership and ids across restart, including an Aide recipient's role at send
+time. Eligibility is held on each message, separately from derived group rows,
+so rebuilding after retention cannot fold a surviving former-Aide boundary.
+Queued verifier assignment recomposes only its affected run's participant facts
+from the durable messages, preserving its id, first number and message count;
+the assignment delta and later history name the selected session.
+Existing topics backfill lazily in sequence pages on their first read or
+append; legacy recipient roles use the mapping available at backfill. Physical
+message deletion invalidates only affected topics' projections: their next read
+or append rebuilds runs from the retained messages. If a first message was
+removed, the rebuilt run receives its new retained first message's id/number.
+Agent/internal `history` retains its existing response shape; the additive run
+metadata is supplied on client `topic.history` pages and `message` events.
+
 ## Asks and the inbox
 
 An **ask** is a question the Coordinator puts to the human inside a topic (spec 4.5, decisions #7 and #10): a message whose text is the question, with a card in the store's `asks` table (the numbered options, whether a free answer is welcome, its state).
@@ -1861,7 +1915,7 @@ read. See `nvim/README.md`, “Hub data” and snapshot replay, for the client c
 | --- | --- |
 | `{"type":"hub.status","id":…}` | Hub state, including `keys: {layouts}` for keyboard layouts and `tracker: {levels, ladder}` for loaded container levels, ordered top-down. `ladder` is the nested array of all kinds at each level; `levels` keeps only each level's first kind for older clients. The UI reads the current values on connect/refresh; no config push event is added. Missing/unreadable config reports the levels in use by the running tracker. |
 | `{"type":"topic.list","id":…}` | `{"topics":[Topic…]}`, standing topics first, then those waiting for the human, then by latest activity; a topic with no message last |
-| `{"type":"topic.history","id":…,"topic":"general","limit":50,"after":0}` | `{"topic":Topic,"messages":[TopicMessage…],"more"?:true,"before"?:messageId,"after"?:seq}`, oldest first, at most 200 and byte-capped (see Startup replies) |
+| `{"type":"topic.history","id":…,"topic":"general","limit":50,"after":0}` | `{"topic":Topic,"messages":[TopicMessage…],"runs":[ThreadRun…],"more"?:true,"before"?:messageId,"after"?:seq}`, oldest first, at most 200 and byte-capped (see Startup replies) |
 | `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"],"replyTo":"<message id>"}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the mentions in the text, else the Coordinator); in Agents only a reply is accepted, and it addresses the sender of `replyTo` |
 | `{"type":"topic.create","id":…,"title":"…","item":"T-12"}` | `{"topic":Topic}`; `item` is optional; refused without a title, or for an item that has a topic |
 | `{"type":"topic.close","id":…,"topic":…}` | `{"topic":Topic}`, `closed`; refused for General and Agents |

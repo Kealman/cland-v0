@@ -180,7 +180,19 @@ export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
 /** Exclusive numeric history cursors; string `before` preserves the Neovim message-id cursor. */
 export type TopicHistoryFilter = AgentsHistoryFilter & { before?: number | string; after?: number };
 /** A topic message: durable `seq`, delivery stage, and an ask card when applicable. */
-export type TopicMessage = Message & { seq: number; topic: string; stage?: DeliveryStage; ask?: AskCard };
+export type TopicMessage = Message & { seq: number; topic: string; stage?: DeliveryStage; ask?: AskCard; runId?: string };
+
+/** Hub-built facts for a consecutive run; replace by id on every message delta. */
+export type ThreadRun = {
+  id: string;
+  firstSeq: number;
+  participants: string[];
+  otherParticipants: number;
+  messageCount: number;
+  latest: { kind: string; preview: string; at: string };
+  ageMs: number;
+  foldLine: string;
+};
 
 // ------------------------------------------------------------------ asks and the inbox (spec 4.5 and 5, #33)
 
@@ -268,7 +280,7 @@ export type HubEvent =
   | { type: 'account'; account: import('./accounts/limits.ts').AccountView }
   | { type: 'session.usage'; session: string; sessionId: string; usage: SessionUsage }
   /** A new message in a topic: the human's, an agent's. */
-  | { type: 'message'; topic: TopicRef & Pick<Topic, 'unread' | 'lastMessageAt'>; message: TopicMessage }
+  | { type: 'message'; topic: TopicRef & Pick<Topic, 'unread' | 'lastMessageAt'>; message: TopicMessage; run?: ThreadRun }
   /** A message's stage changed. */
   | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage }
   /** A session's state changed (spec 4.2), from its adapter: `source` names the signal (`hook`, `mod`, `poll`, `process`). */
@@ -671,7 +683,7 @@ export type ClientRequest =
   | { type: 'hub.reload'; id: string }
   /** The project's topics, standing ones first: `{ topics: Topic[] }`. */
   | { type: 'topic.list'; id: string }
-  /** Oldest-first history: latest by default, exclusive numeric before/after pages (max 200). */
+  /** Oldest-first history with full ThreadRun metadata: latest by default, exclusive numeric before/after pages (max 200). */
   | ({ type: 'topic.history'; id: string; topic: string; limit?: number } & TopicHistoryFilter)
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an

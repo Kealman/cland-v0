@@ -51,6 +51,7 @@ import {
   type PendingVerification,
   type Topic,
   type TopicMessage,
+  type ThreadRun,
   type TopicHistoryFilter,
   type TopicRef,
   type TopicStatus,
@@ -782,7 +783,8 @@ export class HubCore {
     if (!topic) return;
     const stage = this.#store.stage(message.id);
     const ask = this.asks.card(message.id);
-    this.#emit({ type: 'message', topic, message: { ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) } });
+    const { messages, runs } = this.#store.threadRuns(topic.id, [{ ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) }], this.#now().getTime());
+    this.#emit({ type: 'message', topic, message: messages[0]!, ...(runs[0] ? { run: runs[0] } : {}) });
   }
 
   /** Observers and transport see committed rows; their failures cannot enter a caller's rollback path. */
@@ -2917,23 +2919,29 @@ export class HubCore {
   }
 
   /** Byte-bounded client pages; agent/internal history retains its existing count contract. */
-  topicHistoryPage(id: string, limit?: number, filter: TopicHistoryFilter = {}): { topic: Topic; messages: TopicMessage[]; more?: boolean; before?: string; after?: number } {
-    const { topic, messages: all } = this.topicHistory(id, limit, filter);
+  topicHistoryPage(id: string, limit?: number, filter: TopicHistoryFilter = {}): { topic: Topic; messages: TopicMessage[]; runs: ThreadRun[]; more?: boolean; before?: string; after?: number } {
+    const { topic, messages: raw } = this.topicHistory(id, limit, filter);
+    const { messages: all, runs } = this.#store.threadRuns(id, raw, this.#now().getTime());
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
     // Leave envelope/cursor room below the 256 kB wire cap. Messages stay whole;
     // an individually oversized message is the explicit one-message exception.
     let bytes = Buffer.byteLength(JSON.stringify(topic)) + 1024;
+    const runById = new Map(runs.map(run => [run.id, run]));
+    const included = new Set<string>();
     let count = 0;
     const ordered = filter.after !== undefined ? all : [...all].reverse();
     for (const message of ordered) {
-      const size = Buffer.byteLength(JSON.stringify(message)) + 1;
+      const run = message.runId && !included.has(message.runId) ? runById.get(message.runId) : undefined;
+      const size = Buffer.byteLength(JSON.stringify(message)) + 1 + (run ? Buffer.byteLength(JSON.stringify(run)) + 1 : 0);
       if (count && bytes + size > 255 * 1024) break;
       bytes += size;
+      if (run) included.add(run.id);
       count++;
     }
     const messages = filter.after !== undefined ? all.slice(0, count) : all.slice(all.length - count);
     const more = count < all.length || all.length === n;
-    return { topic, messages, ...(more ? { more: true, before: messages[0]!.id, after: messages.at(-1)!.seq } : {}) };
+    const runIds = new Set(messages.map(message => message.runId));
+    return { topic, messages, runs: runs.filter(run => runIds.has(run.id)), ...(more ? { more: true, before: messages[0]!.id, after: messages.at(-1)!.seq } : {}) };
   }
 
   renameTopic(id: string, title: string): Topic {

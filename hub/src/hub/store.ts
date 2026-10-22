@@ -1,3 +1,4 @@
+import { appendRun, foldLine, joinsRun, runDay, type RunFacts } from './thread-runs.ts';
 import { parseItemReference } from '../tracker/prefixes.ts';
 import { idNumber } from '../tracker/item.ts';
 const itemKey = (id: string): string => Number.isSafeInteger(idNumber(id)) ? `T-${idNumber(id)}` : id;
@@ -7,7 +8,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
-import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, TopicHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskOutcome, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, ThreadRun, TopicHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskOutcome, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
@@ -92,6 +93,14 @@ create table if not exists messages (
   ts text not null,
   created_at integer not null
 );
+create table if not exists thread_runs (id text primary key, topic text not null, data text not null);
+create index if not exists thread_runs_topic on thread_runs(topic);
+create table if not exists thread_run_members (
+  message_id text primary key references messages(id) on delete cascade,
+  topic text not null, seq integer not null, run_id text
+);
+create index if not exists thread_run_members_topic on thread_run_members(topic, seq);
+create index if not exists thread_run_members_run on thread_run_members(run_id, seq);
 create index if not exists messages_created on messages (created_at);
 create index if not exists messages_from on messages (from_name, created_at);
 create table if not exists deliveries (
@@ -188,6 +197,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'artifacts', type: 'text' },
   { table: 'messages', column: 'criteria', type: 'text' },
   { table: 'messages', column: 'from_role', type: 'text' },
+  /** Eligibility at send time survives rebuilding derived runs after retention. Null: legacy, not projected yet. */
+  { table: 'messages', column: 'run_eligible', type: 'integer' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
   /** The agent's send kind, or the hub notice's kind (`role`: a clause or revocation). */
@@ -852,6 +863,10 @@ export class Store implements HygieneMemory {
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
       const insert = this.#prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id, direct) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?), ?)');
       for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null, d.session, d.direct ? 1 : 0);
+      this.#prepare('update messages set run_eligible = ? where id = ?').run(Number(joinsRun(message, name => this.roleOf(name))), message.id);
+      // A question's enclosing send transaction may still attach an ask card.
+      // Finalize it on publication/read, after recordQuestion has distinguished an ask from a peer question.
+      if (message.topic && (notice ?? message.kind) !== 'question') this.#updateThreadRuns(message.topic);
       // Binding and recording are one synchronous transaction: no awaited transport can claim these notes twice.
       // Role clauses on reconnect establish authority, but leave held progress for the next ordinary delivery.
       const kind = notice ?? message.kind;
@@ -1046,6 +1061,7 @@ export class Store implements HygieneMemory {
       const message = this.message(messageId)!;
       message.to = [...new Set(message.to.map(name => name === role ? session : name))];
       this.#prepare('update messages set to_json = ? where id = ?').run(JSON.stringify(message.to), messageId);
+      this.#refreshThreadRun(messageId);
       const existing = this.#prepare('select 1 from deliveries where message_id = ? and session = ?').get(messageId, session);
       if (existing) this.dropVerifierRequest(messageId, role);
       else this.#prepare(`update deliveries set session = ?, session_id = (select session_id from sessions where name = ?),
@@ -1465,9 +1481,70 @@ export class Store implements HygieneMemory {
         if (['queued', 'delivered', 'uncertain'].includes(row.state as string)) batch.reheld.push(note);
         clear.run(note, session);
       }
+      const topics = this.#prepare(`select distinct topic from messages where id in (${selectIds})`).all(...args) as Row[];
+      for (const { topic } of topics) if (typeof topic === 'string') {
+        this.#prepare('delete from thread_run_members where topic = ?').run(topic);
+        this.#prepare('delete from thread_runs where topic = ?').run(topic);
+      }
       this.#prepare(`delete from message_reads where id in (${selectIds})`).run(...args);
       const gone = Number(this.#prepare(`delete from messages where id in (${selectIds})`).run(...args).changes);
       return { gone, released };
+    });
+  }
+
+  /** Append facts once per durable message. Older stores backfill only the topic being read/written. */
+  #updateThreadRuns(topic: string): void {
+    const last = this.#prepare('select seq, run_id from thread_run_members where topic = ? order by seq desc limit 1').get(topic) as Row | undefined;
+    let after = Number(last?.seq ?? 0);
+    let current = last?.run_id ? this.#runFacts(last.run_id as string) : undefined;
+    for (;;) {
+      const rows = this.#prepare('select m.*, exists(select 1 from asks a where a.id = m.id) as has_ask from messages m where topic = ? and seq > ? order by seq limit 200').all(topic, after) as Row[];
+      if (!rows.length) break;
+      for (const row of rows) {
+        const message = toMessage(row), seq = Number(row.seq);
+        const eligible = !row.has_ask && (row.run_eligible === null ? joinsRun(message, name => this.roleOf(name)) : row.run_eligible === 1);
+        // Freeze legacy classification once, and finalize a question after its ask card exists.
+        if (row.run_eligible === null || Number(eligible) !== row.run_eligible) this.#prepare('update messages set run_eligible = ? where id = ?').run(Number(eligible), message.id);
+        if (!eligible) current = undefined;
+        else {
+          if (current && runDay(current.latest.at) !== runDay(message.ts)) current = undefined;
+          current = appendRun(current, message, seq);
+          this.#prepare('insert into thread_runs(id, topic, data) values (?, ?, ?) on conflict(id) do update set data = excluded.data').run(current.id, topic, JSON.stringify(current));
+        }
+        this.#prepare('insert into thread_run_members(message_id, topic, seq, run_id) values (?, ?, ?, ?)').run(message.id, topic, seq, current?.id ?? null);
+        after = seq;
+      }
+    }
+  }
+
+  #runFacts(id: string): RunFacts | undefined {
+    const row = this.#prepare('select data from thread_runs where id = ?').get(id) as Row | undefined;
+    return row ? JSON.parse(row.data as string) as RunFacts : undefined;
+  }
+
+  /** Verifier assignment replaces a role placeholder with a session in an existing run. */
+  #refreshThreadRun(messageId: string): void {
+    const member = this.#prepare('select run_id from thread_run_members where message_id = ?').get(messageId) as Row | undefined;
+    if (!member?.run_id) return;
+    const rows = this.#prepare('select m.* from thread_run_members member join messages m on m.id = member.message_id where member.run_id = ? order by member.seq').all(member.run_id as string) as Row[];
+    let facts: RunFacts | undefined;
+    for (const row of rows) facts = appendRun(facts, toMessage(row), Number(row.seq));
+    if (facts) this.#prepare('update thread_runs set data = ? where id = ?').run(JSON.stringify(facts), member.run_id as string);
+  }
+
+  /** Full run metadata even when the caller's page contains only a suffix or filtered members. */
+  threadRuns(topic: string, messages: TopicMessage[], now: number): { messages: TopicMessage[]; runs: ThreadRun[] } {
+    return this.#transaction(() => {
+      this.#updateThreadRuns(topic);
+      const runs = new Map<string, ThreadRun>();
+      const annotated = messages.map(message => {
+        const member = this.#prepare('select run_id from thread_run_members where message_id = ?').get(message.id) as Row | undefined;
+        if (!member?.run_id) return message;
+        const runId = member.run_id as string;
+        if (!runs.has(runId)) runs.set(runId, foldLine(this.#runFacts(runId)!, now));
+        return { ...message, runId };
+      });
+      return { messages: annotated, runs: [...runs.values()] };
     });
   }
 
