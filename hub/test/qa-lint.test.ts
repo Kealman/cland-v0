@@ -31,6 +31,11 @@ test('valid brief accepts quoted values, command aliases and forwarded arguments
   assert.deepEqual(lintQaBrief(brief), []);
 });
 
+test('brief accepts demo status freshness checks at a named commit', () => {
+  const brief = '| id | role | command | expected |\n| --- | --- | --- | --- |\n| M1 | QA | `cland demo status E-1 --commit <sha> --json` | current freshness |';
+  assert.deepEqual(lintQaBrief(brief), []);
+});
+
 test('assigned roles use the built-in permission checks across brief sections', () => {
   const brief = 'Role: Implementer\n\n## Manual checks\n| id | command | expected |\n| --- | --- | --- |\n| M1 | `cland task create "new" --size S` | refused |\n| M2 | `cland task comment T-957 hello` | comment |\n| M3 | `cland verify --report general` | refused |';
   const findings = lintQaBrief(brief);
