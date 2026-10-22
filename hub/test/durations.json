@@ -8267,6 +8267,20 @@
       "added": "2026-10-22",
       "expires": "2026-10-29",
       "reason": "T-1073 drawer card test measured 3.49 to 5.073 s on Linux c-8 droplets (runs 1a5b7020, d313ff6a, 5fdaa16a) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web tests under budget"
+    },
+    "hub/test/item-summary-scale.test.ts::a thousand-item planned startup batches explorer recomputation": {
+      "seconds": 11,
+      "owner": "E-880",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "T-1104 startup identity measured 2.4 to 2.7 s on local macOS (A-9251) and 7.025 s on a Linux c-8 blr1 droplet (run 814f79d4, A-9316) against the 5 s new-identity gate; it starts a real hub on a thousand-item fixture. Headroom about 1.5x the worst sample until E-880 restores tier budgets."
+    },
+    "hub/test/item-summary-scale.test.ts::a thousand-item planned hub serves within two seconds of listening before maintenance": {
+      "seconds": 11,
+      "owner": "E-880",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "T-1104 startup identity measured 2.2 to 2.7 s on local macOS (A-9251) and 7.413 s on a Linux c-8 blr1 droplet (run 814f79d4, A-9316) against the 5 s new-identity gate; its 2 s listening-to-serving assertion is unchanged. Headroom about 1.5x the worst sample until E-880 restores tier budgets."
     }
   }
 }
