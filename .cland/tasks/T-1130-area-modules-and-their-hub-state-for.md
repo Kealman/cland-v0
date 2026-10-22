@@ -11,10 +11,10 @@ assignee: null
 parent: E-418
 blocked_by:
   - T-1115
-topic: null
+topic: topic-857
 branch: t/T-1130-area-modules-and-their-hub-state-for
 created: 2026-10-22T15:16:14.835Z
-updated: 2026-10-22T16:02:31.743Z
+updated: 2026-10-22T16:02:54.028Z
 ---
 
 ## Summary

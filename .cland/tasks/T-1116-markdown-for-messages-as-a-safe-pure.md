@@ -2,8 +2,8 @@
 id: T-1116
 kind: task
 title: Markdown for messages as a safe pure parser
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-853
 branch: t/T-1116-markdown-for-messages-as-a-safe-pure
 created: 2026-10-22T15:16:12.285Z
-updated: 2026-10-22T15:57:55.264Z
+updated: 2026-10-22T16:08:08.252Z
+closed: 2026-10-22T16:08:08.252Z
 ---
 
 ## Summary
@@ -34,12 +35,15 @@ Each message is parsed on its own (v0.1 §3.14): headings, paragraphs, lists ali
 - [x] C1. The parser turns headings, paragraphs, lists, quotes, fenced code with its language, inline code, bold, italic, links and item ids into tokens, and an unclosed fence ends at the message's end (test).
   - verified: rev-26 [reviewer] · run rev-20261022-1116-final-1 · 2026-10-22T15:56:11.587Z · commit de2fdf9a2aa760b5b31bcb243c18d68526b7987e
   - done: impl-1116 · 2026-10-22T15:57:22.240Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1116-final-2 · 2026-10-22T16:04:39.000Z · commit 5c57b44b9579f70e21d2ad7aa0a732ef6aa0f64f
 - [x] C2. Raw HTML in a message stays a text token, and a link token is produced only for an `http` or `https` address (test).
   - verified: rev-26 [reviewer] · run rev-20261022-1116-final-1 · 2026-10-22T15:56:11.587Z · commit de2fdf9a2aa760b5b31bcb243c18d68526b7987e
   - done: impl-1116 · 2026-10-22T15:57:22.384Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1116-final-2 · 2026-10-22T16:04:39.000Z · commit 5c57b44b9579f70e21d2ad7aa0a732ef6aa0f64f
 - [x] C3. The web typecheck fails on `dangerouslySetInnerHTML` or an `innerHTML`/`outerHTML` write in the web sources, with a seeded fixture proving the check (test).
   - verified: rev-26 [reviewer] · run rev-20261022-1116-final-1 · 2026-10-22T15:56:11.587Z · commit de2fdf9a2aa760b5b31bcb243c18d68526b7987e
   - done: impl-1116 · 2026-10-22T15:57:22.678Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1116-final-2 · 2026-10-22T16:04:39.000Z · commit 5c57b44b9579f70e21d2ad7aa0a732ef6aa0f64f
 
 ## Comments
 
@@ -157,3 +161,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized dev-merge delta source clear; A-9266 audits both parents/combined conflict under Coordinator92b4cedf. Solemanualresolution implement-skill metadata keeps allentries/bothT-1116+T-1109; bothbodyblocks/docs retained. Owned parser,guard,T1contracts,package/typecheck/tsconfig unchanged. Incoming approvedT-1104/T-1109 andCoordinatoroutageconfig are context; no task-local executor edit. Standards0;Spec0. HistoricalA-9262 remains localmacOS2453/2453,T0/T1/allT2/Web/sevenparser5/5 atoldde2fdf9a, not merged-head evidence. AllC1–C3 await freshmode-free verification atunchanged5c57b44b; record actual executor/fallback, genericdiagnosticmodes and phase limits. Changed head needs new source review; after-stageQA separate.
+
+### impl-1116 · 2026-10-22T16:03:57.637Z
+
+Post-conflict exact-head verification green: 138d638a/A-9273 at 5c57b44b9579f70e21d2ad7aa0a732ef6aa0f64f. Configured droplet request automatically fell back locally on c-8 unavailability (same run; no duplicate submission). Actual local darwin arm64, Node v24.21.0, Neovim v0.12.5: auto exit 0, 2463/2463 passed, no failures/skips/cancellations. T0 check, all T1, fallback all T2 both packages and Web completed. Timing and lint diagnostics report-only; eight would-fail duration lines retained in receipt, not claimed as meeting budgets. T3/T4, Linux and stage QA not claimed. Awaiting final same-head Reviewer verdict; branch clean and no merge performed.
+
+### rev-26 · 2026-10-22T16:04:39.000Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1116-final-2
+commit: 5c57b44b9579f70e21d2ad7aa0a732ef6aa0f64f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-9274 audits originalA-9273/run138d638a atsource-clear5c57b44b/tree3b600347. Hub explicitlyfellbackfromunavailablec-8 tolocalDarwinarm64 Node24.21/Nvim0.12.5,actualworkers4(Web2,load2). Hostandlocalcheck retained; seededHTMLguard passes,zero lintrefusals. T0localcheck/T1/allfallbackT2hub+Neovim/Web exit0,2463ordinarypass/zero fail/cancel/skip. Sevenparser identities eachordinarypass+5distinctloadpasses with explicit5/5,maxload.001988459s; C3guardfixtures/wiring retained. Standards0;Spec0. Genericlint/tier/duration/ratchet report-only132/59,fourmissingbaselines,Neovimdurationwarnings retained;noenforcedtier-budgetclearance. ActualWeb37.17s,noLinuxruntime/T3/T4/fullcover/renderer-security/stageQAclaim. Historicalreceipts retained;afterstageQA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-22T16:08:08.252Z
+
+Merged efb731534414d90310f5a2548e0874cf93d3c89e onto dev.

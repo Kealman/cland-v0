@@ -11,10 +11,10 @@ assignee: null
 parent: E-417
 blocked_by:
   - T-1115
-topic: null
+topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T16:02:26.154Z
+updated: 2026-10-22T16:09:12.856Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ The Topics area shows the topics in groups (§3.2): those waiting for the human 
 - [ ] C2. A topic of 300 messages opens at its last message, and scrolling up loads earlier pages by message number until the first message with no gap or repeat (Web test).
 - [ ] C3. A message sent into the open topic appears at the thread's end without another history read (Web test).
 - [ ] C4. After the thread's end has been on screen with the page visible for one second, a second frame client reads the topic's unread count as 0, and a hidden page sends no read mark (Web test).
+
+## Comments
+
+### impl-1118 · 2026-10-22T16:09:12.856Z
+
+TDD progress at working tree: grouping/fold persistence and 300-message numeric-page/scroll-anchor tests pass in isolated Headless Shell on local Darwin arm64. Live ask/message updates pass without additional history or topic-list reads and match fresh real-frame history. Adding the visible one-second read rule, keyboard controls and reconnect/race coverage. No suite run yet; source review precedes mode-free verification.

@@ -3,7 +3,7 @@ id: T-1117
 kind: task
 title: The human's message kinds and Withdraw in the hub
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T16:02:24.554Z
+updated: 2026-10-22T16:08:35.428Z
 ---
 
 ## Summary
@@ -33,18 +33,24 @@ The human's `topic.send` takes an optional kind, `message` by default, `decision
 
 - [x] C1. A Decision and a Question sent by the human carry their kind on the message, in a later history read and in the delta a second frame client receives (test).
   - done: impl-1117 · 2026-10-22T15:41:16.997Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.244Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
 - [x] C2. A Question addressed to a session leaves the topic waiting for that session, as `cland` reads the topic (test).
   - done: impl-1117 · 2026-10-22T16:01:03.386Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.244Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
 - [x] C3. Withdrawing a message queued for a busy fake session moves it to `withdrawn`, returns its text, and the session never receives it, also after the turn ends (test).
   - done: impl-1117 · 2026-10-22T15:41:17.167Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
 - [x] C4. A withdraw after the message was injected is refused naming the stage, and an agent's withdraw and another sender's message are refused (test).
   - done: impl-1117 · 2026-10-22T15:41:17.456Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
 - [x] C5. Neovim's thread shows a withdrawn message with the dropped glyph and colour (test).
   - done: impl-1117 · 2026-10-22T15:33:38.995Z
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
 - [x] C6. `hub/README.md` and `nvim/README.md` describe the kinds and the withdraw (docs).
   - done: impl-1117 · 2026-10-22T15:33:39.077Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-source-2 · 2026-10-22T15:42:06.382Z · commit 74e5f348ca0cc7196f2b413282f6f20cdc418925
   - verified: rev-32 [reviewer] · run rev-20261022-1117-source-3 · 2026-10-22T16:02:24.554Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-final · 2026-10-22T16:08:35.245Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
 
 ## Comments
 
@@ -111,3 +117,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear A-9272, carrying complete audit A-9240/A-9246. M3 resolved by the sole added kind:'question' field at handover.test.ts:81; original inherited status-wait and all handover/claim/note/permission assertions unchanged. No production/resources/docs changes or remaining findings. C6 matching docs source-verified at this head; C1–C5 run-dependent paths established but await fresh configured same-head evidence. A-9271 local targeted handover/typecheck narrative is supplemental; A-9267 at previous head remains failed partial evidence. Mode-free verify may run at this exact head; no runtime green or Linux pass claimed.
 
 Criteria: C6 verified.
+
+### rev-32 · 2026-10-22T16:08:35.245Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261022-1117-final
+commit: 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear A-9278: fresh same-head run1cbd8ffb/A-9275 exits0 on local Darwin arm64 automatic capacity fallback, Node24.21.0/Neovim0.12.5. Host T0 check, T1, all-T2 hub+Neovim, Web complete; aggregate2457 pass/0fail/0skip. Eleven new identities each have completed5/5 load receipts. C1 kind/history/peer delta, C2 Question wait/addressee plus retained handover status wait, C3 busy withdrawal/late ack/progress/next-turn and Store reopen, C4 injected/agent/other-sender/submission/broadcast refusal, C5 recorded Neovim glyph/colour/old-stage rejection pass. C6 docs carried from same-head source A-9272. Generic budgets, lint and T3 ratchet report-only; zero lint refusals. No Linux/T3/T4 or integrated full-suite pass claimed. Prior red/capacity receipts remain historical. All criteria verified, no remaining findings; inherited affected/after-stage QA remains separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
