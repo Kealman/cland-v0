@@ -124,6 +124,10 @@ export function Shell() {
     }
     if (!overlay && area === 'Items') {
       const focused = document.activeElement;
+      if (action === 'tree-edit-criteria') {
+        focused?.closest('[data-criteria-block]')?.querySelector<HTMLButtonElement>('[data-criteria-toggle][aria-expanded="false"]')?.click();
+        return;
+      }
       const inCard = focused?.closest('[aria-label="Item card"]');
       if (inCard && (action === 'dismiss' || action === 'tree-close' || action === 'accept')) {
         const item = inCard.getAttribute('data-item-id');

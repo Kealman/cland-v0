@@ -2,7 +2,7 @@ export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifac
 export type Area = typeof areas[number];
 export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
   | 'tree-scope' | 'tree-back' | 'jump-leader' | 'jump-item' | 'jump-topic' | 'jump-session'
-  | 'tree-select' | 'tree-extend-next' | 'tree-extend-previous' | 'tree-message' | 'tree-topic-message'
+  | 'tree-select' | 'tree-extend-next' | 'tree-extend-previous' | 'tree-message' | 'tree-topic-message' | 'tree-edit-criteria'
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
@@ -20,6 +20,7 @@ export const keyMap: Readonly<Record<string, Shortcut>> = {
   KeyG: 'jump-leader', 'KeyG KeyI': 'jump-item', 'KeyG KeyT': 'jump-topic', 'KeyG KeyS': 'jump-session',
   KeyX: 'tree-select', 'Shift+KeyJ': 'tree-extend-next', 'Shift+KeyK': 'tree-extend-previous',
   KeyM: 'tree-message', 'Shift+KeyM': 'tree-topic-message',
+  KeyE: 'tree-edit-criteria',
   KeyJ: 'tree-next', KeyK: 'tree-previous', KeyL: 'tree-open', KeyH: 'tree-close',
   KeyZ: 'tree-leader', 'KeyZ KeyA': 'tree-toggle', 'Shift+KeyD': 'tree-done', 'Shift+KeyA': 'tree-archive',
 };
@@ -66,6 +67,7 @@ export const treeActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
   { action: 'tree-select', label: 'Toggle item selection' },
   { action: 'tree-extend-next', label: 'Extend selection down' }, { action: 'tree-extend-previous', label: 'Extend selection up' },
   { action: 'tree-message', label: 'Message General' }, { action: 'tree-topic-message', label: 'Message item topic' },
+  { action: 'tree-edit-criteria', label: 'Edit criteria block' },
   { action: 'tree-next', label: 'Next item' }, { action: 'tree-previous', label: 'Previous item' },
   { action: 'tree-open', label: 'Unfold or enter children' }, { action: 'tree-close', label: 'Fold or go to parent' },
   { action: 'tree-toggle', label: 'Toggle item fold' }, { action: 'tree-done', label: 'Hide done items' },

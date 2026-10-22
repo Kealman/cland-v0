@@ -118,7 +118,7 @@ test('the palette and area keys help', async t => {
         await physical(page, 'Shift+Slash');
         const localHelp = page.getByRole('dialog', { name: `${area} keys`, exact: true });
         await localHelp.waitFor();
-        assert.equal(await localHelp.locator('kbd').count(), area === 'Items' ? 32 : 14);
+        assert.equal(await localHelp.locator('kbd').count(), area === 'Items' ? 33 : 14);
         assert.equal(await localHelp.locator('[data-key-action="dismiss"]').count(), 1, 'one contextual row per action');
         if (area === 'Items') {
           assert.equal(await localHelp.locator('[data-key-action="accept"] kbd').textContent(), 'Enter');
@@ -206,7 +206,7 @@ test('the palette and area keys help', async t => {
 
 });
 
-test('Items help contains all 32 rows within small viewports during complete keyboard scrolls', async t => {
+test('Items help contains all 33 rows within small viewports during complete keyboard scrolls', async t => {
   const fixture = await webFixture(t);
   for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
     await t.test(`${viewport.width}×${viewport.height}`, async t => {
@@ -217,7 +217,7 @@ test('Items help contains all 32 rows within small viewports during complete key
         const help = page.getByRole('dialog', { name: 'Items keys', exact: true });
         await help.waitFor();
         const rows = help.locator('[data-key-action]');
-        assert.equal(await rows.count(), 32);
+        assert.equal(await rows.count(), 33);
         assert.equal(await help.evaluate(node => {
           const rect = node.getBoundingClientRect();
           return rect.top >= 0 && rect.left >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth;
@@ -275,7 +275,7 @@ test('Items help contains all 32 rows within small viewports during complete key
         }
         assert.equal(await help.evaluate(node => node.scrollTop + node.clientHeight >= node.scrollHeight - 1), true, 'PageDown stops at the bottom');
         const seen = await observed.evaluate(state => [...state.seen]);
-        assert.deepEqual(seen.sort(), actions.sort(), 'PageDown brings every one of the 32 help rows fully into view');
+        assert.deepEqual(seen.sort(), actions.sort(), 'PageDown brings every one of the 33 help rows fully into view');
         assert.equal(await help.evaluate(node => {
           const rect = node.getBoundingClientRect();
           return rect.top >= 0 && rect.left >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth;

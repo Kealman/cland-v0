@@ -104,6 +104,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [-
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
   task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
   task criterion <id> add <text>
+                  web card: e on Criteria opens one-line text fields without the Ck. label; done records human.
                   claimant: mark every criterion done before the final review; ready needs done and verified.
                   uncontested writes leave no .conflict; a concurrent save refusal names its recovery source.
   task rank <id> <--top | --before <id> | --after <id>>

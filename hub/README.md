@@ -2337,6 +2337,18 @@ are re-indexed and survive restart, preserving
 the ids, text and marks in the file. This slice only reads the section: views do
 not assign ids, rewrite marks or change checkboxes.
 
+In the web card, **Criteria** (or physical `e` on that block) opens the full
+criterion list through `task.view`. Add, Save, Remove and Mark done use
+`task.criterion` as the authenticated human, without an `as` field. Each text
+field is one line and excludes its `Ck.` label. Removal never reuses the id;
+Mark done records `human` and offers no undo. Open criteria refresh on item
+deltas. Legacy criteria with null ids stay read-only, with a tooltip explaining
+that Add or a CLI criterion write assigns persisted ids; no positional id is
+guessed. Errors retain the draft, with their reason in a tooltip; offline writes
+are disabled and mutations are never retried automatically. The Items UI edits
+no other item field: labels and body stay in Neovim. The protocol's existing
+human authority and role grants do not change.
+
 - **Task status (T-120).** Tasks carry explicit frontmatter `status`: `backlog` at creation, `planned`, `in progress`, `review`, `qa`, `ready` or `done`; containers, questions, specs and maps have none. The hub writes and indexes it on the tracker's single queue and carries it in view, list and the existing `task` event. An accepted epic plan sets the current stage's open backlog tasks to `planned` once per stage entry, including blocked tasks; pending approval moves nothing. New members of the current stage move once too, and the next stage advances after landing and any required after-stage QA. Hand statuses stay, including a reset to `backlog`; without a plan, `planned` stays a hand status. Closed epics report all plan stages closed without task writes; reopening restores their derived states. A new Implementer or Aide claim or a not-clear verdict sets `in progress`; a merge or close sets `done`; a reopen without an explicit status sets `backlog`. Done tasks are closed and all other statuses are open. Migration on index persists `done` for closed tasks and `in progress` for open claimed tasks, otherwise `backlog`. Hand edits are re-indexed, including close/reopen edits to state.
 - **Manual status.** The Coordinator, the human and an Aide use `cland task edit T-n --status <status>` or MCP `task.edit`'s `status` to choose any status. `done` closes the task and releases the claim; choosing another status reopens it at that status. The Implementer hands over with `task.edit {id, status: "review"}` on its own live claimed item, with no other edits. The permission table checks this right again after file I/O; assignment alone is insufficient. Other sessions cannot set status, even under a whole-tool `task.edit` grant. An explicit state and status in the same edit must agree. Verifier holds and clear, current verdicts also move status as described below.
 - **Release planning (T-118).** Kind `release` adds optional frontmatter `version`, semver without the `v` (for example `0.1.0`, including prerelease/build suffixes). Create it with `cland task create "v0.1" --kind release --version 0.1.0`; omit the version until planned and set it with `task edit --version` (`none` clears it). The first configured level owns version and Notes, even when renamed. Other kinds cannot carry a version; malformed versions are refused. Its body holds the goal and `## Notes`, which creation and kind conversion add if missing. The version is indexed, returned in view/list/events and preserved through writes and restarts. Release from the item with `cland release --item T-n` as described under Release and sync.

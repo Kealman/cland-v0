@@ -5934,15 +5934,22 @@
     "nvim/test/human-marks-component.test.ts::C2: visiting events publishes the shared last look; a peer reading a topic clears its Neovim row": 0.278806,
     "nvim/test/human-marks-component.test.ts::C3: legacy marks import once before their ui.json keys are removed": 0.416835,
     "nvim/test/human-marks-component.test.ts::marks.get replays a peer delta received before its held older response": 0.225678,
-    "web/test/palette.test.ts::Items help contains all 32 rows within small viewports during complete keyboard scrolls": 3.480305
+    "web/test/palette.test.ts::Items help contains all 33 rows within small viewports during complete keyboard scrolls": 3.480305
   },
   "allow": {
-    "web/test/palette.test.ts::Items help contains all 32 rows within small viewports during complete keyboard scrolls": {
+    "web/test/item-criteria.test.ts::criteria edits on the card": {
+      "seconds": 17.3,
+      "owner": "E-880",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "T-1078: three Web criterion cases share one sealed scratch hub and Headless Shell, with CLI readback for stable-id add/edit/remove/non-reuse, mixed legacy/explicit and retained high-water identity preservation, human done attribution and other-field read-only checks. Linux x64 c-8 lon1 run 943b7716 at abaf4ae5 (A-9102) observed assertion-green parent 11.507 s, with 2439 recorded tests passing and only this enforced new-identity duration gate red. Temporary cap is about 1.5x that Linux sample; no waits, assertions or fixture teardown are changed. E-880 owns reducing Web fixture cost; the separate 4 s Web budget remains report-only."
+    },
+    "web/test/palette.test.ts::Items help contains all 33 rows within small viewports during complete keyboard scrolls": {
       "seconds": 7.5,
       "owner": "E-880",
       "added": "2026-10-22",
       "expires": "2026-10-29",
-      "reason": "T-1097 complete keyboard-scroll regression measured 4.451092109 s in Linux x64 c-8 lon1 run 146b8efc at 1a508be8 (A-9032) and 4.979509666 s in run 994a565b at 9782fdbd (A-9040). Native PageDown/End/Home completion, both small viewports, exact all-32-row visibility and browser/hub teardown are retained. Temporary cap rounds up about 1.5x the worst measured Linux sample while E-880 restores Web tier budgets."
+      "reason": "T-1097 complete keyboard-scroll regression measured 4.451092109 s in Linux x64 c-8 lon1 run 146b8efc at 1a508be8 (A-9032) and 4.979509666 s in run 994a565b at 9782fdbd (A-9040). Native PageDown/End/Home completion, both small viewports, exact all-32-row visibility and browser/hub teardown are retained. Temporary cap rounds up about 1.5x the worst measured Linux sample while E-880 restores Web tier budgets. T-1078 adds the criteria shortcut: the identity migrates from all 32 to all 33 rows, retaining exact every-row visibility in both viewports."
     },
     "web/test/board.test.ts::the Board view and Items view switcher": {
       "seconds": 9.7,

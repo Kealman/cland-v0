@@ -602,6 +602,7 @@
     "web/test/folds.test.ts": "Web",
     "web/test/graph.test.ts": "Web",
     "web/test/item-card.test.ts": "Web",
+    "web/test/item-criteria.test.ts": "Web",
     "web/test/items-actions.test.ts": "Web",
     "web/test/items-order.test.ts": "Web",
     "web/test/items.test.ts": "Web",

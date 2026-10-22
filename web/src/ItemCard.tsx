@@ -5,6 +5,7 @@ import s from './ItemCard.module.css';
 import { ItemText } from './ItemText.tsx';
 import { QuickMessage, type MessageTarget } from './QuickMessage.tsx';
 import { numberOf } from './items-tree.ts';
+import { ItemCriteria } from './ItemCriteria.tsx';
 
 /** Snapshot facts remain independent from the body, fetched only on expansion. */
 export function ItemCard({ item: row, connection, message }: { item: ExplorerSummary; connection: ConnectionState; message?: MessageTarget | undefined }) {
@@ -59,6 +60,7 @@ export function ItemCard({ item: row, connection, message }: { item: ExplorerSum
       <p>{item.child_counts.done} of {item.child_counts.total} done</p>
       <p>{Object.entries(item.child_counts.statuses).map(([status, count]) => `${count} ${status}`).join(' · ')}</p>
     </> : <p>{item.criteria.verified} of {item.criteria.total} verified · {item.criteria.done} done · {item.criteria.failed} failed · {item.criteria.stale} stale</p>}
+    <ItemCriteria key={item.id} item={row} connection={connection} />
     {!!item.stages?.length && <><h3>Plan stages</h3>{item.stages.map((stage, index) => <p key={stage.name}>
       S{index + 1} {stage.name} · {stage.state} · {stage.merged}/{stage.total} merged · {stage.qa.scope} {stage.qa.when}
     </p>)}</>}

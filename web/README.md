@@ -137,6 +137,7 @@ using the hub's counts when only part of the closed child list is loaded.
 | `gi`, `gt`, `gs` | Jump to the item, its topic or its session/Coordinator |
 | `Enter` | Enter the card or return to the tree |
 | `Esc`, `h` in the card | Return to its tree row |
+| `e` on the card's Criteria block | Open criterion edits |
 | `?` | Show the active area's keys |
 
 The scope breadcrumbs open an ancestor or the project roots; each scope change
@@ -155,7 +156,19 @@ context line per item, explicitly addressed to the Coordinator. Moving the curso
 to an unmarked row keeps the marked selection as the message context. `M` or **Item topic**
 uses a task/epic topic, creating it when missing; a multiple-row selection always
 goes to General. The field retains the draft on a failed send and never retries a
-mutation automatically. Offline sending is disabled. No tracker fields are edited.
+mutation automatically. Offline sending is disabled.
+
+The card's **Criteria** button, or physical `e` while that block has focus, opens
+single-line criterion fields. Add, Save, Remove and Mark done send `task.criterion`
+with the authenticated human's authority. Criterion ids stay outside the text
+field and are never reused after removal. A done mark names `human`; it cannot
+be unchecked here. Opening the block reads `task.view` for the full criteria;
+item deltas refresh the open block. Failed writes retain drafts and show their
+reason in a tooltip; writes are disabled offline and never retried automatically.
+Legacy criteria without persisted ids are read-only; their tooltip explains
+that Add or a CLI criterion write assigns ids before they become editable.
+Labels, body, status, rank and all other item fields remain read-only in Items;
+labels and body are edited in Neovim. Messages and plan approval are separate actions.
 
 Click a row to select it; click its chevron or double-click to fold/unfold it.
 The current release stays unfolded. The browser keeps tree folds, `D` and `A`

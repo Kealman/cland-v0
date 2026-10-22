@@ -87,6 +87,15 @@ The GitHub Issues served as the human-facing mirror until v0 was done. At the hu
 - **Assign**: `cland task edit T-<n> --assignee <name>`; `--assignee none` clears it.
 - **Close**: `cland task close T-<n> --comment "<text>"`. An epic (the second configured level, `tracker.levels[1]`) also needs a current clear hub-written QA verdict on the exact `dev` tip, with every criterion verified by QA in that run, and no open children (D16). Refusals name missing verdicts or criterion ids. The human shell may skip epic QA evidence with `--override "reason"`; the journal records `epic-close-overridden`, the reason and unmet criteria. Open children still refuse. Releases keep their own path through `cland release --item`. Reopen an unmerged item with `cland task edit T-<n> --state open`.
 
+The web card's Criteria block also manages criteria with the human's existing
+`task.criterion` rights: click Criteria or press physical `e` on its block, then
+Add, Save, Remove or Mark done. Criterion text is one line, without its `Ck.`
+label; ids are not reused. Done is attributed to `human`. Labels and body remain
+Neovim edits, and Items exposes no other item-field editor. Opening criteria
+reads `task.view`; ordinary row navigation still uses summary facts only.
+Legacy rows with no id stay read-only until Add or a CLI criterion write returns
+persisted ids. Their tooltip explains this; the browser never guesses an id.
+
 ### After a task merges
 
 A landed task is complete. Reopening it through `task edit --state open`, a non-done status, or a failing criterion/verdict is refused. Create a follow-up with `cland task create "<title>" --parent T-<epic-or-release>` (omit the parent for unscheduled work), and reference the merged task in its body. Claiming the follow-up starts its own branch and worktree from current `dev`. A prepared merge receipt that fully rolled back does not count as a landing.
