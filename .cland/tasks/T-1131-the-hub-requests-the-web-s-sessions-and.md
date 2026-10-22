@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-855
 branch: t/T-1131-the-hub-requests-the-web-s-sessions-and
 created: 2026-10-22T15:16:14.965Z
-updated: 2026-10-22T15:30:13.598Z
+updated: 2026-10-22T15:33:33.387Z
 ---
 
 ## Summary
@@ -36,13 +36,13 @@ The wire types go in the shared module with their conformance entries, and the w
 ## Acceptance criteria
 
 - [x] C1. A human client reads a session's recent messages in both directions across topics, bounded and paged by message number, and a session's own `history` is unchanged (T2 test).
-  - done: impl-1131 · 2026-10-22T15:26:17.802Z
+  - done: impl-1131 · 2026-10-22T15:33:32.932Z
 - [x] C2. Over the web edge a browser reads its own sign-in's creation, last use and expiry, and the reply names no other browser's session (T2 test).
-  - done: impl-1131 · 2026-10-22T15:26:17.907Z
+  - done: impl-1131 · 2026-10-22T15:33:33.027Z
 - [x] C3. `session.launch` with a directory from the web edge is refused with `cli-neovim-only`, and the same launch without a directory starts in the project root (T2 test).
-  - done: impl-1131 · 2026-10-22T15:26:18.012Z
+  - done: impl-1131 · 2026-10-22T15:33:33.115Z
 - [x] C4. The web authority table classifies both new requests, and its unit test refuses a web launch directory before dispatch (T1 test).
-  - done: impl-1131 · 2026-10-22T15:26:18.286Z
+  - done: impl-1131 · 2026-10-22T15:33:33.197Z
 - [x] C5. `hub/README.md` documents the two requests and the launch-directory refusal (docs).
   - done: impl-1131 · 2026-10-22T15:26:18.394Z
   - verified: rev-31 [reviewer] · run rev-20261022-1131-source · 2026-10-22T15:30:13.597Z · commit 1a9d9298fe8331e51e36c3426031f63f9af310cd
@@ -67,3 +67,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear on Standards and Spec, no findings; A-9211. Sent/delivered numeric session pages preserve own history; web.session is bound to authenticated cookie identity with projected timestamps and fixed expiry; own cwd fields are refused before replay/dispatch. Wire conformance, authority tests and matching docs/skill reviewed. C5 established; C1–C4 final runtime evidence pending. A-9204 local targeted summaries are supporting narrative, not a configured suite receipt. Preserve original commands/stdout/exits/source attribution without transcription-only reruns. Proceed with mode-free verification at this unchanged head; no merge authorization.
 
 Criteria: C5 verified.
+
+### rev-31 · 2026-10-22T15:32:29.916Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261022-1131-unavailable
+commit: 1a9d9298fe8331e51e36c3426031f63f9af310cd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Historical e098d0fc/A-9215 is not clear: auto exit1, droplet size c-8 unavailable in lon1/nyc1/sfo2. Counts/platform unavailable; only host check output retained. No behavioral phase ran, projections are not passes. Source-clear A-9211/C5 remains applicable; no source finding. A-9218 preserves the exact failure and limits. Replacement c5acff9b already admitted; this verdict does not prejudge that pending run or ask for another. Restore claimant marks with supported evidence before final settlement; no merge authorization.
+
+Criteria: C1 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.), C2 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.), C3 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.), C4 failed (Run e098d0fc did not execute T1/T2/Web: c-8 unavailable in all configured regions; behavioral evidence unavailable, no source failure established.).

@@ -3,8 +3,9 @@ id: T-1117
 kind: task
 title: The human's message kinds and Withdraw in the hub
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T15:26:33.160Z
+updated: 2026-10-22T15:34:00.064Z
 ---
 
 ## Summary
@@ -30,12 +31,18 @@ The human's `topic.send` takes an optional kind, `message` by default, `decision
 
 ## Acceptance criteria
 
-- [ ] C1. A Decision and a Question sent by the human carry their kind on the message, in a later history read and in the delta a second frame client receives (test).
-- [ ] C2. A Question addressed to a session leaves the topic waiting for that session, as `cland` reads the topic (test).
-- [ ] C3. Withdrawing a message queued for a busy fake session moves it to `withdrawn`, returns its text, and the session never receives it, also after the turn ends (test).
-- [ ] C4. A withdraw after the message was injected is refused naming the stage, and an agent's withdraw and another sender's message are refused (test).
-- [ ] C5. Neovim's thread shows a withdrawn message with the dropped glyph and colour (test).
-- [ ] C6. `hub/README.md` and `nvim/README.md` describe the kinds and the withdraw (docs).
+- [x] C1. A Decision and a Question sent by the human carry their kind on the message, in a later history read and in the delta a second frame client receives (test).
+  - done: impl-1117 · 2026-10-22T15:33:38.532Z
+- [x] C2. A Question addressed to a session leaves the topic waiting for that session, as `cland` reads the topic (test).
+  - done: impl-1117 · 2026-10-22T15:33:38.620Z
+- [x] C3. Withdrawing a message queued for a busy fake session moves it to `withdrawn`, returns its text, and the session never receives it, also after the turn ends (test).
+  - done: impl-1117 · 2026-10-22T15:33:38.702Z
+- [x] C4. A withdraw after the message was injected is refused naming the stage, and an agent's withdraw and another sender's message are refused (test).
+  - done: impl-1117 · 2026-10-22T15:33:38.907Z
+- [x] C5. Neovim's thread shows a withdrawn message with the dropped glyph and colour (test).
+  - done: impl-1117 · 2026-10-22T15:33:38.995Z
+- [x] C6. `hub/README.md` and `nvim/README.md` describe the kinds and the withdraw (docs).
+  - done: impl-1117 · 2026-10-22T15:33:39.077Z
 
 ## Comments
 

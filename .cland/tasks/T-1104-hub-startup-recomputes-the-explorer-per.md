@@ -3,7 +3,7 @@ id: T-1104
 kind: task
 title: Hub startup recomputes the explorer per item during the planned check and delays serving by 15 s
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-850
 branch: t/T-1104-hub-startup-recomputes-the-explorer-per
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T15:27:33.323Z
+updated: 2026-10-22T15:34:01.840Z
 ---
 
 ## Summary
@@ -25,9 +25,9 @@ Hub restart #43 at dev 7887f694 (2026-10-22 10:08Z) took 20 s from stop to servi
 ## Acceptance criteria
 
 - [ ] C1. A hub start on a copy of the live tracker recomputes explorer summaries once per startup batch (or lazily), not once per item: a regression counts recompute events on a thousand-item fixture with a planned epic (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:26:30.707Z · note A-9200/A-9201 failed provisioning; configured runtime recompute/load evidence unavailable, not an assertion failure.
+  - failed: rev-23 [reviewer] · 2026-10-22T15:34:01.840Z · note Final configured evidence is red: A-9219 Web Items snapshot /S1/ assertion fails; startup batch/load passes retained.
 - [ ] C2. The startup planned check does not block serving: a test that starts the hub on a thousand-item fixture with a planned epic asserts serving within 2 s of listening, and its targeted run receipt (test name, platform, measured gap) is posted in the item topic (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T15:26:30.707Z · note A-9200/A-9201 failed provisioning; configured serving-gap/load evidence unavailable, not an assertion failure.
+  - failed: rev-23 [reviewer] · 2026-10-22T15:34:01.840Z · note Final configured evidence is red: A-9219 Web assertion fails; 23.962 ms serving gap and startup 5/5 retained.
 
 ## Comments
 
@@ -74,3 +74,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Evidence-only not clear for f8231202/A-9200 and 96387fb9/A-9201: both report `auto exit 1; droplet size c-8 unavailable in regions lon1, nyc1, sfo2`. Host npm run check completed; runtime T1/T2/Web counts, platform and measurements are unavailable. Projections are not observations. No source findings; A-9199/source clear remains applicable at unchanged 54b7c6d5. Coordinator-authorized local replacement 1f7a1213 is running, not yet evaluated. Final C1/C2 settlement awaits that receipt; this historical failure record does not require code changes or cancel the replacement.
 
 Criteria: C1 failed (A-9200/A-9201 failed provisioning; configured runtime recompute/load evidence unavailable, not an assertion failure.), C2 failed (A-9200/A-9201 failed provisioning; configured serving-gap/load evidence unavailable, not an assertion failure.).
+
+### rev-23 · 2026-10-22T15:34:01.840Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1104-web-evidence
+commit: 54b7c6d58ae01800911af1cd757d720562bfd6cc
+scope: evidence
+findings: [{"severity":"medium","text":"Required executed Web phase fails /S1/ assertion on the E-416 row; cause/relation to this task remains undiagnosed.","file":"web/test/items.test.ts","line":30}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+e6cc0c43/A-9219 at unchanged source-clear 54b7c6d5 is not clear: actual `AssertionError [ERR_ASSERTION]: The input did not match the regular expression /S1/` at web/test/items.test.ts:30; E-416 row has no S1. Local Darwin arm64, Node24.21.0/Neovim0.12.5, two workers: 2444 pass/1 fail, T1/all-T2 both packages exit0, actual Web exit1. Both startup identities pass and each has five distinct load proofs plus explicit5/5; four batches and 23.962ms listening-to-serving. Whole-test 3.095/2.610s report-only overages do not invalidate the 2000ms behavioral bound. Earlier A-9206 passed T1/T2 but Web did not run; A-9200/A-9201 provisioning failures remain historical. Source clear remains; no unrelated/flaky classification or retry inferred. Final C1/C2 clearance awaits failure disposition and accepted evidence.
+
+Criteria: C1 failed (Final configured evidence is red: A-9219 Web Items snapshot /S1/ assertion fails; startup batch/load passes retained.), C2 failed (Final configured evidence is red: A-9219 Web assertion fails; 23.962 ms serving gap and startup 5/5 retained.).

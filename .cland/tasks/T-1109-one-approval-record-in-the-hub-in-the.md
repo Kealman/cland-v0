@@ -3,8 +3,9 @@ id: T-1109
 kind: task
 title: One approval record in the hub, in the snapshot and the deltas
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 9
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-851
 branch: t/T-1109-one-approval-record-in-the-hub-in-the
 created: 2026-10-22T15:16:11.019Z
-updated: 2026-10-22T15:28:57.466Z
+updated: 2026-10-22T15:31:11.481Z
 ---
 
 ## Summary
@@ -49,15 +50,24 @@ The records ride in the snapshot's inbox section. Each change pushes an `approva
 
 ## Acceptance criteria
 
-- [ ] C1. A frame client that connects while a fake Claude Code session waits for approval reads exactly one record in the snapshot: the session, the harness, the command in full, `answerIn: tui`, no choices and `pending` (test).
-- [ ] C2. A request raised by a fake adapter through the contract reaches a connected frame client as one `approval` delta and one inbox row with its choices. Its close reaches the client as a delta with the outcome and `closed` (test).
-- [ ] C3. Two pending requests of one session are two records, and needs-you counts each once (test).
-- [ ] C4. A closed record leaves the inbox for the inbox archive with its outcome, who answered and when (test).
-- [ ] C5. The fake harnesses' private tool input never reaches a frame through a record (test).
-- [ ] C6. `cland inbox` prints each approval's state and either its choices or "answer in Neovim", and `cland inbox --archive` prints a closed record's outcome (test).
-- [ ] C7. In headless Neovim on recorded frames, ↵ on a Claude Code approval row still attaches the session (test).
-- [ ] C8. The Neovim recordings that carry the inbox are refreshed with `npm run test:nvim-fixtures`, and each file's frame count change is listed in the item topic (test).
-- [ ] C9. `hub/README.md` describes the approval record. Its Claude Code capability row says approvals stay in the TUI and their records are marked to answer in Neovim (docs).
+- [x] C1. A frame client that connects while a fake Claude Code session waits for approval reads exactly one record in the snapshot: the session, the harness, the command in full, `answerIn: tui`, no choices and `pending` (test).
+  - done: impl-1109 · 2026-10-22T15:30:52.300Z
+- [x] C2. A request raised by a fake adapter through the contract reaches a connected frame client as one `approval` delta and one inbox row with its choices. Its close reaches the client as a delta with the outcome and `closed` (test).
+  - done: impl-1109 · 2026-10-22T15:30:52.403Z
+- [x] C3. Two pending requests of one session are two records, and needs-you counts each once (test).
+  - done: impl-1109 · 2026-10-22T15:30:52.638Z
+- [x] C4. A closed record leaves the inbox for the inbox archive with its outcome, who answered and when (test).
+  - done: impl-1109 · 2026-10-22T15:30:52.748Z
+- [x] C5. The fake harnesses' private tool input never reaches a frame through a record (test).
+  - done: impl-1109 · 2026-10-22T15:30:52.875Z
+- [x] C6. `cland inbox` prints each approval's state and either its choices or "answer in Neovim", and `cland inbox --archive` prints a closed record's outcome (test).
+  - done: impl-1109 · 2026-10-22T15:30:53.137Z
+- [x] C7. In headless Neovim on recorded frames, ↵ on a Claude Code approval row still attaches the session (test).
+  - done: impl-1109 · 2026-10-22T15:30:53.298Z
+- [x] C8. The Neovim recordings that carry the inbox are refreshed with `npm run test:nvim-fixtures`, and each file's frame count change is listed in the item topic (test).
+  - done: impl-1109 · 2026-10-22T15:30:53.404Z
+- [x] C9. `hub/README.md` describes the approval record. Its Claude Code capability row says approvals stay in the TUI and their records are marked to answer in Neovim (docs).
+  - done: impl-1109 · 2026-10-22T15:30:53.652Z
 
 ## Comments
 

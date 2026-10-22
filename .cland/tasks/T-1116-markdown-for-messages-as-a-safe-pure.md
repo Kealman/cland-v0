@@ -3,7 +3,7 @@ id: T-1116
 kind: task
 title: Markdown for messages as a safe pure parser
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-853
 branch: t/T-1116-markdown-for-messages-as-a-safe-pure
 created: 2026-10-22T15:16:12.285Z
-updated: 2026-10-22T15:30:32.270Z
+updated: 2026-10-22T15:32:16.353Z
 ---
 
 ## Summary
@@ -31,12 +31,12 @@ Each message is parsed on its own (v0.1 §3.14): headings, paragraphs, lists ali
 
 ## Acceptance criteria
 
-- [ ] C1. The parser turns headings, paragraphs, lists, quotes, fenced code with its language, inline code, bold, italic, links and item ids into tokens, and an unclosed fence ends at the message's end (test).
-  - failed: rev-26 [reviewer] · 2026-10-22T15:27:01.543Z · note Unsupported fence input containing U+2028/U+2029 can leave the parser index unchanged and loop forever instead of returning plain-text fallback.
+- [x] C1. The parser turns headings, paragraphs, lists, quotes, fenced code with its language, inline code, bold, italic, links and item ids into tokens, and an unclosed fence ends at the message's end (test).
+  - done: impl-1116 · 2026-10-22T15:30:46.489Z
 - [x] C2. Raw HTML in a message stays a text token, and a link token is produced only for an `http` or `https` address (test).
   - done: impl-1116 · 2026-10-22T15:24:26.659Z
-- [ ] C3. The web typecheck fails on `dangerouslySetInnerHTML` or an `innerHTML`/`outerHTML` write in the web sources, with a seeded fixture proving the check (test).
-  - failed: rev-26 [reviewer] · 2026-10-22T15:27:01.543Z · note Direct literal bracket writes with parenthesized or TS-wrapped raw-HTML sink keys are not refused.
+- [x] C3. The web typecheck fails on `dangerouslySetInnerHTML` or an `innerHTML`/`outerHTML` write in the web sources, with a seeded fixture proving the check (test).
+  - done: impl-1116 · 2026-10-22T15:30:46.763Z
 
 ## Comments
 
@@ -79,3 +79,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear; A-9213 incorporates first audit A-9205. M2 resolved by unconditional fallback consumption with literal U+2028/U+2029/following-paragraph assertions. M1 resolves all transparent TS wrappers and uses actual path syntax, with rejected bracket/computed-prop fixtures; safe ordinary strings/comments retained. Standards0;Spec0; no other source findings. A-9207/A-9209 original development receipts retain explicit precommit/red limits. Corrected parser/guard/test hashes independently match committed blobs,7/7 localmacOS/check0 supporting evidence; no whole dirty-tree or configured pass inferred. AllC1–C3 await mode-free verification at unchanged20345afd. Lead notified C1/C3 claimant done marks need restoration. Any head change needs fresh source review; stage QA separate.
+
+### rev-26 · 2026-10-22T15:32:16.353Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261022-1116-evidence-1
+commit: 20345afd4ad024d7a91c978f29f83df019f95deb
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run386ad4a3/A-9216 could not obtain c-8 capacity in lon1,nyc1,sfo2; runtime execution unavailable. Host check passed, but no T1/T2/Web pass exists. This is an execution-evidence blocker, not an observed parser assertion failure."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-9217 audits original A-9216 and hub failure envelope at unchanged20345afd. Host check/seeded guard passed, report-only lint132/59/zero refusals; runtime counts/platform unavailable, projections not passes. No criterion failed on observed behavior; no source defect or head change established. Allcriteria remain unverified pending executable configured evidence. Already-admitted retry71dc102d is separate; historical386ad4a3 remains failed/unavailable.
