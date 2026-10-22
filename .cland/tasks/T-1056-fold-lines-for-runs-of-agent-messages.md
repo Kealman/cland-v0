@@ -3,7 +3,7 @@ id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-837
 branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-22T07:39:23.606Z
+updated: 2026-10-22T07:40:25.278Z
 ---
 
 ## Summary
@@ -31,9 +31,8 @@ A run is consecutive agent-to-agent messages with nothing between them that neve
 
 ## Acceptance criteria
 
-- [x] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
-  - done: impl-1056 · 2026-10-22T07:27:40.749Z
+- [ ] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
+  - failed: rev-26 [reviewer] · 2026-10-22T07:40:25.278Z · note Required configured receipt806b26c3 at4176f40d failed Web viewport assertion and enforced identity duration gate; owned C1/run assertions passed but final gate is unsatisfied.
 - [x] C2. A fifth message updates the same run id in a delta, without a history re-read (test).
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - done: impl-1056 · 2026-10-22T07:27:40.825Z
@@ -126,3 +125,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear; A-9012 incorporates rev-23 A-8989/A-8997 against first parente15737c5 and Coordinator132ce777-authorized dev3dfc2737. Sole manual combined hunk preserves both ThreadRun/AskOutcome type imports. Ask outcome/card/read paths and unchanged run classification/projection preserve each other; marks use separate meta/model delta. Retained eligibility/assignment fixes, wire types/conformance, README/test guidance and manifests retained; C5 docs reverified. Standards0;Spec0. A-9011 localDarwinarm64 targeted41/41 is supporting only; check/build/static/lint success summarized, report-only132/59/0refusals. Historical A-8996 is stale for this merge; C1–C4 await fresh mode-free configured receipt at unchanged4176f40d. No T3/T4/integrated/stageQA claim.
 
 Criteria: C5 verified.
+
+### impl-1056 · 2026-10-22T07:39:37.626Z
+
+Run806b26c3 at4176f40d failed/interrupted (A-9018): Linux droplet T1 exit0, fallback allT2 exit0, Web exit1; base2427pass/2fail. Actual palette failure: `Error: PageDown reveals open-other: not within 6000 ms` at web/test/palette.test.ts:212,1024×600 subtest. Additional enforced new-identity duration gate: Items help…8.595s>5s. Reported S Bugs/shared-defect candidate to lead T-1056, because this is merged T-1095 test code. Holding diagnosis and head unchanged until Coordinator posts shared fix/disposition; no green receipt or ready claim at4176f40d.
+
+### rev-26 · 2026-10-22T07:40:25.278Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261022-1056-evidence-1
+commit: 4176f40d140331375fe06563af0d652cdcace94a
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run806b26c3/A-9018 exits1: `PageDown reveals open-other: not within 6000 ms` at1024×600, plus enforced parent8.595s>5s. Actual Web failure blocks final acceptance; shared-defect candidate from merged dev, not a diagnosed run-logic defect.","file":"web/test/palette.test.ts","line":212}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-9020 audits original A-9018 at unchanged4176f40d. Actual Web failure quoted in findings; T1/allT2 exit0, Webexit1. Ordinary2427pass/2fail/0skip; interruption2467pass/2fail includesload, not ordinary. All8 owned run identities have base+5/5 passes,max0.585644s, so no new thread-run source finding. Linuxx64 c8lon1 droplet535s/$0.0371; generic diagnostics report-only, 5s new-identity enforcement and assertion are failures. No T3/T4/full-lifecycle/stageQA pass. Bugs/S shared candidate goes to lead T-1056 for Coordinator disposition; no autonomous retry/dev merge/fix. Earlier green e15737c5 historical; sourceclear not final-ready.
+
+Criteria: C1 failed (Required configured receipt806b26c3 at4176f40d failed Web viewport assertion and enforced identity duration gate; owned C1/run assertions passed but final gate is unsatisfied.).

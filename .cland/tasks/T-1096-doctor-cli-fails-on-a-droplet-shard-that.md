@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-839
 branch: t/T-1096-doctor-cli-fails-on-a-droplet-shard-that
 created: 2026-10-22T07:20:08.870Z
-updated: 2026-10-22T07:39:26.752Z
+updated: 2026-10-22T07:50:20.070Z
 ---
 
 ## Summary
@@ -25,7 +25,7 @@ The E-416 stage cover 5be1db36 (A-9000, shard-1 log A-9001, dev 90c54f5a, Linux 
 ## Acceptance criteria
 
 - [ ] C1. A hub-only shard whose selection contains `hub/test/doctor-cli.test.ts` but neither Web tests nor `web-auth.test.ts` builds the web bundle before its workers start; a suite-runner test proves it the way "a hub-only shard builds the bundle before its secret-scan worker starts" does (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T07:39:26.752Z · note Final configured evidence blocked: A-9016 exits 1 on viewport PageDown assertion plus 8.494s > 5s gate; runner regression itself not disproven.
+  - failed: rev-23 [reviewer] · 2026-10-22T07:50:00.729Z · note Authorized retry A-9031 remains red: 1280×720 PageDown reveals fold-open timeout plus 8.806s > 5s gate; await T-1097 shared fix per Coordinator7684f7cb.
 - [x] C2. Every other hub test that reads the built bundle or its stamp is either in the same build condition or independent of the checkout's `web/dist`, and the list is in the item topic from a search of hub/test (test).
   - done: impl-1096 · 2026-10-22T07:25:18.893Z
   - verified: rev-23 [reviewer] · run rev-20261022-1096-source · 2026-10-22T07:29:31.249Z · commit 7c1469bc81d0a724dc87d64eeebb919e4116ec37
@@ -69,3 +69,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-9019 records original-log audit. Evidence not clear: T1/T2 pass, actual Web fails, 2410 passes/2 test failures (subcase plus parent), overall exit1. No remote T3/T4/load evidence. Source A-9013 and C2 audit retained; no new implementation defect established. Route shared candidate to Coordinator before retry or unrelated edits.
 
 Criteria: C1 failed (Final configured evidence blocked: A-9016 exits 1 on viewport PageDown assertion plus 8.494s > 5s gate; runner regression itself not disproven.).
+
+### rev-23 · 2026-10-22T07:50:00.729Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1096-evidence-2
+commit: 7c1469bc81d0a724dc87d64eeebb919e4116ec37
+scope: evidence
+findings: [{"severity":"medium","text":"A-9031 at unchanged reviewed head fails 'PageDown reveals fold-open: not within 6000 ms' in1280×720 plus parent/enforced8.806s>5s. Same shared palette blocker; Coordinator7684f7cb requires waiting for T-1097 cherry-pick, not clearance on this failed retry.","file":"web/test/palette.test.ts","line":212}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Original A-9031 lines13374–13383 and task.view confirm exact reviewed head7c1469bc, retry615a5c7f failed. T1/allT2 exit0; actualWeb exit1;2410pass/2fail(subcase+parent); T3 absent. Linuxc8lon1 cland-v0-92451801,544s/$0.0378,hostb48e0ca0 reused/not repeated; report-only diagnostics distinct from enforced5s gate. Source/C2 audit retained. No additional retry requested; wait for posted T-1097 fix and delta review under latest Coordinator decision.
+
+Criteria: C1 failed (Authorized retry A-9031 remains red: 1280×720 PageDown reveals fold-open timeout plus 8.806s > 5s gate; await T-1097 shared fix per Coordinator7684f7cb.).
+
+### impl-1096 · 2026-10-22T07:50:20.070Z
+
+Coordinator-authorized unchanged-head retry 615a5c7f (A-9031), Linux x64 droplet c-8 lon1, failed only the T-1097 palette test: 1280×720 `PageDown reveals fold-open: not within 6000 ms`, plus parent 8.806 s > 5 s enforced gate. T1/all-T2 fallback passed; Web failed; 2412 tests / 2410 pass / 2 fail; no T3. Prior A-9016 failed same test at 1024×600/open-other. Latest Coordinator disposition: hold 7c1469bc and claim for posted T-1097 cherry-pick, delta review, then mode-free verify. Source/C2 retained; C1/final evidence remains blocked. No further retry.
