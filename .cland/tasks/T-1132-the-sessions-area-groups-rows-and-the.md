@@ -3,7 +3,7 @@ id: T-1132
 kind: task
 title: "The Sessions area: groups, rows and the unfolded row"
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-860
 branch: t/T-1132-the-sessions-area-groups-rows-and-the
 created: 2026-10-22T15:16:15.097Z
-updated: 2026-10-22T17:35:51.261Z
+updated: 2026-10-22T17:51:25.668Z
 ---
 
 ## Summary
@@ -57,6 +57,8 @@ There is no Attach anywhere in the area. Rows come from the hub's merged session
   - done: impl-1132 · 2026-10-22T17:21:53.517Z
   - verified: rev-23 [reviewer] · run rev-20261022-1132-source · 2026-10-22T17:25:42.272Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
   - verified: rev-23 [reviewer] · run rev-20261022-1132-final · 2026-10-22T17:35:50.938Z · commit 5d0175075741ab18ba9238edeb85f5fa93145c88
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-source-2 · 2026-10-22T17:50:21.736Z · commit b9ad283a78668bf2138eaeb4e24c224fe40dac23
+  - verified: rev-23 [reviewer] · run rev-20261022-1132-source-3 · 2026-10-22T17:51:25.668Z · commit fd1c90510f7847e2b434397b992aad2b6207a2e0
 
 ## Comments
 
@@ -97,3 +99,33 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, A-9391, A-9390/e201f65a exact source-clear5d017507. Parsed2510 ordinary tests/383 files pass; all T1/all hub+Neovim T2/actual Web pass. Five Sessions cases establishC1–C5 with accepted source; C6 docs refreshed. Group/fold, facts/full waits, stopped/archive andgs boundaries all pass; new maximum2.579s<4s trigger, no allowance required. Linuxx64 c-8lon1 workers2/Web4, host check2ab0e4ab reused/not repeated remotely. Web56.240s>40s report-only budget; generic diagnostics retained, no enforcing-budget/repetition/T3/T4/QA/full-cover claim.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-23 · 2026-10-22T17:50:21.736Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1132-source-2
+commit: b9ad283a78668bf2138eaeb4e24c224fe40dac23
+scope: delta
+findings: [{"severity":"low","text":"The area-module paragraph still calls Sessions an ID/title inventory and Header/SessionGroups empty slots; distinguish the now-implemented groups/header from still-pending strip/verify components.","file":"web/README.md","line":183}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Delta source clear, A-9400; no high/medium findings. Both archive loader/thread cache survive connect resolution, both explicit help contracts retained, owned Sessions implementation/tests unchanged. C6 accurate Sessions section retained, with nonblocking L1 stale older foundation paragraph recorded. A-9399 local targeted summary is not configured evidence; C1–C5 require fresh same-head mode-free run. Any L1 edit changes the head and needs source review before verification.
+
+Criteria: C6 verified.
+
+### rev-23 · 2026-10-22T17:51:25.668Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1132-source-3
+commit: fd1c90510f7847e2b434397b992aad2b6207a2e0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Documentation delta clear, A-9401. L1 resolved: foundation describes implemented header/groups, pending strip/verify and current page/drawer; archive state/refresh docs match code. Only README changed; prior full and merge audits retained. C6 verified at fd1c9051, C1–C5 await fresh configured same-head receipt. Parent targeted evidence remains labelled parent-head; no redundant execution needed for this prose correction.
+
+Criteria: C6 verified.
