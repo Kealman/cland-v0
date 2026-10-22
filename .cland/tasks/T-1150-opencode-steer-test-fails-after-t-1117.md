@@ -2,8 +2,8 @@
 id: T-1150
 kind: task
 title: OpenCode steer test fails after T-1117 queues the human's messages to a busy session
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1117
 topic: topic-863
 branch: t/T-1150-opencode-steer-test-fails-after-t-1117
 created: 2026-10-22T17:55:52.283Z
-updated: 2026-10-22T19:12:39.612Z
+updated: 2026-10-22T19:46:03.999Z
+closed: 2026-10-22T19:46:03.999Z
 ---
 
 ## Summary
@@ -30,12 +31,15 @@ Decide and pin which senders steer a running turn. Under §3.4 and T-1117, the h
 
 - [x] C1. The OpenCode adapter test asserts that a human message to a busy session is queued and injected after the turn, and that the steering path (whichever sender keeps it) still steers the running turn (test).
   - done: impl-1150 · 2026-10-22T18:07:20.032Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1150-final · 2026-10-22T19:41:22.212Z · commit e83b5945d0c2fa06db2ae70e765fe81fa103a4a9
 - [x] C2. Every other T2/T3 test that asserts steering of a human message is found by search and updated or confirmed, and the list is posted in the item topic (test).
   - done: impl-1150 · 2026-10-22T18:07:20.093Z
   - verified: rev-23 [reviewer] · run rev-20261022-1150-source · 2026-10-22T18:11:10.133Z · commit bf62729ce865995e28daac2f9a17d9dd9e455a75
   - verified: rev-23 [reviewer] · run rev-20261022-1150-source-2 · 2026-10-22T18:46:26.733Z · commit e83b5945d0c2fa06db2ae70e765fe81fa103a4a9
+  - verified: rev-23 [reviewer] · run rev-20261022-1150-final · 2026-10-22T19:41:22.212Z · commit e83b5945d0c2fa06db2ae70e765fe81fa103a4a9
 - [x] C3. The named file passes in a targeted Linux run whose receipt is posted in the item topic, because T3 is not in mode-free runs (test).
   - done: impl-1150 · 2026-10-22T18:44:20.100Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1150-final · 2026-10-22T19:41:22.212Z · commit e83b5945d0c2fa06db2ae70e765fe81fa103a4a9
 
 ## Comments
 
@@ -80,3 +84,22 @@ Criteria: C2 verified.
 ### impl-1150 · 2026-10-22T19:12:39.612Z
 
 Verification update: first Linux all6e61e141 at bf62729c completed T1–T3 including OpenCode14/14 + changed test5/5 but overall failed known shared Web guard defectT-1148 (A-9419/A-9420). Coordinator-authorized origin/dev merge brought guard180s; delta source clear at e83b5945 (A-9421). Second all58a7464d at e83b5945 completed T1/T2 but T3 failed only known T-1108: `ENOTEMPTY: directory not empty, rmdir ...cland-claude-pid-probe-i60TQy` in claude-code-accounts.test.ts; Web unexecuted (A-9422). Coordinator submitted one authorized same-head flaky rerun65e7be49. Head unchanged; final readiness awaits green configured evidence.
+
+### rev-23 · 2026-10-22T19:41:22.212Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1150-final
+commit: e83b5945d0c2fa06db2ae70e765fe81fa103a4a9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, A-9425, A-9423/run65e7be49 exact source-clear e83b5945. C1/C3 Linux OpenCode14/14 plus sender5/5 pass; Codex native13/13 plus sender5/5 and adapter12/12 pass; C2 audit retained. Parsed3768 ordinary passes/8 outside-scope platform/binary skips/567 files pass, no failures; T1/T2/T3/actual Web complete. Linuxx64 c-8lon1 workers2/Web4, host checkfa224361 reused/not repeated remotely. T3 and Web wall budgets exceeded in report mode; general diagnostics retained. No T4/QA/real-provider/stage-cover claim; earlier failed attempts remain historical failures.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-22T19:46:03.999Z
+
+Merged 407a78ae283e99c822f5ba29ee431c74bd46b0c7 onto dev.

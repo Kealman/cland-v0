@@ -3,7 +3,7 @@ id: T-1151
 kind: task
 title: hub.stop never reaches stopped while a droplet create is in flight, and SIGTERM is ignored
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - bug
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: R-377
 blocked_by: []
-topic: null
-branch: null
+topic: topic-864
+branch: t/T-1151-hub-stop-never-reaches-stopped-while-a
 created: 2026-10-22T18:04:51.275Z
-updated: 2026-10-22T19:37:18.466Z
+updated: 2026-10-22T19:37:47.750Z
 ---
 
 ## Summary
