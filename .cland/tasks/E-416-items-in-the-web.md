@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-830
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-22T14:14:16.828Z
+updated: 2026-10-22T14:24:51.886Z
 ---
 
 ## Summary
@@ -317,3 +317,11 @@ The evidence directory retains exact commands, stdout/TAP logs, screenshots, AX 
 Rule proposal sent to Coordinator: conditional shared shortcuts should pair positive fixture receipts with inert checks in the wrong view, without a selected item, and below their action-width boundary.
 
 Durable evidence: A-9175 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9175-e-416-plan-and-edits-at-fae121ec-22-pass-plan-and-criteria-receipts/report.md
+
+### hub · 2026-10-22T14:17:47.677Z
+
+demo 54213beb-bbd4-40e4-aa5a-abbab419e57d created: droplet cland-v0-54213beb, commit 8580e0432a19d9d7182c1733ca2a14e72c3bb4ef, deadline 2026-10-22T15:30:51.846Z.
+
+### hub · 2026-10-22T14:24:51.886Z
+
+demo 54213beb-bbd4-40e4-aa5a-abbab419e57d destroyed: lifetime 525420 ms; cost $0.0365.
