@@ -3,7 +3,7 @@ id: T-1140
 kind: task
 title: Opening pages and files from the Artifacts area
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:16.302Z
-updated: 2026-10-22T15:16:16.302Z
+updated: 2026-10-22T23:07:37.996Z
 ---
 
 ## Summary

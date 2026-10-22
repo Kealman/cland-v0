@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-862
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-22T20:34:21.089Z
+updated: 2026-10-22T23:07:33.020Z
 ---
 
 ## Summary
@@ -123,3 +123,66 @@ stages:
 ### coord · 2026-10-22T15:17:41.387Z
 
 Decision on ask 9a81a158 (stand-in under D24, 15:17Z). The approval record carries the command, its cwd and the reason, plus the file paths and the change as the harness reports them, capped at 64 KB, and no other tool input (T-127). Only the human answers approvals; agent sessions, Aides included, are refused. The deny note is optional.
+
+### qa-676 · 2026-10-22T23:07:33.020Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-23-1
+commit: 4411dcc99173b864850ac0988a11334d87262614
+stage: record and gate
+stage_hash: ca5e352aadd77a88822283392fcbd926b47ac32234168d69fc914212e135e81d
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# E-414 stage QA — clear
+
+Run `qa-s1-2026-10-23-1`; commit `4411dcc99173b864850ac0988a11334d87262614`. Every scoped case passed.
+
+| Case | Result | Command and observation |
+| --- | --- | --- |
+| E414S1-00 | PASS | Fresh clean detached4411dcc9 equalsdev; stage2/2 merges verified; shared environment dropped37names/prefix0; helpersparse; p1init/start0 local executor/lock correct, systemTMPDIR. |
+| E414S1-01 | PASS | macOSlocal named approval-records18/18 pass no skips/failures; every required case name present including two one-tick answers, human-only gate, failed-delivery retry, native/fallback denialnotes and24hfakeclock. |
+| E414S1-02 | PASS | macOSlocal web-authority and unit44/44 nofailure/cancel/skip; exact cookieapproval and hello/as/policy cases present; extra runtimecases reflect currentS. |
+| E414S1-03 | PASS | Neovim inboxactions5/5 and recorded liveframe drift1/1 pass with pinnedNeovim no skips; T1109 commit lists refreshed protocolframes and attachmenttest. |
+| E414S1-04 | PASS | 37/37 changedclock/fakeadapter/inbox/needsYou tests pass macOSlocal nofail/cancel/skip, required blockedinterval clockcase present. |
+| E414S1-05 | PASS | wire import lint exit0 and full npmtypecheck exit0 no compilerdiagnostics. |
+| E414S1-06 | PASS | Scratch productionClaude adapter/fakeclaude: one pendingid scopedtosession, command/subject touchapproved only, TUIroute nochoices nooutcome, nonemptyattach, needsYou1. |
+| E414S1-07 | PASS | CLI oneapprovalrow/id needsYou1 matchesJSON; streamingS1alive oneid stablependingrecord/inboxmax1; privateinput0. |
+| E414S1-08 | PASS | TUIonce/deny refusals exact, unknownnopending, malformedvalidationrefusal; recordunchanged pending. |
+| E414S1-09 | PASS | Pendinginterval waitedS193 sameAsBefore true outcome null; both waitingepisodes PID/harness matchlive; SIGUSR1 yields exactlyone tooluse/reply, fresharchive andstream same harnessoutcome, idle; secondnewid, lateexactwinnerrefusal, archiveCLI1; S1neverreplaced. |
+| E414S1-10 | PASS | qa-ccstop0 oldhub87270exit new4087start0; twoapprovalarchive rows byte-identical acrossrestart. |
+| E414S1-11 | PASS | Rigproject underQ serving; all3fake launches accepted; nativeidle1 pending subjectechoidle choicesonce/deny viahub nooutcome; needsYou0→1 and rigraiseok. |
+| E414S1-12 | PASS | R1alive pending→closed oneinboxrow no duplicates; exactallowlistedsubject, human/harness denyoutcome matches timestamp/archive, listedfalse. |
+| E414S1-13 | PASS | Repeated nativeidempotent; base2→two3→three4→after3 needsYou equalsstatus; filechangeone, identicalnativeids separatepersession, closure removesonlymatchingrecord. |
+| E414S1-14 | PASS | Subject65536UTF8bytes exactcap, originalprefix truncatedwithoutlonehighsurrogate, topcommand matches; allowlistedpatch exact; privateInSnapshotfalse. |
+| E414S1-15 | PASS | CLI idle/filechange/archive eachone; archiveddeny attributedwithnote; needsYou5 matchesJSON. |
+| E414S1-16 | PASS | Native answer closes once with human/neovim attribution; stream and adapter agree. |
+| E414S1-17 | PASS | Concurrent answers have one winner, one exact refusal, one archive row and one adapter delivery. |
+| E414S1-18 | PASS | Unoffered choice and already-closed answer refused; requests unchanged and adapter counts correct. |
+| E414S1-19 | PASS | All eight session roles refused human-only approval.answer; implementer and Aide tool drivers ready and refused; pending unchanged, zero adapter delivery. |
+| E414S1-20 | PASS | Cookie human answer attributed via web; impersonation refused cli-neovim-only; local late reply names winner; adapter receives one answer. |
+| E414S1-21 | PASS | Scripted delivery failure restores pending and journals warning; brief-prescribed deny retry closes once with matching stream and adapter receipts. |
+| E414S1-22 | PASS | 8196-byte note refused before delivery; corrected fallback note posts once to human/session General; native note is not duplicated. |
+| E414S1-23 | PASS | After 601 seconds idle approval remained byte-identical pending with no outcome; adapter answers 0, live R1 only pending; private marker sweep 0. |
+| E414S1-24 | PASS | All 16 documentation markers present; surrounding README/capability/CLI sections agree with observed cases 06–23. |
+| E414S1-25 | PASS | Rig exit 0 tests 1/pass 1/fail 0; p1 hub stopped; census of 48 fixture-owned PIDs found none alive. |
+| Stage cover gate | PASS | Linux A-9478/A-9479/A-9480 and macOS A-9485 green at S; plan cover complete. |
+
+## Findings
+
+No product or probe findings.
+
+## Shared stage cover receipts
+
+Both Coordinator-owned full stage runs tested commit `4411dcc99173b864850ac0988a11334d87262614`, verification tree `95303fe6e1ec65315487e5c6c1231ae0f4fa8cd6`.
+
+- Linux droplet run `4786647f-b5e0-4c6e-921c-d716fb816ce3`: exit 0; 3823 passed, 8 skipped, zero failures. Merged log A-9478; shard logs A-9479/A-9480. T1–T4 plus Web ran, Web 17 files/47 top-level tests. Two c-8 lon1 machines: cland-v0-c72db40c, admission-to-remote-finish 1100.90 s, collection 35.06 s, lifetime 1086 s, $0.0754; cland-v0-a263d360, 982.90 s, collection 20.44 s, lifetime 966 s, $0.0671. Actual overall admission-through-collection wall 1136.23 s, total $0.1425. T-1155 T4 100-frame verifier case passed with 201/200/100 pending reads (A-9480); its earlier targeted receipt A-9469 is supporting evidence only.
+- macOS local run `c6c2ee05-f2b4-444e-b6a4-9e8bfefb6d27`, A-9485: exit 0; 3831/3831 passed, zero failures or skips. Darwin arm64 27.0.0, Node v24.21.0, Neovim v0.12.5, two workers. T1–T4 plus Web ran (17 Web files/47 top-level tests, 93 including nested cases). Actual runner phase walls T1 30.71 s, T2 178.75 s, T3 915.61 s, T4 46.45 s, Web 33.68 s. Job queued 22:44:42.036Z, finished 23:05:12.908Z: 1230.872 s queued-to-finish, including admission/host-gate overhead, not pure test wall. Local monetary cost not reported; no droplet lifetime applies.
+
+T4 base phase ran on both; T4 repetitions were explicitly skipped. Duration budgets and ratchet diagnostics are report-only, not enforced budget passes; projections are not measured walls. No QA full suite was submitted. Fresh plan reads show the applicable stage cover complete on both platforms. No epic criterion marks.
+
+All fixture cleanup and earlier detailed observations remain in report-before-covers.md and original captures. Final HEAD/dev still equal S; detached tree clean apart from the allowed node_modules symlink. Stage verdict only; no criterion marks.
+
+Evidence A-9487: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9487-e-414-stage-qa-clear-at-4411dcc9-final-cases-and-both-stage-covers/report.md

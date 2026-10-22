@@ -3,7 +3,7 @@ id: T-1138
 kind: task
 title: Launch a session and New Aide from the header
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:16.038Z
-updated: 2026-10-22T15:16:16.038Z
+updated: 2026-10-22T23:07:37.413Z
 ---
 
 ## Summary

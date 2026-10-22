@@ -3,7 +3,7 @@ id: T-1121
 kind: task
 title: HTML artifacts inline in a sandboxed iframe
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:13.272Z
-updated: 2026-10-22T15:16:13.272Z
+updated: 2026-10-22T23:07:35.647Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1114
 kind: task
 title: Approvals on Neovim's inbox keys
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:11.910Z
-updated: 2026-10-22T15:16:11.910Z
+updated: 2026-10-22T23:07:33.818Z
 ---
 
 ## Summary

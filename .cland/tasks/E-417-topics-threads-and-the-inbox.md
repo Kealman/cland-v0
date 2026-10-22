@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-866
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-22T20:54:16.794Z
+updated: 2026-10-22T23:07:34.497Z
 ---
 
 ## Summary
@@ -145,3 +145,59 @@ stages:
 ### coord · 2026-10-22T15:17:41.506Z
 
 Decision on ask 9a81a158 (stand-in under D24, 15:17Z), per spec §3.4: only a human Question leaves the topic waiting for its addressee; a human Message or Decision does not (T-1117).
+
+### qa-676 · 2026-10-22T23:07:34.497Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-23-1
+commit: 4411dcc99173b864850ac0988a11334d87262614
+stage: thread groundwork
+stage_hash: 4be0921642b00ed4966caef8a699129ac052aa364447a72765ad071a3ff41a37
+findings: [{"severity":"low","text":"E417S1-02 names an old test title; current area-module test passed and retained source proves the same required behavior.","file":"qa/briefs/E-417-stage-1.md"},{"severity":"low","text":"E417S1-21 retained CUA unknown-key errors for slash/question. Documented locator press Shift+/ opened help; API encoding errors only, no product failure."}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+# E-417 stage QA — clear
+
+Run `qa-s1-2026-10-23-1`; commit `4411dcc99173b864850ac0988a11334d87262614`. Every scoped case passed.
+
+| Case | Result | Command and observation |
+| --- | --- | --- |
+| E417S1-00 | PASS | [QA shell; p1] HEAD=dev=S clean, all four planned members merged, markers/files present, system TMPDIR; init config 1/1/1, environment dropped 37 names and zero credential-prefix count, helpers checked. |
+| E417S1-01 | PASS | [sealed W] Web build exit 0, source stamp 7415b6d4 matches request, bundle assets present, clean tree. |
+| E417S1-02 | PASS | [test W] keymap 2/2 and key-contexts 3/3, zero skips/failures, 3 clean fixture censuses. Brief title stand-in areas is renamed area modules…unimplemented session actions; source lines 46–78 confirm selection/drawer, absent unimplemented actions, Sessions17 help and palette assertions at S. |
+| E417S1-03 | PASS | [test W] Six Web regression files serial: shell9, palette11, folds6, area-slots4, items8, plan4 all pass; zero skips/failures; every fixture census clean; required palette physical-code test present. |
+| E417S1-04 | PASS | [test/sealed W] Parser 7/7, all required names; hostile text preserved with only item token, zero link tokens; unclosed js fence ends at message end. |
+| E417S1-05 | PASS | [sealed W] HTML guard clean0, planted innerHTML and dangerouslySetInnerHTML refused at exact line1 exit1, plants moved out, guard0 and clean tree. |
+| E417S1-06 | PASS | [test W] Eight named hub files serial, 111/111, zero skips/failures; every required kinds, question wait, withdrawal fence/refusal, Store-reopen and authenticated web withdrawal test passed. |
+| E417S1-07 | PASS | [test W] Neovim thread24/24 and selected protocol drift1/1; required withdrawn glyph/colour case passed, no skips; T-1117 merge contains all five expected Neovim paths. |
+| E417S1-08 | PASS | [test W] Topics9/9, area-state8/8, connection4/4; all required paging, anchors, live/reconnect and visible/hidden read-mark cases passed; zero skips; ten Web fixture censuses clean. |
+| E417S1-09 | PASS | [sealed W] Full typecheck and tier lint exit0; all four web guard lines and seven required tier classifications present. |
+| E417S1-10 | PASS | [QA shell] One keyboard listener in keyboard.ts only; preferences in interface-state, separate reload guard only; no HTML sinks; no dependency changes, only T-1116 typecheck scripts. |
+| E417S1-11 | PASS | [p1] Hub/status0 with web port; detached S1; item T-5, seven topics seeded; driver ready all nine calls accepted, no errors; 300/300 unique messages; expected topic status/unread values. |
+| E417S1-12 | PASS | [p1] Five kinds persisted and streamed exactly once; only Question changes status, later Message retains wait; invalid kind rejected and unrecorded; one matching journal transition; S1 alive. |
+| E417S1-13 | PASS | [p1] Queued busy-session message withdrawn with text returned; injected/repeated/agent/other-sender calls refused; withdrawn text never reaches fake, next turn executes once; fresh history and live S1 agree. |
+| E417S1-14 | PASS | [p1 Headless Shell] Full two-context walkthrough exit0: expected groups/keys/help; 300 unique ordered messages with anchors kept, live301 without reread; cross-client unread5→0 after visible second (996ms report-only), hidden3 unchanged then0; hostile text literal/no off-origin, stages correct, fold reload isolated; browser census4→0. |
+| E417S1-15 | PASS | [docs] All22 markers present; surrounding web/hub/Neovim/test docs match contexts, parser safety, kinds/withdrawal, paging/read marks and observed behavior. |
+| E417S1-16 | PASS | [sealed W] Committed stage brief qa lint exit0 at tested build. |
+| E417S1-18 | PASS | [p1] Session/hub stop exit0; census of 30 fixture PIDs found none alive; no S1 replacement needed. |
+| E417S1-21 | PASS | Computer use: Chrome cland QA anonymous Offline; exact source stamps and empty hub diff; four empty default-fold groups, 18 matching keys, last row visible, Escape/j/j/k/1 work; Inbox restored and QA tab closed. Two browser key-name errors retained; documented locator.press Shift+/ succeeded. |
+| E417S1-17 | PASS | Linux A-9478/A-9479/A-9480 and macOS A-9485 green at S; plan cover complete. |
+
+## Findings
+
+Low — E417S1-02: the brief names the former stand-in-area test. `node --test web/test/key-contexts.test.ts` passed the renamed area-module test at S; retained source confirms the same behavior. Low — E417S1-21: CUA rejected two key encodings as unknown key names; the documented locator `press("Shift+/")` opened help. Original errors and successful evidence retained; no product failure or permission bypass.
+
+## Shared stage cover receipts
+
+Both Coordinator-owned full stage runs tested commit `4411dcc99173b864850ac0988a11334d87262614`, verification tree `95303fe6e1ec65315487e5c6c1231ae0f4fa8cd6`.
+
+- Linux droplet run `4786647f-b5e0-4c6e-921c-d716fb816ce3`: exit 0; 3823 passed, 8 skipped, zero failures. Merged log A-9478; shard logs A-9479/A-9480. T1–T4 plus Web ran, Web 17 files/47 top-level tests. Two c-8 lon1 machines: cland-v0-c72db40c, admission-to-remote-finish 1100.90 s, collection 35.06 s, lifetime 1086 s, $0.0754; cland-v0-a263d360, 982.90 s, collection 20.44 s, lifetime 966 s, $0.0671. Actual overall admission-through-collection wall 1136.23 s, total $0.1425. T-1155 T4 100-frame verifier case passed with 201/200/100 pending reads (A-9480); its earlier targeted receipt A-9469 is supporting evidence only.
+- macOS local run `c6c2ee05-f2b4-444e-b6a4-9e8bfefb6d27`, A-9485: exit 0; 3831/3831 passed, zero failures or skips. Darwin arm64 27.0.0, Node v24.21.0, Neovim v0.12.5, two workers. T1–T4 plus Web ran (17 Web files/47 top-level tests, 93 including nested cases). Actual runner phase walls T1 30.71 s, T2 178.75 s, T3 915.61 s, T4 46.45 s, Web 33.68 s. Job queued 22:44:42.036Z, finished 23:05:12.908Z: 1230.872 s queued-to-finish, including admission/host-gate overhead, not pure test wall. Local monetary cost not reported; no droplet lifetime applies.
+
+T4 base phase ran on both; T4 repetitions were explicitly skipped. Duration budgets and ratchet diagnostics are report-only, not enforced budget passes; projections are not measured walls. No QA full suite was submitted. Fresh plan reads show the applicable stage cover complete on both platforms. No epic criterion marks.
+
+All fixture cleanup and earlier detailed observations remain in report-before-covers.md and original captures. Final HEAD/dev still equal S; detached tree clean apart from the allowed node_modules symlink. Stage verdict only; no criterion marks.
+
+Evidence A-9488: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9488-e-417-stage-qa-clear-at-4411dcc9-final-cases-and-both-stage-covers/report.md

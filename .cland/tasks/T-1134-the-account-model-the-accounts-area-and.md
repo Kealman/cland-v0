@@ -3,7 +3,7 @@ id: T-1134
 kind: task
 title: "The account model: the Accounts area and the accounts strip"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:15.395Z
-updated: 2026-10-22T15:16:15.395Z
+updated: 2026-10-22T23:07:37.609Z
 ---
 
 ## Summary

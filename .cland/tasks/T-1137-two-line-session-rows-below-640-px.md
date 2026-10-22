@@ -3,7 +3,7 @@ id: T-1137
 kind: task
 title: Two-line session rows below 640 px
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:15.881Z
-updated: 2026-10-22T15:16:15.881Z
+updated: 2026-10-22T23:07:37.215Z
 ---
 
 ## Summary

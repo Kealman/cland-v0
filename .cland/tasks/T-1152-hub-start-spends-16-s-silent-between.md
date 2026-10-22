@@ -3,7 +3,7 @@ id: T-1152
 kind: task
 title: Hub start spends 16 s silent between binding listeners and restoring sessions when a lease needs recovery
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-865
 branch: t/T-1152-hub-start-spends-16-s-silent-between
 created: 2026-10-22T18:04:51.408Z
-updated: 2026-10-22T21:18:50.104Z
+updated: 2026-10-22T22:10:44.022Z
 ---
 
 ## Summary
@@ -28,12 +28,10 @@ Startup restores sessions without waiting on executor lease recovery or any prov
 
 ## Acceptance criteria
 
-- [x] C1. A hub start with a recorded lease whose provider calls hang reaches "restoring sessions" and serving within 2 s of listening, and recovery completes or defers afterwards (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1152-final · 2026-10-22T20:11:16.154Z · commit 0db9a720911633bf5dd442c7d19f293de86a7b2e
-  - done: impl-1152 · 2026-10-22T20:54:20.441Z
-- [x] C2. Each startup step between listening and serving logs its duration (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1152-final · 2026-10-22T20:11:16.155Z · commit 0db9a720911633bf5dd442c7d19f293de86a7b2e
-  - done: impl-1152 · 2026-10-22T20:54:20.503Z
+- [ ] C1. A hub start with a recorded lease whose provider calls hang reaches "restoring sessions" and serving within 2 s of listening, and recovery completes or defers afterwards (test).
+  - failed: rev-23 [reviewer] · 2026-10-22T22:10:44.022Z · note Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.
+- [ ] C2. Each startup step between listening and serving logs its duration (test).
+  - failed: rev-23 [reviewer] · 2026-10-22T22:10:44.022Z · note Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.
 
 ## Comments
 
@@ -125,3 +123,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear at the Coordinator-authorized dev merge. No findings. T-1152 production/fixture/measurement blobs are unchanged; docs/provenance retain startup and shutdown guidance. Imported T-1150 test blobs exactly match accepted 407a78ae and correct the obsolete human-steers expectation. Inspected T-1151 production/test blobs match accepted ab354a67; dispatcher closed-before-gate release and executor abort-before-recovery join compose with Suites closing its separate executor before scheduler joins. Detailed audit posted in topic-865. C1/C2 remain unverified at this new head pending Coordinator verify all. A-9454 is old-head failed/partial T3 evidence with no Web; A-9455 is local targeted evidence only. Prior passing receipt is not transferred. Historical 16-second cause remains unproven; no landing during freeze.
+
+### rev-23 · 2026-10-22T22:10:44.022Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1152-full-evidence
+commit: ebe47ab87226fb664d96fcead5702a2fd8bc5dbe
+scope: evidence
+findings: [{"severity":"medium","text":"Required full receipt A-9475 exits 1: FOLLOWS-001 stub case reports FAIL ('the hub reports E-4 follows E-2'), actual FAIL !== PASS; Web unrun. Coordinator classified known T-1103 flake and owns one same-head retry; no new T-1152 source finding.","file":"nvim/test/qa.test.ts","line":224}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-9475/c06bc92d failed at reviewed ebe47ab8. Actual FOLLOWS-001 stub result FAIL ('the hub reports E-4 follows E-2'), FAIL !== PASS at qa.test.ts:224. T1/T2 exit 0, sole T3 test failure, Web absent. Parsed ordinary 3682 pass/1 fail/8 skip plus 10 passing load repetitions; Linux x64 c-8 lon1, 1430 s/$0.0993; host a4f2cf0 reused remotely, generic diagnostics report-only. Coordinator's known-T-1103 classification and one same-head retry after covers confirmed in topic. Source clear A-9456 unchanged; no source edits or independent retry requested. Both final criteria held pending required replacement full receipt. Detailed evidence artifact posted in topic-865.
+
+Criteria: C1 failed (Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.), C2 failed (Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.).

@@ -3,7 +3,7 @@ id: T-1111
 kind: task
 title: "The Codex relay: app-server approvals answered through the gate"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:11.398Z
-updated: 2026-10-22T15:16:11.398Z
+updated: 2026-10-22T23:07:33.617Z
 ---
 
 ## Summary

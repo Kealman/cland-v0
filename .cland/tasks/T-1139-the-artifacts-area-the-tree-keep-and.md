@@ -3,7 +3,7 @@ id: T-1139
 kind: task
 title: "The Artifacts area: the tree, keep and archive"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:16.169Z
-updated: 2026-10-22T15:16:16.169Z
+updated: 2026-10-22T23:07:37.901Z
 ---
 
 ## Summary

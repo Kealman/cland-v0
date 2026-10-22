@@ -3,7 +3,7 @@ id: T-1135
 kind: task
 title: This browser's sign-in beside the profile
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:15.619Z
-updated: 2026-10-22T15:16:15.619Z
+updated: 2026-10-22T23:07:37.704Z
 ---
 
 ## Summary

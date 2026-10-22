@@ -3,7 +3,7 @@ id: T-1119
 kind: task
 title: The message block with Markdown, role colours, verdicts and chips
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:12.897Z
-updated: 2026-10-22T15:16:12.897Z
+updated: 2026-10-22T23:07:35.299Z
 ---
 
 ## Summary

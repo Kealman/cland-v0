@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-867
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-22T21:12:24.081Z
+updated: 2026-10-22T23:07:36.436Z
 ---
 
 ## Summary
@@ -133,3 +133,71 @@ stages:
       - - T-1142
       - - T-1143
 ```
+
+## Comments
+
+### qa-676 · 2026-10-22T23:07:36.436Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-23-1
+commit: 4411dcc99173b864850ac0988a11334d87262614
+stage: seams and the session list
+stage_hash: 9d1793d1f77049cfbe6c5a4de58921a8376ba7d60f6842ba8267f1328b8fc6ff
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# E-418 stage QA — clear
+
+Run `qa-s1-2026-10-23-1`; commit `4411dcc99173b864850ac0988a11334d87262614`. Every scoped case passed.
+
+| Case | Result | Observation |
+|---|---|---|
+| E418S1-00 | PASS | Clean S=dev, five members merged including T-1155, 37 env names removed / zero credential prefixes; helper parse pass. |
+| E418S1-01 | PASS | Web bundle built from S; clean tree. |
+| E418S1-02 | PASS | T1 state/authority/keymap 15/15. |
+| E418S1-03 | PASS | T2 authority 39/39; all five named session cases present. |
+| E418S1-04 | PASS | Snapshot 13/13 and workload 8/8 including verifier burst bound. |
+| E418S1-05 | PASS | Sessions 5/5, five clean browser censuses. |
+| E418S1-06 | PASS | Area slots 4/4, clean browser census. |
+| E418S1-07 | PASS | Key context/palette/folds/connection/shell 33/33, all clean browser censuses; Sessions help assertion 17. |
+| E418S1-08 | PASS | Items/card 14/14, clean censuses. |
+| E418S1-09 | PASS | Typecheck, wire conformance, colours/contrast/hooks and tiers pass. |
+| E418S1-10 | PASS | Single keyboard listener, allowed storage only, no browser merge/hex colours/new dependencies. |
+| E418S1-11 | PASS | All 22 positive docs probes and absent obsolete text match; five key rows, surrounding docs consistent with observed behavior. |
+| E418S1-12 | PASS | Seeding succeeds; 21 archived; correct live/stopped rows and compatibility keys. |
+| E418S1-13 | PASS | Five groups/counts/order correct; latest 20 stopped; no Attach; screenshot inspected. |
+| E418S1-14 | PASS | Row glyphs/roles/holds/request colours/usage correct; age 13s to 16s. Unknown model/account/usage facts render dash; Aide unknown state is allowed. |
+| E418S1-15 | PASS | Full waiting command visible through END-OF-QA-COMMAND; j/down/k/up and Cyrillic physical J correct; screenshot inspected. |
+| E418S1-16 | PASS | 17 help entries, required names only, last row contained. |
+| E418S1-17 | PASS | Idle fold persisted across reload; no frames sent; restored. |
+| E418S1-18 | PASS | All three pane/page/drawer modules correct; all four Sessions slots present. |
+| E418S1-19 | PASS | Queue/account/artifact/row pushes observed; artifact row 1, Busy 0/Idle 4; no inventory list request. |
+| E418S1-20 | PASS | Archive read once for 21 rows, refresh second read for 22, hides cleanly. |
+| E418S1-21 | PASS | Default/clamped 50, whole-message 254688-byte page, older pages ordered, all 36 big messages gapless; older role and request notices retained as allowed. |
+| E418S1-22 | PASS | Cookie/Unix/spoke history IDs equal, 50 messages, last h52; no secret/cookie leakage. |
+| E418S1-23 | PASS | Only three own timestamps; fixed 30 days; selector ignored; local list/revoke boundary enforced; CLI listing matches four IDs. |
+| E418S1-24 | PASS | Web cwd/string/empty/null refused, root launch correct; CLI scratch cwd retained. |
+| E418S1-25 | PASS | 22 archived merged rows match Unix/web/CLI, legacy keys and snapshot equality unchanged. |
+| E418S1-26 | PASS | 28 rows retained offline; new snapshot only qa-new and new account; zero reloads. |
+| E418S1-27 | PASS | Linux A-9478/A-9479/A-9480 and macOS A-9485 green at S; plan cover complete. |
+| E418S1-28 | PASS | Committed brief lint passes. |
+| E418S1-29 | PASS | Rig 1/1; browser group before 4 after 0; all 12 fixture PIDs absent; scratch removed; final S=dev clean. |
+
+## Findings
+
+No product or probe findings.
+
+## Shared stage cover receipts
+
+Both Coordinator-owned full stage runs tested commit `4411dcc99173b864850ac0988a11334d87262614`, verification tree `95303fe6e1ec65315487e5c6c1231ae0f4fa8cd6`.
+
+- Linux droplet run `4786647f-b5e0-4c6e-921c-d716fb816ce3`: exit 0; 3823 passed, 8 skipped, zero failures. Merged log A-9478; shard logs A-9479/A-9480. T1–T4 plus Web ran, Web 17 files/47 top-level tests. Two c-8 lon1 machines: cland-v0-c72db40c, admission-to-remote-finish 1100.90 s, collection 35.06 s, lifetime 1086 s, $0.0754; cland-v0-a263d360, 982.90 s, collection 20.44 s, lifetime 966 s, $0.0671. Actual overall admission-through-collection wall 1136.23 s, total $0.1425. T-1155 T4 100-frame verifier case passed with 201/200/100 pending reads (A-9480); its earlier targeted receipt A-9469 is supporting evidence only.
+- macOS local run `c6c2ee05-f2b4-444e-b6a4-9e8bfefb6d27`, A-9485: exit 0; 3831/3831 passed, zero failures or skips. Darwin arm64 27.0.0, Node v24.21.0, Neovim v0.12.5, two workers. T1–T4 plus Web ran (17 Web files/47 top-level tests, 93 including nested cases). Actual runner phase walls T1 30.71 s, T2 178.75 s, T3 915.61 s, T4 46.45 s, Web 33.68 s. Job queued 22:44:42.036Z, finished 23:05:12.908Z: 1230.872 s queued-to-finish, including admission/host-gate overhead, not pure test wall. Local monetary cost not reported; no droplet lifetime applies.
+
+T4 base phase ran on both; T4 repetitions were explicitly skipped. Duration budgets and ratchet diagnostics are report-only, not enforced budget passes; projections are not measured walls. No QA full suite was submitted. Fresh plan reads show the applicable stage cover complete on both platforms. No epic criterion marks.
+
+All fixture cleanup and earlier detailed observations remain in report-before-covers.md and original captures. Final HEAD/dev still equal S; detached tree clean apart from the allowed node_modules symlink. Stage verdict only; no criterion marks.
+
+Evidence A-9489: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9489-e-418-stage-qa-clear-at-4411dcc9-final-cases-and-both-stage-covers/report.md

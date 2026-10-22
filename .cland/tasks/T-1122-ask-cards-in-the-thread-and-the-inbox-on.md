@@ -3,7 +3,7 @@ id: T-1122
 kind: task
 title: Ask cards in the thread and the inbox on one record
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:13.408Z
-updated: 2026-10-22T15:16:13.408Z
+updated: 2026-10-22T23:07:35.745Z
 ---
 
 ## Summary

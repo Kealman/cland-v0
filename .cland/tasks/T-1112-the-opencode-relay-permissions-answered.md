@@ -3,7 +3,7 @@ id: T-1112
 kind: task
 title: "The OpenCode relay: permissions answered through the gate"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:11.536Z
-updated: 2026-10-22T15:16:11.536Z
+updated: 2026-10-22T23:07:33.722Z
 ---
 
 ## Summary
