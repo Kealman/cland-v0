@@ -2,8 +2,8 @@
 id: T-1078
 kind: task
 title: Criteria edits on the card
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-844
 branch: t/T-1078-criteria-edits-on-the-card
 created: 2026-10-21T17:32:17.135Z
-updated: 2026-10-22T11:28:59.861Z
+updated: 2026-10-22T11:34:02.636Z
+closed: 2026-10-22T11:34:02.636Z
 ---
 
 ## Summary
@@ -235,3 +236,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1–C3 clear at unchanged merged head 9989ae33f6b4de4588c8fbaf6206983ae01aee96/tree dbd6638145e0069462b703b13e857a2abbee36fa. Original A-9132/8a5d8486 finish records and hub passed state checked: aggregate/T1/all-T2 hub+Neovim/Web exit 0, 2440 ordinary test and 374 file passes, no failures/skips/cancellations. Criteria C1/C2/C3 lines 13299/13308/13321 pass; parent 13329 12.537443864 s under accepted 17.3 s allowance; complete all-33 help both viewports pass, parent 4.262608295 s under 7.5 s. Linux x64 c-8 lon1, workers 2/Web 4, 552 s/$0.0383, host d26226cf reused/not repeated remotely. Existing lint/duration/ratchet report-only, 1 missing baseline; actual Web 50.42 s is not an enforcing tier-budget pass. No Web repetition/T3/T4/QA claim. Accepted source A-9131 remains unchanged; no findings. Coordinator owns landing/affected after-stage QA.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-22T11:34:02.636Z
+
+Merged 9ee64c19c28d832ee41388b2679918879afe6261 onto dev.
