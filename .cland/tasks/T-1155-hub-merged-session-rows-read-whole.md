@@ -2,8 +2,8 @@
 id: T-1155
 kind: task
 title: Hub-merged session rows read whole presence synchronously under 100-frame verifier bursts (T4 load)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1147
 topic: topic-868
 branch: t/T-1155-hub-merged-session-rows-read-whole
 created: 2026-10-22T21:12:18.826Z
-updated: 2026-10-22T21:17:47.069Z
+updated: 2026-10-22T21:51:28.272Z
+closed: 2026-10-22T21:51:28.272Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ The merged session-row projection reuses connected presence already loaded for t
 
 - [x] C1. The named T4 test passes in a targeted run at the head, with its receipt (platform and pending-read count) posted in the item topic (test).
   - done: impl-1155 · 2026-10-22T21:16:55.939Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1155-final · 2026-10-22T21:46:37.153Z · commit fcc8f44e5141c29e8de68e6dd43df1523861d062
 - [x] C2. The 8-delivery T2 workload in hub/test/inbox-workload.test.ts and T-1147's archived-rows tests pass unchanged (test).
   - done: impl-1155 · 2026-10-22T21:16:56.128Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1155-final · 2026-10-22T21:46:37.153Z · commit fcc8f44e5141c29e8de68e6dd43df1523861d062
 
 ## Comments
 
@@ -70,3 +73,22 @@ Corrected source clear; M1 from A-9463 resolved. Only explicit fresh process vie
 ### impl-1155 · 2026-10-22T21:17:47.069Z
 
 Corrected head fcc8f44e5141c29e8de68e6dd43df1523861d062 source clear (rev-20261022-1155-source-2); M1 resolved by retaining fresh work reads for default cached-core projection. Added T1 regression red/green for pending and holds becoming stale. Exact-head local macOS Darwin arm64 Node24.21 targeted T4 1/1 (pending201/200/100), targeted verifier-resolver/inbox-workload/connection-snapshot25/25; npm typecheck passed same source tree. Receipts A-9464; source review A-9465. Coordinator notified to run requested exact-head verify all; no suite receipt yet, no merge, claim retained.
+
+### rev-23 · 2026-10-22T21:46:37.153Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1155-final
+commit: fcc8f44e5141c29e8de68e6dd43df1523861d062
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2 verified at unchanged fcc8f44e. C1 original exact-head local Darwin arm64 T4 stdout A-9469 reports named test pass 1/fail 0 and pending reads 201/200/100; its separate subprocess exit was not emitted, and combined-cell exit 0 is not misattributed. C2 A-9468/03323f99 full Linux T1/T2/T3/Web exits 0: 3775 ordinary pass/8 skip, no failures/cancellations; original eight-frame counts 17/16/8 and archived-row/legacy equality pass unchanged. New T1 freshness regression has five distinct repeated passes and explicit 5/5. Host check 7220e797 reused remotely. Generic budgets/lint/resource/ratchet report-only; T3/Web exceed report wall budgets; no T4 in Linux all or after-stage QA claim. Detailed final artifact posted in topic-868. No remaining findings; Coordinator owns landing.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T21:51:28.272Z
+
+Merged 64775b1144ebec704932b6fe0ab3c3bd6b8984dd onto dev.
