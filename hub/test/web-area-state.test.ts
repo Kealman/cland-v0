@@ -154,3 +154,32 @@ test('new artifact deltas preserve the newest-first inventory order from artifac
   assert.deepEqual(client.state.artifacts, [latest, first]);
   assert.deepEqual(client.state.rows?.Artifacts?.map(row => row.id), ['A-2', 'A-1']);
 });
+
+test('artifact inventory pages retain live replacements and discard replies from an old connection', async t => {
+  const client = scripted(t);
+  client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+  client.socket.receive({ type: 'result', id: 'shell-artifacts', ok: true, value: { artifacts: [{ ...artifact('Newest'), id: 'A-3' }], more: true, before: 'A-3' } });
+  const load = client.state.loadMoreArtifacts!;
+  assert.equal(typeof load, 'function');
+  const loading = load();
+  const request = client.socket.sent.at(-1)!;
+  assert.equal(request.type, 'artifact.list');
+  assert.equal(request.type === 'artifact.list' && request.before, 'A-3');
+  const changed = { ...artifact('Changed while paging'), id: 'A-2', kept: true };
+  client.socket.receive({ type: 'artifact', artifact: changed });
+  client.socket.receive({ type: 'result', id: request.id!, ok: true, value: { artifacts: [{ ...artifact('Stale'), id: 'A-2' }], more: true, before: 'A-2' } });
+  await loading;
+  assert.deepEqual(client.state.artifacts?.map(a => a.title), ['Newest', 'Changed while paging']);
+  assert.equal(client.state.artifacts?.find(a => a.id === 'A-2')?.kept, true);
+  const old = load();
+  const oldSocket = client.socket;
+  const oldRequest = oldSocket.sent.at(-1)!;
+  oldSocket.close();
+  t.mock.timers.tick(250);
+  client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+  client.socket.receive({ type: 'result', id: 'shell-artifacts', ok: true, value: { artifacts: [artifact('Replacement')] } });
+  oldSocket.receive({ type: 'result', id: oldRequest.id!, ok: true, value: { artifacts: [artifact('Old reply')] } });
+  await old;
+  assert.deepEqual(client.state.artifacts?.map(a => a.title), ['Replacement']);
+  assert.equal(client.state.artifactsBefore, undefined);
+});

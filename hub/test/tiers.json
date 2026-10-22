@@ -604,6 +604,7 @@
     "nvim/test/verification-view.test.ts": "T2",
     "nvim/test/web-graph-layout.test.ts": "T3",
     "web/test/area-slots.test.ts": "Web",
+    "web/test/artifacts.test.ts": "Web",
     "web/test/board.test.ts": "Web",
     "web/test/connection.test.ts": "Web",
     "web/test/folds.test.ts": "Web",

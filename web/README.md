@@ -176,14 +176,12 @@ its list, `Page` is its detail in a pane (including ⌘Enter in the other pane),
 and `Drawer` is its selected object's drawer. Every slot receives the current
 `connection`, rows, selection and selection callback; pane controls expose handled
 shortcuts through a ref. The module declares its key `context` and `handledActions`.
-The shell's shared dispatcher, help and palette use those declarations. Declared
-Sessions and Artifacts mutation keys remain inactive until their slices implement
-them. Modules mark their own content with the matching `data-key-context`.
+The shell's shared dispatcher, help and palette use those declarations. Declared actions remain inactive until their area implements them. Modules mark their own content with the matching `data-key-context`.
 
 Sessions, Accounts and Artifacts live in `src/sessions/`, `src/accounts/` and
 `src/artifacts/`. Sessions owns its counts, grouped rows and unfolded selection
 through `SessionsHeader` and `SessionGroups`. Its page/drawer and the Accounts
-and Artifacts areas retain the ID/title details from `AreaObjects.tsx`.
+area and Artifacts page/drawer retain the ID/title details from `AreaObjects.tsx`.
 `AccountsStrip` and `VerifyLine` remain reserved slots for their following slices.
 Inbox and Events keep their existing stand-ins; Topics owns its grouped list and
 thread module. Items retains its tree, views and card.
@@ -216,6 +214,27 @@ scripted WebSocket and fake time, using the shared wire types. It covers model
 facts that do not yet have UI. `web/test/area-slots.test.ts` keeps the real hub,
 production socket and isolated Headless Shell proof: all slots, delta delivery
 without inventory requests, and a new hub's Sessions/Accounts without a reload.
+
+## Artifacts
+
+The Artifacts tree has **Mine** (the human’s and Aides’ artifacts), **Kept**,
+**By role** (Coordinator, Implementers, Reviewers, QA and Other), and **Archived**.
+By role, its role groups and Archived start folded. Each section shows its loaded
+artifact count and remembers explicit folds in this browser. Folders sort before
+files, then titles and ids. Rows show kind, id, title, creator, status and kept.
+“This topic” joins in the notes slice.
+
+`j` and ↓ move down through visible rows and section headers; ↑ moves up.
+`k` toggles keep, `d` archives, and `A` toggles Archived. Enter toggles a section
+or a folder. Folder files come from `artifact.list` only when unfolded and refresh
+after reconnect or artifact metadata updates. Keep and archive use the hub’s
+receipts and live `artifact` frames; offline writes are disabled and never replayed.
+Archiving the human’s or an Aide’s artifact changes its layer and preserves its
+files. **More artifacts** loads the next bounded inventory page, preserving newer
+live rows and unique identities. Reload replaces the inventory.
+
+File opening and attaching to the composer are the following slices. Creating,
+moving, promoting, deleting and editing remain in Neovim and the CLI in 0.2.0.
 
 ## Items tree
 

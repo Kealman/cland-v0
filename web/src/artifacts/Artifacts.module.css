@@ -1,0 +1,9 @@
+.row { width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 8px 12px; border: 0; border-radius: 6px; background: none; text-align: left; font-size: 12px; }
+.row:hover { background: var(--row-hover); }
+.row[aria-pressed="true"] { background: var(--selection); }
+.row:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.id { font-family: var(--mono); color: var(--text-strong); }
+.title { flex: 1; color: var(--text); overflow-wrap: anywhere; }
+.meta { color: var(--muted); overflow-wrap: anywhere; }
+.files { padding-left: 32px; color: var(--muted); }
+.more { margin: 12px 20px; padding: 6px 12px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--text); }

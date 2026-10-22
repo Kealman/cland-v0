@@ -1888,6 +1888,13 @@ and a handled Items palette action runs after modal focus restoration. The pure
 resolver cases stay in T1 `hub/test/web-keymap.test.ts`. Existing shell, palette,
 fold and Items Web tests retain their existing coverage.
 
+`web/test/artifacts.test.ts` uses the same sealed hub/Headless Shell seam for
+Mine/Kept/By role/Archived counts and saved folds, physical `k` versus ↑,
+keep/unkeep with fresh hub inventory readback, human archive without deletion,
+on-demand folder files, and three bounded inventory pages without duplicate ids.
+`hub/test/web-area-state.test.ts` keeps the lower-tier callback proof for live
+artifact changes raced against a page and reconnect replacement.
+
 `web/test/sessions.test.ts` owns the Sessions list seams against fake harnesses:
 group/header counts, browser-only fold persistence, merged row facts and live
 hold/request changes, full waiting commands and human-ask topics, visible-row

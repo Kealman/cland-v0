@@ -1,6 +1,13 @@
 import type { Artifact } from '../../../shared/wire/index.ts';
 
-export type ArtifactsState = { artifacts?: Artifact[] };
+export type ArtifactInventoryPage = { artifacts: Artifact[]; more?: boolean; before?: string };
+export type ArtifactsState = {
+  artifacts?: Artifact[];
+  artifactsBefore?: string | undefined;
+  artifactsLoading?: boolean;
+  artifactsError?: string | undefined;
+  loadMoreArtifacts?: () => Promise<void>;
+};
 
 export function replaceArtifact(rows: Artifact[] = [], artifact: Artifact): Artifact[] {
   // Match artifact.list: moved children belong to their folder, never this inventory.

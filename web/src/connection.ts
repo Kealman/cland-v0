@@ -1,7 +1,7 @@
 import { PROTOCOL_VERSION, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
 import { replaceAccount, type AccountsState } from './accounts/state.ts';
-import { replaceArtifact, type ArtifactsState } from './artifacts/state.ts';
+import { replaceArtifact, type ArtifactInventoryPage, type ArtifactsState } from './artifacts/state.ts';
 import type { Area } from './keymap.ts';
 import { compareReleases } from './current-release.ts';
 import { TopicThreads, type ThreadPage } from './topic-threads.ts';
@@ -178,6 +178,29 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     state = { ...state, rows: { ...state.rows, [area]: value } };
     changed(state);
   }
+  let artifactRead: { deltas: Map<string, Artifact> } | undefined;
+  async function loadMoreArtifacts() {
+    const before = state.artifactsBefore;
+    if (!before || artifactRead || !state.live) return;
+    const read = { deltas: new Map<string, Artifact>() };
+    artifactRead = read;
+    state = { ...state, artifactsLoading: true, artifactsError: undefined }; changed(state);
+    try {
+      const page = await command<ArtifactInventoryPage>({ type: 'artifact.list', before });
+      if (artifactRead !== read) return;
+      const current = new Map(state.artifacts?.map(a => [a.id, a]));
+      for (const a of page.artifacts) if (!current.has(a.id) && !read.deltas.has(a.id)) current.set(a.id, a);
+      state = { ...state, artifacts: [...current.values()].sort((a, b) => Number(b.id.slice(2)) - Number(a.id.slice(2))), artifactsBefore: page.more ? page.before : undefined };
+      rows('Artifacts', state.artifacts!.map(a => ({ id: a.id, title: a.title })));
+    } catch (error) {
+      if (artifactRead === read) state = { ...state, artifactsError: String(error) };
+    } finally {
+      if (artifactRead === read) {
+        artifactRead = undefined;
+        state = { ...state, artifactsLoading: false }; changed(state);
+      }
+    }
+  }
   let archiveWanted = false;
   let archiveRead = 0;
   function loadArchivedSessions() {
@@ -217,7 +240,8 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     ]);
   }
   function connect() {
-    state = { ...state, command, resolveItem, loadItems, loadArchivedSessions, threads };
+    artifactRead = undefined;
+    state = { ...state, command, resolveItem, loadItems, loadArchivedSessions, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
     requestedPlans.clear();
     closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
@@ -328,7 +352,8 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-events') {
         rows('Events', (frame.value as EventsPage).rows.map(row => ({ id: row.id, title: row.text })));
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-artifacts') {
-        state = { ...state, artifacts: (frame.value as { artifacts: Artifact[] }).artifacts };
+        const page = frame.value as ArtifactInventoryPage;
+        state = { ...state, artifacts: page.artifacts, artifactsBefore: page.more ? page.before : undefined };
         rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
       } else if (frame.type === 'marks') { state = { ...state, marks: frame.marks }; changed(state); }
       else if (frame.type === 'inbox') inbox(frame.inbox);
@@ -376,6 +401,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       } else if (frame.type === 'event') {
         request({ type: 'events.list', id: 'shell-events', limit: 200 });
       } else if (frame.type === 'artifact') {
+        artifactRead?.deltas.set(frame.artifact.id, frame.artifact);
         state = { ...state, artifacts: replaceArtifact(state.artifacts, frame.artifact) };
         rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
       } else if (frame.type === 'verification.queue') {
@@ -395,6 +421,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         if ('rows' in frame) {
           const topics = new Map(state.topics?.map(row => [row.id, row]));
           for (const row of frame.rows.topics) topics.set(row.id, row);
+          for (const artifact of frame.rows.artifacts) artifactRead?.deltas.set(artifact.id, artifact);
           state = { ...state, topics: [...topics.values()], artifacts: frame.rows.artifacts.reduce((rows, artifact) => replaceArtifact(rows, artifact), state.artifacts ?? []) };
           rows('Topics', state.topics!);
           rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
