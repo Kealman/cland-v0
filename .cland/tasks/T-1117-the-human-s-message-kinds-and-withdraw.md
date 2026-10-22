@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-854
 branch: t/T-1117-the-human-s-message-kinds-and-withdraw
 created: 2026-10-22T15:16:12.522Z
-updated: 2026-10-22T15:58:34.671Z
+updated: 2026-10-22T16:02:24.554Z
 ---
 
 ## Summary
@@ -34,7 +34,7 @@ The human's `topic.send` takes an optional kind, `message` by default, `decision
 - [x] C1. A Decision and a Question sent by the human carry their kind on the message, in a later history read and in the delta a second frame client receives (test).
   - done: impl-1117 · 2026-10-22T15:41:16.997Z
 - [x] C2. A Question addressed to a session leaves the topic waiting for that session, as `cland` reads the topic (test).
-  - done: impl-1117 · 2026-10-22T15:41:17.085Z
+  - done: impl-1117 · 2026-10-22T16:01:03.386Z
 - [x] C3. Withdrawing a message queued for a busy fake session moves it to `withdrawn`, returns its text, and the session never receives it, also after the turn ends (test).
   - done: impl-1117 · 2026-10-22T15:41:17.167Z
 - [x] C4. A withdraw after the message was injected is refused naming the stage, and an agent's withdraw and another sender's message are refused (test).
@@ -44,6 +44,7 @@ The human's `topic.send` takes an optional kind, `message` by default, `decision
 - [x] C6. `hub/README.md` and `nvim/README.md` describe the kinds and the withdraw (docs).
   - done: impl-1117 · 2026-10-22T15:33:39.077Z
   - verified: rev-32 [reviewer] · run rev-20261022-1117-source-2 · 2026-10-22T15:42:06.382Z · commit 74e5f348ca0cc7196f2b413282f6f20cdc418925
+  - verified: rev-32 [reviewer] · run rev-20261022-1117-source-3 · 2026-10-22T16:02:24.554Z · commit 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
 
 ## Comments
 
@@ -78,5 +79,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; A-9246 carries A-9240's full production/spec audit plus the complete correction review. M1 resolved with complete shared FakeClock in new T2 fixtures; M2 resolved with Store/HubCore reopen retaining open status, withdrawn stage, next-delivery receipt and non-delivery assertion. Public busy/accepted/late-ack/digest/broadcast assertions remain unchanged; no production changes. C6 verified from matching docs. C1–C5 source paths established but run-dependent evidence remains unverified until configured same-head verification. Local macOS targeted results in A-9244 are supplemental narrative evidence; no configured suite/Linux pass claimed. Mode-free verify may now run at this exact head.
+
+Criteria: C6 verified.
+
+### rev-32 · 2026-10-22T15:59:44.195Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261022-1117-local-evidence
+commit: 74e5f348ca0cc7196f2b413282f6f20cdc418925
+scope: evidence
+findings: [{"severity":"medium","text":"M3: handover's intended pending human Question is sent without kind, so default Message no longer establishes the inherited status wait. A-9267 fails at :145: actual [['general','addressed',1]], expected [['general','status',1]]. Make setup explicitly question; retain status/claim/handover assertions.","file":"hub/test/handover.test.ts","line":81}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-9270 audits actual failed local run dafcfcb3/A-9267 at this head, Darwin arm64/local, Node24.21.0, machine workers4. Actual AssertionError at handover.test.ts:145: actual [['general','addressed',1]], expected [['general','status',1]]. Source setup :81 omits kind:'question'; update this intended Question, preserving the original assertions. Host check/T1 completed; T2 has one failure; aggregate reported2058 tests/2057 pass/1 fail, Web unexecuted, no T3/T4 or Linux runtime receipt. Generic budgets/lint/ratchet report-only. No final C1/C3/C4/C5 verification from this failed partial run. Fresh source review on corrected head before new mode-free verify.
+
+Criteria: C2 failed (Question-only wait contract migration leaves handover fixture implicit Message; same-head local T2 fails expected inherited status wait (A-9267).).
+
+### rev-32 · 2026-10-22T16:02:24.554Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261022-1117-source-3
+commit: 0c5a6c6a57e6f0def3489c9b638e7027003cdb3b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear A-9272, carrying complete audit A-9240/A-9246. M3 resolved by the sole added kind:'question' field at handover.test.ts:81; original inherited status-wait and all handover/claim/note/permission assertions unchanged. No production/resources/docs changes or remaining findings. C6 matching docs source-verified at this head; C1–C5 run-dependent paths established but await fresh configured same-head evidence. A-9271 local targeted handover/typecheck narrative is supplemental; A-9267 at previous head remains failed partial evidence. Mode-free verify may run at this exact head; no runtime green or Linux pass claimed.
 
 Criteria: C6 verified.

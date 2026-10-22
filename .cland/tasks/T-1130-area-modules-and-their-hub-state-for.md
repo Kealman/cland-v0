@@ -3,7 +3,7 @@ id: T-1130
 kind: task
 title: Area modules and their hub state for Sessions, Accounts and Artifacts
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-418
 blocked_by:
   - T-1115
 topic: null
-branch: null
+branch: t/T-1130-area-modules-and-their-hub-state-for
 created: 2026-10-22T15:16:14.835Z
-updated: 2026-10-22T15:16:23.192Z
+updated: 2026-10-22T16:02:31.743Z
 ---
 
 ## Summary

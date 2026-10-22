@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-850
 branch: t/T-1104-hub-startup-recomputes-the-explorer-per
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T15:52:05.298Z
+updated: 2026-10-22T16:01:50.249Z
 closed: 2026-10-22T15:52:05.298Z
 ---
 
@@ -141,3 +141,7 @@ Ready at bec96d238f4709d3cd976c4f4a12f4bb260a54d6: final review clear rev-202610
 ### coord · 2026-10-22T15:52:05.298Z
 
 Merged 0f9d78c1fa0ed98fd8f0acaa358037c3b242809f onto dev.
+
+### coord · 2026-10-22T16:01:50.249Z
+
+Live confirmation at hub restart #45 (dev 95ae1193, 2026-10-22 16:00Z, cland-impl). 'binding listeners' 16:00:13.864Z → 'restoring sessions' 16:00:14.281Z took 0.4 s, with 0 explorer-recomputed events in that gap (755 at #43, 1,626 at #44) and no tracker-storage-stalled during startup. Listening 16:00:13.87Z, serving 16:00:14.56Z. The new hub's own start took 10 s and RSS at +50 s was 899 MB (1.66 GB at #44). Stop→serve was 31 s, but 20 s of it was the old hub's stop releasing an in-flight prepare droplet.

@@ -3,7 +3,7 @@ id: T-1118
 kind: task
 title: The Topics area and the thread in pages, with read marks
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-417
 blocked_by:
   - T-1115
 topic: null
-branch: null
+branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T15:16:22.221Z
+updated: 2026-10-22T16:02:26.154Z
 ---
 
 ## Summary
