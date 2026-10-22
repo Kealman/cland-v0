@@ -3,7 +3,7 @@ id: T-1106
 kind: task
 title: subscription-frame test reads a torn journal line right after flushLogs
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-849
 branch: t/T-1106-subscription-frame-test-reads-a-torn
 created: 2026-10-22T11:55:11.188Z
-updated: 2026-10-22T13:33:47.100Z
+updated: 2026-10-22T13:50:17.807Z
 ---
 
 ## Summary
@@ -27,7 +27,10 @@ Periodic dev T3 run c9d66ec4 (A-9142, dev 733afdba, Linux droplet) failed `hub/t
   - done: impl-1106 · 2026-10-22T13:21:25.714Z
   - verified: rev-23 [reviewer] · run rev-20261022-1106-source-2 · 2026-10-22T13:23:28.235Z · commit 7b208e63f37eb03822af01ce8c35a705189ce16f
   - verified: rev-23 [reviewer] · run rev-20261022-1106-linux-evidence · 2026-10-22T13:33:47.100Z · commit 7b208e63f37eb03822af01ce8c35a705189ce16f
-- [ ] C2. The test passes 20/20 in a local loop on macOS under a parallel CPU load, in a disposable root under rule 15 and outside any stage cover, with every sample listed in the item topic; the mode-free Linux run at the head covers any T1/T2 test this change adds, and the file's Linux T3 receipt comes from the next periodic dev T3 or stage cover after landing (test).
+  - verified: rev-23 [reviewer] · run rev-20261022-1106-final · 2026-10-22T13:50:17.730Z · commit 7b208e63f37eb03822af01ce8c35a705189ce16f
+- [x] C2. The test passes 20/20 in a local loop on macOS under a parallel CPU load, in a disposable root under rule 15 and outside any stage cover, with every sample listed in the item topic; the mode-free Linux run at the head covers any T1/T2 test this change adds, and the file's Linux T3 receipt comes from the next periodic dev T3 or stage cover after landing (test).
+  - done: impl-1106 · 2026-10-22T13:47:38.907Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1106-final · 2026-10-22T13:50:17.730Z · commit 7b208e63f37eb03822af01ce8c35a705189ce16f
 
 ## Comments
 
@@ -87,3 +90,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Linux evidence portion accepted at unchanged 7b208e63/tree 7696ce51; final C2 remains pending. A-9173/cfeb14d7 original records and hub passed state checked: aggregate/T1/all-T2 hub+Neovim/Web exit 0, 2446 ordinary test and 375 file passes plus five load test/file passes. New T1 ordinary 1261 0.000858802 s; distinct load finishes 1272/1297/1339/1376/1443 max 0.002648474 s, explicit 5/5 at 1446. C1 refreshed. C2's 20/20 local macOS native loop under parallel CPU load still requires explicit Coordinator window; pure T1 repetitions do not substitute. Native Linux T3 deferred to post-landing periodic/stage, no T3/T4/QA/final-ready claim. Linux x64 c-8 lon1, 473 s/$0.0329, reused host 8946e83e; report-only lint/duration/ratchet, two missing baselines. No further unchanged-head verify requested; retain this green receipt.
 
 Criteria: C1 verified.
+
+### impl-1106 · 2026-10-22T13:47:59.809Z
+
+C2 load window released after 20/20 native subscription-frame samples passed at unchanged reviewed 7b208e63 on local macOS arm64 Node v24.21.0 with four parallel CPU workers. Disposable exact-head archive and sealed fixtureEnvironment isolated HOME/XDG/Git/accounts; each worker accumulated ~37.6 user CPU seconds and close receipts preceded release. A-9180 contains all 20 full raw samples + CPU receipts; every sample/duration is listed in the topic. Initial dependency-link setup failure is retained separately in A-9179 and excluded from behavioral loop. Same-head Linux cfeb14d7/A-9173 remains green; native Linux T3 explicitly deferred post-landing per amended C2. Both criteria marked done; final evidence review requested; no source change or verify rerun.
+
+### rev-23 · 2026-10-22T13:50:17.730Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1106-final
+commit: 7b208e63f37eb03822af01ce8c35a705189ce16f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final pre-merge C1/C2 clear at unchanged 7b208e63f37eb03822af01ce8c35a705189ce16f/tree 7696ce51d220615a2471f976a3e2ce2ea9e5f771. A-9180 parsed 20 unique macOS native subscription-frame samples, each 1/1 exit 0, no fail/skip/cancel, process durations 1736.22–2191.73 ms; four CPU burners each ~37.6 user CPU seconds with distinct closed/exit receipts before release. Coordinator window 817916bc verified; exact-head disposable archive and fixture isolation recorded. A-9179 missing smol-toml setup failed before behavioral import and remains excluded, not relabeled. Retained A-9173/cfeb14d7 configured Linux T1/all-T2/Web green and T1 five unique load passes already accepted; no rerun. Generic lint/duration/ratchet report-only; host gate reused. Native Linux subscription-frame T3 explicitly deferred to next post-landing periodic/stage under amended C2, not a pass here. No T4/QA/enforcing-budget claim or Reviewer execution; no findings. Coordinator owns landing/deferred citation.
+
+Criteria: C1 verified, C2 verified.
