@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-865
 branch: t/T-1152-hub-start-spends-16-s-silent-between
 created: 2026-10-22T18:04:51.408Z
-updated: 2026-10-22T20:55:32.235Z
+updated: 2026-10-22T21:18:50.104Z
 ---
 
 ## Summary
