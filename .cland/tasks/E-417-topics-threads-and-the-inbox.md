@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-14T16:00:01.751Z
+updated: 2026-10-22T15:16:21.563Z
 ---
 
 ## Summary
@@ -98,3 +98,44 @@ The human steers the rest of the build from the browser once this epic's thread 
 - Prototype: `prototype/web-shell` (`web/src/thread/Thread.tsx`, `thread/markdown.tsx`, `topics/TopicsArea.tsx`, `inbox/InboxArea.tsx`, `events/EventsArea.tsx`).
 - Mockups: `docs/design/web/Thread.dc.html` (P10 to P16), `Inbox.dc.html` (P17 to P19), `PhoneAsk.dc.html` (P37, P38); `screens/v02-thread.png`, `v02-inbox.png`.
 - GLOSSARY: Topic, General, Agents topic, Ask, Request, Events view, Layer.
+
+## Plan
+
+```yaml
+stages:
+  - name: thread groundwork
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1115
+        - T-1118
+      - - T-1116
+      - - T-1117
+  - name: message block, runs and asks
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1119
+        - T-1120
+        - T-1121
+        - T-1122
+  - name: inbox and composer
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1123
+        - T-1124
+        - T-1125
+        - T-1126
+  - name: events, notifications and approvals
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1127
+        - T-1128
+        - T-1129
+```

@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-14T15:59:58.183Z
+updated: 2026-10-22T15:16:20.923Z
 ---
 
 ## Summary
@@ -90,3 +90,30 @@ In this project the crew's Codex roles run with approvals off and the Claude Cod
 - Mockups: `docs/design/web/Sessions.dc.html` (P23, the approval card), `PhoneHome.dc.html` (a Claude Code approval marked "answer in Neovim").
 - Code: `hub/src/adapters/contract.ts` (`approvalRelay`), `hub/src/adapters/codex.ts` (the server requests), `hub/src/adapters/opencode.ts` (`permission.asked`).
 - GLOSSARY: Adapter, Harness, Ask.
+
+## Plan
+
+```yaml
+stages:
+  - name: record and gate
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1109
+        - T-1110
+  - name: relays and Neovim
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1111
+      - - T-1112
+      - - T-1114
+  - name: races and restarts
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1113
+```

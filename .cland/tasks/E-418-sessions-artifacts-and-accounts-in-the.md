@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-14T16:00:03.214Z
+updated: 2026-10-22T15:16:22.662Z
 ---
 
 ## Summary
@@ -96,3 +96,38 @@ The human watches the crew and the verification queue from the browser: who wait
 - Prototype: `prototype/web-shell` (`web/src/sessions.ts`, `web/src/sessions/SessionsArea.tsx`).
 - Mockups: `docs/design/web/Sessions.dc.html` (P20 to P23), `PhoneSessions.dc.html` (P27 to P30); `screens/v02-sessions.png`, `screens/v02-phone-sessions.png`.
 - GLOSSARY: Session, Role, Aide, Account, Limited account, Artifact, Executor.
+
+## Plan
+
+```yaml
+stages:
+  - name: seams and the session list
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1130
+        - T-1132
+      - - T-1131
+  - name: acting, the queue, accounts and artifacts
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1136
+        - T-1137
+        - T-1138
+      - - T-1133
+      - - T-1134
+        - T-1135
+      - - T-1139
+        - T-1140
+  - name: on E-417's thread, composer and notifications
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1141
+      - - T-1142
+      - - T-1143
+```
