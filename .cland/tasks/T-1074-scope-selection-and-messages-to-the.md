@@ -2,8 +2,8 @@
 id: T-1074
 kind: task
 title: Scope, selection and messages to the Coordinator in the Items area
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-831
 branch: t/T-1074-scope-selection-and-messages-to-the
 created: 2026-10-21T17:32:16.621Z
-updated: 2026-10-22T05:28:54.990Z
+updated: 2026-10-22T05:33:46.410Z
+closed: 2026-10-22T05:33:46.410Z
 ---
 
 ## Summary
@@ -194,3 +195,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final Graph-merged evidence clear; A-8953 audits original A-8952/033cceae against source-clear A-8951. Census2409 ordinary tests/366files pass,zero fail/cancel/skip; T1/all hub+NeovimT2/actualWeb exit0. All7 Actions pass incl Graph and M1–M4; all Board/Graph criterion children pass. Local Actions7/7/Board4/4/Graph4/4/check A-8947–50 retained. C1–C3 verified. Board5.842s under approved9.7s allowance; Graph4.227s and Web40.26s report-only reference overages,not enforcing-budget passes. Host568e9696 reused,lint/duration/ratchet report-only,11missing baselines; no T3/T4/load/QA claim. Joint integrated covers/stage QAs separate.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-22T05:33:46.410Z
+
+Merged 3f1e102a1d77a2c8157d64f6bdea755fb3bae161 onto dev.
