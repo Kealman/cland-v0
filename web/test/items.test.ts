@@ -1,30 +1,50 @@
 // Web: copied tracker -> real scratch hub -> snapshot/deltas -> rendered explorer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdir } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { webFixture, pageUntil } from './harness.ts';
 import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { seedItem, seedTree } from './items-fixture.ts';
+import { currentRelease } from '../src/current-release.ts';
+import type { ExplorerSummary } from '../../shared/wire/index.ts';
+
+// The copied tracker's current release, chosen as the web chooses it, so the test outlives each release's close.
+async function liveRelease(root: string) {
+  const dir = join(root, '.cland/tasks');
+  const releases: ExplorerSummary[] = [];
+  for (const name of await readdir(dir)) {
+    if (!/^R-\d+-/.test(name)) continue;
+    const head = (await readFile(join(dir, name), 'utf8')).split('\n---')[0]!;
+    const field = (key: string) => { const value = head.match(new RegExp(`^${key}: (.*)$`, 'm'))?.[1]?.trim().replace(/^['"]|['"]$/g, ''); return value && value !== 'null' ? value : undefined; };
+    releases.push({ id: field('id'), kind: field('kind'), title: field('title'), state: field('state'), status: field('status'), version: field('version'), rank: field('rank') === undefined ? undefined : Number(field('rank')) } as unknown as ExplorerSummary);
+  }
+  return currentRelease(releases)!;
+}
 
 test('the Items tree reads the copied live tracker snapshot', async t => {
+  let live!: ExplorerSummary;
   const fixture = await webFixture(t, { prepare: async root => {
     await cp(resolve(import.meta.dirname, '../../.cland/tasks'), join(root, '.cland/tasks'), {
       recursive: true, filter: source => !basename(source).startsWith('R-1100-'),
     });
     // Plant the live regression even when this checkout predates Public launch.
     await seedItem(root, 'R-1100', 'release', 'Public launch');
+    // A planned open epic under the live release: live epics close, so the stage facts come from a seeded one.
+    live = await liveRelease(root);
+    await seedItem(root, 'E-900400', 'epic', 'Live release planned epic', { parent: live.id }, '## Plan\n\n```yaml\nstages:\n  - name: Live fixture stage\n    qa: { scope: none, when: after-stage }\n    lanes:\n      - [T-900401]\n```\n');
+    await seedItem(root, 'T-900401', 'task', 'Live release planned task', { parent: 'E-900400', status: 'planned' });
     await seedTree(root);
   } });
   await fixture.pageCase(t, async page => {
     await page.keyboard.press('2');
     const tree = page.getByRole('tree', { name: 'Items tree' });
     await tree.waitFor();
-    const release = tree.locator('[data-object-id="R-377"]');
+    const release = tree.locator(`[data-object-id="${live.id}"]`);
     await release.waitFor();
-    assert.match(await release.textContent() ?? '', /v0.2/);
+    assert.ok((await release.textContent() ?? '').includes(live.title!), `${live.id} row names its title`);
     assert.equal(await release.getAttribute('aria-expanded'), 'true');
-    const epic = tree.locator('[data-object-id="E-416"]');
+    const epic = tree.locator('[data-object-id="E-900400"]');
     await epic.waitFor();
     assert.equal(await epic.locator('[role="meter"]').count(), 1);
     assert.match(await epic.textContent() ?? '', /S1/);
@@ -33,8 +53,8 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     }
     await epic.click();
     await page.keyboard.press('l');
-    await tree.getByText('tree, card and layout', { exact: true }).waitFor();
-    await tree.locator('[data-object-id="T-1071"]').waitFor();
+    await tree.getByText('Live fixture stage', { exact: true }).waitFor();
+    await tree.locator('[data-object-id="T-900401"]').waitFor();
     const output = resolve(import.meta.dirname, '../test-results');
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, 'items-tree.png') });
@@ -42,7 +62,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       await page.getByRole('button', { name: view, exact: true }).click();
       const scope = page.getByLabel(`${view} scope`, { exact: true });
       await scope.waitFor();
-      assert.match(await scope.textContent() ?? '', /R-377/);
+      assert.ok((await scope.textContent() ?? '').includes(live.id), `${view} scope names ${live.id}`);
     }
   });
   await t.test('CLI status deltas reorder a focused task and change its hub roll-up', async t => {
