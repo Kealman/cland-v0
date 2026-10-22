@@ -41,9 +41,9 @@ cache_max_age_minutes = 1440
 # The documented defaults are 110m, 75m and $5.
 # D28 (human, 2026-10-14): verification runs on droplets from the hub restart after T-347.
 # Task runs wait for a remote slot; reserve this Mac for the hub and sessions.
-# 2026-10-22 15:45Z (stand-in under D24, ask a5cd288c): true only while DO offers no c-8 in our regions; back to false
-# once a blr1 droplet runs green (D28 bent for the outage only).
-local_fallback = true
+# 2026-10-22: true from 15:45Z during the DO c-8 outage (ask a5cd288c); back to false at 16:53Z after green
+# droplet runs on blr1 (T-1110 68fb5b00) and sfo2 (T-1145 6ab00fe2, T-1130 batch 6c422a25).
+local_fallback = false
 executor = "droplet"
 # D53 (2026-10-16): droplet runs at 2 workers take 40–50 min of suite wall (T-686 run 16016692: 3025 s lifetime), so the bounds keep a margin.
 lifetime = "90m"
