@@ -255,7 +255,7 @@ test('Capabilities shows the read-only adapter table or the missing adapter', as
     await table.waitFor();
     assert.deepEqual(await table.locator('tr').allTextContents(), [
       'busyreliable', 'idlereliable', 'waiting for approvalreliable', 'waiting for humanreliable', 'unknownalways',
-      'Historynone', 'Usagereliable', 'Model changenone', 'Approval relaynone', 'Terminalnone',
+      'Historynone', 'Usagereliable', 'Model changenone', 'Approval relayreliable', 'Terminalnone',
     ]);
     assert.equal(await table.locator('button, input, select, textarea').count(), 0);
     await page.keyboard.press('Escape');
