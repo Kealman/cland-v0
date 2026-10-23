@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-23T20:54:32.079Z
-updated: 2026-10-23T20:54:32.079Z
+updated: 2026-10-23T20:59:38.093Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Find what the landing step compares when it reports "task branch changed": the t
 
 - [ ] C1. A batch whose members' branch heads are unchanged lands every member after a green cover. A hub test reproduces today's drop and shows it fixed (test).
 - [ ] C2. A real branch move during preparation still drops that member, and the notice names the prepared head and the current head (test).
+
+## Comments
+
+### coord · 2026-10-23T20:59:38.093Z
+
+Evidence: the re-enqueued T-1183 batch 452589f6 (20:59Z) produced tree 9a505574, identical to the dropped batch aa074d52's tree, and landed. So the drop at 20:53:55Z did not reflect any real change in content. Possible trigger: the Coordinator was committing tracker files to the root around 20:54Z, during the landing step.
