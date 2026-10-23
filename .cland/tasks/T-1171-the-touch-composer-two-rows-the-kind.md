@@ -2,8 +2,8 @@
 id: T-1171
 kind: task
 title: "The touch composer: two rows, the kind sheet and Withdraw"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-914
 branch: t/T-1171-the-touch-composer-two-rows-the-kind
 created: 2026-10-23T07:00:03.184Z
-updated: 2026-10-23T18:03:18.855Z
+updated: 2026-10-23T18:20:27.161Z
+closed: 2026-10-23T18:20:27.161Z
 ---
 
 ## Summary
@@ -38,17 +39,23 @@ E-419 (§3.6 the touch composer, P33 to P35; the second half of tracer step 3).
 
 - [x] C1. At 390x844 the composer sits above the bottom bar in two rows, the kind and addressee chips over the field and Send, each control at least 44 px tall (Web test).
   - done: impl-1171 · 2026-10-23T18:02:33.950Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1171-final · 2026-10-23T18:15:14.752Z · commit 54e3817848c345ff6477e4e801d6af3c03dabe02
 - [x] C2. Return in the field breaks the line and sends nothing, and Send sends both lines as one message, as a frame client reads it (Web test).
   - done: impl-1171 · 2026-10-23T17:58:21.896Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1171-final · 2026-10-23T18:15:14.752Z · commit 54e3817848c345ff6477e4e801d6af3c03dabe02
 - [x] C3. The kind chip opens a sheet of Message, Decision and Question with the current one checked and no scrim, and choosing Question sends a question (Web test).
   - done: impl-1171 · 2026-10-23T17:58:21.968Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1171-final · 2026-10-23T18:15:14.752Z · commit 54e3817848c345ff6477e4e801d6af3c03dabe02
 - [x] C4. A message to a busy fake session shows queued with a Withdraw at least 44 px tall, and Withdraw returns its text to the composer (Web test).
   - done: impl-1171 · 2026-10-23T17:58:22.040Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1171-final · 2026-10-23T18:15:14.752Z · commit 54e3817848c345ff6477e4e801d6af3c03dabe02
 - [x] C5. A draft typed at 390x844 survives a reload with its kind (Web test).
   - done: impl-1171 · 2026-10-23T17:58:22.265Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1171-final · 2026-10-23T18:15:14.752Z · commit 54e3817848c345ff6477e4e801d6af3c03dabe02
 - [x] C6. `web/README.md` describes the composer on the phone (docs).
   - done: impl-1171 · 2026-10-23T17:58:22.339Z
   - verified: rev-23 [reviewer] · run rev-20261023-1171-source-2 · 2026-10-23T18:03:18.855Z · commit 54e3817848c345ff6477e4e801d6af3c03dabe02
+  - verified: rev-23 [reviewer] · run rev-20261023-1171-final · 2026-10-23T18:15:14.753Z · commit 54e3817848c345ff6477e4e801d6af3c03dabe02
 
 ## Comments
 
@@ -119,3 +126,46 @@ Proceed with mode-free verify at exact54e38178; final C1–C5 settlement and Lin
 Standards:0 findings. Spec:0 findings.
 
 Criteria: C6 verified.
+
+### rev-23 · 2026-10-23T18:15:14.753Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1171-final
+commit: 54e3817848c345ff6477e4e801d6af3c03dabe02
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1171 final same-head evidence review
+Head54e3817848c345ff6477e4e801d6af3c03dabe02; tree5aa090a79ff4792eeb124dc2f2c9b6478dc02a1b. Branch t/T-1171-the-touch-composer-two-rows-the-kind. Run rev-20261023-1171-final. Clear; C1–C6 verified, findings[]. Source reviews A-10160/A-10162 carry forward; M1 recipient clearing corrected.
+
+## Standards
+A-10168 raw configured run1a6fce37-012f-457b-9146-46b477ea2ab1 independently audited: exact source-clear head, exit0. Ordinary2753 test finishes and409 file finishes all pass, no fail/skip/cancel. Actual allT1(132files), fallback all hub+NeovimT2(239files), completeWeb(38files). NoT3/T4; T3 deferred by configured task policy to periodic/integrated occasions. No load-gate-scope progress records; generic five-repetition headers are not load repetition evidence.
+
+Host npmruncheck output includes typecheck/build/static guards and report-only test lint; gate7961b512c6022766431b70c7db5c7083134ffcba reused remotely, not repeated. Linuxx64 c-8lon1 cland-v0-b305aeed, Node24.21.0/Nvim0.12.5, workers2/Web4, lifetime598s/$0.0416. Actual phase wall51.50sT1/325.25sT2/129.92sWeb; test-second sums/projections are not wall. Generic duration/lint/ratchet notices remain report-only:132lint findings59files,3missing file baselines, existing wall/per-test warnings retained.
+
+Six new phone-composer passing samples:layout2.317580486s,clear/reload2.016326315s,Return/multiline1.487469714s,kind/Question1.900283441s,held withdrawal1.928998697s,draft reload2.018386428s. Max2.318s<4s; local passing samples also<4s, no allowance trigger. File elapsed12.669478381s is distinct from summed test seconds11.669s and Web wall129.92s.
+
+## Spec
+C1 verified:two rows above phone bar,44px targets/defaultCoordinator, session selection and corrected44px clear→to:null with selection/cleared-choice reload and exact implicit Coordinator routing pass.
+C2 verified:physical Return/Shift/Meta chords insert newline without topic.send/history write; explicitSend delivers exact two lines once.
+C3 verified:checked Message/Decision/Question inline no-scrim sheet takes height from history, remains reachable and sends Question kind.
+C4 verified:queued status/44pxWithdraw below text; held successful receipt prevents early restore, then restores before newer typing; actual injection removesWithdraw.
+C5 verified:per-topic text/kind navigation and reload preserved without sending.
+C6 source-established README/touch key/help/test guidance remains unchanged sinceA-10162.
+
+Branch tip/tree independently resolve to reviewed values. Source/current configured evidence settles all criteria; lead performs required fresh dev-conflict check/ready routing without changing this reviewed head. Any Coordinator-authorized later merge needs fresh source/current-head evidence. After-stage affected QA separate, no per-item qaCriteria/brief. Reviewer read-only Git/files/log/hub, no tests/probes/live browser/GUI/edits/merge/delegation.
+Standards:0findings. Spec:0findings.
+Post-audit lead report5a32ce3d confirms fetch origin/dev a84547b8 and read-only merge-tree exit0/tree3fa19b9a, clean worktree/no head change. This is a conflict check, not a merged-head verification claim.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1171 · 2026-10-23T18:15:18.338Z
+
+Exact-head mode-free verification 1a6fce37 at 54e3817848c345ff6477e4e801d6af3c03dabe02 is green: 2753/2753, no skips/failures; T1, fallback all T2 across hub/Neovim and Web. T3 is deferred to periodic/integrated occasions and excluded from configured batches. A-10168 retains the raw receipt and host check gate (not repeated on droplet). Executor Linux x64 c-8 lon1 cland-v0-b305aeed; lifetime 598s, cost $0.0416. Lint/duration/ratchet gates report-only. New phone-composer identity passing maximum 2.317580486s on Linux (all six <4s); no allowance trigger. Fetched origin/dev a84547b8 and checked prospective merge via git merge-tree: exit 0, no conflicts, tree 3fa19b9ac105a0ed39d89db74ad170d30362485e. Head and clean worktree unchanged; final reviewer evidence settlement pending.
+
+### coord · 2026-10-23T18:20:27.161Z
+
+Merged 6ca5a58db163b068f60c45c255266e5212f4b2c3 onto dev.

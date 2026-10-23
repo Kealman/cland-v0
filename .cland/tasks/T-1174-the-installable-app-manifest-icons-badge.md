@@ -3,7 +3,7 @@ id: T-1174
 kind: task
 title: "The installable app: manifest, icons, badge and the phone sign-in"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-912
 branch: t/T-1174-the-installable-app-manifest-icons-badge
 created: 2026-10-23T07:00:04.518Z
-updated: 2026-10-23T17:25:56.148Z
+updated: 2026-10-23T18:11:54.042Z
 ---
 
 ## Summary
@@ -173,3 +173,36 @@ A-10127 old18e7ddb6 remains failed (manifest fixture500vs200, partial T2/noWeb) 
 Reviewer read-only existing source/log/hub, no tests/browser/GUI/edits/merge. Real installability/badges remain affected after-stage QA; no per-item QA criteria/brief. Standards0; Spec0.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1174 · 2026-10-23T18:10:38.094Z
+
+Coordinator-authorized post-review dev integration completed at 0da55df800c063397b1e3e6ed9706a0b8d48413c, tree5c8f7effd5f4d698e69ce9010a40af2724126b81; pushed origin. Incorporates origin/dev a84547b8 (T-1168, T-1170, T-1169), after instructed hold. Conflict resolution keeps all tests.md seam paragraphs verbatim, README Phone topic thread under Phone plus dedicated Installable app section, and Shell phonePage Topics union together with inboxLaunch reset. No other install-source edits. Fresh local Darwin arm64/Node24.21.0 build + full root typecheck/guards passed; web-auth/web-edge/allphone*/shell/smoke targeted87/87,0fail/skip/cancel; asks/thread/approvals each once. Raw A-10166. Previous bfcc16c9 Linux suite/final verdict are historical; new merge head needs delta review then mode-free verify.
+
+### rev-23 · 2026-10-23T18:11:54.042Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1174-source-3
+commit: 0da55df800c063397b1e3e6ed9706a0b8d48413c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1174 merged-head delta source review
+Head 0da55df800c063397b1e3e6ed9706a0b8d48413c; tree 5c8f7effd5f4d698e69ce9010a40af2724126b81. Branch t/T-1174-the-installable-app-manifest-icons-badge. Fixed prior final-clear bfcc16c99c33fc27925957006514be7b3390950c; incoming dev a84547b85220e6bf49981382198ef875e4b7afa7. Merge chain cad436b3 then0da55df8. Run rev-20261023-1174-source-3. Clear; findings []; all C1–C5 current-head runtime pending. Prior final A-10138 remains historical.
+
+Coordinator authorizations independently read in topic-912:5d525993 merge dd2aab60;4be0d7fa/3b33ebe2 hold for lane order, keep already-made commit;9393df81 now merge a84547b8 after T-1170/T-1169 land, preserve paragraphs, build/typecheck and required targeted files, then delta review/verify. No unauthorized post-review dev merge.
+
+## Standards
+No findings. Exact install/approvals/thread/asks/inbox Web-phase seam paragraphs survive byte-for-byte against their originating parents. README retains Phone topic thread under Phone and independent Installable app section; related upstream phone ask/approval help and hub README remain. Tier manifest includes each new phone file once. Diff check clean.
+
+Own install files unchanged from bfcc16c9: Vite manifest generation, HTML links, PNG icons, daemon project-name callback/web-edge manifest response, web-auth manifest test, corrected valid-JSON web-edge fixture, QR harness and phone-install cases. Earlier A-10116/A-10131/A-10138 audits carry forward. Upstream ask/approval/thread sources are incoming dev, without new branch-local changes except integration in Shell and docs resolutions.
+
+## Spec
+No findings in merge. Shell phonePage state/popstate/open supports Items|Artifacts|Topics while initializer retains inboxLaunch ? undefined; savedShell(inboxLaunch) resets primary area/row/detail and URL replacement remains. Thus installed entry wins over saved Sessions/phone page without dropping full-screen Topics navigation and Back. Shared sheet dispatcher still consumes sheet actions before phone-page dismissal. Needs-you Badging API effect is unchanged and uses known authoritative counts/optional API/error catch. T-1170 covered-thread reading fix and shared run/artifact layout arrive with upstream; ask and approval sheets remain via shared card modules.
+
+A-10166 original raw targeted log inspected:87/87, zero fail/cancel/skip, clean owned browser censuses; manifest67.646750ms, QR345.099ms, badge330.134416ms, missingAPI279.969333ms. All requested phone ask/thread/approval identities present once along with web-auth/web-edge/shell/smoke and phone-install cases. Request reports fresh local Darwinarm64 Node24.21.0 isolated pinned Headless Shell build/root typecheck/static guards exit0 at merge tree. Raw targeted stdout has no standalone per-command exit/source metadata; no stronger attribution inferred. Local targeted receipt is not configured/Linux/current-head suite evidence. New local passing samples below prescribed thresholds, no allowance triggered.
+
+Proceed with mode-free verification at exact0da55df8, followed by fresh final C1–C5 settlement and actual passing new-identity samples. bfcc16c9 green receipt stays prior-head only. Preserve original stdout/exits/timings/head attribution without transcription reruns. Reviewer read-only Git/files/log/hub; no tests/probes/live browser/GUI/edits/merge/delegation. Real platform installability/badge remain after-stage QA, no per-item brief/qaCriteria.
+Standards:0 findings. Spec:0 findings.
