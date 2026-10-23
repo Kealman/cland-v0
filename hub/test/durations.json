@@ -6274,7 +6274,7 @@
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
       "seconds": 22,
-      "owner": "E-414",
+      "owner": "E-880",
       "added": "2026-10-23",
       "expires": "2026-10-30",
       "reason": "Coordinator raised 12.2 s to 22 s at the E-414 stage-3 close: Linux measured 14.83 s (A-9826, verify all 19691290) and 13.27 s (A-9849 stage cover), about 1.5 times the worst. T-1113: C3-C5 require three live fake harnesses and two actual scratch hub-process restarts, preserving pending native/fallback ids, delivering a replayed Codex answer, observing native TUI answers while the hub is down, and retaining the archived winner after restart. Local Darwin arm64 targeted working-tree run observed 6.075773 s with no skipped assertions; 12.2 s rounds up 2x for native process startup and cleanup under load. All waits are bounded native/frame/filesystem/PID receipts; no sleep is added. Revisit after E-414 stage QA."
