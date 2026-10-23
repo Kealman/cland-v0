@@ -349,6 +349,41 @@ clients receive the new mark, and Inbox counts from it. Reconnecting a mounted
 view refreshes reads without replaying the visit write. Events still waiting in
 Inbox are excluded by the hub's projection.
 
+## Browser notifications
+
+While this page is open, the palette offers **Notifications · Needs you: on/off**
+and **Notifications · Finished: on/off**, independent switches saved per browser
+and origin. Turning the first switch on requests browser permission directly from
+that click or physical Enter. The second switch reuses granted permission. Denial
+turns both off; each action's tooltip explains the browser setting. A revoked
+permission disables saved switches on the next load or window focus. Switch
+changes follow other open tabs of the same browser through local storage.
+
+Needs you considers a row when it enters the hub's Inbox: asks, approvals, plans,
+requests and messages. Only a row carrying the authoritative `now` layer can
+notify. Finished considers a task's transition to `done` using its layer before
+the transition, since done itself moves the task out of Now. Watch, background
+and archive work stays silent. Neither switch notifies while the page is both
+visible and focused; a hidden or unfocused page may notify. Suppressed rows do
+not replay after focus or switch changes, and snapshots seed existing identities
+without announcing old work. Each row/task is considered once per open page and
+uses its id as the browser notification tag.
+
+A notification names the available session and item/topic with the question,
+command, plan, request/message text or finished task title. Clicking it focuses
+the page and selects the exact Inbox row, revealing its fold/overflow, or opens
+the finished item's card, including in a split. It dismisses an open palette. Inbox navigation commits before row focus and does
+not wait for animation frames, which hidden pages may suspend.
+No service worker or closed-page push is installed here.
+
+`src/notification-rules.ts` is the pure eligibility/text/target boundary reusable
+by the phone adapter. `src/notification-state.ts` owns the shared switch store
+(`notificationSnapshot`, `subscribeNotifications`, `useNotifications`,
+`toggleNotification`) for the palette and future profile controls. Call the toggle
+directly from an enabling user gesture. `src/browser-notifications.ts` consumes
+incoming frames before the connection replaces its state, keeping the task's
+pre-transition facts and stable notification identities outside React rendering.
+
 ## Area modules and live state
 
 `src/AreaSlot.tsx` registers each non-Items area as an `AreaModule`: `Pane` is
@@ -965,6 +1000,8 @@ node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Mark
 node --test web/test/withdraw.test.ts  # busy-session queue, receipt-gated draft restoration, injection and real refusal
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
 node --test web/test/events.test.ts     # journal pages, hub filters, local day folds, subjects, live races and shared last-look
+node --test web/test/notifications.test.ts # stubbed notifications, visibility, permission, switches and exact click targets
+node --test hub/test/web-notifications.test.ts # T1 shared notification eligibility/text
 node --test web/test/inbox.test.ts      # Now sections, drawer replies, visit outcomes, seven-day archive, keys and Events footer
 node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect
 node --test web/test/thread-artifacts.test.ts # HTML capability frames, sandbox isolation and opening actions

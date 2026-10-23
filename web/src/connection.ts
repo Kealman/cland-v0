@@ -95,7 +95,7 @@ export function findItem(connection: ConnectionState, id: string | undefined): E
 }
 
 /** Cookie-authenticated connection, retried from 250 ms up to 10 s between failures. */
-export function connectHub(changed: (state: ConnectionState) => void): () => void {
+export function connectHub(changed: (state: ConnectionState) => void, received?: (frame: HubFrame, previous: ConnectionState) => void): () => void {
   const url = new URL('/ws', location.href);
   url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   let state: ConnectionState = { project: 'Workbench', live: false };
@@ -442,6 +442,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       try { frame = JSON.parse(String(event.data)) as HubFrame; }
       catch { socket.close(); return; }
       if (frame.type === 'snapshot.end' || ('epoch' in frame && 'seq' in frame && frame.type !== 'snapshot')) cursor = { epoch: frame.epoch, seq: frame.seq };
+      received?.(frame, state);
       threads.apply(frame);
       if (frame.type === 'ask') askTopics.set(frame.ask, frame.topic);
       if (frame.type === 'message' && frame.message.ask) askTopics.set(frame.message.id, frame.topic.id);

@@ -58,3 +58,6 @@ T-1125 review M2 visibility: Document fresh eligibility projections and held ref
 T-971: Restore sealed child-launch builder, T0 guard and inventory guidance; retain current skill provenance format.
 2026-10-23 · T-1127: document the sealed Web Events seam and independent unfiltered Inbox summaries.
 2026-10-23 · T-1127 evidence correction: require actual focused-rail coverage and the Sessions launch/archive plus shell neighbors after shared key routing changes.
+2026-10-23 · T-1128: document pure/shared notification seams, direct gesture permission, snapshot deduplication and stubbed Web receipt checks.
+2026-10-23 · T-1128 review M1: require explicit Inbox-list destination and exact row-id focus for secondary-active notification clicks with an open palette.
+2026-10-23 · T-1128 verification correction: require paused-animation notification focus regression and mounted-row receipt before final exact-focus assertion.

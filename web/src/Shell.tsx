@@ -1,5 +1,9 @@
 // The frame ported from Q-405's App.tsx, connected to the production web edge.
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { toggleNotification } from './notification-state.ts';
+import { browserNotifications } from './browser-notifications.ts';
+import type { NotificationNotice } from './notification-rules.ts';
 import { artifactSelection } from './artifacts/state.ts';
 import { connectHub, findItem, type ConnectionState, type ObjectRow } from './connection.ts';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
@@ -230,7 +234,12 @@ export function Shell() {
   }), []);
   const [connection, setConnection] = useState<ConnectionState>({ project: 'Workbench', live: false });
   const [openedArtifacts, setOpenedArtifacts] = useState<Artifact[]>([]);
-  useEffect(() => connectHub(setConnection), []);
+  const notificationOpen = useRef<(target: NotificationNotice['target']) => void>(() => {});
+  useEffect(() => {
+    const notifications = browserNotifications(target => notificationOpen.current(target));
+    const disconnect = connectHub(setConnection, notifications.receive);
+    return () => { disconnect(); notifications.close(); };
+  }, []);
   useEffect(() => {
     document.title = `${connection.needsYou ? `(${connection.needsYou}) ` : ''}${connection.project} · cland`;
   }, [connection.project, connection.needsYou]);
@@ -254,7 +263,7 @@ export function Shell() {
     Inbox: connection.needsYou, Items: connection.plans,
     Sessions: connection.approvals, Topics: connection.waitingTopics,
   };
-  const openItem = async (id: string) => {
+  const openItem = async (id: string, detail = false) => {
     const serial = ++navigationSerial.current;
     setNavigationError('');
     setMessage(undefined);
@@ -272,10 +281,24 @@ export function Shell() {
       }
       showItemsView('tree');
       saveItems({ ...state, open, scope: undefined, hideDone: false, archive: true, back: [...state.back, state.scope] });
-      setPreferences(previous => active === 'primary' ? { ...previous, area: 'Items', row: item.id, detail: false, dismissed: undefined, release: releaseId ?? previous.release }
-        : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
+      setPreferences(previous => active === 'primary' ? { ...previous, area: 'Items', row: item.id, detail, dismissed: undefined, release: releaseId ?? previous.release }
+        : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: detail, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
+  useEffect(() => { notificationOpen.current = target => {
+    if (target.area === 'Items') { setOverlay(undefined); void openItem(target.id, true); return; }
+    navigationSerial.current++;
+    // Native notification clicks run outside React. Commit the destination and
+    // palette focus cleanup before focusing its row; hidden pages may have no frames.
+    flushSync(() => {
+      setOverlay(undefined);
+      setMessage(undefined);
+      setPreferences(previous => active === 'secondary' && previous.secondary
+        ? { ...previous, secondary: 'Inbox', secondaryRow: target.id, secondaryDetail: false, dismissed: undefined }
+        : { ...previous, area: 'Inbox', row: target.id, detail: false, dismissed: undefined });
+    });
+    workspace.current?.querySelector<HTMLElement>(`[data-pane="${active}"] [data-area-module="Inbox"][data-area-surface="pane"] [data-object-id="${CSS.escape(target.id)}"]`)?.focus();
+  }; });
   return <TopicArtifactsProvider><InboxVisitProvider connection={connection} active={area === 'Inbox'}><ComposerPicker.Provider value={selection => { setOverlayContext(selection.kind === 'Subjects' ? 'events' : 'composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') === 'secondary' ? 'secondary' : 'primary';
     navigationSerial.current++;
@@ -297,7 +320,8 @@ export function Shell() {
     {navigationError && <div role="alert" title={`Could not open ${navigationError}`}>Item unavailable · {navigationError}</div>}
     {overlay && <PaletteDialog mode={overlay} area={area} context={overlayContext} actions={handledActions} connection={connection} controls={paletteControls} selection={composerSelection}
       close={() => { setOverlay(undefined); setComposerSelection(undefined); }} run={action => {
-        if (action === 'palette' || action === 'help') openOverlay(action);
+        if (action === 'notifications-needs-you' || action === 'notifications-finished') { void toggleNotification(action === 'notifications-needs-you' ? 'needsYou' : 'finished'); setOverlay(undefined); }
+        else if (action === 'palette' || action === 'help') openOverlay(action);
         else { pendingPaletteAction.current = action; setOverlay(undefined); }
       }} open={openResult} />}
     <header className={s.top}>

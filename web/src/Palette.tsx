@@ -2,13 +2,14 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { actionKeys, displayKey, shellActions, paletteActions, foldActions, areaContext, type KeyContext, type KeyAction, type Area, type Shortcut } from './keymap.ts';
 import type { ConnectionState, ObjectRow } from './connection.ts';
 import s from './Palette.module.css';
+import { useNotifications } from './notification-state.ts';
 import type { ComposerSelection } from './ComposerPicker.ts';
 
 const kinds = [
   { prefix: '>', name: 'Actions' }, { prefix: '#', name: 'Items' }, { prefix: '@', name: 'Sessions' },
   { prefix: '~', name: 'Artifacts' }, { prefix: '/', name: 'Topics' },
 ] as const;
-type Result = { id: string; title: string; kind: typeof kinds[number]; action?: Shortcut | undefined; area?: Area | undefined; positions: number[]; score: number };
+type Result = { id: string; title: string; kind: typeof kinds[number]; action?: Shortcut | undefined; area?: Area | undefined; positions: number[]; score: number; description?: string | undefined };
 export type PaletteControls = { run: (action: Shortcut) => void };
 
 // Ordered subsequence matching retains the actual positions for the blue characters.
@@ -34,6 +35,11 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
   close: () => void; run: (action: Shortcut) => void; open: (area: Area, row: ObjectRow, pane: boolean) => void;
   selection?: ComposerSelection | undefined;
 }) {
+  const notifications = useNotifications();
+  const notificationActions: KeyAction[] = [
+    { action: 'notifications-needs-you', label: `Notifications · Needs you: ${notifications.needsYou ? 'on' : 'off'}`, description: notifications.reason || 'Notify when a now-layer row enters Inbox while this page is hidden or unfocused' },
+    { action: 'notifications-finished', label: `Notifications · Finished: ${notifications.finished ? 'on' : 'off'}`, description: notifications.reason || 'Notify when a now-layer task reaches done while this page is hidden or unfocused' },
+  ];
   const dialog = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState(selection?.kind === 'Sessions' ? '@' : selection?.kind === 'Artifacts' ? '~' : '');
   const [cursor, setCursor] = useState(0);
@@ -48,7 +54,7 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
   for (const candidate of kinds) {
     if (selection?.kind === 'Subjects' ? candidate.name === 'Actions' : selection && candidate.name !== selection.kind) continue;
     if (kind && candidate !== kind) continue;
-    const objects = candidate.name === 'Actions' ? [...new Map([...shellActions, ...actions].map(row => [row.action, row])).values()].map(row => ({ id: row.action, title: row.label, action: row.action }))
+    const objects = candidate.name === 'Actions' ? [...new Map([...shellActions, ...actions, ...notificationActions].map(row => [row.action, row])).values()].map(row => ({ id: row.action, title: row.label, action: row.action, description: (row as KeyAction).description }))
       : selection?.kind === 'Artifacts' ? (connection.artifacts ?? []).filter(row => row.topic === selection.topic && row.status !== 'archived' && !row.fileDeleted && !row.movedTo).map(row => ({ id: row.id, title: row.title }))
       : connection.rows?.[candidate.name] ?? [];
     for (const object of objects) {
@@ -110,7 +116,7 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
               const index = results.indexOf(row);
               const text = row.action ? row.title : `${row.id} ${row.title}`;
               return <div key={row.id} id={`palette-result-${index}`} role="option" aria-selected={selected === index}
-                ref={selected === index ? activeResult : undefined} className={s.result} onPointerMove={() => setCursor(index)}
+                title={row.description} ref={selected === index ? activeResult : undefined} className={s.result} onPointerMove={() => setCursor(index)}
                 onClick={() => choose(row, false)}>
                 <span>{Array.from(text).map((character, index) => row.positions.includes(index) ? <mark key={index}>{character}</mark> : character)}</span>
                 {row.action && <Keys action={row.action} context={context} />}

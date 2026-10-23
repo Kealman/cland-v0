@@ -84,6 +84,14 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 Classify each new human frame in the web authority table before admitting it; the default is refusal. Validate routing inputs before permission classification, apply the sandbox response policy to executable artifacts as well as their iframe, and close credential admission before closing sockets and observing their close receipts (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
 
 The sibling `web/` workspace builds the browser bundle with React 19 and Vite.
+Open-page browser notifications use the hub's Inbox row layers and task transitions;
+there is no new frame, authority or hub-side setting. The browser's palette offers
+independent Needs you and Finished switches, saved per browser/origin. Only Now work
+can notify, and only while the page is hidden or unfocused. Permission is requested
+from the enabling gesture; denial disables both with a tooltip. Clicks select the
+Inbox row or open the finished item's card. Snapshots never replay old waits.
+See [Browser notifications](../web/README.md#browser-notifications) for the shared
+pure rules/store and open-page scope.
 Message Markdown uses the pure token parser in `web/src/markdown.ts`; renderers
 create elements from its tokens. Web typecheck rejects named raw-HTML sinks
 (`dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`) with
