@@ -322,6 +322,9 @@ export class Suites {
     for (const [id, value] of saved) this.#savedJobs.set(id, value);
     this.#savedActive = active;
     if (job && !job.parentRun) this.#remember(job, true);
+    // Include unchanged snapshots: serializing a whole retained history still
+    // consumes work even when the checkpoint writes no changed database rows.
+    this.#options.log?.({ event: 'verification-checkpoint', jobs: changed.length });
   };
   #remember(job: SuiteJob, announce: boolean): void {
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }

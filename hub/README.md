@@ -4691,10 +4691,18 @@ measure the real `cland hub start` through the first status socket reply against
 the five-second target. The default run measures dispatcher composition separately
 against a 50 ms target. See [copied-state measurement](../docs/agents/tests.md#startup-reply-byte-budgets-t-1038)
 for isolation, timing boundaries and cover-quiet requirements.
-The generated T3 fixture uses a 15-second first-status regression guard: three
-times the local target for loaded shards, still below the former 39-second
-production startup. Its reply byte limits remain exact; the copied-state CLI
-measurement retains its five-second limit.
+The generated T3 fixture guards startup work through the first completed status
+socket reply: one checkpoint over 1,645 retained jobs, at most four explorer
+recomputation batches, and at most two reads per durable item file. The
+`verification-checkpoint` completion log includes `jobs`, the number visited
+including unchanged retained snapshots; it is emitted after the checkpoint
+transaction and in-memory publication, and does not mean that many rows changed.
+The historical per-stopped-session suite-history rewrite must fail the checkpoint
+count. CPU, wall time and named startup-step durations are diagnostic; a gross
+30-second completed-status hang guard and 120-second whole-test watchdog remain.
+These counts guard known repeated work, not arbitrary CPU or I/O inside a work
+unit. Reply byte limits remain exact; the copied-state CLI measurement retains
+its five-second end-to-end limit.
 
 `topic.history` returns complete messages in byte-capped pages below 256 KiB,
 including envelope space. `more`, `before` (exclusive message id) and `after`

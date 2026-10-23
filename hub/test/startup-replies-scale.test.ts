@@ -3,7 +3,9 @@
 // (topic-785, T-1039); no native hub process needed. The smaller byte guard stays T2.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import files, { mkdir, writeFile } from 'node:fs/promises';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { FakeClock } from './fake-clock.ts';
 import { tempProject, connectSocket } from './harness.ts';
 import {onCleanup} from './process-cleanup.ts';
@@ -12,7 +14,7 @@ import { ProcessTable } from '../src/adapters/processes.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import { withPlan } from '../src/tracker/plan.ts';
 
-test('eight startup replies fit per-frame and total budgets on a thousand-item durable fixture', async t => {
+test('eight startup replies fit per-frame and total budgets on a thousand-item durable fixture', { timeout: 120000 }, async t => {
   const { Store } = await import('../src/hub/store.ts');
   const { serializeItem } = await import('../src/tracker/item.ts');
   const { projectHub, connectUi } = await import('./harness.ts');
@@ -66,8 +68,36 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
   processes.close();
   await writeFile(join(root, '.cland/journal.jsonl'), Array.from({length: 200}, (_, i) => JSON.stringify({ts: new Date(Date.parse(at) - (200-i)*61000).toISOString(),
     event: 'notification', kind: 'verdict', item: `T-${i+1}`, text: 'A completed source review receipt. '.repeat(5)}) + '\n').join(''));
+  const steps: Array<{ step: unknown; durationMs: unknown }> = [];
+  const checkpoints: number[] = [];
+  let recomputes = 0;
+  const reads = new Map<string, number>();
+  const itemsPath = join(root, '.cland/tasks') + '/';
+  const countRead = (path: unknown) => {
+    if (typeof path === 'string' && path.startsWith(itemsPath) && path.endsWith('-fixture.md')) {
+      reads.set(path, (reads.get(path) ?? 0) + 1);
+    }
+  };
+  const readFileSync = fs.readFileSync, readFile = files.readFile;
+  t.mock.method(fs, 'readFileSync', (...args: Parameters<typeof fs.readFileSync>) => {
+    countRead(args[0]); return readFileSync(...args);
+  });
+  t.mock.method(files, 'readFile', (...args: Parameters<typeof files.readFile>) => {
+    countRead(args[0]); return readFile(...args);
+  });
+  syncBuiltinESMExports();
+  onCleanup(t, () => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const cpuStarted = process.cpuUsage();
   const started = performance.now();
-  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock(),
+    git: async args => args[0] === 'for-each-ref' ? `${'a'.repeat(40)} refs/heads/dev` : null,
+    readBase: async () => 'dev',
+    log: entry => {
+      if (entry.event === 'verification-checkpoint') checkpoints.push(Number(entry.jobs));
+      if (entry.event === 'explorer-recomputed') recomputes++;
+      if (entry.event === 'hub-startup-step-completed') steps.push({ step: entry.step, durationMs: entry.durationMs });
+    },
+  });
   const ui = await connectUi(t, hub.discovery);
   const requests = [{type:'hub.status'}, {type:'rule.list',all:true}, {type:'topic.history',topic:'general',limit:200}, {type:'artifact.list'},
     {type:'task.list',projection:'summary',state:'open'}, {type:'events.list',limit:200}, {type:'session.list'}, {type:'account.list'}];
@@ -77,11 +107,18 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     assert.equal(reply.ok, true, reply.error);
     if (request.type === 'hub.status') {
       const elapsed = performance.now() - started;
-      t.diagnostic(`first completed hub.status: ${elapsed.toFixed(1)} ms; budget 10000 ms (original 15000 ms guard retained)`);
-      assert.ok(elapsed < 10000, `first hub.status took ${elapsed.toFixed(1)} ms; T-1081 budget 10000 ms`); // lint-allow-wall-clock: C6 measures startup to the completed status receipt.
-      // Coordinator decision a6b632c3: 3× the local 5 s target gives loaded T3
-      // shards headroom while staying well below the 39 s production regression.
-      assert.ok(elapsed < 15000, `first hub.status took ${elapsed.toFixed(1)} ms; budget 15000 ms`); // lint-allow-wall-clock: T-1039 guards end-to-end startup through the first completed status reply; the separate copied-state CLI evidence enforces the local 5 s target.
+      const cpu = process.cpuUsage(cpuStarted);
+      const cpuMs = (cpu.user + cpu.system) / 1000;
+      t.diagnostic(`first completed hub.status: ${elapsed.toFixed(1)} ms wall; ${cpuMs.toFixed(1)} ms process CPU; hang guard 30000 ms wall; ${process.platform}/${process.arch}; embedded projectHub`);
+      t.diagnostic(`startup steps (wall ms): ${JSON.stringify(steps)}`);
+      const maxReads = Math.max(...reads.values());
+      t.diagnostic(`startup work: ${checkpoints.length} checkpoints; ${checkpoints.reduce((a, b) => a + b, 0)} jobs visited; ${recomputes} explorer batches; ${reads.size} item files; ${[...reads.values()].reduce((a, b) => a + b, 0)} reads; max ${maxReads} reads/item`);
+      assert.equal(checkpoints.length, 1, 'retained suite history is checkpointed once, independent of stopped sessions');
+      assert.deepEqual(checkpoints, [1645], 'one checkpoint visits each retained suite once');
+      assert.ok(recomputes > 0 && recomputes <= 4, `startup recomputed explorer ${recomputes} times; bound 4 batches`);
+      assert.equal(reads.size, 1004, 'the complete durable tracker was read');
+      assert.ok(maxReads <= 2, `startup read an item ${maxReads} times; bound 2 reads/item`);
+      assert.ok(elapsed < 30000, `first hub.status took ${elapsed.toFixed(1)} ms; hang guard 30000 ms`); // lint-allow-wall-clock: gross hang guard through completed status; deterministic work counts enforce startup scaling.
       assert.equal((reply.value as { recentSuites: unknown[] }).recentSuites.length, 1);
     }
     const bytes = Buffer.byteLength(JSON.stringify(reply) + '\n');
