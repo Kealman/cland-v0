@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:26.349Z
-updated: 2026-10-14T16:00:04.202Z
+updated: 2026-10-23T21:24:20.684Z
 ---
 
 ## Summary
@@ -86,3 +86,16 @@ The release runs on what the build shipped: the human follows it from the web's 
 - Tickets: R-377, the release item; Q-409, the cut; the map M-399; E-273, the v0.1.2 release epic and the model for this one.
 - Skills: `release`, `retro`, `qa`.
 - GLOSSARY: Release, Verdict.
+
+## Plan
+
+```yaml
+stages:
+  - name: release preparation
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1185
+      - - T-1186
+```

@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-896
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-23T20:30:17.635Z
+updated: 2026-10-23T21:50:27.463Z
 ---
 
 ## Summary
@@ -373,3 +373,61 @@ Evidence A-10216, report.md and complete commands/captures, raw facts, assessmen
  /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10216-e-419-stage-3-at-b5ce93f3-16-cases-pass-194-local-tests-and-green-stage-covers/report.md
 
 Real browser/phone/tunnel, live-hub sign-in, notifications/guide(stage4), unrelated checks and epic DoD out of scope per brief. Scratch removed; detached worktree removal follows this verdict.
+
+### qa-676 · 2026-10-23T21:50:27.463Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s4-2026-10-23-1
+commit: 9ef54e9f98f466e5fac49b7dbcadd278fbf92dc5
+stage: notifications and the guide
+stage_hash: 65c893dada8947cfade201d534057cc5e91ae3e628562f6792098fb956cacedf
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Observation |
+| --- | --- | --- |
+| E419S4-00 | PASS | HEAD=dev=S, clean detached tree; three members merged once; sealed environment |
+| E419S4-01 | PASS | Web bundle built from S, sw.js copied byte-for-byte; clean tree |
+| E419S4-02 | PASS | Worker/More/delivery/guide seams, labels and current names present; forbidden listener/push/colour scans empty |
+| E419S4-03 | PASS | Central keyboard/storage boundaries; no raw HTML or dependency change |
+| E419S4-04 | PASS | Full required docs reads; guide ordering and statements match; candidates dismissed |
+| E419S4-05 | PASS | Committed brief lint passes |
+| E419S4-06 | PASS | 0 raw pairs at S, positive control 18; 18 helper sites/8 files; planted pair refused at line 6 |
+| E419S4-07 | PASS | Phone notifications 6/6, all six required names |
+| E419S4-08 | PASS | Worker/edge/auth 5/5, 8/8, 29/29; all seven required names |
+| E419S4-09 | PASS | Executable guide contract 1/1 with required name |
+| E419S4-10 | PASS | Desktop notifications 8/8 and all eight names |
+| E419S4-11 | PASS | Nine previous-phone files 48/48; all twelve required names |
+| E419S4-12 | PASS | Seven migrated-clock regression files 64/64; all thirteen required names |
+| E419S4-13 | PASS | Ten loaded runs 10/10 clean, 30/30 tests; both own loaders stopped |
+| E419S4-14 | PASS | Full typecheck, static guards, contrast, HTML, hooks and tier lint/classifications |
+| E419S4-15 | PASS | Independent probe 2/2 completion AND all 16 separately judged fact groups match |
+| E419S4-16 | PASS | Same-S Linux/macOS stage covers green; plan cover complete |
+| E419S4-17 | PASS | 150 clean owned Web census lines; scratch removed; HEAD/dev unchanged and clean |
+
+Findings: none (high 0, medium 0, low 0). No brief correction, product fix, failed attempt or unplanned rerun. Stage verdict only, with no epic criterion marks.
+
+E-419 stage **notifications and the guide**, run **qa-s4-2026-10-23-1**, tested full SHA **9ef54e9f98f466e5fac49b7dbcadd278fbf92dc5**. Members T-1175 (267dfd13), T-1176 (b4a82808), T-1183 (d63d7e99). Printed plan: affected/after-stage, 3/3 merged. Clean detached worktree with the permitted root node_modules symlink. QA_README remained unset.
+
+Each numbered capture and the exact helpers/runtime/probe scripts are retained. The setup removed 37 inherited names, confirmed zero forbidden credential-prefix names, and parsed the probe. All fixture processes used scratch HOME/XDG/Git and the full fixtureEnvironment result after overlays, with system macOS TMPDIR. No live project mutations, real browser, phone, notification, installation, tunnel or account access were exercised.
+
+Local Darwin arm64 / Node v24.21.0 / pinned Chrome Headless Shell: **22 named files, 169/169 tests**, every one of **47 required names** present on passing TAP lines; no failure, cancellation, skip or todo. The ten prescribed loaded repeats add 30/30, and the independent probe adds 2/2: **201/201 local TAP tests**. Counts are observed, not writing-time estimates. See tests-assessment.json and original logs.
+
+The runtime process waited for Coordinator macOS cover 10dd7ef2 to release the slot; each named file checked admission and ran serially. Before row 13, the queue was exactly `none waiters 0`, with CPU samples 87.6% and 93.44% idle. The Coordinator reserved the Mac from impl-1185/impl-1186. Row 13 ran five rounds, two concurrent phone-disconnected files per round, with two own yes loaders (67062, 67063). Every run passed all three tests, all 30 owned fixture census lines were clean, and both loaders stopped. No `Cannot fast-forward to the past` failure. No wall-speed claim is made from these diagnostic samples.
+
+The independent probe's TAP result proves completion only. E419S4-15-assessment.txt separately judges all 16 JSONL fact groups: six correct More buttons at 44px/right 377 in a 390px viewport; permission only on tap; real root worker activation without Push; exact served worker/headers/CSP and notificationclick-only listener; one correctly attributed worker notification for the hidden ask and none for the looking ask; exact-row message/cold-entry navigation; denial clearing saved switches without registration or repeat permission; desktop Profile retained; exact paused time; literal HTTPS guide snippet, loopback listener, decoded QR link without opening a browser, Secure auth and Host/Origin admission/refusals. Notification calls are stubbed; real notifications/clicks/installability/tunnel behavior remain out of scope.
+
+Documentation: all required sentences and headings are present. Guide step lines 251,252,270,279,296,302 increase within the section. Full Phone/Accounts/notifications, hub notification and named tests.md sections were read. web/README.md:88 concerns the desktop-only Items Plan/view switcher, not notification controls. The phone-more test's “switches stay desktop only” refers to Accounts' Profile; phone controls live in More, so its body/name context is consistent. No in-scope contradiction found. The positive pre-change parser control and planted rejection rule proposal was sent to Coordinator in topic-896.
+
+Cited Coordinator stage covers, both at S and verification tree **fb94282043b34e32a0d10521521258408d30ace1**; QA submitted no full suite:
+
+- **Linux droplet 810e4386-651f-4639-b4c7-00919ebf2929** — merged **A-10254**, shards **A-10255/A-10256**. Host check plus T1/T2/T3/T4/Web completed, exit 0; **4076 pass, 8 skipped, 0 fail/cancel/todo of 4084**. Linux x64 6.8.0-142-generic, Node 24.21.0, Neovim 0.12.5, two c-8 lon1 shards / two workers. Shard 1 cland-v0-e8025b03: 1391.74s admission through remote finish, 1372s lifetime, $0.0953, 20.99s collection. Shard 2 cland-v0-f422657d: 1016.74s, 1000s lifetime, $0.0695, 25.66s collection. Hub total **1413.07s wall** admission through collection, **$0.1647 total** (individual prices rounded). Web's 43 files / 222 named tests allocated to shard 1; shard 2's Web command had no allocated files.
+- **macOS local 10dd7ef2-6427-4e72-96a2-535c8dee95ca** — **A-10252**. Full check plus T1/T2/T3/T4/Web, **4084/4084**, zero skips/fail/cancel/todo. Darwin arm64 27.0.0, Node 24.21.0, Neovim 0.12.5, two workers. Tier command durations 33/197/933/48/100s. Queued 21:23:31.041Z to finished 21:45:47.528Z: **1336.487s including queue**, local cost N/A. Web 43 files / 222 named tests, 98.31s measured shard execution.
+
+Both covers run T4's ten base files; extra T4 repetitions were skipped. Lint, duration budgets and T3 ratchet were **report-only**: 132 lint findings in 59 files and two missing baselines, with reported overages retained. Projected walls are not measured wall times or enforced-budget passes. Complete receipts and logs are under covers/.
+
+Final plan line: `# notifications and the guide: open; stage cover complete (Linux droplet, macOS); tree fb94282043b34e32a0d10521521258408d30ace1`. It awaits this verdict. Final HEAD and dev equal S, zero changed paths. All **150 fixture-owned Web census lines** end after 0/scratch hub stopped; hub tests and static checks correctly have no browser census. Verified literal scratch path /private/tmp/qa-e419s4-LT74YS was removed with non-force rm -r after captures. Detached worktree removal follows publication and verdict. recorded-cases.jsonl has exactly 18 unique PASS rows.
+
+Durable evidence **A-10259**: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10259-e-419-stage-4-at-9ef54e9f-18-pass-201-local-tests-and-green-stage-covers/report.md

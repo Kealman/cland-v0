@@ -46,9 +46,11 @@
       "A-10182",
       "A-10186",
       "A-10210",
-      "A-10214"
+      "A-10214",
+      "A-10254",
+      "A-10252"
     ],
-    "commit": "b5ce93f3d690cbb72bfad0bc26334da92696769f"
+    "commit": "9ef54e9f98f466e5fac49b7dbcadd278fbf92dc5"
   },
   "budget": {
     "testSeconds": 5,
@@ -2501,6 +2503,14 @@
     "web/test/phone-sessions.test.ts": {
       "seconds": 7.815721,
       "tests": 5
+    },
+    "hub/test/web-tunnel-guide.test.ts": {
+      "seconds": 0.288163,
+      "tests": 1
+    },
+    "web/test/phone-notifications.test.ts": {
+      "seconds": 7.408648,
+      "tests": 6
     }
   },
   "tests": {
@@ -6447,7 +6457,15 @@
     "web/test/phone-sessions.test.ts::phone session page confirms 44 px Stop/Archive actions with scratch CLI receipts": 1.809798,
     "web/test/phone-sessions.test.ts::phone Sessions shows counts, one account row and two-line sessions without row actions": 1.878501,
     "web/test/phone-sessions.test.ts::phone verify line opens the shared queue in a full-height sheet and Close restores the list": 1.088339,
-    "web/test/phone-sessions.test.ts::phone waiting session page shows its command and both Back paths focus the same row": 1.193895
+    "web/test/phone-sessions.test.ts::phone waiting session page shows its command and both Back paths focus the same row": 1.193895,
+    "hub/test/web-notifications.test.ts::worker notification clicks focus and message a window or open the exact row without a fetch handler": 0.006176,
+    "hub/test/web-tunnel-guide.test.ts::the HTTPS tunnel guide config admits its Host and Origin and prints its QR sign-in link": 0.288163,
+    "web/test/phone-notifications.test.ts::held registration suppresses a notification after disabled changes": 1.092857,
+    "web/test/phone-notifications.test.ts::held registration suppresses a notification after looking changes": 0.974696,
+    "web/test/phone-notifications.test.ts::hidden phone ask goes once through the worker and its message opens the exact Inbox row": 1.400198,
+    "web/test/phone-notifications.test.ts::phone More subscribes on a tap with root worker scope and shared switches without Web Push": 1.871593,
+    "web/test/phone-notifications.test.ts::phone subscription denial turns saved switches off and explains browser settings without registering": 0.944229,
+    "web/test/phone-notifications.test.ts::waiting plan and TUI-bound Claude approval each notify through the phone worker": 1.125075
   },
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
