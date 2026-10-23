@@ -298,9 +298,14 @@ test('offline asks disable writes and a fresh snapshot recovers an answer withou
     const peer = await connectUi(t, fixture.hub.discovery);
     const answered = await peer.request({ type: 'topic.answer', ask: id, option: 2 });
     assert.equal(answered.ok, true, answered.error);
-    const live = pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Live', 'fresh epoch live');
-    await page.clock.runFor(250);
-    await live;
+    const isLive = () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Live';
+    // Keep driving retries and rendering: the clock is paused, and a failed
+    // attempt can leave the next backoff beyond a single 250 ms step.
+    // Bound fake time by the 10 s retry cap plus the 5 s handshake deadline.
+    for (let advanced = 0; advanced < 15_000 && !await page.evaluate(isLive); advanced += 250) {
+      await page.clock.runFor(250);
+    }
+    assert.equal(await page.evaluate(isLive), true, 'fresh epoch live');
     await card.locator('[data-ask-outcome]').waitFor();
     assert.match(await card.innerText(), /2 Change.*human/s);
     assert.deepEqual(sent, [], 'reconnect sends no answer or draft');
@@ -388,10 +393,13 @@ test('In Inbox from a secondary thread opens and focuses that pane list while th
     const copy = secondary.locator(`[data-ask-id="${id}"]`);
     await copy.waitFor();
     assert.equal(await original.count(), 1);
+    const destination = secondary.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"]`);
+    // The list mounts before the navigation's animation-frame focus callback.
+    const focused = until(() => destination.evaluate(node => node === document.activeElement), { what: 'secondary Inbox ask focused', timeoutMs: 3000 });
     await copy.getByRole('link', { name: 'In Inbox', exact: true }).click();
     await secondary.locator('[data-area-module="Inbox"][data-area-surface="pane"]').waitFor();
-    const destination = secondary.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"]`);
     await destination.waitFor();
+    await focused;
     assert.equal(await destination.evaluate(node => node === document.activeElement), true, 'focus belongs to the destination ask');
     assert.equal(await original.count(), 1, 'primary thread remains in place');
     const delivered = fixture.asker.waitForEvent(event => event.params.meta?.answer_to === id);
