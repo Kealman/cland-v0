@@ -3,7 +3,7 @@ id: T-1161
 kind: task
 title: web/README.md still describes messages, inline artifacts and the Inbox as stand-ins
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-23T02:32:53.561Z
-updated: 2026-10-23T02:32:53.561Z
+updated: 2026-10-23T03:28:05.999Z
 ---
 
 ## Summary

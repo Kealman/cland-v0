@@ -3,7 +3,7 @@ id: T-1126
 kind: task
 title: The inbox drawer, the reply, the leave rule and the archive
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:14.159Z
-updated: 2026-10-22T15:16:14.159Z
+updated: 2026-10-23T03:28:05.902Z
 ---
 
 ## Summary

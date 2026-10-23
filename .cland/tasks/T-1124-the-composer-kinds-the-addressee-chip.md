@@ -3,7 +3,7 @@ id: T-1124
 kind: task
 title: "The composer: kinds, the addressee chip, keys and drafts"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:13.780Z
-updated: 2026-10-22T15:16:13.780Z
+updated: 2026-10-23T03:28:05.598Z
 ---
 
 ## Summary

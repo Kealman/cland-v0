@@ -3,7 +3,7 @@ id: T-1125
 kind: task
 title: Queued messages and Withdraw in the thread
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:14.021Z
-updated: 2026-10-22T15:16:14.021Z
+updated: 2026-10-23T03:28:05.700Z
 ---
 
 ## Summary

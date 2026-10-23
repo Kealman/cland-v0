@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-885
 branch: t/T-1094-startup-replies-scale-s-10-s-first-hub
 created: 2026-10-22T05:08:58.980Z
-updated: 2026-10-23T02:06:29.985Z
+updated: 2026-10-23T03:07:11.902Z
 ---
 
 ## Summary
@@ -58,3 +58,24 @@ Same-head mode-free run 2ad2ad57-b6b3-466c-9ba7-e54c78c74335 passed (A-9754): 26
 ### coord · 2026-10-23T02:06:29.985Z
 
 Third sighting: periodic dev T3 c81cf253 (A-9762, dev d32c6a8f, 2026-10-23 02:06Z) failed only this test, first hub.status 10712.5 ms. Fix head 1f541ac0 awaits its same-head verify all after the macOS stage cover.
+
+### rev-23 · 2026-10-23T02:55:34.670Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1094-source-2
+commit: ebfab3052f1d7a664771ce577b90c3f9416d8ad3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Reworked count-based source clear, no findings. A-9780: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9780-t-1094-count-based-source-review-clear-at-ebfab305.md. One completed suite checkpoint/1645 visited jobs, <=4 explorer batches, all1004 files/max2 reads through completed status; fake dev-tip facts exercise freshness. Production diagnostic follows transaction/publication and counts unchanged snapshots too. Native observers arm before startup and restore ESM exports; byte/membership/plan guards unchanged. CPU diagnostic only, gross30s/whole-test120s bounds and matching docs retained. Three independent A-9779 controls fail counts, not timing, on local working tree. Prior Linux all A-9776 is failed old-head evidence, not C2. C1/C2 runtime verification withheld pending new-head loaded10/10/reaped loops plus Coordinator same-head Linux verify all including T3. Proceed with authorized exact-head verification.
+
+### impl-1094 · 2026-10-23T02:56:30.299Z
+
+Revised/pushed head ebfab3052f1d7a664771ce577b90c3f9416d8ad3 after Coordinator-directed merge of origin/dev e2b22f2f (cde7d444). Source clear rev-20261023-1094-source-2/A-9780. Fixed CPU gate rejected after actual Linux A-9776 failure10558.0CPU/9603.4wall; replacement enforces one completed checkpoint/1645 suite jobs, <=4 explorer batches, all1004 files<=2 reads/item, plus gross30s completed-status wall/120s whole-test watchdog. CPU/wall/step timings diagnostic. A-9779 independent local count REDs:218!=1 checkpoint calls/358610 visited jobs;106>2 reads/item when T-1081 skip removed;1006>4 batches when T-1104 batching removed. All fail on counts under30s. All production mutations restored; only new successful-checkpoint diagnostic event remains. Precommit npm run check exit0 (runtime lint report-only132findings/0refusals). Exact-head A-9781 loaded targets10/10 on Darwin arm64, each1checkpoint/1645jobs,3batches,1004files/1008reads/max2; all byte/membership/plan guards pass; both sealed CPU-loop child exit events observed/reaped before releasing reserved window. New mode-free run632e58f3-553b-4ff4-9284-6db20610a0a0 admitted. C2 remains incomplete until Coordinator-owned same-head Linux verify all (after current E-417 Linux/macOS covers, about an hour). No new-head Linux/full-suite pass claimed. Head held unchanged; no landing.
+
+### impl-1094 · 2026-10-23T03:07:11.902Z
+
+New-head mode-free run632e58f3-553b-4ff4-9284-6db20610a0a0 passed at reviewed ebfab3052f1d7a664771ce577b90c3f9416d8ad3, A-9789:2639/2639 tests, exit0; all T1 + both-package all-T2 fallback + Web. Linux x64 droplet c-8 lon1/Node v24.21.0; machine lifetime609s/$0.0423. Duration and test-lint gates report-only; overruns are not enforce passes. Host typecheck gate5c5753d4a1279043c13ea2355fa4c8cebf160910 reused, not repeated at task head. T3 was not selected, so this does not complete C2 or claim a Linux startup-work receipt. Exact-head local loaded10/10 A-9781 and independent count REDs A-9779 remain supporting evidence. Waiting for Coordinator-owned same-head Linux verify all after current macOS cover, plus Reviewer final settlement. Cover-quiet/dev freeze obeyed; no local tests/head changes/landing.

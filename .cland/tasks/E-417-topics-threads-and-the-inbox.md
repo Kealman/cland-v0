@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-866
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-23T02:33:00.313Z
+updated: 2026-10-23T03:28:04.891Z
 ---
 
 ## Summary
@@ -202,3 +202,49 @@ T4 base phase ran on both; T4 repetitions were explicitly skipped. Duration budg
 All fixture cleanup and earlier detailed observations remain in report-before-covers.md and original captures. Final HEAD/dev still equal S; detached tree clean apart from the allowed node_modules symlink. Stage verdict only; no criterion marks.
 
 Evidence A-9488: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9488-e-417-stage-qa-clear-at-4411dcc9-final-cases-and-both-stage-covers/report.md
+
+### qa-676 · 2026-10-23T03:28:04.891Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s2-2026-10-23-1
+commit: e2b22f2f92e4fc234c53b8b6568b261ac3cc7af9
+stage: message block, runs and asks
+stage_hash: 688b9bc61121f300ab849dbe389f1cc1120689a665b16f88dca21893bcc5b8e6
+findings: [{"severity":"low","text":"E417S2-11 k11/context reads confirm stale HTML-chip wording, plain-message wording at 214, all-Inbox stand-in wording at 248, and missing run/ask key-table rows at 534–545. Contradict passing E417S2-02–08. All required documentation markers pass; brief classifies these as low. Existing fix T-1161, stage 3.","file":"web/README.md","line":155}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Surface | Result | Command and observation |
+| --- | --- | --- | --- |
+| E417S2-00 | hub-api | PASS | k00: clean detached HEAD=dev=S; 4/4 printed stage items merged, paths limited as prescribed; system TMPDIR. Setup dropped 37 inherited names, credential prefix count 0; probe parses. |
+| E417S2-01 | hub-api | PASS | npm run build --workspace web: exit 0, bundle/assets present, clean tree. |
+| E417S2-02 | hub-api | PASS | nt messages.test.ts: 5/5 pass, all five required names; census 5 clean. |
+| E417S2-03 | hub-api | PASS | nt thread-runs.test.ts: 5/5 pass including anchored paging, sticky anchor, protected messages, live growth and read marks; census 5 clean. |
+| E417S2-04 | hub-api | PASS | nt thread-artifacts.test.ts: 5/5 pass, 240 px script-only sandbox, blocked parent access/navigation, full/pane opening, unavailable chip and moved folder; census 5 clean. |
+| E417S2-05 | hub-api | PASS | nt asks.test.ts: 9/9 pass including two-context thread/Inbox outcome, physical option key, decline, first-answer winner and read mark, offline/draft recovery; census 9 clean. |
+| E417S2-06 | hub-api | PASS | nt topics/folds/area-slots/key-contexts/palette/shell/connection/artifacts: 9+6+4+3+11+9+4+7=53/53 pass, all clean censuses. T-1157 Retry case passed first attempt; no rerun. |
+| E417S2-07 | hub-api | PASS | nt web-keymap/web-markdown/web-area-state: 18/18 pass. k07 bindings and help labels present; no Escape ask/toggle binding. |
+| E417S2-08 | hub-api | PASS | k08 independent probe: 1/1 pass, no step errors, seeded facts true. All six hostile strings literal, zero elements/execution; frame exactly allow-scripts, 240 px, read/cookie/navigation SecurityError, popup null, no dialogs/popups. Ask Escape open, empty decline disabled, Answer instead restored; physical 2 delivered Right once, both contexts answered/no controls; B 8 ms, competing answer refused. Census before 3/after 0. |
+| E417S2-09 | hub-api | PASS | k09: typecheck and tiers exit 0; all four HTML/colour/token/hooks guards, 23 text tokens, four Web classifications present. |
+| E417S2-10 | hub-api | PASS | k10: only central keyboard listener; storage interface-state plus reload guard; no HTML sinks or forbidden sandbox attributes; new-tab links have noopener noreferrer; no dependency changes. |
+| E417S2-11 | hub-api | PASS | k11: all 16 required doc markers present once. Confirmed T-1161 low contradictions at README lines 155/214/248 and missing run/ask key-table rows. |
+| E417S2-12 | hub-api | PASS | cland qa lint: exit 0, brief lint passes at tested build. |
+| E417S2-13 | hub-api | PASS | Both stage covers green at S: Linux A-9785, macOS A-9791; plan cover missing=[], full details below. |
+| E417S2-14 | hub-api | PASS | k14: every Web log has >=1 clean census, T1 has 0/0; clean tree; scratch /private/tmp/qa-e417s2-vbR2M5 removed. Final HEAD/dev unchanged. |
+
+Low finding: T-1161, web/README.md:155, :214, :248 and key table :534–545. `k11` and retained surrounding text contradict implemented inline HTML, P12 message block and Inbox ask cards; run/ask key rows absent. The committed brief and Coordinator request classify these as low; E417S2-11 passes. No product or probe failures.
+
+Build e2b22f2f92e4fc234c53b8b6568b261ac3cc7af9. Stage message block, runs and asks; run qa-s2-2026-10-23-1. Local macOS arm64 / Node v24.21.0 / isolated Chrome Headless Shell. 95 named tests plus one independent probe pass without skips or retries. No real browser or live-edge mutation. All scratch process censuses clean; scratch root removed. Timing budgets are report-only, no stage speed claim; independent probe B observed 8 ms, bounded receipt-based proof is the named asks test. CPU sample retained. No epic criterion marks.
+
+Original command blocks and per-row scripts, logs and observations are retained alongside this report. Final cover receipts are retained; every scoped row passed.
+
+Both Coordinator-owned stage covers are green at e2b22f2f92e4fc234c53b8b6568b261ac3cc7af9, verification tree 0505c6e99e6db0dcfc63eff1eaef3f5064c0a67f. Final plan missing=[], 4/4 members merged; final detached HEAD=dev=S and tree clean.
+
+- Linux droplet b0527eff-4f31-4a02-a1d7-d78c4183972c, merged A-9785, shards A-9786/A-9787: 3932 pass, 0 fail, 8 skip; T1–T4 and Web completed, linux x64, 2 workers. Shard 1 cland-v0-6ebbbff3, c-8 lon1: admission through remote finish 1023.82 s, collection 24.61 s, lifetime 1014 s, $0.0704. Shard 2 cland-v0-62447b0c, c-8 lon1: 953.82 s, collection 25.74 s, lifetime 945 s, $0.0656. Actual overall admission-through-collection wall 1048.69 s; total cost $0.1360.
+- macOS local b077691f-cc33-4fac-9ebe-014012f95fb6, A-9791: 3940/3940 pass, 0 fail/skip; T1–T4 and Web completed, darwin arm64, 2 workers. No droplet lifetime applies; overall macOS wall/cost not supplied in this receipt, not substituted with projections.
+- T4 base files ran, T4 repetitions explicitly skipped on both. Duration budgets and lint report-only; projections are not actual walls. No extra QA full suite. No suite failure or retry for this stage run.
+
+After-stage verdict only; no epic criterion marks. All 15 scoped rows PASS. Real browser out of scope per committed brief. Cleanup complete, detached worktree retained until verdict only.
+
+Durable evidence A-9793: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9793-e-417-stage-message-block-runs-and-asks-15-pass-at-e2b22f2f-both-covers-green/report.md
