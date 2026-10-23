@@ -343,12 +343,17 @@ export class InboxBoard {
       ...(archive ? { archive: p.store.inboxDepartures(new Date(now.getTime() - 7 * 86400_000).toISOString()) } : {}) };
   }
 
-  /** One pending native request; duplicate replay is idempotent at this connection's id. */
-  requestApproval(sessionId: string, request: ApprovalRequest): void {
-    const proc = this.#processes?.().find(p => p.sessionId === sessionId && p.status === 'running');
-    if (!proc) return;
+  /** Admit one native request or closed-first outcome; return a receipt for idempotent watch replay. */
+  requestApproval(sessionId: string, request: ApprovalRequest): boolean {
+    const proc = this.#processes?.().find(p => p.sessionId === sessionId);
+    if (!proc || (proc.status !== 'running' && !request.outcome)) return false;
     const id = `${sessionId}:${request.id}`;
-    if (this.#approvals.has(id) || this.#port.store.leftInbox('approval', id)) return;
+    const previous = this.#approvals.get(id);
+    if (previous) {
+      if (request.outcome) this.closeApproval(sessionId, request.id, request.outcome);
+      return true;
+    }
+    if (this.#port.store.leftInbox('approval', id)) return true;
     this.#reported.add(sessionId);
     const fallback = this.#fallbacks.get(sessionId);
     if (fallback) this.#closeApproval(fallback, { choice: 'withdrawn', by: 'harness', via: 'harness', at: this.#port.now().toISOString() });
@@ -358,12 +363,15 @@ export class InboxBoard {
       label: proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, kind: request.kind, subject,
       ...(subject.command !== undefined ? { command: subject.command } : {}),
       choices: tui ? [] : [...new Set(request.choices.filter(c => c === 'once' || c === 'always' || c === 'deny'))],
-      answerIn: tui ? 'tui' : 'hub', attach: proc.attach, since: this.#port.now().toISOString(),
+      answerIn: tui ? 'tui' : 'hub', attach: proc.attach, since: request.since ?? this.#port.now().toISOString(),
       ...(request.topic !== undefined ? { topic: request.topic } : {}), state: 'pending' };
     this.#approvals.set(id, record);
+    // An adapter can finish subject enrichment after another native client already answered.
+    if (request.outcome) { this.#closeApproval(record, request.outcome); return true; }
     this.#waitApproval(record);
     this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', record, 'approval') });
     this.#changed();
+    return true;
   }
 
   async answerApproval(id: string, choice: ApprovalChoice, note: string | undefined, via: 'neovim' | 'web', deliver: (sessionId: string, requestId: string, answer: { choice: ApprovalChoice; note?: string }) => Promise<{ noteDelivered: boolean }>, resumed: Resumed): Promise<InboxApproval> {

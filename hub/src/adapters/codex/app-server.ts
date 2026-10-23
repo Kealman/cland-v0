@@ -30,7 +30,7 @@ export class RpcNoAnswer extends Error {
   }
 }
 
-/** A request the server sent to its clients (an approval, a question): the adapter never answers one. */
+/** A request the server sent to its clients (an approval, a question). */
 export type ServerRequest = { id: string | number; method: string; params: Record<string, unknown> };
 
 /** The same RPC client can use a short-lived app-server's JSON-lines stdio. */
@@ -151,6 +151,14 @@ export class AppServerClient extends EventEmitter {
     });
   }
 
+  /** Answer a server request, preserving its native id and type. Completion means the response was written. */
+  respond(id: string | number, result: Record<string, unknown>): Promise<void> {
+    if (this.#closed || this.#socket.readyState !== WebSocket.OPEN) return Promise.reject(new Error('the app-server is not connected'));
+    return new Promise((resolve, reject) => {
+      this.#socket.send(JSON.stringify({ id, result }), error => error ? reject(error) : resolve());
+    });
+  }
+
   close(): void {
     this.#closed = true;
     this.#fail(new RpcNoAnswer('the app-server client closed; a pending request may have been accepted'));
@@ -163,7 +171,8 @@ export class AppServerClient extends EventEmitter {
     if (frame === null || typeof frame !== 'object') return;
     const message = frame as Record<string, unknown>;
     if (typeof message.method === 'string') {
-      const params = (message.params ?? {}) as Record<string, unknown>;
+      const params = message.params !== null && typeof message.params === 'object' && !Array.isArray(message.params)
+        ? message.params as Record<string, unknown> : {};
       if (typeof message.id === 'string' || typeof message.id === 'number') this.emit('serverRequest', { id: message.id, method: message.method, params } satisfies ServerRequest);
       else this.emit('notification', message.method, params);
       return;

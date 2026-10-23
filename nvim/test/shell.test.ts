@@ -512,7 +512,7 @@ test(':restart restores a C-v split attachment as a split beside the centre, not
 for (const distraction of ['launch notice', 'prefix-sharing name']) test(`session row selection ignores a ${distraction}`, { skip }, async t => {
   const c = await startShell(t, s => {
     if (distraction === 'prefix-sharing name') s.processes = [proc('other-impl-1', 'implementer', 'busy'), proc('impl-1', 'implementer', 'idle')];
-    else s.adapters = { ...s.adapters, codex: CAPS };
+    else s.adapters = { ...s.adapters, codex: { ...CAPS, approvalRelay: 'reliable' } };
   });
   const name = distraction === 'launch notice' ? 'rev-2' : 'impl-1';
   if (distraction === 'launch notice') {
@@ -566,7 +566,7 @@ test('an attach client that ended is not reused: Enter and C-v run the attach co
 test("the picker's sessions kind: waiting ones first, filters by name, role and harness, Enter attaches", { skip }, async (t) => {
   const c = await startShell(t, (s) => {
     s.processes = [...(s.processes ?? []), { ...proc('rev-1', 'reviewer', 'idle', 'gpt-6.1-sol'), harness: 'codex' }];
-    s.adapters = { ...s.adapters, codex: { ...CAPS, states: { ...CAPS.states, 'waiting for human': 'reliable' } } };
+    s.adapters = { ...s.adapters, codex: { ...CAPS, approvalRelay: 'reliable', states: { ...CAPS.states, 'waiting for human': 'reliable' } } };
     s.attach = { ...s.attach, 'rev-1': `printf 'attached rev-1\\n'; sleep 600` };
   });
   await c.input('<Esc><Space>p@');
@@ -734,7 +734,10 @@ test('gI, gt and gs between items, topics and sessions, both ways; a topic event
 });
 
 test('the sessions panel: c shows the capability table, C-v attaches in a vertical split, l opens the launcher', { skip }, async (t) => {
-  const c = await startShell(t);
+  const c = await startShell(t, s => {
+    s.processes = [...s.processes!, { ...proc('codex-1', 'reviewer', 'idle', 'gpt-6.1-sol'), harness: 'codex' }];
+    s.adapters = { ...s.adapters, codex: { ...CAPS, approvalRelay: 'reliable', states: { ...CAPS.states, 'waiting for human': 'reliable' } } };
+  });
   await onSessionRow(c, 'impl-1');
   await c.input('c');
   let s = await c.waitScreen((x) => x.includes('capability table'), 'the capability table');
@@ -744,6 +747,12 @@ test('the sessions panel: c shows the capability table, C-v attaches in a vertic
   assert.match(s, /approvalRelay +none/);
   await c.input('q');
   await c.waitScreen((x) => !x.includes('capability table'), 'the float closed');
+  await onSessionRow(c, 'codex-1');
+  await c.input('c');
+  s = await c.waitScreen(x => x.includes('Codex · capability table'), 'the Codex capability table');
+  assert.match(s, /approvalRelay +reliable/);
+  await c.input('q');
+  await c.waitScreen(x => !x.includes('capability table'), 'the Codex float closed');
   await c.input('gg/coord-1<CR><C-v>');
   s = await c.waitScreen((x) => x.includes('keylog ready') && statusLine(x).includes('TERMINAL'), 'coord-1 in a split');
   const wins = await c.lua<Array<{ name: string; term: boolean }>>(`

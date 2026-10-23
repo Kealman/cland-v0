@@ -139,8 +139,10 @@ export type SubagentLaunch = { id?: string; type?: string; model?: string };
 /** A harness report with optional state and launch metadata. State ordering drops older signals. */
 export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; moved?: { directory: string } };
 
-/** Only these public request fields cross the adapter boundary; the hub copies an allowlist. */
-export type ApprovalRequest = { id: string; kind: ApprovalRecord['kind']; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn?: 'hub' | 'tui'; topic?: string };
+/** Only these request fields cross the adapter boundary; the hub copies an allowlist.
+ *  An outcome lets async subject enrichment publish an already-resolved request atomically;
+ *  since preserves when the adapter first observed that request. */
+export type ApprovalRequest = { id: string; kind: ApprovalRecord['kind']; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn?: 'hub' | 'tui'; topic?: string; since?: string; outcome?: ApprovalOutcome };
 
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {
@@ -159,8 +161,9 @@ export type AdapterHost = {
   adapterState?: { read: (key: string) => string | null; write: (key: string, value: string) => void };
   /** A native harness report (state, model or sub-agent start); hook reports use `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
-  /** Native request id, scoped by the hub to this session. No other tool input is retained. */
-  approvalRequested?: (sessionId: string, request: ApprovalRequest) => void;
+  /** Native request id, scoped by the hub to this session. Returns true after admission (including deduped history).
+   *  False means the process row is not eligible yet; retain resolved requests for watch replay. */
+  approvalRequested?: (sessionId: string, request: ApprovalRequest) => boolean;
   /** Native answer or withdrawal; reporting a close never answers a harness request. */
   approvalClosed?: (sessionId: string, requestId: string, outcome: ApprovalOutcome) => void;
   /** A hard limit classified from the harness's machine-readable error field. */

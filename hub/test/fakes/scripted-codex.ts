@@ -27,11 +27,18 @@ type Handler = (params: Record<string, unknown>) => unknown | Promise<unknown>;
 export class ScriptedCodex extends EventEmitter implements AppServerConnection {
   closed = false;
   readonly calls: NativeCall[] = [];
+  readonly responses: Array<{ id: string | number; result: Record<string, unknown> }> = [];
+  onResponse?: (id: string | number, result: Record<string, unknown>) => void;
   readonly turns = new Map<string, NativeItem[]>();
   readonly handlers = new Map<string, Handler>();
   thread = '';
   #turn = 0;
   readonly #pending = new Set<{ reject: (error: Error) => void }>();
+  async respond(id: string | number, result: Record<string, unknown>): Promise<void> {
+    if (this.closed) throw new Error('app-server disconnected');
+    this.responses.push({ id, result });
+    this.onResponse?.(id, result);
+  }
   async request<T = unknown>(method: string, params: Record<string, unknown>): Promise<T> {
     if (this.closed) throw new Error('app-server disconnected');
     this.calls.push({ method, params });
@@ -78,7 +85,7 @@ export class ScriptedCodex extends EventEmitter implements AppServerConnection {
   count(method: string) { return this.calls.filter(call => call.method === method).length; }
 }
 
-export async function scriptedCodex(t: TestContext) {
+export async function scriptedCodex(t: TestContext, beforePublish?: (native: ScriptedCodex, process: HarnessProcess) => Promise<void>) {
   const root = await tempProject(t);
   const clock = new FakeClock();
   const native = new ScriptedCodex();
@@ -92,11 +99,21 @@ export async function scriptedCodex(t: TestContext) {
     adapter = new CodexAdapter(host, { clock, pollMs: 100, connect: async () => { connections++; if (connectionFailure) throw connectionFailure; native.closed = false; return native; } });
     // Only lifecycle is replaced: inject, watch and every native event use the production adapter.
     const spawn = lifecycle.spawn.bind(lifecycle);
-    lifecycle.spawn = async (...args) => { launchToken = args[0].launchToken; process = await spawn(...args); native.thread = process.harnessSessionId!; return process; };
+    lifecycle.spawn = async (...args) => {
+      launchToken = args[0].launchToken; process = await spawn(...args); native.thread = process.harnessSessionId!;
+      if (beforePublish) {
+        // Native first-turn events can precede the process-table publication and its normal watch.
+        adapter.watch(process);
+        await eventually('early native subscription', () => native.count('thread/resume') === 1 || undefined);
+        await beforePublish(native, process);
+      }
+      return process;
+    };
     lifecycle.inject = adapter.inject.bind(adapter);
     lifecycle.watch = adapter.watch.bind(adapter);
     lifecycle.unwatch = adapter.unwatch.bind(adapter);
     lifecycle.usage = adapter.usage.bind(adapter);
+    lifecycle.answerApproval = (process, id, answer) => adapter.answerApproval(process, id, answer);
     const close = lifecycle.close.bind(lifecycle);
     lifecycle.close = () => { adapter.close(); close(); };
     return lifecycle satisfies HarnessAdapter;
@@ -134,5 +151,5 @@ export async function scriptedCodex(t: TestContext) {
     await clock.advance(100);
     await ui.request({ type: 'session.list' });
   }
-  return { refuseConnections(error: Error | null) { connectionFailure = error; }, root, clock, native, ui, peer, sender, send, injected, reply, records, log, agents, reconnect, get adapter() { return adapter; }, get process() { return process; }, get connections() { return connections; } };
+  return { refuseConnections(error: Error | null) { connectionFailure = error; }, root, discovery, clock, native, ui, peer, sender, send, injected, reply, records, log, agents, reconnect, get adapter() { return adapter; }, get process() { return process; }, get connections() { return connections; } };
 }

@@ -23,8 +23,8 @@ import { harnessBinary } from '../doctor/harnesses.ts';
 //            sandbox: a built-in profile, or the profile `cland` that further `-c` overrides on the app-server's
 //            command line define (`threadPolicy` below).
 //
-// An approval a session does ask for stays in the attached TUI: the hub never answers a server request; it only
-// shows `waiting for approval`.
+// Command and file-change approvals are records answered by the human through the hub gate. Other requests,
+// and approval shapes the adapter cannot validate, stay in the attached TUI.
 // The process table keeps the socket as `harnessId` and the thread id as `harnessSessionId`.
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
@@ -35,12 +35,12 @@ import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { turnError } from './turn-error.ts';
-import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
+import type { ApprovalChoice, ApprovalOutcome, Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { codexCounts } from './usage.ts';
 import { accountPrefix } from '../accounts/registry.ts';
 import { VERSION } from '../version.ts';
 import { mergeLimits, codexWindows, fullWindowReset, type LimitWindow } from '../accounts/limits.ts';
-import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type ApprovalRequest, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
 import { sessionCwdRefusal } from './session-cwd.ts';
@@ -64,8 +64,8 @@ export const CODEX_CAPABILITIES: Capabilities = {
   usage: 'reliable',
   // `turn/start` takes a model, but nothing switches a running session's model from outside in v0
   setModel: 'none',
-  // approvals stay in the attached TUI in v0 (spec 4.3)
-  approvalRelay: 'none',
+  // The human-only gate answers app-server requests; serverRequest/resolved closes external answers.
+  approvalRelay: 'reliable',
   states: {
     // `thread/status/changed`, pushed by the app-server
     busy: 'reliable',
@@ -267,7 +267,7 @@ export type CodexOptions = {
 };
 
 /** The app-server surface consumed by the adapter, independent of its wire transport. */
-export type AppServerConnection = Pick<AppServerClient, 'request' | 'close' | 'closed'> & {
+export type AppServerConnection = Pick<AppServerClient, 'request' | 'respond' | 'close' | 'closed'> & {
   on(event: 'notification', listener: (method: string, params: Record<string, unknown>) => void): unknown;
   on(event: 'serverRequest', listener: (request: ServerRequest) => void): unknown;
   on(event: 'close', listener: () => void): unknown;
@@ -286,6 +286,8 @@ const pidAlive = (pid: number): boolean => {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+type NativeApproval = { nativeId: string | number; request: ApprovalRequest; ready: boolean; answering?: boolean; resolved?: ApprovalOutcome };
+
 /** What the hub knows of one session's app-server. */
 type Live = {
   p: HarnessProcess;
@@ -297,6 +299,7 @@ type Live = {
   /** Monotonic arrival order for state and approval metadata, including events received during awaits. */
   eventSequence: number;
   approvalCommand?: string;
+  approvals?: Map<string, NativeApproval>;
   /** The active turn's id, from `turn/started` and `turn/start`: what `turn/steer` must name. */
   turnId: string | null;
   tokens: Record<string, unknown> | null;
@@ -466,7 +469,18 @@ export class CodexAdapter implements HarnessAdapter {
     live.client = client;
     const mine = (params: Record<string, unknown>) => params.threadId === live.p.harnessSessionId;
     client.on('notification', (method: string, params: Record<string, unknown>) => {
+      if (live.client !== client) return;
       switch (method) {
+        case 'serverRequest/resolved': {
+          if (!mine(params) || (typeof params.requestId !== 'string' && typeof params.requestId !== 'number')) return;
+          const id = String(params.requestId);
+          const pending = live.approvals?.get(id);
+          if (!pending) return;
+          const outcome: ApprovalOutcome = { choice: 'answered in the harness', by: 'harness', via: 'harness', at: this.#clock.now().toISOString() };
+          pending.resolved = outcome;
+          if (!pending.answering) this.#publishApproval(live, pending);
+          return;
+        }
         case 'thread/status/changed':
           if (!mine(params)) return;
           this.#setState(live, stateOfStatus(params.status));
@@ -548,8 +562,8 @@ export class CodexAdapter implements HarnessAdapter {
       }
     });
     client.on('serverRequest', (request: ServerRequest) => {
-      // approvals and questions are the attached TUI's; the hub only shows the state the app-server reports
-      if (request.params.threadId !== undefined && !mine(request.params)) return;
+      if (live.client !== client) return;
+      if (typeof request.params.threadId === 'string' && request.params.threadId.length > 0 && !mine(request.params)) return;
       this.#host.log({ event: 'harness-request', harness: this.harness, session: live.p.name, method: request.method });
       if (request.method.startsWith('item/') && request.method.endsWith('/requestApproval')) {
         live.eventSequence++;
@@ -557,14 +571,99 @@ export class CodexAdapter implements HarnessAdapter {
         live.approvalCommand = request.method === 'item/commandExecution/requestApproval' && typeof request.params.command === 'string'
           ? request.params.command : request.method.split('/')[1] ?? request.method;
         if (live.state === 'waiting for approval') this.#setState(live, live.state);
+        if (request.method === 'item/commandExecution/requestApproval' || request.method === 'item/fileChange/requestApproval') {
+          void this.#approval(live, client, request);
+        }
       }
     });
     client.on('close', () => {
-      if (live.client === client) live.client = null;
+      if (live.client === client) {
+        live.client = null;
+        // A closure observed before process publication must survive until host admission/watch.
+        for (const [id, entry] of live.approvals ?? []) if (!entry.resolved) live.approvals!.delete(id);
+      }
       if (this.#closed || !this.#watched.has(live.p.sessionId)) return;
       // a closed connection is a dead app-server, or one the next poll reconnects to
       if (live.p.pid !== null && !pidAlive(live.p.pid)) this.#gone(live, `pid ${live.p.pid} is gone`);
     });
+  }
+
+  async #approval(live: Live, client: AppServerConnection, native: ServerRequest): Promise<void> {
+    if (live.approvals?.has(String(native.id))) return;
+    const p = native.params;
+    const command = native.method === 'item/commandExecution/requestApproval';
+    const request: ApprovalRequest = { id: String(native.id), kind: command ? 'command' : 'file change', subject: {}, choices: ['once', 'always', 'deny'], since: this.#clock.now().toISOString() };
+    let valid = [p.threadId, p.turnId, p.itemId].every(value => typeof value === 'string' && value.length > 0);
+    if (command) {
+      if (typeof p.command === 'string') request.subject.command = p.command;
+      if (typeof p.cwd === 'string') request.subject.cwd = p.cwd;
+      if (typeof p.reason === 'string') request.subject.reason = p.reason;
+      valid &&= typeof p.command === 'string' && typeof p.cwd === 'string' && (p.reason == null || typeof p.reason === 'string');
+    }
+    // Retain the native id separately: numeric RPC ids must be answered as numbers, not record strings.
+    const entry: NativeApproval = { nativeId: native.id, request, ready: false };
+    (live.approvals ??= new Map()).set(request.id, entry);
+    if (!command && valid) {
+      try {
+        // FileChangeRequestApprovalParams has no patch. Its matching ThreadItem carries paths and diffs.
+        const result = await client.request<{ thread: { turns?: Array<{ id: string; items?: Array<{ id: string; type: string; changes?: Array<{ path: string; diff: string }> }> }> } }>('thread/read', { threadId: p.threadId, includeTurns: true });
+        const item = result.thread.turns?.find(turn => turn.id === p.turnId)?.items?.find(item => item.id === p.itemId && item.type === 'fileChange');
+        const changes = item?.changes;
+        valid = Array.isArray(changes) && changes.length > 0 && changes.every(change => change !== null && typeof change === 'object' && typeof change.path === 'string' && typeof change.diff === 'string');
+        if (valid) {
+          request.subject.files = changes!.map(change => change.path);
+          request.subject.change = changes!.map(change => change.diff).join('\n');
+        }
+      } catch { valid = false; }
+    }
+    // Stale unresolved work cannot publish; an already-observed native closure survives disconnect.
+    if ((live.client !== client || live.approvals.get(request.id) !== entry) && !entry.resolved) return;
+    // Clipped authorization text is informational: only a complete subject can be answered here.
+    valid &&= Buffer.byteLength(JSON.stringify(request.subject)) <= 64 * 1024;
+    if (!valid) {
+      request.answerIn = 'tui';
+      request.choices = [];
+      this.#host.log({ event: 'harness-approval-unsupported', severity: 'warn', harness: this.harness,
+        session: live.p.name, method: native.method, request: request.id });
+    }
+    entry.ready = true;
+    this.#publishApproval(live, entry);
+  }
+
+  #publishApproval(live: Live, entry: NativeApproval): void {
+    if (!entry.ready) return;
+    if (entry.resolved) entry.request.outcome = entry.resolved;
+    const admitted = this.#host.approvalRequested?.(live.p.sessionId, entry.request);
+    if (admitted && entry.resolved && live.approvals?.get(entry.request.id) === entry) live.approvals.delete(entry.request.id);
+  }
+
+  async answerApproval(p: HarnessProcess, requestId: string, answer: { choice: ApprovalChoice; note?: string }): Promise<{ noteDelivered: boolean }> {
+    const live = this.#live.get(p.sessionId);
+    const pending = live?.approvals?.get(requestId);
+    if (!pending || !live?.client) throw new Error('the app-server approval is not pending or connected');
+    if (pending.resolved) throw new Error('the app-server approval was already resolved');
+    if (!pending.ready) throw new Error('the app-server approval subject is still being validated');
+    if (pending.request.answerIn === 'tui') throw new Error('this approval stays in the harness TUI');
+    let decision: string;
+    switch (answer.choice) {
+      case 'once': decision = 'accept'; break;
+      case 'always': decision = 'acceptForSession'; break;
+      case 'deny': decision = 'decline'; break;
+      default: throw new Error('unknown approval choice');
+    }
+    pending.answering = true;
+    try {
+      await live.client.respond(pending.nativeId, { decision });
+    } catch (error) {
+      pending.answering = false;
+      if (pending.resolved) {
+        live.approvals!.delete(requestId);
+        this.#host.approvalClosed?.(p.sessionId, requestId, pending.resolved);
+      }
+      throw error;
+    }
+    live.approvals!.delete(requestId);
+    return { noteDelivered: false };
   }
 
   #subagent(live: Live, subagent: SubagentLaunch): void {
@@ -958,6 +1057,7 @@ export class CodexAdapter implements HarnessAdapter {
     } else live.p = p;
     this.#watched.add(p.sessionId);
     for (const subagent of live.earlySubagents ?? []) this.#host.signal(p.sessionId, { source: 'app-server', at: Date.now(), subagent });
+    for (const entry of live.approvals?.values() ?? []) this.#publishApproval(live, entry);
     delete live.earlySubagents;
     for (const error of this.#earlyFailures.get(p.sessionId) ?? []) this.#host.turnFailed?.(p.sessionId, error, []);
     this.#earlyFailures.delete(p.sessionId);

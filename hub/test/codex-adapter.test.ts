@@ -14,6 +14,7 @@ import { completeJournalLines } from './journal-lines.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { once } from 'node:events';
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -21,10 +22,12 @@ import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
+import type { Inbox } from '../src/protocol.ts';
 import { nativeProjectHub as projectHub, clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { setRoleKey } from '../src/roles/editor.ts';
 import { NO_PS } from './native-process.ts';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 
@@ -131,6 +134,7 @@ async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeo
     const all = await Promise.all(files.map(async (f) => JSON.parse(await readFile(join(home, 'servers', f), 'utf8')) as FakeServer));
     return all.filter((s) => pidAlive(s.pid));
   };
+  const runEnv = await accountFixtureEnvironment(env);
   t.after(async () => {
     for (const s of await servers()) await killDaemon(s.pid);
     await cleanupHome();
@@ -143,7 +147,7 @@ async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeo
     approve: () => writeFile(join(home, 'approve'), ''),
     run: (command) =>
       new Promise((resolve) =>
-        execFile('sh', ['-c', command], { env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, stdout, stderr })),
+        execFile('sh', ['-c', command], { cwd: home, env: runEnv, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, stdout, stderr })),
       ),
   };
 }
@@ -273,7 +277,16 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   await ui.waitFor((f) => f.type === 'delivery' && f.message === steerId && f.stage === 'injected', 15_000);
   assert.match(await fake.log(launched.pid as number), /turn\/steer [0-9a-f-]+: <channel [^\n]*>\nand this one while you wait/);
   assert.equal((await status(ui)).sessions.find((s) => s.name === 'coord')?.state, 'waiting for approval', 'the steer does not change the state');
-  await fake.approve(); // the human approves in the attached TUI
+  const approval = ((await ui.request({ type: 'inbox.list' })).value as Inbox).approvals[0]!;
+  assert.equal(approval.answerIn, 'hub');
+  const lateClient = await AppServerClient.connect(launched.harnessId!, { client: { name: 'test_tui', version: '0' } });
+  t.after(() => lateClient.close());
+  const replay = once(lateClient, 'serverRequest', { signal: AbortSignal.timeout(5000) });
+  await lateClient.request('thread/resume', { threadId: launched.harnessSessionId });
+  const [replayed] = await replay;
+  assert.equal(approval.id, `${launched.sessionId}:${replayed.id}`, 'all subscribers see the same request id, including late subscribers');
+  const approved = await ui.request({ type: 'approval.answer', approval: approval.id, choice: 'once' });
+  assert.equal(approved.ok, true, approved.error);
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: this one needs approval', 15_000);
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: and this one while you wait', 15_000);
   await presentAs(ui, 'coord', 'idle');
@@ -284,6 +297,20 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   assert.ok(stateEvents(ui, 'coord').every((e) => e.source === 'app-server'), 'no state ever came from the status tool');
   const cleared = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
   assert.equal(cleared.processes[0]?.approvalCommand, undefined);
+  assert.match(await fake.log(launched.pid!), /command ran: touch approved/);
+  assert.equal(await readFile(join(root, 'approved'), 'utf8'), '');
+  await rm(join(root, 'approved'));
+  const denyMark = ui.frames.length;
+  const pendingDeny = ui.waitFor(frame => ui.frames.indexOf(frame) >= denyMark && frame.type === 'approval' && (frame.approval as typeof approval).state === 'pending' && (frame.approval as typeof approval).answerIn === 'hub');
+  await sendGeneral(ui, 'this command needs approval but deny it');
+  const deniedRow = (await pendingDeny).approval as typeof approval;
+  const denied = await ui.request({ type: 'approval.answer', approval: deniedRow.id, choice: 'deny', note: 'Keep the tree' });
+  assert.equal(denied.ok, true, denied.error);
+  await ui.waitFor(frame => frame.type === 'message' && (frame.message as { text: string }).text === 'pong: this command needs approval but deny it');
+  await presentAs(ui, 'coord', 'idle');
+  await assert.rejects(readFile(join(root, 'approved')), { code: 'ENOENT' });
+  assert.equal((await fake.log(launched.pid!)).split('command ran: touch approved').length - 1, 1, 'decline continues the turn without executing');
+  assert.ok(ui.frames.slice(denyMark).some(frame => frame.type === 'approval' && (frame.approval as typeof approval).outcome?.choice === 'deny'));
   const editMark = ui.frames.length;
   await sendGeneral(ui, 'needs approval for fileChange');
   const edit = await ui.waitFor(f => f.type === 'session.state' && f.approvalCommand === 'fileChange');
@@ -300,7 +327,7 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
     history: 'none',
     usage: 'reliable',
     setModel: 'none',
-    approvalRelay: 'none',
+    approvalRelay: 'reliable',
     states: { busy: 'reliable', idle: 'reliable', 'waiting for approval': 'reliable', 'waiting for human': 'reliable' },
   });
 });

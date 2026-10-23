@@ -6,12 +6,356 @@ import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
 import { AppServerClient, RpcError, RpcNoAnswer } from '../src/adapters/codex/app-server.ts';
 import { deferred, scriptedCodex } from './fakes/scripted-codex.ts';
-import { eventually } from './harness.ts';
-import type { Message } from '../src/protocol.ts';
+import { connectUi, eventually } from './harness.ts';
+import type { Inbox, Message } from '../src/protocol.ts';
 
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
 const redelivered = (intoActive: boolean) => `impl [Implementer]: its turn ended without a message it had accepted; the message was delivered again ${intoActive ? 'into a running turn' : 'as a new turn'}`;
 type Fixture = Awaited<ReturnType<typeof scriptedCodex>>;
+
+test('a Codex command approval is one allowlisted record and Approve once responds to its native id', async t => {
+  const f = await scriptedCodex(t);
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  const request = { id: 71, method: 'item/commandExecution/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'turn-1', itemId: 'item-1', command: 'touch approved', cwd: f.root,
+    reason: 'Write a file', privateInput: 'PRIVATE-TOOL-INPUT',
+  } };
+  f.native.emit('serverRequest', request);
+  const row = (await pending).approval as Inbox['approvals'][number];
+  assert.equal(row.id, `${f.process.sessionId}:71`);
+  assert.equal(row.answerIn, 'hub');
+  assert.equal(row.state, 'pending');
+  assert.equal(row.kind, 'command');
+  assert.deepEqual(row.subject, { command: 'touch approved', cwd: f.root, reason: 'Write a file' });
+  assert.deepEqual(row.choices, ['once', 'always', 'deny']);
+  f.native.emit('serverRequest', request);
+  const listed = await f.ui.request({ type: 'inbox.list' });
+  assert.deepEqual((listed.value as Inbox).approvals, [row]);
+  const answer = await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'once' });
+  assert.equal(answer.ok, true, answer.error);
+  assert.deepEqual(f.native.responses, [{ id: 71, result: { decision: 'accept' } }]);
+  assert.equal((answer.value as { approval: typeof row }).approval.outcome?.choice, 'once');
+  assert.equal(JSON.stringify(f.ui.frames).includes('PRIVATE-TOOL-INPUT'), false);
+});
+
+test('Codex Always and Deny preserve the human outcome when resolved arrives during the response', async t => {
+  const f = await scriptedCodex(t);
+  f.native.onResponse = id => f.native.notify('serverRequest/resolved', { requestId: id });
+  for (const [choice, decision] of [['always', 'acceptForSession'], ['deny', 'decline']] as const) {
+    const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(`:${choice}`));
+    f.native.emit('serverRequest', { id: choice, method: 'item/commandExecution/requestApproval', params: {
+      threadId: f.native.thread, turnId: 'turn-1', itemId: choice, command: 'touch approved', cwd: f.root,
+    } });
+    const row = (await pending).approval as Inbox['approvals'][number];
+    const note = choice === 'deny' ? 'Keep this worktree' : undefined;
+    const result = await f.ui.request({ type: 'approval.answer', approval: row.id, choice, ...(note ? { note } : {}) });
+    assert.equal(result.ok, true, result.error);
+    const closed = (result.value as { approval: typeof row }).approval;
+    assert.deepEqual(closed.outcome, { choice, by: 'human', via: 'neovim', at: f.clock.now().toISOString(), ...(note ? { note } : {}) });
+    assert.deepEqual(f.native.responses.at(-1), { id: choice, result: { decision } });
+    const archive = ((await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox).archive!;
+    assert.deepEqual(archive.find(record => record.id === row.id)?.outcome, closed.outcome);
+    if (note) {
+      const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Message[] };
+      assert.ok(history.messages.some(message => message.from === 'human' && message.text === note));
+    }
+  }
+});
+
+test('a Codex request resolved by another client closes for every subscribed client', async t => {
+  const f = await scriptedCodex(t);
+  const other = await connectUi(t, f.discovery);
+  await other.request({ type: 'subscribe' });
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  f.native.emit('serverRequest', { id: 'native', method: 'item/commandExecution/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'turn-1', itemId: 'item-1', command: 'touch approved', cwd: f.root,
+  } });
+  const row = (await pending).approval as Inbox['approvals'][number];
+  const closed = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as typeof row).state === 'closed');
+  const otherClosed = other.waitFor(frame => frame.type === 'approval' && (frame.approval as typeof row).state === 'closed');
+  f.native.notify('serverRequest/resolved', { requestId: 'native' });
+  const record = (await closed).approval as typeof row;
+  assert.deepEqual((await otherClosed).approval, record);
+  assert.deepEqual(record.outcome, {
+    choice: 'answered in the harness', by: 'harness', via: 'harness', at: f.clock.now().toISOString(),
+  });
+  const archive = ((await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox).archive!;
+  assert.deepEqual(archive.find(record => record.id === row.id)?.outcome, record.outcome);
+  assert.equal((await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'deny' })).ok, false);
+  assert.deepEqual(f.native.responses, []);
+});
+
+test('a replayed Codex request after reconnect keeps its record id and accepts an answer', async t => {
+  const f = await scriptedCodex(t);
+  const request = { id: 'replayed', method: 'item/commandExecution/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'turn-1', itemId: 'item-1', command: 'touch approved', cwd: f.root,
+  } };
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  f.native.emit('serverRequest', request);
+  const row = (await pending).approval as Inbox['approvals'][number];
+  f.native.handlers.set('thread/resume', () => {
+    f.native.emit('serverRequest', request);
+    return { thread: { id: f.native.thread, status: { type: 'active', activeFlags: ['waitingOnApproval'] } } };
+  });
+  await f.reconnect();
+  await eventually('new native subscription', () => f.native.count('thread/resume') === 2 || undefined);
+  assert.equal(f.connections, 2);
+  assert.deepEqual(((await f.ui.request({ type: 'inbox.list' })).value as Inbox).approvals, [row]);
+  const answer = await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'once' });
+  assert.equal(answer.ok, true, answer.error);
+  assert.deepEqual(f.native.responses, [{ id: 'replayed', result: { decision: 'accept' } }]);
+  assert.equal(f.ui.frames.filter(frame => frame.type === 'approval' && (frame.approval as typeof row).state === 'pending').length, 1);
+});
+
+test('the Codex capability table advertises a reliable approval relay', async t => {
+  const f = await scriptedCodex(t);
+  const result = await f.ui.request({ type: 'session.list' });
+  assert.equal((result.value as { adapters: { codex: { approvalRelay: string } } }).adapters.codex.approvalRelay, 'reliable');
+});
+
+test('a Codex file-change approval reads only the matching item paths and diff, then sends decline', async t => {
+  const f = await scriptedCodex(t);
+  f.native.handlers.set('thread/read', () => ({ thread: { id: f.native.thread, turns: [{ id: 'turn-file', items: [
+    { id: 'other', type: 'fileChange', changes: [{ path: 'private', diff: 'PRIVATE-TOOL-INPUT' }] },
+    { id: 'patch', type: 'fileChange', changes: [{ path: '/work/a.ts', diff: '@@\n-old\n+new', privateInput: 'PRIVATE-TOOL-INPUT' }] },
+  ] }] } }));
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  f.native.emit('serverRequest', { id: 'file-approval', method: 'item/fileChange/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'turn-file', itemId: 'patch', reason: 'Update source', privateInput: 'PRIVATE-TOOL-INPUT',
+  } });
+  const row = (await pending).approval as Inbox['approvals'][number];
+  assert.equal(row.kind, 'file change');
+  assert.equal(row.answerIn, 'hub');
+  assert.deepEqual(row.subject, { files: ['/work/a.ts'], change: '@@\n-old\n+new' });
+  assert.deepEqual(row.choices, ['once', 'always', 'deny']);
+  const answer = await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'deny' });
+  assert.equal(answer.ok, true, answer.error);
+  assert.deepEqual(f.native.responses, [{ id: 'file-approval', result: { decision: 'decline' } }]);
+  assert.equal(JSON.stringify(f.ui.frames).includes('PRIVATE-TOOL-INPUT'), false);
+});
+
+test('malformed Codex command requests fall back to the TUI with a warning and never send a decision', async t => {
+  const f = await scriptedCodex(t);
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  f.native.emit('serverRequest', { id: 'missing-cwd', method: 'item/commandExecution/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'turn-1', itemId: 'item-1', command: 'touch approved', privateInput: 'PRIVATE-TOOL-INPUT',
+  } });
+  const row = (await pending).approval as Inbox['approvals'][number];
+  assert.equal(row.answerIn, 'tui');
+  assert.deepEqual(row.choices, []);
+  assert.deepEqual(row.subject, { command: 'touch approved' });
+  assert.equal((await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'deny' })).ok, false);
+  assert.deepEqual(f.native.responses, []);
+  assert.match(await f.log(), /"event":"harness-approval-unsupported"[^\n]*"severity":"warn"/);
+  assert.equal(JSON.stringify(f.ui.frames).includes('PRIVATE-TOOL-INPUT'), false);
+});
+
+test('a replayed Codex file approval cannot answer until its subject is validated', async t => {
+  const f = await scriptedCodex(t);
+  const patch = { thread: { turns: [{ id: 'turn', items: [{ id: 'patch', type: 'fileChange', changes: [{ path: '/work/file', diff: '@@\n-old\n+new' }] }] }] } };
+  for (const mode of ['valid', 'malformed', 'failed']) {
+    const request = { id: `file-${mode}`, method: 'item/fileChange/requestApproval', params: { threadId: f.native.thread, turnId: 'turn', itemId: 'patch' } };
+    f.native.handlers.set('thread/read', () => patch);
+    const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(`:file-${mode}`));
+    f.native.emit('serverRequest', request);
+    const row = (await pending).approval as Inbox['approvals'][number];
+    const read = deferred<unknown>(), reads = f.native.count('thread/read');
+    f.native.handlers.set('thread/read', () => read.promise);
+    f.native.handlers.set('thread/resume', () => {
+      f.native.emit('serverRequest', request);
+      return { thread: { id: f.native.thread, status: { type: 'idle' } } };
+    });
+    await f.reconnect();
+    await eventually('replayed file read requested', () => f.native.count('thread/read') === reads + 1 || undefined);
+    const before = f.native.responses.length;
+    const early = await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'once' });
+    assert.equal(early.ok, false, 'held validation must refuse the public answer');
+    assert.equal(f.native.responses.length, before);
+    if (mode === 'failed') read.reject(new Error('planted readback failure'));
+    else read.resolve(mode === 'valid' ? patch : { thread: { turns: [] } });
+    // The read promise settles before this ordered frame crosses the hub's I/O boundary.
+    await f.ui.request({ type: 'session.list' });
+    const answer = await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'deny' });
+    assert.equal(answer.ok, mode === 'valid', answer.error);
+    assert.equal(f.native.responses.length, before + (mode === 'valid' ? 1 : 0));
+    if (mode === 'valid') assert.deepEqual(f.native.responses.at(-1), { id: `file-${mode}`, result: { decision: 'decline' } });
+  }
+});
+
+test('a Codex file request resolved during its first lookup publishes only the closed harness outcome', async t => {
+  const f = await scriptedCodex(t);
+  const other = await connectUi(t, f.discovery);
+  await other.request({ type: 'subscribe' });
+  const read = deferred<unknown>();
+  f.native.handlers.set('thread/read', () => read.promise);
+  const id = `${f.process.sessionId}:early-resolved`;
+  const closed = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id);
+  const otherClosed = other.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id);
+  f.native.emit('serverRequest', { id: 'early-resolved', method: 'item/fileChange/requestApproval', params: { threadId: f.native.thread, turnId: 'turn', itemId: 'patch' } });
+  await eventually('first file read requested', () => f.native.count('thread/read') === 1 || undefined);
+  f.native.notify('serverRequest/resolved', { requestId: 'early-resolved' });
+  const at = f.clock.now().toISOString();
+  await f.clock.advance(1000);
+  read.resolve({ thread: { turns: [{ id: 'turn', items: [{ id: 'patch', type: 'fileChange', changes: [{ path: '/work/file', diff: '@@\n-old\n+new' }] }] }] } });
+  const row = (await closed).approval as Inbox['approvals'][number];
+  assert.equal(row.state, 'closed');
+  assert.deepEqual(row.subject, { files: ['/work/file'], change: '@@\n-old\n+new' });
+  assert.deepEqual(row.outcome, { choice: 'answered in the harness', by: 'harness', via: 'harness', at });
+  assert.ok(row.since <= row.outcome!.at, 'the request began no later than its observed closure');
+  assert.deepEqual((await otherClosed).approval, row);
+  const inbox = (await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+  assert.equal(inbox.approvals.some(record => record.id === id), false);
+  assert.deepEqual(inbox.archive?.find(record => record.id === id)?.outcome, row.outcome);
+  assert.equal(f.ui.frames.filter(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id).length, 1);
+  assert.deepEqual(f.native.responses, []);
+});
+
+test('an observed Codex file closure survives native disconnect before its first lookup settles', async t => {
+  const f = await scriptedCodex(t), other = await connectUi(t, f.discovery);
+  await other.request({ type: 'subscribe' });
+  const read = deferred<unknown>();
+  f.native.handlers.set('thread/read', () => read.promise);
+  const id = `${f.process.sessionId}:disconnected-resolved`;
+  const closed = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id);
+  const otherClosed = other.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id);
+  f.native.emit('serverRequest', { id: 'disconnected-resolved', method: 'item/fileChange/requestApproval', params: { threadId: f.native.thread, turnId: 'turn', itemId: 'patch' } });
+  f.native.emit('serverRequest', { id: 'unresolved-on-old-client', method: 'item/fileChange/requestApproval', params: { threadId: f.native.thread, turnId: 'turn', itemId: 'patch' } });
+  await eventually('held initial file reads', () => f.native.count('thread/read') === 2 || undefined);
+  f.native.notify('serverRequest/resolved', { requestId: 'disconnected-resolved' });
+  const at = f.clock.now().toISOString();
+  f.refuseConnections(new Error('hold disconnected'));
+  f.native.close();
+  read.reject(new Error('read failed after observed closure'));
+  const row = (await closed).approval as Inbox['approvals'][number];
+  assert.equal(row.state, 'closed');
+  assert.deepEqual(row.subject, {});
+  assert.deepEqual(row.outcome, { choice: 'answered in the harness', by: 'harness', via: 'harness', at });
+  assert.ok(row.since <= at);
+  assert.deepEqual((await otherClosed).approval, row);
+  const inbox = (await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+  assert.equal(inbox.approvals.some(record => record.id === id), false);
+  assert.deepEqual(inbox.archive?.find(record => record.id === id)?.outcome, row.outcome);
+  assert.equal(f.ui.frames.filter(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id).length, 1);
+  assert.equal(f.ui.frames.some(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(':unresolved-on-old-client')), false);
+  assert.equal((await f.ui.request({ type: 'approval.answer', approval: id, choice: 'once' })).ok, false);
+  assert.deepEqual(f.native.responses, []);
+});
+
+test('a known stopped Codex session admits closed-first history but no new pending approval', async t => {
+  const f = await scriptedCodex(t);
+  const read = deferred<unknown>();
+  f.native.handlers.set('thread/read', () => read.promise);
+  const id = `${f.process.sessionId}:stopped-resolved`;
+  const closed = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id);
+  f.native.emit('serverRequest', { id: 'stopped-resolved', method: 'item/fileChange/requestApproval', params: { threadId: f.native.thread, turnId: 'turn', itemId: 'patch' } });
+  await eventually('held lookup before stop', () => f.native.count('thread/read') === 1 || undefined);
+  f.native.notify('serverRequest/resolved', { requestId: 'stopped-resolved' });
+  const at = f.clock.now().toISOString();
+  const stopped = await f.ui.request({ type: 'session.stop', session: 'impl' });
+  assert.equal(stopped.ok, true, stopped.error);
+  const listed = (await f.ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; status: string }> };
+  assert.equal(listed.processes.find(process => process.name === 'impl')?.status, 'stopped');
+  f.native.emit('serverRequest', { id: 'terminal-pending', method: 'item/commandExecution/requestApproval', params: { threadId: f.native.thread, turnId: 'turn', itemId: 'command', command: 'touch unapproved', cwd: f.root } });
+  f.native.close();
+  read.reject(new Error('read rejected after recorded stop'));
+  const row = (await closed).approval as Inbox['approvals'][number];
+  assert.equal(row.state, 'closed');
+  assert.deepEqual(row.outcome, { choice: 'answered in the harness', by: 'harness', via: 'harness', at });
+  const inbox = (await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+  assert.equal(inbox.approvals.length, 0);
+  assert.deepEqual(inbox.archive?.find(record => record.id === id)?.outcome, row.outcome);
+  assert.equal(f.ui.frames.some(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(':terminal-pending')), false);
+  assert.deepEqual(f.native.responses, []);
+});
+
+test('Codex watch replays a first-turn closure observed before its process row was published', async t => {
+  const f = await scriptedCodex(t, async (native, process) => {
+    native.emit('serverRequest', { id: 'early-closed', method: 'item/commandExecution/requestApproval', params: { threadId: native.thread, turnId: 'first-turn', itemId: 'first-command', command: 'touch approved', cwd: process.cwd } });
+    native.notify('serverRequest/resolved', { requestId: 'early-closed' });
+  });
+  const id = `${f.process.sessionId}:early-closed`;
+  const inbox = (await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+  assert.equal(inbox.approvals.length, 0);
+  const row = inbox.archive?.find(record => record.id === id);
+  assert.ok(row, 'watch publishes the exact early native closure after the process row is known');
+  assert.deepEqual(row.outcome, { choice: 'answered in the harness', by: 'harness', via: 'harness', at: f.clock.now().toISOString() });
+  const deltas = f.ui.frames.filter(frame => frame.type === 'approval' && (frame.approval as { id: string }).id === id);
+  assert.equal(deltas.length, 1);
+  assert.equal((deltas[0]!.approval as { state: string }).state, 'closed');
+  assert.deepEqual(f.native.responses, []);
+});
+
+test('Codex validates every routing field and rejects missing or malformed file patches', async t => {
+  const f = await scriptedCodex(t);
+  const valid: Record<string, unknown> = { threadId: f.native.thread, turnId: 'turn', itemId: 'patch', command: 'touch approved', cwd: f.root };
+  f.native.emit('serverRequest', { id: 'foreign', method: 'item/commandExecution/requestApproval', params: { ...valid, threadId: 'another-thread' } });
+  const malformed = [
+    ...['threadId', 'turnId', 'itemId', 'command', 'cwd'].map(field => {
+      const params = { ...valid }; delete params[field]; return params;
+    }),
+    { ...valid, reason: { privateInput: 'PRIVATE-TOOL-INPUT' } },
+    ...[null, 7, {}, []].map(threadId => ({ ...valid, threadId })),
+    ...['threadId', 'turnId', 'itemId'].map(field => ({ ...valid, [field]: '' })),
+  ];
+  for (const [index, params] of malformed.entries()) {
+    const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(`:invalid-${index}`));
+    f.native.emit('serverRequest', { id: `invalid-${index}`, method: 'item/commandExecution/requestApproval', params });
+    const row = (await pending).approval as Inbox['approvals'][number];
+    assert.equal(row.answerIn, 'tui');
+    assert.deepEqual(row.choices, []);
+  }
+  for (const [index, changes] of [undefined, [], [{ path: '/work/file', diff: 123 }]].entries()) {
+    f.native.handlers.set('thread/read', () => ({ thread: { turns: [{ id: 'turn', items: [{ id: 'patch', type: 'fileChange', changes }] }] } }));
+    const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(`:invalid-file-${index}`));
+    f.native.emit('serverRequest', { id: `invalid-file-${index}`, method: 'item/fileChange/requestApproval', params: valid });
+    const row = (await pending).approval as Inbox['approvals'][number];
+    assert.equal(row.answerIn, 'tui');
+    assert.deepEqual(row.subject, {});
+    assert.deepEqual(row.choices, []);
+  }
+  assert.equal((await f.log()).split('"event":"harness-approval-unsupported"').length - 1, 16);
+  const inbox = (await f.ui.request({ type: 'inbox.list' })).value as Inbox;
+  assert.equal(inbox.approvals.some(row => row.id.endsWith(':foreign')), false);
+  assert.equal(JSON.stringify(f.ui.frames).includes('PRIVATE-TOOL-INPUT'), false);
+  assert.deepEqual(f.native.responses, []);
+});
+
+test('Codex relays only complete command and file subjects within the exact serialized UTF-8 cap', async t => {
+  const f = await scriptedCodex(t);
+  const cap = 64 * 1024;
+  const fill = (bytes: number) => '🚀'.repeat(Math.floor(bytes / 4)) + '.'.repeat(bytes % 4);
+  for (const kind of ['command', 'file']) {
+    const empty = kind === 'command' ? { command: 'printf ', cwd: '/work' } : { files: ['/work/a'], change: '' };
+    const text = fill(cap - Buffer.byteLength(JSON.stringify(empty)));
+    const exact = kind === 'command' ? { command: `printf ${text}`, cwd: '/work' } : { files: ['/work/a'], change: text };
+    assert.equal(Buffer.byteLength(JSON.stringify(exact)), cap);
+    for (const oversized of [false, true]) {
+      const id = `${kind}-${oversized ? 'oversized' : 'exact'}`;
+      const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(`:${id}`));
+      const params: Record<string, unknown> = { threadId: f.native.thread, turnId: 'turn', itemId: id, privateInput: 'PRIVATE-TOOL-INPUT' };
+      if (kind === 'command') {
+        params.command = exact.command! + (oversized ? `; printf ${'x'.repeat(256)}; touch /work/HIDDEN-OPERATION` : '');
+        params.cwd = '/work';
+      } else {
+        const changes = [{ path: '/work/a', diff: text }];
+        if (oversized) changes.push({ path: '/work/HIDDEN-OPERATION', diff: `${'x'.repeat(256)}\n+HIDDEN-OPERATION` });
+        f.native.handlers.set('thread/read', () => ({ thread: { turns: [{ id: 'turn', items: [{ id, type: 'fileChange', changes, privateInput: 'PRIVATE-TOOL-INPUT' }] }] } }));
+      }
+      f.native.emit('serverRequest', { id, method: kind === 'command' ? 'item/commandExecution/requestApproval' : 'item/fileChange/requestApproval', params });
+      const row = (await pending).approval as Inbox['approvals'][number];
+      assert.equal(row.answerIn, oversized ? 'tui' : 'hub');
+      assert.deepEqual(row.choices, oversized ? [] : ['once', 'always', 'deny']);
+      assert.ok(Buffer.byteLength(JSON.stringify(row.subject)) <= cap);
+      if (!oversized) assert.deepEqual(row.subject, exact);
+      else assert.equal(JSON.stringify(row.subject).includes('HIDDEN-OPERATION'), false);
+      const count = f.native.responses.length;
+      const answer = await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'once' });
+      assert.equal(answer.ok, !oversized, answer.error);
+      assert.equal(f.native.responses.length, count + (oversized ? 0 : 1));
+    }
+  }
+  assert.equal(JSON.stringify(f.ui.frames).includes('PRIVATE-TOOL-INPUT'), false);
+});
 async function active(f: Fixture) {
   f.native.start('original');
   // A known input lets readback judge missing steers independently of their shape.

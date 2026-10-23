@@ -189,7 +189,8 @@ type Item = { text: string; tool?: { name: string; namespace?: string } | undefi
 type TurnItem =
   | { type: 'userMessage'; id: string; content: Array<{ type: 'text'; text: string }> }
   | { type: 'functionCallOutput'; id: string; name: string; namespace: string | null; output: string }
-  | { type: 'hubInput'; id: string; payload: string };
+  | { type: 'hubInput'; id: string; payload: string }
+  | { type: 'fileChange'; id: string; changes: Array<{ path: string; kind: { type: 'update' }; diff: string }> };
 type TurnRecord = { id: string; status: string; items: TurnItem[] };
 type Thread = ThreadFile & { status: Status; turnId: string | null; queue: Item[]; tokens: number; history?: TurnRecord[] };
 
@@ -263,7 +264,8 @@ async function appServer(args: string[]): Promise<number> {
   let usedPercent = 6;
   const rateLimits = () => readJson<Record<string, unknown>>(join(process.env.CODEX_HOME ?? HOME, 'rate-limits.json')) ?? readJson<Record<string, Record<string, unknown>>>(join(HOME, 'rate-limits.json'))?.[process.env.CODEX_HOME ?? ''] ?? { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } };
 
-  const pendingApprovals = new Map<string, () => void>();
+  type Decision = 'accept' | 'acceptForSession' | 'decline';
+  const pendingApprovals = new Map<string, { threadId: string; frame: Record<string, unknown>; done: (decision: Decision) => void }>();
   let approveAll: (() => void) | null = null;
   const send = (c: Conn, frame: unknown) => {
     if (c.ws.readyState === WebSocket.OPEN) c.ws.send(JSON.stringify(frame));
@@ -290,24 +292,29 @@ async function appServer(args: string[]): Promise<number> {
   };
 
   const waitForApproval = (t: Thread, itemId: string, fileApproval = false) =>
-    new Promise<void>((resolve) => {
-      const done = () => {
+    new Promise<Decision>((resolve) => {
+      const requestId = `approval-${itemId}`;
+      const done = (decision: Decision) => {
+        if (!pendingApprovals.has(requestId)) return;
         clearInterval(poll);
-        pendingApprovals.delete(itemId);
+        pendingApprovals.delete(requestId);
         approveAll = null;
-        resolve();
+        log(`approval ${requestId}: ${decision}`);
+        toSubscribers(t.id, 'serverRequest/resolved', { threadId: t.id, requestId });
+        resolve(decision);
       };
-      pendingApprovals.set(itemId, done);
-      approveAll = done;
+      const frame = { id: requestId, method: fileApproval ? 'item/fileChange/requestApproval' : 'item/commandExecution/requestApproval', params: { threadId: t.id, turnId: t.turnId, itemId,
+        ...(fileApproval ? { reason: 'Update a file', content: 'PRIVATE-TOOL-INPUT' } : { command: 'touch approved', cwd: t.cwd, reason: 'Write a file' }) } };
+      pendingApprovals.set(requestId, { threadId: t.id, frame, done });
+      approveAll = () => done('accept');
       const control = join(HOME, 'approve');
       const poll = setInterval(() => {
         if (existsSync(control)) {
           rmSync(control, { force: true });
-          done();
+          done('accept');
         }
       }, 50);
-      let n = 0;
-      for (const c of conns) if (c.subscribed.has(t.id)) send(c, { id: `approval-${itemId}-${n++}`, method: fileApproval ? 'item/fileChange/requestApproval' : 'item/commandExecution/requestApproval', params: { threadId: t.id, turnId: t.turnId, itemId, ...(fileApproval ? { content: 'PRIVATE-TOOL-INPUT' } : { command: 'touch approved' }) } });
+      for (const c of conns) if (c.subscribed.has(t.id)) send(c, frame);
     });
 
   const runTurn = async (t: Thread) => {
@@ -376,9 +383,14 @@ async function appServer(args: string[]): Promise<number> {
       if (body.includes('needs approval')) {
         await callTool('status', { text: 'idle' });
         const itemId = randomUUID();
+        const fileApproval = body.includes('needs approval for fileChange');
+        if (fileApproval) record.items.push({ id: itemId, type: 'fileChange', changes: [{ path: join(t.cwd, 'approved'), kind: { type: 'update' }, diff: '@@\n-old\n+new' }] });
         setStatus(t, { type: 'active', activeFlags: ['waitingOnApproval'] });
-        await waitForApproval(t, itemId, body.includes('needs approval for fileChange'));
-        for (const c of conns) if (c.subscribed.has(t.id)) send(c, { method: 'serverRequest/resolved', params: { threadId: t.id, requestId: itemId } });
+        const decision = await waitForApproval(t, itemId, fileApproval);
+        if (!fileApproval && (decision === 'accept' || decision === 'acceptForSession')) {
+          writeFileSync(join(t.cwd, 'approved'), '');
+          log('command ran: touch approved');
+        }
         setStatus(t, { type: 'active', activeFlags: [] });
         await sleep(TURN_MS);
       }
@@ -495,6 +507,7 @@ async function appServer(args: string[]): Promise<number> {
         if (typeof params.model === 'string') t.model = params.model;
         if (typeof params.cwd === 'string') { t.cwd = params.cwd; save(t); }
         c.subscribed.add(t.id);
+        for (const pending of pendingApprovals.values()) if (pending.threadId === t.id) send(c, pending.frame);
         if (existsSync(join(HOME, 'idle-subscribe'))) {
           rmSync(join(HOME, 'idle-subscribe'));
           // Approval completed while detached: report idle, then a new waiting episode without metadata.
@@ -675,8 +688,8 @@ async function appServer(args: string[]): Promise<number> {
       const m = JSON.parse(String(data)) as { id?: string | number; method?: string; params?: Record<string, unknown>; result?: unknown };
       if (m.method === undefined) {
         // a client's answer to an approval request
-        const itemId = typeof m.id === 'string' ? /^approval-(.+)-\d+$/.exec(m.id)?.[1] : undefined;
-        if (itemId) pendingApprovals.get(itemId)?.();
+        const decision = (m.result as { decision?: unknown } | undefined)?.decision;
+        if (typeof m.id === 'string' && (decision === 'accept' || decision === 'acceptForSession' || decision === 'decline')) pendingApprovals.get(m.id)?.done(decision);
         return;
       }
       if (m.id === undefined) return; // a notification (`initialized`)
