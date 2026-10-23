@@ -1,11 +1,13 @@
+import type { ReactNode } from 'react';
 import type { AreaContentProps } from '../AreaSlot.tsx';
 import { SessionActions } from './SessionActions.tsx';
 import s from './Sessions.module.css';
 
-export function SessionPage({ connection, selected, controls, closePage }: AreaContentProps) {
+export function SessionPage({ connection, selected, controls, closePage, children }: AreaContentProps & { children?: ReactNode }) {
   const row = [...connection.sessions ?? [], ...connection.archivedSessionRows ?? []].find(value => value.name === selected);
   const usage = row?.usage?.total;
   return <section className={s.page} data-area-module="Sessions" data-area-surface="page" data-key-context="sessions">
+    {children}
     {row ? <>
       <dl className={s.facts}>
         <dt>Session</dt><dd>{row.name}</dd>

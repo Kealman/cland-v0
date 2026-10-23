@@ -43,7 +43,7 @@ test('declared composer fields own their keys while ordinary fields retain nativ
   });
 });
 
-test('area modules keep selection and drawers while unimplemented session actions stay absent from help and palette', async t => {
+test('area modules keep selection and drawers and session launch actions appear in help and palette', async t => {
   const fixture = await webFixture(t);
   const ui = await connectUi(t, fixture.hub.discovery);
   assert.equal((await ui.request({ type: 'session.launch', name: 'context-session', harness: 'codex' })).ok, true);
@@ -69,19 +69,23 @@ test('area modules keep selection and drawers while unimplemented session action
     await row.focus();
     const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
     await drawer.waitFor();
-    for (const key of ['l', 'a']) await row.press(key);
+    for (const key of ['l', 'a']) {
+      await row.press(key);
+      await page.getByRole('form', { name: key === 'l' ? 'Launch a session' : 'New Aide', exact: true }).waitFor();
+      await page.keyboard.press('Escape');
+    }
     assert.equal(await row.getAttribute('aria-pressed'), 'true');
     assert.equal(await drawer.count(), 1);
     await row.press('Shift+/');
     const help = page.getByRole('dialog', { name: 'Sessions keys', exact: true });
     await help.waitFor();
-    assert.deepEqual(await help.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session or queue', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
-    assert.equal(await help.locator('kbd').count(), 22);
+    assert.deepEqual(await help.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session or queue', 'Launch a session', 'New Aide', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
+    assert.equal(await help.locator('kbd').count(), 24);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Meta+k');
     const palette = page.getByRole('dialog', { name: 'Palette', exact: true });
     await page.getByRole('combobox', { name: 'Search palette' }).fill('>Launch a session');
-    assert.equal(await palette.getByRole('option').count(), 0);
+    assert.equal(await palette.getByRole('option').count(), 1);
     await page.keyboard.press('Escape');
     await row.press('Meta+Enter');
     await page.locator('[data-pane="secondary"]').getByRole('heading', { name: 'context-session', exact: true }).waitFor();

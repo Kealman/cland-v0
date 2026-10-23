@@ -45,6 +45,7 @@ export function listenForShortcuts(
     // Session Enter owns rows, confirmations and the queue; other buttons keep native activation.
     if (mode === 'sessions' && action === 'session-open' && event.target instanceof Element &&
         event.target.closest('button') && !event.target.closest('[data-object-id], [data-session-actions], [data-session-slot="verification"]')) return;
+    if (mode === 'launch' && action === 'accept' && event.target instanceof Element && event.target.closest('button')) return;
     if (mode === 'help' && action !== 'dismiss' && action !== 'palette') return;
     if (local && !handles(action, mode)) {
       if (declaredField) event.preventDefault();

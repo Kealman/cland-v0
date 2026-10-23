@@ -6057,7 +6057,7 @@
     "nvim/test/thread.test.ts::a withdrawn human message uses the dropped glyph and colour and ignores older stages": 0.278435,
     "web/test/area-slots.test.ts::area modules keep their slots and live hub state across a restart": 4.346836,
     "web/test/item-criteria.test.ts::criteria edits on the card": 7.61261,
-    "web/test/key-contexts.test.ts::area modules keep selection and drawers while unimplemented session actions stay absent from help and palette": 1.235144,
+    "web/test/key-contexts.test.ts::area modules keep selection and drawers and session launch actions appear in help and palette": 1.235144,
     "web/test/key-contexts.test.ts::declared composer fields own their keys while ordinary fields retain native input": 1.383127,
     "web/test/key-contexts.test.ts::the palette lists and runs handled Items actions after restoring focus": 0.890716,
     "web/test/plan.test.ts::the Plan view in Items": 3.629375,

@@ -54,6 +54,7 @@
   .command { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 12px; line-height: 20px; }
   .pageFact, .usage, .detail { display: none; }
 }
-.header button { margin-left: auto; padding: 3px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--muted); }
+.header button { padding: 3px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--muted); }
+.header button:first-of-type { margin-left: auto; }
 .header button:hover { background: var(--control-hover); }
 .header button[aria-pressed="true"] { background: var(--selection); color: var(--text); }

@@ -10,7 +10,7 @@ export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | '
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
-export type KeyContext = 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help';
+export type KeyContext = 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
 export type KeyAction = { action: Shortcut; label: string };
 
 /** One physical-code/modifier map, partitioned by focused context. */
@@ -46,6 +46,7 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   accounts: {},
   palette: { Enter: 'accept', Tab: 'next-kind', 'Shift+Tab': 'previous-kind', ArrowDown: 'next-result', ArrowUp: 'previous-result' },
   help: {},
+  launch: { Enter: 'accept', Escape: 'dismiss' },
 };
 
 export function shortcut(event: KeyStroke, leader: boolean | 'KeyZ' | 'KeyG' = false, context: KeyContext = 'shell'): Shortcut | undefined {

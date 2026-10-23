@@ -579,10 +579,12 @@ in a tooltip. Model, account and usage appear on the session page. Tap or Enter
 opens that page in the current pane; Esc cancels a confirmation first, otherwise
 returns to the list with focus on the same row, keeping the archive toggle. The narrow list has no row or
 swipe actions, no unfolded detail and no drawer; action keys work on the page.
-The launch and thread drawer arrive in following slices.
+The thread drawer arrives in a following slice.
 
 | Key | Action |
 | --- | --- |
+| `l` | Launch a session |
+| `a` | New Aide |
 | `j`, `↓` | Next visible session |
 | `k`, `↑` | Previous visible session |
 | `x` | Confirm Stop on a live launched session |
@@ -600,6 +602,34 @@ The launch and thread drawer arrive in following slices.
 button shares `A`'s toggle; showing it reads `session.list` with `archived: true`
 and consumes its hub-merged `rows` field. It never composes raw processes with
 presence in the browser. There is no Attach in Sessions.
+
+### Launching
+
+The Sessions header has **Launch a session** and **New Aide**. The same actions
+are in the Sessions palette and on physical `l` and `a`, including on a session's
+page. Each opens a small inline form: name, role, harness, model, account, effort,
+item and brief. New Aide reserves the next available `aide-N` among known rows,
+selects Aide and focuses Brief; a general launch focuses Name. A brief accepts
+text or an artifact id such as `A-12`.
+
+Launch actions wait for the authenticated connection and role defaults.
+Roles come from the hub. Selecting one fills its harness, model, account and
+effort from `roles.toml`. Switching away from that harness clears unchanged
+model, effort and account defaults; switching back restores empty defaults.
+The harness field offers the three adapters, and Account lists the registry's
+accounts for that harness. Focusing Model requests `models.list` for that harness
+and selected account, with the default model first. Leaving the field or changing
+the harness, role or account invalidates a late catalog reply.
+
+Enter submits and Esc or Cancel closes, restoring focus. Field typing and Tab
+remain native. Only one launch is sent while pending; offline launch is disabled,
+drafts survive reconnect and no launch is replayed. Hub refusals, including a
+limited account's reset, appear below the fields and retain the draft. A successful
+launch closes the form; its row arrives through the normal hub updates.
+
+There is no directory field and no `cwd` in the launch frame. The hub chooses the
+project root, or the item's task worktree when one applies. The authenticated web
+edge refuses directory overrides.
 
 ### Accounts strip and Accounts area
 
@@ -700,6 +730,7 @@ node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
 node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 300-item rebuild
 node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed deltas and focus
 node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
+node --test web/test/session-launch.test.ts # role defaults, fake Aide launch, no cwd and account refusals
 node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
 node --test web/test/artifacts.test.ts # tree, capability pages, sandbox isolation, text and downloads
 node --test web/test/accounts.test.ts # own browser profile, two-context isolation, registry, windows, polls and Sessions strip
