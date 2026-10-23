@@ -127,7 +127,10 @@ export function Shell() {
   const [message, setMessage] = useState<MessageTarget>();
   const openOverlay = (mode: 'palette' | 'help') => {
     setComposerSelection(undefined);
-    if (!overlay) setOverlayContext(focusedKeyContext(document.activeElement, areaContext(area)));
+    if (!overlay) {
+      const context = focusedKeyContext(document.activeElement, areaContext(area));
+      setOverlayContext(context === 'shell' ? areaContext(area) : context);
+    }
     setOverlay(mode);
   };
   const runShortcut = (action: Shortcut) => {
@@ -220,7 +223,7 @@ export function Shell() {
     const current = keyboard.current;
     return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
-    if (context === 'composer' || context === 'reply' || context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'shell' || context === 'composer' || context === 'reply' || context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
@@ -243,7 +246,7 @@ export function Shell() {
     });
   };
   const selectedRow = preferences.area === 'Items' ? findItem(connection, preferences.row) : preferences.area === 'Artifacts' ? artifactSelection(connection.artifacts, preferences.row) : connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
-  const drawerOpen = !split && preferences.area !== 'Topics' && preferences.area !== 'Inbox' && selectedRow && dismissed !== selectionKey && !preferences.detail;
+  const drawerOpen = !split && preferences.area !== 'Topics' && preferences.area !== 'Inbox' && preferences.area !== 'Events' && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
   const release = releases.find(item => item.id === preferences.release) ?? releases[0];
   const counts: Partial<Record<Area, number | undefined>> = {
@@ -272,7 +275,7 @@ export function Shell() {
         : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
-  return <InboxVisitProvider connection={connection} active={area === 'Inbox'}><ComposerPicker.Provider value={selection => { setOverlayContext('composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
+  return <InboxVisitProvider connection={connection} active={area === 'Inbox'}><ComposerPicker.Provider value={selection => { setOverlayContext(selection.kind === 'Subjects' ? 'events' : 'composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') === 'secondary' ? 'secondary' : 'primary';
     navigationSerial.current++;
     setMessage(undefined);
@@ -323,7 +326,7 @@ export function Shell() {
     </header>
     <div className={s.body}>
       <aside className={s.sidebar} data-collapsed={split || preferences.collapsed}>
-        <nav className={s.rail} aria-label="Areas">
+        <nav data-area-navigation className={s.rail} aria-label="Areas">
           {areas.map((name, index) => <button key={name}
             ref={node => { if (node) areaButtons.current[name] = node; else delete areaButtons.current[name]; }}
             data-area={name} title={`${name} (${areaKey(name)})`} aria-label={name}
@@ -365,6 +368,23 @@ export function Shell() {
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {paneArea !== 'Items' && <ArtifactViewerFallback.Provider value={fallback}><AreaSlot split={split} splitSelection={openOther} connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
                 open={() => { setDismissed(undefined); if (split) openOther(); }}
+                openSubject={async subject => {
+                  const serial = ++navigationSerial.current;
+                  const target = subject.kind === 'session' ? 'Sessions' : subject.kind === 'topic' ? 'Topics' : subject.kind === 'artifact' ? 'Artifacts' : undefined;
+                  if (!target) return;
+                  try {
+                    if (subject.kind === 'artifact') {
+                      const artifact = connection.artifacts?.find(row => row.id === subject.id) ??
+                        (await connection.command?.<{ artifact: Artifact }>({ type: 'artifact.list', artifact: subject.id }))?.artifact;
+                      if (serial !== navigationSerial.current) return;
+                      if (!artifact) throw new Error('Artifact unavailable');
+                      setOpenedArtifacts(previous => [...previous.filter(row => row.id !== artifact.id), artifact]);
+                    }
+                    setPreferences(previous => pane === 'primary'
+                      ? { ...previous, area: target, row: subject.id, detail: subject.kind === 'artifact', dismissed: undefined }
+                      : { ...previous, secondary: target, secondaryRow: subject.id, secondaryDetail: subject.kind === 'artifact', dismissed: undefined });
+                  } catch { if (serial === navigationSerial.current) setNavigationError(subject.id); }
+                }}
                 navigate={target => setArea(target, pane)}
                 targetMessage={threadTargets[pane]?.topic === selected ? threadTargets[pane]?.message : undefined}
                 openTopic={(topic, message) => {

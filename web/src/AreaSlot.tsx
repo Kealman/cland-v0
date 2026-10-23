@@ -1,9 +1,10 @@
+import type { EventSubject } from '../../shared/wire/index.ts';
 import type { ComponentType, Ref } from 'react';
-import { areaContext, type Area, type KeyContext, type Shortcut } from './keymap.ts';
+import { type Area, type KeyContext, type Shortcut } from './keymap.ts';
 import type { ConnectionState, ObjectRow } from './connection.ts';
+import { eventsModule } from './EventsArea.tsx';
 import { inboxModule } from './InboxArea.tsx';
 import { topicsModule } from './TopicsArea.tsx';
-import { AreaObjects, AreaObjectDetail } from './AreaObjects.tsx';
 import { sessionsModule } from './sessions/SessionsArea.tsx';
 import { accountsModule } from './accounts/AccountsArea.tsx';
 import { artifactsModule } from './artifacts/ArtifactsArea.tsx';
@@ -23,6 +24,7 @@ export type AreaContentProps = {
   targetMessage?: string | undefined;
   openTopic?: (topic: string, message?: string) => void;
   openPlan?: (id: string) => void;
+  openSubject?: (subject: EventSubject) => void;
   openPage?: (id: string) => void;
   closePage?: () => void;
   controls?: Ref<AreaControls>;
@@ -35,12 +37,11 @@ export type AreaModule = {
   Drawer: ComponentType<AreaContentProps>;
 };
 
-const standIn = (area: SlottedArea): AreaModule => ({ context: areaContext(area), handledActions: [], Pane: AreaObjects, Page: AreaObjectDetail, Drawer: AreaObjectDetail });
 
 /** Each area's module owns its content and declares only the actions it implements. */
 export const areaModules: Readonly<Record<SlottedArea, AreaModule>> = {
   Inbox: inboxModule, Sessions: sessionsModule, Topics: topicsModule,
-  Events: standIn('Events'), Artifacts: artifactsModule, Accounts: accountsModule,
+  Events: eventsModule, Artifacts: artifactsModule, Accounts: accountsModule,
 };
 
 export function AreaSlot({ surface, ...props }: AreaContentProps & { surface: 'pane' | 'page' | 'drawer' }) {

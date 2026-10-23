@@ -1,6 +1,7 @@
+import { EVENT_KINDS } from '../../shared/wire/index.ts';
 export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'] as const;
 export type Area = typeof areas[number];
-export type Shortcut = Area | `inbox-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'inbox-archive' | 'inbox-reply' | 'inbox-free' | 'inbox-next' | 'inbox-previous' | 'inbox-open' | 'inbox-remove' | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
+export type Shortcut = Area | 'events-subject' | 'events-open' | 'events-next' | 'events-previous' | 'events-fold' | 'events-leader' | 'events-older' | 'events-warnings' | 'events-clear' | 'events-all' | `events-kind-${number}` | `inbox-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'inbox-archive' | 'inbox-reply' | 'inbox-free' | 'inbox-next' | 'inbox-previous' | 'inbox-open' | 'inbox-remove' | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
   | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
   | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
   | 'composer-send' | 'composer-send-always' | 'composer-newline' | 'composer-session' | 'composer-artifact'
@@ -41,7 +42,7 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   ask: { ...threadKeys, KeyD: 'ask-decline', KeyI: 'ask-free', KeyR: 'ask-free', Digit1: 'ask-1', Digit2: 'ask-2', Digit3: 'ask-3', Digit4: 'ask-4', Digit5: 'ask-5', Digit6: 'ask-6', Digit7: 'ask-7', Digit8: 'ask-8', Digit9: 'ask-9' },
   inbox: { 'Shift+KeyA': 'inbox-archive', KeyR: 'inbox-reply', KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
   'inbox-answer': { 'Shift+KeyA': 'inbox-archive', Digit1: 'inbox-1', Digit2: 'inbox-2', Digit3: 'inbox-3', Digit4: 'inbox-4', Digit5: 'inbox-5', Digit6: 'inbox-6', Digit7: 'inbox-7', Digit8: 'inbox-8', Digit9: 'inbox-9', KeyI: 'inbox-free', KeyR: 'inbox-free', KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
-  events: {},
+  events: { KeyS: 'events-subject', Enter: 'events-open', KeyJ: 'events-next', ArrowDown: 'events-next', KeyK: 'events-previous', ArrowUp: 'events-previous', KeyZ: 'events-leader', 'KeyZ KeyA': 'events-fold', 'Shift+KeyA': 'events-older', KeyW: 'events-warnings', 'Shift+KeyF': 'events-clear', Digit0: 'events-all', ...Object.fromEntries(Array.from({length: 8}, (_, i) => [`Digit${i + 1}`, `events-kind-${i + 1}` as Shortcut])) },
   reply: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always' },
   composer: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always', 'Shift+Digit2': 'composer-session', 'Shift+Backquote': 'composer-artifact' },
   sessions: { KeyJ: 'session-next', ArrowDown: 'session-next', KeyK: 'session-previous', ArrowUp: 'session-previous',
@@ -116,6 +117,14 @@ export const planActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
 
 /** Future views opt in action by action; declaring a chord alone never enables it. */
 export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<KeyAction>>>> = {
+  events: [
+    { action: 'events-next', label: 'Next event or day' }, { action: 'events-previous', label: 'Previous event or day' },
+    { action: 'events-open', label: 'Open event subject' }, { action: 'events-fold', label: 'Toggle event day' },
+    { action: 'events-older', label: 'Load 200 older events' }, { action: 'events-warnings', label: 'Toggle warnings only' },
+    { action: 'events-subject', label: 'Filter Events by subject' }, { action: 'events-clear', label: 'Clear Events filter' },
+    { action: 'events-all', label: 'Show all event kinds' },
+    ...EVENT_KINDS.map((kind, index) => ({ action: `events-kind-${index + 1}` as Shortcut, label: `Filter ${kind} events` })),
+  ],
   items: [...treeActions, ...planActions],
   topics: [{ action: 'topic-next', label: 'Next topic or group' }, { action: 'topic-previous', label: 'Previous topic or group' },
     { action: 'topic-open', label: 'Enter thread or unfold group' }, { action: 'topic-close', label: 'Fold topic group' }],

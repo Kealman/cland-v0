@@ -21,7 +21,7 @@ export function useEventSummary(connection: ConnectionState) {
         if (!live || !command) return;
         if (!page.before || cursors.has(page.before)) throw new Error('Event cursor did not advance');
         cursors.add(page.before);
-        page = await command<EventsPage>({ type: 'events.list', before: page.before, limit: 200 });
+        page = await command<EventsPage>({ type: 'events.list', before: page.before, limit: 200, filter: {} });
         if (!current) return;
         for (const row of page.rows) rows.set(row.id, row);
       }

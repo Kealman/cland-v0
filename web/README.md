@@ -50,8 +50,7 @@ The welcome reads the served receipt at connection time, including a configured
 The development loop uses a build and reload, with E-412's same-origin web edge.
 There is no Vite dev server or development bridge. The shell navigates the seven
 areas through the rail or physical `Digit1`–`Digit7` keys. Items, Inbox, Sessions,
-Topics, Artifacts and Accounts have their area views; Events is the only pending
-full area. Dashes represent unavailable facts. The palette searches the shell’s actions and hub objects; help
+Topics, Events, Artifacts and Accounts have their area views. Dashes represent unavailable facts. The palette searches the shell’s actions and hub objects; help
 shows the active area’s keys.
 Ported from `prototype/web-shell`'s frame and tokens, slice by
 slice, following spec v0.2 before prototype behaviour before the accepted boards.
@@ -259,7 +258,7 @@ the sender; marking a message read settles only that message. A delayed action r
 newer pushed Inbox rows or counts. The Events footer
 counts every journal row since the human's shared last look and its warnings,
 reading older pages until the mark is reached. It stays when all sections are
-empty and opens Events. The full Events view follows in its own slice.
+empty and opens [Events](#events), recording the shared last look.
 
 Approval rows offer only the native record's choices: Approve once, Always for
 this command and Deny with an optional note. The hub supplies the attributed
@@ -307,6 +306,49 @@ subject, text, leave time, reason and recorded outcome. Live departures join an
 open archive by identity; delayed archive replies never replace current rows or
 counts. Reads refresh after reconnect; sends never replay.
 
+## Events
+
+Events shows the newest 200 rows matching the hub's filter, newest first under
+local-day rules such as `Fri 23 Oct · today`. Each row shows its time, glyph,
+kind, subject and one line. Bookkeeping uses the secondary text colour; warnings
+have an amber glyph; hub-coalesced rows show `×N`. A day folds, and the selected
+row follows coalescing replacements while older loaded pages remain available.
+The footer states the loaded count; its control and `A` append 200 older rows.
+Live rows respect the initial cap and keep overflow at the next page boundary.
+
+| Key in Events | Action |
+| --- | --- |
+| `j` / `k`, `↓` / `↑` | Next / previous event or day |
+| Enter | Open the subject's card, session, topic or artifact; older artifacts resolve by id |
+| `za` | Fold / unfold the selected day |
+| `A` | Load 200 older events |
+| `1`–`8` | Session, task, verdict, suite, release, artifact, usage or topic events |
+| `0` | Clear the kind filter |
+| `w` | Toggle warnings only |
+| `s` | Choose an item (including descendants), session, topic or artifact in the palette |
+| `F` | Clear the filter |
+
+When the rail has focus, digit area shortcuts navigate; its other keys keep
+the active area (for example Sessions `l`, `a` and `A`). A digit on an Events
+row filters that view. Document-dispatched keys use the actual focused control for context, native-control
+guards and key-sequence identity; Cancel keeps its native activation.
+
+The palette also offers filters for heartbeat and rule events. Filters and day
+folds stay in the browser's guarded `cland.ui.events.v1` preferences; the header
+names the current filter. Filtering belongs to `subscribe {filter}` and every
+`events.list {filter}` read, rather than to the row layout. The view uses a
+separate cookie-authenticated filtered subscription alongside the unfiltered
+model socket, so an Inbox in another pane still counts events outside the filter.
+The subscription reconnects and re-reads after its acknowledgement; old-filter
+replies and replaced identities cannot overwrite newer rows. Inbox summary reads
+always specify the empty filter, including their older pages.
+
+Opening Events sends `marks.set` once per visit. The previous shared last look
+stays as a rule for that visit, with newer rows marked in the watch colour; all
+clients receive the new mark, and Inbox counts from it. Reconnecting a mounted
+view refreshes reads without replaying the visit write. Events still waiting in
+Inbox are excluded by the hub's projection.
+
 ## Area modules and live state
 
 `src/AreaSlot.tsx` registers each non-Items area as an `AreaModule`: `Pane` is
@@ -325,8 +367,8 @@ limits and profile; `AccountsStrip` shows its account meters in Sessions.
 `VerifyLine` owns the [verification summary and queue view](#verification-in-sessions).
 [Artifacts](#artifacts) owns its grouped tree and sandboxed page/drawer viewer.
 [Topics](#topics-and-threads) owns its grouped list and thread module.
-[Inbox](#inbox) owns its four sections, selected row and actions. Events
-remains a stand-in list; its full area is pending in E-417 stage 4. Items retains its
+[Inbox](#inbox) owns its four sections, selected row and actions.
+[Events](#events) owns the filtered journal, local day groups and visit marks. Items retains its
 [tree and card](#items-tree) and [views](#items-views).
 
 `ConnectionState` includes the state types from each area's `state.ts`:
@@ -337,6 +379,7 @@ remains a stand-in list; its full area is pending in E-417 stage 4. Items retain
 | Accounts, and the Sessions strip | `accounts`: registry path, optional registry error and complete views in registry order, including windows, source, reading time and limited mark |
 | Accounts profile | `web.session`: this socket's browser sign-in creation, last use and fixed cookie expiry; separate from the harness account model |
 | Artifacts | `artifacts`: complete inventory records, including status, author, kept and layer facts |
+| Events | `eventsView`, `eventsFilter`, journal paging controls and shared visit marks; `events` remains the unfiltered Inbox summary page |
 | Topics | `topics` with authoritative unread counts and read positions, `marks`, and the per-topic `threads` cache |
 
 Session snapshots replace the merged rows, archived count, roles and queue.
@@ -664,7 +707,7 @@ choosing an action dispatches its implemented handler.
 
 | Key | Shell | Palette |
 | --- | --- | --- |
-| `1`–`7` | Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts in the active pane; focused ask cards and Inbox ask/approval rows use option keys instead | Type in the input |
+| `1`–`7` | Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts in the active pane; focused ask cards and Inbox ask/approval rows use option keys; Events uses kind filters | Type in the input |
 | `⌘K`, `Space p` | Open palette (`Space p` outside fields) | `⌘K` keeps palette open |
 | `?` | Show current area’s keys, outside fields | Type in the input |
 | `⌘\` | Toggle split | — |
@@ -689,7 +732,7 @@ from its field.
 Every non-Items area renders through `src/AreaSlot.tsx`. Its `AreaModule` supplies
 `Pane` and `Drawer` components, receives rows, selected identity and a selection
 callback, and declares `handledActions`. A pane exposes its `AreaControls.run`
-through the supplied controls ref. The Events stand-in handles no area actions.
+through the supplied controls ref. Events handles journal paging, kind/warning/subject filters, day folds and subject navigation.
 Adding a key to an area's table reserves it but does not enable it: an unhandled
 context key runs no action and never falls back to a shell binding; native
 control activation is preserved. Declared fields reserve their context chords. An area opts in with `handledActions` when its component implements the
@@ -907,6 +950,7 @@ node --test web/test/topics.test.ts    # groups, numeric pages, live races, resu
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
 node --test web/test/withdraw.test.ts  # busy-session queue, receipt-gated draft restoration, injection and real refusal
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
+node --test web/test/events.test.ts     # journal pages, hub filters, local day folds, subjects, live races and shared last-look
 node --test web/test/inbox.test.ts      # Now sections, drawer replies, visit outcomes, seven-day archive, keys and Events footer
 node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect
 node --test web/test/thread-artifacts.test.ts # HTML capability frames, sandbox isolation and opening actions

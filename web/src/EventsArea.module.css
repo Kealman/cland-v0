@@ -1,0 +1,17 @@
+.events { padding: 12px; min-width: 0; }
+.row { width: 100%; display: grid; grid-template-columns: 44px 18px 64px 100px minmax(0, 1fr); gap: 8px; padding: 6px 8px; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; }
+.row > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.row time { font-family: var(--mono); color: var(--muted); }
+.row:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.events footer { display: flex; gap: 12px; padding: 12px 8px; color: var(--muted); }
+
+.row[data-bookkeeping="true"] { color: var(--muted); }
+.row:hover { background: var(--row-hover); }
+.row:focus { background: var(--selection); }
+
+.lastLook { color: var(--watch); }
+.row[data-event-new="true"] { border-inline-start: 3px solid var(--watch); padding-inline-start: 5px; }
+
+.events [data-fold-block] > header { border-bottom: 1px solid var(--separator); }
+.row[data-event-warning="true"] > span:first-of-type { color: var(--needs-human); }
+.empty, .events > p:first-child { color: var(--muted); }

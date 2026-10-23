@@ -180,6 +180,7 @@ test('A limited fake account shows the hub reset refusal under the retained form
 
 test('Launch actions use physical keys and palette dispatch while form typing and Cancel stay native', async t => {
   const fixture = await launchFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
   await fixture.pageCase(t, async page => {
     await page.getByRole('button', { name: 'Sessions', exact: true }).click();
     await launchReady(page);
@@ -193,8 +194,13 @@ test('Launch actions use physical keys and palette dispatch while form typing an
     assert.equal(await name.inputValue(), 'al1');
     assert.equal(await page.locator('form[aria-label="New Aide"]').count(), 0);
     await launch.getByRole('button', { name: 'Cancel', exact: true }).focus();
+    const native = await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', key: 'ж', bubbles: true, cancelable: true })));
+    assert.equal(native, true, 'document-dispatched Enter at Cancel stays with the native control');
+    assert.equal(await launch.getByRole('button', { name: 'Cancel', exact: true }).evaluate(node => node === document.activeElement), true);
     await page.keyboard.press('Enter');
     await launch.waitFor({ state: 'detached' });
+    const receipt = await ui.request({ type: 'session.list' });
+    assert.equal((receipt.value as { processes: unknown[] }).processes.length, 0, 'Cancel never launches a session');
     for (const action of ['Launch a session', 'New Aide']) {
       await page.keyboard.press('Meta+k');
       await page.getByRole('combobox', { name: 'Search palette' }).fill(`>${action}`);

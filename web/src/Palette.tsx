@@ -35,7 +35,7 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
   selection?: ComposerSelection | undefined;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [query, setQuery] = useState(selection?.kind === 'Sessions' ? '@' : selection ? '~' : '');
+  const [query, setQuery] = useState(selection?.kind === 'Sessions' ? '@' : selection?.kind === 'Artifacts' ? '~' : '');
   const [cursor, setCursor] = useState(0);
   useEffect(() => {
     const previous = document.activeElement;
@@ -46,7 +46,7 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
   const search = (kind ? query.slice(1) : query).trim();
   const results: Result[] = [];
   for (const candidate of kinds) {
-    if (selection && candidate.name !== selection.kind) continue;
+    if (selection?.kind === 'Subjects' ? candidate.name === 'Actions' : selection && candidate.name !== selection.kind) continue;
     if (kind && candidate !== kind) continue;
     const objects = candidate.name === 'Actions' ? [...new Map([...shellActions, ...actions].map(row => [row.action, row])).values()].map(row => ({ id: row.action, title: row.label, action: row.action }))
       : selection?.kind === 'Artifacts' ? (connection.artifacts ?? []).filter(row => row.topic === selection.topic && row.status !== 'archived' && !row.fileDeleted && !row.movedTo).map(row => ({ id: row.id, title: row.title }))

@@ -8667,6 +8667,13 @@
       "expires": "2026-10-30",
       "reason": "T-1139 Artifacts sections Web case measured 4.02 s on Linux c-8 lon1 in A-9692 (T-1133 verify at 0a8ed77a, reported by impl-1133) against the 4 s Web gate; 2.09 s baseline elsewhere. Coordinator directed 6 s (about 1.5 times the worst sample) for Linux Web timing variance; assertions unchanged."
     },
+    "web/test/events.test.ts::physical s selects an Events subject in the palette and Enter opens topic, session and artifact subjects": {
+      "seconds": 6.8,
+      "owner": "E-417",
+      "added": "2026-10-23",
+      "expires": "2026-10-30",
+      "reason": "T-1127 uses a sealed hub and Headless Shell to select a subject through the palette, then navigate topic, session and an artifact older than the newest 100 inventory rows. Independent artifact setup is already batched in groups of 20. Linux x64 c-8 lon1 run 692b1a23 at 24c8d5ee (A-9910) observed this assertion-green identity at 4.528953661 s; all ten Events identities passed, while the overall run was red on separate rail routing regressions. Launch instructions require an E-417 allowance for every passing Web sample reaching 4 s. The 6.8 s cap is about 1.5 times that worst measured sample; no request/DOM bound, assertion or teardown is relaxed."
+    },
     "web/test/inbox.test.ts::Enter opens an Inbox message at its anchored thread row and a waiting plan in Plan": {
       "seconds": 9.6,
       "owner": "E-417",

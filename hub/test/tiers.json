@@ -614,6 +614,7 @@
     "web/test/board.test.ts": "Web",
     "web/test/composer.test.ts": "Web",
     "web/test/connection.test.ts": "Web",
+    "web/test/events.test.ts": "Web",
     "web/test/folds.test.ts": "Web",
     "web/test/graph.test.ts": "Web",
     "web/test/inbox.test.ts": "Web",

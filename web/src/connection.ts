@@ -1,10 +1,12 @@
-import { PROTOCOL_VERSION, type AskCard, type ApprovalRecord, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
+import { PROTOCOL_VERSION, EVENT_KINDS, type AskCard, type ApprovalRecord, type Artifact, type Capabilities, type ClientHello, type EventsPage, type EventsFilter, type EventRow, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
 import { replaceAccount, type AccountsState } from './accounts/state.ts';
 import type { AccountList } from '../../shared/wire/index.ts';
 import { replaceArtifact, type ArtifactInventoryPage, type ArtifactsState } from './artifacts/state.ts';
 import type { Area } from './keymap.ts';
+import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
 import { compareReleases } from './current-release.ts';
+import { connectEvents } from './events-feed.ts';
 import { TopicThreads, type ThreadPage } from './topic-threads.ts';
 
 export type ObjectRow = { id: string; title: string };
@@ -35,6 +37,15 @@ export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   crew?: SnapshotValues['sessions']['crew']['config'];
   inbox?: Inbox;
   events?: EventsPage;
+  eventsView?: EventsPage;
+  eventsLoading?: boolean;
+  eventsError?: string | undefined;
+  loadEvents?: (older?: boolean) => Promise<void>;
+  eventsFilter?: EventsFilter;
+  eventsAliases?: ReadonlyMap<string, string>;
+  eventsVisitLook?: string | null;
+  setEventsFilter?: (filter: EventsFilter) => void;
+  activateEvents?: (active: boolean) => void;
   recoverApproval?: (id: string) => Promise<void>;
   approvalRecoveryErrors?: ReadonlyMap<string, string>;
   recoveringApprovals?: ReadonlySet<string>;
@@ -285,9 +296,99 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       changed(state);
     });
   }
+  const savedEvents = readInterfaceState('events') as { filter?: EventsFilter } | null;
+  const stored = savedEvents?.filter;
+  let eventsFilter: EventsFilter = {};
+  if (stored && typeof stored === 'object') {
+    const kinds = Array.isArray(stored.kinds) ? stored.kinds.filter(kind => EVENT_KINDS.includes(kind)) : [];
+    if (kinds.length) eventsFilter.kinds = kinds;
+    if (stored.warnings === true) eventsFilter.warnings = true;
+    if (stored.subject && ['item', 'session', 'topic', 'artifact', 'rule'].includes(stored.subject.kind) && typeof stored.subject.id === 'string') eventsFilter.subject = stored.subject;
+  }
+  let eventsUsers = 0;
+  let eventsActive = false;
+  let visitMarked = false;
+  let eventsGeneration = 0;
+  let eventsOverflow: EventRow[] = [];
+  let eventsOlderLoaded = false;
+  let eventsRead: Map<string, EventRow> | undefined;
+  function combineEvents(rows: EventRow[], incoming: EventRow[]) {
+    const replaced = new Set(incoming.flatMap(row => [row.id, ...(row.replaces ? [row.replaces] : [])]));
+    const superseded = new Set(incoming.flatMap(row => row.replaces ? [row.replaces] : []));
+    const current = [...new Map(incoming.filter(row => !superseded.has(row.id)).map(row => [row.id, row])).values()];
+    return [...current, ...rows.filter(row => !replaced.has(row.id))].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+  }
+  async function loadEvents(older = false) {
+    if (!state.live || older && (state.eventsLoading || !state.eventsView?.more)) return;
+    const generation = ++eventsGeneration;
+    if (!older) { eventsOverflow = []; eventsOlderLoaded = false; }
+    const spill = older ? eventsOverflow.slice(0, 200) : [];
+    const capacity = older ? (state.eventsView?.rows.length ?? 0) + 200 : 200;
+    const deltas = new Map<string, EventRow>(); eventsRead = deltas;
+    state = { ...state, eventsFilter, eventsLoading: true, eventsError: undefined }; changed(state);
+    try {
+      const page = spill.length === 200 ? { rows: [], before: state.eventsView?.before ?? null, more: state.eventsView?.more ?? false } : await command<EventsPage>({ type: 'events.list', limit: 200 - spill.length, filter: eventsFilter, ...(older && state.eventsView?.before ? { before: state.eventsView.before } : {}) });
+      if (generation !== eventsGeneration) return;
+      const loaded = combineEvents(older ? state.eventsView?.rows ?? [] : [], [...spill, ...page.rows]);
+      const updated = combineEvents(combineEvents(loaded, eventsOverflow), [...deltas.values()].reverse());
+      eventsOverflow = updated.slice(capacity);
+      eventsOlderLoaded = older;
+      state = { ...state, eventsView: { ...page, more: page.more || eventsOverflow.length > 0, rows: updated.slice(0, capacity) } };
+    } catch (error) { if (generation === eventsGeneration) state = { ...state, eventsError: String(error) }; }
+    finally { if (generation === eventsGeneration) { eventsRead = undefined; state = { ...state, eventsLoading: false }; changed(state); } }
+  }
+  let eventsFeed: ReturnType<typeof connectEvents> | undefined;
+  function applyEventRow(row: EventRow) {
+    if (!eventsActive) return;
+    if (row.replaces) state = { ...state, eventsAliases: new Map(state.eventsAliases).set(row.replaces, row.id) };
+    eventsRead?.set(row.id, row);
+    const page = state.eventsView;
+    if (page) {
+      let updated = combineEvents(page.rows, [row]);
+      const cap = eventsOlderLoaded ? Infinity : 200;
+      const more = page.more || updated.length > cap;
+      eventsOverflow = combineEvents(eventsOverflow, updated.slice(cap)).filter(old => old.id !== row.id && old.id !== row.replaces);
+      updated = updated.slice(0, cap);
+      state = { ...state, eventsView: { ...page, rows: updated, more } }; changed(state);
+    }
+  }
+  function subscribeEvents() {
+    if (!eventsActive || !state.live) { eventsFeed?.stop(); eventsFeed = undefined; return; }
+    ++eventsGeneration;
+    state = { ...state, eventsFilter, eventsLoading: true, eventsError: undefined }; changed(state);
+    if (eventsFeed) eventsFeed.setFilter(eventsFilter);
+    else eventsFeed = connectEvents(url, eventsFilter, applyEventRow, error => {
+      state = { ...state, eventsLoading: false, eventsError: error }; changed(state);
+    }, () => { void loadEvents(); });
+  }
+  function setEventsFilter(filter: EventsFilter) {
+    eventsFilter = filter;
+    const saved = readInterfaceState('events');
+    writeInterfaceState('events', { ...(saved && typeof saved === 'object' ? saved : {}), filter });
+    subscribeEvents();
+  }
+  function markEventsVisit() {
+    if (visitMarked || !state.marks) return;
+    visitMarked = true;
+    state = { ...state, eventsVisitLook: state.marks.events }; changed(state);
+    void command({ type: 'marks.set', events: new Date().toISOString() }).catch(error => {
+      state = { ...state, eventsError: String(error) }; changed(state);
+    });
+  }
+  function activateEvents(active: boolean) {
+    eventsUsers = Math.max(0, eventsUsers + (active ? 1 : -1));
+    const wasActive = eventsActive;
+    eventsActive = eventsUsers > 0;
+    if (eventsActive === wasActive) return;
+    if (!eventsActive) { visitMarked = false; ++eventsGeneration; eventsRead = undefined; state = { ...state, eventsLoading: false }; }
+    if (!state.live) return;
+    subscribeEvents();
+    if (eventsActive) markEventsVisit();
+    else request({ type: 'events.list', id: 'shell-events', limit: 200, filter: {} });
+  }
   function readObjects() {
     request({ type: 'topic.list', id: 'shell-topics' });
-    request({ type: 'events.list', id: 'shell-events', limit: 200 });
+    request({ type: 'events.list', id: 'shell-events', limit: 200, filter: {} });
   }
   function items(value: ExplorerSummary[]) {
     state = { ...state, items: value, closedTasks: parent => closed.get(parent) ?? [], closedTasksLoaded: parent => closed.has(parent), loadClosed,
@@ -319,7 +420,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   }
   function connect() {
     artifactRead = undefined;
-    state = { ...state, command, recoverAsk, recoverApproval, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
+    state = { ...state, eventsFilter, activateEvents, setEventsFilter, loadEvents, command, recoverAsk, recoverApproval, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
     requestedPlans.clear();
     closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
@@ -406,6 +507,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           live: true, coordinator: status.coordinator ?? null, needsYou: status.needsYou ?? 0 };
         for (const parent of closedWanted) loadClosed(parent);
         recoverSnapshotAsks();
+        if (eventsActive) { markEventsVisit(); subscribeEvents(); }
         changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-inbox') {
         inbox(frame.value as Inbox);
@@ -495,7 +597,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       } else if (frame.type === 'delivery' || frame.type === 'ask') {
         state = { ...state }; changed(state);
       } else if (frame.type === 'event') {
-        request({ type: 'events.list', id: 'shell-events', limit: 200 });
+        request({ type: 'events.list', id: 'shell-events', limit: 200, filter: {} });
       } else if (frame.type === 'artifact') {
         artifactRead?.deltas.set(frame.artifact.id, frame.artifact);
         state = { ...state, artifacts: replaceArtifact(state.artifacts, frame.artifact) };
@@ -534,6 +636,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     socket.onerror = () => socket.close();
     socket.onclose = () => {
       clearTimeout(deadline);
+      eventsFeed?.stop(); eventsFeed = undefined;
       rejectCommands();
       state = { ...state, live: false };
       changed(state);
@@ -546,6 +649,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   connect();
   return () => {
     stopped = true;
+    eventsFeed?.stop();
     clearTimeout(retry);
     clearTimeout(deadline);
     rejectCommands();
