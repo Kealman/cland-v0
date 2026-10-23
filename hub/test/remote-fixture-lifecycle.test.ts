@@ -1,4 +1,5 @@
 // T4 harness self-test: real owner death, watchdog teardown and writer cleanup.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -13,7 +14,7 @@ for (const mode of ['timeout', 'SIGTERM', 'watchdog-SIGKILL', 'watchdog-teardown
     // Keep the real socket inside its project on macOS's 100-byte socket limit.
     const scratch = await tempProject(t, 'rf-', '/tmp');
     beforeDirectories(t, () => cleanupProcesses(scratch, [], undefined, undefined, []));
-    const child = spawn(process.execPath, [fileURLToPath(new URL('./remote-fixture-parent.ts', import.meta.url)), mode], { env: { ...process.env, TMPDIR: scratch, NODE_TEST_CONTEXT: '' }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+    const child = spawn(process.execPath, [fileURLToPath(new URL('./remote-fixture-parent.ts', import.meta.url)), mode], { env: fixtureEnvironment(scratch, process.env, { TMPDIR: scratch, NODE_TEST_CONTEXT: '' }), stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
     ownProcess(t, child.pid);
     let output = '';
     child.stdout!.on('data', chunk => { output += chunk; });
@@ -60,7 +61,7 @@ for (const loss of ['owner', 'directory'] as const) test(`file-polling fake exit
   const scratch = await tempProject(t, 'poll-owner-');
   beforeDirectories(t, () => cleanupProcesses(scratch, [], undefined, undefined, []));
   const root = await tempProject(t, 'poll-root-', scratch);
-  const owner = spawn(process.execPath, [fileURLToPath(new URL('./remote-fixture-parent.ts', import.meta.url)), 'file-worker', root], { env: { ...process.env, TMPDIR: scratch, NODE_TEST_CONTEXT: '' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  const owner = spawn(process.execPath, [fileURLToPath(new URL('./remote-fixture-parent.ts', import.meta.url)), 'file-worker', root], { env: fixtureEnvironment(root, process.env, { TMPDIR: scratch, NODE_TEST_CONTEXT: '' }), stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   ownProcess(t, owner.pid);
   let worker: number | undefined;
   owner.on('message', message => { worker = (message as { worker: number }).worker; });

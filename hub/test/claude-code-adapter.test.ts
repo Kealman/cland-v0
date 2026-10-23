@@ -8,6 +8,7 @@
 // - "after a hub restart": resume across a real hub-process restart, with hooks/mod reconnected.
 // - "Claude unpinned binary launch": stop, native-conversation relaunch and environment frame.
 // Scheduler and signed-out-latch negatives live in claude-code-schedule.test.ts on FakeClock.
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { setRoleKey } from '../src/roles/editor.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -133,8 +134,9 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   // attach is the harness's own command; run in a terminal, it attaches (twice: two clients)
   const attach = (await ui.request({ type: 'session.attach', session: 'coord' })).value as { command: string };
   assert.equal(attach.command, launched.attach);
+  const attachEnv = await accountFixtureEnvironment(fake.env);
   const runAttach = () =>
-    new Promise<string>((resolve) => execFile('sh', ['-c', attach.command], { env: { ...process.env, ...fake.env } }, (_e, stdout) => resolve(stdout)));
+    new Promise<string>((resolve) => execFile('sh', ['-c', attach.command], { env: attachEnv }, (_e, stdout) => resolve(stdout)));
   const [one, two] = await Promise.all([runAttach(), runAttach()]);
   assert.equal(one, `fake claude attached to ${launched.harnessId} (coord)\n`);
   assert.equal(two, one);

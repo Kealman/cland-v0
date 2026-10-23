@@ -1,4 +1,5 @@
 // T3: package-runner admission and CLI subprocess contracts; pure selection cases are T1.
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -145,7 +146,7 @@ async function gitFixture(t: import('node:test').TestContext) {
   const root = join(dir, 'work');
   const remote = join(dir, 'origin.git');
   await mkdir(root);
-  const git = async (...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
+  const git = async (...args: string[]) => (await exec('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Suite test');
   await git('config', 'user.email', 'suite@example.invalid');
@@ -351,7 +352,7 @@ test(`${mode} integrated package admission retains both locks through smoke and 
   const env: NodeJS.ProcessEnv = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' };
   delete env.CLAND_SUITE_SELECTION;
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd: root, lockDirs: locks })});`;
-  const reduced = await exec(process.execPath, ['--input-type=module', '-e', code], { env });
+  const reduced = await exec(process.execPath, ['--input-type=module', '-e', code], { env: runnerFixtureEnvironment(root, env) });
   const rows = (await readFile(journal, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { file: string; token: string });
   assert.deepEqual(rows.map(row => row.file).sort(), mode === 'hub-only' ? ['hub/test/local.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', ...NVIM_SMOKE].sort() : ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/other.test.ts', ...NVIM_SMOKE].sort());
   assert.equal(new Set(rows.map(row => row.token)).size, 1, 'one admission spans hub and smoke');
@@ -360,7 +361,7 @@ test(`${mode} integrated package admission retains both locks through smoke and 
   // Together the two modes cover both force-full spellings without repeating
   // the identical cross-product of full package subprocesses.
   await writeFile(journal, '');
-  const full = await exec(process.execPath, [runner, force, 'hub/test/scenarios/message-tracer.test.ts'], { cwd: root, env: { ...env, CLAND_TEST_SKIP_LOCK: '1', CLAND_SUITE_SELECTION: JSON.stringify({ mode, files: [changed], reason: 'transported task decision', tiers: ['T1', 'T2'] }) } });
+  const full = await exec(process.execPath, [runner, force, 'hub/test/scenarios/message-tracer.test.ts'], { cwd: root, env: runnerFixtureEnvironment(root, { ...env, CLAND_TEST_SKIP_LOCK: '1', CLAND_SUITE_SELECTION: JSON.stringify({ mode, files: [changed], reason: 'transported task decision', tiers: ['T1', 'T2'] }) }) });
   assert.match(full.stderr, /mode full/);
   assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').map(line => JSON.parse(line).file).sort(), files.slice().sort(), 'force-full overrides both the target and transported task tiers');
 });
@@ -537,7 +538,7 @@ test('hub-selected task executes covering T2 tests while process smoke waits for
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd: root, lockDirs: { hub: join(root, '.cland/run/hub.lock'), nvim: join(root, '.cland/run/nvim.lock') } })});`;
   const env: NodeJS.ProcessEnv = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_SUITE_SELECTION: JSON.stringify(selection) };
   delete env.CLAND_SUITE_LEASE;
-  const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env });
+  const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env: runnerFixtureEnvironment(root, env) });
   assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['hub/test/second.test.ts', 'nvim/test/importer.test.ts']);
   assert.deepEqual(selection.tiers, ['T1', 'T2']);
   assert.match(result.stderr, /suite phase Neovim selected/);
@@ -559,36 +560,36 @@ test('coverage replay includes own tests, reports time share and failures, and n
   const head = await git('rev-parse', 'HEAD');
   const replay = fileURLToPath(new URL('./selection-replay.ts', import.meta.url));
   const args = [replay, `${base}..${head}`, '--coverage', '--count', '1'];
-  const covered = await exec(process.execPath, args, { cwd: root });
+  const covered = await exec(process.execPath, args, { env: fixtureEnvironment(root, process.env), cwd: root });
   assert.match(covered.stdout, /hub-selected/);
   assert.match(covered.stdout, /31.8%/);
   assert.match(covered.stdout, /second/);
   assert.match(covered.stdout, /0 misses/);
   await mkdir(join(root, '.cland/run/suites/old-run'), { recursive: true });
   await writeFile(join(root, '.cland/run/suites/old-run/suite.log'), 'Branch t/T-1-example\n✖ historical failure (1ms)\nsuite timing {"file":"hub/test/first.test.ts","name":"historical failure","seconds":0.001}\n');
-  await assert.rejects(exec(process.execPath, args, { cwd: root }), error => {
+  await assert.rejects(exec(process.execPath, args, { env: fixtureEnvironment(root, process.env), cwd: root }), error => {
     const failed = error as { stdout: string; code: number };
     assert.equal(failed.code, 1); assert.match(failed.stdout, /1 retained run logs/); assert.match(failed.stdout, /hub\/test\/first.test.ts/);
     return true;
   });
   const failures = join(root, '.cland/run/failures.json');
   await writeFile(failures, JSON.stringify({ [head]: ['hub/test/first.test.ts'] }));
-  await assert.rejects(exec(process.execPath, [...args, '--failures', failures], { cwd: root }), error => {
+  await assert.rejects(exec(process.execPath, [...args, '--failures', failures], { env: fixtureEnvironment(root, process.env), cwd: root }), error => {
     const failed = error as { stdout: string; code: number };
     assert.equal(failed.code, 1); assert.match(failed.stdout, /hub\/test\/first.test.ts/); assert.match(failed.stdout, /1 misses/);
     return true;
   });
   await rm(join(root, '.cland/run/suites/old-run'), { recursive: true });
   await writeFile(failures, JSON.stringify({ [head]: ['nvim/test/scenarios/workbench.test.ts'] }));
-  assert.match((await exec(process.execPath, [...args, '--failures', failures], { cwd: root })).stdout, /0 own misses; 0 historical misses/);
+  assert.match((await exec(process.execPath, [...args, '--failures', failures], { env: fixtureEnvironment(root, process.env), cwd: root })).stdout, /0 own misses; 0 historical misses/);
   await writeFile(failures, JSON.stringify({ [head]: ['nvim/test/other.test.ts'] }));
-  await assert.rejects(exec(process.execPath, [...args, '--failures', failures], { cwd: root }), error => {
+  await assert.rejects(exec(process.execPath, [...args, '--failures', failures], { env: fixtureEnvironment(root, process.env), cwd: root }), error => {
     const failed = error as { stdout: string; code: number };
     assert.equal(failed.code, 1); assert.match(failed.stdout, /0 own misses; 1 historical misses/); assert.match(failed.stdout, /outside package Neovim smoke/);
     return true;
   });
   await rm(join(root, '.cland/run/coverage-maps'), { recursive: true });
-  const missing = await exec(process.execPath, args, { cwd: root });
+  const missing = await exec(process.execPath, args, { env: fixtureEnvironment(root, process.env), cwd: root });
   assert.match(missing.stdout, /coverage map missing/);
   assert.match(missing.stdout, /100.0%/);
   assert.match(missing.stdout, /0 misses/);

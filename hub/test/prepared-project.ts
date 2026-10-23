@@ -1,3 +1,4 @@
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 // Worker-local seeds are private. Copy every file (including objects), never hardlink
@@ -18,7 +19,7 @@ type Shape = 'repository' | 'territory' | 'release' | 'verification' | 'native-t
 const seeds = new Map<string, Promise<string>>();
 const cleanups: Array<() => Promise<void>> = [];
 after(async () => { for (const cleanup of cleanups.reverse()) await cleanup(); });
-const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' });
 
 async function build(shape: Shape, stack: FixtureStack): Promise<string> {
   const root = await realpath(await mkdtemp(join(tmpdir(), `cland-prepared-${process.pid}-${shape}-`)));

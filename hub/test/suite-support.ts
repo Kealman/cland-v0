@@ -1,5 +1,6 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { completeJournalLines } from './journal-lines.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -17,7 +18,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 export async function cacheRepository(f: Awaited<ReturnType<typeof fixture>>) {
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: f.root })).stdout.trim();
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { env: fixtureEnvironment(f.root, process.env), cwd: f.root })).stdout.trim();
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Cache test'); await git('config', 'user.email', 'cache@example.invalid');
   await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\nexecutions\nsuite.lock*\n');
@@ -42,7 +43,7 @@ process.exitCode = await runPackageSuite(process.env.CLAND_SUITE_LEASE ? 'all' :
     const env: NodeJS.ProcessEnv = { ...process.env, CLAND_HUB_FILE: join(f.root, '.cland', 'hub.json'), CLAND_TEST_SKIP_LOCK: '0', NODE_TEST_CONTEXT: '', ...envExtra };
     delete env.CLAND_SESSION_NAME; delete env.CLAND_SESSION_ID; delete env.CLAND_ROLE; delete env.CLAND_SUITE_LEASE;
     Object.assign(env, envExtra);
-    const child = spawn(process.execPath, ['human-entry.mjs', ...extra], { cwd: f.root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, ['human-entry.mjs', ...extra], { cwd: f.root, env: runnerFixtureEnvironment(f.root, env), stdio: ['ignore', 'pipe', 'pipe'] });
     ownProcess(t, child.pid!);
     let output = '';
     child.stdout.on('data', chunk => { output += String(chunk); }); child.stderr.on('data', chunk => { output += String(chunk); });

@@ -1,5 +1,6 @@
 // T3 maintenance: hub-side producers record the frames served to real clients.
 // Running each existing test whole-file also preserves its assertion contract.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { spawn } from 'node:child_process';
 import { glob, mkdir, mkdtemp, readFile, readdir, writeFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -15,6 +16,7 @@ const preload = new URL('./nvim-recorder-preload.ts', import.meta.url).href;
 function run(file: string, env: NodeJS.ProcessEnv, pattern?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     let output = '';
+    // cland-allow-child-env: frame capture caller seals env under its disposable recordings directory before launch
     const child = spawn(process.execPath, ['--test', '--test-reporter=tap', ...(pattern ? [`--test-name-pattern=${pattern}`] : []), file], { stdio: ['inherit', 'pipe', 'inherit'], env });
     child.stdout.on('data', chunk => { output += chunk.toString(); process.stdout.write(chunk); });
     child.once('error', reject);
@@ -39,7 +41,7 @@ export async function refresh(files: string[], retain = false, slice = false): P
         if (loadavg()[0]! >= 15) throw new Error('fixture refresh needs one-minute load below 15');
         await writeFile(path, '');
         // Include soak inputs because a full refresh replaces the catalog.
-        await run(file, { ...process.env, CLAND_TEST_SOAK: '1', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_NVIM_RECORDINGS_PATH: path });
+        await run(file, fixtureEnvironment(dir, process.env, { CLAND_TEST_SOAK: '1', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_NVIM_RECORDINGS_PATH: path }));
         return (await readFile(path, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Recording);
       },
       normalize: r => {

@@ -1,6 +1,7 @@
 // T3: real workers and hand runners prove cross-process compatibility leases span
 // typecheck, both package phases and pre-V1 runner acquisition without deadlock.
 // Live package PID identities also survive legacy/UTC observer timezones.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, readdir } from 'node:fs/promises';
@@ -24,7 +25,7 @@ test('the compatibility lease spans typecheck and tests, so a hand runner waits 
   const record = JSON.parse(await readFile(join(`${locks[0]}.runs`, records[0]!), 'utf8')) as { pid: number; token: string };
   assert.equal(record.pid, JSON.parse(await readFile(`${locks[0]}.owner`, 'utf8')).pid);
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
-  const hand = spawn(process.execPath, ['--input-type=module', '-e', `import { runSuite } from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e', ${JSON.stringify("require('fs').writeFileSync('hand-entered','')")}]], {cwd:${JSON.stringify(f.root)},lockDirs:${JSON.stringify(locks)}})`], {cwd:f.root, stdio:['ignore','ignore','pipe']});
+  const hand = spawn(process.execPath, ['--input-type=module', '-e', `import { runSuite } from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e', ${JSON.stringify("require('fs').writeFileSync('hand-entered','')")}]], {cwd:${JSON.stringify(f.root)},lockDirs:${JSON.stringify(locks)}})`], { env: fixtureEnvironment(f.root, process.env),cwd:f.root, stdio:['ignore','ignore','pipe']});
   ownProcess(t, hand.pid!);
   let output = ''; hand.stderr.on('data', b => { output += String(b); });
   const done = new Promise(resolve => hand.once('exit', resolve));
@@ -42,7 +43,7 @@ test('a hand-run package holding the old lock occupies admission until it exits'
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const locks = [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')];
   const code = "const fs=require('fs');fs.writeFileSync('hand-entered','');const p=setInterval(()=>{if(fs.existsSync('hand-finish'))clearInterval(p)},25)";
-  const hand = spawn(process.execPath, ['--input-type=module', '-e', `import {runSuite} from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e',${JSON.stringify(code)}]], {cwd:${JSON.stringify(f.root)},lockDirs:${JSON.stringify(locks)}})`], {cwd:f.root,env:{...process.env,CLAND_TEST_SKIP_LOCK:'0'},stdio:'ignore'});
+  const hand = spawn(process.execPath, ['--input-type=module', '-e', `import {runSuite} from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e',${JSON.stringify(code)}]], {cwd:${JSON.stringify(f.root)},lockDirs:${JSON.stringify(locks)}})`], {cwd:f.root,env: fixtureEnvironment(f.root, process.env, { CLAND_TEST_SKIP_LOCK:'0' }),stdio:'ignore'});
   ownProcess(t, hand.pid!); const done = new Promise(resolve => hand.once('exit',resolve));
   await eventually('hand holds package lock', () => stat(join(f.root,'hand-entered')).then(() => true,() => undefined));
   const job = await f.launch();
@@ -63,7 +64,7 @@ test('a worker lease retains phase place and publishes recovery metadata for bot
   await writeFile(join(f.root,'package.mjs'), `import {runPackageSuite} from ${JSON.stringify(runner)};process.exitCode=await runPackageSuite('all',[${JSON.stringify(file)}],${JSON.stringify({cwd:f.root,lockDirs:locks})});`);
   const job = await f.launch();
   await eventually('hub phase entered',()=>stat(join(f.root,'hub-entered')).then(()=>true,()=>undefined));
-  const hand = spawn(process.execPath,['--input-type=module','-e',`import {runSuite} from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e',"require('fs').writeFileSync('hand-entered','')"]],${JSON.stringify({cwd:f.root,lockDirs:Object.values(locks)})});`],{cwd:f.root,env:{...process.env,CLAND_TEST_SKIP_LOCK:'0'},stdio:['ignore','ignore','pipe']});
+  const hand = spawn(process.execPath,['--input-type=module','-e',`import {runSuite} from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e',"require('fs').writeFileSync('hand-entered','')"]],${JSON.stringify({cwd:f.root,lockDirs:Object.values(locks)})});`],{cwd:f.root,env: fixtureEnvironment(f.root, process.env, { CLAND_TEST_SKIP_LOCK:'0' }),stdio:['ignore','ignore','pipe']});
   ownProcess(t,hand.pid!);let log='';hand.stderr.on('data',b=>{log+=String(b)});const done=new Promise(resolve=>hand.once('exit',resolve));
   await eventually('hand waits behind both phases',()=>log.includes('waiting for the suite lock')?true:undefined);
   await writeFile(join(f.root,'hub-finish'),'');
@@ -96,7 +97,7 @@ for (const legacy of [false, true]) test(`verify queue preserves a live ${legacy
   const file = join(f.root, 'hand.mjs');
   await writeFile(file, `import test from 'node:test'; import { existsSync, writeFileSync } from 'node:fs'; test('hand holder', async () => { writeFileSync(${JSON.stringify(marker)}, 'ready'); while (!existsSync(${JSON.stringify(finish)})) await new Promise(r => setTimeout(r, 25)); });`);
   const child = spawn(process.execPath, ['--input-type=module', '-e', `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('all', [${JSON.stringify(file)}], { cwd: ${JSON.stringify(f.root)}, lockDirs: { hub: ${JSON.stringify(lock)}, nvim: ${JSON.stringify(`${lock}-nvim`)} } });`], {
-    env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', TZ: 'UTC' }, stdio: ['ignore', 'pipe', 'pipe'],
+    env: fixtureEnvironment(f.root, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', TZ: 'UTC' }), stdio: ['ignore', 'pipe', 'pipe'],
   });
   ownProcess(t, child.pid);
   let output = '';

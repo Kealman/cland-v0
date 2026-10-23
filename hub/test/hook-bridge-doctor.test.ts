@@ -1,4 +1,5 @@
 // Doctor's CLI seam preserves bridges with any existing discovery file.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -14,7 +15,7 @@ test('doctor lists and ends only own bridges with missing hub files, preserving 
   await mkdir(join(root, 'live/.cland'), { recursive: true });
   await writeFile(present, '{}'); // Even a malformed file is preserved.
   const children = [missing, present, join(root, 'ambiguous path/.cland/hub.json')].map(file => {
-    const child = spawn(process.execPath, [CLI_ENTRY, 'hook', 'bridge', '--session', 'impl', '--hub-file', file], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [CLI_ENTRY, 'hook', 'bridge', '--session', 'impl', '--hub-file', file], { env: fixtureEnvironment(root, process.env), cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
     ownProcess(t, child.pid);
     child.stdout.resume(); child.stderr.resume();
     return child;

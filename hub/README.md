@@ -2735,6 +2735,20 @@ node hub/bin/cland.ts --version
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
 
 At the repository root, `npm run check` runs typechecking and static/test lint.
+The pure fixture builder lives in `test-support/fixture-environment.ts`, with a
+compatibility export in `hub/test/fixture-environment.ts`. Native account fixtures
+keep their account builder at attach/replacement launches; prepare fixtures place
+legacy snapshot inputs under the sealed HOME.
+Its T0 child-environment guard checks native launches in `hub/test`, including
+helpers, fakes and JavaScript tools. Supply the complete sealed fixture builder
+result after explicit owned extras. Fresh runner children use
+`runnerFixtureEnvironment` to retain only execution/admission controls while
+replacing inherited profiles. Intentional native credential/provider contracts, sealed
+helpers and other reviewed seams carry `// cland-allow-child-env: <reason>` beside
+the launch. The guard's `--inventory` lists each recognized call and its reason,
+with file/line diagnostics and no environment values. See
+[fixture isolation and guard scope](../docs/agents/tests.md#fixtures).
+
 Its T0 dictionary membership guard checks `hub/src`: string-indexed records,
 `any`, `unknown`, bare objects and dynamic or undeclared keys use `Object.hasOwn` or `Map.has`.
 Narrowing by a declared finite key stays allowed. Intentional prototype-chain checks

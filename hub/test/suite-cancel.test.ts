@@ -75,6 +75,7 @@ test('suite cancel refuses another session’s run while the human can cancel it
 
 test('verify cancel removes a pid-null queued job while an unrelated submission is held, preserving the holder’s lock', async t => {
   const bin = await tempProject(t, 'cland-suite-held-git-');
+  // cland-allow-child-env: read-only which lookup for ps/Git wrappers; no account or Git operation
   const git = (await promisify(execFile)('which', ['git'])).stdout.trim();
   await writeFile(join(bin, 'git'), `#!${process.execPath}
 import { existsSync, writeFileSync } from 'node:fs';

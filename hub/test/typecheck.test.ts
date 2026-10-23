@@ -1,5 +1,6 @@
 // T3 compiler contract: real npm/compiler processes resolve the pinned aliases
 // from a root install, an inherited worktree install and a worktree-local install.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -11,7 +12,6 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { fixtureSource, sourceFixtureFiles } from './source-fixture.ts';
-import { fixtureEnvironment } from './fixture-environment.ts';
 
 const source = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -62,6 +62,7 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
     if (assets.includes(path)) await cp(join(source, path), join(root, path));
     else await writeFile(join(root, path), (await readSource(path))!);
   }
+  // cland-allow-child-env: fixtureEnvironment above seals scratch root; env HOME is provisioned for the compiler fixture
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root, env, encoding: 'utf8', timeout: 30_000 });
   git('init', '-q');
   git('add', 'package.json', 'hub', 'nvim', 'shared', 'test-support', ...manifest.workspaces);
@@ -71,6 +72,7 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
   git('worktree', 'add', '--detach', worktree, 'HEAD');
   assert.equal(existsSync(join(worktree, 'node_modules')), false);
   const check = (cwd: string, ...args: string[]) => {
+    // cland-allow-child-env: fixtureEnvironment above seals scratch root; linked cwd uses the same owned HOME and pinned dependencies
     const result = spawnSync('npm', ['run', 'typecheck', ...args], { cwd, env, encoding: 'utf8', timeout: 60_000 });
     assert.equal(result.status, 0, `${cwd}\n${result.error ?? ''}\n${result.stdout}\n${result.stderr}`);
     return result.stdout;

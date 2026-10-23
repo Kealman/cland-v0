@@ -1,3 +1,4 @@
+import { fixtureEnvironment } from '../fixture-environment.ts';
 // T3 scenario: bridge reattaches then expires while its native mod parent remains alive.
 // Rule coverage (T1/T2): hub/test/bridge-grace.test.ts, hub/test/mod-bridge.test.ts.
 // Hub process starts: 0; two sequential projectHub instances. Only one hub is live at a time.
@@ -21,7 +22,7 @@ test('a bridge exits after its real hub stops even while its parent and stdout r
   const launch = await ui.request({ type: 'session.launch', name: 'impl', harness: 'claude-code' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
   const harness = await withDiscoveredPid(ui, (launch.value as { process: { sessionId: string } }).process);
-  const child = spawn(process.execPath, [CLI_ENTRY, 'hook', 'bridge', '--session', 'impl', '--hub-file', join(root, '.cland/hub.json')], { cwd: root, env: { ...process.env, CLAND_TEST_BRIDGE_GRACE_MS: '2000' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [CLI_ENTRY, 'hook', 'bridge', '--session', 'impl', '--hub-file', join(root, '.cland/hub.json')], { cwd: root, env: fixtureEnvironment(root, process.env, { CLAND_TEST_BRIDGE_GRACE_MS: '2000' }), stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   let output = '';
   child.stdout.on('data', chunk => { output += String(chunk); });

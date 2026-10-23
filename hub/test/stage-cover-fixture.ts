@@ -1,6 +1,7 @@
 // Historical suite receipts are prerequisites for stage-QA tests. Seed the real
 // persistence boundary only while the hub is stopped; platform execution itself
 // is covered through the fake provider in suite-stage-cover.test.ts.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -9,7 +10,7 @@ import { Store } from '../src/hub/store.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 
 export async function seedStageCover(root: string): Promise<void> {
-  const head = execFileSync('git', ['rev-parse', 'dev'], { cwd: root, encoding: 'utf8' }).trim();
+  const head = execFileSync('git', ['rev-parse', 'dev'], { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
   const tree = await committedTree(root, head);
   assert.ok(tree);
   const base: SuiteJob = {

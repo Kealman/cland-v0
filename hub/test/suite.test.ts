@@ -1,5 +1,6 @@
 // T3: detached suite workers outlive their CLI and survive hub restart.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -407,7 +408,7 @@ fs.appendFileSync('executions', phase + '\\n');
 console.log('python ' + phase);
 `, { mode: 0o700 });
   await writeFile(join(root, '.gitignore'), '.cland/\nexecutions\nworker.lock*\n');
-  const git = (...args: string[]) => promisify(execFile)('git', args, { cwd: root });
+  const git = (...args: string[]) => promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root });
   await git('init', '-b', 't/T-717');
   await git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'add', '.');
   await git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-m', 'Python fixture');
@@ -441,7 +442,7 @@ test('another stack integrated occasion fetches dev proof and executes configure
   await writeSuiteFixture(root, '', undefined, { stack: 'other', check: 'printf check', test: '',
     verification: 'test_unit="printf unit"\ntest_component="printf component"\ntest_integration="printf integration"\ntest_soak="printf soak"\n' });
   await writeFile(join(root, '.gitignore'), '.cland/\nworker.lock*\n');
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
   await git('init', '-b', 'dev');
   await git('remote', 'add', 'origin', root);
   await writeFile(join(root, 'project.txt'), 'another stack\n');

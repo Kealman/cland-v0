@@ -1,6 +1,7 @@
 // T3: daemon lifecycle regressions: competing startup locks, signals, crash recovery and endpoint identity.
 // The curated start/discovery/stop/restart/sweep flow lives in scenarios/hub-lifecycle.test.ts.
 import { cleanupProcesses, onCleanup, ownProcess } from './process-cleanup.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn, spawnSync } from 'node:child_process';
@@ -14,7 +15,6 @@ import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, sleep, startDaemon, tempProject } from './harness.ts';
 import { NO_PS } from './native-process.ts';
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { askHubFrame } from '../src/cli/socket-client.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { preparedDropletFixture } from './droplet-fixture.ts';
@@ -43,6 +43,7 @@ for (const action of ['hub stop', 'SIGTERM', 'SIGTERM with stalled socket close'
   const entered = Promise.withResolvers<void>();
   const create = Promise.withResolvers<void>();
   api.beforeCreate(async () => { entered.resolve(); await create.promise; });
+  // cland-allow-child-env: typed synthetic-provider or fixtureEnvironment input above; scratch root and owned preload only
   const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   const exited = new Promise<number | null>(resolve => child.once('exit', resolve));
@@ -135,6 +136,7 @@ test('hub serve exits fatally after abandoning a background drain with no pendin
     TMPDIR: tmpdir(), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_FIXTURE_ROOT: root,
     CLAND_TEST_TRACKER_STOP_MS: '100', NODE_OPTIONS: `--import=${pathToFileURL(preload).href}`,
   });
+  // cland-allow-child-env: typed synthetic-provider or fixtureEnvironment input above; scratch root and owned preload only
   const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   const exited = new Promise<number | null>(resolve => child.once('exit', resolve));
@@ -176,6 +178,7 @@ test('hub serve with the web edge exits within two seconds of its stopped receip
     TMPDIR: tmpdir(), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_FIXTURE_ROOT: root,
   });
   const git = (...args: string[]) => {
+    // cland-allow-child-env: fixtureEnvironment above seals scratch Git input; env is also inspected for fixture setup
     const result = spawnSync('git', args, { cwd: root, env, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     return result.stdout.trim();
@@ -301,7 +304,7 @@ test('hub stop identifies its acknowledged hub after lock release while the proc
 
 test('a stale hub.json, whose pid is gone, is replaced by a fresh hub', async (t) => {
   const root = await tempProject(t);
-  const dead = spawnSync(process.execPath, ['-e', '']).pid;
+  const dead = spawnSync(process.execPath, ['-e', ''], { env: fixtureEnvironment(root, process.env) }).pid;
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: join(root, '.cland', 'hub.sock'), port: 1, secret: 'x', pid: dead, version: '0.0.0' }));
   const { result, discovery } = await startDaemon(t, root, {}, { sweep: true });
@@ -420,7 +423,7 @@ test('autostart recovers after grace expires and after a crash, recording only s
   await mkdir(sub);
   // clandWithEnv provisions a fixture at its cwd for start; invoke the CLI directly to keep this a subdirectory.
   const automatic = await promisify(execFile)(process.execPath, [CLI_ENTRY, 'hub', 'start', '--autostart', '--client', 'nvim'], {
-    cwd: sub, env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_'))), ...env }, timeout: 30_000,
+    cwd: sub, env: fixtureEnvironment(sub, process.env, { ...env }), timeout: 30_000,
   });
   assert.match(automatic.stdout, /hub started for/);
   await readDiscovery(root); // register the detached replacement for fixture teardown
@@ -446,7 +449,7 @@ test('a project path too long for a Unix socket puts the socket under the temp d
 
 test('git sees only what is meant to be committed under .cland/ while a hub runs', async (t) => {
   const root = await tempProject(t);
-  const git = (...args: string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  const git = (...args: string[]) => spawnSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' });
   assert.equal(git('init', '-q').status, 0);
   await projectHub(t, root);
   await mkdir(join(root, '.cland', 'tasks'), { recursive: true });
@@ -532,7 +535,7 @@ test('two cland hub start at the same instant leave exactly one hub, and both re
 test('cland hub stop never signals a process that is not the project\'s hub: it only removes the hub.json naming it', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   // a live process that is no hub at all — a reused pid, as far as hub.json can tell
-  const stranger = spawn('sleep', ['30'], { stdio: 'ignore' });
+  const stranger = spawn('sleep', ['30'], { env: fixtureEnvironment(root, process.env), stdio: 'ignore' });
   ownProcess(t, stranger.pid);
   t.after(() => stranger.kill('SIGKILL'));
   const pid = stranger.pid as number;

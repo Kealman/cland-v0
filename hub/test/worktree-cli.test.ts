@@ -1,5 +1,6 @@
 // T3: stopping via stale discovery preserves a replacement hub's socket and PID.
 // Routing checks use isolated in-process hubs; real CLI calls prove cwd/discovery selection.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -21,7 +22,7 @@ const ok = (r: CliResult): CliResult => {
 test('CLI commands from linked worktrees find the main project hub and write only its tracker', async (t) => {
   const { wait, fixtures } = caseDeadlines(t);
   const git = (cwd: string, ...args: string[]) => {
-    try { return execFileSync('git', args, { cwd, encoding: 'utf8', timeout: 30_000 }); }
+    try { return execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8', timeout: 30_000 }); }
     catch (cause) { throw new Error(`${t.name}: git ${args.join(' ')} failed`, { cause }); }
   };
   const root = await wait('create temporary project', () => tempProject(fixtures));

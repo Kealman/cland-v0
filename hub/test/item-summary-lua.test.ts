@@ -165,6 +165,7 @@ test('snapshot summaries and roll-ups equal Lua on every copied live tracker bod
   await writeFile(join(root, 'input.json'), JSON.stringify({items,bodies,plans,tracker}));
   const oracleEnv=fixtureEnvironment(root,process.env);
   const binary=findNvim() ?? await ensureNvim({...oracleEnv,CLAND_NVIM_CACHE_DIR:join(root,'nvim-cache')});
+  // cland-allow-child-env: fixtureEnvironment seals oracleEnv; the same owned env prepares the Neovim cache before launch
   execFileSync(binary, ['--clean','--headless','-l',join(root,'oracle.lua'),repo,join(root,'input.json'),join(root,'output.json')],
     {cwd:root,env:oracleEnv,timeout:30000,maxBuffer:4*1024*1024});
   const expected = JSON.parse(await readFile(join(root, 'output.json'), 'utf8')) as Record<string, Record<string, unknown>>;

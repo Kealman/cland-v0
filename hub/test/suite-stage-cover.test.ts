@@ -1,5 +1,6 @@
 // T3: real local and delivered remote workers supply OS receipts across a stage merge.
 // This is the single two-platform stage frame proof; cache permutations live in suite-stage-rules.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -46,7 +47,7 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   assert.equal(claimed.ok, true, claimed.error);
   const work = (claimed.value as { worktree: { path: string } }).worktree.path;
   await writeFile(join(work, 'feature'), 'stage feature\n');
-  for (const args of [['add', 'feature'], ['commit', '-qm', 'Stage feature']]) await exec('git', args, { cwd: work });
+  for (const args of [['add', 'feature'], ['commit', '-qm', 'Stage feature']]) await exec('git', args, { env: fixtureEnvironment(work, process.env), cwd: work });
   const reviewer = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'stage-rev', role: 'reviewer' });
   t.after(() => reviewer.close());
   assert.equal((await reviewer.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'source' })).ok, true);

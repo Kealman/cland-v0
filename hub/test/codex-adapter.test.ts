@@ -11,6 +11,7 @@
 // Parsing/reconciliation tables live in codex-native.test.ts; hub composition lives in
 // adapter-composition.test.ts. Sparse account-read ordering remains in account-limits.test.ts.
 import { completeJournalLines } from './journal-lines.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';

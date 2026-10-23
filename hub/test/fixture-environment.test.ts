@@ -1,7 +1,7 @@
 // T1: pure child-environment construction, no processes or machine state.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fixtureEnvironment, scratchAccountEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, scratchAccountEnvironment, runnerFixtureEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment, type SyntheticProvider } from './synthetic-provider.ts';
 import type { Provider } from '../src/executor/droplet/dependencies.ts';
 
@@ -68,6 +68,25 @@ test('synthetic provider credentials require a sentinel and an isolated transpor
   assert.throws(() => syntheticProviderEnvironment(base, { token: 'poison' as SyntheticProvider['token'], endpoint }), /sentinel token/);
   assert.throws(() => syntheticProviderEnvironment(base, { token, api }), /injected fake API/);
   assert.throws(() => syntheticProviderEnvironment(base, { token, api }, {} as Provider), /injected fake API/);
+});
+
+
+test('runner child environments retain execution controls without inherited profile paths', () => {
+  const root = '/scratch/phase';
+  const base = Object.fromEntries(['HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME',
+    'CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'FAKE_CLAUDE_HOME', 'FAKE_CODEX_HOME', 'FAKE_OPENCODE_HOME',
+    'CLAND_EXECUTOR_STATE', 'GIT_CONFIG_GLOBAL', 'DIGITALOCEAN_TOKEN', 'OPENAI_API_KEY'].map(key => [key, '/poison']));
+  Object.assign(base, { CLAND_SUITE_LEASE: 'fixture-lease', CLAND_TEST_TIMING_RECEIPTS: '1',
+    CLAND_SESSION_NAME: 'fixture-session', CLAND_LOAD_GATE_START: '/scratch/phase/start', CLAND_HUB_FILE: '/scratch/project/hub.json', PATH: '/test-bin', TMPDIR: root });
+  const env = runnerFixtureEnvironment(root, base);
+  for (const [key, suffix] of Object.entries({ HOME: 'home', XDG_CONFIG_HOME: 'config', XDG_DATA_HOME: 'opencode',
+    XDG_STATE_HOME: 'state', XDG_CACHE_HOME: 'cache', CLAUDE_CONFIG_DIR: 'claude', CODEX_HOME: 'codex',
+    FAKE_CLAUDE_HOME: 'fake-claude', FAKE_CODEX_HOME: 'fake-codex', FAKE_OPENCODE_HOME: 'fake-opencode', CLAND_EXECUTOR_STATE: 'executor-state' })) {
+    assert.ok(env[key] === `${root}/${suffix}`, key);
+  }
+  for (const key of ['CLAND_SESSION_NAME', 'CLAND_SUITE_LEASE', 'CLAND_TEST_TIMING_RECEIPTS', 'CLAND_LOAD_GATE_START', 'CLAND_HUB_FILE', 'PATH', 'TMPDIR']) assert.ok(env[key] === base[key], key);
+  for (const key of ['DIGITALOCEAN_TOKEN', 'OPENAI_API_KEY']) assert.ok(!Object.hasOwn(env, key), key);
+  assert.ok(base.XDG_CONFIG_HOME === '/poison', 'parent unchanged');
 });
 
 test('deliberate Git excludes stay under the disposable project without opening config overlays', () => {

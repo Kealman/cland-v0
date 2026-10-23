@@ -1,4 +1,5 @@
 // T3: SIGKILL between capture and publication proves recovery from an interrupted writer process.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import { execFile, type ExecFileException } from 'node:child_process';
@@ -49,7 +50,7 @@ async function crashRecovery(t: TestContext, phase: 'capture' | 'publication') {
   `;
   const result = Promise.withResolvers<{ error: ExecFileException | null; stdout: string }>();
   const child = execFile(process.execPath, ['--input-type=module', '-e', script],
-    { timeout: 5000, killSignal: 'SIGKILL', signal: t.signal },
+    { env: fixtureEnvironment(root, process.env), timeout: 5000, killSignal: 'SIGKILL', signal: t.signal },
     (error, stdout) => result.resolve({ error, stdout }));
   const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
   const stop = ownProcess(t, child.pid);

@@ -1,4 +1,5 @@
 // Subprocess seam: leave a fully started real fixture without relying on its after hook.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import { fixture } from './remote-fixture.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
@@ -7,7 +8,7 @@ import { fileBarrierCode } from './file-barrier.ts';
 
 const mode = process.argv[2];
 if (mode === 'file-worker') {
-  const worker = spawn(process.execPath, ['-e', `${fileBarrierCode};process.send('ready')`], { cwd: process.argv[3], detached: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  const worker = spawn(process.execPath, ['-e', `${fileBarrierCode};process.send('ready')`], { env: fixtureEnvironment(process.argv[3]!, process.env), cwd: process.argv[3], detached: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   worker.once('message', () => { process.send!({ worker: worker.pid }); worker.disconnect(); });
 } else {
   test(`remote fixture owner ${mode}`, { timeout: mode === 'timeout' ? 10000 : undefined }, async t => {

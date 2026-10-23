@@ -1,4 +1,5 @@
 // T3: native Git trailers, rename/deletion bytes and owning Git environment determine epic merge surfaces.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -10,7 +11,7 @@ import { Freshness } from '../src/tracker/freshness.ts';
 import { manualTips } from './freshness-harness.ts';
 import { eventually, tempProject } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
-const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 5000 }).trim();
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8', timeout: 5000 }).trim();
 
 test('epic merge surfaces use trailers and retain rename and deletion paths exactly', async t => {
   const root = await preparedProject(t, 'repository');
@@ -51,7 +52,7 @@ test('stage ancestry settles within two seconds while an old thousand-commit dem
   const data = (value: string) => `data ${Buffer.byteLength(value)}\n${value}\n`;
   const history = Array.from({ length: 1000 }, (_, i) =>
     `commit refs/heads/dev\ncommitter Fixture <fixture@example.test> ${1700000000 + i} +0000\n${data(`Later ${i}`)}${i === 0 ? `from ${demo}\n` : ''}M 100644 inline other.txt\n${data(String(i))}\n`).join('');
-  execFileSync('git', ['fast-import', '--quiet'], { cwd: root, input: history, timeout: 5000 });
+  execFileSync('git', ['fast-import', '--quiet'], { env: fixtureEnvironment(root, process.env), cwd: root, input: history, timeout: 5000 });
   const tip = git(root, 'rev-parse', 'dev');
   assert.equal(git(root, 'rev-list', '--count', `${demo}..${tip}`), '1000');
   let entered = false;

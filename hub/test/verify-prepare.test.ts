@@ -1,4 +1,5 @@
 // T3: prepare CLI propagates dependency child exit status; native PATH resolution and seed processes prove the install contract.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -19,7 +20,9 @@ test('prepare uses installed snapshot inputs and rebuilds changed or missing ins
   await writeFile(join(root, 'nvim/bin/nvim-path.ts'), "require('fs').appendFileSync('calls', 'seed\\n');\n");
   await writeFile(join(root, 'bin/npm'), '#!/bin/sh\nprintf "npm %s\\n" "$*" >> calls\n', { mode: 0o700 });
   const key = { lock: createHash('sha256').update('lock').digest('hex'), nvim: { tag: 'v0.12.5' } };
-  const run = (keyValue = JSON.stringify(key)) => exec(process.execPath, [resolve('hub/bin/verify-prepare.ts')], { cwd: root, env: { ...process.env, HOME: root, PATH: `${root}/bin:${process.env.PATH}`, CLAND_PREPARE_KEY: keyValue } });
+  const env = fixtureEnvironment(root, process.env, { PATH: `${root}/bin:${process.env.PATH}` });
+  await mkdir(env.HOME!, { recursive: true });
+  const run = (keyValue = JSON.stringify(key)) => exec(process.execPath, [resolve('hub/bin/verify-prepare.ts')], { cwd: root, env: fixtureEnvironment(root, process.env, { PATH: `${root}/bin:${process.env.PATH}`, CLAND_PREPARE_KEY: keyValue }) });
   // A matching checkout on a fresh builder is not yet an installed snapshot.
   assert.match((await run()).stdout, /dependencies changed: npm ci[\s\S]*Neovim pin changed: seed/);
   assert.equal(await readFile(join(root, 'calls'), 'utf8'), 'npm ci\nseed\n');
@@ -27,7 +30,7 @@ test('prepare uses installed snapshot inputs and rebuilds changed or missing ins
   assert.equal((await run()).stdout, 'dependencies match snapshot\nNeovim pin matches snapshot\n');
   assert.equal(await readFile(join(root, 'calls'), 'utf8'), '');
   await rm(join(root, 'node_modules/.cland-prepare-key'));
-  await writeFile(join(root, '.cland-image.json'), JSON.stringify(key));
+  await writeFile(join(env.HOME!, '.cland-image.json'), JSON.stringify(key));
   assert.equal((await run()).stdout, 'dependencies match snapshot\nNeovim pin matches snapshot\n');
   assert.equal(await readFile(join(root, 'calls'), 'utf8'), '');
   await writeFile(join(root, 'package-lock.json'), 'moved lock');

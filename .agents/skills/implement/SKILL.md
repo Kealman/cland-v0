@@ -66,6 +66,15 @@ For approval race/restart changes, keep the existing native/frame seams and run 
 
 For ask outcomes, a declined ask is a decision and never consent. Human `topic.answer {ask, declined: true, reason}` requires a non-empty reason, delivers `declined: <reason>` and leaves the topic open; return the unchanged decision down the lead chain with `ask.answer`. Use the public-frame and recorded-headless decline seams in `docs/agents/tests.md`; Neovim does not initiate declines in 0.2.0.
 
+For native child launches in `hub/test`, use the complete `fixtureEnvironment`
+or `accountFixtureEnvironment` result after explicit owned extras. Fresh runner
+children use `runnerFixtureEnvironment` to filter inherited paths while keeping
+execution/admission controls. Read the T0
+child-environment guard scope in `docs/agents/tests.md`; intentional seams need a
+nearby `cland-allow-child-env` comment naming the sealing owner or native contract.
+Run the guard's `--inventory` when reviewing exemptions. It prints no environment
+values.
+
 Run typechecking and targeted single test files while implementing. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
 When changing dictionary membership or prototype checks in this repository's

@@ -1,5 +1,6 @@
 // T3: native Git worktree lifecycle and committed-head review/QA provenance drive the ready event.
 import { completeJournalLines } from './journal-lines.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -11,7 +12,7 @@ import { copyPreparedProject } from './prepared-project.ts';
 
 for (const restart of [false, true]) test(`the item lead runs not-clear, re-review and QA; only ready starts the Coordinator (${restart ? 'after restart' : 'connected'})`, async t => {
   const root = await tempProject(t);
-  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
   let served = await projectHub(t, root);
   let { discovery } = served;

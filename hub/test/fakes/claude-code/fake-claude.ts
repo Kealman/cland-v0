@@ -126,6 +126,7 @@ async function main(args: string[]): Promise<number> {
     appendFileSync(join(HOME, 'polls.jsonl'), JSON.stringify({ at: Date.now(), pid: process.pid, args, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('CLAND_') || key === 'CLAUDE_CONFIG_DIR' || AUTH_VARIABLES.includes(key))) }) + '\n');
     if (existsSync(join(CONFIG_DIR, 'usage-hang'))) {
       process.on('SIGTERM', () => {});
+      // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
       const descendant = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' });
       writeFileSync(join(CONFIG_DIR, 'usage-descendant'), String(descendant.pid));
       await new Promise<void>(() => { setInterval(() => {}, 1000); });
@@ -199,6 +200,7 @@ async function startBackground(args: string[]): Promise<number> {
   writeJson(join(JOBS, `${id}.json`), job);
   // Native background sessions do not retain the launching CLI's cland environment.
   // Session settings and MCP config must carry every identity field they need.
+  // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
   const child = spawn(process.execPath, [SELF, '__session', id], {
     cwd: job.cwd, detached: true, stdio: 'ignore',
     env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_'))),
@@ -269,6 +271,7 @@ async function runSession(id: string): Promise<number> {
       for (const h of entry.hooks) {
         if (h.type !== 'command') continue;
         const run = new Promise<void>((resolve) => {
+          // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
           const child = spawn('sh', ['-c', h.command], { cwd: job.cwd, env, stdio: ['pipe', 'ignore', 'pipe'] });
           let err = '';
           child.stderr.on('data', (c: Buffer) => (err += String(c)));
@@ -296,6 +299,7 @@ async function runSession(id: string): Promise<number> {
     if (!commands.length) return `worktree ${name}: default git worktree`;
     for (const command of commands) {
       const r = await new Promise<{ code: number | null; out: string; err: string }>((resolve) => {
+        // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
         const child = spawn('sh', ['-c', command], { cwd: job.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
         let out = '';
         let err = '';
@@ -345,6 +349,7 @@ async function runSession(id: string): Promise<number> {
     process: {
       run: (argv: string[], init: { stdin?: string; timeoutMs?: number } = {}) => {
         const posted = new Promise((resolve, reject) => {
+          // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
           const child = spawn(argv[0] as string, argv.slice(1), { cwd: job.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
           let stdout = '';
           let stderr = '';
@@ -367,6 +372,7 @@ async function runSession(id: string): Promise<number> {
         return posted;
       },
       spawn: ({ argv }: { argv: string[] }) => {
+        // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
         const child = spawn(argv[0] as string, argv.slice(1), { cwd: job.cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
         children.add(child);
         const pieces: Array<{ stream: 'stdout' | 'stderr'; text: string }> = [];
@@ -564,6 +570,7 @@ async function runSession(id: string): Promise<number> {
     if (cli) {
       const argv = (cli[1] as string).split(/\s+/);
       const ran = await new Promise<string>((resolve) => {
+        // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
         const child = spawn(env.CLAND_NODE ?? process.execPath, [env.CLAND_CLI as string, ...argv], { cwd: job.cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
         let out = '';
         child.stdout.on('data', (c: Buffer) => (out += String(c)));

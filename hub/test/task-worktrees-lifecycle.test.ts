@@ -1,4 +1,5 @@
 // T3: native Git linked-worktree identity/base/reuse, first-turn cwd and WorktreeCreate refusal; interactive prune proves stdio and Git removal.
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +11,7 @@ import { CLI_ENTRY, cland, clandWithEnv, connectUi, eventually, fakeClaude, inPr
 import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
   assert.equal(r.code, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
   return r;
@@ -160,7 +161,7 @@ test("cland worktree prune shows a closed item's unmerged commits and removes it
   const pruned = await new Promise<CliResult>((resolve, reject) => {
     const env: Record<string, string> = {};
     for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
-    const p = spawn(process.execPath, [CLI_ENTRY, 'worktree', 'prune'], { cwd: root, env });
+    const p = spawn(process.execPath, [CLI_ENTRY, 'worktree', 'prune'], { cwd: root, env: runnerFixtureEnvironment(root, env) });
     let stdout = '';
     let stderr = '';
     p.stdout.on('data', (c: Buffer) => (stdout += String(c)));

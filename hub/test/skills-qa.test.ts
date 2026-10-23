@@ -1,16 +1,16 @@
 // T2: qa-record.sh is the CLI subject; projectHub and inProcessSpoke prove
 // verdict rules. Headless output is a protocol fixture; native Neovim/stdio
 // execution is covered by nvim/test/qa.test.ts.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, chmod, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { delimiter, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clandCliLaunch } from './tier-cli.ts';
 import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
-import { fixtureEnvironment } from './fixture-environment.ts';
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SKILL = join(REPO, '.agents', 'skills', 'qa');
@@ -69,9 +69,10 @@ test('QA recorder records real-browser notes with screenshot evidence without la
 
 /** `qa-record.sh <args>` from the repository root, as a QA session would run it from the item's worktree. */
 async function record(hubFile: string, env: Record<string, string>, ...args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  const root = dirname(dirname(hubFile));
   return new Promise((resolve, reject) => clandCliLaunch(() => execFile('/bin/sh', [RECORD, ...args], {
     cwd: REPO, encoding: 'utf8', timeout: 120_000,
-    env: { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', TMPDIR: process.env.TMPDIR ?? '', CLAND: HEADLESS, CLAND_HUB_FILE: hubFile, CLAND_SESSION_NAME: 'qa-1', ...env },
+    env: fixtureEnvironment(root, process.env, { TMPDIR: root, CLAND: HEADLESS, CLAND_HUB_FILE: hubFile, CLAND_SESSION_NAME: 'qa-1', ...env }),
   }, (error, stdout, stderr) => {
     if (error && typeof error.code !== 'number') reject(error);
     else resolve({ code: error ? error.code as number : 0, stdout, stderr });

@@ -1,4 +1,6 @@
 // Init's scratch machine: no host HOME, Git configuration or identity reaches its subprocesses.
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, readFile, readlink, realpath, writeFile } from 'node:fs/promises';
@@ -8,7 +10,6 @@ import type { TestContext } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CliResult } from './harness.ts';
 import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { clandCliLaunch } from './tier-cli.ts';
 
 export type InitMachine = { root: string; home: string; env: NodeJS.ProcessEnv; context: TestContext };
@@ -43,10 +44,18 @@ export async function scratchMachine(t: TestContext, { identity }: { identity: b
   return { root, home, env, context: t };
 }
 
+/** Owned machine paths and deliberately unset profiles are product inputs.
+ * Synthetic native-account tests may add fake auth inputs separately. */
+export function machineEnvironment(machine: InitMachine): NodeJS.ProcessEnv {
+  // Empty explicitly disables the provider; no non-empty credential survives.
+  return { ...withoutExecutorCredentials(machine.env), ...(machine.env.DIGITALOCEAN_TOKEN === '' ? { DIGITALOCEAN_TOKEN: '' } : {}) };
+}
+
 /** Run a scratch command owned through cancellation, process reaping and close/result drainage. */
 export function commandIn(machine: InitMachine, cwd: string, command: string, args: string[]): Promise<CliResult> {
   const result = Promise.withResolvers<CliResult>();
-  const child = execFile(command, args, { cwd, env: machine.env, signal: machine.context.signal, encoding: 'utf8', timeout: 30_000 }, (error, stdout, stderr) => {
+  // cland-allow-child-env: scratchMachine seals inherited input; machineEnvironment preserves owned HOME/unset profiles and native synthetic account inputs
+  const child = execFile(command, args, { cwd, env: machineEnvironment(machine), signal: machine.context.signal, encoding: 'utf8', timeout: 30_000 }, (error, stdout, stderr) => {
     if (error && typeof error.code !== 'number') result.reject(error);
     else result.resolve({ code: error ? error.code as number : 0, stdout, stderr });
   });

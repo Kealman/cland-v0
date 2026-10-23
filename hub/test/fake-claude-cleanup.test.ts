@@ -40,6 +40,7 @@ test('fake Claude cleanup waits for a poll that writes after hub shutdown', { ti
   let exited = false;
   let pid: number | undefined;
   const poll = new Promise<void>((resolve, reject) => {
+    // cland-allow-child-env: accountFixtureEnvironment seals owned fake profiles; config is inspected to hold the poll under test
     const child = execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['-p', '/usage'], { env }, error => {
       void callbackRelease.promise.then(() => {
         exited = true;
@@ -99,6 +100,7 @@ test('fake Claude cleanup retains a delayed writer and its home at the drain dea
   });
   let pid: number | undefined;
   poll = new Promise<void>((resolve, reject) => {
+    // cland-allow-child-env: accountFixtureEnvironment seals owned fake profiles; config is inspected to hold the poll under test
     const child = execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['-p', '/usage'], { env }, error => error ? reject(error) : resolve());
     pid = child.pid;
   });
@@ -241,7 +243,8 @@ test('captured fake Claude teardown survives setup rejection and child error', {
         const env = await accountFixtureEnvironment({ ...fake.env, CLAUDE_CONFIG_DIR: config });
         await assert.rejects(async () => {
           poll = new Promise<void>((resolve, reject) => {
-            const child = execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['-p', '/usage'], { env }, error => error ? reject(error) : resolve());
+            // cland-allow-child-env: accountFixtureEnvironment seals owned fake profiles; config is inspected to hold the poll under test
+    const child = execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['-p', '/usage'], { env }, error => error ? reject(error) : resolve());
             pid = child.pid;
           });
           void poll.catch(() => {});

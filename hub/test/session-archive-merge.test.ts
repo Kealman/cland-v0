@@ -1,4 +1,5 @@
 // T3: real Git task worktree merge lifecycle closes the item that starts its archive window. Fake time proves the window.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { FakeClock } from './fake-clock.ts';
 import { nativeProjectHub as projectHub } from './harness.ts';
 // Archive through the real hub, a real spoke and the human CLI; fakes sit at the harness boundary.
@@ -16,8 +17,8 @@ type List = { processes: HarnessProcessView[]; archived: number };
 test('a real task merge starts the stopped Implementer item window', async t => {
   const root = await preparedProject(t);
   await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "1s"\narchive_after_stop = "1d"\n');
-  execFileSync('git', ['add', '.cland/config.toml'], { cwd: root });
-  execFileSync('git', ['commit', '-qm', 'Configure cleanup fixture'], { cwd: root });
+  execFileSync('git', ['add', '.cland/config.toml'], { env: fixtureEnvironment(root, process.env), cwd: root });
+  execFileSync('git', ['commit', '-qm', 'Configure cleanup fixture'], { env: fixtureEnvironment(root, process.env), cwd: root });
   const clock = new FakeClock();
   const { discovery } = await projectHub(t, root, {}, { clock, harnesses: 'fake' });
   const ui = await connectUi(t, discovery);
@@ -28,8 +29,8 @@ test('a real task merge starts the stopped Implementer item window', async t => 
   assert.equal(launch.ok, true, launch.error);
   const p = (launch.value as { process: HarnessProcessView }).process;
   await writeFile(join(p.cwd, 'README.md'), 'implemented\n');
-  execFileSync('git', ['add', 'README.md'], { cwd: p.cwd });
-  execFileSync('git', ['commit', '-qm', 'Implement fixture work'], { cwd: p.cwd });
+  execFileSync('git', ['add', 'README.md'], { env: fixtureEnvironment(p.cwd, process.env), cwd: p.cwd });
+  execFileSync('git', ['commit', '-qm', 'Implement fixture work'], { env: fixtureEnvironment(p.cwd, process.env), cwd: p.cwd });
   assert.equal((await ui.request({ type: 'session.stop', session: p.name }, 30000)).ok, true);
   const merged = await cland(root, 'merge', 'T-1', '--override', 'Exercise archive after a real merge', '--json');
   assert.equal(merged.code, 0, merged.stderr);

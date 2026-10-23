@@ -1,4 +1,5 @@
 // T3: native stdio startup, sandbox/listener bind failure, daemon lock refusal and child exit.
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
@@ -25,7 +26,7 @@ async function spawnStdioHub(t: TestContext, root: string, args: string[], prefi
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   const argv = [...prefix, process.execPath, CLI_ENTRY, 'hub', 'serve', '--stdio', ...args];
-  const child = spawn(argv[0] as string, argv.slice(1), { cwd: root, env, stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(argv[0] as string, argv.slice(1), { cwd: root, env: runnerFixtureEnvironment(root, env), stdio: ['pipe', 'pipe', 'pipe'] });
   let stderr = '';
   child.stderr.setEncoding('utf8');
   child.stderr.on('data', (c: string) => (stderr += c));
@@ -72,12 +73,13 @@ async function driveUi(hub: StdioHub): Promise<void> {
   for (const id of ['first', 'big', 'small']) await ui.waitFor((f) => f.type === 'result' && f.id === id, 10_000);
 }
 
+// cland-allow-child-env: tool-only sandbox capability probe executes true and reads no account or Git state
 const SANDBOX = existsSync('/usr/bin/sandbox-exec') && spawnSync('/usr/bin/sandbox-exec', ['-p', '(version 1)(allow default)', '/usr/bin/true']).status === 0;
 
 test('in a sandbox that forbids listening, `serve --stdio` still serves the UI over stdio, holding the lock and writing no hub.json', { skip: SANDBOX ? false : 'needs macOS sandbox-exec' }, async (t) => {
   const root = await tempProject(t);
   const lock = join(root, 'hand.lock');
-  const started = spawnSync('ps', ['-o', 'lstart=', '-p', String(process.pid)], { encoding: 'utf8' }).stdout.trim().replace(/\s+/g, ' ');
+  const started = spawnSync('ps', ['-o', 'lstart=', '-p', String(process.pid)], { env: fixtureEnvironment(root, process.env), encoding: 'utf8' }).stdout.trim().replace(/\s+/g, ' ');
   assert.ok(started, 'the parent can publish a real process identity before sandboxing the hub');
   mkdirSync(join(root, '.cland'));
   writeFileSync(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(lock)}\n`);

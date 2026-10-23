@@ -1,4 +1,5 @@
 // T3: duration refresh CLI and immutable Git admission contracts.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -100,7 +101,7 @@ suite start {"file":"/old/root/nvim/test/two.test.ts","name":"skipped"}
 ﹣ skipped (0.1ms) # missing prerequisite
 Finished: exit 0
 `);
-  await exec(process.execPath, [generator, 'refresh', log], { cwd });
+  await exec(process.execPath, [generator, 'refresh', log], { env: fixtureEnvironment(cwd, process.env), cwd });
   const result = JSON.parse(await readFile(join(cwd, 'hub/test/durations.json'), 'utf8'));
   assert.deepEqual(result.files, { 'hub/test/one.test.ts': { seconds: 10, tests: 1 }, 'nvim/test/two.test.ts': { seconds: 0.0001, tests: 1 } });
   assert.equal(result.tests['hub/test/one.test.ts::parent'], 10);
@@ -151,7 +152,7 @@ test('TODO allowances are refused by working-tree and immutable-tree shard admis
   await writeFile(join(cwd, 'hub/test/one.test.ts'), "test('slow', () => {});");
   await writeFile(path, JSON.stringify(manifest));
   await assert.rejects(lintHubShards(cwd), /duration.*TODO.*hub\/test\/one.test.ts::slow/);
-  const git = async (...args: string[]) => (await exec('git', args, { cwd })).stdout.trim();
+  const git = async (...args: string[]) => (await exec('git', args, { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim();
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Duration test'); await git('config', 'user.email', 'duration@example.invalid');
   await git('add', '.'); await git('commit', '-m', 'unfinished allowance');
@@ -179,9 +180,9 @@ test('immutable candidate admission uses the owning Git environment for tree and
     await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
       'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: i === 0 ? 'TODO' : 'Real process teardown.' },
     } }));
-    await exec('git', ['init', '-q'], { cwd });
-    await exec('git', ['add', '.'], { cwd });
-    await exec('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Owned candidate'], { cwd });
+    await exec('git', ['init', '-q'], { env: fixtureEnvironment(cwd, process.env), cwd });
+    await exec('git', ['add', '.'], { env: fixtureEnvironment(cwd, process.env), cwd });
+    await exec('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Owned candidate'], { env: fixtureEnvironment(cwd, process.env), cwd });
     return cwd;
   }));
   const environments = roots.map(cwd => ({ ...process.env, GIT_DIR: join(cwd, '.git'), GIT_WORK_TREE: cwd }));
@@ -196,11 +197,11 @@ test('pre-start-reporter logs map literal and template titles from test sources 
   await writeFile(join(cwd, 'hub/test/one.test.ts'), "test('literal title', () => {}); test(`case ${kind} succeeds`, () => {});");
   const log = join(cwd, 'A-5-old.log');
   await writeFile(log, 'Head old123\n✔ literal title (2000ms)\n✔ case alpha succeeds (3000ms)\nFinished: exit 0\n');
-  await exec(process.execPath, [generator, 'refresh', log], { cwd });
+  await exec(process.execPath, [generator, 'refresh', log], { env: fixtureEnvironment(cwd, process.env), cwd });
   const result = JSON.parse(await readFile(join(cwd, 'hub/test/durations.json'), 'utf8'));
   assert.deepEqual(result.files, { 'hub/test/one.test.ts': { seconds: 5, tests: 2 } });
   await writeFile(join(cwd, 'hub/test/two.test.ts'), "test('literal title', () => {});");
-  await assert.rejects(exec(process.execPath, [generator, 'refresh', log], { cwd }), /ambiguous legacy test/);
+  await assert.rejects(exec(process.execPath, [generator, 'refresh', log], { env: fixtureEnvironment(cwd, process.env), cwd }), /ambiguous legacy test/);
 });
 
 for (const path of ['hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/src/suite-test-identities.ts', 'hub/test/duration-reporter.ts']) {
@@ -218,12 +219,12 @@ test('refresh prunes tests absent from the newest log and creates a reason place
   const log = (tests: Array<{ file: string; name: string; seconds: number }>) => 'Head latest123\n' + tests.map(record => `suite timing ${JSON.stringify(record)}\n`).join('') + 'Finished: exit 0\n';
   await writeFile(old, log([{ file: 'hub/test/large.test.ts', name: 'gone', seconds: 8 }]));
   await writeFile(latest, log([{ file: 'hub/test/large.test.ts', name: 'a', seconds: 31 }, { file: 'hub/test/large.test.ts', name: 'b', seconds: 31 }]));
-  await exec(process.execPath, [generator, 'refresh', old, latest], { cwd });
+  await exec(process.execPath, [generator, 'refresh', old, latest], { env: fixtureEnvironment(cwd, process.env), cwd });
   const result = JSON.parse(await readFile(join(cwd, 'hub/test/durations.json'), 'utf8'));
   assert.equal(result.tests['hub/test/large.test.ts::gone'], undefined);
   assert.deepEqual(result.allow['hub/test/large.test.ts'], { file: true, seconds: 62, reason: 'TODO' });
   await writeFile(latest, log([{ file: 'hub/test/large.test.ts', name: 'a', seconds: 31 }]).replace('exit 0', 'exit 1'));
-  await assert.rejects(exec(process.execPath, [generator, 'refresh', latest], { cwd }), /not a green integrated log/);
+  await assert.rejects(exec(process.execPath, [generator, 'refresh', latest], { env: fixtureEnvironment(cwd, process.env), cwd }), /not a green integrated log/);
 });
 
 test('legacy cross-file equal titles refuse refresh regardless of completion order; explicit records keep both identities', async () => {
@@ -262,7 +263,7 @@ test('refresh updates known slow baselines without adding TODOs but a new test i
   await writeFile(path, JSON.stringify({ version: 1, source: { artifacts: [], commit: 'before' }, budget: { testSeconds: 5, fileSeconds: 10 }, files: { 'hub/test/one.test.ts': { seconds: 1, tests: 1 } }, tests: { 'hub/test/one.test.ts::known': 1 }, allow: {} }));
   const log = join(cwd, 'A-8-green.log');
   await writeFile(log, 'Head after\n' + [{ file: 'hub/test/one.test.ts', name: 'known', seconds: 6.1 }, { file: 'hub/test/one.test.ts', name: 'new', seconds: 6.2 }].map(record => `suite timing ${JSON.stringify(record)}\n`).join('') + 'Finished: exit 0\n');
-  await exec(process.execPath, [generator, 'refresh', log], { cwd });
+  await exec(process.execPath, [generator, 'refresh', log], { env: fixtureEnvironment(cwd, process.env), cwd });
   const result = JSON.parse(await readFile(path, 'utf8'));
   assert.deepEqual(result.files['hub/test/one.test.ts'], { seconds: 12.3, tests: 2 });
   assert.equal(result.tests['hub/test/one.test.ts::known'], 6.1);
@@ -290,7 +291,7 @@ test('ratchet preserves pinned source identities when timing baselines are missi
   const cwd = await mkdtemp(join(tmpdir(), 'cland-duration-context-'));
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
-  const git = async (...args: string[]) => (await exec('git', args, { cwd })).stdout.trim();
+  const git = async (...args: string[]) => (await exec('git', args, { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim();
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Duration test'); await git('config', 'user.email', 'duration@example.invalid');
   const file = 'hub/test/ratchet.test.ts', moved = 'hub/test/moved.test.ts', unbaselined = 'hub/test/unbaselined.test.ts';
@@ -342,7 +343,7 @@ test('new allowances cannot adopt the one-time legacy exception at either admiss
   const manifest = { version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60, T1: { testSeconds: 0.5, fileSeconds: 10, wallSeconds: 120 } }, files: {}, tests: {}, allow: {} as Record<string, unknown> };
   const path = join(cwd, 'hub/test/durations.json');
   await writeFile(path, JSON.stringify(manifest));
-  const git = async (...args: string[]) => exec('git', args, { cwd });
+  const git = async (...args: string[]) => exec('git', args, { env: fixtureEnvironment(cwd, process.env), cwd });
   await git('init', '-qb', 'dev');
   await git('config', 'user.name', 'Duration test'); await git('config', 'user.email', 'duration@example.invalid');
   await git('add', '.'); await git('commit', '-qm', 'base'); await git('update-ref', 'refs/remotes/origin/dev', 'HEAD');

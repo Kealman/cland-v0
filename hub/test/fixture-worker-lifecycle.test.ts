@@ -1,4 +1,5 @@
 // T3: a SIGTERMed test worker leaves no fixture hub or temp project behind.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -38,7 +39,7 @@ test('SIGTERM of a fixture worker reaps its detached hub before removing the tem
       await new Promise(() => {});
     });
   `;
-  const worker = spawn(process.execPath, ['--input-type=module', '-e', source], { stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  const worker = spawn(process.execPath, ['--input-type=module', '-e', source], { env: fixtureEnvironment(container, process.env), stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   ownProcess(t, worker.pid);
   const [ready] = await once(worker, 'message', { signal: AbortSignal.timeout(5000) }) as [{ root: string; pid: number }];
   ownProcess(t, ready.pid); // The parent owns red-run recovery too; never sweep another fixture.

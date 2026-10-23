@@ -1,6 +1,7 @@
 // T3 real detached lifecycle: an embedded hub cannot prove the CLI startup path.
 // The injected listening hang allows 5 s to reach its first connection;
 // the pre-discovery hang needs only 2 s because it holds before daemon startup.
+import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile, stat, writeFile } from 'node:fs/promises';
@@ -28,7 +29,7 @@ test('a pre-discovery startup hang stops its daemon before removing the fixture'
   const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '2000', TMPDIR: root, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
   delete env.NODE_TEST_CONTEXT;
   const running = new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-    const child = execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(new URL('./scenarios/startup-smoke.test.ts', import.meta.url))], { env, timeout: 20_000 }, (error, stdout, stderr) => {
+    const child = execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(new URL('./scenarios/startup-smoke.test.ts', import.meta.url))], { env: runnerFixtureEnvironment(root, env), timeout: 20_000 }, (error, stdout, stderr) => {
       if (error && typeof error.code !== 'number') reject(new Error('pre-discovery smoke did not exit within 20 seconds'));
       else resolve({ code: error ? error.code as number : 0, stdout, stderr });
     });
@@ -71,7 +72,7 @@ test('a planted listening startup hang fails the smoke within its bound and name
   const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '5000', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
   delete env.NODE_TEST_CONTEXT;
   const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-    const child = execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(new URL('./scenarios/startup-smoke.test.ts', import.meta.url))], { env, timeout: 20_000 }, (error, stdout, stderr) => {
+    const child = execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(new URL('./scenarios/startup-smoke.test.ts', import.meta.url))], { env: runnerFixtureEnvironment(root, env), timeout: 20_000 }, (error, stdout, stderr) => {
       if (error && typeof error.code !== 'number') reject(new Error('planted-hang smoke did not exit within 20 seconds'));
       else resolve({ code: error ? error.code as number : 0, stdout, stderr });
     });

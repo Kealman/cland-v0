@@ -1,3 +1,5 @@
+import { runnerFixtureEnvironment } from './fixture-environment.ts';
+import { prepareRunnerFixture } from './fixture-directories.ts';
 import { mergeCoverageMaps, parseCoverageMap } from '../src/suite-coverage.ts';
 import { tierSuiteSelection } from '../src/suite-selection.ts';
 // One machine ticket admits an invocation; full runs retain both locks across phases.
@@ -212,7 +214,9 @@ process.chdir(cwd);`);
         env.CLAND_TEST_QUARANTINE = JSON.stringify(quarantine ?? { version: 1, tests: {} });
         reporters.push(`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`);
       }
-      active = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
+      await prepareRunnerFixture(root);
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+      active = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env: runnerFixtureEnvironment(root, env), detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
@@ -373,6 +377,7 @@ async function humanQueue(cwd: string, selection: SuiteSelection, token: string,
     if (failure) throw failure;
     if (interrupted()) throw new Error('human suite interrupted');
     if (!welcomed) throw new Error('hub did not answer within 3 seconds');
+    // cland-allow-child-env: read-only queue metadata identifies the invoking checkout; no account or modifying Git command
     const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd, timeout: 3000 }).then(r => r.stdout.trim(), () => 'unknown');
     const input = { type: force ? 'suite.forced' : 'suite.slot', mode: selection.mode, cwd: resolve(cwd), head, pid: process.pid, token };
     let sequence = 0;

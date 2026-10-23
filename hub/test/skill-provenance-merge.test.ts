@@ -18,6 +18,7 @@ test('copied skill provenance retains both branches after a real Git merge', asy
   await mkdir(root);
   const env = fixtureEnvironment(scratch, process.env);
   await mkdir(env.HOME!, { recursive: true });
+  // cland-allow-child-env: fixtureEnvironment above seals scratch root; env HOME is provisioned before native Git
   const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root, env, timeout: 5000 })).stdout.trim();
   provisionSkills(new Report(root), root);
   const folder = join(root, '.agents/skills/implement');
