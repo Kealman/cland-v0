@@ -2,8 +2,8 @@
 id: T-1126
 kind: task
 title: The inbox drawer, the reply, the leave rule and the archive
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-894
 branch: t/T-1126-the-inbox-drawer-the-reply-the-leave
 created: 2026-10-22T15:16:14.159Z
-updated: 2026-10-23T06:29:41.110Z
+updated: 2026-10-23T06:45:20.583Z
+closed: 2026-10-23T06:45:20.583Z
 ---
 
 ## Summary
@@ -35,10 +36,13 @@ With an inbox row selected the drawer shows the thread of its topic (the thread 
 
 - [x] C1. Selecting a row shows its topic's thread in the drawer scrolled to the row's message, and `r` sends a one-line reply the fake sender receives (Web test).
   - done: impl-1126 · 2026-10-23T06:28:37.770Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1126-final · 2026-10-23T06:40:49.410Z · commit 5f0058f3c2fc8be9dbbc6aaee0ba6740a46b2cc8
 - [x] C2. An ask answered from the inbox stays folded with its outcome while the Inbox is shown, and after leaving and returning it is gone from its section (Web test).
   - done: impl-1126 · 2026-10-23T06:28:37.877Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1126-final · 2026-10-23T06:40:49.410Z · commit 5f0058f3c2fc8be9dbbc6aaee0ba6740a46b2cc8
 - [x] C3. `A` lists the answered ask in the archive with why it left, and the archive line stays when every section is empty (Web test).
   - done: impl-1126 · 2026-10-23T06:19:21.568Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1126-final · 2026-10-23T06:40:49.410Z · commit 5f0058f3c2fc8be9dbbc6aaee0ba6740a46b2cc8
 
 ## Comments
 
@@ -81,3 +85,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full corrected source clear, no findings. A-9877: M1 retained native id resolves current approvalCards/recovery; split peer-revalidation/closed archive regression covers stale episode. M2 list r reaches matching split page, detail r reaches own composer; pre-armed bounded focus observers and exact fake-sender reply_to receipt remain with split open. Original A-9874 audit and other drawer/visit/archive/docs behavior stand, no dev merge. A-9876 local supporting checks are not configured runtime evidence. C1–C3 pending exact-head mode-free verification; preserve raw receipts and inspect new Web timing samples. After-stage affected QA separate.
+
+### impl-1126 · 2026-10-23T06:40:22.017Z
+
+Mode-free verify 518560a0 passed at reviewed head 5f0058f3: A-9883 raw log, Linux x64 droplet c-8 lon1; 2677 pass, 0 fail/skip, all T1 + fallback all T2 in both packages + Web. T0 host gate at verification tree 1829f809cb2bde6f43096902b660feed93bc89d9, not repeated remotely. Duration/lint gates report-only. New Web samples 2.2015/1.6439/1.3731/1.0443 s, none >=4 s, no allowance needed. Lifetime 538 s, $0.0374. Read-only conflict check against freshly fetched origin/dev 1abf4501 passed; task head unchanged, tree clean. Waiting for Reviewer final criterion settlement; after-stage QA remains separate.
+
+### rev-23 · 2026-10-23T06:40:49.410Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1126-final
+commit: 5f0058f3c2fc8be9dbbc6aaee0ba6740a46b2cc8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1–C3, no findings. A-9884: exact-head A-9883/518560a0 passes2677 ordinary tests/398 files,0 fail/skip/cancel; Linux T1 + all-T2 fallback both packages + Web. All16 Inbox tests pass including split-open exact reply, active visit/selection leave, seven-day archive and current native split outcome. New samples max2.201532454s below4s; existing navigation5.241500343s fits reviewed9.6s allowance. Host check reused, generic budgets/lint report-only; no T3/T4/load/QA. Source A-9877 stands; after-stage affected QA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-23T06:45:20.583Z
+
+Merged ca0386169d521cf5c2e794ccddc4b06d23f7e9ba onto dev.
