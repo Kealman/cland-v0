@@ -90,10 +90,12 @@ test('the phone frame replaces the rail without losing desktop state', async t =
       await page.locator('[data-tree-key=":unscheduled"]').click();
       const row = page.getByRole('treeitem', { name: /T-1 Phone selection/ });
       await row.click();
-      await pageUntil(page, () => document.querySelector('[data-object-id="T-1"]')?.getAttribute('aria-selected') === 'true', 'phone row selection committed');
+      const card = page.getByRole('region', { name: 'Item card', exact: true });
+      await card.waitFor();
+      assert.equal(await card.getAttribute('data-item-id'), 'T-1', 'phone row opens its exact card');
       assert.equal(await page.getByRole('complementary', { name: 'Drawer', exact: true }).count(), 0);
-      await row.press('Meta+Enter');
-      await row.press('Meta+Backslash');
+      await card.press('Meta+Enter');
+      await card.press('Meta+Backslash');
       assert.equal(await other.count(), 0);
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cland.ui.shell.v1')!));
       assert.equal(saved.secondary, 'Accounts');

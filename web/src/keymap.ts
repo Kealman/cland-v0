@@ -12,6 +12,14 @@ export type Shortcut = Area | 'events-subject' | 'events-open' | 'events-next' |
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
+/** Phone More areas share this gate for keys, help and palette dispatch. */
+export function actionAtWidth(action: Shortcut, phone: boolean): boolean {
+  return !phone || !([
+    'tree-done', 'tree-archive', 'tree-message', 'tree-topic-message', 'tree-edit-criteria',
+    'plan-approve', 'plan-discuss', 'artifact-compose', 'artifact-keep', 'artifact-archive',
+  ] as readonly Shortcut[]).includes(action);
+}
+
 export type KeyContext = 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch' | 'more';
 export type KeyAction = { action: Shortcut; label: string; description?: string };
 

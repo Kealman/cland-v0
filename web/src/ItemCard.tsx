@@ -8,7 +8,7 @@ import { numberOf } from './items-tree.ts';
 import { ItemCriteria } from './ItemCriteria.tsx';
 
 /** Snapshot facts remain independent from the body, fetched only on expansion. */
-export function ItemCard({ item: row, connection, message }: { item: ExplorerSummary; connection: ConnectionState; message?: MessageTarget | undefined }) {
+export function ItemCard({ item: row, connection, message, readOnly = false }: { item: ExplorerSummary; connection: ConnectionState; message?: MessageTarget | undefined; readOnly?: boolean }) {
   const items = itemRows(connection);
   const item = { ...row, ...connection.cardFacts?.[row.id] };
   const [bodyOpen, setBodyOpen] = useState(false);
@@ -36,7 +36,7 @@ export function ItemCard({ item: row, connection, message }: { item: ExplorerSum
   const body = connection.bodies?.[item.id];
   return <section className={s.card} role="region" aria-label="Item card" data-item-id={item.id} tabIndex={-1}>
     <span className={s.id}>{item.id}</span>
-    {message && <QuickMessage connection={connection} target={message} />}
+    {!readOnly && message && <QuickMessage connection={connection} target={message} />}
     <h3>Summary</h3>
     <p><ItemText text={item.summary?.text ?? (connection.cardErrors?.[item.id] || (item.state === 'closed' ? 'Loading…' : 'No summary'))} /></p>
     {item.summary?.provenance && <small>{item.summary.provenance}</small>}
@@ -60,7 +60,7 @@ export function ItemCard({ item: row, connection, message }: { item: ExplorerSum
       <p>{item.child_counts.done} of {item.child_counts.total} done</p>
       <p>{Object.entries(item.child_counts.statuses).map(([status, count]) => `${count} ${status}`).join(' · ')}</p>
     </> : <p>{item.criteria.verified} of {item.criteria.total} verified · {item.criteria.done} done · {item.criteria.failed} failed · {item.criteria.stale} stale</p>}
-    <ItemCriteria key={item.id} item={row} connection={connection} />
+    <ItemCriteria key={item.id} item={row} connection={connection} readOnly={readOnly} />
     {!!item.stages?.length && <><h3>Plan stages</h3>{item.stages.map((stage, index) => <p key={stage.name}>
       S{index + 1} {stage.name} · {stage.state} · {stage.merged}/{stage.total} merged · {stage.qa.scope} {stage.qa.when}
     </p>)}</>}
@@ -93,4 +93,9 @@ export function ItemCard({ item: row, connection, message }: { item: ExplorerSum
     <small>{item.agents_text?.sections.join(', ') || 'No sections'} · {item.agents_text?.words ?? 0} words</small>
     {bodyOpen && <pre className={s.body}><ItemText text={body?.text ?? body?.error ?? 'Loading…'} /></pre>}
   </section>;
+}
+
+/** Shared phone card, also used when a thread opens an item. */
+export function ReadOnlyItemCard(props: { item: ExplorerSummary; connection: ConnectionState }) {
+  return <ItemCard {...props} readOnly />;
 }

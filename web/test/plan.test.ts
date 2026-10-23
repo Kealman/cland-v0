@@ -134,9 +134,11 @@ test('the Plan view in Items', async t => {
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
-    await plan.getByRole('heading', { name: 'S1 · Changed stage', exact: true }).waitFor();
-    assert.equal(await plan.getByRole('button', { name: /Approve/ }).count(), 0);
-    await plan.click(); await page.keyboard.press('a');
+    const row = page.getByRole('tree', { name: 'Items tree' }).locator('[data-object-id="E-900010"]');
+    await row.waitFor();
+    assert.equal(await plan.count(), 0, 'phone width replaces the planning view with the tree');
+    assert.equal(await page.getByRole('group', { name: 'Items view', exact: true }).count(), 0);
+    await row.focus(); await page.keyboard.press('a');
     assert.equal(frames.some(frame => frame.type === 'task.plan' && frame.op === 'approve'), false);
     assert.equal((await ui.request({ type: 'task.plan', item: 'E-900010', op: 'show' })).ok, true);
     assert.equal(((await ui.request({ type: 'task.plan', item: 'E-900010', op: 'show' })).value as { approval: { state: string } }).approval.state, 'pending');

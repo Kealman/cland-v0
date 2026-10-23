@@ -5,6 +5,7 @@ import { ItemsBoard } from './ItemsBoard.tsx';
 import { ItemsPlan } from './ItemsPlan.tsx';
 import { ItemsGraph } from './ItemsGraph.tsx';
 import s from './ItemsView.module.css';
+import { usePhone } from './phone.ts';
 
 // Views share the Items selection and scope.
 export const itemViews = [
@@ -39,6 +40,8 @@ export function ItemsViewSwitcher({ onChange }: { onChange?: () => void } = {}) 
   </div>;
 }
 export function ItemsView(props: ComponentProps<typeof ItemsTree>) {
+  const phone = usePhone();
   const view = useSyncExternalStore(subscribe, snapshot);
+  if (phone) return <ItemsTree {...props} />;
   return view === 'plan' ? <ItemsPlan {...props} /> : view === 'graph' ? <ItemsGraph {...props} /> : view === 'board' ? <ItemsBoard {...props} /> : <ItemsTree {...props} />;
 }

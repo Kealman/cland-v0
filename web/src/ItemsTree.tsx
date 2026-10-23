@@ -5,6 +5,7 @@ import type { Shortcut } from './keymap.ts';
 import { itemsSnapshot, subscribeItems, saveItems as save } from './items-state.ts';
 import { buildItemsTree, done } from './items-tree.ts';
 import s from './ItemsTree.module.css';
+import { usePhone } from './phone.ts';
 
 export type TreeControls = { run: (action: Shortcut) => boolean };
 const statusOrder = ['done', 'ready', 'qa', 'review', 'in progress', 'planned', 'backlog'] as const;
@@ -45,10 +46,11 @@ export function ItemFacts({ item, coordinator, showRank = true }: { item: Explor
 }
 
 /** Actions arrive from the shell's single physical-code dispatcher. */
-export function ItemsTree({ connection, release, selected, select, controls }: {
+export function ItemsTree({ connection, release, selected, select, controls, openCard }: {
   connection: ConnectionState; release: string | undefined; selected: string | undefined;
-  select: (id: string) => void; controls: Ref<TreeControls>; onNavigate?: (() => void) | undefined;
+  select: (id: string) => void; controls: Ref<TreeControls>; onNavigate?: (() => void) | undefined; openCard?: ((id: string) => void) | undefined;
 }) {
+  const phone = usePhone();
   const preferences = useSyncExternalStore(subscribeItems, itemsSnapshot);
   const rows = useMemo(() => {
     const start = performance.now();
@@ -120,11 +122,11 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
     }
     return true;
   } }));
-  return <div className={s.explorer}>
+  return <div className={s.explorer} data-phone={phone}>
     <ScopeBreadcrumbs connection={connection} />
     <div className={s.filters}>
-      <button aria-pressed={preferences.hideDone} onClick={() => save({ ...preferences, hideDone: !preferences.hideDone })} title="Hide done items (D)">D · {preferences.hideDone ? 'Done hidden' : 'Done shown'}</button>
-      <button aria-pressed={preferences.archive} onClick={() => save({ ...preferences, archive: !preferences.archive })} title="Show archived roots (A)">A · {preferences.archive ? 'Archive shown' : 'Archive hidden'}</button>
+      {!phone && <><button aria-pressed={preferences.hideDone} onClick={() => save({ ...preferences, hideDone: !preferences.hideDone })} title="Hide done items (D)">D · {preferences.hideDone ? 'Done hidden' : 'Done shown'}</button>
+      <button aria-pressed={preferences.archive} onClick={() => save({ ...preferences, archive: !preferences.archive })} title="Show archived roots (A)">A · {preferences.archive ? 'Archive shown' : 'Archive hidden'}</button></>}
       {preferences.hideDone && <span>{findItem(connection, preferences.scope)?.child_counts?.done ?? connection.doneItems ?? connection.items?.filter(done).length ?? 0} done hidden</span>}
       {!!preferences.selection.length && <span>{preferences.selection.length} selected</span>}
     </div>
@@ -138,6 +140,7 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
         onClick={event => {
           cursor.current = row.key;
           if (row.item) select(row.key);
+          if (row.item && !(event.target instanceof Element && event.target.closest('[data-tree-chevron]'))) openCard?.(row.key);
           if (!row.fixed && row.expandable && (!row.item || event.target instanceof Element && event.target.closest('[data-tree-chevron]'))) save({ ...preferences, open: { ...preferences.open, [row.key]: !row.open } });
         }} onDoubleClick={() => { if (row.expandable && !row.fixed) save({ ...preferences, open: { ...preferences.open, [row.key]: !row.open } }); }}>
         <span className={s.chevron} data-tree-chevron aria-hidden="true">{row.expandable ? row.open ? '▾' : '▸' : ''}</span>

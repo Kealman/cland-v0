@@ -7,7 +7,7 @@ import s from './ItemCriteria.module.css';
 type Criterion = { id: string | null; text: string; checked: boolean; marks: Array<{ kind: string; by: string }> };
 type CriteriaView = { item: { criteria: Criterion[] } };
 
-export function ItemCriteria({ item, connection }: { item: ExplorerSummary; connection: ConnectionState }) {
+export function ItemCriteria({ item, connection, readOnly = false }: { item: ExplorerSummary; connection: ConnectionState; readOnly?: boolean }) {
   const id = item.id;
   const [open, setOpen] = useState(false);
   const [criteria, setCriteria] = useState<Criterion[]>();
@@ -26,7 +26,7 @@ export function ItemCriteria({ item, connection }: { item: ExplorerSummary; conn
     return () => { cancelled = true; };
   }, [id, item, open, command, connection.live]);
   const mutate = async (op: 'add' | 'edit' | 'remove' | 'done', criterion?: string, draft?: string) => {
-    if (busy || !connection.live || !command) return false;
+    if (readOnly || busy || !connection.live || !command) return false;
     if (draft !== undefined && (!draft.trim() || /[\r\n]|^\s*C[1-9]\d*\./.test(draft))) {
       setError('Use one line of criterion text without a Ck. label'); return false;
     }
@@ -41,17 +41,19 @@ export function ItemCriteria({ item, connection }: { item: ExplorerSummary; conn
     finally { setBusy(false); }
   };
   return <section data-criteria-block className={s.block} aria-label="Criteria">
-    <h3><button type="button" data-criteria-toggle aria-expanded={open} title="Edit criteria (e)" onClick={() => setOpen(!open)}>Criteria</button></h3>
+    <h3><button type="button" data-criteria-toggle aria-expanded={open} title={readOnly ? 'Read criteria' : 'Edit criteria (e)'} onClick={() => setOpen(!open)}>Criteria</button></h3>
     {open && <>
-      {criteria ? criteria.map((criterion, index) => criterion.id
+      {criteria ? criteria.map((criterion, index) => readOnly
+        ? <div key={criterion.id ?? index} className={s.row}><span>{criterion.checked ? '✓' : '○'} {criterion.id} {criterion.text}</span></div>
+        : criterion.id
         ? <CriterionRow key={criterion.id} criterion={criterion} id={criterion.id} disabled={busy || !connection.live} mutate={mutate} />
         : <div key={`legacy:${index}`} data-criterion-legacy className={s.row} title="This criterion has no persisted id. Add a criterion here or use task.criterion in the CLI to assign ids before editing.">
           <small>No id</small><span>{criterion.checked ? '✓' : '○'} {criterion.text}</span>
         </div>) : <span>Loading…</span>}
-      <form className={s.add} onSubmit={event => { event.preventDefault(); void mutate('add', undefined, text).then(ok => { if (ok) setText(''); }); }}>
+      {!readOnly && <form className={s.add} onSubmit={event => { event.preventDefault(); void mutate('add', undefined, text).then(ok => { if (ok) setText(''); }); }}>
         <label>New criterion<input aria-label="New criterion" value={text} onChange={event => setText(event.target.value)} disabled={busy || !connection.live} /></label>
         <button disabled={busy || !connection.live || !criteria || !text.trim()}>Add criterion</button>
-      </form>
+      </form>}
       {error && <span role="alert" title={error}>Criteria failed</span>}
     </>}
   </section>;

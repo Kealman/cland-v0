@@ -7,12 +7,14 @@ import { Fold } from '../Fold.tsx';
 import { TopicArtifacts } from './TopicArtifacts.tsx';
 import { attachComposerArtifact } from '../composer-drafts.ts';
 import s from './Artifacts.module.css';
+import { usePhone } from '../phone.ts';
 
 const roles = [['coordinator', 'Coordinator'], ['implementer', 'Implementers'], ['reviewer', 'Reviewers'], ['qa', 'QA'], ['other', 'Other']] as const;
 const human = (a: Artifact) => a.creatorKind === 'human' || a.creatorRole === 'aide' || (a.creatorKind === undefined && a.creator === 'human');
 const archived = (a: Artifact) => a.layer === 'archive' || (a.layer === undefined && a.status === 'archived') || a.fileDeleted;
 
-function ArtifactsArea({ connection, selected, select, controls, open: openArtifact, openTopic }: AreaContentProps) {
+function ArtifactsArea({ connection, selected, select, controls, open: openArtifact, openTopic, openPage }: AreaContentProps) {
+  const phone = usePhone();
   const { topic } = useContext(TopicArtifacts);
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
@@ -35,6 +37,7 @@ function ArtifactsArea({ connection, selected, select, controls, open: openArtif
       else {
         const a = all.find(a => a.id === selected);
         if (a?.folder && !a.fileDeleted) setOpened(previous => ({ ...previous, [a.id]: !previous[a.id] }));
+        else if (phone && selected) openPage?.(selected);
         else openArtifact?.();
       }
       return true;
@@ -69,7 +72,10 @@ function ArtifactsArea({ connection, selected, select, controls, open: openArtif
     return false;
   } }));
   const rows = (artifacts: Artifact[]) => artifacts.map(a => <ArtifactBranch key={a.id} artifact={a} connection={connection}
-    selected={selected} select={select} open={!!opened[a.id]} />);
+    selected={selected} select={select} open={!!opened[a.id]} activate={phone ? id => {
+      if (a.folder && id === a.id) setOpened(previous => ({ ...previous, [a.id]: !previous[a.id] }));
+      else openPage?.(id);
+    } : undefined} />);
   const group = (id: string, label: string, artifacts: Artifact[], closed = false) => <section key={id} aria-label={label} data-artifact-section={id}>
     <Fold area="artifacts" id={id} label={label} count={artifacts.length} defaultFolded={closed}>{rows(artifacts)}</Fold>
   </section>;
@@ -90,8 +96,8 @@ function ArtifactsArea({ connection, selected, select, controls, open: openArtif
   </section>;
 }
 /** Folder listings are read only while unfolded, and refreshed after reconnect or metadata changes. */
-function ArtifactBranch({ artifact: a, connection, selected, select, open }: {
-  artifact: Artifact; connection: ConnectionState; selected: string | undefined; select: (id: string) => void; open: boolean;
+function ArtifactBranch({ artifact: a, connection, selected, select, open, activate }: {
+  artifact: Artifact; connection: ConnectionState; selected: string | undefined; select: (id: string) => void; open: boolean; activate?: ((id: string) => void) | undefined;
 }) {
   const [listing, setListing] = useState<{ files?: string[]; error?: string }>({});
   const command = connection.command;
@@ -106,14 +112,14 @@ function ArtifactBranch({ artifact: a, connection, selected, select, open }: {
   }, [a, open, live, command]);
   return <div>
     <button className={s.row} data-artifact-row data-artifact-owner={a.id} data-object-id={a.id}
-      aria-expanded={a.folder ? open : undefined} aria-pressed={selected === a.id} onFocus={() => select(a.id)} onClick={() => select(a.id)}>
+      aria-expanded={a.folder ? open : undefined} aria-pressed={selected === a.id} onFocus={() => select(a.id)} onClick={() => { select(a.id); activate?.(a.id); }}>
       <span className={s.meta}>{a.folder ? (open ? '▾' : '▸') : '▣'} {a.kind}</span><span className={s.id}>{a.id}</span><span className={s.title}>{a.title}</span>
       <span className={s.meta}>{a.creator}</span><span className={s.meta}>{a.fileDeleted ? 'file deleted' : a.promoted ? `promoted: ${a.promoted} · ${a.status}` : a.status}{a.kept ? ' · kept' : ''}</span>
     </button>
     {open && !a.fileDeleted && <div className={s.files}>
       {listing.error && <p role="alert">{listing.error}</p>}
       {listing.files?.map(file => <button key={file} className={s.row} data-artifact-row data-artifact-owner={a.id} data-artifact-file={file}
-        data-object-id={`${a.id}/${file}`} aria-pressed={selected === `${a.id}/${file}`} onFocus={() => select(`${a.id}/${file}`)} onClick={() => select(`${a.id}/${file}`)}>{file}</button>)}
+        data-object-id={`${a.id}/${file}`} aria-pressed={selected === `${a.id}/${file}`} onFocus={() => select(`${a.id}/${file}`)} onClick={() => { select(`${a.id}/${file}`); activate?.(`${a.id}/${file}`); }}>{file}</button>)}
     </div>}
   </div>;
 }

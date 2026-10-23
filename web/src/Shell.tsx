@@ -6,7 +6,7 @@ import type { NotificationNotice } from './notification-rules.ts';
 import { artifactSelection } from './artifacts/state.ts';
 import { connectHub, findItem, type ConnectionState, type ObjectRow } from './connection.ts';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
-import { areas, areaKey, actionKeys, displayKey, treeActions, planActions, contextActions, areaContext, type KeyContext, type Area, type Shortcut } from './keymap.ts';
+import { areas, areaKey, actionKeys, actionAtWidth, displayKey, treeActions, planActions, contextActions, areaContext, type KeyContext, type Area, type Shortcut } from './keymap.ts';
 import { focusedKeyContext, listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
@@ -15,7 +15,7 @@ import { AskNavigation, runAskShortcut } from './AskCard.tsx';
 import { ComposerPicker, type ComposerSelection } from './ComposerPicker.ts';
 import { runComposerShortcut } from './Composer.tsx';
 import { Fold, revealFold, runFoldShortcut } from './Fold.tsx';
-import { ItemCard } from './ItemCard.tsx';
+import { ItemCard, ReadOnlyItemCard } from './ItemCard.tsx';
 import { ItemNavigation } from './ItemText.tsx';
 import { itemsSnapshot, saveItems, subscribeItems } from './items-state.ts';
 import type { MessageTarget } from './QuickMessage.tsx';
@@ -25,7 +25,7 @@ import { ItemsView, ItemsViewSwitcher, showItemsView, useItemsView } from './Ite
 import { InboxVisitProvider } from './inbox-visit.tsx';
 import { AreaSlot, areaModules, type AreaControls } from './AreaSlot.tsx';
 import { useDesktop } from './desktop.ts';
-import { usePhone } from './phone.ts';
+import { isPhone, usePhone } from './phone.ts';
 import { useEventSummary } from './use-event-summary.ts';
 import type { Artifact } from '../../shared/wire/index.ts';
 import { ArtifactNavigation, ArtifactViewerFallback } from './artifacts/ArtifactNavigation.ts';
@@ -65,6 +65,24 @@ function savedShell(): ShellPreferences {
 /** Reference component: semantic markup, CSS Module, tokens, and factual labels. */
 export function Shell() {
   const phone = usePhone();
+  const navigationSerial = useRef(0);
+  const [phonePage, setPhonePage] = useState<{ area: 'Items' | 'Artifacts'; id: string } | undefined>(() => history.state?.clandPhonePage);
+  useEffect(() => {
+    const back = (event: PopStateEvent) => {
+      navigationSerial.current++;
+      const page = event.state?.clandPhonePage as { area: 'Items' | 'Artifacts'; id: string } | undefined;
+      setPhonePage(page);
+      if (page) setPreferences(previous => ({ ...previous, area: page.area, row: page.id, detail: false }));
+    };
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, []);
+  const openPhonePage = (area: 'Items' | 'Artifacts', id: string) => {
+    navigationSerial.current++;
+    const page = { area, id };
+    history.pushState({ clandPhonePage: page }, '');
+    setPhonePage(page);
+  };
   const [preferences, setPreferences] = useState(savedShell);
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
   const [overlay, setOverlay] = useState<'palette' | 'help' | undefined>();
@@ -79,7 +97,6 @@ export function Shell() {
   const [overlayContext, setOverlayContext] = useState<KeyContext>('shell');
   const [desktopActive, setActive] = useState<'primary' | 'secondary'>('primary');
   const active = phone ? 'primary' : desktopActive;
-  const navigationSerial = useRef(0);
   useEffect(() => subscribeItems(() => { navigationSerial.current++; }), []);
   const focusPane = (pane: 'primary' | 'secondary') => {
     if (pane !== active) navigationSerial.current++;
@@ -88,6 +105,7 @@ export function Shell() {
   const split = !phone && preferences.secondary !== undefined;
   const area = active === 'secondary' && preferences.secondary ? preferences.secondary : preferences.area;
   const setArea = (selected: Area, pane = active) => {
+    if (phonePage) { history.replaceState(null, ''); setPhonePage(undefined); }
     navigationSerial.current++;
     setPreferences(previous => pane === 'secondary' && previous.secondary
       ? { ...previous, secondary: selected, secondaryRow: undefined, secondaryDetail: false } : { ...previous, area: selected, row: undefined, detail: false });
@@ -133,9 +151,9 @@ export function Shell() {
   const view = useItemsView();
   const desktop = useDesktop();
   const focusedContext = overlay ? overlayContext : areaContext(area);
-  const handledActions = focusedContext === 'composer' || focusedContext === 'session-composer' || focusedContext === 'reply' || focusedContext === 'approval' || focusedContext === 'approval-note' ? contextActions[focusedContext] ?? [] : area === 'Items'
-    ? (view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
-    : (contextActions[focusedContext] ?? []).filter(row => focusedContext === 'ask' && row.action.startsWith('ask-') || areaModules[area].handledActions.includes(row.action));
+  const handledActions = (focusedContext === 'composer' || focusedContext === 'session-composer' || focusedContext === 'reply' || focusedContext === 'approval' || focusedContext === 'approval-note' ? contextActions[focusedContext] ?? [] : area === 'Items'
+    ? (!phone && view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
+    : (contextActions[focusedContext] ?? []).filter(row => focusedContext === 'ask' && row.action.startsWith('ask-') || areaModules[area].handledActions.includes(row.action))).filter(row => actionAtWidth(row.action, phone));
   const paletteControls = useRef<PaletteControls>(null);
   const cardOrigin = useRef<{ item: string; pane: string } | null>(null);
   const primaryTree = useRef<TreeControls>(null);
@@ -152,7 +170,9 @@ export function Shell() {
     setOverlay(mode);
   };
   const runShortcut = (action: Shortcut) => {
+    if (!actionAtWidth(action, phone)) return;
     if (more && action === 'dismiss') { setMoreOpen(false); moreButton.current?.focus(); return; }
+    if (!overlay && phone && phonePage && (action === 'dismiss' || action === 'tree-close')) { history.back(); return; }
     if (more) setMoreOpen(false);
     if (!overlay && action.startsWith('jump-')) {
       const focused = document.activeElement?.closest('[data-item-link]')?.getAttribute('data-item-link');
@@ -198,6 +218,7 @@ export function Shell() {
       if ((action === 'accept' || action === 'tree-open' && !focused?.hasAttribute('aria-expanded')) && focused?.getAttribute('role') === 'treeitem') {
         const item = focused.getAttribute('data-object-id');
         if (!item) return;
+        if (phone) { openPhonePage('Items', item); return; }
         const pane = focused.closest('[data-pane]')?.getAttribute('data-pane') ?? active;
         cardOrigin.current = { item, pane };
         setDismissed(undefined);
@@ -246,6 +267,7 @@ export function Shell() {
     const current = keyboard.current;
     return current.overlay ?? (current.more ? 'more' : undefined) ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
+    if (!actionAtWidth(action, isPhone())) return false;
     if (context === 'more' || context === 'shell' || context === 'composer' || context === 'session-composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
@@ -265,6 +287,7 @@ export function Shell() {
   const openResult = (target: Area, row: ObjectRow, pane: boolean) => {
     navigationSerial.current++;
     setMessage(undefined);
+    if (phone && (target === 'Items' || target === 'Artifacts')) openPhonePage(target, row.id);
     setPreferences(previous => {
       if (pane && !phone) return active === 'primary'
         ? { ...previous, secondary: target, secondaryRow: row.id, secondaryDetail: true, dismissed: selectionKey, ratio: split ? previous.ratio : 2 / 3 }
@@ -291,6 +314,7 @@ export function Shell() {
       if (serial !== navigationSerial.current) return;
       if (!result) { setNavigationError(id); return; }
       const { item, ancestors } = result;
+      if (phone) openPhonePage('Items', item.id);
       const state = itemsSnapshot();
       const open: Record<string, boolean> = { ...state.open, ':categories': true, ':unscheduled': true, ':releases': true };
       let releaseId: string | undefined;
@@ -300,7 +324,7 @@ export function Shell() {
       }
       showItemsView('tree');
       saveItems({ ...state, open, scope: undefined, hideDone: false, archive: true, back: [...state.back, state.scope] });
-      setPreferences(previous => active === 'primary' ? { ...previous, area: 'Items', row: item.id, detail, dismissed: undefined, release: releaseId ?? previous.release }
+      setPreferences(previous => active === 'primary' ? { ...previous, area: 'Items', row: item.id, detail: !phone && detail, dismissed: undefined, release: releaseId ?? previous.release }
         : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: detail, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
@@ -333,7 +357,8 @@ export function Shell() {
     setOpenedArtifacts(previous => [...previous.filter(row => row.id !== artifact.id), artifact]);
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') ?? active;
     if (phone) {
-      setPreferences(previous => ({ ...previous, area: 'Artifacts', row: artifact.id, detail: true, dismissed: undefined }));
+      openPhonePage('Artifacts', artifact.id);
+      setPreferences(previous => ({ ...previous, area: 'Artifacts', row: artifact.id, detail: false, dismissed: undefined }));
       return;
     }
     setPreferences(previous => pane === 'primary'
@@ -399,8 +424,9 @@ export function Shell() {
         <div className={s.workspace} ref={workspace}>
           {(['primary', 'secondary'] as const).filter(pane => pane === 'primary' || split).map(pane => {
             const paneArea = pane === 'primary' ? preferences.area : preferences.secondary!;
-            const selected = pane === 'primary' ? preferences.row : preferences.secondaryRow;
-            const detail = pane === 'primary' ? preferences.detail : preferences.secondaryDetail;
+            const page = phone && phonePage?.area === paneArea ? phonePage : undefined;
+            const selected = page?.id ?? (pane === 'primary' ? preferences.row : preferences.secondaryRow);
+            const detail = !!page || (pane === 'primary' ? preferences.detail : preferences.secondaryDetail);
             const rows = connection.rows?.[paneArea];
             const fallback = detail && paneArea === 'Artifacts' ? openedArtifacts.find(artifact => artifact.id === selected) : undefined;
             const row = paneArea === 'Items' ? findItem(connection, selected) : paneArea === 'Artifacts' ? artifactSelection(connection.artifacts, selected) ?? fallback : rows?.find(object => object.id === selected);
@@ -409,13 +435,13 @@ export function Shell() {
               onPointerDown={() => focusPane(pane)} onFocus={() => focusPane(pane)}>
               <Fold area={paneArea.toLowerCase()} id={detail ? `detail:${selected}` : 'objects'}
                 label={detail && row ? row.title : paneArea} count={detail ? 1 : rows?.length ?? '—'} level={1}
-                actions={<>{!detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
+                actions={<>{phone && detail && (paneArea === 'Items' || paneArea === 'Artifacts') && <button className={s.phoneBack} onClick={() => { if (page) history.back(); else setPreferences(previous => ({ ...previous, detail: false })); }}>Back to {paneArea}</button>}{!phone && !detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
                   <button onClick={() => { navigationSerial.current++; setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
                     row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail })); }}>Swap</button>
                   <button onClick={() => closePane(pane)}>Close</button>
                 </div>}</>}>
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
-                select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
+                select={id => selectRow(pane, id)} openCard={phone ? id => openPhonePage('Items', id) : undefined} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {paneArea !== 'Items' && <ArtifactViewerFallback.Provider value={fallback}><AreaSlot split={split} splitSelection={openOther} connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
                 open={() => {
                   setDismissed(undefined);
@@ -454,7 +480,7 @@ export function Shell() {
                   navigationSerial.current++; showItemsView('plan');
                   setPreferences(previous => pane === 'primary' ? { ...previous, area: 'Items', row: id, detail: false } : { ...previous, secondary: 'Items', secondaryRow: id, secondaryDetail: false });
                 }}
-                openPage={id => { navigationSerial.current++; setPreferences(previous => pane === 'primary'
+                openPage={id => { navigationSerial.current++; if (phone && paneArea === 'Artifacts') { openPhonePage('Artifacts', id); return; } setPreferences(previous => pane === 'primary'
                   ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}
                 closePage={() => {
                   navigationSerial.current++;
@@ -467,7 +493,7 @@ export function Shell() {
                 }}
                 controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'page' : 'pane'} /></ArtifactViewerFallback.Provider>}
               {detail && row && paneArea === 'Items' && findItem(connection, row.id) &&
-                <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />}
+                (phone ? <ReadOnlyItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} /> : <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />)}
               </Fold>
               {pane === 'primary' && split && <div className={s.divider} role="separator" aria-label="Pane divider"
                 aria-orientation="vertical" aria-valuemin={20} aria-valuemax={80} aria-valuenow={Math.round(preferences.ratio * 100)}

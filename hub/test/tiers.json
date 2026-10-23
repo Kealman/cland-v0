@@ -628,6 +628,7 @@
     "web/test/messages.test.ts": "Web",
     "web/test/notifications.test.ts": "Web",
     "web/test/palette.test.ts": "Web",
+    "web/test/phone-more.test.ts": "Web",
     "web/test/phone.test.ts": "Web",
     "web/test/plan.test.ts": "Web",
     "web/test/session-actions.test.ts": "Web",

@@ -79,13 +79,34 @@ The phone renders one pane and no drawer. Split shortcuts do nothing; the saved
 desktop secondary pane and ratio return on widening, including after a phone
 reload. Inline artifact navigation opens its page in the phone's single pane.
 
+More keeps its current mark while Items, Artifacts or Accounts is open:
+
+- Items shows the explorer tree. Tapping an item opens the reusable
+  `ReadOnlyItemCard` full screen, with its summary, facts, progress, verdict,
+  relations, dates, criteria and folded agents’ text. Criteria can be read, with
+  no edit, done, archive, quick message or plan approval controls. Board, Graph,
+  Plan and the view switcher stay desktop only. Physical D/A, m/M, e and the
+  plan actions are inert on the phone, including through the palette; their
+  shared width gate lives in `keymap.ts`.
+- Artifacts keeps its list, folders and full-screen viewer. Keep, Archive and
+  attach-to-composer actions are absent from phone help/palette and inert on
+  the keyboard. Source/rendered toggles and downloads remain available.
+- Accounts keeps the registry paths, windows, limits and this browser's sign-in
+  facts. Notification switches are absent here on the phone; their phone home
+  belongs to More's notification controls. Account edits stay in the CLI.
+
+Item cards and artifact viewers have a 44 px back control; browser Back returns
+to the list too. At 640 px and wider the desktop views and actions remain,
+including saved planning views and notification switches beside Profile.
+
 Web cases request the phone context with
 `fixture.pageCase(t, body, beforeNavigate, { phone: true })` (use `undefined` for
 an unused setup callback). It creates a fresh 390×844 Headless Shell context with
 touch and the mobile flag, then waits for the bar's five slots. Desktop cases
 retain their 1440×900 context and seven-area rail readiness. Both keep the sealed
 HOME/XDG/Git environment, CSP and owned browser profile. Run
-`node --test web/test/phone.test.ts` after building the bundle.
+`node --test web/test/phone.test.ts` and
+`node --test web/test/phone-more.test.ts` after building the bundle.
 
 ## Components and colours
 

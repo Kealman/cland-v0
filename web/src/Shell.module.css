@@ -93,3 +93,5 @@
 .app[data-phone="true"] .right { margin-left: 0; }
 .app[data-phone="true"] .needs { min-height: 44px; align-items: center; gap: 4px; }
 .statusText { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.phoneBack { min-height: 44px; padding: 8px; border: 1px solid var(--control-border); background: var(--control); color: var(--text); }
+.app[data-phone="true"] .pane button { min-height: 44px; }

@@ -5,6 +5,7 @@ import { accountId } from './state.ts';
 import { accountModel, accountModels, harnessName } from './model.ts';
 import { Profile } from './Profile.tsx';
 import s from './Accounts.module.css';
+import { usePhone } from '../phone.ts';
 
 function AccountFacts({ account }: { account: ReturnType<typeof accountModel> }) {
   return <div className={s.facts}>
@@ -21,6 +22,7 @@ function AccountFacts({ account }: { account: ReturnType<typeof accountModel> })
 }
 
 function AccountsArea(props: AreaContentProps) {
+  const phone = usePhone();
   const list = props.connection.accounts;
   const polled = useRef(false);
   const [error, setError] = useState<string>();
@@ -40,7 +42,7 @@ function AccountsArea(props: AreaContentProps) {
     {error && <div role="alert" className={s.critical} title={error}>Poll failed</div>}
     {accountModels(list?.accounts ?? [], Date.now()).map(account => <article key={accountId(account)} className={s.account} data-account-id={accountId(account)}>
       <Fold area="accounts" id={accountId(account)} label={account.name} count={account.windows.length}
-        actions={<button className={s.open} data-object-id={accountId(account)} aria-label={`Open ${account.name}`} aria-pressed={props.selected === accountId(account)}
+        actions={!phone && <button className={s.open} data-object-id={accountId(account)} aria-label={`Open ${account.name}`} aria-pressed={props.selected === accountId(account)}
           onFocus={() => props.select(accountId(account))} onClick={() => props.select(accountId(account))}>↗</button>}>
         <AccountFacts account={account} />
       </Fold>

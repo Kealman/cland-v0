@@ -31,3 +31,7 @@
 .meter i[data-status="planned"] { background: var(--text-soft); }
 
 .row[data-marked="true"] { box-shadow: inset 3px 0 var(--link); }
+.explorer[data-phone="true"] .tree { min-width: 0; }
+.explorer[data-phone="true"] .row { flex-wrap: wrap; min-height: 44px; white-space: normal; }
+.explorer[data-phone="true"] .title { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.explorer[data-phone="true"] .filters { flex-wrap: wrap; }
