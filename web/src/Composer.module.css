@@ -1,0 +1,15 @@
+.composer { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px 20px 14px; border-top: 1px solid var(--border); background: var(--drawer); }
+.addressing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--teal-line); border-radius: 6px; padding-left: 8px; color: var(--role-coordinator); background: var(--teal-surface); font: 12px var(--mono); }
+.chip span { color: var(--muted); font-family: var(--prose); }
+.kinds { display: inline-flex; align-self: flex-start; border: 1px solid var(--control-border); border-radius: 6px; overflow: hidden; }
+.composer button { border: 1px solid var(--control-border); border-radius: 4px; background: var(--control); padding: 4px 10px; }
+.kinds button { border: 0; border-radius: 0; color: var(--text-soft); }
+.kinds button[aria-pressed="true"] { background: var(--selection); color: var(--text-strong); }
+.composer textarea { box-sizing: border-box; width: 100%; min-height: 66px; padding: 10px 12px; border: 1px solid var(--control-border); border-radius: 8px; background: var(--ground); font: 13.5px/20px var(--prose); resize: vertical; }
+.actions { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.pending { white-space: pre-wrap; overflow: auto; max-height: 100px; padding: 8px 12px; background: var(--human-band); border-left: 3px solid var(--role-human); }
+.pending span { color: var(--muted); font-size: 12px; }
+.actions button:last-child { margin-left: auto; background: var(--link); color: var(--link-ink); }
+.composer button:focus-visible, .composer textarea:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.composer button:disabled { opacity: 0.6; }

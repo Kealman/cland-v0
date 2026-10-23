@@ -611,6 +611,7 @@
     "web/test/artifacts.test.ts": "Web",
     "web/test/asks.test.ts": "Web",
     "web/test/board.test.ts": "Web",
+    "web/test/composer.test.ts": "Web",
     "web/test/connection.test.ts": "Web",
     "web/test/folds.test.ts": "Web",
     "web/test/graph.test.ts": "Web",

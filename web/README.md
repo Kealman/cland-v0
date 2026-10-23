@@ -393,8 +393,42 @@ and `.markdown` are text even when served as octet-stream. Missing files show
 a new capability, and superseded reads cannot replace a later selection.
 Diagram HTML and SVG use the sandboxed viewer; raw Mermaid `.mmd` stays source text with a download link, without rendering.
 
-Attaching to the composer is the following slice. Creating, moving, promoting,
+The thread composer's `~` picker attaches available artifacts from its topic.
+Creating, moving, promoting,
 deleting and editing remain in Neovim and the CLI in 0.2.0.
+
+## Composer
+
+Every writable thread has the P16 composer, including drawer and split threads.
+Agents remains read-only. Message, Decision and Question send the human's kind
+through `topic.send`; only Question starts a wait. An item's topic starts with
+the Coordinator chip, resolved by role when sent. `@` opens the palette's session
+results and replaces that chip. Removing it omits `to`, leaving mentions and
+default addressing to the hub. `~` opens artifact results restricted to available,
+unarchived artifacts in the current topic; a selected artifact becomes a removable chip.
+More artifacts reads the next bounded inventory page while retaining the search.
+
+| Key | Composer action |
+| --- | --- |
+| `Enter` | Send one line; insert a newline in a multiline draft |
+| `Shift+Enter` | Insert a newline at the selection |
+| `⌘Enter` | Send any number of lines |
+| `⌘K` | Open palette, keeping the draft and restoring focus on close |
+| `@` | Choose a session addressee |
+| `~` | Attach an artifact |
+
+On a coarse-pointer touch device, Return inserts a newline; Send submits.
+All actions run through the physical-code key map and the shell's single listener.
+Composition keeps native input. Offline, Send and the send keys perform no write.
+
+`composer-drafts.ts` shares one draft per topic between mounted thread copies,
+stored as `cland.ui.draft.<topic>.v1` in browser local storage. Text, kind,
+recipient and artifact chips survive navigation, disconnect and reload. Denied
+storage leaves drafts in memory. A pending message stays visible until the hub's
+receipt; newer typing remains separate. Success keeps that newer draft, and a
+refusal restores the original text and artifacts ahead of it. An uncertain send
+recovered by reload becomes draft text, with no automatic replay. The hub marks
+the topic read through a successful human send; the browser sends no broader read.
 
 
 ## Items tree
@@ -610,8 +644,9 @@ must match exactly. The shell asks `focusedKeyContext` for a nested
 `data-key-context` declaration, falling back to the active pane's area. A field
 uses context bindings only when the field itself explicitly declares
 one, for example `data-key-context="composer"`; ordinary fields keep native keys
-and only `⌘K` opens the palette. Composer Enter, Shift+Enter and `⌘Enter` are
-declared now, for the composer ticket to handle.
+and only `⌘K` opens the palette. Composer Enter, Shift+Enter, `⌘Enter`, `@` and
+`~` are handled by the shared composer dispatcher; `⌘Enter` never opens a pane
+from its field.
 
 Every non-Items area renders through `src/AreaSlot.tsx`. Its `AreaModule` supplies
 `Pane` and `Drawer` components, receives rows, selected identity and a selection

@@ -5,6 +5,7 @@ import { MessageBlock } from './MessageBlock.tsx';
 import s from './Thread.module.css';
 import { useTopicRead } from './use-topic-read.ts';
 import type { Shortcut } from './keymap.ts';
+import { Composer } from './Composer.tsx';
 
 export type ThreadControls = { focus: () => void; run: (action: Shortcut) => boolean };
 
@@ -104,5 +105,6 @@ export function Thread({ connection, topic, controls, targetMessage }: { connect
         </Fragment>;
       })}
     </div>
+    {topic !== 'agents' && <Composer key={topic} connection={connection} topic={topic} />}
   </section>;
 }

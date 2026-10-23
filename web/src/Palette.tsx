@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { actionKeys, displayKey, shellActions, paletteActions, foldActions, areaContext, type KeyContext, type KeyAction, type Area, type Shortcut } from './keymap.ts';
 import type { ConnectionState, ObjectRow } from './connection.ts';
 import s from './Palette.module.css';
+import type { ComposerSelection } from './ComposerPicker.ts';
 
 const kinds = [
   { prefix: '>', name: 'Actions' }, { prefix: '#', name: 'Items' }, { prefix: '@', name: 'Sessions' },
@@ -28,12 +29,13 @@ function match(text: string, query: string): number[] | undefined {
 function Keys({ action, context }: { action: Shortcut; context?: KeyContext }) {
   return <kbd>{actionKeys(action, context).map(displayKey).join(' / ') || 'No key'}</kbd>;
 }
-export function PaletteDialog({ mode, area, actions, context = areaContext(area), connection, controls, close, run, open }: {
+export function PaletteDialog({ mode, area, actions, context = areaContext(area), connection, controls, close, run, open, selection }: {
   mode: 'palette' | 'help'; area: Area; actions: readonly KeyAction[]; context?: KeyContext; connection: ConnectionState; controls: Ref<PaletteControls>;
   close: () => void; run: (action: Shortcut) => void; open: (area: Area, row: ObjectRow, pane: boolean) => void;
+  selection?: ComposerSelection | undefined;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(selection?.kind === 'Sessions' ? '@' : selection ? '~' : '');
   const [cursor, setCursor] = useState(0);
   useEffect(() => {
     const previous = document.activeElement;
@@ -44,8 +46,10 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
   const search = (kind ? query.slice(1) : query).trim();
   const results: Result[] = [];
   for (const candidate of kinds) {
+    if (selection && candidate.name !== selection.kind) continue;
     if (kind && candidate !== kind) continue;
     const objects = candidate.name === 'Actions' ? [...new Map([...shellActions, ...actions].map(row => [row.action, row])).values()].map(row => ({ id: row.action, title: row.label, action: row.action }))
+      : selection?.kind === 'Artifacts' ? (connection.artifacts ?? []).filter(row => row.topic === selection.topic && row.status !== 'archived' && !row.fileDeleted && !row.movedTo).map(row => ({ id: row.id, title: row.title }))
       : connection.rows?.[candidate.name] ?? [];
     for (const object of objects) {
       const action = 'action' in object ? object.action : undefined;
@@ -62,7 +66,8 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
   const choose = (result: Result | undefined, pane: boolean) => {
     if (!result) return;
     close();
-    if (result.action) run(result.action);
+    if (selection) selection.choose(result);
+    else if (result.action) run(result.action);
     else open(result.area!, result, pane);
   };
   useImperativeHandle(controls, () => ({ run(action) {
@@ -114,6 +119,9 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
           </section>;
         })}
         {!results.length && <p className={s.empty}>0 results</p>}
+        {selection?.kind === 'Artifacts' && connection.artifactsBefore && <button type="button" disabled={!connection.live || connection.artifactsLoading}
+          onClick={() => { void connection.loadMoreArtifacts?.(); }}>More artifacts</button>}
+        {selection?.kind === 'Artifacts' && connection.artifactsError && <span role="alert" title={connection.artifactsError}>Artifacts unavailable</span>}
       </div>
       <footer className={s.footer}>{paletteActions.map(row => <span key={row.action} title={row.label}><Keys action={row.action} context="palette" /> {row.label}</span>)}</footer>
     </>}

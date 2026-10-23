@@ -8,6 +8,8 @@ import { focusedKeyContext, listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 import { AskNavigation, runAskShortcut } from './AskCard.tsx';
+import { ComposerPicker, type ComposerSelection } from './ComposerPicker.ts';
+import { runComposerShortcut } from './Composer.tsx';
 import { Fold, runFoldShortcut } from './Fold.tsx';
 import { ItemCard } from './ItemCard.tsx';
 import { ItemNavigation } from './ItemText.tsx';
@@ -57,6 +59,7 @@ export function Shell() {
   const [preferences, setPreferences] = useState(savedShell);
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
   const [overlay, setOverlay] = useState<'palette' | 'help' | undefined>();
+  const [composerSelection, setComposerSelection] = useState<ComposerSelection>();
   const pendingPaletteAction = useRef<Shortcut | undefined>(undefined);
   const [overlayContext, setOverlayContext] = useState<KeyContext>('shell');
   const [active, setActive] = useState<'primary' | 'secondary'>('primary');
@@ -104,7 +107,7 @@ export function Shell() {
   const view = useItemsView();
   const desktop = useDesktop();
   const focusedContext = overlay ? overlayContext : areaContext(area);
-  const handledActions = area === 'Items'
+  const handledActions = focusedContext === 'composer' ? contextActions.composer ?? [] : area === 'Items'
     ? (view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
     : (contextActions[focusedContext] ?? []).filter(row => focusedContext === 'ask' && row.action.startsWith('ask-') || areaModules[area].handledActions.includes(row.action));
   const paletteControls = useRef<PaletteControls>(null);
@@ -115,6 +118,7 @@ export function Shell() {
   const [navigationError, setNavigationError] = useState('');
   const [message, setMessage] = useState<MessageTarget>();
   const openOverlay = (mode: 'palette' | 'help') => {
+    setComposerSelection(undefined);
     if (!overlay) setOverlayContext(focusedKeyContext(document.activeElement, areaContext(area)));
     setOverlay(mode);
   };
@@ -180,6 +184,7 @@ export function Shell() {
     if (!overlay && area === 'Items' && (active === 'primary' ? primaryTree : secondaryTree).current?.run(action)) return;
     if (!overlay && area !== 'Items' && areaModules[area].handledActions.includes(action) && (active === 'primary' ? primaryArea : secondaryArea).current?.run(action)) return;
     if (!overlay && runAskShortcut(action)) return;
+    if (!overlay && runComposerShortcut(action)) return;
     if (runFoldShortcut(action)) return;
     if (action === 'palette') openOverlay('palette');
     else if (overlay) paletteControls.current?.run(action);
@@ -207,7 +212,7 @@ export function Shell() {
     const current = keyboard.current;
     return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
-    if (context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'composer' || context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
@@ -259,7 +264,7 @@ export function Shell() {
         : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
-  return <AskNavigation.Provider value={(id, source) => {
+  return <ComposerPicker.Provider value={selection => { setOverlayContext('composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') === 'secondary' ? 'secondary' : 'primary';
     navigationSerial.current++;
     setMessage(undefined);
@@ -278,8 +283,8 @@ export function Shell() {
       : { ...previous, area: 'Artifacts', row: artifact.id, detail: true, dismissed: `Artifacts/${artifact.id}` });
   }}><ItemNavigation.Provider value={{ open: id => { void openItem(id); }, prefixes: ['T', ...Object.values(connection.tracker?.prefixes ?? {})] }}><div className={s.app}>
     {navigationError && <div role="alert" title={`Could not open ${navigationError}`}>Item unavailable · {navigationError}</div>}
-    {overlay && <PaletteDialog mode={overlay} area={area} context={overlayContext} actions={handledActions} connection={connection} controls={paletteControls}
-      close={() => setOverlay(undefined)} run={action => {
+    {overlay && <PaletteDialog mode={overlay} area={area} context={overlayContext} actions={handledActions} connection={connection} controls={paletteControls} selection={composerSelection}
+      close={() => { setOverlay(undefined); setComposerSelection(undefined); }} run={action => {
         if (action === 'palette' || action === 'help') openOverlay(action);
         else { pendingPaletteAction.current = action; setOverlay(undefined); }
       }} open={openResult} />}
@@ -403,5 +408,5 @@ export function Shell() {
         </aside>}
       </main>
     </div>
-  </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider>;
+  </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider></ComposerPicker.Provider>;
 }

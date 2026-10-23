@@ -29,7 +29,7 @@ test('focused contexts resolve before shell keys without changing Items or Plan 
   assert.equal(shortcut(key('KeyK'), false, 'artifacts'), 'artifact-keep');
   assert.equal(shortcut(key('Enter'), false, 'composer'), 'composer-send');
   assert.equal(shortcut(key('Enter', { shiftKey: true }), false, 'composer'), 'composer-newline');
-  assert.equal(shortcut(key('Enter', { metaKey: true }), false, 'composer'), 'composer-send');
+  assert.equal(shortcut(key('Enter', { metaKey: true }), false, 'composer'), 'composer-send-always');
   for (const context of ['shell', 'items', 'sessions', 'artifacts', 'composer'] as const) {
     assert.equal(shortcut(key('KeyK', { metaKey: true }), false, context), 'palette');
     for (const modifier of ['ctrlKey', 'altKey', 'shiftKey']) {

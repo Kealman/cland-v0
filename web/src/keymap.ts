@@ -3,7 +3,7 @@ export type Area = typeof areas[number];
 export type Shortcut = Area | `inbox-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'inbox-free' | 'inbox-next' | 'inbox-previous' | 'inbox-open' | 'inbox-remove' | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
   | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
   | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
-  | 'composer-send' | 'composer-newline'
+  | 'composer-send' | 'composer-send-always' | 'composer-newline' | 'composer-session' | 'composer-artifact'
   | 'topic-next' | 'topic-previous' | 'topic-open' | 'topic-close' | 'thread-next' | 'thread-previous' | 'thread-back' | 'thread-leader' | 'thread-toggle'
   | 'plan-approve' | 'plan-discuss' | 'tree-scope' | 'tree-back' | 'jump-leader' | 'jump-item' | 'jump-topic' | 'jump-session'
   | 'tree-select' | 'tree-extend-next' | 'tree-extend-previous' | 'tree-message' | 'tree-topic-message' | 'tree-edit-criteria'
@@ -42,7 +42,7 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   inbox: { KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
   'inbox-answer': { Digit1: 'inbox-1', Digit2: 'inbox-2', Digit3: 'inbox-3', Digit4: 'inbox-4', Digit5: 'inbox-5', Digit6: 'inbox-6', Digit7: 'inbox-7', Digit8: 'inbox-8', Digit9: 'inbox-9', KeyI: 'inbox-free', KeyR: 'inbox-free', KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
   events: {},
-  composer: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send' },
+  composer: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always', 'Shift+Digit2': 'composer-session', 'Shift+Backquote': 'composer-artifact' },
   sessions: { KeyJ: 'session-next', ArrowDown: 'session-next', KeyK: 'session-previous', ArrowUp: 'session-previous',
     Enter: 'session-open', KeyL: 'session-launch', KeyA: 'session-aide', KeyX: 'session-stop', KeyR: 'session-resume',
     KeyD: 'session-archive', KeyC: 'session-capabilities', 'Shift+KeyA': 'session-archive-toggle' },
@@ -125,7 +125,7 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
   ],
   inbox: [{ action: 'inbox-next', label: 'Next Inbox row' }, { action: 'inbox-previous', label: 'Previous Inbox row' }, { action: 'inbox-open', label: 'Open Inbox subject' }, { action: 'inbox-remove', label: 'Decline request or read message' }],
   'inbox-answer': [...Array.from({ length: 9 }, (_, index) => ({ action: `inbox-${index + 1}` as Shortcut, label: `Answer Inbox option ${index + 1}` })), { action: 'inbox-free', label: 'Free answer' }, { action: 'inbox-next', label: 'Next Inbox row' }, { action: 'inbox-previous', label: 'Previous Inbox row' }, { action: 'inbox-open', label: 'Open Inbox subject' }, { action: 'inbox-remove', label: 'Decline request or read message' }],
-  composer: [{ action: 'composer-send', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }],
+  composer: [{ action: 'composer-send', label: 'Send one line' }, { action: 'composer-send-always', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }, { action: 'composer-session', label: 'Choose addressee' }, { action: 'composer-artifact', label: 'Attach an artifact' }],
   sessions: [
     { action: 'session-next', label: 'Next session' }, { action: 'session-previous', label: 'Previous session' },
     { action: 'session-open', label: 'Open session or queue' }, { action: 'session-launch', label: 'Launch a session' },
