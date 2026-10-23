@@ -34,9 +34,11 @@
       "A-9785",
       "A-9791",
       "A-9849",
-      "A-9863"
+      "A-9863",
+      "A-9893",
+      "A-9897"
     ],
-    "commit": "3609042ab7681b93fee33b59bd95d6a1771b3af5"
+    "commit": "f2899a3e3f587d22351626d7e0b03b490e912834"
   },
   "budget": {
     "testSeconds": 5,
@@ -2425,6 +2427,10 @@
     "web/test/inbox.test.ts": {
       "seconds": 15.235813,
       "tests": 12
+    },
+    "web/test/withdraw.test.ts": {
+      "seconds": 6.863603,
+      "tests": 5
     }
   },
   "tests": {
@@ -6269,7 +6275,16 @@
     "web/test/inbox.test.ts::Inbox keeps four ordered sections, newest five rows, oldest wait, live ages and saved folds": 2.208679,
     "web/test/inbox.test.ts::selected request and message unfold, physical d declines to the sender or reads exactly that row": 0.962652,
     "web/test/inbox.test.ts::the events footer counts all unread pages including a warning older than the newest 200": 0.677051,
-    "web/test/inbox.test.ts::the events footer survives four empty sections and follows shared last-look marks and warnings": 0.752485
+    "web/test/inbox.test.ts::the events footer survives four empty sections and follows shared last-look marks and warnings": 0.752485,
+    "web/test/inbox.test.ts::A opens seven days of Inbox departures with outcomes and an archive line below empty sections": 0.990384,
+    "web/test/inbox.test.ts::answered Inbox asks fold until leaving, and a non-Inbox pane focus clears the visit and selection": 1.189248,
+    "web/test/inbox.test.ts::Inbox drawer follows the selected message and physical r replies to its fake sender": 1.457793,
+    "web/test/inbox.test.ts::split approval detail follows revalidation and peer closure after leaving the Inbox visit": 0.801827,
+    "web/test/withdraw.test.ts::a queued message loses Withdraw when the fake session takes its next turn": 0.689544,
+    "web/test/withdraw.test.ts::a real withdrawal refusal retains the message with the hub reason in its tooltip": 0.752681,
+    "web/test/withdraw.test.ts::one injected recipient removes Withdraw while the broadcast remains queued": 0.800293,
+    "web/test/withdraw.test.ts::Withdraw restores a queued message before newer typing only after its receipt": 2.371659,
+    "web/test/withdraw.test.ts::withdrawn text stays ahead of a newer pending send on receipt or reload": 2.249426
   },
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
