@@ -2,7 +2,7 @@ import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { Artifact } from '../../../shared/wire/index.ts';
 import type { ConnectionState } from '../connection.ts';
 import type { AreaContentProps, AreaModule } from '../AreaSlot.tsx';
-import { AreaObjectDetail } from '../AreaObjects.tsx';
+import { ArtifactViewer } from './ArtifactViewer.tsx';
 import { Fold } from '../Fold.tsx';
 import s from './Artifacts.module.css';
 
@@ -10,7 +10,7 @@ const roles = [['coordinator', 'Coordinator'], ['implementer', 'Implementers'], 
 const human = (a: Artifact) => a.creatorKind === 'human' || a.creatorRole === 'aide' || (a.creatorKind === undefined && a.creator === 'human');
 const archived = (a: Artifact) => a.layer === 'archive' || (a.layer === undefined && a.status === 'archived') || a.fileDeleted;
 
-function ArtifactsArea({ connection, selected, select, controls }: AreaContentProps) {
+function ArtifactsArea({ connection, selected, select, controls, open: openArtifact }: AreaContentProps) {
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
   const pending = useRef(new Set<string>());
@@ -32,6 +32,7 @@ function ArtifactsArea({ connection, selected, select, controls }: AreaContentPr
       else {
         const a = all.find(a => a.id === selected);
         if (a?.folder && !a.fileDeleted) setOpened(previous => ({ ...previous, [a.id]: !previous[a.id] }));
+        else openArtifact?.();
       }
       return true;
     }
@@ -96,9 +97,9 @@ function ArtifactBranch({ artifact: a, connection, selected, select, open }: {
   </div>;
 }
 function ArtifactPage(props: AreaContentProps) {
-  return <section data-area-module="Artifacts" data-area-surface="page" data-key-context="artifacts"><AreaObjectDetail {...props} /></section>;
+  return <section className={s.surface} data-area-module="Artifacts" data-area-surface="page" data-key-context="artifacts"><ArtifactViewer key={props.selected} {...props} /></section>;
 }
 function ArtifactDrawer(props: AreaContentProps) {
-  return <section data-area-module="Artifacts" data-area-surface="drawer" data-key-context="artifacts"><AreaObjectDetail {...props} /></section>;
+  return <section className={s.surface} data-area-module="Artifacts" data-area-surface="drawer" data-key-context="artifacts"><ArtifactViewer key={props.selected} {...props} /></section>;
 }
 export const artifactsModule: AreaModule = { context: 'artifacts', handledActions: ['artifact-next', 'artifact-previous', 'artifact-open', 'artifact-keep', 'artifact-archive', 'artifact-archive-toggle'], Pane: ArtifactsArea, Page: ArtifactPage, Drawer: ArtifactDrawer };

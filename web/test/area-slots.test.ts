@@ -20,25 +20,37 @@ test('area modules keep their slots and live hub state across a restart', async 
   const artifact = (created.value as { artifact: { id: string } }).artifact;
   await t.test('Sessions, Accounts and Artifacts own pane, page and drawer slots', async t => {
     await fixture.pageCase(t, async page => {
-      for (const [area, id] of [['Sessions', 'slot-session'], ['Accounts', 'codex/slot-account'], ['Artifacts', artifact.id]] as const) {
-        await page.getByRole('button', { name: area, exact: true }).click();
-        const pane = page.locator('[data-pane="primary"]');
-        const module = pane.locator(`[data-area-module="${area}"][data-area-surface="pane"]`);
-        await module.waitFor();
-        assert.equal(await module.getAttribute('data-key-context'), area.toLowerCase());
-        const row = module.locator(`[data-object-id="${id}"]`);
-        await row.click();
-        const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
-        await drawer.locator(`[data-area-module="${area}"][data-area-surface="drawer"]`).waitFor();
-        await row.press('Meta+Enter');
-        const other = page.locator('[data-pane="secondary"]');
-        const detail = other.locator(`[data-area-module="${area}"][data-area-surface="page"]`);
-        await detail.waitFor();
-        assert.ok((await detail.textContent())?.includes(id));
-        assert.equal(await drawer.count(), 0);
-        await other.getByRole('button', { name: 'Close', exact: true }).click();
-        await other.waitFor({ state: 'detached' });
-      }
+      // Identity belongs to the viewer, independently of deferred capability bytes.
+      const reads = Promise.withResolvers<void>();
+      await page.route('**/a/**', async route => { await reads.promise; await route.continue(); });
+      try {
+        for (const [area, id] of [['Sessions', 'slot-session'], ['Accounts', 'codex/slot-account'], ['Artifacts', artifact.id]] as const) {
+          await page.getByRole('button', { name: area, exact: true }).click();
+          const pane = page.locator('[data-pane="primary"]');
+          const module = pane.locator(`[data-area-module="${area}"][data-area-surface="pane"]`);
+          await module.waitFor();
+          assert.equal(await module.getAttribute('data-key-context'), area.toLowerCase());
+          const row = module.locator(`[data-object-id="${id}"]`);
+          await row.click();
+          const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
+          await drawer.locator(`[data-area-module="${area}"][data-area-surface="drawer"]`).waitFor();
+          await row.press('Meta+Enter');
+          const other = page.locator('[data-pane="secondary"]');
+          const detail = other.locator(`[data-area-module="${area}"][data-area-surface="page"]`);
+          await detail.waitFor();
+          if (area === 'Artifacts') {
+            const viewer = detail.locator(`[data-artifact-viewer][data-artifact-selection="${id}"]`);
+            await viewer.waitFor();
+            assert.equal(await viewer.getAttribute('data-artifact-selection'), id);
+            assert.equal(await viewer.getByText(id, { exact: true }).textContent(), id);
+          }
+          assert.ok((await detail.textContent())?.includes(id));
+          assert.equal(await drawer.count(), 0);
+          await other.getByRole('button', { name: 'Close', exact: true }).click();
+          await other.waitFor({ state: 'detached' });
+        }
+      } finally { reads.resolve(); }
+      await page.unrouteAll({ behavior: 'wait' });
       await page.getByRole('button', { name: 'Sessions', exact: true }).click();
       for (const name of ['header', 'accounts', 'verification', 'groups']) {
         assert.equal(await page.locator(`[data-session-slot="${name}"]`).count(), 1);

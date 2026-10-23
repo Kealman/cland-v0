@@ -1,5 +1,6 @@
 // The frame ported from Q-405's App.tsx, connected to the production web edge.
 import { useEffect, useRef, useState } from 'react';
+import { artifactSelection } from './artifacts/state.ts';
 import { connectHub, findItem, type ConnectionState, type ObjectRow } from './connection.ts';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
 import { areas, areaKey, actionKeys, displayKey, treeActions, planActions, contextActions, areaContext, type KeyContext, type Area, type Shortcut } from './keymap.ts';
@@ -222,7 +223,7 @@ export function Shell() {
         : { ...previous, area: target, row: row.id, detail: false, dismissed: undefined };
     });
   };
-  const selectedRow = preferences.area === 'Items' ? findItem(connection, preferences.row) : connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
+  const selectedRow = preferences.area === 'Items' ? findItem(connection, preferences.row) : preferences.area === 'Artifacts' ? artifactSelection(connection.artifacts, preferences.row) : connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
   const drawerOpen = !split && preferences.area !== 'Topics' && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
   const release = releases.find(item => item.id === preferences.release) ?? releases[0];
@@ -312,7 +313,7 @@ export function Shell() {
             const selected = pane === 'primary' ? preferences.row : preferences.secondaryRow;
             const detail = pane === 'primary' ? preferences.detail : preferences.secondaryDetail;
             const rows = connection.rows?.[paneArea];
-            const row = paneArea === 'Items' ? findItem(connection, selected) : rows?.find(object => object.id === selected);
+            const row = paneArea === 'Items' ? findItem(connection, selected) : paneArea === 'Artifacts' ? artifactSelection(connection.artifacts, selected) : rows?.find(object => object.id === selected);
             return <section key={pane} className={s.pane} data-pane={pane} aria-label={`${pane} pane`} tabIndex={-1}
               style={{ flex: split ? `${pane === 'primary' ? preferences.ratio : 1 - preferences.ratio} 1 0` : '1' }}
               onPointerDown={() => focusPane(pane)} onFocus={() => focusPane(pane)}>
@@ -326,6 +327,7 @@ export function Shell() {
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {paneArea !== 'Items' && <AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
+                open={() => { setDismissed(undefined); if (split) openOther(); }}
                 navigate={target => setArea(target, pane)}
                 openPage={id => { navigationSerial.current++; setPreferences(previous => pane === 'primary'
                   ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}

@@ -7,3 +7,8 @@
 .meta { color: var(--muted); overflow-wrap: anywhere; }
 .files { padding-left: 32px; color: var(--muted); }
 .more { margin: 12px 20px; padding: 6px 12px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--text); }
+.surface, .viewer { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.frame { flex: 1; min-height: 0; width: 100%; border: 0; background: var(--ground); }
+.text { margin: 0; padding: 16px 20px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px var(--mono); color: var(--text); }
+.download { margin: 16px 20px; color: var(--link); overflow-wrap: anywhere; }
+.identity { flex: none; padding: 8px 20px; font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }

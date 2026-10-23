@@ -259,8 +259,24 @@ Archiving the human’s or an Aide’s artifact changes its layer and preserves 
 files. **More artifacts** loads the next bounded inventory page, preserving newer
 live rows and unique identities. Reload replaces the inventory.
 
-File opening and attaching to the composer are the following slices. Creating,
-moving, promoting, deleting and editing remain in Neovim and the CLI in 0.2.0.
+Enter opens a page in the drawer, and ⌘Enter opens it in the other pane. The
+shared `SandboxedArtifactFrame` fills the available height below the header;
+its `sandbox` attribute is exactly `allow-scripts`, never `allow-same-origin`.
+The viewer mints `artifact.url` through the authenticated web connection, checks
+its capability URL over HTTP, and loads the frame from that URL. The hub adds
+its own sandbox response policy. Scripts cannot read the workbench document or
+cookies. The selected artifact id remains visible while capability reads load.
+Folder children use the same capability with encoded relative paths.
+
+Text files (including Markdown) open as literal text with a named download link;
+binary files offer a named download. The response type selects the view; `.mmd`
+and `.markdown` are text even when served as octet-stream. Missing files show
+**Artifact file not found**. Offline previews remain; reconnect refreshes through
+a new capability, and superseded reads cannot replace a later selection.
+Diagram HTML and SVG use the sandboxed viewer; raw Mermaid `.mmd` stays source text with a download link, without rendering.
+
+Attaching to the composer is the following slice. Creating, moving, promoting,
+deleting and editing remain in Neovim and the CLI in 0.2.0.
 
 ## Items tree
 
@@ -649,6 +665,7 @@ node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 3
 node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed deltas and focus
 node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
 node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
+node --test web/test/artifacts.test.ts # tree, capability pages, sandbox isolation, text and downloads
 node --test web/test/accounts.test.ts # fake registry, all windows, poll on entry and Sessions strip
 node --test hub/test/web-accounts.test.ts # T1 worst window, severity, missing data and clock formats
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
