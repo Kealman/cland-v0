@@ -30,9 +30,11 @@
       "A-9478",
       "A-9485",
       "A-9755",
-      "A-9764"
+      "A-9764",
+      "A-9785",
+      "A-9791"
     ],
-    "commit": "d32c6a8ff74d2052596f68c77d38dccaad879163"
+    "commit": "e2b22f2f92e4fc234c53b8b6568b261ac3cc7af9"
   },
   "budget": {
     "testSeconds": 5,
@@ -2405,6 +2407,10 @@
     "web/test/verification.test.ts": {
       "seconds": 2.772548,
       "tests": 1
+    },
+    "web/test/asks.test.ts": {
+      "seconds": 9.631544,
+      "tests": 9
     }
   },
   "tests": {
@@ -6213,7 +6219,16 @@
     "web/test/thread-runs.test.ts::expanding and collapsing reschedule visible read marks for the displayed run": 0.876156,
     "web/test/thread-runs.test.ts::hub fold lines open and close in place by click Enter and za": 2.174157,
     "web/test/thread-runs.test.ts::protected messages stay unfolded and live growth replaces the hub fold line": 1.040385,
-    "web/test/verification.test.ts::Sessions verification queue shows hand runs, ages receipts and remembers its fold": 2.772548
+    "web/test/verification.test.ts::Sessions verification queue shows hand runs, ages receipts and remembers its fold": 2.772548,
+    "web/test/asks.test.ts::a failed free answer keeps its draft, stays pending until receipt and can be retried": 0.891675,
+    "web/test/asks.test.ts::a refused answer recovers its durable outcome beyond the seven-day archive without replacing newer Inbox rows": 1.616609,
+    "web/test/asks.test.ts::a refused competing answer recovers the winner and answering from Inbox marks the topic read through the ask": 1.017274,
+    "web/test/asks.test.ts::an answer in one browser context folds a second context thread and Inbox to the hub outcome within one second": 1.127783,
+    "web/test/asks.test.ts::an ask shares its question and options in thread and Inbox and physical 2 delivers option 2": 1.45059,
+    "web/test/asks.test.ts::Escape leaves an ask open and d requires a reason, allows Answer instead and delivers a decline": 0.901935,
+    "web/test/asks.test.ts::In Inbox from a secondary thread opens and focuses that pane list while the primary thread keeps its ask": 0.801306,
+    "web/test/asks.test.ts::offline asks disable writes and a fresh snapshot recovers an answer without replaying a draft": 0.892511,
+    "web/test/asks.test.ts::the thread ask links to its Inbox row and thread-row focus answers with physical keys": 0.931861
   },
   "allow": {
     "web/test/accounts.test.ts::Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry": {
