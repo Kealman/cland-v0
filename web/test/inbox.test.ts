@@ -77,17 +77,21 @@ test('selected request and message unfold, physical d declines to the sender or 
     const delivered = fixture.sender.waitForEvent(event => event.params.content.includes(`declined request ${request}`));
     await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'я', bubbles: true, cancelable: true })));
     assert.match((await delivered).params.content, /human declined/);
-    await row.waitFor({ state: 'detached' });
+    await fixture.clock.advance(250);
+    await detail.locator('[data-inbox-outcome]').waitFor({ timeout: 3000 });
+    assert.match(await detail.locator('[data-inbox-outcome]').innerText(), /declined/);
     assert.equal(await inbox.locator(`[data-object-id="${older}"]`).count(), 1);
     const read = inbox.locator(`[data-object-id="${message}"]`);
     await read.click();
     assert.match(await read.locator('..').innerText(), /Full message body/);
     await read.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'я', bubbles: true, cancelable: true })));
-    await read.waitFor({ state: 'detached' });
+    await fixture.clock.advance(250);
+    await read.locator('..').locator('[data-inbox-outcome]').waitFor({ timeout: 3000 });
+    assert.match(await read.locator('..').locator('[data-inbox-outcome]').innerText(), /read/);
     const after = (await fixture.ui.request({ type: 'inbox.list' })).value as Inbox;
     assert.deepEqual(after.messages.map(row => row.id), [older]);
     assert.equal(after.requests.length, 0);
-    assert.equal(await page.getByRole('complementary', { name: 'Drawer', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('complementary', { name: 'Drawer', exact: true }).count(), 1);
   });
 });
 
@@ -115,6 +119,10 @@ test('Enter opens an Inbox message at its anchored thread row and a waiting plan
     const inbox = page.getByRole('list', { name: 'Inbox objects', exact: true });
     const row = inbox.locator(`[data-object-id="${current}"]`);
     await row.click();
+    const followed = page.locator(`[data-drawer-area="Inbox"] [role="log"] [data-message-id="${current}"]`);
+    await followed.waitFor();
+    assert.equal(await followed.evaluate(node => { const box = node.getBoundingClientRect(), log = node.closest('[role="log"]')!.getBoundingClientRect(); return box.top >= log.top && box.bottom <= log.bottom; }), true);
+    assert.equal(await row.evaluate(node => node === document.activeElement), true);
     await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', key: 'я', bubbles: true, cancelable: true })));
     const target = page.locator(`[role="log"] [data-message-id="${current}"]`);
     await target.waitFor();
@@ -128,6 +136,171 @@ test('Enter opens an Inbox message at its anchored thread row and a waiting plan
     const view = page.getByRole('region', { name: 'Epic plan', exact: true });
     await view.getByRole('heading', { name: 'S1 · Build', exact: true }).waitFor();
     assert.match(await view.innerText(), /Inbox epic.*Build/s);
+  });
+});
+
+test('Inbox drawer follows the selected message and physical r replies to its fake sender', async t => {
+  const fixture = await inboxFixture(t);
+  const id = await fixture.send('Reply to this report');
+  const made = await fixture.ui.request({ type: 'topic.create', title: 'Other selected topic' });
+  assert.equal(made.ok, true);
+  const otherTopic = (made.value as { topic: { id: string } }).topic.id;
+  const sent = await fixture.sender.call<{ ok: boolean; message: { id: string } }>('send', { topic: otherTopic, kind: 'decision', text: 'Other selected message' });
+  assert.equal(sent.ok, true);
+  await fixture.clock.advance(250);
+  const other = ((await fixture.ui.request({ type: 'inbox.list' })).value as Inbox).messages.find(row => row.topic.id === otherTopic)!.id;
+  await fixture.pageCase(t, async page => {
+    const row = page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`);
+    await row.click();
+    const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
+    await drawer.waitFor({ timeout: 3000 });
+    const target = drawer.locator(`[role="log"] [data-message-id="${id}"]`);
+    await target.waitFor();
+    assert.equal(await target.evaluate(node => {
+      const box = node.getBoundingClientRect(), log = node.closest('[role="log"]')!.getBoundingClientRect();
+      return box.top >= log.top && box.bottom <= log.bottom;
+    }), true);
+    assert.equal(await row.evaluate(node => node === document.activeElement), true, 'following a row keeps Inbox focus');
+    await page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${other}"]`).click();
+    await drawer.getByRole('log', { name: 'Other selected topic thread', exact: true }).locator(`[data-message-id="${other}"]`).waitFor();
+    assert.equal(await drawer.locator(`[data-message-id="${id}"]`).count(), 0);
+    await row.click();
+    await target.waitFor();
+    const field = drawer.getByRole('textbox', { name: 'Message text', exact: true });
+    const drawerFocused = until(() => field.evaluate(node => node === document.activeElement), { what: 'drawer reply rendered focus', timeoutMs: 3000 });
+    await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', key: 'я', bubbles: true, cancelable: true })));
+    await page.clock.runFor(16); await drawerFocused;
+    assert.equal(await field.getAttribute('rows'), '1');
+    assert.equal(await field.evaluate(node => node === document.activeElement), true);
+    assert.match(await drawer.locator('[data-composer-recipient]').innerText(), /coord/);
+    await field.press('Shift+Digit2');
+    assert.equal(await field.inputValue(), '@', 'the fixed-address reply keeps @ as text');
+    await field.fill('');
+    await drawer.getByRole('button', { name: 'Close', exact: true }).click();
+    assert.equal(await drawer.count(), 0);
+    await row.click();
+    await drawer.getByRole('button', { name: 'Split', exact: true }).click();
+    await page.locator('[data-pane="secondary"] [data-area-module="Inbox"][data-area-surface="page"] [role="log"]').waitFor();
+    assert.equal(await drawer.count(), 0);
+    const splitField = page.locator('[data-pane="secondary"]').getByRole('textbox', { name: 'Message text', exact: true });
+    const splitFocused = until(() => splitField.evaluate(node => node === document.activeElement), { what: 'split reply focused after physical r', timeoutMs: 3000 });
+    await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', key: 'я', bubbles: true, cancelable: true })));
+    await page.clock.runFor(16);
+    await splitFocused;
+    assert.equal(await splitField.evaluate(node => node === document.activeElement), true);
+    await splitField.fill('One line reply receipt');
+    const delivered = fixture.sender.waitForEvent(event => event.params.content === 'One line reply receipt' && event.params.meta?.reply_to === id);
+    await splitField.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', key: 'я', bubbles: true, cancelable: true })));
+    assert.equal((await delivered).params.content, 'One line reply receipt');
+    await pageUntil(page, () => (document.querySelector('[aria-label="Message text"]') as HTMLTextAreaElement)?.value === '', 'reply send receipt');
+    await fixture.clock.advance(250);
+    await row.locator('..').locator('[data-inbox-outcome]').waitFor();
+    assert.match(await row.locator('..').locator('[data-inbox-outcome]').innerText(), /answered/);
+    assert.equal(await page.locator('[data-pane="secondary"]').count(), 1, 'reply sent without closing the split');
+    const log = page.locator('[data-pane="secondary"] [role="log"]');
+    await log.focus();
+    const detailFocused = until(() => splitField.evaluate(node => node === document.activeElement), { what: 'split detail r focuses its own composer', timeoutMs: 3000 });
+    await log.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', key: 'я', bubbles: true, cancelable: true })));
+    await page.clock.runFor(16); await detailFocused;
+    assert.equal(await splitField.evaluate(node => node === document.activeElement), true);
+  }, async page => {
+    await page.clock.install({ time: fixture.clock.now() });
+    await page.clock.pauseAt(fixture.clock.now());
+  });
+});
+
+test('answered Inbox asks fold until leaving, and a non-Inbox pane focus clears the visit and selection', async t => {
+  const fixture = await inboxFixture(t);
+  const ask = async (question: string) => {
+    const result = await fixture.sender.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question, options: ['Keep', 'Change'], free: true });
+    assert.equal(result.ok, true);
+    await fixture.clock.advance(250);
+    return result.ask;
+  };
+  assert.equal((await fixture.ui.request({ type: 'subscribe' })).ok, true);
+  const id = await ask('First visit outcome');
+  await fixture.pageCase(t, async page => {
+    const inbox = page.getByRole('list', { name: 'Inbox objects', exact: true });
+    const row = inbox.locator(`[data-object-id="${id}"]`);
+    await row.click();
+    const departure = fixture.ui.waitFor(frame => frame.type === 'inbox' && !!(frame.inbox as Inbox).departures?.some(row => row.id === id));
+    const delivered = fixture.sender.waitForEvent(event => event.params.meta?.answer_to === id);
+    await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit2', key: 'я', bubbles: true, cancelable: true })));
+    assert.equal((await delivered).params.content, 'Change');
+    await fixture.clock.advance(250); await departure;
+    await inbox.locator(`[data-ask-id="${id}"] [data-ask-outcome]`).waitFor();
+    assert.match(await inbox.locator(`[data-ask-id="${id}"]`).innerText(), /2 Change.*human/s);
+    // Rows and the drawer's composer are part of the same Inbox visit.
+    await inbox.locator('[data-inbox-events]').focus();
+    assert.equal(await inbox.locator(`[data-ask-id="${id}"]`).count(), 1);
+    await page.getByRole('button', { name: 'Topics', exact: true }).click();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    assert.equal(await inbox.locator(`[data-ask-id="${id}"]`).count(), 0);
+    assert.equal(await inbox.locator('[aria-pressed="true"]').count(), 0);
+    const second = await ask('Focus-away visit outcome');
+    await inbox.locator(`[data-object-id="${second}"]`).click();
+    await page.keyboard.press('Meta+Backslash');
+    await page.locator('[data-pane="secondary"]').focus();
+    await page.getByRole('button', { name: 'Topics', exact: true }).click();
+    const primary = page.locator('[data-pane="primary"]');
+    await primary.locator(`[data-object-id="${second}"]`).click();
+    const secondDeparture = fixture.ui.waitFor(frame => frame.type === 'inbox' && !!(frame.inbox as Inbox).departures?.some(row => row.id === second));
+    const receipt = fixture.sender.waitForEvent(event => event.params.meta?.answer_to === second);
+    await primary.locator(`[data-object-id="${second}"]`).evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit1', key: 'я', bubbles: true, cancelable: true })));
+    assert.equal((await receipt).params.content, 'Keep');
+    await fixture.clock.advance(250); await secondDeparture;
+    await primary.locator(`[data-ask-id="${second}"] [data-ask-outcome]`).waitFor();
+    await page.locator('[data-pane="secondary"] [data-object-id="general"]').focus();
+    await primary.locator(`[data-ask-id="${second}"]`).waitFor({ state: 'detached', timeout: 3000 });
+    assert.equal(await primary.locator('[aria-pressed="true"]').count(), 0);
+  });
+});
+
+test('A opens seven days of Inbox departures with outcomes and an archive line below empty sections', async t => {
+  const fixture = await inboxFixture(t);
+  const ask = async (question: string) => {
+    const result = await fixture.sender.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question, options: ['Keep', 'Change'], free: true });
+    assert.equal(result.ok, true);
+    return result.ask;
+  };
+  const old = await ask('Expired archive ask');
+  assert.equal((await fixture.ui.request({ type: 'topic.answer', ask: old, option: 1 })).ok, true);
+  fixture.clock.block(8 * 86_400_000);
+  await fixture.clock.advance(250);
+  const id = await ask('Archived answer receipt');
+  await fixture.clock.advance(250);
+  assert.equal((await fixture.ui.request({ type: 'subscribe' })).ok, true);
+  await fixture.pageCase(t, async page => {
+    const inbox = page.getByRole('list', { name: 'Inbox objects', exact: true });
+    const row = inbox.locator(`[data-object-id="${id}"]`);
+    await row.click();
+    const departure = fixture.ui.waitFor(frame => frame.type === 'inbox' && !!(frame.inbox as Inbox).departures?.some(row => row.id === id));
+    const delivered = fixture.sender.waitForEvent(event => event.params.meta?.answer_to === id);
+    await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit2', key: 'я', bubbles: true, cancelable: true })));
+    assert.equal((await delivered).params.content, 'Change');
+    await fixture.clock.advance(250); await departure;
+    const folded = inbox.locator(`[data-ask-id="${id}"]`);
+    await folded.locator('[data-ask-outcome]').waitFor();
+    await folded.focus();
+    await folded.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', shiftKey: true, key: 'я', bubbles: true, cancelable: true })));
+    const archive = inbox.getByRole('list', { name: 'Inbox archive', exact: true });
+    await archive.waitFor({ timeout: 3000 });
+    const archived = archive.locator(`[data-inbox-archive-id="${id}"]`);
+    await archived.waitFor();
+    assert.match(await archived.innerText(), /Archived answer receipt.*answered.*2 Change.*human/s);
+    assert.equal(await archive.locator(`[data-inbox-archive-id="${old}"]`).count(), 0);
+    await page.getByRole('button', { name: 'Topics', exact: true }).click();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    assert.equal(await inbox.locator('[data-inbox-empty]').count(), 4);
+    const line = inbox.locator('[data-inbox-archive-toggle]');
+    assert.equal(await line.isVisible(), true);
+    assert.equal(await line.evaluate(node => !!node.previousElementSibling?.hasAttribute('data-inbox-events')), true);
+    await line.click();
+    await archived.waitFor();
+    assert.match(await archived.innerText(), /answered.*human/s);
+  }, async page => {
+    await page.clock.install({ time: fixture.clock.now() });
+    await page.clock.pauseAt(fixture.clock.now());
   });
 });
 
@@ -200,6 +373,12 @@ test('asks and approvals share newest-first rows and the selected approval answe
     await section.locator(`[data-object-id="${asked.ask}"]`).evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit2', key: 'я', bubbles: true, cancelable: true })));
     assert.equal((await delivered).params.content, 'Change');
     await section.locator('[data-ask-outcome]').waitFor();
+    await fixture.clock.advance(250);
+    await page.getByRole('button', { name: 'Topics', exact: true }).click();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    assert.equal(await section.locator('[data-approval-outcome], [data-ask-outcome]').count(), 0);
+    assert.equal(await section.locator('[aria-pressed="true"]').count(), 0);
+    assert.equal(await section.locator(`[data-object-id="${tui.id}"]`).count(), 1);
   });
 });
 
@@ -281,6 +460,35 @@ async function approvalFixture(t: Parameters<typeof webFixture>[0]) {
   const inbox = (await fixture.ui.request({ type: 'inbox.list' })).value as Inbox;
   return { ...fixture, approval: inbox.approvals.find(row => row.session === 'race-worker')! };
 }
+
+test('split approval detail follows revalidation and peer closure after leaving the Inbox visit', async t => {
+  const fixture = await approvalFixture(t);
+  await fixture.pageCase(t, async page => {
+    const row = page.locator(`[data-object-id="${fixture.approval.id}"]`);
+    await row.click();
+    await page.getByRole('complementary', { name: 'Drawer', exact: true }).getByRole('button', { name: 'Split', exact: true }).click();
+    const detail = page.locator('[data-pane="secondary"] [data-area-module="Inbox"][data-area-surface="page"]');
+    await detail.getByRole('button', { name: '1 · Approve once', exact: true }).waitFor();
+    await page.locator('[data-pane="primary"]').focus();
+    await page.getByRole('button', { name: 'Topics', exact: true }).click();
+    const revalidated = detail.getByText('Answer in Neovim', { exact: true }).waitFor();
+    fixture.fakes.codex!.raiseApproval('race-worker', { id: 'race-native', kind: 'command', subject: { command: 'echo revalidated split' }, choices: [], answerIn: 'tui' });
+    await revalidated;
+    assert.match(await detail.innerText(), /echo revalidated split/);
+    assert.equal(await detail.locator('[data-approval-choice], [data-approval-deny]').count(), 0);
+    const closed = detail.locator('[data-approval-outcome]').waitFor({ timeout: 3000 });
+    const outcome = { choice: 'deny' as const, by: 'human', via: 'harness' as const, at: fixture.clock.now().toISOString() };
+    fixture.fakes.codex!.closeApproval('race-worker', 'race-native', outcome);
+    await fixture.clock.advance(250);
+    await closed;
+    assert.match(await detail.innerText(), /Denied.*human.*harness/s);
+    assert.equal(await detail.locator('[data-approval-choice], [data-approval-deny]').count(), 0);
+    const fresh = (await fixture.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+    assert.equal(fresh.approvals.some(row => row.id === fixture.approval.id), false);
+    assert.deepEqual(fresh.archive?.find(row => row.id === fixture.approval.id)?.outcome, outcome);
+    assert.equal(await page.locator('[data-pane="primary"] [data-area-module="Topics"]').count(), 1);
+  });
+});
 
 test('a refused approval race recovers only its exact archived winner and preserves a newer Inbox row', async t => {
   const fixture = await approvalFixture(t);
@@ -407,7 +615,9 @@ test('held successful read and decline replies preserve newer pushed Inbox rows 
       await until(() => applied, { what: 'held successful reply delivered to browser', timeoutMs: 3000 });
       // The fulfilled action's finally removes its pending disabled state.
       await page.locator('[data-inbox-pending]').waitFor({ state: 'detached' });
-      assert.equal(await page.locator(`[data-object-id="${target}"]`).count(), 0);
+      await fixture.clock.advance(250);
+      await page.locator(`[data-object-id="${target}"]`).locator('..').locator('[data-inbox-outcome]').waitFor();
+      assert.equal(await page.locator(`[data-object-id="${target}"]`).isVisible(), false);
       assert.equal(await page.locator(`[data-object-id="${newer}"]`).count(), 1);
       assert.equal(await page.getByRole('button', { name: 'Inbox', exact: true }).textContent(), count);
     }

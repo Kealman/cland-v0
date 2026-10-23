@@ -53,3 +53,5 @@ T-1094: Replace the machine-dependent CPU gate with checkpoint, recompute and na
 T-1125: Document the sealed Web queued-withdrawal seam, controlled injection, shared pending state and receipt-gated draft restoration/refusal.
 T-1125 review M1/M2: Document authoritative optional withdrawal eligibility, multi-recipient exclusion, legacy fallback and pending-send restoration order.
 T-1125 review M2 visibility: Document fresh eligibility projections and held refreshes retaining newer delivery facts.
+2026-10-23 — T-1126: Document the sealed Inbox drawer/reply, cross-pane visit and departure archive seam, explicit selection and separate history/recovery receipts.
+2026-10-23 — T-1126 review: Require split-open reply receipts and current native authorization/recovery for retained approval detail identities.

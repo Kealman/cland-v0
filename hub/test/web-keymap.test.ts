@@ -27,10 +27,13 @@ test('focused contexts resolve before shell keys without changing Items or Plan 
   assert.equal(shortcut(key('KeyD'), false, 'sessions'), 'session-archive');
   assert.equal(shortcut(key('KeyK'), false, 'items'), 'tree-previous');
   assert.equal(shortcut(key('KeyK'), false, 'artifacts'), 'artifact-keep');
+  assert.equal(shortcut(key('Enter'), false, 'reply'), 'composer-send');
+  assert.equal(shortcut(key('Digit2', { shiftKey: true }), false, 'reply'), undefined);
+  assert.equal(shortcut(key('Backquote', { shiftKey: true }), false, 'reply'), undefined);
   assert.equal(shortcut(key('Enter'), false, 'composer'), 'composer-send');
   assert.equal(shortcut(key('Enter', { shiftKey: true }), false, 'composer'), 'composer-newline');
   assert.equal(shortcut(key('Enter', { metaKey: true }), false, 'composer'), 'composer-send-always');
-  for (const context of ['shell', 'items', 'sessions', 'artifacts', 'composer'] as const) {
+  for (const context of ['shell', 'items', 'sessions', 'artifacts', 'composer', 'reply'] as const) {
     assert.equal(shortcut(key('KeyK', { metaKey: true }), false, context), 'palette');
     for (const modifier of ['ctrlKey', 'altKey', 'shiftKey']) {
       assert.equal(shortcut(key('KeyD', { [modifier]: true, metaKey: true }), false, context), undefined);

@@ -1938,7 +1938,7 @@ hub, real harness or human browser participates.
 `webFixture`, a fake Coordinator sender, fake native approvals and authenticated
 Headless Shell. Literal DOM assertions cover section order, counts, the five-row
 cap and oldest wait, saved folds and controlled browser age updates. Request
-removal waits for the fake sender's decline delivery and the removed DOM row;
+decline waits for the fake sender's delivery and the folded outcome in its original DOM row;
 message removal retains a peer Inbox read proving the other message survives.
 Enter navigation loads an exact message older than the latest history page and
 focuses it in the thread; the plan case waits for the rendered stage heading.
@@ -1953,7 +1953,21 @@ a later same-id authorization delta. Approval controls use the native record's
 choices and Neovim's keys; TUI-only rows have no answer controls. Existing
 `asks.test.ts` retains multi-client winner, receipt, failure and reconnect checks.
 `palette.test.ts` retains shell number keys outside answer rows and now expects
-the four handled Inbox navigation/action rows in help.
+the handled Inbox navigation, reply, archive and removal actions in help.
+The drawer test keeps row focus while following the exact message, exercises
+Split/Close and sends a one-line physical `r` reply to the fake sender with its
+original `reply_to` while the split remains open; bounded focus observers are armed before each `r`. A split native approval remains visible after another area takes focus, then follows same-id revalidation and the fake native peer's durable closed outcome, compared with fresh archive state. The existing older-than-history-page case also observes the
+drawer's bounded scroll before Enter navigation. The visit test waits for the
+exact ask departure and checks both area re-entry and focus into a non-Inbox
+pane; completed rows and selection clear even while Inbox remains mounted.
+The archive test blocks fake time across eight days (without replaying every
+periodic tick), retains a recent answered outcome and excludes the older one,
+then checks its footer below four empty sections. Browser clocks are controlled
+where needed so incidental one-second thread read receipts cannot settle action
+targets before the action under test. New passing Web identities need a dated,
+reasoned E-417 allowance only if any platform's sample reaches four seconds;
+batch serial setup before sizing it at roughly 1.5 times the worst sample.
+
 
 
 `web/test/asks.test.ts` owns the shared ask-card seam through the sealed

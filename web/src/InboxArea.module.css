@@ -23,3 +23,18 @@
 
 .row[hidden] { display: none; }
 .sender[data-role="lead"] { color: var(--role-lead); }
+
+.area { display: flex; min-height: 0; height: calc(100dvh - 98px); }
+.rows { flex: 1; min-width: 0; overflow: auto; }
+.drawer { display: flex; flex-direction: column; flex: 0 0 360px; min-width: 0; border-left: 1px solid var(--border); background: var(--drawer); }
+.drawer > .actions { flex: none; justify-content: flex-end; padding: 8px 12px; margin: 0; border-bottom: 1px solid var(--border); }
+.thread { display: flex; flex-direction: column; flex: 1; min-height: 0; height: calc(100dvh - 98px); }
+.drawer .thread { height: auto; }
+
+.archiveToggle { display: block; width: 100%; border: 0; background: none; padding: 12px; text-align: left; color: var(--muted); }
+.archiveToggle:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.archive { padding: 0 12px 12px; color: var(--muted); overflow-wrap: anywhere; }
+.archive > div { border-top: 1px solid var(--border); padding: 8px 0; }
+
+.outcome { padding: 10px 12px; color: var(--muted); overflow-wrap: anywhere; }
+.outcome:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }

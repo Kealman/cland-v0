@@ -11,6 +11,8 @@ import { artifactsModule } from './artifacts/ArtifactsArea.tsx';
 export type SlottedArea = Exclude<Area, 'Items'>;
 export type AreaControls = { run: (action: Shortcut) => boolean };
 export type AreaContentProps = {
+  split?: boolean;
+  splitSelection?: () => void;
   area: SlottedArea;
   connection: ConnectionState;
   rows: readonly ObjectRow[] | undefined;

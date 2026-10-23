@@ -135,7 +135,7 @@ typing in an answer field keeps native text input.
 
 Answers use the human `topic.answer` frame, whose durable hub record supplies the
 chosen text/reason, answerer and time. Both views fold to that outcome, including
-answers from another client. An Inbox fold stays until its mounted Inbox is left.
+answers from another client. An Inbox fold stays for the active Inbox visit, including its drawer and other Inbox panes; focusing another area ends the visit even if an Inbox pane remains mounted.
 Sending
 disables the card until receipt, a refusal preserves its draft, and disconnected
 cards disable writes without replaying them. A refused race or a fresh snapshot
@@ -255,7 +255,7 @@ Focusing or selecting a row unfolds it in place. Asks use the shared card;
 requests and messages show their full text and buttons; plans show stage, lane
 and item counts. Enter opens the topic at that exact message, loading earlier
 history pages when needed, or opens the epic's Plan view. Request decline tells
-the sender; marking a message read removes only that message. A delayed action reply cannot replace
+the sender; marking a message read settles only that message. A delayed action reply cannot replace
 newer pushed Inbox rows or counts. The Events footer
 counts every journal row since the human's shared last look and its warnings,
 reading older pages until the mark is reached. It stays when all sections are
@@ -278,12 +278,34 @@ writes are disabled; no mutation is replayed after reconnect.
 | `1`–`9` on an ask row | Answer with that option |
 | `1`, `2` on an approval row | Approve once, always for this command |
 | `i`, `r` on an ask row | Focus the free answer |
+| `r` on a request or message | Focus the drawer reply to its sender |
+| `A` | Show or hide seven days of departures |
 | `←`, `→` | Fold or unfold section |
 | `?` | Inbox keys for the focused context |
 
 Number keys keep shell area navigation outside ask and approval rows. Inputs keep
-native typing. Reply composition, archive and the selected topic drawer follow
-in T-1124–T-1126.
+native typing.
+
+The selected row's drawer reuses the topic thread, loads earlier pages to its
+message and scrolls that message into view without moving focus off the row.
+Its one-line composer replies to the original sender through `topic.send.replyTo`;
+`r` on a request or message focuses it. The fixed-address reply keeps `@` and `~` as text. It shares the topic draft, pending receipt,
+offline guard and failure recovery with the full composer. Split opens the same
+row's thread in the other pane; `r` reaches that split reply from the list or thread. Retained approval detail identities resolve their subject, choices and outcome against current native records and recovery state. Close dismisses the drawer until another row is
+selected or reply is requested. Approvals without a topic show their native record.
+
+Answered asks, closed approvals, approved plans and settled requests/messages
+stay in their sections as folded outcomes for the active visit. Counts still come
+from pending hub rows. Moving between Inbox rows, its drawer and Inbox panes keeps
+the visit. Navigating to another area or focusing a non-Inbox pane clears completed
+rows and Inbox selection, matching Neovim's leave rule. Returning starts from live
+rows without selecting an old row.
+
+The Archive line follows Events even when every section is empty. `A` toggles the
+last seven days of departures from `inbox.list {archive:true}` with their kind,
+subject, text, leave time, reason and recorded outcome. Live departures join an
+open archive by identity; delayed archive replies never replace current rows or
+counts. Reads refresh after reconnect; sends never replay.
 
 ## Area modules and live state
 
@@ -652,7 +674,7 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 | `Esc` | Close help or drawer | Close without acting |
 
 `src/keymap.ts` partitions the physical-code table into shell, Items (including
-Plan), Topics, thread, ask, inbox, inbox-answer, events, composer, Sessions, Artifacts, Accounts and
+Plan), Topics, thread, ask, inbox, inbox-answer, events, composer, reply, Sessions, Artifacts, Accounts and
 modal contexts. The focused context resolves first, then the shell. Modifiers
 must match exactly. The shell asks `focusedKeyContext` for a nested
 `data-key-context` declaration, falling back to the active pane's area. A field
@@ -883,7 +905,7 @@ node --test web/test/topics.test.ts    # groups, numeric pages, live races, resu
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
 node --test web/test/withdraw.test.ts  # busy-session queue, receipt-gated draft restoration, injection and real refusal
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
-node --test web/test/inbox.test.ts      # Now sections, ages/folds, row actions, approval keys, navigation and events footer
+node --test web/test/inbox.test.ts      # Now sections, drawer replies, visit outcomes, seven-day archive, keys and Events footer
 node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect
 node --test web/test/thread-artifacts.test.ts # HTML capability frames, sandbox isolation and opening actions
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords

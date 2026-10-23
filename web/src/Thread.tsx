@@ -5,11 +5,11 @@ import { MessageBlock } from './MessageBlock.tsx';
 import s from './Thread.module.css';
 import { useTopicRead } from './use-topic-read.ts';
 import type { Shortcut } from './keymap.ts';
-import { Composer } from './Composer.tsx';
+import { Composer, type InboxReply } from './Composer.tsx';
 
 export type ThreadControls = { focus: () => void; run: (action: Shortcut) => boolean };
 
-export function Thread({ connection, topic, controls, targetMessage }: { connection: ConnectionState; topic: string; targetMessage?: string | undefined; controls?: Ref<ThreadControls> }) {
+export function Thread({ connection, topic, controls, targetMessage, reply, focusTarget = true }: { connection: ConnectionState; topic: string; reply?: InboxReply | undefined; focusTarget?: boolean; targetMessage?: string | undefined; controls?: Ref<ThreadControls> | undefined }) {
   const node = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ id: string; top: number } | null>(null);
   const atEnd = useRef(true);
@@ -68,8 +68,11 @@ export function Thread({ connection, topic, controls, targetMessage }: { connect
     const target = [...node.current.querySelectorAll<HTMLElement>('[data-message-id]')].find(row => row.dataset.messageId === targetMessage);
     if (!target) return;
     atEnd.current = false; navigated.current = targetMessage;
-    target.focus({ preventScroll: true }); target.scrollIntoView({ block: 'center' });
-  }, [targetMessage, state, expanded, connection.live, connection.threads, topic]);
+    if (focusTarget) target.focus({ preventScroll: true });
+    // Keep the Inbox row under the cursor while its drawer follows it.
+    const log = node.current;
+    log.scrollTop += target.getBoundingClientRect().top - log.getBoundingClientRect().top - (log.clientHeight - target.offsetHeight) / 2;
+  }, [targetMessage, state, expanded, connection.live, connection.threads, topic, focusTarget]);
   const earlier = () => {
     if (!node.current || state?.loading || !state?.more || !connection.live) return;
     // In an open run, anchor its first message: the sticky summary cannot
@@ -105,6 +108,6 @@ export function Thread({ connection, topic, controls, targetMessage }: { connect
         </Fragment>;
       })}
     </div>
-    {topic !== 'agents' && <Composer key={topic} connection={connection} topic={topic} />}
+    {(topic !== 'agents' || reply) && <Composer key={topic} connection={connection} topic={topic} reply={reply} />}
   </section>;
 }

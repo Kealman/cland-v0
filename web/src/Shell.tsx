@@ -18,6 +18,7 @@ import type { MessageTarget } from './QuickMessage.tsx';
 import { type TreeControls } from './ItemsTree.tsx';
 import { ItemsView, ItemsViewSwitcher, showItemsView, useItemsView } from './ItemsView.tsx';
 
+import { InboxVisitProvider } from './inbox-visit.tsx';
 import { AreaSlot, areaModules, type AreaControls } from './AreaSlot.tsx';
 import { useDesktop } from './desktop.ts';
 import type { Artifact } from '../../shared/wire/index.ts';
@@ -76,6 +77,13 @@ export function Shell() {
     setPreferences(previous => pane === 'secondary' && previous.secondary
       ? { ...previous, secondary: selected, secondaryRow: undefined, secondaryDetail: false } : { ...previous, area: selected, row: undefined, detail: false });
   };
+  const inboxWasActive = useRef(area === 'Inbox');
+  useEffect(() => {
+    if (inboxWasActive.current && area !== 'Inbox') setPreferences(previous => ({ ...previous,
+      ...(previous.area === 'Inbox' && !previous.detail ? { row: undefined } : {}),
+      ...(previous.secondary === 'Inbox' && !previous.secondaryDetail ? { secondaryRow: undefined } : {}) }));
+    inboxWasActive.current = area === 'Inbox';
+  }, [area]);
   const dismissed = preferences.dismissed;
   const setDismissed = (key: string | undefined) => setPreferences(previous => ({ ...previous, dismissed: key }));
   const selectionKey = `${preferences.area}/${preferences.row ?? ''}`;
@@ -107,7 +115,7 @@ export function Shell() {
   const view = useItemsView();
   const desktop = useDesktop();
   const focusedContext = overlay ? overlayContext : areaContext(area);
-  const handledActions = focusedContext === 'composer' ? contextActions.composer ?? [] : area === 'Items'
+  const handledActions = focusedContext === 'composer' || focusedContext === 'reply' ? contextActions[focusedContext] ?? [] : area === 'Items'
     ? (view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
     : (contextActions[focusedContext] ?? []).filter(row => focusedContext === 'ask' && row.action.startsWith('ask-') || areaModules[area].handledActions.includes(row.action));
   const paletteControls = useRef<PaletteControls>(null);
@@ -212,7 +220,7 @@ export function Shell() {
     const current = keyboard.current;
     return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
-    if (context === 'composer' || context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'composer' || context === 'reply' || context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
@@ -264,7 +272,7 @@ export function Shell() {
         : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
-  return <ComposerPicker.Provider value={selection => { setOverlayContext('composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
+  return <InboxVisitProvider connection={connection} active={area === 'Inbox'}><ComposerPicker.Provider value={selection => { setOverlayContext('composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') === 'secondary' ? 'secondary' : 'primary';
     navigationSerial.current++;
     setMessage(undefined);
@@ -355,7 +363,7 @@ export function Shell() {
                 </div>}</>}>
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
-              {paneArea !== 'Items' && <ArtifactViewerFallback.Provider value={fallback}><AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
+              {paneArea !== 'Items' && <ArtifactViewerFallback.Provider value={fallback}><AreaSlot split={split} splitSelection={openOther} connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
                 open={() => { setDismissed(undefined); if (split) openOther(); }}
                 navigate={target => setArea(target, pane)}
                 targetMessage={threadTargets[pane]?.topic === selected ? threadTargets[pane]?.message : undefined}
@@ -408,5 +416,5 @@ export function Shell() {
         </aside>}
       </main>
     </div>
-  </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider></ComposerPicker.Provider>;
+  </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider></ComposerPicker.Provider></InboxVisitProvider>;
 }

@@ -43,6 +43,7 @@ test('an ask shares its question and options in thread and Inbox and physical 2 
     assert.equal(await card.getByRole('heading', { name: 'Which change?' }).count(), 1);
     assert.deepEqual(await card.locator('[data-ask-option]').allTextContents(), ['1 Keep', '2 Change', '3 Wait']);
     await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    await page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
     const row = page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"]`);
     await row.waitFor();
     assert.equal(await row.getByRole('heading', { name: 'Which change?' }).count(), 1);
@@ -119,6 +120,7 @@ test('an answer in one browser context folds a second context thread and Inbox t
       await second.locator('[data-pane="secondary"] [role="log"]').waitFor();
       await second.locator('[data-pane="primary"]').getByRole('heading', { name: 'Topics', exact: true }).click();
       await second.getByRole('button', { name: 'Inbox', exact: true }).click();
+      await second.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
       const cards = second.locator(`[data-ask-id="${id}"]`);
       assert.equal(await cards.count(), 2, 'thread and Inbox are mounted in separate panes');
       assert.notDeepEqual(await first.context().cookies(), await context.cookies(), 'independent sign-ins');
@@ -160,6 +162,7 @@ test('a refused competing answer recovers the winner and answering from Inbox ma
   let refused = false;
   await fixture.pageCase(t, async loser => {
     await loser.getByRole('button', { name: 'Inbox', exact: true }).click();
+    await loser.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
     const card = loser.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"]`);
     await card.focus();
     await physical(loser, 'Digit1');
@@ -173,6 +176,7 @@ test('a refused competing answer recovers the winner and answering from Inbox ma
       const winner = await context.newPage();
       await winner.goto(url);
       await winner.getByRole('button', { name: 'Inbox', exact: true }).click();
+      await winner.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
       const winningCard = winner.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"]`);
       await winningCard.locator('[data-ask-option="2"]').click();
       await winningCard.locator('[data-ask-outcome]').waitFor();
@@ -288,6 +292,7 @@ test('offline asks disable writes and a fresh snapshot recovers an answer withou
   const sent: string[] = [];
   await fixture.pageCase(t, async page => {
     await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    await page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
     const card = page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"]`);
     await card.getByRole('textbox', { name: 'Free answer', exact: true }).fill('A draft, never sent');
     await fixture.restartHub();
@@ -325,9 +330,11 @@ test('a refused answer recovers its durable outcome beyond the seven-day archive
   const id = await fixture.ask('A durable decision');
   let release: (() => void) | undefined;
   let refused = false;
+  let releaseDrawer: (() => void) | undefined;
   const recoveries: Array<{ type: string; limit?: number }> = [];
   await fixture.pageCase(t, async loser => {
     await loser.getByRole('button', { name: 'Inbox', exact: true }).click();
+    await loser.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
     const inbox = loser.getByRole('list', { name: 'Inbox objects', exact: true });
     const card = inbox.locator(`[data-ask-id="${id}"]`);
     await card.locator('[data-ask-option="1"]').click();
@@ -339,8 +346,9 @@ test('a refused answer recovers its durable outcome beyond the seven-day archive
       const winner = await context.newPage();
       await winner.goto(url);
       await winner.getByRole('button', { name: 'Inbox', exact: true }).click();
-      await winner.locator(`[data-ask-id="${id}"] [data-ask-option="2"]`).click();
-      await winner.locator(`[data-ask-id="${id}"] [data-ask-outcome]`).waitFor();
+      await winner.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
+      await winner.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"] [data-ask-option="2"]`).click();
+      await winner.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${id}"] [data-ask-outcome]`).waitFor();
       // Put the durable ask beyond a normal latest-page lookup.
       for (let n = 0; n < 110; n++) assert.equal((await fixture.ui.request({ type: 'topic.send', topic: 'general', text: `Later human message ${n}` })).ok, true);
       const next = await fixture.ask('A newer open question');
@@ -359,8 +367,12 @@ test('a refused answer recovers its durable outcome beyond the seven-day archive
       assert.equal(await card.locator('time').getAttribute('datetime'), '2026-10-23T12:00:00.250Z');
       assert.equal(await nextCard.getAttribute('data-ask-state'), 'open');
       assert.equal(await loser.getByRole('button', { name: 'Inbox', exact: true }).textContent(), count);
-      assert.equal(recoveries.filter(frame => frame.type === 'topic.history').length, 2, 'two bounded history reads locate the exact ask without loading the thread');
-      assert.ok(recoveries.filter(frame => frame.type === 'topic.history').every(frame => frame.limit === 1));
+      const exactReads = recoveries.filter(frame => frame.type === 'topic.history' && frame.limit === 1);
+      assert.equal(exactReads.length, 2, 'two bounded history reads locate the exact ask while drawer history is held');
+      assert.equal(recoveries.filter(frame => frame.type === 'topic.history' && frame.limit !== 1).length, 1, 'only the initial drawer page is separate from exact recovery');
+      assert.ok(releaseDrawer, 'the initial drawer read never completed before recovery');
+      assert.equal(await loser.locator('[data-drawer-area="Inbox"] [role="log"]').getAttribute('data-loaded'), 'false');
+      releaseDrawer();
     } finally { await context.close(); }
   }, async page => {
     await page.routeWebSocket('**/ws', route => {
@@ -368,7 +380,8 @@ test('a refused answer recovers its durable outcome beyond the seven-day archive
       let answerId = '';
       route.onMessage(message => {
         const frame = JSON.parse(String(message));
-        if (frame.type === 'topic.answer') { answerId = frame.id; release = () => server.send(message); }
+        if (frame.type === 'topic.history' && frame.limit === 100) { recoveries.push(frame); releaseDrawer = () => server.send(message); }
+        else if (frame.type === 'topic.answer') { answerId = frame.id; release = () => server.send(message); }
         else { if (frame.type === 'topic.history' || frame.type === 'inbox.list') recoveries.push(frame); server.send(message); }
       });
       server.onMessage(message => {

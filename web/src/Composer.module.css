@@ -13,3 +13,6 @@
 .actions button:last-child { margin-left: auto; background: var(--link); color: var(--link-ink); }
 .composer button:focus-visible, .composer textarea:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .composer button:disabled { opacity: 0.6; }
+
+.composer[data-inbox-reply] textarea { min-height: 40px; }
+.composer [hidden] { display: none; }
