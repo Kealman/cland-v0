@@ -36,9 +36,11 @@
       "A-9849",
       "A-9863",
       "A-9893",
-      "A-9897"
+      "A-9897",
+      "A-10019",
+      "A-10017"
     ],
-    "commit": "f2899a3e3f587d22351626d7e0b03b490e912834"
+    "commit": "46d15efdb94b80e53281dda37bb0e6a76d25c7e3"
   },
   "budget": {
     "testSeconds": 5,
@@ -2431,6 +2433,22 @@
     "web/test/withdraw.test.ts": {
       "seconds": 6.863603,
       "tests": 5
+    },
+    "hub/test/fake-machine-calls.test.ts": {
+      "seconds": 0.006323,
+      "tests": 1
+    },
+    "hub/test/web-notifications.test.ts": {
+      "seconds": 0.002518,
+      "tests": 4
+    },
+    "web/test/events.test.ts": {
+      "seconds": 19.340815,
+      "tests": 11
+    },
+    "web/test/notifications.test.ts": {
+      "seconds": 9.848316,
+      "tests": 8
     }
   },
   "tests": {
@@ -6284,7 +6302,44 @@
     "web/test/withdraw.test.ts::a real withdrawal refusal retains the message with the hub reason in its tooltip": 0.752681,
     "web/test/withdraw.test.ts::one injected recipient removes Withdraw while the broadcast remains queued": 0.800293,
     "web/test/withdraw.test.ts::Withdraw restores a queued message before newer typing only after its receipt": 2.371659,
-    "web/test/withdraw.test.ts::withdrawn text stays ahead of a newer pending send on receipt or reload": 2.249426
+    "web/test/withdraw.test.ts::withdrawn text stays ahead of a newer pending send on receipt or reload": 2.249426,
+    "hub/test/cover-quiet.test.ts::fixture lifecycle worker admits its cover lease before starting its detached hub": 3.109919,
+    "hub/test/cover-quiet.test.ts::remote fixture owner admits its cover lease before starting its fixture": 5.31839,
+    "hub/test/fake-machine-calls.test.ts::fake machine calls persist sorted environment names without credential values": 0.006323,
+    "hub/test/fixture-environment.test.ts::runner child environments retain execution controls without inherited profile paths": 0.000466,
+    "hub/test/web-notifications.test.ts::a now ask names its session, item and question with a stable row target": 0.001719,
+    "hub/test/web-notifications.test.ts::approval, plan, request and message notifications name the available session and work facts": 0.000391,
+    "hub/test/web-notifications.test.ts::finished uses the task pre-transition layer and session, never a container or an already done row": 0.000196,
+    "hub/test/web-notifications.test.ts::notification policy suppresses looking, disabled, ungranted and non-now rows": 0.000212,
+    "web/test/artifacts.test.ts::notes and prompts open rendered Markdown with literal HTML and a raw source toggle": 2.042804,
+    "web/test/artifacts.test.ts::s in a split pane adds one shared composer chip while an open ask answer draft stays unchanged": 1.453151,
+    "web/test/artifacts.test.ts::s refuses without a writable topic and for archived or other-topic artifacts without changing the draft": 2.125948,
+    "web/test/artifacts.test.ts::This topic follows the last opened thread and s adds its artifact to the retained composer draft and sent history": 1.552739,
+    "web/test/events.test.ts::an Inbox alongside filtered Events still counts new events outside that filter": 1.176993,
+    "web/test/events.test.ts::Events dims bookkeeping, shows hub coalescing, folds a local day with za and opens an item with Enter": 1.137441,
+    "web/test/events.test.ts::Events filters the subscription and pages in the hub, preserves filters on reload and clears with physical F": 2.305564,
+    "web/test/events.test.ts::Events groups newest 200 by local day and appends bounded older pages by button and physical A": 2.49757,
+    "web/test/events.test.ts::Events help keeps every key reachable by native scrolling in a small viewport": 1.565286,
+    "web/test/events.test.ts::Events refreshes its filtered feed after a hub restart without replaying the last-look write": 0.978789,
+    "web/test/events.test.ts::held Events pages preserve newer coalescing pushes and obsolete filter replies cannot replace the current filter": 2.375062,
+    "web/test/events.test.ts::live Events retain the 200-row cap, page without gaps and follow the selected coalescing identity": 1.865536,
+    "web/test/events.test.ts::opening Events shares the last look, marks newer rows for the visit and clears the Inbox events line": 0.946674,
+    "web/test/events.test.ts::physical s selects an Events subject in the palette and Enter opens topic, session and artifact subjects": 3.276151,
+    "web/test/events.test.ts::rail digits navigate while its other keys keep the active area and focused Events rows keep kind filters": 1.215749,
+    "web/test/inbox.test.ts::approval card shows the complete command and session facts, then folds to the human once outcome": 1.125761,
+    "web/test/inbox.test.ts::approval cards retain the complete file change and TUI-only records have no answer buttons": 0.982292,
+    "web/test/inbox.test.ts::approval delivery stays pending until its receipt and failure preserves the denial draft for a manual retry": 0.9834,
+    "web/test/inbox.test.ts::Escape cancels a denial without answering and Deny accepts an optional note": 1.191346,
+    "web/test/inbox.test.ts::selecting an approval shows the session recent thread in the drawer": 0.818622,
+    "web/test/inbox.test.ts::selecting another approval from one session refreshes recent messages and fences a held prior read": 0.938344,
+    "web/test/notifications.test.ts::a task moved out of Now by another item delta stays silent when it later finishes": 1.084472,
+    "web/test/notifications.test.ts::denied permission keeps both switches off with a browser-settings tooltip": 1.109127,
+    "web/test/notifications.test.ts::hidden now ask raises one named notification whose click focuses and opens its Inbox row": 1.818291,
+    "web/test/notifications.test.ts::hidden now task reaching done notifies once and its click opens the item card": 1.13595,
+    "web/test/notifications.test.ts::looking, disabled and watch-layer asks stay silent without later replay": 1.241416,
+    "web/test/notifications.test.ts::one browser shares switch changes between its open tabs": 1.221303,
+    "web/test/notifications.test.ts::profile switches persist Finished off across reload and request permission only on first enable": 1.339216,
+    "web/test/notifications.test.ts::revoked browser permission disables saved switches on reload and explains why": 0.898541
   },
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {

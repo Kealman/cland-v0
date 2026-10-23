@@ -3,7 +3,7 @@ id: T-1141
 kind: task
 title: "The session's drawer: its recent thread, pending approval and a composer"
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-904
 branch: t/T-1141-the-session-s-drawer-its-recent-thread
 created: 2026-10-22T15:16:16.460Z
-updated: 2026-10-23T11:39:54.087Z
+updated: 2026-10-23T12:21:50.245Z
 ---
 
 ## Summary
@@ -56,6 +56,7 @@ E-418 (§3.2 the drawer, P23; tracer step 4). Ordered after E-417's thread, comp
   - done: impl-1141 · 2026-10-23T11:18:44.307Z
   - verified: rev-23 [reviewer] · run rev-20261023-1141-source-2 · 2026-10-23T11:26:43.961Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
   - verified: rev-23 [reviewer] · run rev-20261023-1141-final · 2026-10-23T11:38:48.507Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
+  - verified: rev-23 [reviewer] · run rev-20261023-1141-source-3 · 2026-10-23T12:21:16.125Z · commit 58f14cba2c61e40b54519c67f1d0fb895a4b9d3a
 
 ## Comments
 
@@ -186,3 +187,34 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-1141 · 2026-10-23T11:39:54.087Z
 
 Ready at unchanged 8c0c29c4313ffaac83c318685272dfc38fe5ae62: final clear rev-20261023-1141-final/A-10009 verifies C1-C5 with no findings. Mode-free 01d1cc62/A-10008 exits 0: 2720/2720 Linux droplet tests, actual T1/all fallback hub+Neovim T2/Web, no T3/T4/load repetitions; report-only lint/budgets retained; eight new Web identities <2.418 s, no allowance trigger. Droplet lifetime 626 s/$0.0434. Post-run fetch and merge-tree against origin/dev 1f199894 exits 0 with clean unchanged head. Ready report sent to Coordinator with T-1157 automatic-retry cause and original-head 20/20 macOS two-worker evidence, exact Attach selector and T-1180 docs correction; existing session.history before reused, no new hub field. Claim retained; after-stage QA and Coordinator stage freeze/enqueue remain separate. Evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10009-t-1141-final-session-drawer-criteria-and-exact-head-linux-evidence.md.
+
+### impl-1141 · 2026-10-23T12:20:44.329Z
+
+Coordinator-requested docs correction pushed as 58f14cba2c61e40b54519c67f1d0fb895a4b9d3a: web/README.md Thread h/Esc row now says Return to list, matching shared keymap help and covering Sessions. One line only; no runtime/test/config changes or dev merge. Diff check passes, clean tracked tree; no new targeted runtime run. A-10023 records scope and old-head evidence limits. Fresh source review requested from reviewer; mode-free verify will follow source clear at exact new head. Prior ready evidence 01d1cc62/A-10008 and A-10009 remains attributed to 8c0c29c4; task status returned to review.
+
+### rev-23 · 2026-10-23T12:21:16.125Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1141-source-3
+commit: 58f14cba2c61e40b54519c67f1d0fb895a4b9d3a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1141 docs correction source review
+Head 58f14cba2c61e40b54519c67f1d0fb895a4b9d3a / tree51066953bd602f4d630a6ec9da1f9cacb4d8a95d; parent8c0c29c4313ffaac83c318685272dfc38fe5ae62.
+Run rev-20261023-1141-source-3. Clear, findings[]; C5 verified. C1–C4 await new-head configured evidence.
+
+Standards: pass. Coordinator2a84978f-7c78-4fd3-8754-df859873f62f explicitly requested this held-head correction and normal review/verify gate. Exact diff changes one line in web/README.md:215 only; no runtime/test/config or dev merge. A-10009's full source/criterion audit carries forward unchanged where applicable.
+
+Spec: pass. Thread h/Escape row now says “Return to list”, matching contextActions.thread's thread-back label in web/src/keymap.ts:136 and including the Session drawer return path generically. C5 documentation remains accurate. No targeted runtime rerun warranted by this reversible wording change; reported diff check passes.
+
+A-10023 correctly attributes prior2720/2720 Linux T1/all fallback T2/Web evidence to8c0c29c4/01d1cc62/A-10008, not this head. Proceed with mode-free verification at exact58f14cba under Coordinator's normal gate instruction; final C1–C4 runtime verification awaits its receipt. Reviewer read only; no tests/browser/edits. After-stage affected QA and stage freeze separate.
+
+Criteria: C5 verified.
+
+### impl-1141 · 2026-10-23T12:21:50.245Z
+
+Docs-only source clear at exact 58f14cba2c61e40b54519c67f1d0fb895a4b9d3a: rev-20261023-1141-source-3/A-10024, no findings; C5 verified and unchanged source audit carries forward. Mode-free verification admitted as 4ad42602-8e01-455f-964e-2c5c73a05111, queue position 1, no executor override. Waiting for hub result at unchanged clean head, reporting to Reviewer and this lead in topic-904; no new local targeted test run.

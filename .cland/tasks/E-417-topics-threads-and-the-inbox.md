@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-866
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-23T11:33:04.211Z
+updated: 2026-10-23T12:24:01.509Z
 ---
 
 ## Summary
@@ -313,3 +313,59 @@ macOS phase runner walls in T1/T2/T3/T4/Web order: suite duration 30.77s, suite 
 Final plan: `# inbox and composer: open; stage cover complete (Linux droplet, macOS); tree fa60a3c72ccd068c66a42b273a2e8852444b3f73`. Open is expected before this verdict; 5/5 stage members merged. No epic criterion marks.
 
 Durable evidence A-9899: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9899-e-417-inbox-and-composer-15-pass-at-f2899a3e-both-stage-covers-green/report.md
+
+### qa-676 · 2026-10-23T12:24:01.509Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s4-2026-10-23-3
+commit: 46d15efdb94b80e53281dda37bb0e6a76d25c7e3
+stage: events, notifications and approvals
+stage_hash: a6a830037531c55610136d3c6d9075089be80cd1d7f13fcacdc9e614b6195781
+findings: [{"severity":"low","text":"E417S4-11 k11/context read retains 'facts that do not yet have UI' for web-area-state although scoped area-slots, Sessions and Accounts checks render those facts. Required markers and T-1164 absence conditions pass; brief classifies surrounding docs contradiction as low. Filed T-1180 (Follow-ups, XS, qa-found).","file":"web/README.md","line":446}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Surface | Result | Command and observation |
+| --- | --- | --- | --- |
+| E417S4-00 | hub-api | PASS | k00: clean detached HEAD=dev=46d15efd; 5/5 stage members merged including T-1179; all required files and original member paths; only durations.json and tracker changed since superseded S. Setup dropped 37 names, 0 credential prefixes; system TMPDIR; probe parses. |
+| E417S4-01 | hub-api | PASS | local macOS at 46d15efd: quiet; sealed npm run build exit 0, production bundle and assets present, tree clean. |
+| E417S4-02 | hub-api | PASS | local macOS at 46d15efd: nt events.test.ts 11/11 required named cases pass, no skips or failures; 11 clean fixture censuses. |
+| E417S4-03 | hub-api | PASS | local macOS at 46d15efd: notifications.test.ts 8/8 and web-notifications.test.ts 4/4 required tests; no failures/skips, 8 clean Web censuses; Profile persistence, exact click focus, suppression and pure policy match. |
+| E417S4-04 | hub-api | PASS | local macOS at 46d15efd: inbox.test.ts 22/22 named cases pass; full approval subjects, optional denial, recent-thread fencing, TUI, failure recovery and races; no skips/failures; 22 clean fixture censuses. |
+| E417S4-05 | hub-api | PASS | local macOS at 46d15efd: approval-records.test.ts and codex-native.test.ts serial 47/47 required cases pass, no skips/failures; human-only authority, one winner, native subject/choice/note boundaries and replay/failure recovery. |
+| E417S4-06 | hub-api | PASS | local macOS at 46d15efd: 12 neighboring Web files serial, 86/86 pass first attempt, zero failures/skips; every fixture census clean. T-1157 Retry case passed first attempt; no retry. |
+| E417S4-07 | hub-api | PASS | local macOS at 46d15efd: web-keymap 2/2; k07 all Events/approval/note bindings/help match, no Escape answering action; Profile switches present, palette actions absent; thread r binding present. |
+| E417S4-08 | hub-api | PASS | local macOS at 46d15efd: independent k08 Headless Shell probe 1/1; all 12 fact records match, zero step errors. Events 12/all, warnings2/tasks6 and one marks write; exact notification click focus; optional denial/Escape no-answer; TUI0buttons; peer always wins race. Clean fixture census. |
+| E417S4-09 | hub-api | PASS | local macOS at 46d15efd: full typecheck and tier lint exit 0; no diagnostics; all four colour/token/HTML/hooks guard outputs, 23 text tokens, and required 3 Web/1 T1 classifications match. |
+| E417S4-10 | hub-api | PASS | k10 at 46d15efd: central keyboard listener only; guarded preference storage and reload guard; no raw HTML, new dependencies, service worker or PushManager; one Notification constructor with expected storage/focus listeners. |
+| E417S4-11 | hub-api | PASS | k11 plus full required docs context: 24 markers present, four T-1164 stale phrases and three superseded placement phrases absent. Low T-1180 web/README.md:446 remains contrary to rendered area checks; PASS per brief, no new docs findings. |
+| E417S4-12 | hub-api | PASS | sealed cland qa lint qa/briefs/E-417-stage-4.md at 46d15efd: passes at the build, exit 0. |
+| E417S4-13 | hub-api | PASS | Cited Coordinator stage covers at 46d15efd: Linux f38a4e61 A-10019 (4008 pass, 8 skip), macOS 118722aa A-10017 (4016 pass, 0 skip), both 0 fail and T1-T4+Web. Plan cover complete tree d0d37dc2; clean HEAD=dev=S. Linux actual wall 1405.90s, cost $0.1691; shards retained, macOS measured phase walls retained. |
+| E417S4-14 | hub-api | PASS | k14: all 105 Web fixture censuses clean; T1/T2 logs 0/0; clean detached tree and HEAD=dev=S; scratch prefix checked. Remove scratch after evidence; worktree retained until verdict. |
+
+Low finding — E417S4-11, web/README.md:446, T-1180 (Follow-ups, XS, qa-found). `k11` prints “facts that do not yet have UI” in the web-area-state test paragraph. The test covers Sessions/Accounts/artifact state, and the scoped area-slots, Sessions and Accounts checks render those areas and their facts. All 24 required markers pass, four T-1164 stale phrases and three superseded Profile-placement phrases are absent. The brief explicitly classifies surrounding documentation contradictions as low and keeps the row PASS. T-1180 was already filed; no additional finding or product edit.
+
+Stage: **events, notifications and approvals**. Run **qa-s4-2026-10-23-3**, tested commit **46d15efdb94b80e53281dda37bb0e6a76d25c7e3**, verification tree **d0d37dc242a19dc1daa6ccdf98e4efdb714ab046**. All 15 scoped rows PASS. No epic criterion marks: this is an after-stage verdict only. Printed plan shows 5/5 merged members: T-1127, T-1128, T-1129, T-1164 and request-added T-1179. T-1142/T-1178 remain nonmembers on the build as the brief explains.
+
+Local checks ran afresh at this S. 180 named tests and one independent Headless Shell probe passed on their first attempt, with no failures/skips/retries. T-1157's Retry case passed first attempt. All 105 fixture censuses end `after 0; scratch hub stopped`. Full build, full typecheck, tier lint and brief lint passed. Four web guards passed, including 23 contrast-checked text tokens, raw-HTML rejection and conditional-hook fixture rejection. Mac arm64, Node v24.21.0, installed isolated Chrome Headless Shell; monetary cost not measured/applicable, no droplet lifetime for local cases. This is not a real-browser or OS notification claim: Notification, visibility and focus are stubbed per brief.
+
+The independent probe produced all 12 expected fact records and zero `step` errors. Events: 12 exact rows, warning count 2, task count 6, matching filter/list/subscription facts, shared push=marks.get at 2026-10-23T12:00:00.149Z, previous boundary retained, exactly one mark write, footer clears. Notification: named ask notice once, exact secondary-pane row mounted and focused while animation paused, palette dismissed, window.focus once; looking suppresses another notice; finished task notice has the exact title/body/tag. Approvals: complete subject, one once answer and attributed archive; Escape leaves denial pending with zero answers; empty and nonempty denial notes behave as specified; Claude TUI has no buttons; held page race loses to Neovim's always answer with only that one native answer and zero alerts.
+
+Isolation: clean detached worktree, scratch HOME/XDG/Git, full fixtureEnvironment after overlays, 37 removed inherited names and zero credential-prefix count; system TMPDIR retained. No tests/probe/build during macOS cover-quiet, and queue checked before every file. No real browser, real harness or provider call. Scratch /private/tmp/qa-e417s4-e74mCj removed after captures. Worktree retained only until verdict. Final detached HEAD and refs/heads/dev equal S; zero changed paths.
+
+Both Coordinator-owned stage covers at S are green. No QA full suite was submitted.
+
+- **Linux droplet f38a4e61-aeeb-4470-a3e1-48b95903bef3:** merged A-10019, shard logs A-10020/A-10021. Full T1–T4 plus Web ran; 4016 tests, 4008 passed, zero failed, 8 skipped. Web 31 files/161 top-level tests. Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, two workers; typecheck at the host gate, not repeated on shards. Shard 1 cland-v0-6d47a8ad, c-8 lon1: admission through remote finish 1382.76 s, collection 22.73 s, lifetime 1364 s, cost $0.0947, disk fsync 17.67 ms. Shard 2 cland-v0-b1b51402: admission through remote finish 1074.76 s, collection 40.52 s, lifetime 1071 s, cost $0.0744, disk fsync 6.52 ms. Actual total admission-through-collection wall **1405.90 s**, total cost **$0.1691**.
+- **macOS local 118722aa-0f26-4ac3-ab77-f66a319c6381:** A-10017, full T1–T4 plus Web ran; **4016/4016 passed**, no failures/skips. Darwin arm64, Node v24.21.0, Neovim v0.12.5, two workers, local typecheck. Measured per-phase runner walls T1 31.52 s, T2 186.76 s, T3 950.70 s, T4 47.18 s, Web 77.77 s. Overall macOS wall/cost not supplied as such; no projection substituted. No droplet lifetime applies.
+
+T-1179's corrected SIGTERM worker test passes in both integrated runs: macOS 999.55675 ms, Linux 2652.637915 ms. Both new held-slot regression identities pass 5/5 load-gate repetitions on both platforms. Linux remote-fixture owner timeout, SIGTERM, watchdog-SIGKILL and watchdog-teardown all pass. These are cited cover evidence, not extra QA executions.
+
+T4 base files ran, repeated T4 soak skipped as each receipt states. Existing duration budgets, lint and T3 ratchet are report-only; projected walls are not measured walls. New-identity duration admission uses the committed E-880 allowances: remote owner 11 s, lifecycle worker 7 s, dated 2026-10-23 and expiring 2026-10-30. The covers passed with these allowances; this is not evidence of meeting the previous 5 s limit. The allowance diff and rationale are retained in build-diff.txt. No test assertions or wait bounds changed in that commit.
+
+Final plan line: `# events, notifications and approvals: open; stage cover complete (Linux droplet, macOS); tree d0d37dc242a19dc1daa6ccdf98e4efdb714ab046`. Open is expected before the verdict; all five items are merged.
+
+Historical evidence remains separate: A-9983/A-9987 cover the abandoned e2721ab5 pass with failed macOS cover; A-10014 is the static-only superseded 1f199894 run. None substitutes for this run's tests. This fresh request superseded the duration-gate failure at 1f199894; all local behavior and final gate were executed afresh. Existing rule proposal about retaining failed receipts and naming unrun phases was logged by Coordinator. No brief deviations in this run.
+
+
+Durable evidence A-10025: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10025-e-417-events-notifications-and-approvals-15-pass-at-46d15efd/report.md
