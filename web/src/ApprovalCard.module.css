@@ -2,3 +2,4 @@
 .denial { flex-wrap: wrap; }
 .denial label { display: flex; flex: 1 1 100%; min-width: 0; flex-direction: column; gap: 4px; color: var(--ask-quiet); font-size: 12px; }
 .folded { flex: none; }
+.card[data-phone-sheet] { max-height: none; overflow: visible; }

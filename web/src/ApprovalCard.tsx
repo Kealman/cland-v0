@@ -1,18 +1,22 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { ApprovalChoice, ApprovalRecord } from '../../shared/wire/index.ts';
 import type { ConnectionState } from './connection.ts';
 import type { Shortcut } from './keymap.ts';
+import { BottomSheet } from './BottomSheet.tsx';
+import { usePhone } from './phone.ts';
 import s from './AskCard.module.css';
 import a from './ApprovalCard.module.css';
 
 /** The native record owns offered choices and the attributed outcome. */
-export function ApprovalCard({ record, connection }: { record: ApprovalRecord; connection: ConnectionState }) {
+export function ApprovalCard({ record, connection, phoneOpen, closePhone }: { record: ApprovalRecord; connection: ConnectionState; phoneOpen?: boolean; closePhone?: () => void }) {
+  const phone = usePhone();
   const [pending, setPending] = useState(false);
   const [denying, setDenying] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const field = useRef<HTMLInputElement>(null);
   const denyButton = useRef<HTMLButtonElement>(null);
+  const noteId = useId();
   const answer = async (choice: ApprovalChoice) => {
     if (pending || connection.recoveringApprovals?.has(record.id) || !connection.live || !connection.command || record.state !== 'pending' || record.answerIn !== 'hub' || !record.choices.includes(choice)) return;
     setPending(true); setError('');
@@ -29,7 +33,7 @@ export function ApprovalCard({ record, connection }: { record: ApprovalRecord; c
   </>}</div>;
   const recovering = connection.recoveringApprovals?.has(record.id);
   const disabled = !!recovering || !connection.live || pending || record.state !== 'pending';
-  return <section tabIndex={0} data-approval-id={record.id} data-key-context="approval" className={`${s.card} ${a.card}`} aria-label="Command approval">
+  const controls = <section tabIndex={0} data-approval-id={record.id} data-key-context={phone ? 'sheet' : 'approval'} data-phone-sheet={phone || undefined} className={`${s.card} ${a.card}`} aria-label="Command approval">
     <div className={s.heading}><strong>{record.session}</strong><span className={s.meta}>{record.harness ?? '—'}</span></div>
     <div className={s.meta}>Since <time dateTime={record.since} title={record.since}>{new Date(record.since).toLocaleString()}</time></div>
     {(record.subject.command ?? record.command) && <pre className={s.command}>{record.subject.command ?? record.command}</pre>}
@@ -39,11 +43,17 @@ export function ApprovalCard({ record, connection }: { record: ApprovalRecord; c
     {record.subject.change && <pre className={s.command}>{record.subject.change}</pre>}
     {record.answerIn === 'tui' ? <span className={s.meta}>Answer in Neovim</span> : <>
       <div className={s.options}>
-        {record.choices.includes('once') && <button data-approval-choice="once" disabled={disabled} onClick={() => void answer('once')}>1 · Approve once</button>}
-        {record.choices.includes('always') && <button data-approval-choice="always" disabled={disabled} onClick={() => void answer('always')}>2 · Always for this command</button>}
-        {record.choices.includes('deny') && <button ref={denyButton} data-approval-deny disabled={disabled} onClick={() => { setDenying(value => !value); requestAnimationFrame(() => field.current?.focus()); }}>{denying ? 'Cancel denial' : 'd · Deny'}</button>}
+        {record.choices.includes('once') && <button data-approval-choice="once" disabled={disabled} onClick={() => void answer('once')}>{!phone && '1 · '}Approve once</button>}
+        {record.choices.includes('always') && <button data-approval-choice="always" disabled={disabled} onClick={() => void answer('always')}>{!phone && '2 · '}Always for this command</button>}
+        {!phone && record.choices.includes('deny') && <button ref={denyButton} data-approval-deny disabled={disabled} onClick={() => { setDenying(value => !value); requestAnimationFrame(() => field.current?.focus()); }}>{denying ? 'Cancel denial' : 'd · Deny'}</button>}
       </div>
-      {denying && <form className={`${s.answer} ${a.denial}`} onSubmit={event => { event.preventDefault(); void answer('deny'); }}>
+      {phone && record.choices.includes('deny') ? <form className={s.answer} onSubmit={event => { event.preventDefault(); void answer('deny'); }}>
+        <div className={s.label}>
+          <label htmlFor={noteId}>Denial note</label>
+          <input id={noteId} ref={field} title="Optional" data-key-context="sheet" value={note} disabled={disabled} onChange={event => setNote(event.target.value)} />
+          <button type="submit" data-approval-deny className={s.decline} disabled={disabled}>Deny</button>
+        </div>
+      </form> : denying && <form className={`${s.answer} ${a.denial}`} onSubmit={event => { event.preventDefault(); void answer('deny'); }}>
         <label>Denial note<input ref={field} title="Optional" data-key-context="approval-note" value={note} disabled={disabled} onChange={event => setNote(event.target.value)} /></label>
         <button disabled={disabled} type="submit">Deny</button>
         <button type="button" data-approval-cancel onClick={() => { setDenying(false); setNote(''); denyButton.current?.focus(); }}>Cancel</button>
@@ -54,6 +64,9 @@ export function ApprovalCard({ record, connection }: { record: ApprovalRecord; c
     {connection.approvalRecoveryErrors?.has(record.id) && <span role="alert" className={s.error}>{connection.approvalRecoveryErrors.get(record.id)}</span>}
     {error && <span role="alert" className={s.error}>{error}</span>}
   </section>;
+  if (!phone) return controls;
+  if (!phoneOpen || record.answerIn !== 'hub') return null;
+  return <BottomSheet label="Command approval" header={<span>{record.session} · {record.harness ?? '—'}</span>} close={() => closePhone?.()}>{controls}</BottomSheet>;
 }
 
 /** Called by the shell's shared dispatcher, including when reused in a drawer. */

@@ -337,10 +337,20 @@ A tapped message or request unfolds its full text and a one-line reply in the
 row, with Open topic and Mark read or Decline. This reuses the composer's reply
 mode: replies address the original sender in that row's topic, and per-topic
 drafts survive reloads and disconnects. Send is disabled offline and never
-replays automatically. There is no phone drawer. Asks and harness approvals
-keep their in-place cards. A waiting plan shows its stage, lane and item counts;
+replays automatically. There is no phone drawer. Asks and relayed harness approvals
+open the shared bottom sheet. A waiting plan shows its stage, lane and item counts;
 its tooltip explains that approval needs the desktop Plan view. Neither tap nor
 Enter opens Plan on the phone, and no Approve or Open Plan control appears.
+
+A relayed approval's phone sheet reuses `ApprovalCard`: the full command or file
+change, session, harness and start time, full-width Approve once and Always for
+this command buttons, and Deny alongside the optional denial note's label. The
+controls are at least 44 px tall. It sends through `approval.answer` and folds to
+the hub's attributed outcome, including a peer or harness winner, for the rest
+of the Inbox visit. Escape, Close, the scrim and a swipe never answer. Fields use
+the shared `sheet` key context. A TUI-only row, including payload-cap fallbacks,
+marks its command **answer in Neovim**, offers no answer controls and opens no
+sheet. Phone approval tests live in `test/phone-approvals.test.ts`.
 
 Inbox shows the hub's Now rows in **Asks and approvals**, **Plan approvals**,
 **Requests to you** (**Requests** on desktop) and **Messages to you**, each newest first. Headers show the pending

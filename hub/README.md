@@ -907,6 +907,14 @@ folds to its attributed outcome until the Inbox visit ends. TUI-only cards show
 `Answer in Neovim` without buttons. The drawer reads the session's latest 20
 messages across topics with the existing human-only `session.history` frame.
 
+Below 640 CSS px, tapping a relayed approval row opens that same card in the
+shared phone bottom sheet. Approve once and Always for this command span the
+sheet width; Deny sits on the optional note's label row, with 44 px controls.
+Escape, the close button, the scrim and a swipe never answer. A hub or harness
+winner closes the sheet and folds the row to its attributed outcome. TUI-only
+rows mark the command `answer in Neovim`, have no answer controls and never open
+a sheet, including Codex/OpenCode validation or payload-cap fallbacks.
+
 `needsYou` is the sum of now asks, command approvals, pending plans, open requests and now messages. `inbox.list`, pushed `inbox` events and `hub.status` agree. The workbench chip uses this count; the workbench and CLI render the four sections. Informational notifications appear only in the events view and never count, even when a project override raises them to `now`. A not-clear verdict and a session death appear there as warnings (D17). See [visibility classification](../docs/visibility.md). Human pin/mute choices use `visibility.set` (`surface: topics|sessions|artifacts`, `target`, `mode: pin|mute`), persist under `visibility` in `.cland/ui.json`, and publish a `visibility` invalidation event. They apply in the shared classifier to history, snapshots, live frames and now counts; session callers cannot set them. Preference writes are async and serialized with resumed-request measurement. Hub and Neovim share a nonempty directory lock at `ui.json.lock`; recovery removes only the dead owner's unique file, so a replacement writer is preserved. Uncertain PID owners remain held. Retention never removes an open ask or its message, or a waiting inbox request/message, whatever its age; an answered, withdrawn or cancelled ask goes with its message. Deleting a topic (its asks go with it) and a prune both publish the inbox again. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
 
 Rows leave by these rules:

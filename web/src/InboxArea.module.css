@@ -6,6 +6,7 @@
 .glyph { color: var(--needs-human); }
 .subject { color: var(--link); white-space: nowrap; }
 .preview { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tui { color: var(--muted); }
 .sender, .row time, .more { color: var(--muted); }
 .sender { white-space: nowrap; }
 .sender[data-role="coordinator"] { color: var(--role-coordinator); }
