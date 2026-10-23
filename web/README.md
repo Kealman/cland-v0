@@ -93,7 +93,8 @@ More keeps its current mark while Items, Artifacts or Accounts is open:
   the keyboard. Source/rendered toggles and downloads remain available.
 - Accounts keeps the registry paths, windows, limits and this browser's sign-in
   facts. Notification switches are absent here on the phone; their phone home
-  belongs to More's notification controls. Account edits stay in the CLI.
+  in More arrives in a later E-419 ticket. For now More lists only Items,
+  Artifacts and Accounts. Account edits stay in the CLI.
 
 Item cards and artifact viewers have a 44 px back control; browser Back returns
 to the list too. At 640 px and wider the desktop views and actions remain,
@@ -298,8 +299,26 @@ the shared unread count. Failed writes are never replayed automatically.
 
 ## Inbox
 
+Below 640 px, Inbox is the phone's home. Its title shows **N need you**, or a
+green check with **Nothing needs you** when every section is at zero. The four
+sections keep their order; **Requests** is labelled **Requests to you**. Each
+section header is a full-width fold button at least 44 px tall, including empty
+sections with their zero counts, and its fold uses the same browser preference
+as desktop. Rows show the glyph, subject, role-coloured sender and age above a
+one-line preview. Events and Archive close the list as 44 px controls; Archive
+opens in place and Events opens the journal.
+
+A tapped message or request unfolds its full text and a one-line reply in the
+row, with Open topic and Mark read or Decline. This reuses the composer's reply
+mode: replies address the original sender in that row's topic, and per-topic
+drafts survive reloads and disconnects. Send is disabled offline and never
+replays automatically. There is no phone drawer. Asks and harness approvals
+keep their in-place cards. A waiting plan shows its stage, lane and item counts;
+its tooltip explains that approval needs the desktop Plan view. Neither tap nor
+Enter opens Plan on the phone, and no Approve or Open Plan control appears.
+
 Inbox shows the hub's Now rows in **Asks and approvals**, **Plan approvals**,
-**Requests** and **Messages to you**, each newest first. Headers show the pending
+**Requests to you** (**Requests** on desktop) and **Messages to you**, each newest first. Headers show the pending
 count. An empty section stays as one muted header; a section with more than five
 rows has a More line with the hidden count and oldest wait. Section folds persist
 in browser preferences. Waiting ages update locally without polling the hub.
@@ -308,7 +327,7 @@ The hub already includes a waiting topic's latest message when it has no ask.
 Focusing or selecting a row unfolds it in place. Asks use the shared card;
 requests and messages show their full text and buttons; plans show stage, lane
 and item counts. Enter opens the topic at that exact message, loading earlier
-history pages when needed, or opens the epic's Plan view. Request decline tells
+history pages when needed, or opens the epic's Plan view on desktop. Request decline tells
 the sender; marking a message read settles only that message. A delayed action reply cannot replace
 newer pushed Inbox rows or counts. The Events footer
 counts every journal row since the human's shared last look and its warnings,
@@ -333,13 +352,13 @@ including in a drawer; the denial field keeps native typing and Enter.
 | Key | Inbox action |
 | --- | --- |
 | `j` / `↓`, `k` / `↑` | Next or previous visible row, fold or footer |
-| `Enter` | Open topic/message or Plan; activate fold/footer controls |
+| `Enter` | Open topic/message or desktop Plan; activate fold/footer controls |
 | `d` | Decline request, mark message read, ask decline reason or approval denial note |
 | `1`–`9` on an ask row | Answer with that option |
 | `Esc` in an approval denial | Cancel without answering |
 | `1`, `2` on an approval row or card | Approve once, always for this command |
 | `i`, `r` on an ask or approval row | Focus the free answer or denial note when available |
-| `r` on a request or message | Focus the drawer reply to its sender |
+| `r` on a request or message | Focus the inline phone reply or desktop drawer reply |
 | `A` | Show or hide seven days of departures |
 | `←`, `→` | Fold or unfold section |
 | `?` | Inbox keys for the focused context |
@@ -347,9 +366,10 @@ including in a drawer; the denial field keeps native typing and Enter.
 Number keys keep shell area navigation outside ask and approval rows. Inputs keep
 native typing.
 
-The selected row's drawer reuses the topic thread, loads earlier pages to its
+On desktop, the selected row's drawer reuses the topic thread, loads earlier pages to its
 message and scrolls that message into view without moving focus off the row.
-Its one-line composer replies to the original sender through `topic.send.replyTo`;
+On the phone, the reply unfolds directly below the selected row without a thread
+drawer. Both surfaces' one-line composer replies to the original sender through `topic.send.replyTo`;
 `r` on a request or message focuses it. The fixed-address reply keeps `@` and `~` as text. It shares the topic draft, pending receipt,
 offline guard and failure recovery with the full composer. Split opens the same
 row's thread in the other pane; `r` reaches that split reply from the list or thread. Retained approval detail identities resolve their subject, choices and outcome against current native records and recovery state. Close dismisses the drawer until another row is
@@ -791,14 +811,18 @@ independent from Graph.
 
 Open and move panels through the central panel-home and placement helpers: homes are semantic, sizes belong to physical sides, and each window owns its size, mode and reading position. Extend the area's versioned preference key with independent validation, falling back only the malformed extension without losing unrelated fields (A-8634 R10; T-796, T-1000, T-1001, T-1002, T-1004, T-1005, T-995, T-996, T-997).
 
-`⌘\` toggles a split of the main area, initially 2:1. Drag the divider to resize
+Below 640 px there is one pane and no drawer or split. Tapping an item opens
+its read-only card full screen; Inbox message and request replies unfold in
+place. The desktop split and ratio return on widening.
+
+At 640 px and wider, `⌘\` toggles a split of the main area, initially 2:1. Drag the divider to resize
 between 20% and 80%. Each pane has Swap and Close; closing the primary pane keeps
 the other pane's contents. Click or focus a pane to direct area navigation to it.
 The rail collapses while split and restores the button choice on closing, subject
 to the narrow-window rule. The split and ratio survive reloads in the shell's
 versioned browser key; unavailable storage leaves them usable for the current page.
 
-Selecting an item by click or keyboard focus opens its card in the drawer.
+At these desktop widths, selecting an item by click or keyboard focus opens its card in the drawer.
 Other areas use their own detail views, including the Inbox's topic thread and reply composer.
 Close and Escape dismiss it until selection moves. Split or `⌘Enter` opens the
 selected object in the other pane; the drawer stays closed during the split and

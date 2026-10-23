@@ -430,11 +430,13 @@ export function Shell() {
             const rows = connection.rows?.[paneArea];
             const fallback = detail && paneArea === 'Artifacts' ? openedArtifacts.find(artifact => artifact.id === selected) : undefined;
             const row = paneArea === 'Items' ? findItem(connection, selected) : paneArea === 'Artifacts' ? artifactSelection(connection.artifacts, selected) ?? fallback : rows?.find(object => object.id === selected);
-            return <section key={pane} className={s.pane} data-pane={pane} aria-label={`${pane} pane`} tabIndex={-1}
+            return <section key={pane} className={s.pane} data-pane={pane} data-inbox-home={phone && paneArea === 'Inbox' && !detail || undefined} data-inbox-clear={connection.needsYou === 0 || undefined} aria-label={`${pane} pane`} tabIndex={-1}
               style={{ flex: split ? `${pane === 'primary' ? preferences.ratio : 1 - preferences.ratio} 1 0` : '1' }}
               onPointerDown={() => focusPane(pane)} onFocus={() => focusPane(pane)}>
               <Fold area={paneArea.toLowerCase()} id={detail ? `detail:${selected}` : 'objects'}
-                label={detail && row ? row.title : paneArea} count={detail ? 1 : rows?.length ?? '—'} level={1}
+                label={detail && row ? row.title : paneArea} count={phone && paneArea === 'Inbox' && !detail
+                  ? connection.needsYou === undefined ? '—' : connection.needsYou ? `${connection.needsYou} need you` : '✓ Nothing needs you'
+                  : detail ? 1 : rows?.length ?? '—'} level={1}
                 actions={<>{phone && detail && (paneArea === 'Items' || paneArea === 'Artifacts') && <button className={s.phoneBack} onClick={() => { if (page) history.back(); else setPreferences(previous => ({ ...previous, detail: false })); }}>Back to {paneArea}</button>}{!phone && !detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
                   <button onClick={() => { navigationSerial.current++; setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
                     row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail })); }}>Swap</button>

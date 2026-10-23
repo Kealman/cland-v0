@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type
 import { useInboxVisit, liveInboxEntries, type InboxEntry as Entry } from './inbox-visit.tsx';
 import type { AreaContentProps, AreaModule } from './AreaSlot.tsx';
 import { Thread, type ThreadControls } from './Thread.tsx';
+import { Composer } from './Composer.tsx';
 import { InboxArchive } from './InboxArchive.tsx';
 import { ApprovalCard } from './ApprovalCard.tsx';
 import { SessionRecentThread } from './SessionRecentThread.tsx';
@@ -48,7 +49,7 @@ function InboxArea(props: AreaContentProps) {
     finally { setPending(undefined); }
   };
   const openEntry = (entry: Entry) => {
-    if (entry.kind === 'plan') props.openPlan?.(entry.row.id);
+    if (entry.kind === 'plan') { if (!phone) props.openPlan?.(entry.row.id); }
     else if (entry.kind === 'approval') { if (entry.row.topic) props.openTopic?.(entry.row.topic); }
     else props.openTopic?.(entry.row.topic.id, entry.row.id);
   };
@@ -57,7 +58,7 @@ function InboxArea(props: AreaContentProps) {
   const sections: Array<{ id: string; name: string; rows: Entry[] }> = [
     { id: 'asks', name: 'Asks and approvals', rows: entries.filter(entry => entry.kind === 'ask' || entry.kind === 'approval') },
     { id: 'plans', name: 'Plan approvals', rows: entries.filter(entry => entry.kind === 'plan') },
-    { id: 'requests', name: 'Requests', rows: entries.filter(entry => entry.kind === 'request') },
+    { id: 'requests', name: phone ? 'Requests to you' : 'Requests', rows: entries.filter(entry => entry.kind === 'request') },
     { id: 'messages', name: 'Messages to you', rows: entries.filter(entry => entry.kind === 'message') },
   ];
   for (const section of sections) section.rows = section.rows.filter(({ row }) => !row.layer || row.layer === 'now').sort((a, b) => b.row.since.localeCompare(a.row.since));
@@ -123,7 +124,7 @@ function InboxArea(props: AreaContentProps) {
     return false;
   } }));
   const { summary, error: eventError } = useEventSummary(props.connection);
-  return <section className={s.area} data-area-module="Inbox" data-area-surface="pane" data-key-context="inbox" data-inbox-pending={pending}>
+  return <section className={s.area} data-phone={phone || undefined} data-area-module="Inbox" data-area-surface="pane" data-key-context="inbox" data-inbox-pending={pending}>
     <div ref={list} role="list" aria-label="Inbox objects" className={s.rows}>
       {error && <div role="alert">{error}</div>}
       {sections.map(section => <div key={section.id} data-inbox-section={section.id} data-empty={!section.rows.length} data-inbox-empty={!section.rows.length ? true : undefined}>
@@ -136,18 +137,18 @@ function InboxArea(props: AreaContentProps) {
             const card = kind === 'ask' ? props.connection.askCards?.get(row.id) ?? { question: entry.row.question, options: entry.row.options, free: entry.row.free, state: 'open' as const } : undefined;
             const showCard = card && (selected === row.id || card.state !== 'open');
             return <div key={row.id} role="listitem" className={s.entry} data-inbox-kind={kind} data-key-context={kind === 'ask' || kind === 'approval' ? 'inbox-answer' : 'inbox'} data-ask-id={kind === 'ask' && !showCard ? row.id : undefined} data-ask-state={kind === 'ask' && !showCard ? card?.state : undefined} onFocus={() => { if (props.selected !== row.id) setClosed(undefined); props.select(row.id); }}>
-              <button hidden={folded || (card ? card.state !== 'open' : kind === 'approval' && entry.row.state === 'closed')} className={s.row} data-object-id={row.id} aria-pressed={selected === row.id} onClick={() => { setClosed(undefined); props.select(row.id); }} title={info.text}>
-                <span className={s.glyph}>{info.glyph}</span><span className={s.subject}>{info.subject}</span><span className={s.preview}>{info.text.split(/\r?\n/)[0]}</span>
+              <button hidden={folded || (card ? card.state !== 'open' : kind === 'approval' && entry.row.state === 'closed')} className={s.row} data-object-id={row.id} aria-pressed={selected === row.id} onClick={() => { setClosed(undefined); props.select(row.id); }} title={phone && kind === 'plan' ? `${info.text} · Plan approval needs the desktop Plan view` : info.text}>
+                <span className={s.glyph}>{info.glyph}</span><span className={s.subject}>{phone && kind === 'plan' ? `${info.subject} · ${info.text}` : info.subject}</span><span className={s.preview}>{phone && kind === 'plan' ? `${entry.row.stages ?? '—'} stages · ${entry.row.lanes ?? '—'} lanes · ${entry.row.items ?? '—'} items` : info.text.split(/\r?\n/)[0]}</span>
                 <span className={s.sender} data-role={info.role}>{info.sender}</span><time dateTime={row.since} title={row.since}>{age(row.since, now)}</time>
               </button>
               {folded && <div tabIndex={0} className={s.outcome} data-inbox-outcome title={info.text}>✓ {info.subject} · {departure?.reason ?? 'left Inbox'}{departure && <time dateTime={departure.ts}> · {new Date(departure.ts).toLocaleString()}</time>}</div>}
               {entry.kind === 'ask' && showCard && <AskCard id={row.id} topic={entry.row.topic.id} card={card} context="inbox-answer" connection={props.connection} />}
               {kind === 'approval' && (selected === row.id || entry.row.state === 'closed') && <ApprovalCard record={entry.row} connection={props.connection} />}
-              {!folded && selected === row.id && (kind === 'request' || kind === 'message') && <div className={s.detail}><div>{info.text}</div><div className={s.actions}>
+              {!folded && selected === row.id && (kind === 'request' || kind === 'message') && <div className={s.detail} ref={phone ? detail : undefined}><div>{info.text}</div><div className={s.actions}>
                 <button data-inbox-open onClick={() => openEntry(entry)}>Enter · Open topic</button>
                 <button disabled={!props.connection.live || !!pending} onClick={() => void remove(entry)}>{kind === 'request' ? 'd · Decline' : 'd · Mark read'}</button>
-              </div></div>}
-              {!folded && selected === row.id && kind === 'plan' && <div className={s.detail}>{entry.row.stages ?? '—'} stages · {entry.row.lanes ?? '—'} lanes · {entry.row.items ?? '—'} items<div className={s.actions}><button onClick={() => openEntry(entry)}>Enter · Open Plan</button></div></div>}
+              </div>{phone && <Composer key={entry.row.topic.id} connection={props.connection} topic={entry.row.topic.id} reply={{ id: row.id, sender: entry.row.from }} />}</div>}
+              {!phone && !folded && selected === row.id && kind === 'plan' && <div className={s.detail}>{entry.row.stages ?? '—'} stages · {entry.row.lanes ?? '—'} lanes · {entry.row.items ?? '—'} items<div className={s.actions}><button onClick={() => openEntry(entry)}>Enter · Open Plan</button></div></div>}
             </div>;
           })}
           {section.rows.length > 5 && <button className={s.more} data-inbox-more aria-expanded={expanded.has(section.id)} onClick={() => setExpanded(previous => { const next = new Set(previous); if (!next.delete(section.id)) next.add(section.id); return next; })}>

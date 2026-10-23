@@ -38,3 +38,23 @@
 
 .outcome { padding: 10px 12px; color: var(--muted); overflow-wrap: anywhere; }
 .outcome:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+
+.area[data-phone] { height: 100%; }
+.area[data-phone] .rows { padding: 0 8px; }
+.area[data-phone] [data-inbox-section] > [data-fold-block] > header { position: relative; padding: 0; }
+.area[data-phone] [data-inbox-section] h2 { flex: 1; }
+.area[data-phone] [data-fold-toggle] { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 48px 0 10px; }
+.area[data-phone] [data-inbox-section] header > span { position: absolute; right: 10px; pointer-events: none; }
+.area[data-phone] .row { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto; gap: 2px 8px; min-height: 52px; box-sizing: border-box; padding: 6px 10px; }
+.area[data-phone] .row[hidden] { display: none; }
+.area[data-phone] .glyph { grid-column: 1; grid-row: 1; }
+.area[data-phone] .subject { grid-column: 2; grid-row: 1; overflow: hidden; text-overflow: ellipsis; }
+.area[data-phone] .sender { grid-column: 3; grid-row: 1; overflow: hidden; text-overflow: ellipsis; }
+.area[data-phone] .row time { grid-column: 4; grid-row: 1; }
+.area[data-phone] .preview { grid-column: 1 / -1; grid-row: 2; }
+.area[data-phone] .detail { margin: 4px 10px 12px; }
+.area[data-phone] .actions { flex-wrap: wrap; }
+.area[data-phone] .detail button, .area[data-phone] .more { min-height: 44px; }
+.area[data-phone] [data-composer] { padding: 8px 0 0; margin-top: 8px; white-space: normal; }
+.area[data-phone] [data-composer] textarea { min-height: 44px; }
+.area[data-phone] .events, .area[data-phone] .archiveToggle { min-height: 44px; }
