@@ -1,0 +1,3 @@
+.strip { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 12px; }
+.strip button { flex: none; min-height: 44px; min-width: 44px; padding: 0 8px; color: var(--text); background: var(--control); border: 1px solid var(--control-border); border-radius: 4px; }
+.strip button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }

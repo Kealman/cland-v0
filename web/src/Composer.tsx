@@ -51,7 +51,7 @@ export function Composer({ connection, topic, reply, session }: { connection: Co
         {name ?? '@'}{recipient === 'coordinator' && <span>Coordinator</span>}
       </button>
       {recipient && !session && <button type="button" disabled={!!pending} aria-label={`Remove ${name}`} onClick={() => update({ to: null })}>×</button>}
-    </div> : <><div className={s.addressing}>{session ? <span data-composer-address>To {session} in {connection.topics?.find(row => row.id === topic)?.title ?? topic}</span>
+    </div> : <><div className={s.addressing}>{reply && !connection.live && <span data-reply-unsent>unsent</span>}{session ? <span data-composer-address>To {session} in {connection.topics?.find(row => row.id === topic)?.title ?? topic}</span>
       : recipient && <span data-composer-recipient className={s.chip}>{name}{recipient === 'coordinator' && <span>Coordinator</span>}
         {!reply && <button type="button" disabled={!!pending} aria-label={`Remove ${name}`} onClick={() => update({ to: null })}>×</button>}</span>}
       <button hidden={!!reply || !!session} type="button" disabled={!!pending || !!session} data-composer-session onClick={() => pick({ kind: 'Sessions', choose: row => update({ to: row.id }) })} title="Choose a session (@)">@</button></div>

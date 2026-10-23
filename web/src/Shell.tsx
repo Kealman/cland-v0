@@ -5,6 +5,7 @@ import { browserNotifications } from './browser-notifications.ts';
 import type { NotificationNotice } from './notification-rules.ts';
 import { artifactSelection } from './artifacts/state.ts';
 import { connectHub, findItem, type ConnectionState, type ObjectRow } from './connection.ts';
+import { Disconnected, connectionTime } from './Disconnected.tsx';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
 import { areas, areaKey, actionKeys, actionAtWidth, displayKey, treeActions, planActions, contextActions, areaContext, type KeyContext, type Area, type Shortcut } from './keymap.ts';
 import { focusedKeyContext, listenForShortcuts } from './keyboard.ts';
@@ -409,6 +410,7 @@ export function Shell() {
         {!phone && <button className={s.help} aria-label="Help" title="Area keys" onClick={() => openOverlay('help')}>?</button>}
       </div>
     </header>
+    {phone && !connection.live && connection.disconnectedAt !== undefined && <Disconnected connection={connection} since={connection.disconnectedAt} />}
     <div className={s.body}>
       {!phone && <aside className={s.sidebar} data-collapsed={split || preferences.collapsed}>
         <nav data-area-navigation className={s.rail} aria-label="Areas">
@@ -447,7 +449,7 @@ export function Shell() {
                 label={detail && row ? row.title : paneArea} count={phone && paneArea === 'Inbox' && !detail
                   ? connection.needsYou === undefined ? '—' : connection.needsYou ? `${connection.needsYou} need you` : '✓ Nothing needs you'
                   : detail ? 1 : rows?.length ?? '—'} level={1}
-                actions={<>{phone && detail && (paneArea === 'Items' || paneArea === 'Artifacts') && <button className={s.phoneBack} onClick={() => { if (page) history.back(); else setPreferences(previous => ({ ...previous, detail: false })); }}>Back to {paneArea}</button>}{!phone && !detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
+                actions={<>{phone && !connection.live && paneArea === 'Inbox' && connection.lastAppliedAt !== undefined && <span>as of <time dateTime={new Date(connection.lastAppliedAt).toISOString()}>{connectionTime(connection.lastAppliedAt)}</time></span>}{phone && detail && (paneArea === 'Items' || paneArea === 'Artifacts') && <button className={s.phoneBack} onClick={() => { if (page) history.back(); else setPreferences(previous => ({ ...previous, detail: false })); }}>Back to {paneArea}</button>}{!phone && !detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
                   <button onClick={() => { navigationSerial.current++; setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
                     row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail })); }}>Swap</button>
                   <button onClick={() => closePane(pane)}>Close</button>

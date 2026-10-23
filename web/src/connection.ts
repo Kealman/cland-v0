@@ -27,6 +27,10 @@ function explorerItem(item: ItemSummary): ExplorerSummary {
 
 export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   project: string; live: boolean; restartRequired?: boolean;
+  disconnectedAt?: number | undefined;
+  nextAttemptAt?: number | undefined;
+  lastAppliedAt?: number;
+  retryNow?: () => void;
   command?: <T>(frame: Command<WorkbenchRequest>) => Promise<T>;
   resolveItem?: (id: string) => Promise<{ item: ExplorerSummary; ancestors: ExplorerSummary[] } | undefined>;
   loadItems?: (ids: string[]) => Promise<void>;
@@ -424,6 +428,9 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     ]);
   }
   function connect() {
+    clearTimeout(retry);
+    state = { ...state, nextAttemptAt: undefined, retryNow };
+    changed(state);
     artifactRead = undefined;
     state = { ...state, eventsFilter, activateEvents, setEventsFilter, loadEvents, command, recoverAsk, recoverApproval, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads, sessionThreads };
     requestedPlans.clear();
@@ -446,6 +453,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       let frame: HubFrame;
       try { frame = JSON.parse(String(event.data)) as HubFrame; }
       catch { socket.close(); return; }
+      state = { ...state, lastAppliedAt: Date.now() };
       if (frame.type === 'snapshot.end' || ('epoch' in frame && 'seq' in frame && frame.type !== 'snapshot')) cursor = { epoch: frame.epoch, seq: frame.seq };
       received?.(frame, state);
       threads.apply(frame);
@@ -511,7 +519,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
         clearTimeout(deadline);
         backoff = 250;
         state = { ...state, project: status.root.split(/[\\/]/).filter(Boolean).at(-1) ?? status.root,
-          live: true, coordinator: status.coordinator ?? null, needsYou: status.needsYou ?? 0 };
+          live: true, disconnectedAt: undefined, nextAttemptAt: undefined, coordinator: status.coordinator ?? null, needsYou: status.needsYou ?? 0 };
         for (const parent of closedWanted) loadClosed(parent);
         recoverSnapshotAsks();
         if (eventsActive) { markEventsVisit(); subscribeEvents(); }
@@ -645,13 +653,23 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       clearTimeout(deadline);
       eventsFeed?.stop(); eventsFeed = undefined;
       rejectCommands();
-      state = { ...state, live: false };
-      changed(state);
+      state = { ...state, live: false, disconnectedAt: state.disconnectedAt ?? Date.now(), nextAttemptAt: stopped ? undefined : Date.now() + backoff };
       if (!stopped) {
         retry = setTimeout(connect, backoff);
         backoff = Math.min(backoff * 2, 10_000);
       }
+      changed(state);
     };
+  }
+  function retryNow() {
+    if (stopped || state.live) return;
+    // A manual attempt replaces the timer and any unfinished handshake.
+    clearTimeout(retry);
+    clearTimeout(deadline);
+    socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
+    socket.close();
+    backoff = 250;
+    connect();
   }
   connect();
   return () => {

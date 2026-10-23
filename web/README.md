@@ -156,6 +156,25 @@ newer typing. Text, kind and addressee use the existing per-topic drafts and
 survive navigation and reload; nothing sends automatically on reload.
 Build first, then run `node --test web/test/phone-composer.test.ts`.
 
+### Phone disconnected
+
+When the socket drops, a strip under the header shows “Disconnected since
+14:10 · retry in 8 s”, counting down, with a 44 px Retry. Retry connects at once
+and resets the backoff to 250 ms. During a handshake it reads Connecting.
+The desktop keeps its hub dot.
+
+The last snapshot stays visible. The phone Inbox title adds “as of” with the
+local time of the last applied frame; a reply’s label row reads unsent. Ask
+options, free answers, Decline, approval choices and both Send buttons are
+disabled while disconnected. Drafts remain editable in the composer and reply.
+Nothing is queued or replayed after reconnecting: another client may already
+have answered. The client resumes from its epoch and sequence, taking a fresh
+snapshot when the hub cannot resume it. The strip disappears and current rows
+return without reloading the page.
+
+Build first, then run `node --test web/test/phone-disconnected.test.ts`. Its
+sealed scratch hub stops and restarts independently of the live project.
+
 ## Installable app
 
 The edge serves `/manifest.webmanifest` as `application/manifest+json`, adding the
