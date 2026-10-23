@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-862
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-23T02:19:35.053Z
+updated: 2026-10-23T05:48:15.139Z
 ---
 
 ## Summary
@@ -244,3 +244,51 @@ Stage covers at d32c6a8ff74d2052596f68c77d38dccaad879163, verification tree f3ac
 - Original failed Linux 10fcb1d8 retained as A-9739, shard logs A-9740/A-9741. Exact failure: `AssertionError [ERR_ASSERTION]: first hub.status took 10424.6 ms; T-1081 budget 10000 ms` (startup-replies-scale.test.ts:81). Coordinator classified known flake T-1094 and authorized same-head retry. Original incomplete run is not counted as passing coverage: overall wall 996.20 s, total $0.1273. Original and retry Linux billed total $0.2679; summed observed run walls 2117.40 s, not an end-to-end elapsed-time claim.
 
 Durable evidence A-9766: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9766-e-414-stage-relays-and-neovim-22-pass-at-d32c6a8f-both-covers-green/report.md
+
+### qa-676 · 2026-10-23T05:48:15.139Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s3-2026-10-23-1
+commit: 3609042ab7681b93fee33b59bd95d6a1771b3af5
+stage: races and restarts
+stage_hash: 3f02531021966105dd06fd1ca844f4279c5b0e521cb6af793f8cfbfa1d279948
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Command and observation |
+| --- | --- | --- | --- |
+| E414S3-00 | hub-api | PASS | k00: HEAD=dev=3609042ab7681b93fee33b59bd95d6a1771b3af5, clean detached tree; printed plan 2/2 merged T-1113/T-1159, all five source markers present. Setup 37 dropped names, credential prefix 0, helpers parse, config counts 1/1, p1 hub started. System TMPDIR. |
+| E414S3-01 | hub-api | PASS | nt codex-native: 28/28 PASS; harness wins before held write receipt, losing Deny refused and note absent; echo after delivery preserves human outcome. Required native replay/validation/cap cases pass. |
+| E414S3-02 | hub-api | PASS | nt opencode-native: 30/30 PASS; not-found preserves TUI once/reject winners, child-owner restart routing and native subject revalidation; malformed/capped fallback checks pass. |
+| E414S3-03 | hub-api | PASS | nt approval-records: 19/19 PASS; current native authorization survives failed reserved answer, single winner, human-only answers, private input excluded, no default answer after fake 24h. |
+| E414S3-04 | hub-api | PASS | nt approval-restart: 1/1 PASS, 7166.974791 ms observed file duration. Actual scratch hubs restart with three harnesses; pending ids/subjects and archives preserved, post-replay answer delivered, off-stream outcomes recovered. Duration diagnostic only. |
+| E414S3-05 | hub-api | PASS | nt codex-adapter: 12/12 PASS, no NO_PS skips; process-table resume, live launch/delivery and relaunch regression cases pass. |
+| E414S3-06 | hub-api | PASS | nt opencode-adapter: 14/14 PASS, no skips; process-table resume and native permission flow pass; exactly one reject diagnostic with note Do not change the workspace. |
+| E414S3-07 | hub-api | PASS | k07: named recorded-protocol test 1/1 PASS, no skip; Neovim fixture frames match live hub. |
+| E414S3-08 | hub-api | PASS | Wire import lint and npm run typecheck exit 0; no diagnostics. |
+| E414S3-09 | hub-api | PASS | k09: all required positive doc markers 1; retired re-key/future strings 0; whole approval section 10 nonempty lines, future/re-key count 0. Read capability rows and departure rules: consistent. T-1159 fixed; documented Codex post-write ambiguity is scoped limitation T-1162, not a finding. |
+| E414S3-10 | hub-api | PASS | k10: fake Codex and OpenCode launches exit 0, both running in p1; relay reliable for both and none for Claude Code. |
+| E414S3-11 | hub-api | PASS | k11: old hub 48223 stopped/reaped, both native processes alive while down, new hub 70385. Each record has exactly one approval-rebuilt hub receipt; both same id/subject/since, pending, choices once/always/deny, no outcome/archive. approved absent. |
+| E414S3-12 | hub-api | PASS | k12: Codex once closed human/neovim, one accept and one command run, approved present; OpenCode deny closed with note, one reject on correct native session. Both removed from pending and archived exactly once; CLI archive line exact. |
+| E414S3-13 | hub-api | PASS | k13: hub 70385 stopped, fake Codex TUI accept and OpenCode attached-client reject HTTP 200 while down; new hub 75330. Both recovered answered in the harness, late answers refused naming winner/time, one native reply each. Earlier two outcomes unchanged; exact CLI archive line. |
+| E414S3-14 | hub-api | PASS | k14: private markers zero in captures, logs/journal and hub.db; fallback/failure events zero. Pending approvals 0; needsYou=status=1. |
+| E414S3-15 | hub-api | PASS | Both stage covers green at S: Linux A-9849 and macOS A-9863; final plan missing=[], details below. |
+| E414S3-16 | hub-api | PASS | k16: both session stops exit 0 and hub stopped; 28 fixture-owned PID census has no alive rows. Scratch root removed; final detached HEAD/dev still S, clean. |
+
+Findings: none. No probe corrections or setup mismatches. T-1159 docs correction confirmed; T-1162 documented Codex residual protocol limitation is out of scope per the brief.
+
+Build 3609042ab7681b93fee33b59bd95d6a1771b3af5; run qa-s3-2026-10-23-1; stage races and restarts. macOS arm64 / Node v24.21.0 / pinned Neovim v0.12.5. 105 named tests, zero failures, cancellations, skips or retries. All live fixture commands used sealed HOME/XDG/Git and fake harnesses only. No browser, real provider or live-project mutation. No stage criterion marks. Full command blocks, row scripts, named logs and frame/CLI/journal observations retained beside this report.
+
+Timing budgets are report-only and this stage has no speed criterion. Queue and CPU sample retained. Both final cover receipts are retained; every scoped row passed.
+
+Both Coordinator-owned stage covers passed at 3609042ab7681b93fee33b59bd95d6a1771b3af5, verification tree 906087c4cb8ca6bb83cc2b22fcd6c0a9d9f2de4d. Final plan missing=[], 2/2 stage members merged; detached HEAD=dev=S and clean.
+
+- Linux droplet 9da70a4d-890c-43de-be4e-2e9a863ec639: A-9849 merged, A-9850/A-9851 shards; 3959 pass, zero fail, 8 skip. T1–T4 and Web completed, linux x64, 2 workers. Shard 1 cland-v0-dd5de9a1, c-8 lon1: 1184.66 s admission through remote finish, collection 20.57 s, lifetime 1171 s, $0.0813. Shard 2 cland-v0-c36a9055, c-8 lon1: 902.66 s, collection 22.18 s, lifetime 890 s, $0.0618. Actual overall admission-through-collection wall 1205.48 s, total cost $0.1431.
+- macOS local 69b252f3-723f-4e03-858a-b75e833b1248: A-9863; 3967/3967 pass, zero fail/skip. T1–T4 and Web completed, darwin arm64, 2 workers. Overall macOS wall/cost not stated in the supplied receipt; no droplet lifetime applies and no projection substituted.
+- Both ran T4 base files only; T4 repetitions explicitly skipped. Timing budgets, lint and ratchet diagnostics are report-only, not enforced budget passes. Projected tier walls are not actual overall walls. No extra QA suite or test rerun.
+
+All 17 scoped rows PASS. Stage verdict only, no epic criterion marks. Epic Definition-of-done demo remains separate. Scratch cleanup completed; detached worktree removed after verdict.
+
+Durable evidence A-9865: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9865-e-414-races-and-restarts-17-pass-at-3609042a-both-covers-green/report.md
