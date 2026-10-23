@@ -28,9 +28,11 @@
       "A-9079",
       "A-9083",
       "A-9478",
-      "A-9485"
+      "A-9485",
+      "A-9755",
+      "A-9764"
     ],
-    "commit": "4411dcc99173b864850ac0988a11334d87262614"
+    "commit": "d32c6a8ff74d2052596f68c77d38dccaad879163"
   },
   "budget": {
     "testSeconds": 5,
@@ -2363,6 +2365,46 @@
     "web/test/topics.test.ts": {
       "seconds": 7.871903,
       "tests": 9
+    },
+    "hub/test/web-accounts.test.ts": {
+      "seconds": 0.00239,
+      "tests": 3
+    },
+    "hub/test/web-verification-model.test.ts": {
+      "seconds": 0.00222,
+      "tests": 2
+    },
+    "web/test/accounts.test.ts": {
+      "seconds": 6.350121,
+      "tests": 6
+    },
+    "web/test/artifacts.test.ts": {
+      "seconds": 8.992964,
+      "tests": 7
+    },
+    "web/test/messages.test.ts": {
+      "seconds": 4.946245,
+      "tests": 5
+    },
+    "web/test/session-actions.test.ts": {
+      "seconds": 9.381536,
+      "tests": 9
+    },
+    "web/test/session-launch.test.ts": {
+      "seconds": 8.776349,
+      "tests": 9
+    },
+    "web/test/thread-artifacts.test.ts": {
+      "seconds": 6.199973,
+      "tests": 5
+    },
+    "web/test/thread-runs.test.ts": {
+      "seconds": 6.37212,
+      "tests": 5
+    },
+    "web/test/verification.test.ts": {
+      "seconds": 2.772548,
+      "tests": 1
     }
   },
   "tests": {
@@ -6074,7 +6116,104 @@
     "web/test/topics.test.ts::read marks wait one visible second and never include offscreen messages or a hidden page": 0.567187,
     "web/test/topics.test.ts::reading the top of a long thread marks only the last message on screen": 0.676977,
     "web/test/topics.test.ts::reconnect resumes missed thread deltas and only rereads history after a fresh snapshot": 0.663107,
-    "web/test/topics.test.ts::Topics groups separate waiting, standing, item and closed topics and remember folds": 0.84831
+    "web/test/topics.test.ts::Topics groups separate waiting, standing, item and closed topics and remember folds": 0.84831,
+    "hub/test/codex-native.test.ts::a Codex command approval is one allowlisted record and Approve once responds to its native id": 0.237762,
+    "hub/test/codex-native.test.ts::a Codex file request resolved during its first lookup publishes only the closed harness outcome": 0.102392,
+    "hub/test/codex-native.test.ts::a Codex file-change approval reads only the matching item paths and diff, then sends decline": 0.080973,
+    "hub/test/codex-native.test.ts::a Codex request resolved by another client closes for every subscribed client": 0.103555,
+    "hub/test/codex-native.test.ts::a known stopped Codex session admits closed-first history but no new pending approval": 0.10221,
+    "hub/test/codex-native.test.ts::a replayed Codex file approval cannot answer until its subject is validated": 0.107103,
+    "hub/test/codex-native.test.ts::a replayed Codex request after reconnect keeps its record id and accepts an answer": 0.096561,
+    "hub/test/codex-native.test.ts::an observed Codex file closure survives native disconnect before its first lookup settles": 0.101727,
+    "hub/test/codex-native.test.ts::Codex Always and Deny preserve the human outcome when resolved arrives during the response": 0.132175,
+    "hub/test/codex-native.test.ts::Codex relays only complete command and file subjects within the exact serialized UTF-8 cap": 0.125117,
+    "hub/test/codex-native.test.ts::Codex validates every routing field and rejects missing or malformed file patches": 0.103796,
+    "hub/test/codex-native.test.ts::Codex watch replays a first-turn closure observed before its process row was published": 0.136491,
+    "hub/test/codex-native.test.ts::malformed Codex command requests fall back to the TUI with a warning and never send a decision": 0.09899,
+    "hub/test/codex-native.test.ts::the Codex capability table advertises a reliable approval relay": 0.090925,
+    "hub/test/opencode-native.test.ts::a child permission belongs to the parent record and answers the child endpoint": 0.16432,
+    "hub/test/opencode-native.test.ts::a native reply during command lookup retains the request and its exact closed outcome": 0.19304,
+    "hub/test/opencode-native.test.ts::a not-found reply waits for the native outcome and never records attempted consent": 0.144282,
+    "hub/test/opencode-native.test.ts::a permission without a native id is visible only as a TUI fallback": 0.140463,
+    "hub/test/opencode-native.test.ts::a shell permission becomes one answerable record with its full command and no private metadata": 0.284465,
+    "hub/test/opencode-native.test.ts::an attached client permission reply closes the record for every hub client": 0.184687,
+    "hub/test/opencode-native.test.ts::human permission choices and notes reach the requesting native session through the gate": 0.193779,
+    "hub/test/opencode-native.test.ts::only complete commands within the UTF-8 subject cap offer native relay choices": 0.177248,
+    "hub/test/opencode-native.test.ts::permission shape drift stays in the TUI with a warning and no private frame fields": 0.188835,
+    "hub/test/opencode-native.test.ts::reconnect keeps the same pending permission id and closes an off-stream answer": 0.159318,
+    "hub/test/startup-ready-component.test.ts::startup logs named durations for every step from listener binding through serving": 0.10861,
+    "hub/test/startup-ready-component.test.ts::startup restores sessions and serves before recovering a lease with a hanging provider": 0.140017,
+    "hub/test/web-accounts.test.ts::account order keeps registry order with synthetic defaults last and resets follow local calendar": 0.000236,
+    "hub/test/web-accounts.test.ts::account projection preserves every window and selects the highest share with source severity": 0.0018,
+    "hub/test/web-accounts.test.ts::missing readings stay a dash and limited marks retain reset, reason, since and session": 0.000354,
+    "hub/test/web-area-state.test.ts::artifact inventory pages retain live replacements and discard replies from an old connection": 0.000993,
+    "hub/test/web-verification-model.test.ts::recorded queue renders local and remote slots, ordered waiters, last twenty metrics and daily spend": 0.001817,
+    "hub/test/web-verification-model.test.ts::remote-only summary estimates admission and ageing preserves estimates and unknowns": 0.000403,
+    "nvim/test/inbox-actions.test.ts::a held race archive reply folds its winner without replacing newer live rows or counts": 0.290353,
+    "nvim/test/inbox-actions.test.ts::an in-flight approval answer is sent once and failure permits an explicit retry": 0.296186,
+    "nvim/test/inbox-actions.test.ts::answering from an unfolded detail keeps the folded outcome under the cursor": 0.262548,
+    "nvim/test/inbox-actions.test.ts::denial note cancellation sends nothing, and Enter with no note still denies": 0.300298,
+    "nvim/test/inbox-actions.test.ts::file changes show their paths and change; 2 always answers only when offered": 0.356665,
+    "nvim/test/inbox-actions.test.ts::full: 1 approves once and folds the recorded approval to its attributed outcome": 0.252862,
+    "nvim/test/inbox-actions.test.ts::full: a refused answer folds to the durable winner, including who and when": 0.292971,
+    "nvim/test/inbox-actions.test.ts::full: d opens an optional denial note and Enter sends that note": 0.299115,
+    "nvim/test/inbox-actions.test.ts::full: folded outcomes stay for the inbox visit and retire when it is left": 0.288965,
+    "nvim/test/inbox-actions.test.ts::full: TUI-only opencode rows refuse 1, 2 and d and keep Enter to attach": 0.373092,
+    "nvim/test/inbox-actions.test.ts::live approval deltas show answering, restore a failed delivery and fold another client outcome": 0.445775,
+    "nvim/test/inbox-actions.test.ts::older approval age keeps clipped panel selection anchored to the record identity": 0.286008,
+    "nvim/test/inbox-actions.test.ts::panel: 1 approves once and folds the recorded approval to its attributed outcome": 0.238065,
+    "nvim/test/inbox-actions.test.ts::panel: a refused answer folds to the durable winner, including who and when": 0.261814,
+    "nvim/test/inbox-actions.test.ts::panel: d opens an optional denial note and Enter sends that note": 0.262929,
+    "nvim/test/inbox-actions.test.ts::panel: folded outcomes stay for the inbox visit and retire when it is left": 0.296886,
+    "nvim/test/inbox-actions.test.ts::panel: TUI-only claude-code rows refuse 1, 2 and d and keep Enter to attach": 0.343391,
+    "nvim/test/shell-component.test.ts::the OpenCode capability table shows the reliable approval relay": 0.30587,
+    "web/test/accounts.test.ts::Accounts lists the fake registry with every window, path, source and limited mark": 0.795336,
+    "web/test/accounts.test.ts::Accounts profile excludes a second browser context sign-in on the same hub": 1.077834,
+    "web/test/accounts.test.ts::Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry": 1.57169,
+    "web/test/accounts.test.ts::accounts without readings show dashes and a failed registry poll exposes no file values": 0.925756,
+    "web/test/accounts.test.ts::entering Accounts polls once and ordinary account updates never repeat it": 0.925237,
+    "web/test/accounts.test.ts::Sessions account strip shows worst windows, limited reset, tooltips and a folding Accounts link": 1.054268,
+    "web/test/artifacts.test.ts::Artifacts groups human, Aide and crew records with remembered section folds": 2.085714,
+    "web/test/artifacts.test.ts::d archives without deleting human bytes and Enter requests folder files": 0.876295,
+    "web/test/artifacts.test.ts::diagram HTML and SVG use the sandboxed viewer while Mermaid source stays text with a download": 1.144618,
+    "web/test/artifacts.test.ts::Enter opens a capability page full height and its script cannot read the workbench document or cookie": 1.030122,
+    "web/test/artifacts.test.ts::files and folder children open capability text or a named binary download and report missing bytes": 1.226754,
+    "web/test/artifacts.test.ts::k keeps and unkeeps an agent artifact while the up arrow navigates": 0.972577,
+    "web/test/artifacts.test.ts::More artifacts traverses bounded inventory pages without duplicate rows": 1.656884,
+    "web/test/messages.test.ts::agent clear reports retain target navigation in their one-row summary": 0.854247,
+    "web/test/messages.test.ts::message Markdown renders safe elements with message-local fences and literal HTML": 0.840047,
+    "web/test/messages.test.ts::P12 bands and watch verdicts preserve durable criterion facts": 0.928581,
+    "web/test/messages.test.ts::P12 headers show sender role addressees kinds time and delivery in a separate colour gutter": 1.380421,
+    "web/test/messages.test.ts::whole item links navigate without wrapping and posted or attached files and folders stay chips": 0.942949,
+    "web/test/session-actions.test.ts::A failed Stop shows the hub reason and a pending confirmation sends only once": 0.833561,
+    "web/test/session-actions.test.ts::Archive confirms once and moves the stopped session into the archive": 1.066102,
+    "web/test/session-actions.test.ts::At narrow width a tap or Enter opens the session page": 1.093459,
+    "web/test/session-actions.test.ts::Capabilities shows the read-only adapter table or the missing adapter": 0.844704,
+    "web/test/session-actions.test.ts::Offline session actions are disabled and do not replay after reconnect": 0.823633,
+    "web/test/session-actions.test.ts::Resume relaunches the stopped session with its name, role and claim": 0.958284,
+    "web/test/session-actions.test.ts::Stop confirms in place, Escape keeps the busy session, and Enter stops it": 1.693133,
+    "web/test/session-actions.test.ts::The session page shows facts and capabilities and shares all four actions": 1.149782,
+    "web/test/session-actions.test.ts::Unavailable resume shows its reason and offers a fresh launch with the same brief": 0.918878,
+    "web/test/session-launch.test.ts::A limited fake account shows the hub reset refusal under the retained form and launches nothing": 0.868171,
+    "web/test/session-launch.test.ts::An item and artifact brief launch once while the request is pending with no client directory": 0.949182,
+    "web/test/session-launch.test.ts::Focusing Model fetches the selected harness and account catalog and ignores a late old visit": 0.917751,
+    "web/test/session-launch.test.ts::Launch actions use physical keys and palette dispatch while form typing and Cancel stay native": 1.062616,
+    "web/test/session-launch.test.ts::Launch waits for role defaults when the initial sessions snapshot is delayed": 0.730992,
+    "web/test/session-launch.test.ts::New Aide uses role defaults and Enter launches under Yours in the project root without a directory frame": 1.635559,
+    "web/test/session-launch.test.ts::Offline launch is disabled and reconnect never replays the draft": 0.822783,
+    "web/test/session-launch.test.ts::Role selection fills its launch defaults and a different harness clears model and effort": 0.972121,
+    "web/test/session-launch.test.ts::Session page launch actions open the same form in the active pane": 0.817174,
+    "web/test/thread-artifacts.test.ts::an unservable HTML artifact remains a chip with the serving reason in its tooltip": 0.673122,
+    "web/test/thread-artifacts.test.ts::artifact scripts cannot read the workbench document or navigate its top window": 0.847702,
+    "web/test/thread-artifacts.test.ts::HTML artifacts render their hub address inline at 240 px while files and folders stay chips": 1.570035,
+    "web/test/thread-artifacts.test.ts::moving a thread-opened page into a folder does not resurrect a top-level artifact": 1.036597,
+    "web/test/thread-artifacts.test.ts::Open full opens the artifact address in a new page and Open in a pane keeps the thread beside it": 2.072517,
+    "web/test/thread-runs.test.ts::a paged run keeps its full hub count and the first open message anchored on prepend": 1.367819,
+    "web/test/thread-runs.test.ts::an open run keeps its anchor pinned while scrolling its messages": 0.913603,
+    "web/test/thread-runs.test.ts::expanding and collapsing reschedule visible read marks for the displayed run": 0.876156,
+    "web/test/thread-runs.test.ts::hub fold lines open and close in place by click Enter and za": 2.174157,
+    "web/test/thread-runs.test.ts::protected messages stay unfolded and live growth replaces the hub fold line": 1.040385,
+    "web/test/verification.test.ts::Sessions verification queue shows hand runs, ages receipts and remembers its fold": 2.772548
   },
   "allow": {
     "web/test/accounts.test.ts::Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry": {
@@ -8442,6 +8581,13 @@
       "added": "2026-10-22",
       "expires": "2026-10-29",
       "reason": "T-1133 queue view Web case covers hand holder/waiter rendering, native and queue Enter, receipt ageing, frame replacement, spend reads, fold reload persistence and observed fixture teardown. Linux c-8 lon1 A-9574 at ee0dce9b measured the assertion-green parent at 4.446933277 s; earlier A-9540 at 35a35f72 measured 3.986645884 s. Coordinator directed 7 s (about 1.5 times the worst original sample) for Linux Web timing variance; assertions and their bounds are unchanged."
+    },
+    "web/test/artifacts.test.ts::Artifacts groups human, Aide and crew records with remembered section folds": {
+      "seconds": 6,
+      "owner": "E-418",
+      "added": "2026-10-23",
+      "expires": "2026-10-30",
+      "reason": "T-1139 Artifacts sections Web case measured 4.02 s on Linux c-8 lon1 in A-9692 (T-1133 verify at 0a8ed77a, reported by impl-1133) against the 4 s Web gate; 2.09 s baseline elsewhere. Coordinator directed 6 s (about 1.5 times the worst sample) for Linux Web timing variance; assertions unchanged."
     }
   }
 }
