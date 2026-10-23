@@ -2,8 +2,8 @@
 id: T-1165
 kind: task
 title: "The phone frame: one width seam and the bottom bar"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-906
 branch: t/T-1165-the-phone-frame-one-width-seam-and-the
 created: 2026-10-23T07:00:02.025Z
-updated: 2026-10-23T13:41:43.202Z
+updated: 2026-10-23T14:14:41.893Z
+closed: 2026-10-23T14:14:41.893Z
 ---
 
 ## Summary
@@ -36,18 +37,25 @@ E-419 (§3.6 the bottom bar, P24 and P26; choices "The phone width" and "Touch";
 ## Acceptance criteria
 
 - [x] C1. At 390x844 the rail is absent and the bottom bar shows Inbox, Topics, Sessions, Events and More with their counts, and a tap on each of the four areas opens it (Web test).
-  - done: impl-1165 · 2026-10-23T13:35:14.786Z
+  - done: impl-1165 · 2026-10-23T13:56:22.880Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1165-final · 2026-10-23T14:08:54.162Z · commit 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
 - [x] C2. At 640 px the shell shows the collapsed rail and no bar, and resizing to 639 px swaps the rail for the bar without a reload (Web test).
   - done: impl-1165 · 2026-10-23T13:35:14.863Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1165-final · 2026-10-23T14:08:54.162Z · commit 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
 - [x] C3. At 390x844 ⌘\ opens no split and a selected row opens no drawer, and a split saved at 1440 px returns when the page is widened again (Web test).
   - done: impl-1165 · 2026-10-23T13:40:36.836Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1165-final · 2026-10-23T14:08:54.162Z · commit 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
 - [x] C4. More opens a sheet above the bar without a scrim listing Items, Artifacts and Accounts, and Escape or choosing one closes it (Web test).
   - done: impl-1165 · 2026-10-23T13:35:15.095Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1165-final · 2026-10-23T14:08:54.162Z · commit 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
 - [x] C5. Every visible control of the header, the bar and the More sheet at 390x844 is at least 44 px tall (Web test).
   - done: impl-1165 · 2026-10-23T13:35:15.162Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1165-final · 2026-10-23T14:08:54.162Z · commit 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
 - [x] C6. `web/README.md` gains a Phone section on the width seam, the bar, More and the phone test context (docs).
   - done: impl-1165 · 2026-10-23T13:35:15.230Z
   - verified: rev-23 [reviewer] · run rev-20261023-1165-source-2 · 2026-10-23T13:41:43.202Z · commit 0da86127ddc3d5459c12bf11c2e42c9e00e6c035
+  - verified: rev-23 [reviewer] · run rev-20261023-1165-source-3 · 2026-10-23T13:56:47.167Z · commit 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
+  - verified: rev-23 [reviewer] · run rev-20261023-1165-final · 2026-10-23T14:08:54.162Z · commit 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
 
 ## Comments
 
@@ -117,3 +125,87 @@ A-10048 records working-tree original red expected0Drawer/actual1 after selected
 Proceed with mode-free verify at exact0da86127. Final C1–C5 await same-head configured result and new passing Web sample audit for4s allowance rule. Reviewer read only; no tests/live browser/edits. After-stage affected QA separate.
 
 Criteria: C6 verified.
+
+### impl-1165 · 2026-10-23T13:54:13.387Z
+
+Configured run 2abdc836 at 0da86127 failed the enforced new-identity duration gate despite 2727 reported tests passing (T1/T2/Web; no T3). Added the launch-authorized parent-only E-880 8.7 s allowance for exact 5.760834262 s Linux sample, dated/expiring/citing A-10055, at pushed 440ed969. No test/action/wait changes. Local duration-manifest tests 19/19 pass. Requesting fresh source review before mode-free rerun.
+
+### rev-23 · 2026-10-23T13:56:00.733Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261023-1165-evidence-red
+commit: 0da86127ddc3d5459c12bf11c2e42c9e00e6c035
+scope: evidence
+findings: [{"severity":"medium","text":"Configured Web fails enforced new phone-frame parent duration gate at 5.760834262 s > 5 s; launch-required dated E-880 allowance is missing at this head.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-10055/run2abdc836 at exact0da86127 is failed evidence: actual `duration budget: web/test/phone.test.ts::the phone frame replaces the rail without losing desktop state 5.761 s > 5 s`. All2727 ordinary tests pass; T1/all fallback hub+Neovim T2 exit0, complete Web exit1. Linux x64 c-8 lon1; host check gate reused, no T3/T4 or evidenced load repetitions. Generic budgets/lint report-only, new identity gate enforced. Parent passing sample5.760834262s requires launch's dated parent-only E-880 allowance ~1.5×, followed by fresh source review/run. C1 failed for configured gate only; behavioral assertions passed. Other runtime criteria remain pending; source clearance retained separately.
+
+Criteria: C1 failed (Configured phone-frame parent gate fails at 5.760834262 s > 5 s despite passing behavioral assertions; runtime clearance awaits allowance and fresh verification.).
+
+### rev-23 · 2026-10-23T13:56:47.167Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1165-source-3
+commit: 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1165 allowance source review
+Head440ed9698d6e1dc77150ce9d66c8b7b1634619e3 / tree5b806d0f50b57b892a94aaa85a45fc70e994e390. Parent/fixed point0da86127ddc3d5459c12bf11c2e42c9e00e6c035. Run rev-20261023-1165-source-3. Clear; findings[]. C6 source docs verified; C1–C5 runtime pending.
+
+## Standards
+Pass. Read-only git diff confirms exactly seven added lines in hub/test/durations.json, one parent identity only. E-880 owner, added2026-10-23, expires2026-10-30, measured receipt/head/scenario rationale present. 8.7s /5.760834262s =1.5102, satisfying launch's approximately1.5× cap for new passing Web samples>=4s. Exact passing parent identity/sample is independently present in A-10055:14621; configured failure at15201. Child identities, product source, assertions, request/DOM bounds and teardown unchanged; diff check clean. No new policy or documentation requirement introduced.
+
+## Spec
+Pass for focused correction. Parent is already one shared sealed hub/Headless Shell fixture over four phone-frame subcases; allowance does not duplicate setup or restructure tests. Prior complete source review A-10049, including Inbox no-drawer M1 correction and README C6, carries forward unchanged. Historical A-10055/run2abdc836 remains failed evidence at0da86127, recorded in A-10057; allowance does not retroactively make it green. C1 done refresh acknowledged by implementer after historical gate failure; final C1–C5 awaits fresh exact-head configured verification.
+
+Local duration-manifest19/19 is implementer's reported targeted check, not independently run by Reviewer and not configured evidence. Historical Linux sample used executor workers2, Web runner4; no load-scope proof. No rerun by Reviewer, edits, merge or live browser. After-stage affected QA separate. Proceed with mode-free verify at exact440ed969; inspect passing new Web samples again before final settlement.
+
+Findings: Standards0; Spec0.
+
+Criteria: C6 verified.
+
+### rev-23 · 2026-10-23T14:08:54.162Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1165-final
+commit: 440ed9698d6e1dc77150ce9d66c8b7b1634619e3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1165 final evidence review
+Head440ed9698d6e1dc77150ce9d66c8b7b1634619e3 / tree5b806d0f50b57b892a94aaa85a45fc70e994e390, branch t/T-1165-the-phone-frame-one-width-seam-and-the. Run rev-20261023-1165-final. Clear; findings[]; C1–C6 verified.
+
+## Standards
+Same-head source clearance A-10058/rev-20261023-1165-source-3 carries forward, including original full audit A-10047, M1 correction A-10049 and authorized More-without-count decision A-9888. Read-only branch/tree lookup matches. Fresh configured mode-free run c3afba1b-dfa1-4276-b4f9-4294772ac9db / A-10059 is exit0, not old-head evidence/cache. Raw finish records:2727 ordinary tests pass and404 ordinary file records pass; no failures/skips/cancellations. T1(132files), fallback all hub+Neovim T2(239files), complete Web(33files) exit0. No T3/T4; task policy defers T3 to periodic/integrated occasions. No load-gate scope records: generic five-repetition headers do not establish repetitions.
+
+Linux x64 c-8 lon1 cland-v0-d01b97d5, Node24.21.0/Neovim0.12.5, workers2, Web runner4; lifetime623s/$0.0433. Host check gate27c32cf01d11227d1465a2c63986125acff8f67b reused, not remotely repeated. Actual phase durations T1 55.96s, T2 349.81s, Web125.56s; aggregate per-test observed sums and projected wall estimates are not phase wall times.
+
+Generic duration/lint/ratchet and existing out-of-scope tier tripwires remain report-only (132lint findings/59files; one missing phone-file baseline). Parent new-identity gate passes under reviewed dated E-8808.7s allowance. Fresh passing parent6.166171217s; remaining new identities/subtests max1.497279697s, no additional allowance triggered. Existing report-only overages are retained and not claimed resolved.
+
+## Spec
+C1: passing five-slot/touch case observes Inbox home, absent rail and four area taps; complete badge case uses shared attention facts and every event since last look. More deliberately has no count per approved cut decision.
+C2: passing640/639 case preserves collapsed rail at640 and swaps to bar without reload at639.
+C3: passing saved-split case preserves desktop split through phone load/chords/selection and widening; dedicated Inbox regression proves exact row selection with inline cards/actions and no independent drawer (M1 resolved).
+C4: passing More case proves no scrim, selection/Escape/outside dismissal and sheet choices.
+C5: same passing case asserts visible phone header/bar/More controls meet touch bounds.
+C6: source-reviewed README Phone section matches shared width seam, bar/More, preserved desktop state and sealed390x844 touch/mobile harness context.
+
+Raw phone samples: touch1.242140443s; More/controls1.497279697s;640/6390.630560897s; saved split1.405484392s; parent6.166171217s; Inbox inline selection1.431718723s; complete badges1.173998616s. All pass. Historical run2abdc836/A-10055 remains failed at0da86127, recorded A-10057; this new-head receipt settles replacement evidence.
+
+Reviewer only read existing source/logs and hub state; no tests/browser/GUI/edits/merge. Earlier targeted local evidence and screenshot retain their original provenance; no fresh QA claim. Affected after-stage QA remains separate, no per-item QA criteria/brief. Findings: Standards0; Spec0.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-23T14:14:41.893Z
+
+Merged dc6c67623aa4be3a039f4db09f56eb3f8aee5742 onto dev.

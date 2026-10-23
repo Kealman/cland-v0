@@ -3,7 +3,7 @@ id: T-1166
 kind: task
 title: Items, Artifacts and Accounts read-only from More
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-419
 blocked_by:
   - T-1165
-topic: null
-branch: null
+topic: topic-907
+branch: t/T-1166-items-artifacts-and-accounts-read-only
 created: 2026-10-23T07:00:02.171Z
-updated: 2026-10-23T07:00:15.398Z
+updated: 2026-10-23T14:09:56.369Z
 ---
 
 ## Summary
