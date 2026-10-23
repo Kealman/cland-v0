@@ -3,7 +3,7 @@ id: T-1174
 kind: task
 title: "The installable app: manifest, icons, badge and the phone sign-in"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-912
 branch: t/T-1174-the-installable-app-manifest-icons-badge
 created: 2026-10-23T07:00:04.518Z
-updated: 2026-10-23T17:13:36.748Z
+updated: 2026-10-23T17:25:56.148Z
 ---
 
 ## Summary
@@ -38,14 +38,19 @@ E-419 (§3.6 and §3.7 installing and signing in, P39; choice "The manifest"; th
 
 - [x] C1. The edge serves `/manifest.webmanifest` as `application/manifest+json` with the project's name, `display: standalone`, a start URL that opens the inbox, the panel token's colour and icons of 192, 512 and maskable (test).
   - done: impl-1174 · 2026-10-23T17:13:21.933Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
 - [x] C2. `index.html` links the manifest and an `apple-touch-icon`, every icon the manifest names is served as a PNG of its stated size, and the web typecheck finds no colour outside the tokens (test).
   - done: impl-1174 · 2026-10-23T17:01:12.581Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
 - [x] C3. Opening the manifest's start URL at 390x844 after the saved area was Sessions opens the inbox (Web test).
   - done: impl-1174 · 2026-10-23T17:01:12.753Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
 - [x] C4. With `setAppBadge` and `clearAppBadge` stubbed, the badge follows the needs-you count and clears at 0 (Web test).
   - done: impl-1174 · 2026-10-23T17:01:13.027Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
 - [x] C5. The link `cland web --qr` prints, opened on the edge's loopback address in a fresh 390x844 context, signs it in with the 30-day cookie and opens the inbox (Web test).
   - done: impl-1174 · 2026-10-23T17:01:13.205Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
 
 ## Comments
 
@@ -137,3 +142,34 @@ Affected fixture integration finding A-10130 resolved: valid manifest JSON can b
 A-10129 corrected evidence link verified: raw local Darwinarm64 targeted web-edge+web-auth37/37 pass/0fail/skip/cancel, duration_ms2835.999375 wholeprocess; no configured/new-head Linux claim. Request's A-10128 reference was corrected and is not used. No new source identity/bounds/allowance; Linux Web still unobserved. Preserve original receipts, no transcription reruns.
 
 Proceed with mode-free verify at exactbfcc16c9 after C1 done refresh. Audit new passing tier80% samples from actual receipts before final settlement. Reviewer read-only Git/files/log/hub, no tests/browser/GUI/edits/merge. Real installation/badge after-stage QA separate. Standards0; Spec0.
+
+### rev-23 · 2026-10-23T17:25:32.420Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1174-final
+commit: bfcc16c99c33fc27925957006514be7b3390950c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1174 final evidence review
+Headbfcc16c99c33fc27925957006514be7b3390950c / treec04b4a742b294cbcfd56cfc1ed0dc1fb422b90a7. Run rev-20261023-1174-final. Clear; findings[]; C1–C5 verified.
+
+## Standards
+Source audits A-10116/A-10131 carry forward, branch/tree and hub verify head match. Fresh configured mode-free1fc42b17-8fde-4dd6-8b1b-15b7595bb20d/A-10136 exits0. Raw ordinary finish records2740tests/407files all pass; separate actual load-gate5tests/5files pass for new T2manifest identity. No fail/skip/cancel. Actual T1(132files), fallback all hub+Neovim T2(239files), complete Web(36files) exit0. No T3/T4; configured task policy defers T3, no integrated claim. Five T2 repetitions are explicit scope records, not inferred headers; no Web load repetitions claimed.
+
+Linux x64 c-8 lon1 cland-v0-4faed75d, Node24.21.0/Neovim0.12.5, workers2/Web4; lifetime572s/$0.0397. Host gate417a8f1117229396f9c1f16f7164579f6a6d8f0e reused, not repeated remotely. Actual phases T1 49.80s/T2 315.08s/Web119.41s; per-test sums/projections are not observed phase wall. Generic duration/lint/ratchet and existing out-of-scope tier diagnostics remain report-only (132lint findings59files,1missing file baseline), retained overages not claimed resolved. New T2base.182562247s and load max.238614822s, all-platform reported worst.325s local<1.6s. Four Web samples2.353678651/1.068612041/1.094724997/.787296517s all<3.2s. No new allowance triggered.
+
+## Spec
+C1/C2 verified: project-named manifest MIME/fixed fields/token theme and background; HTML manifest/Apple/theme links;192/512/maskable512/Apple180 PNG signature/dimensions; final injected JSON ETag/304. Existing synthetic edge fixture now valid JSON and full header/cache assertions pass, resolving historical integration finding.
+C3 verified: actual start URL after saved Sessions opens Inbox, clears selection/phone page and consumes parameter to plain/, with ordinary reload persistence retained.
+C4 verified: stubbed badging follows clear→1→2→1→clear from public asks/answers; missing API leaves livecount without errors. Real OS badge not claimed.
+C5 verified: actual executable QR link decoded, exact token/path redeemed on scratch loopback by fresh390x844touch/mobile context; observed30day HttpOnly/SameSiteStrict cookie/expiry and live authenticated socket/Inbox/plain/. No tunnel/realphone/actual installation claim.
+
+A-10127 old18e7ddb6 remains failed (manifest fixture500vs200, partial T2/noWeb) perA-10130, not used as green evidence. Earlier local targeted logs retain source-as-committed provenance; new receipt provides current Linux coverage. Implementer reports docs/agents/tests.md merge-tree conflict againstdevdd2aab60 and no source change; this verdict covers currentbfcc head only. Any authorized merge/change needs fresh source review and exact-head verification.
+
+Reviewer read-only existing source/log/hub, no tests/browser/GUI/edits/merge. Real installability/badges remain affected after-stage QA; no per-item QA criteria/brief. Standards0; Spec0.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

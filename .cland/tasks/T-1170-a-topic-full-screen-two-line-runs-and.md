@@ -2,8 +2,8 @@
 id: T-1170
 kind: task
 title: A topic full screen, two-line runs and artifact chips
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-911
 branch: t/T-1170-a-topic-full-screen-two-line-runs-and
 created: 2026-10-23T07:00:02.941Z
-updated: 2026-10-23T17:12:07.804Z
+updated: 2026-10-23T17:46:58.259Z
+closed: 2026-10-23T17:46:58.259Z
 ---
 
 ## Summary
@@ -39,14 +40,19 @@ E-419 (§3.6 the thread screen, P31 and P32; the HTML artifact as a chip; the fi
 
 - [x] C1. At 390x844 a tapped topic opens full screen with a back control, the title, the topic id, the status and a card button, and both the back control and the browser's back return to Topics (Web test).
   - done: impl-1170 · 2026-10-23T17:05:15.482Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1170-final · 2026-10-23T17:41:46.122Z · commit ab4e6dc1f47a88652ed33672c36284fe5fd50504
 - [x] C2. The card button opens the item's card read-only full screen, and back returns to the thread at the same message (Web test).
   - done: impl-1170 · 2026-10-23T17:10:31.947Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1170-final · 2026-10-23T17:41:46.122Z · commit ab4e6dc1f47a88652ed33672c36284fe5fd50504
 - [x] C3. A folded run shows two lines, the sessions with the message count and then the latest kind, first words and age, and a tap unfolds it in place with the anchor on top (Web test).
   - done: impl-1170 · 2026-10-23T17:05:15.873Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1170-final · 2026-10-23T17:41:46.122Z · commit ab4e6dc1f47a88652ed33672c36284fe5fd50504
 - [x] C4. At 390x844 an HTML artifact in a message is a chip that opens full screen in an iframe whose `sandbox` is `allow-scripts` alone, with a back control (Web test).
   - done: impl-1170 · 2026-10-23T17:05:16.071Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1170-final · 2026-10-23T17:41:46.122Z · commit ab4e6dc1f47a88652ed33672c36284fe5fd50504
 - [x] C5. A thread holding a verdict, a fenced code block and long ids scrolls only vertically at 390 px (Web test).
   - done: impl-1170 · 2026-10-23T17:05:16.259Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1170-final · 2026-10-23T17:41:46.122Z · commit ab4e6dc1f47a88652ed33672c36284fe5fd50504
 
 ## Comments
 
@@ -111,3 +117,75 @@ M1 resolved in source. New public regression begins at the current end for each 
 A-10125 raw targeted54/54 pass, no fail/skip/cancel, owned browser censuses clean. Local Darwinarm64 Node24.21.0 isolated pinned Headless Shell, build/required neighbors and root npmruncheck exit0 reported at source-as-committed tree. Implementer reports original old-source assertion `same last message at the same pixel after covered live traffic` failed before guard and green after; no Reviewer reproduction. Local samples reported<4s, no allowance yet. No configured exact-head/Linux/T3/load proof claimed; preserve original stdout/exits/head/timings without transcription reruns.
 
 Proceed with mode-free verify at exact2b9cf3ee, then final criterion settlement and passing new Web timing audit. Reviewer read-only Git/files/log/hub; no tests/browser/GUI/edits/merge. After-stage affected QA separate, no per-item brief/qaCriteria. Standards0; Spec0.
+
+### impl-1170 · 2026-10-23T17:27:18.310Z
+
+At the Coordinator's request (75f9d88f), merged origin/dev dd2aab60 after first Linux verification. Merge head ab4e6dc1f47a88652ed33672c36284fe5fd50504, pushed. Sole manual resolution retains both exact Web-phase seam paragraphs; upstream T-1168 ask-sheet source auto-merged. Requested build and root typecheck complete; required targeted Web plus phone-asks (once via phone*): 60/60, no skips, local Darwin arm64. Evidence A-10140. Fresh delta source review requested before another mode-free verify. Parent receipt A-10137 is prior-head evidence only.
+
+### rev-23 · 2026-10-23T17:30:12.185Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1170-source-3
+commit: ab4e6dc1f47a88652ed33672c36284fe5fd50504
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1170 merged-head delta source review
+Head ab4e6dc1f47a88652ed33672c36284fe5fd50504; tree 14868e3feb8da0e000d5163a4e763a885abffaf8. Parents/fixed points 2b9cf3ee794d49e98ec4e1f87f7db0c4a59e9d1d and dd2aab60. Branch t/T-1170-a-topic-full-screen-two-line-runs-and. Run rev-20261023-1170-source-3. Clear; findings []; C1–C5 runtime pending.
+
+Coordinator authorization 75f9d88f-e697-40be-80e3-6c01d7f3b623 independently read: merge dd2aab60, preserve both Web seam paragraphs, build/typecheck/targeted plus phone-asks once, fresh delta review then mode-free verify. Review uses first-parent delta and comparison to incoming dev; earlier full source audits A-10124/A-10128 carry forward.
+
+## Standards
+No findings. Both complete docs/agents/tests.md phone-thread and phone-asks seam paragraphs survive byte-for-byte against their respective parents. No bounds or assertions weakened. Thread.tsx, PhoneTopicThread.tsx and phone-thread.test.ts blobs equal source-clear 2b9cf3ee. Incoming ask-sheet changes use shared AskCard/MessageBlock and native modal BottomSheet; Shell's single physical dispatcher consumes sheet actions before phone-page dismissal, field Escape declares sheet context, ordinary typing remains native. No duplicate keyboard listener or new hub/protocol authority. Web tier registration and README retain both features. Diff check clean. Upstream tracker records and removal of the renamed old phone identity baseline are attributable to incoming dev.
+
+## Spec
+No findings in this merge/integration. Full-screen topic/card/artifact history and inert covered thread remain intact; readable=false hidden-arrival guard still retains the old end message/pixel. Shared MessageBlock now supplies sender/time to AskCard, whose phone Answer opens the portal sheet without replacing PhoneTopicThread or its history. Sheet Escape closes the sheet before Shell's page Back handling; card/artifact views keep existing Back paths. Incoming phone-asks case navigates Open thread, observes the real General thread ask, opens the sheet, sends through fake asker receipt, and retains exact settled outcome; adjacent phone Inbox regression now expects the intended sheet while preserving inline message/request behavior.
+
+A-10140 retained raw build/typecheck/targeted logs inspected: build completes, root typecheck/static guards show no errors, targeted log reports 60/60 pass, zero fail/cancel/skip and clean owned browser censuses. All six phone-asks identities occur once. Reported local Darwin arm64 Node24.21.0 pinned isolated Headless Shell; request attributes these to merge tree and reports command exits 0. The raw files contain tool stdout, not separate per-command exit/source metadata; no stronger attribution inferred. These are local targeted checks, not configured Linux/current-head/load evidence.
+
+Prior A-10137 independently audited at parent 2b9cf3ee: configured ordinary 2741/2741 tests and 407/407 files pass, actual all T1/fallback hub+Neovim T2/complete Web; Linux c-8 lon1, host typecheck gate reused, no T3/T4. No load-gate-scope records, so generic repetition header is not repetition evidence. Six new passing phone-thread samples 2.915809585, 1.847459257, 2.497262481, 2.052268343, 2.527647552, 2.103078177 seconds; all below 4 s, no allowance trigger. Generic duration/lint/ratchet notices remain report-only. This is prior-head evidence only.
+
+Proceed with fresh mode-free verification at exact ab4e6dc1, then final C1–C5 settlement and actual passing-sample audit. Preserve original receipts, no transcription reruns. Reviewer read-only Git/files/log/hub; no tests/probes/GUI/browser/edits/merge or delegation. After-stage affected QA separate, no per-item QA brief/criteria.
+Standards: 0 findings. Spec: 0 findings.
+
+### rev-23 · 2026-10-23T17:41:46.122Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1170-final
+commit: ab4e6dc1f47a88652ed33672c36284fe5fd50504
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1170 final same-head evidence review
+Head ab4e6dc1f47a88652ed33672c36284fe5fd50504; tree 14868e3feb8da0e000d5163a4e763a885abffaf8, branch t/T-1170-a-topic-full-screen-two-line-runs-and. Run rev-20261023-1170-final. Clear; C1–C5 verified; findings []. Builds on full source A-10124/A-10128 and authorized merge delta A-10144.
+
+## Standards
+No findings. A-10146 raw configured receipt 5bee1379-ece7-4c60-96d6-f7fdc6ef3b71 independently inspected: exact reviewed head, exit 0; ordinary 2747 test finishes and 408 file finishes all pass, no failure/skip/cancellation. Actual all T1 (132 files), fallback all T2 in hub and Neovim (239 files), complete Web (37 files). No T3/T4; configured T3 deferred to periodic/integrated occasions, no integrated QA claim. All progress records lack load-gate scope; generic five-repetition headers do not establish load repetitions.
+
+Configured host npm run check output includes typecheck/build/static checks and report-only test lint; host gate 509b2678a5a4f41f1df983b6125b7a2bb3cd9821 reused, not repeated remotely. Linux x64 c-8 lon1 cland-v0-676e5643, Node24.21.0/Neovim0.12.5, workers2/Web4, lifetime575s, cost$0.0399. Actual phase wall T1 49.60s, T2 312.74s, Web121.02s; summed test seconds/projections are not wall time. Generic duration/lint/ratchet notices remain report-only, including132lint findings/59files and2missing file baselines; no claim these were corrected.
+
+Six new passing phone-thread identities: full-screen/bothBack2.387609630s; fit/code1.556500324s; sandboxed HTML1.951518193s; factual run/anchor1.595770074s; quiet readonly card/bothBack2.232302381s; covered live arrivals/bothBack1.800205450s. Incoming six phone-asks identities all pass, max2.320315257s. Prior-head phone-thread worst2.915809585s in A-10137 remains below4s; local targeted samples also below4s. No passing-sample allowance trigger; no manifest edit needed.
+
+## Spec
+C1 verified:390x844 topic full-screen facts/Card/Topics current and both return paths pass.
+C2 verified:readonly linked item fullscreen, quiet middle anchor/read suppression and exact previous end-message/pixel after covered live traffic, button/browserBack pass. Source fix remains unchanged in merged tree.
+C3 verified:two hub-fact lines and expansion anchored in place pass; desktop folded run behavior retained.
+C4 verified:phone HTML chip opens full-screen capability iframe with sandbox allow-scripts alone and Back returns to thread; desktop inline preview retained.
+C5 verified:verdict/criteria/longids fit390px, vertical page with internal code horizontal scrolling passes.
+Merged ask-sheet integration targeted and Linux cases pass; source delta A-10144 carries forward.
+
+Implementer reports post-run fetch dev dd2aab60 and read-only merge-tree exit0 returning exact HEAD tree, clean worktree, no head change. Reviewer independently resolves branch tip/tree to reviewed values. A-10137 remains prior-head receipt, not reused as current proof. Source/current configured evidence settles all criteria; after-stage affected QA remains separate. No per-item QA brief/criteria.
+Reviewer read-only Git/files/log/hub; no tests/probes/live browser/GUI/edits/merge.
+Standards:0 findings. Spec:0 findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-23T17:46:58.259Z
+
+Merged 41a0a3782cf8486726dc0e6361e6f614aaeab5aa onto dev.

@@ -3,7 +3,7 @@ id: T-1171
 kind: task
 title: "The touch composer: two rows, the kind sheet and Withdraw"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-419
 blocked_by:
   - T-1170
-topic: null
-branch: null
+topic: topic-914
+branch: t/T-1171-the-touch-composer-two-rows-the-kind
 created: 2026-10-23T07:00:03.184Z
-updated: 2026-10-23T16:51:24.451Z
+updated: 2026-10-23T17:44:03.670Z
 ---
 
 ## Summary
@@ -41,3 +41,9 @@ E-419 (§3.6 the touch composer, P33 to P35; the second half of tracer step 3).
 - [ ] C4. A message to a busy fake session shows queued with a Withdraw at least 44 px tall, and Withdraw returns its text to the composer (Web test).
 - [ ] C5. A draft typed at 390x844 survives a reload with its kind (Web test).
 - [ ] C6. `web/README.md` describes the composer on the phone (docs).
+
+## Comments
+
+### impl-1171 · 2026-10-23T17:44:03.670Z
+
+Implementation preparation: read E-419, A-9888 cut decisions, Composer/drafts/picker/withdrawal and phone harness guidance. Confirmed test seam is sealed Web at 390×844 touch/mobile with public frames and fake sessions. Waiting for T-1170 merge as instructed; no code changes yet.
