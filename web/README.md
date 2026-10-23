@@ -49,10 +49,9 @@ The welcome reads the served receipt at connection time, including a configured
 
 The development loop uses a build and reload, with E-412's same-origin web edge.
 There is no Vite dev server or development bridge. The shell navigates the seven
-areas through the rail or physical `Digit1`–`Digit7` keys. The main area has its
-heading, the Items views, Topics with threads, and stand-in lists of remaining hub objects;
-E-416 to E-418 replace the remaining lists with the full areas. Dashes represent
-unavailable facts. The palette searches the shell’s actions and hub objects; help
+areas through the rail or physical `Digit1`–`Digit7` keys. Items, Inbox, Sessions,
+Topics, Artifacts and Accounts have their area views; Events is the only pending
+full area. Dashes represent unavailable facts. The palette searches the shell’s actions and hub objects; help
 shows the active area’s keys.
 Ported from `prototype/web-shell`'s frame and tokens, slice by
 slice, following spec v0.2 before prototype behaviour before the accepted boards.
@@ -213,11 +212,12 @@ derive these actions from the same physical-code key map.
 | `h` | Topics list | Fold topic group |
 | `j`, `k`, `↓`, `↑` | Thread, including ask rows | Move across run anchors and visible messages |
 | `Enter`, `za` | Thread, on a run anchor or message in that run | Toggle agent run in place; Enter on native controls keeps their activation |
-| `h`, `Esc` | Thread | Return to topic list |
+| `r` | Thread opened from an Inbox request or message, outside ask rows and fields | Reply to Inbox sender |
+| `h`, `Esc` | Thread | Return to the source list (Topics or Inbox) |
 | `1`–`9` | Human-directed ask card or its thread row, outside fields | Answer with the corresponding option immediately |
 | `i`, `r` | Human-directed ask card or its thread row, outside fields | Focus the free-answer field when available |
 | `d` | Human-directed ask card or its thread row, outside fields | Switch to decline mode with a required reason; in decline mode, restore answer mode |
-| `Esc` | Ask card | Never answer or decline; in a thread, return to topic list |
+| `Esc` | Ask card | Never answer or decline; in a thread, return to the source list |
 
 `topic-threads.ts` owns each topic's cached messages and hub-built run facts.
 Threads open at their end with the latest 100 messages and request exclusive
@@ -277,7 +277,7 @@ writes are disabled; no mutation is replayed after reconnect.
 | `d` | Decline request, mark message read, ask decline reason or approval denial note |
 | `1`–`9` on an ask row | Answer with that option |
 | `1`, `2` on an approval row | Approve once, always for this command |
-| `i`, `r` on an ask row | Focus the free answer |
+| `i`, `r` on an ask or approval row | Focus the free answer or denial note when available |
 | `r` on a request or message | Focus the drawer reply to its sender |
 | `A` | Show or hide seven days of departures |
 | `←`, `→` | Fold or unfold section |
@@ -430,14 +430,14 @@ default addressing to the hub. `~` opens artifact results restricted to availabl
 unarchived artifacts in the current topic; a selected artifact becomes a removable chip.
 More artifacts reads the next bounded inventory page while retaining the search.
 
-| Key | Composer action |
-| --- | --- |
-| `Enter` | Send one line; insert a newline in a multiline draft |
-| `Shift+Enter` | Insert a newline at the selection |
-| `⌘Enter` | Send any number of lines |
-| `⌘K` | Open palette, keeping the draft and restoring focus on close |
-| `@` | Choose a session addressee |
-| `~` | Attach an artifact |
+| Physical key | Context | Action |
+| --- | --- | --- |
+| `Enter` | Composer or fixed-address Inbox reply field | Send one line; insert a newline in a multiline draft |
+| `Shift+Enter` | Composer or fixed-address Inbox reply field | Insert a newline at the selection |
+| `⌘Enter` | Composer or fixed-address Inbox reply field | Send any number of lines |
+| `⌘K` | Either field, through the shell binding | Open palette, keeping the draft and restoring focus on close |
+| `Shift+Digit2` (`@`) | Full composer | Choose a session addressee |
+| `Shift+Backquote` (`~`) | Full composer | Attach an artifact |
 
 On a coarse-pointer touch device, Return inserts a newline; Send submits.
 All actions run through the physical-code key map and the shell's single listener.
@@ -639,27 +639,28 @@ The rail collapses while split and restores the button choice on closing, subjec
 to the narrow-window rule. The split and ratio survive reloads in the shell's
 versioned browser key; unavailable storage leaves them usable for the current page.
 
-Selecting an item by click or keyboard focus opens its card in the drawer; other areas show the selected ID/title.
+Selecting an item by click or keyboard focus opens its card in the drawer.
+Other areas use their own detail views, including the Inbox's topic thread and reply composer.
 Close and Escape dismiss it until selection moves. Split or `⌘Enter` opens the
 selected object in the other pane; the drawer stays closed during the split and
 when it closes until a row is selected again. Swap carries each pane's area and
 selection together. Escape sends no hub request and never answers an inbox row.
 All three shortcuts use the shared physical-code map (`Meta+Backslash`,
-`Meta+Enter`, `Escape`). The inventories expose no domain mutations; area modules consume the live model
-described above, while the remaining stand-ins retain their existing reads.
+`Meta+Enter`, `Escape`). Area modules consume the live model and expose their
+implemented actions as described above.
 
 ## Palette and keys
 
-Use native modal dialogs for overlays and keep stand-in objects free of mutation actions (A-8634 R10; T-1004, T-1005).
+Use native modal dialogs for overlays (A-8634 R10; T-1004, T-1005).
 
 `⌘K` or `Space p` opens the palette over the dimmed, inert shell. `⌘K` also
 works from a field without changing its draft. One input searches names and IDs
 by case-insensitive character sequence; matching characters are blue. Results
 stay grouped as Actions, Items, Sessions, Artifacts and Topics, with the best
 match selected. Actions show their keys from `src/keymap.ts`. The prefixes `>`,
-`#`, `@`, `~` and `/` select those five kinds in that order. The ordinary read-only
-hub lists supply objects until the snapshot client lands; the palette sends no
-mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
+`#`, `@`, `~` and `/` select those five kinds in that order. The connection's live
+state supplies the objects. Opening an object uses its area's detail view;
+choosing an action dispatches its implemented handler.
 
 | Key | Shell | Palette |
 | --- | --- | --- |
@@ -668,10 +669,11 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 | `?` | Show current area’s keys, outside fields | Type in the input |
 | `⌘\` | Toggle split | — |
 | `⌘Enter` | Open selected object in the other pane | Open result in the other pane |
-| `Enter` | Native control activation | Open result or run action |
+| `Enter` | Focused area's action where declared; otherwise native control activation | Open result or run action |
 | `Tab`, `Shift+Tab` | Native focus navigation | Next/previous kind, retaining search |
-| `↓`, `↑` | Native control behaviour | Next/previous result |
-| `Esc` | Close help or drawer | Close without acting |
+| `↓`, `↑` | Focused area's navigation where declared; otherwise native control behaviour | Next/previous result |
+| `←`, `→` | Fold/unfold the focused group or block, outside fields | Native input cursor movement |
+| `Esc` | Return or cancel in the focused context; otherwise close help or drawer | Close without acting |
 
 `src/keymap.ts` partitions the physical-code table into shell, Items (including
 Plan), Topics, thread, ask, inbox, inbox-answer, events, composer, reply, Sessions, Artifacts, Accounts and
@@ -687,18 +689,18 @@ from its field.
 Every non-Items area renders through `src/AreaSlot.tsx`. Its `AreaModule` supplies
 `Pane` and `Drawer` components, receives rows, selected identity and a selection
 callback, and declares `handledActions`. A pane exposes its `AreaControls.run`
-through the supplied controls ref. The stand-in modules handle no area actions.
+through the supplied controls ref. The Events stand-in handles no area actions.
 Adding a key to an area's table reserves it but does not enable it: an unhandled
 context key runs no action and never falls back to a shell binding; native
 control activation is preserved. Declared fields reserve their context chords. An area opts in with `handledActions` when its component implements the
 action. Labels live in `contextActions`; help and palette combine shell actions
 with the handled actions, and derive the displayed chords from the focused
-context's table. Sessions enables its implemented navigation and archive keys.
-Its future action keys and Artifacts' keys remain reserved, including Artifacts' `k` for Keep and
-`↑` for moving up.
+context's table. Sessions enables its navigation, launch and lifecycle keys.
+Artifacts enables navigation, Keep (`k`), Archive (`d`) and archive visibility (`A`);
+its declared `s` compose action remains inactive.
 
 The top-strip Palette and Help buttons expose the same overlays. Help names the
-active pane’s area and lists the shell keys shared by all current stand-in areas;
+active pane’s area and lists the shared shell keys;
 area-specific keys use the same map. Help lists each action once, with the active area's label replacing the shared label for that action. Native modal
 focus containment keeps background controls inert; dismissal restores focus.
 The single `keyboard.ts` listener reads physical codes and exact modifiers,
@@ -744,7 +746,7 @@ in a tooltip. Model, account and usage appear on the session page. Tap or Enter
 opens that page in the current pane; Esc cancels a confirmation first, otherwise
 returns to the list with focus on the same row, keeping the archive toggle. The narrow list has no row or
 swipe actions, no unfolded detail and no drawer; action keys work on the page.
-The thread drawer arrives in a following slice.
+The Sessions drawer shows the selected session's identity; its page carries the full session facts.
 
 | Key | Action |
 | --- | --- |
@@ -756,9 +758,9 @@ The thread drawer arrives in a following slice.
 | `r` | Resume a stopped launched session |
 | `d` | Confirm Archive on a stopped launched session |
 | `c` | Toggle capabilities |
-| `Enter` | Confirm the pending action; open the session page below 640 px |
+| `Enter` | Confirm the pending action, toggle the focused verification queue, or open the session page below 640 px |
 | `⌘Enter` | Open the session page in the other pane |
-| `Esc` | Cancel a confirmation or close capabilities |
+| `Esc` | Cancel a confirmation, close capabilities, or return from the narrow session page |
 | `←`, `→` | Fold or unfold the focused group |
 | `A` | Show or hide archived sessions |
 | `?` | Sessions keys |
