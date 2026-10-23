@@ -3,7 +3,7 @@ id: T-1122
 kind: task
 title: Ask cards in the thread and the inbox on one record
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-417
 blocked_by:
   - T-1119
-topic: null
-branch: null
+topic: topic-884
+branch: t/T-1122-ask-cards-in-the-thread-and-the-inbox-on
 created: 2026-10-22T15:16:13.408Z
-updated: 2026-10-22T23:07:35.745Z
+updated: 2026-10-23T01:03:17.126Z
 ---
 
 ## Summary

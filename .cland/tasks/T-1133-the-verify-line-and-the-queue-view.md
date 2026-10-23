@@ -2,8 +2,8 @@
 id: T-1133
 kind: task
 title: The verify line and the queue view
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-874
 branch: t/T-1133-the-verify-line-and-the-queue-view
 created: 2026-10-22T15:16:15.253Z
-updated: 2026-10-23T00:21:59.957Z
+updated: 2026-10-23T00:44:35.612Z
+closed: 2026-10-23T00:44:35.612Z
 ---
 
 ## Summary
@@ -37,24 +38,30 @@ A pure model turns a queue, the elapsed time and the executor status into the li
 ## Acceptance criteria
 
 - [x] C1. With a hand run holding the local slot and one waiter, the line reads the holder, its running time and one waiting, and Enter opens the queue view in place with the holder and the waiter with its executor, wait and ETA (Web test).
-  - done: impl-1133 · 2026-10-22T23:24:51.843Z
   - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
+  - verified: rev-23 [reviewer] · run rev-20261023-1133-final-2 · 2026-10-23T00:41:32.082Z · commit 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+  - done: impl-1133 · 2026-10-23T00:42:20.640Z
 - [x] C2. The queue model renders remote slots with their droplet's name, size and region, the waiters in order, the last-20 metrics and today's spend against the cap from recorded frames (T1 test).
-  - done: impl-1133 · 2026-10-22T23:17:40.803Z
   - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
+  - verified: rev-23 [reviewer] · run rev-20261023-1133-final-2 · 2026-10-23T00:41:32.082Z · commit 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+  - done: impl-1133 · 2026-10-23T00:42:20.745Z
 - [x] C3. Without a new frame the holder's running time and the waiter's wait advance from the frame's receipt, and a `verification.queue` frame replaces the view (Web test).
-  - done: impl-1133 · 2026-10-22T23:24:51.963Z
   - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
+  - verified: rev-23 [reviewer] · run rev-20261023-1133-final-2 · 2026-10-23T00:41:32.082Z · commit 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+  - done: impl-1133 · 2026-10-23T00:42:20.828Z
 - [x] C4. The queue view's open state survives a reload (Web test).
-  - done: impl-1133 · 2026-10-22T23:17:41.468Z
   - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
+  - verified: rev-23 [reviewer] · run rev-20261023-1133-final-2 · 2026-10-23T00:41:32.082Z · commit 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+  - done: impl-1133 · 2026-10-23T00:42:20.910Z
 - [x] C5. `web/README.md` describes the verify line and the queue view (docs).
-  - done: impl-1133 · 2026-10-22T23:17:41.639Z
   - verified: rev-26 [reviewer] · run rev-20261022-1133-source-2 · 2026-10-22T23:26:11.240Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
   - verified: rev-26 [reviewer] · run rev-20261022-1133-final-1 · 2026-10-22T23:36:39.579Z · commit 35a35f72808b9175d968384b465bb6d872b8e32b
   - verified: rev-26 [reviewer] · run rev-20261022-1133-source-3 · 2026-10-22T23:38:58.458Z · commit ee0dce9b556927edba4fe35adcfbc1fc17491625
   - verified: rev-26 [reviewer] · run rev-20261022-1133-source-4 · 2026-10-22T23:51:34.624Z · commit 6d4f43b95829460de8016661d6c2fd68de005586
   - verified: rev-23 [reviewer] · run rev-20261023-1133-source-5 · 2026-10-23T00:21:59.957Z · commit a915776e8c2811dcf922fa11600e3073a5f672ac
+  - verified: rev-23 [reviewer] · run rev-20261023-1133-source-6 · 2026-10-23T00:30:35.455Z · commit 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+  - verified: rev-23 [reviewer] · run rev-20261023-1133-final-2 · 2026-10-23T00:41:32.082Z · commit 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+  - done: impl-1133 · 2026-10-23T00:42:21.088Z
 
 ## Comments
 
@@ -159,3 +166,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Combined delta source clear at a915776e. Carries rev-26's accepted source/design; queue model/component/tests/Fold/7s allowance byte-unchanged from 6d4f43b9. Queue-first Enter, session action delegation, native button guard, Accounts callbacks, narrow archive context, help/docs and sorted tier adjacency preserved. C5 verified; C1–C4 await fresh same-head configured receipt. A-9651 original local check/targeted outputs audited as targeted only. A-9654: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9654-t-1133-integration-delta-source-clear-at-a915776e.md. No findings, no Reviewer runtime execution; QA/landing separate.
 
 Criteria: C5 verified.
+
+### rev-23 · 2026-10-23T00:30:35.455Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1133-source-6
+commit: 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Shared-fix delta clear. Sole non-tracker line exactly matches 29c9a46c and current Codex reliable capability; full table assertion retained. Owned queue implementation/tests/allowance unchanged. C5 carried forward, C1–C4 await fresh exact-head configured receipt. A-9671 original local targeted outputs audited; selected Capabilities 1/1 only. A-9668 remains cancelled old-head partial. A-9676: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9676-t-1133-shared-capability-expectation-source-clear-at-0a8ed77a.md. No findings/Reviewer runtime runs.
+
+Criteria: C5 verified.
+
+### rev-23 · 2026-10-23T00:41:32.082Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1133-final-2
+commit: 0a8ed77a592202b1afee1982cd9c0e9efe28d44c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at 0a8ed77a, C1–C5 verified. A-9692/9fc162a4: Linux T1/all hub+Neovim T2/Web 2592 ordinary passes/0 fail/cancel/skip; both pure-model identities distinct 5/5 load, all C1/C3/C4 Web subcases pass. Parent4.779541633s fits dated7s allowance. Host check reused remotely; T3/T4 absent; generic lint/duration/ratchet/resource diagnostics report-only. A-9694: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9694-t-1133-final-evidence-clear-at-0a8ed77a.md. No findings; after-stage QA/Coordinator landing separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-23T00:44:35.612Z
+
+Merged a43ae84ca70abcd07d3be8420f5c36740c9d5a00 onto dev.

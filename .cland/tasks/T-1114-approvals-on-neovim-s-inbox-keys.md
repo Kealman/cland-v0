@@ -2,8 +2,8 @@
 id: T-1114
 kind: task
 title: Approvals on Neovim's inbox keys
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-872
 branch: t/T-1114-approvals-on-neovim-s-inbox-keys
 created: 2026-10-22T15:16:11.910Z
-updated: 2026-10-23T00:26:27.701Z
+updated: 2026-10-23T00:44:23.888Z
+closed: 2026-10-23T00:44:23.888Z
 ---
 
 ## Summary
@@ -35,15 +36,19 @@ In Neovim's inbox, in both the panel and the full-width view, a relayed approval
 - [x] C1. In headless Neovim on recorded frames, `1` on a relayed approval row sends one `approval.answer` with `once`, and the row folds to "approved once by the human" with its time (test).
   - done: impl-1114 · 2026-10-23T00:12:33.037Z
   - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final2 · 2026-10-23T00:39:54.802Z · commit 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
 - [x] C2. `d` on a relayed row opens the note field, and Enter sends `deny` with the typed note (test).
   - done: impl-1114 · 2026-10-23T00:12:33.123Z
   - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final2 · 2026-10-23T00:39:54.802Z · commit 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
 - [x] C3. A refused answer folds the row to the winner's outcome and says who answered and when (test).
   - done: impl-1114 · 2026-10-23T00:12:33.201Z
   - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final2 · 2026-10-23T00:39:54.802Z · commit 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
 - [x] C4. On a row answered in the TUI, ↵ still attaches, and `1`, `2` and `d` send nothing and say where to answer (test).
   - done: impl-1114 · 2026-10-23T00:12:33.382Z
   - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final2 · 2026-10-23T00:39:54.802Z · commit 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
 - [x] C5. `nvim/README.md` lists the approval keys, the folded outcome and the row answered in the TUI, and `GLOSSARY.md` defines Approval (docs).
   - done: impl-1114 · 2026-10-22T23:21:17.185Z
   - verified: rev-31 [reviewer] · run rev-20261023-1114-source2 · 2026-10-22T23:31:43.623Z · commit c781c316df6095789ab28dd8654a13598d7342c2
@@ -51,6 +56,8 @@ In Neovim's inbox, in both the panel and the full-width view, a relayed approval
   - verified: rev-31 [reviewer] · run rev-20261023-1114-source4 · 2026-10-22T23:57:46.107Z · commit 8c4fa1c8fe2e9db2ef6010a9e9546fdc6a3d5703
   - verified: rev-31 [reviewer] · run rev-20261023-1114-source5 · 2026-10-23T00:14:00.090Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
   - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-delta · 2026-10-23T00:29:46.624Z · commit 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final2 · 2026-10-23T00:39:54.802Z · commit 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
 
 ## Comments
 
@@ -211,3 +218,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; A-9660. A-9656 configured16a1616f exits0,2547/2547 no fail/cancel/skip; Linux c8lon1 T1/all fallback hub+NeovimT2/Web. Independently parsed all22 base approvals and17 new identities each5 distinct load passes plus explicit5/5; worst0.554656969s. Corrected free-answer carrier passes. A-9641 source remains exact; C1–C5 verified. Host T0 not remotely repeated, generic lint/durations report-only, T3/T4/after-stageQA separate. No findings or merge enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-23T00:29:46.624Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-delta
+commit: 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged delta clear; A-9675. Coordinator436a0113 authority confirmed. All owned Lua/stub/inbox test/docs unchanged; merged relay/outcome contract compatible. Independently retained both parents'5691/5701 records and all nodes without change in combined5727, every slice matches catalog. Final shared Web expectation matches reliable Codex capability; no Neovim delta after a06f18fb. A-9664 local capture/replay/typecheck are supporting prior-final-merge receipts. C5 verified; C1–C4 await new exact-head mode-free result.
+
+Criteria: C5 verified.
+
+### rev-31 · 2026-10-23T00:39:54.802Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-final2
+commit: 2a8be5f686f8819f56edf7e6f9f80bab36fbc82c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head clear; A-9690. A-9684 b3d154fd exits0,2603/2603 no fail/cancel/skip at exact A-9675 source-clear2a8be5f6. Independently22 ordinary approval identities pass and17 new groups have five distinct load passes+explicit5/5; worst0.567586903s. OpenCode/Web capabilities and corrected free-answer carrier pass. C1–C5 verified. Linux c8lon1 T1/all fallback hub+NeovimT2/Web; hostT0 not remotely repeated, lint/durations report-only. T3/T4/after-stageQA separate; fresh dev conflict check remains landing step.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-23T00:44:23.888Z
+
+Merged 315081cb8921a582caff3f7490485e43ab0ca90a onto dev.

@@ -2,8 +2,8 @@
 id: T-1152
 kind: task
 title: Hub start spends 16 s silent between binding listeners and restoring sessions when a lease needs recovery
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-865
 branch: t/T-1152-hub-start-spends-16-s-silent-between
 created: 2026-10-22T18:04:51.408Z
-updated: 2026-10-23T00:24:48.024Z
+updated: 2026-10-23T00:31:46.990Z
+closed: 2026-10-23T00:31:46.990Z
 ---
 
 ## Summary
@@ -168,3 +169,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear C1/C2 at unchanged 55a382d6. A-9657/e99a1fe6 full Linux T1/T2/T3/Web exit0: 3798 pass/8 skip/0 fail/cancel, plus 10 separate load passes. Startup identities each distinct 5/5, zero owned tier-mismatch; held-provider listening→serving 8.692ms against unchanged 2000ms. FOLLOWS-001 now passes both hubs. Host T0 reused remotely; T4/QA absent; generic budget/lint/ratchet/resource gates report-only. Skip reasons and historical failure/latency limits retained in A-9661: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9661-t-1152-final-full-evidence-clear-after-follows-shared-fix.md. No findings; Coordinator landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-23T00:31:46.990Z
+
+Merged 8894824629751a7683b2b87989ea79dc11002c82 onto dev.

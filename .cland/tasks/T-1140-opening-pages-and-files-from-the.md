@@ -2,8 +2,8 @@
 id: T-1140
 kind: task
 title: Opening pages and files from the Artifacts area
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-878
 branch: t/T-1140-opening-pages-and-files-from-the
 created: 2026-10-22T15:16:16.302Z
-updated: 2026-10-23T00:21:18.092Z
+updated: 2026-10-23T00:44:11.030Z
+closed: 2026-10-23T00:44:11.030Z
 ---
 
 ## Summary
@@ -35,18 +36,23 @@ Enter on a page artifact (and on a diagram) opens it in the drawer, or with ⌘E
 - [x] C1. Enter on an HTML page artifact opens it in an iframe whose `sandbox` attribute is exactly `allow-scripts`, loaded from a capability URL (Web test).
   - done: impl-1140 · 2026-10-23T00:00:20.686Z
   - verified: rev-26 [reviewer] · run rev-20261023-1140-final-1 · 2026-10-23T00:13:07.180Z · commit 43e05f4f7efafaaa20fbed6dd3c01ec11fcbfc13
+  - verified: rev-26 [reviewer] · run rev-20261023-1140-final-2 · 2026-10-23T00:39:49.070Z · commit 71c1f5d950d1fc3c6ac7a15d1890f1293a04f315
 - [x] C2. A script inside the page cannot read the workbench's document or cookie (Web test).
   - done: impl-1140 · 2026-10-22T23:45:09.498Z
   - verified: rev-26 [reviewer] · run rev-20261023-1140-final-1 · 2026-10-23T00:13:07.180Z · commit 43e05f4f7efafaaa20fbed6dd3c01ec11fcbfc13
+  - verified: rev-26 [reviewer] · run rev-20261023-1140-final-2 · 2026-10-23T00:39:49.070Z · commit 71c1f5d950d1fc3c6ac7a15d1890f1293a04f315
 - [x] C3. A text file opens as text and a binary file offers a download with its name, both from capability URLs (Web test).
   - done: impl-1140 · 2026-10-23T00:00:20.776Z
   - verified: rev-26 [reviewer] · run rev-20261023-1140-final-1 · 2026-10-23T00:13:07.180Z · commit 43e05f4f7efafaaa20fbed6dd3c01ec11fcbfc13
+  - verified: rev-26 [reviewer] · run rev-20261023-1140-final-2 · 2026-10-23T00:39:49.071Z · commit 71c1f5d950d1fc3c6ac7a15d1890f1293a04f315
 - [x] C4. `web/README.md` describes opening pages and files and the sandbox rule (docs).
   - done: impl-1140 · 2026-10-22T23:45:09.774Z
   - verified: rev-23 [reviewer] · run rev-20261022-1140-source · 2026-10-22T23:46:39.610Z · commit 6915865db68eaac76daa585a81e3f22da72dd5ee
   - verified: rev-26 [reviewer] · run rev-20261023-1140-source-2 · 2026-10-23T00:01:15.367Z · commit 43e05f4f7efafaaa20fbed6dd3c01ec11fcbfc13
   - verified: rev-26 [reviewer] · run rev-20261023-1140-final-1 · 2026-10-23T00:13:07.180Z · commit 43e05f4f7efafaaa20fbed6dd3c01ec11fcbfc13
   - verified: rev-26 [reviewer] · run rev-20261023-1140-source-3 · 2026-10-23T00:21:18.092Z · commit a448815a5def59b74ee3f7431fdc75e5eae0ed13
+  - verified: rev-26 [reviewer] · run rev-20261023-1140-source-4 · 2026-10-23T00:28:59.030Z · commit 71c1f5d950d1fc3c6ac7a15d1890f1293a04f315
+  - verified: rev-26 [reviewer] · run rev-20261023-1140-final-2 · 2026-10-23T00:39:49.071Z · commit 71c1f5d950d1fc3c6ac7a15d1890f1293a04f315
 
 ## Comments
 
@@ -155,3 +161,41 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta source clear at a448815a, tree 558653db, after Coordinator-authorized merge of dev 535012cf into reviewed 43e05f4f. Standards and Spec: no findings. A-9653 compares both parents and all combined files: retains artifact open callback/child selection/full-height styling, Accounts pane navigation, Sessions openPage/closePage and phone drawer behavior, plus both documentation sets. Artifact implementation, security/text/download cases and held-read area-slot regression are unchanged from accepted 43e05f4f. C4 verified; C1–C3 await fresh mode-free configured evidence at this merged head. A-9652 preserves supporting local check and targeted receipts (Darwin arm64; zero lint refusals, lint report-only); not configured/Linux/QA proof. Prior A-9633 remains historical after the merge. Artifact A-9653: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9653-t-1140-merged-head-delta-source-review-at-a448815a.md.
 
 Criteria: C4 verified.
+
+### rev-26 · 2026-10-23T00:28:59.030Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261023-1140-source-4
+commit: 71c1f5d950d1fc3c6ac7a15d1890f1293a04f315
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Shared-fix delta source clear at 71c1f5d9, tree 0a9385ad. A-9670 confirms the only non-tracker change since accepted a448815a is session-actions.test.ts:258 changing expected Codex Approval relay from none to reliable; byte-identical to posted fix 29c9a46c and consistent with adapter source. T-1140 product/tests/docs unchanged; Standards and Spec have no findings. C4 verified; C1–C3 await fresh mode-free same-head evidence. A-9666 has 9/9 local targeted stdout; command/build/exits/head are requester attribution, not embedded in that file. A-9665 remains cancelled/partial, Web unrun; no passing claim or artifact finding inferred. A-9670: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9670-t-1140-shared-fix-delta-source-review-at-71c1f5d9.md.
+
+Criteria: C4 verified.
+
+### impl-1140 · 2026-10-23T00:39:29.688Z
+
+Replacement mode-free run19150ea1 passed at71c1f5d950d1fc3c6ac7a15d1890f1293a04f315:2589/2589, T1+fallback all T2 in both packages+Web; Linux x64 c-8 lon1, lifetime510s,cost$0.0354. Host typecheck912df638 reused, not repeated remotely. Lint/budgets report-only; actual Web shard64.07s above40s report-only, existing unrelated would-fail warnings retained. New artifact tests1.475/1.879/1.595s, no >=4s allowance needed. A-9685 original log retained. Coordinator-requested final conflict check fetched origin/dev88948246: merge-tree produced5b016092b58eeb406605fa9f6f4e6b4f2357e026 with no conflicting paths. Worktree clean; head unchanged. Final Reviewer settlement pending. No T3/T4 or after-stage QA claim.
+
+### rev-26 · 2026-10-23T00:39:49.071Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261023-1140-final-2
+commit: 71c1f5d950d1fc3c6ac7a15d1890f1293a04f315
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final replacement evidence clear at unchanged 71c1f5d9. Original A-9685 / 19150ea1 exits 0: independently counted 2589 ordinary tests and 390 files passed, no failed/cancelled/skipped records. Host check and all T1/fallback all T2 hub+Neovim/Web completed; Linux x64 c-8 lon1, host gate 912df638 reused, not repeated remotely. All artifact cases, corrected held-read area-slot integration and shared capability expectation pass. New artifact samples 1.475/1.879/1.595 seconds stay under 4 seconds. C4 source docs retained; C1–C4 verified, findings []. Generic lint/tier/duration/ratchet warnings remain report-only; actual Web phase wall 64.030 seconds exceeds report-only 40 seconds. A-9665 stays cancelled/partial; no T3/T4 or after-stage QA claim. A-9688: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9688-t-1140-final-replacement-evidence-at-71c1f5d9.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-23T00:44:11.030Z
+
+Merged 1850b943c347d15d9532b7d9def52e7f02f512da onto dev.
