@@ -50,3 +50,6 @@ T-1113 review M1/M2: Record pending child-owner recovery and held native replay 
 T-1113 review M3: Require current native validation, refusal without endpoint calls for held/malformed replays, and refreshed authorization with stable id/since.
 T-1094: Document the retained-history startup CPU guard, wall/step diagnostics and planted rewrite regression control.
 T-1094: Replace the machine-dependent CPU gate with checkpoint, recompute and native-read work counts; retain diagnostic timing and a gross hang guard.
+T-1125: Document the sealed Web queued-withdrawal seam, controlled injection, shared pending state and receipt-gated draft restoration/refusal.
+T-1125 review M1/M2: Document authoritative optional withdrawal eligibility, multi-recipient exclusion, legacy fallback and pending-send restoration order.
+T-1125 review M2 visibility: Document fresh eligibility projections and held refreshes retaining newer delivery facts.

@@ -268,7 +268,7 @@ export class HubCore {
       const page = resumed(() => this.#store.visibilityMessages(choice, after, through));
       resumed(() => {
         for (const message of page) {
-          const projected = this.visibility.frame({ type: 'message', topic: this.#messageTopic(message.topic)!, message: this.#resolveAttachments(message) });
+          const projected = this.visibility.frame({ type: 'message', topic: this.#messageTopic(message.topic)!, message: this.#resolveAttachments({ ...message, withdrawable: this.#withdrawalReason(message) === null }) });
           add('messages', projected.message);
         }
       });
@@ -794,7 +794,7 @@ export class HubCore {
     if (!topic) return;
     const stage = this.#store.stage(message.id);
     const ask = this.asks.card(message.id);
-    const { messages, runs } = this.#store.threadRuns(topic.id, [{ ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) }], this.#now().getTime());
+    const { messages, runs } = this.#store.threadRuns(topic.id, [{ ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, withdrawable: this.#withdrawalReason(message) === null, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) }], this.#now().getTime());
     this.#emit({ type: 'message', topic, message: messages[0]!, ...(runs[0] ? { run: runs[0] } : {}) });
   }
 
@@ -1565,9 +1565,10 @@ export class HubCore {
 
   /** The message's stage as stored, to the subscribers; it moves only once every addressee got as far. */
   #emitStage(messageId: string): void {
-    const topic = this.#store.message(messageId)?.topic;
+    const message = this.#store.message(messageId);
+    const topic = message?.topic;
     const stage = this.#store.stage(messageId);
-    if (topic !== undefined && stage !== undefined && stage !== 'queued') this.#emit({ type: 'delivery', topic, message: messageId, stage });
+    if (message && topic !== undefined && stage !== undefined && (stage !== 'queued' || message.fromKind === 'human')) this.#emit({ type: 'delivery', topic, message: messageId, stage, withdrawable: this.#withdrawalReason(message) === null });
   }
 
   #dropExpired(name: string): void {
@@ -1621,21 +1622,36 @@ export class HubCore {
     this.#topicOrThrow(topicId);
     const message = this.#store.message(messageId);
     if (!message || message.topic !== topicId) throw new Error(`no message "${messageId}" in this topic`);
-    if (message.fromKind !== 'human' || message.from !== HUMAN || message.answerTo) throw new Error('only the human’s own ordinary messages can be withdrawn');
-    const deliveries = this.#store.deliveriesOf(messageId);
-    const settled = deliveries.find(d => d.state !== 'queued' && d.state !== 'delivered');
-    if (settled) throw new Error(`cannot withdraw: delivery to ${settled.session} is ${settled.state}`);
-    const submitted = deliveries.find(d => d.injectionStarted);
-    if (submitted) throw new Error(`cannot withdraw: delivery to ${submitted.session} is ${submitted.state} (adapter submission started)`);
-    if (!deliveries.length) throw new Error('cannot withdraw: no queued deliveries');
-    const refusal = this.#withdrawalRefusal?.(messageId, deliveries.map(d => d.session));
-    if (refusal) throw new Error(`cannot withdraw: ${refusal}`);
+    const refusal = this.#withdrawalReason(message);
+    if (refusal) throw new Error(refusal);
     this.#store.withdraw(messageId);
     const topic = this.#store.topic(topicId)!;
     if (topic.status === 'waiting for agent' && !this.#store.lastHumanAddressees(topicId).length) this.#move(topic, 'reply', 'human question withdrawn');
     this.#emitStage(messageId);
     this.#publishTopics();
-    return { text: message.text, message: { ...message, topic: topicId, seq: this.#store.messageSeq(messageId), stage: 'withdrawn' } };
+    return { text: message.text, message: { ...message, topic: topicId, seq: this.#store.messageSeq(messageId), stage: 'withdrawn', withdrawable: false } };
+  }
+
+  #withdrawalReason(message: Message): string | null {
+    if (message.fromKind !== 'human' || message.from !== HUMAN || message.answerTo) return 'only the human’s own ordinary messages can be withdrawn';
+    const deliveries = this.#store.deliveriesOf(message.id);
+    const settled = deliveries.find(d => d.state !== 'queued' && d.state !== 'delivered');
+    if (settled) return `cannot withdraw: delivery to ${settled.session} is ${settled.state}`;
+    const submitted = deliveries.find(d => d.injectionStarted);
+    if (submitted) return `cannot withdraw: delivery to ${submitted.session} is ${submitted.state} (adapter submission started)`;
+    if (!deliveries.length) return 'cannot withdraw: no queued deliveries';
+    const refusal = this.#withdrawalRefusal?.(message.id, deliveries.map(d => d.session));
+    return refusal ? `cannot withdraw: ${refusal}` : null;
+  }
+
+  /** Publish eligibility at the same durable boundary that fences withdrawal. */
+  startInjection(messageId: string, session: string): void {
+    this.#store.startInjection(messageId, session);
+    for (const id of this.#store.deliveryIds(messageId, session)) {
+      const message = this.#store.message(id);
+      // Only ordinary human input can lose eligibility at this boundary.
+      if (message?.fromKind === 'human' && !message.answerTo) this.#emitStage(id);
+    }
   }
 
   /** A session's adapter confirmed the turn (spec 4.2, `injected`); false when the delivery was not `delivered`. */
@@ -2974,7 +2990,7 @@ export class HubCore {
     }
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
     if (id !== AGENTS.id && (filter.item !== undefined || filter.session !== undefined)) throw new Error('item and session history filters require the Agents topic');
-    return { topic, messages: this.#store.topicMessages(id, n, filter).map(message => this.#resolveAttachments(message)) };
+    return { topic, messages: this.#store.topicMessages(id, n, filter).map(message => this.#resolveAttachments({ ...message, withdrawable: this.#withdrawalReason(message) === null })) };
   }
 
   /** Byte-bounded client pages; agent/internal history retains its existing count contract. */
@@ -3115,7 +3131,7 @@ export class HubCore {
     for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
     this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     const stage = this.#store.stage(message.id);
-    return { message: { ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
+    return { message: { ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, withdrawable: this.#withdrawalReason(message) === null, ...(stage ? { stage } : {}) }, outcomes };
   }
 
   /**

@@ -303,7 +303,7 @@ test("a human message held for a vacant role goes to the session that takes the 
   const events: unknown[] = [];
   core.subscribe((e) => events.push(e));
   core.ack(r.connection, message.id);
-  assert.deepEqual(events, [{ type: 'delivery', topic: 'general', message: message.id, stage: 'delivered' }]);
+  assert.deepEqual(events, [{ type: 'delivery', topic: 'general', message: message.id, stage: 'delivered', withdrawable: true }]);
   assert.equal(core.topicHistory('general').messages[0]?.stage, 'delivered');
   core.close(); core.store.close();
 });

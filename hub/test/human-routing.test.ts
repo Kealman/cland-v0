@@ -128,11 +128,14 @@ test('a delivery dropped past the TTL moves the stage, and the UI hears it', asy
 
   const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'subscribe' });
+  const queued = ui.waitFor(f => f.type === 'delivery' && f.stage === 'queued');
+  void queued.catch(() => {});
   const both = await send(ui, { text: 'to a and b', to: ['a', 'b'] });
   const onlyB = await send(ui, { text: 'to b alone', to: ['b'] });
   await a.waitForEvent((e) => e.params.content === 'to a and b');
   await a.call('who');
-  assert.equal(ui.frames.some((f) => f.type === 'delivery'), false, 'b still waits: the stage stays queued');
+  assert.deepEqual(await queued, { type: 'delivery', topic: 'general', message: both.message.id, stage: 'queued', withdrawable: true });
+  assert.equal(ui.frames.some(f => f.type === 'delivery' && f.stage !== 'queued'), false, 'b still waits: the stage stays queued');
 
   await clock.advance(queueTtlMs + 1);
   const back = await spoke(t, hub, 'b', 'sess-b');

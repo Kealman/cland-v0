@@ -4,6 +4,7 @@ import { MarkdownBody } from './MarkdownBody.tsx';
 import type { ConnectionState } from './connection.ts';
 import { AskCard } from './AskCard.tsx';
 import { InlineArtifact } from './artifacts/InlineArtifact.tsx';
+import { useMessageWithdrawal } from './message-withdrawal.ts';
 import s from './MessageBlock.module.css';
 
 const roles: Record<string, string> = { human: 'Human', aide: 'Aide', coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', hub: 'Hub', other: 'Other' };
@@ -17,6 +18,8 @@ function verdictOf(message: TopicMessage): { kind: string; result: 'clear' | 'no
 }
 
 export function MessageBlock({ message, connection }: { message: TopicMessage; connection: ConnectionState }) {
+  const withdrawal = useMessageWithdrawal(message.id);
+  const canWithdraw = message.fromKind === 'human' && message.from === 'human' && !message.answerTo && (message.withdrawable ?? message.stage === 'queued') && !withdrawal.complete;
   const card = message.ask && message.ask.state !== 'open' ? message.ask : connection.askCards?.get(message.id) ?? message.ask;
   const folded = card && card.state !== 'open';
   const role = message.fromKind === 'human' ? 'human' : message.fromKind === 'hub' ? 'hub' : message.fromRole && Object.hasOwn(roles, message.fromRole) ? message.fromRole : 'other';
@@ -39,6 +42,10 @@ export function MessageBlock({ message, connection }: { message: TopicMessage; c
         </span>}
         {verdict?.result === 'clear' && <>{typeof message.detail?.item === 'string' && <ItemText text={message.detail.item} />}{criteria}</>}
         <span className={s.state}>{message.stage && <span data-delivery-stage>{message.stage}</span>}{message.ask && <span data-ask-state>{message.ask.state}</span>}</span>
+        {(canWithdraw || withdrawal.pending) && <button className={s.withdraw} disabled={!connection.live || !connection.command || !!withdrawal.pending} title={withdrawal.error} onClick={() => {
+          if (connection.live && connection.command) void withdrawal.withdraw(message.topic, () => connection.command!({ type: 'topic.withdraw', topic: message.topic, message: message.id }));
+        }}>{withdrawal.pending ? 'Withdrawing' : 'Withdraw'}</button>}
+        {withdrawal.error && <span role="alert" title={withdrawal.error} className={s.failed}>Withdraw failed</span>}
         <time dateTime={message.ts}>{new Date(message.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
       </header>}
       {card ? <AskCard id={message.id} topic={message.topic} card={card} connection={connection} /> : verdict?.result !== 'clear' && <div className={s.body}><MarkdownBody text={message.text} /></div>}

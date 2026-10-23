@@ -227,7 +227,7 @@ export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped' | 'w
 // hub/src/protocol.ts
 /** Exclusive numeric history cursors; string `before` preserves the Neovim message-id cursor. */
 export type TopicHistoryFilter = AgentsHistoryFilter & { before?: number | string; after?: number };
-export type TopicMessage = Message & { seq: number; topic: string; stage?: DeliveryStage; ask?: AskCard; runId?: string };
+export type TopicMessage = Message & { seq: number; topic: string; stage?: DeliveryStage; withdrawable?: boolean; ask?: AskCard; runId?: string };
 
 /** Hub-built facts for a consecutive run; replace by id on every message delta. */
 export type ThreadRun = {
@@ -313,7 +313,7 @@ export type HubEvent =
   /** A new message in a topic: the human's, an agent's. */
   | { type: 'message'; topic: TopicRef & Pick<Topic, 'unread' | 'lastMessageAt'>; message: TopicMessage; run?: ThreadRun }
   /** A message's stage changed. */
-  | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage }
+  | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage; withdrawable?: boolean }
   /** A session's state changed (spec 4.2), from its adapter: `source` names the signal (`hook`, `mod`, `poll`, `process`). */
   | { type: 'session.state'; layer?: Layer; session: string; sessionId: string; state: SessionState; source: string; ts: string; approvalCommand?: string }
   /** A session's role changed: assigned, moved, cleared (null), or vacated by its harness's death. */

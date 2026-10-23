@@ -690,6 +690,25 @@ A topic is a thread in the human's chat with agents (spec 4.5, decision #7): an 
 
   `topic.withdraw {topic, message}` is human-only on the local and authenticated web edges. It returns `{text, message}` for restoring the composer's draft, and publishes `delivery {topic, message, stage:"withdrawn"}`. It accepts the human's ordinary message only while every recipient is still queued or accepted without an adapter submission. Human messages to busy sessions remain queued until idle; an acknowledgement arriving after the session becomes busy waits for idle before injection. Withdrawal releases attached progress/events for the next input and survives reconnect/restart; late acknowledgements cannot revive it. It also clears the withdrawn latest Question's wait. Once any recipient was injected, became uncertain, expired, or began adapter submission, the entire withdrawal is refused with that recipient's stage. The submission fence is durable, including after a failed attempt or hub restart. A bare spoke has no retractable adapter boundary, so its named deliveries are refused conservatively. Ask answers cannot be withdrawn. Neovim renders the terminal stage with the dropped glyph and colour; the composer action is supplied by the web client.
 
+  `TopicMessage.withdrawable` and `delivery.withdrawable` are optional additive
+  facts computed from the same per-recipient check as `topic.withdraw`. History,
+  message and delivery deltas carry them. An injection-started fence publishes
+  false even if the aggregate stage is still queued because another recipient
+  waits; aggregate stage semantics are unchanged. Older clients ignore the field.
+  Visibility refresh rows recompute eligibility; clients retain newer delivery
+  facts when a held refresh crosses a submission delta.
+  Ordinary human input publishes a delivery update at submission even if its
+  aggregate stage remains delivered; eligibility changes from true to false.
+  Non-human and ask-answer inputs add no submission-only delivery update.
+
+  The web message header offers Withdraw for eligible human messages,
+  disables it while pending or offline, and removes it after injection. Only a
+  successful withdrawal receipt restores the returned text before the topic's
+  newer draft; a refusal preserves it and exposes the hub reason in a tooltip.
+  If an older hub omits eligibility, the web offers it only for aggregate queued
+  messages and lets the hub refuse races. A newer pending send retains its place
+  after withdrawn older text on refusal/reload; success keeps the withdrawn draft.
+
   The web thread composer sends the human's kind, a Coordinator role or chosen
   session chip, and same-topic available artifact ids through `topic.send`.
   Removing the addressee chip omits `to`, retaining hub addressing. Browser drafts

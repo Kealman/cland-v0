@@ -2,7 +2,7 @@ import type { AskCard, DeliveryStage, HubFrame, ThreadRun, TopicMessage } from '
 
 export type ThreadPage = { messages: TopicMessage[]; runs: ThreadRun[]; more?: boolean };
 export type ThreadState = { messages: TopicMessage[]; runs: Record<string, ThreadRun>; loaded: boolean; loading: boolean; more: boolean; error?: string | undefined };
-type Patch = { stage?: DeliveryStage; ask?: AskCard };
+type Patch = { stage?: DeliveryStage; withdrawable?: boolean; ask?: AskCard };
 const empty = (): ThreadState => ({ messages: [], runs: {}, loaded: false, loading: false, more: true });
 
 /** One cache per connection: numeric pages merge by identity with newer live facts. */
@@ -49,7 +49,7 @@ export class TopicThreads {
     }
     if (frame.type === 'delivery' || frame.type === 'ask') {
       const id = frame.type === 'delivery' ? frame.message : frame.ask;
-      const patch = { ...this.#patches.get(id), ...(frame.type === 'delivery' ? { stage: frame.stage } : { ask: frame.card }) };
+      const patch = { ...this.#patches.get(id), ...(frame.type === 'delivery' ? { stage: frame.stage, ...(frame.withdrawable !== undefined ? { withdrawable: frame.withdrawable } : {}) } : { ask: frame.card }) };
       this.#patches.set(id, patch);
       const current = this.get(frame.topic);
       this.#threads.set(frame.topic, { ...current, messages: current.messages.map(row => row.id === id ? { ...row, ...patch } : row) });
@@ -58,7 +58,7 @@ export class TopicThreads {
     if (frame.type === 'visibility' && 'rows' in frame) {
       for (const row of frame.rows.messages) {
         const current = this.#threads.get(row.topic);
-        if (current) this.#threads.set(row.topic, { ...current, messages: current.messages.map(message => message.id === row.id ? row : message) });
+        if (current) this.#threads.set(row.topic, { ...current, messages: current.messages.map(message => message.id === row.id ? { ...row, ...this.#patches.get(row.id) } : message) });
       }
       return true;
     }

@@ -232,7 +232,8 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   const id = await sendGeneral(ui, 'Reply with the single word pong');
   const stages = () => ui.frames.filter((f) => f.type === 'delivery' && f.message === id).map((f) => f.stage);
   await eventually('injected', () => (stages().includes('injected') ? true : undefined));
-  assert.deepEqual(stages(), ['delivered', 'injected']);
+  assert.deepEqual(stages(), ['delivered', 'delivered', 'injected']); // Acceptance, submission fence, confirmation.
+  assert.deepEqual(ui.frames.filter(f => f.type === 'delivery' && f.message === id).map(f => f.withdrawable), [true, false, false]);
   const reply = (await replyTo(ui, 'impl', 'pong: Reply with the single word pong')) as { message: { topic: string; replyTo?: string } };
   assert.equal(reply.message.topic, 'general');
   assert.equal(reply.message.replyTo, id);

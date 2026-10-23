@@ -52,7 +52,7 @@ test('the same frames over stdio: a UI spawning `cland hub serve --stdio` as its
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => coord.close());
   await coord.waitForEvent((e) => e.params.content === 'over stdio', 15_000);
-  assert.deepEqual(await ui.waitFor((f) => f.type === 'delivery'), { type: 'delivery', topic: 'general', message: message.id, stage: 'delivered' });
+  assert.deepEqual(await ui.waitFor((f) => f.type === 'delivery'), { type: 'delivery', topic: 'general', message: message.id, stage: 'delivered', withdrawable: false });
   await coord.call('send', { text: 'heard you' });
   const event = (await ui.waitFor((f) => f.type === 'message' && (f.message as TopicMessage).from === 'coord')) as { message: TopicMessage };
   assert.equal(event.message.text, 'heard you');

@@ -146,7 +146,8 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   const id = (sent.value as { message: { id: string } }).message.id;
   const stages = async () => ui.frames.filter((f) => f.type === 'delivery' && f.message === id).map((f) => f.stage);
   await eventually('injected', async () => ((await stages()).includes('injected') ? true : undefined));
-  assert.deepEqual(await stages(), ['delivered', 'injected']);
+  assert.deepEqual(await stages(), ['delivered', 'delivered', 'injected']); // Acceptance, submission fence, confirmation.
+  assert.deepEqual(ui.frames.filter(f => f.type === 'delivery' && f.message === id).map(f => f.withdrawable), [true, false, false]);
   const reply = (await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === 'coord' && (f.message as { replyTo?: string }).replyTo === id, 15_000)) as { message: { text: string; topic: string; replyTo?: string } };
   assert.equal(reply.message.text, 'pong: Reply with the single word pong');
   assert.equal(reply.message.topic, 'general');

@@ -1587,7 +1587,7 @@ export class Sessions {
     if (!adapter) return;
     // Hook/adapter signal timestamps use transport time, independently of policy backoff time.
     const flight = { sentAt: realClock.now().getTime(), again: false, reconnected: false };
-    this.#core.store.startInjection(messageId, name);
+    this.#core.startInjection(messageId, name);
     this.#inflight.set(key, flight);
     if (message.fromKind !== 'hub') this.#core.store.setMeta(`pool-handoff:${sessionId}`, '');
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;

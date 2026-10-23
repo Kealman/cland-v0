@@ -20,6 +20,8 @@ test('withdraw removes a busy session message and leaves the next turn intact', 
   fake.busy('impl');
   const sent = await ui.request({ type: 'topic.send', topic: 'general', to: ['impl'], text: 'put this back in my composer' });
   const message = (sent.value as { message: TopicMessage }).message;
+  assert.equal(message.withdrawable, true);
+  await ui.waitFor(f => f.type === 'message' && (f.message as TopicMessage).id === message.id && (f.message as TopicMessage).withdrawable === true);
   const withdrawn = await ui.request({ type: 'topic.withdraw', topic: 'general', message: message.id });
   assert.equal(withdrawn.ok, true, withdrawn.error);
   assert.equal((withdrawn.value as { text: string }).text, message.text);
@@ -128,6 +130,9 @@ test('withdraw cannot claim success after an unconfirmed adapter submission', as
   const sent = await ui.request({ type: 'topic.send', topic: 'general', to: ['impl'], text: 'submission without confirmation' });
   const id = (sent.value as { message: TopicMessage }).message.id;
   await eventually('adapter rejection completed', () => logs.some(entry => entry.event === 'inject-unconfirmed' && entry.id === id) || undefined);
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal((history.value as { messages: TopicMessage[] }).messages.find(row => row.id === id)?.withdrawable, false);
+  await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'delivered' && f.withdrawable === false);
   const refused = await ui.request({ type: 'topic.withdraw', topic: 'general', message: id });
   assert.equal(refused.ok, false);
   assert.match(refused.error ?? '', /delivered.*submission/);
@@ -153,7 +158,11 @@ test('a broadcast withdrawal is atomic when one addressee was injected', async t
   const id = (sent.value as { message: TopicMessage }).message.id;
   // Aggregate stage remains queued; observe the recipient's completed input separately.
   await eventually('idle recipient injection completed', () => logs.some(entry => entry.event === 'injected' && entry.id === id && entry.session === 'idle') || undefined);
-  await ui.request({ type: 'topic.history', topic: 'general' });
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  const row = (history.value as { messages: TopicMessage[] }).messages.find(row => row.id === id)!;
+  assert.equal(row.stage, 'queued', 'aggregate still includes the busy recipient');
+  assert.equal(row.withdrawable, false, 'one irreversible delivery excludes the whole broadcast');
+  await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'queued' && f.withdrawable === false);
   const refused = await ui.request({ type: 'topic.withdraw', topic: 'general', message: id });
   assert.equal(refused.ok, false);
   assert.match(refused.error ?? '', /injected/);

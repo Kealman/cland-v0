@@ -745,6 +745,16 @@ injected receipt. OpenCode's fake `/test/turn` endpoint holds execution without
 changing the busy state. Existing human steering during `waiting for approval`
 is a different state and remains covered by the Codex contract/reconciliation tests.
 
+Exact delivery observers in `store.test.ts`, `topics-component.test.ts` and the
+stdio `topics.test.ts` retain their full objects including optional eligibility:
+the direct core admits an accepted delivery, while a bare spoke refuses recall.
+Native Codex/OpenCode/Claude contract receipts retain acceptance, submission and
+confirmation events, including the repeated delivered stage and eligibility
+true/false/false. Non-human brief deliveries retain their original stage sequence.
+`human-routing.test.ts` waits for the aggregate-queued eligibility receipt before
+advancing TTL, rejects any premature stage advancement, and retains expired-input
+non-delivery and delivered/dropped final receipts.
+
 ### Waiting for an observable condition
 
 Use `until(predicate, { what })` from `hub/test/harness.ts` for a condition
@@ -1887,6 +1897,25 @@ Clause procedure (defaults implementer, project implementer):
 - Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by default. Keep `startDaemon` only when an assertion concerns the hub process (startup, shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping, watchdog behavior, or CLI behavior with the hub down or unreachable); such tests name the process lifecycle behavior they prove. See docs/agents/tests.md.
 
 ## Web phase
+
+`web/test/withdraw.test.ts` owns the authenticated thread → `topic.withdraw`
+seam with a sealed `webFixture`, fake clock, in-process spoke and busy fake
+adapter. Hold the successful receipt to assert shared pending state across topic
+navigation, no duplicate writes and no early restoration; then retain the exact
+restored text before newer typing, reload persistence and the fake's next injected
+message with zero withdrawn inputs. A controlled busy→idle step proves the
+injected stage removes Withdraw. For refusal, hold the outgoing withdrawal while
+the fake takes the input, withhold its injected browser delta, then release the
+real request: assert the hub's actual injected-stage refusal tooltip, unchanged
+draft/message and later delta application. That race strips optional eligibility
+to exercise an older hub. A two-recipient broadcast retains aggregate queued but
+loses Withdraw after one recipient submits; history/reload retain false eligibility.
+A visibility refresh held before submission is applied after its delivery delta;
+the new layer must render without restoring Withdraw. A fresh refresh includes
+current eligibility. Visibility replacements retain newer delivery/ask patches.
+A single batched fixture covers older A withdrawn while newer B is pending and C
+is typed: refusal and uncertain reload recover A/B/C, success keeps A/C, and edits
+before/after the pending boundary retain order. No live hub or native harness is used.
 
 `web/test/composer.test.ts` owns the authenticated composer → `topic.send` seam:
 sealed `webFixture`, fake Coordinator and second in-process session, rendered

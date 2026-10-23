@@ -151,7 +151,11 @@ test('message Markdown renders safe elements with message-local fences and liter
       assert.equal(await link.getAttribute('rel'), 'noopener noreferrer');
       assert.match(await link.evaluate(node => getComputedStyle(node).textDecorationLine), /underline/);
     }
-    assert.equal(await message.locator('script, img, button, iframe').count(), 0);
+    // Header controls are trusted UI; agent Markdown must still create none.
+    const body = message.locator('header + div');
+    assert.equal(await body.count(), 1, 'the message body is present');
+    assert.ok((await body.innerText()).includes('<button>Fake</button>'));
+    assert.equal(await body.locator('script, img, button, iframe').count(), 0);
     assert.equal(await page.evaluate(() => 'messageExecuted' in window), false);
     assert.ok((await message.innerText()).includes('<script>window.messageExecuted=true</script>'));
     assert.ok((await message.innerText()).includes('[jump](javascript:alert)'));

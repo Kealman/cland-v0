@@ -430,6 +430,20 @@ refusal restores the original text and artifacts ahead of it. An uncertain send
 recovered by reload becomes draft text, with no automatic replay. The hub marks
 the topic read through a successful human send; the browser sends no broader read.
 
+The human's ordinary message offers **Withdraw** when the hub's optional
+`withdrawable` fact is true. The hub checks every recipient and adapter submission;
+one injected recipient removes the action even while others remain queued.
+An older hub without that fact falls back to queued messages and the hub's refusal.
+While the request is pending, **Withdrawing** is disabled across mounted copies
+and topic navigation. A successful receipt restores its returned text ahead of
+anything typed since in that topic's saved composer draft; the delivery delta
+marks the message `withdrawn`. Injected, dropped and withdrawn messages offer no
+Withdraw. A refusal keeps the message and draft, with the hub's reason in the
+action and failure tooltips. Offline, Withdraw is disabled; writes never replay.
+If a newer send is pending, its place between the restored older text and newer
+typing is retained for refusal or uncertain reload. A successful newer send keeps
+the withdrawn text. Editing the draft preserves this boundary.
+
 
 ## Items tree
 
@@ -867,6 +881,7 @@ node --test hub/test/web-accounts.test.ts # T1 worst window, severity, missing d
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
+node --test web/test/withdraw.test.ts  # busy-session queue, receipt-gated draft restoration, injection and real refusal
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
 node --test web/test/inbox.test.ts      # Now sections, ages/folds, row actions, approval keys, navigation and events footer
 node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect

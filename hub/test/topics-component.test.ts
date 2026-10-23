@@ -124,7 +124,7 @@ test('a message from the UI is queued while no session holds the coordinator rol
 
   coord.send({ type: 'ack', id: deliver.id });
   const stage = await ui.waitFor((f) => f.type === 'delivery');
-  assert.deepEqual(stage, { type: 'delivery', topic: 'general', message: message.id, stage: 'delivered' });
+  assert.deepEqual(stage, { type: 'delivery', topic: 'general', message: message.id, stage: 'delivered', withdrawable: false });
   assert.equal((await history(ui, 'general'))[0]?.stage, 'delivered');
 });
 
@@ -142,7 +142,7 @@ test('a coordinator already connected gets the message at once, with the topic i
   assert.equal(event.params.meta?.topic, 'general');
   assert.equal(event.params.meta?.topic_title, 'General');
   assert.equal(event.params.meta?.from_kind, 'human');
-  assert.deepEqual(await ui.waitFor((f) => f.type === 'delivery'), { type: 'delivery', topic: 'general', message: message.id, stage: 'delivered' });
+  assert.deepEqual(await ui.waitFor((f) => f.type === 'delivery'), { type: 'delivery', topic: 'general', message: message.id, stage: 'delivered', withdrawable: false });
 });
 
 test("a spoke's send appears to the subscribed UI as a message event with sender name, kind and time; General is the default topic", async (t) => {
