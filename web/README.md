@@ -103,6 +103,17 @@ marks read the hub's structured facts; legacy agent verdicts retain the first-li
 convention. A clear verdict stays on one row. `Thread.tsx` inserts local-day
 separators without changing message ids or the scrolling anchor.
 
+The thread groups only messages carrying the hub's `runId`, using the supplied
+`ThreadRun.foldLine` verbatim. A click, Enter or `za` opens or closes the run in
+place; its anchor keeps its viewport position and stays pinned at the top while
+scrolling through the open run. `j`/`k` visit the anchor and then its open messages.
+Run state belongs to the mounted thread; expansion sends no hub command and
+opens no drawer. Message deltas replace the same run's facts, updating closed
+lines and adding messages to open runs. The hub excludes asks, answers, verdicts
+and human/Aide traffic; the browser does not infer membership. A closed anchor
+represents its last loaded message for visible read marks. Enter on message links
+and other native controls keeps their own activation.
+
 `MarkdownBody.tsx` renders the parser tokens as React elements, with external
 links underlined and opened using `_blank` and `noopener noreferrer`. Whole item
 tokens use the shared item navigation and never wrap at the hyphen; code stays
@@ -643,6 +654,7 @@ node --test hub/test/web-accounts.test.ts # T1 worst window, severity, missing d
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
+node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```
 

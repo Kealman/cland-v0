@@ -56,4 +56,9 @@ test('focused contexts resolve before shell keys without changing Items or Plan 
   }
   assert.equal(shortcut(key('KeyD'), false, 'shell'), undefined, 'Items bindings stay in Items');
   assert.equal(shortcut(key('KeyI'), 'KeyG', 'topics'), 'jump-item', 'the shared jump leader still works from Topics');
+  assert.equal(shortcut(key('Enter'), false, 'thread'), 'thread-toggle');
+  assert.equal(shortcut(key('KeyZ'), false, 'thread'), 'thread-leader');
+  assert.equal(shortcut(key('KeyA'), 'KeyZ', 'thread'), 'thread-toggle');
+  assert.equal(shortcut(key('Enter', { metaKey: true }), false, 'thread'), 'open-other');
+  assert.equal(shortcut(key('KeyA'), 'KeyZ', 'topics'), undefined, 'run folding stays in the thread');
 });

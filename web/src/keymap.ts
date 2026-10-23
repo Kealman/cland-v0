@@ -4,7 +4,7 @@ export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | '
   | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
   | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
   | 'composer-send' | 'composer-newline'
-  | 'topic-next' | 'topic-previous' | 'topic-open' | 'topic-close' | 'thread-next' | 'thread-previous' | 'thread-back'
+  | 'topic-next' | 'topic-previous' | 'topic-open' | 'topic-close' | 'thread-next' | 'thread-previous' | 'thread-back' | 'thread-leader' | 'thread-toggle'
   | 'plan-approve' | 'plan-discuss' | 'tree-scope' | 'tree-back' | 'jump-leader' | 'jump-item' | 'jump-topic' | 'jump-session'
   | 'tree-select' | 'tree-extend-next' | 'tree-extend-previous' | 'tree-message' | 'tree-topic-message' | 'tree-edit-criteria'
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
@@ -35,7 +35,7 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
     KeyZ: 'tree-leader', 'KeyZ KeyA': 'tree-toggle', 'Shift+KeyD': 'tree-done', 'Shift+KeyA': 'tree-archive',
   },
   topics: { KeyJ: 'topic-next', ArrowDown: 'topic-next', KeyK: 'topic-previous', ArrowUp: 'topic-previous', Enter: 'topic-open', KeyL: 'topic-open', KeyH: 'topic-close' },
-  thread: { KeyJ: 'thread-next', ArrowDown: 'thread-next', KeyK: 'thread-previous', ArrowUp: 'thread-previous', KeyH: 'thread-back', Escape: 'thread-back' },
+  thread: { KeyJ: 'thread-next', ArrowDown: 'thread-next', KeyK: 'thread-previous', ArrowUp: 'thread-previous', KeyH: 'thread-back', Escape: 'thread-back', Enter: 'thread-toggle', KeyZ: 'thread-leader', 'KeyZ KeyA': 'thread-toggle' },
   inbox: {}, events: {},
   composer: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send' },
   sessions: { KeyJ: 'session-next', ArrowDown: 'session-next', KeyK: 'session-previous', ArrowUp: 'session-previous',
@@ -112,7 +112,7 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
   items: [...treeActions, ...planActions],
   topics: [{ action: 'topic-next', label: 'Next topic or group' }, { action: 'topic-previous', label: 'Previous topic or group' },
     { action: 'topic-open', label: 'Enter thread or unfold group' }, { action: 'topic-close', label: 'Fold topic group' }],
-  thread: [{ action: 'thread-next', label: 'Next message' }, { action: 'thread-previous', label: 'Previous message' }, { action: 'thread-back', label: 'Return to topic list' }],
+  thread: [{ action: 'thread-next', label: 'Next message' }, { action: 'thread-previous', label: 'Previous message' }, { action: 'thread-back', label: 'Return to topic list' }, { action: 'thread-toggle', label: 'Toggle agent run' }],
   composer: [{ action: 'composer-send', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }],
   sessions: [
     { action: 'session-next', label: 'Next session' }, { action: 'session-previous', label: 'Previous session' },

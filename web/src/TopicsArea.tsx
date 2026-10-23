@@ -4,7 +4,7 @@ import { Fold } from './Fold.tsx';
 import s from './TopicsArea.module.css';
 import { Thread, type ThreadControls } from './Thread.tsx';
 
-export const topicActions = ['topic-next', 'topic-previous', 'topic-open', 'topic-close', 'thread-next', 'thread-previous', 'thread-back'] as const;
+export const topicActions = ['topic-next', 'topic-previous', 'topic-open', 'topic-close', 'thread-next', 'thread-previous', 'thread-back', 'thread-leader', 'thread-toggle'] as const;
 
 export function TopicDetail({ connection, selected, controls }: AreaContentProps) {
   const thread = useRef<ThreadControls>(null);

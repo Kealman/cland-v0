@@ -22,7 +22,7 @@ export function MessageBlock({ message }: { message: TopicMessage }) {
     {criterion.mark === 'failed' ? '✗' : '✓'} {criterion.id} {criterion.mark}{criterion.note && <> · {criterion.note}</>}
   </span>);
   const artifacts = [...new Map([...(message.artifact ? [message.artifact] : []), ...message.artifacts ?? []].map(artifact => [artifact.id, artifact])).values()];
-  return <article tabIndex={-1} data-message-id={message.id} data-message-seq={message.seq} data-role={role} data-layer={message.layer} data-compact={verdict?.result === 'clear'} className={s.message}>
+  return <article tabIndex={-1} data-thread-row={message.id} data-message-id={message.id} data-message-seq={message.seq} data-role={role} data-layer={message.layer} data-compact={verdict?.result === 'clear'} className={s.message}>
     <span aria-hidden="true" data-role-gutter className={s.gutter} />
     <div className={s.content}>
       <header className={s.header}><strong>{message.fromKind === 'human' ? 'you' : message.from}</strong>

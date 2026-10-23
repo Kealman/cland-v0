@@ -40,6 +40,8 @@ export function listenForShortcuts(
     const cardAccept = mode === 'items' && action === 'accept' && event.target instanceof Element &&
       (event.target.getAttribute('role') === 'treeitem' || event.target.getAttribute('aria-label') === 'Item card');
     if (mode === 'items' && action === 'accept' && !cardAccept) return;
+    if (mode === 'thread' && action === 'thread-toggle' && event.code === 'Enter' && event.target instanceof Element &&
+      event.target.closest('a, button, [role="button"]') && !event.target.closest('[data-run-anchor]')) return;
     // Session Enter owns rows, confirmations and the queue; other buttons keep native activation.
     if (mode === 'sessions' && action === 'session-open' && event.target instanceof Element &&
         event.target.closest('button') && !event.target.closest('[data-object-id], [data-session-actions], [data-session-slot="verification"]')) return;
@@ -49,7 +51,7 @@ export function listenForShortcuts(
       return;
     }
     event.preventDefault();
-    if (action === 'leader' || action === 'jump-leader' || action === 'tree-leader') {
+    if (action === 'leader' || action === 'jump-leader' || action === 'tree-leader' || action === 'thread-leader') {
       prefix = action === 'leader' ? true : action === 'jump-leader' ? 'KeyG' : 'KeyZ';
       leaderTarget = event.repeat ? null : event.target;
       leaderContext = mode;

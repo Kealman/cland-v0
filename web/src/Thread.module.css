@@ -6,3 +6,7 @@
 .messages:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 .date { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--muted); font-size: 12px; }
 .date::before, .date::after { content: ''; height: 1px; background: var(--border); flex: 1; }
+.run { position: relative; }
+.runAnchor { position: sticky; top: 0; z-index: 1; display: block; width: 100%; padding: 10px 20px; border: 0; border-bottom: 1px solid var(--border); background: var(--ground); color: var(--muted); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 12px var(--prose); }
+.runAnchor:hover { background: var(--row-hover); }
+.runAnchor:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; background: var(--selection); }
