@@ -8680,6 +8680,20 @@
       "added": "2026-10-23",
       "expires": "2026-10-30",
       "reason": "T-1123 uses a sealed hub and Headless Shell to create 105 later agent messages, page back to the exact Inbox message, assert focus, then open the pending epic's Plan stage. Linux x64 c-8 lon1 run 1a38504f at 5cd0852b (A-9816) observed this assertion-green test at 6.336998379 s; Web assertions passed 164/164 and the overall run was red on this new-identity gate. The launch brief requires a dated E-417 allowance when any passing Web sample reaches 4 s. The 9.6 s cap is about 1.5 times the worst measured sample; request/DOM bounds, assertions and fixture teardown are unchanged. After this receipt, independent setup sends were batched within the same rate-limit windows to remove serial socket round trips; this remains the worst measured Linux sample."
+    },
+    "hub/test/cover-quiet.test.ts::remote fixture owner admits its cover lease before starting its fixture": {
+      "seconds": 11,
+      "owner": "E-880",
+      "added": "2026-10-23",
+      "expires": "2026-10-30",
+      "reason": "T-1179 (E-417 stage 4) added this held-slot regression: a scratch project hub holds an integrated cover, and a sealed remote fixture owner launched under runnerFixtureEnvironment must admit its cover lease and start its fixture hub. It spawns a real hub, the owner process and its fixture, so it is process-bound. Linux x64 c-8 lon1 stage cover c110635c at 1f199894 (A-10010, shard-2) observed this assertion-green identity at 7.234 s; that cover was red only on this new-identity budget. The 11 s cap is about 1.5 times that worst measured sample; no wait bound, assertion or teardown is relaxed. Owned by E-880 (test-speed allowances) so the E-417 demo carries no epic-owned allowance."
+    },
+    "hub/test/cover-quiet.test.ts::fixture lifecycle worker admits its cover lease before starting its detached hub": {
+      "seconds": 7,
+      "owner": "E-880",
+      "added": "2026-10-23",
+      "expires": "2026-10-30",
+      "reason": "T-1179 (E-417 stage 4) added this held-slot regression: a scratch project hub holds an integrated cover, and the sealed fixture-worker child launched under runnerFixtureEnvironment must admit its cover lease and start its detached fixture hub. It spawns a real hub and a node:test worker, so it is process-bound. Linux x64 c-8 lon1 stage cover c110635c at 1f199894 (A-10010, shard-1) observed this assertion-green identity at 4.67 s, under the 5 s T3 bound but within its noise. The 7 s cap is about 1.5 times that sample, sized for headroom; no wait bound, assertion or teardown is relaxed. Owned by E-880."
     }
   }
 }

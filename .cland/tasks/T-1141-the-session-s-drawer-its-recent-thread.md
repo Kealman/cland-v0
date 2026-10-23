@@ -3,7 +3,7 @@ id: T-1141
 kind: task
 title: "The session's drawer: its recent thread, pending approval and a composer"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-904
 branch: t/T-1141-the-session-s-drawer-its-recent-thread
 created: 2026-10-22T15:16:16.460Z
-updated: 2026-10-23T11:27:14.084Z
+updated: 2026-10-23T11:39:54.087Z
 ---
 
 ## Summary
@@ -42,15 +42,20 @@ E-418 (§3.2 the drawer, P23; tracer step 4). Ordered after E-417's thread, comp
 
 - [x] C1. Selecting a fake Codex session waiting for approval shows its command in the drawer's card, and Approve once folds the card with its outcome and the session leaves Waiting (Web test with the fake harness).
   - done: impl-1141 · 2026-10-23T11:18:43.810Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1141-final · 2026-10-23T11:38:48.507Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
 - [x] C2. The drawer lists the session's recent messages in both directions across topics and pages back without a gap (Web test).
   - done: impl-1141 · 2026-10-23T11:18:43.915Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1141-final · 2026-10-23T11:38:48.507Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
 - [x] C3. A message from the drawer's composer reaches the fake session in its item's topic, or in General without one, as the fake receives it (Web test with the fake harness).
   - done: impl-1141 · 2026-10-23T11:18:44.005Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1141-final · 2026-10-23T11:38:48.507Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
 - [x] C4. Enter on a desktop row and Open thread move focus to the drawer's thread (Web test).
   - done: impl-1141 · 2026-10-23T11:25:33.996Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1141-final · 2026-10-23T11:38:48.507Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
 - [x] C5. `web/README.md` describes the session's drawer (docs).
   - done: impl-1141 · 2026-10-23T11:18:44.307Z
   - verified: rev-23 [reviewer] · run rev-20261023-1141-source-2 · 2026-10-23T11:26:43.961Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
+  - verified: rev-23 [reviewer] · run rev-20261023-1141-final · 2026-10-23T11:38:48.507Z · commit 8c0c29c4313ffaac83c318685272dfc38fe5ae62
 
 ## Comments
 
@@ -132,3 +137,52 @@ Criteria: C5 verified.
 ### impl-1141 · 2026-10-23T11:27:14.084Z
 
 Fresh source review clear at exact 8c0c29c4313ffaac83c318685272dfc38fe5ae62: rev-20261023-1141-source-2, A-10004, M1 resolved and no findings; C5 source verified, C1-C4 runtime pending. Mode-free verify admitted as 01d1cc62-68ad-4f3e-9414-4c5305d298ba, queue position 1, no executor override, reporting to topic-904/rev-23/impl-1141. Head clean and unchanged. Waiting for hub result; no dev merge or further test run.
+
+### rev-23 · 2026-10-23T11:38:48.507Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1141-final
+commit: 8c0c29c4313ffaac83c318685272dfc38fe5ae62
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1141 final evidence review
+Head 8c0c29c4313ffaac83c318685272dfc38fe5ae62 / tree c518de604608cab02362b8dc55c0468d1e8cdfe8; branch tip unchanged.
+Run rev-20261023-1141-final. Clear; findings []; verified C1,C2,C3,C4,C5.
+
+Standards: corrected source audit A-10004 carries forward. Missing Inbox thread-control ref M1 resolved; exact physical j/k/Escape integration regression passes. Existing public session.history numeric cursor, Thread/MessageBlock, ApprovalCard and Composer retained with central key map. No new protocol/authority/dependency or broad cross-topic read marks.
+
+Spec/criteria:
+C1 verified: fake Codex approval command appears in drawer, native once receipt is observed and human outcome folds; fake post-answer busy state explicitly drives departure from Waiting and selected session follows its state change. This is fake harness state/receipt proof, not new native harness execution.
+C2 verified:45 bidirectional messages across two topics page by exclusive numeric boundaries with every identity once in sorted sequence, unrelated peer traffic excluded; live incoming/outgoing messages appear. Held older-page test preserves live message, all32 prior rows and prepend anchor. Recent-page retry succeeds even when older history is complete. Existing Inbox same-session/new-approval stale-read regression passes.
+C3 verified: shared fixed-session composer shows To/session/topic, keeps native @ typing and sends through hub; durable injected message/fake adapter receipt proves exact selected session and item topic or General, with send draft cleared after receipt.
+C4 verified: desktop physical Enter/Open thread focus exact committed session log, including reopened and split detail; shared j/Escape routing works. New Inbox approval log physical Cyrillic-valued KeyJ/KeyK focuses exact latest/previous ids and Escape restores selected approval row.
+C5 verified again at final head: Web README documents drawer/history/live paging/approval/fixed composer/focus semantics; authorized T-1180 wording matches rendered model facts.
+
+Configured mode-free01d1cc62-68ad-4f3e-9414-4c5305d298ba / A-10008 exits0 at exact source-reviewed head. Raw progress audit2720/2720 ordinary tests and403/403 files pass, no fail/skip/cancel. No load-gate-scope repetitions present; headers do not imply extra repetitions. Actual T1 + fallback all hub/Neovim T2 + complete Web all exit0. No T3/T4; configured task policy defers T3. Host check73b3254d9785e79597f4f8a27b4180c37508d108 reused/not repeated remotely.
+
+Executor Linux x64 c-8 lon1 cland-v0-1780ca1c, Node24.21.0/Neovim0.12.5, workers2/Web4, lifetime626s/$0.0434. Generic duration/test-lint/tier/ratchet report-only warnings and five missing baselines retained. Actual Web phase125.15s; projected95.565s at2workers is not measured wall time. No clean-budget or native integration coverage claim.
+
+Eight new passing Web samples seconds:
+Inbox shared-key correction1.335981271;
+session approval/Waiting2.417159388;
+bidirectional history/live2.216863229;
+held numeric page/anchor2.329085953;
+TUI/prior closed1.327221794;
+recent refresh Retry1.524334889;
+fixed-session composer2.297193882;
+desktop/split focus1.489998994.
+All below4s; no passing-sample allowance trigger. Old failed red4.027684583s was not used for an allowance.
+
+Authorized T-1157 shared fix: strengthened Topics earlier-page Retry passes2.589324034s in this Linux run, retaining visible error after extra scroll, exact later live receipt, one rejected request, explicit retry, anchor and151 ordered identities. A-9989 retains20/20 repetitions at two actual Node workers on macOS at original2b406f07; relevant Topics/Thread guard source unchanged by M1 correction, not relabelled as a new-head repetition run. A-10002 retains original dirty-tree M1 red/green plus exact-head37Web/check. Original failed114/116 neighbor evidence remains failed. Coordinator owns T-1157/T-1180 disposition; Reviewer did not edit those follow-up items.
+
+Reviewer performed read-only source/log/identity inspection, no tests/browser/edits/merge. After-stage affected QA remains separate; no per-item brief/outstanding QA criteria. Final clear at this head.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1141 · 2026-10-23T11:39:54.087Z
+
+Ready at unchanged 8c0c29c4313ffaac83c318685272dfc38fe5ae62: final clear rev-20261023-1141-final/A-10009 verifies C1-C5 with no findings. Mode-free 01d1cc62/A-10008 exits 0: 2720/2720 Linux droplet tests, actual T1/all fallback hub+Neovim T2/Web, no T3/T4/load repetitions; report-only lint/budgets retained; eight new Web identities <2.418 s, no allowance trigger. Droplet lifetime 626 s/$0.0434. Post-run fetch and merge-tree against origin/dev 1f199894 exits 0 with clean unchanged head. Ready report sent to Coordinator with T-1157 automatic-retry cause and original-head 20/20 macOS two-worker evidence, exact Attach selector and T-1180 docs correction; existing session.history before reused, no new hub field. Claim retained; after-stage QA and Coordinator stage freeze/enqueue remain separate. Evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10009-t-1141-final-session-drawer-criteria-and-exact-head-linux-evidence.md.
