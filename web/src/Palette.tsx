@@ -3,6 +3,7 @@ import { actionKeys, displayKey, shellActions, paletteActions, foldActions, area
 import type { ConnectionState, ObjectRow } from './connection.ts';
 import s from './Palette.module.css';
 import type { ComposerSelection } from './ComposerPicker.ts';
+import { usePhone } from './phone.ts';
 
 const kinds = [
   { prefix: '>', name: 'Actions' }, { prefix: '#', name: 'Items' }, { prefix: '@', name: 'Sessions' },
@@ -27,13 +28,15 @@ function match(text: string, query: string): number[] | undefined {
   return [...new Set(positions)];
 }
 function Keys({ action, context }: { action: Shortcut; context?: KeyContext }) {
-  return <kbd>{actionKeys(action, context).map(displayKey).join(' / ') || 'No key'}</kbd>;
+  const phone = usePhone();
+  return <kbd>{actionKeys(action, context, phone).map(displayKey).join(' / ') || 'No key'}</kbd>;
 }
 export function PaletteDialog({ mode, area, actions, context = areaContext(area), connection, controls, close, run, open, selection }: {
   mode: 'palette' | 'help'; area: Area; actions: readonly KeyAction[]; context?: KeyContext; connection: ConnectionState; controls: Ref<PaletteControls>;
   close: () => void; run: (action: Shortcut) => void; open: (area: Area, row: ObjectRow, pane: boolean) => void;
   selection?: ComposerSelection | undefined;
 }) {
+  const phone = usePhone();
   const dialog = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState(selection?.kind === 'Sessions' ? '@' : selection?.kind === 'Artifacts' ? '~' : '');
   const [cursor, setCursor] = useState(0);
@@ -90,7 +93,7 @@ export function PaletteDialog({ mode, area, actions, context = areaContext(area)
     onCancel={event => { event.preventDefault(); close(); }}>
     {mode === 'help' ? <>
       <header className={s.header}><h2>{area} keys</h2><button autoFocus onClick={close}>Close</button></header>
-      <dl className={s.keys}>{[...helpActions.values()].filter(row => actionKeys(row.action, context).length).map(row => <div key={row.action} data-key-action={row.action}>
+      <dl className={s.keys}>{[...helpActions.values()].filter(row => actionKeys(row.action, context, phone).length).map(row => <div key={row.action} data-key-action={row.action}>
         <dt>{row.label}</dt><dd><Keys action={row.action} context={context} /></dd>
       </div>)}</dl>
     </> : <>

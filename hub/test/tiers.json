@@ -630,6 +630,7 @@
     "web/test/palette.test.ts": "Web",
     "web/test/phone-approvals.test.ts": "Web",
     "web/test/phone-asks.test.ts": "Web",
+    "web/test/phone-composer.test.ts": "Web",
     "web/test/phone-inbox.test.ts": "Web",
     "web/test/phone-more.test.ts": "Web",
     "web/test/phone-thread.test.ts": "Web",

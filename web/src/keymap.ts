@@ -17,6 +17,7 @@ export function actionAtWidth(action: Shortcut, phone: boolean): boolean {
   return !phone || !([
     'tree-done', 'tree-archive', 'tree-message', 'tree-topic-message', 'tree-edit-criteria',
     'plan-approve', 'plan-discuss', 'artifact-compose', 'artifact-keep', 'artifact-archive',
+    'composer-send', 'composer-send-always', 'composer-artifact',
   ] as readonly Shortcut[]).includes(action);
 }
 
@@ -24,6 +25,7 @@ export type KeyContext = 'sheet' | 'approval' | 'approval-note' | 'ask' | 'inbox
 export type KeyAction = { action: Shortcut; label: string; description?: string };
 
 const composerKeys = { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always' } as const;
+const phoneComposerKeys = { Enter: 'composer-newline', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-newline' } as const;
 const threadKeys = { KeyR: 'inbox-reply', KeyJ: 'thread-next', ArrowDown: 'thread-next', KeyK: 'thread-previous', ArrowUp: 'thread-previous', KeyH: 'thread-back', Escape: 'thread-back', Enter: 'thread-toggle', KeyZ: 'thread-leader', 'KeyZ KeyA': 'thread-toggle' } as const;
 
 /** One physical-code/modifier map, partitioned by focused context. */
@@ -71,10 +73,15 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   launch: { Enter: 'accept', Escape: 'dismiss' },
 };
 
-export function shortcut(event: KeyStroke, leader: boolean | 'KeyZ' | 'KeyG' = false, context: KeyContext = 'shell'): Shortcut | undefined {
+function contextKeys(context: KeyContext, phone: boolean): Readonly<Record<string, Shortcut>> {
+  return phone && (context === 'composer' || context === 'session-composer' || context === 'reply')
+    ? { ...keyMap[context], ...phoneComposerKeys } : keyMap[context];
+}
+
+export function shortcut(event: KeyStroke, leader: boolean | 'KeyZ' | 'KeyG' = false, context: KeyContext = 'shell', phone = false): Shortcut | undefined {
   const chord = `${event.metaKey ? 'Meta+' : ''}${event.ctrlKey ? 'Control+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''}${event.code}`;
   const stroke = leader ? `${leader === true ? 'Space' : leader} ${chord}` : chord;
-  return keyMap[context][stroke] ?? keyMap.shell[stroke];
+  return contextKeys(context, phone)[stroke] ?? keyMap.shell[stroke];
 }
 
 export function areaKey(area: Area): string {
@@ -82,9 +89,9 @@ export function areaKey(area: Area): string {
 }
 
 
-export function actionKeys(action: Shortcut, context?: KeyContext): string[] {
+export function actionKeys(action: Shortcut, context?: KeyContext, phone = false): string[] {
   // Without a context retain all aliases, including actions shadowed elsewhere.
-  const entries = context ? Object.entries({ ...keyMap.shell, ...keyMap[context] }) : Object.values(keyMap).flatMap(table => Object.entries(table));
+  const entries = context ? Object.entries({ ...keyMap.shell, ...contextKeys(context, phone) }) : Object.values(keyMap).flatMap(table => Object.entries(table));
   return [...new Set(entries.filter(([, value]) => value === action).map(([chord]) => chord))];
 }
 export function displayKey(chord: string): string {

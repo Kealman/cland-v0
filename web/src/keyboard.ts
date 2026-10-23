@@ -1,4 +1,5 @@
 import { areas, keyMap, shortcut, type KeyContext, type Shortcut } from './keymap.ts';
+import { isPhone } from './phone.ts';
 
 export type { KeyContext } from './keymap.ts';
 
@@ -31,7 +32,7 @@ export function listenForShortcuts(
     const declaredField = field && field.getAttribute('data-key-context') === mode;
     const modal = mode === 'palette' || mode === 'help';
     const pendingLeader = !modal && !field && leaderTarget !== null && leaderTarget === target && leaderContext === mode;
-    const action = shortcut(event, pendingLeader ? prefix : false, mode) ?? shortcut(event, false, mode);
+    const action = shortcut(event, pendingLeader ? prefix : false, mode, isPhone()) ?? shortcut(event, false, mode, isPhone());
     leaderTarget = null;
     if (!action) return;
     const local = Object.values(keyMap[mode]).includes(action);

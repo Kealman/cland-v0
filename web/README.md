@@ -134,6 +134,28 @@ Build first, then run `node --test web/test/phone-thread.test.ts`. Its sealed
 390×844 touch/mobile cases cover the two Back paths, same-message card return,
 run facts and anchors, sandboxed HTML and horizontal code scrolling.
 
+### Phone composer
+
+Below 640 px the shared composer docks above the bottom bar. Its first row
+contains the kind and addressee chips, with the Coordinator selected by default
+in an item's topic; its second row contains the field and Send. Each control is
+at least 44 px tall. The addressee chip opens the existing session palette;
+its adjacent 44 px remove control clears explicit addressing, leaving mentions
+and default routing to the hub. This cleared choice also survives reload.
+Attaching an artifact and its shortcut stay desktop-only in 0.2.0.
+
+The kind chip opens Message, Decision and Question as three large buttons with
+the current kind checked. This sheet occupies space above the chips, moving
+the thread up without a scrim. Choosing a kind closes it. Return, Shift+Return
+and Command+Return insert a newline through the key map's composer context;
+only Send submits. The palette and help show the same phone bindings.
+
+A queued message shows its status and a 44 px Withdraw below the text until
+adapter submission. A successful withdrawal receipt restores the text before
+newer typing. Text, kind and addressee use the existing per-topic drafts and
+survive navigation and reload; nothing sends automatically on reload.
+Build first, then run `node --test web/test/phone-composer.test.ts`.
+
 ## Components and colours
 
 Copy `src/Shell.tsx` and `src/Shell.module.css`. Components use CSS Modules and
@@ -644,6 +666,8 @@ default addressing to the hub. `~` opens artifact results restricted to availabl
 unarchived artifacts in the current topic; a selected artifact becomes a removable chip.
 More artifacts reads the next bounded inventory page while retaining the search.
 
+The desktop bindings are:
+
 | Physical key | Context | Action |
 | --- | --- | --- |
 | `Enter` | Composer or fixed-address Inbox reply field | Send one line; insert a newline in a multiline draft |
@@ -654,6 +678,8 @@ More artifacts reads the next bounded inventory page while retaining the search.
 | `Shift+Backquote` (`~`) | Full composer | Attach an artifact |
 
 On a coarse-pointer touch device, Return inserts a newline; Send submits.
+Below 640 px all three Return chords insert newlines and only Send submits,
+as described in Phone composer above.
 All actions run through the physical-code key map and the shell's single listener.
 Composition keeps native input. Offline, Send and the send keys perform no write.
 

@@ -16,3 +16,14 @@
 
 .composer[data-inbox-reply] textarea { min-height: 40px; }
 .composer [hidden] { display: none; }
+
+.composer[data-phone-composer] { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 8px 12px; }
+.touchAddressing { grid-column: 1 / -1; display: flex; gap: 8px; min-width: 0; }
+.touchAddressing .chip { min-width: 0; overflow-wrap: anywhere; }
+.composer[data-phone-composer] button { min-height: 44px; min-width: 44px; }
+.composer[data-phone-composer] textarea { min-height: 44px; resize: vertical; }
+.composer[data-phone-composer] .actions { align-self: start; flex-direction: column; }
+.composer[data-phone-composer] .pending, .composer[data-phone-composer] > .addressing { grid-column: 1 / -1; }
+.kindSheet { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; }
+.kindSheet button { display: flex; align-items: center; justify-content: space-between; color: var(--text-soft); }
+.kindSheet button[aria-pressed="true"] { background: var(--selection); color: var(--text-strong); }
