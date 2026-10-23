@@ -3,7 +3,7 @@ id: T-1124
 kind: task
 title: "The composer: kinds, the addressee chip, keys and drafts"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-417
 blocked_by:
   - T-1117
   - T-1119
-topic: null
-branch: null
+topic: topic-892
+branch: t/T-1124-the-composer-kinds-the-addressee-chip
 created: 2026-10-22T15:16:13.780Z
-updated: 2026-10-23T03:28:05.598Z
+updated: 2026-10-23T04:28:26.027Z
 ---
 
 ## Summary

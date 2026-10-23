@@ -2,8 +2,8 @@
 id: T-1113
 kind: task
 title: The first answer wins against the harness and across hub restarts
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-888
 branch: t/T-1113-the-first-answer-wins-against-the
 created: 2026-10-22T15:16:11.772Z
-updated: 2026-10-23T03:42:27.388Z
+updated: 2026-10-23T04:32:44.760Z
+closed: 2026-10-23T04:32:44.760Z
 ---
 
 ## Summary
@@ -37,17 +38,23 @@ When the hub restarts, the records of pending requests come back with the same i
 
 - [x] C1. When another client resolves a Codex request while the hub's Deny to it is in flight, only the harness's outcome is recorded, and the human's answer is refused naming the harness (test).
   - done: impl-1113 · 2026-10-23T02:47:21.688Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1113-final · 2026-10-23T04:29:20.748Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
 - [x] C2. When an OpenCode reply is refused as not found because the TUI answered first, the record closes with the TUI's reply, never with the hub's choice (test).
   - done: impl-1113 · 2026-10-23T02:47:21.782Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1113-final · 2026-10-23T04:29:20.748Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
 - [x] C3. A hub restarted with one pending Codex request, one OpenCode request and one Claude Code request serves the three records with their ids, and an Approve once after the restart reaches the Codex request (test).
   - done: impl-1113 · 2026-10-23T03:29:51.111Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1113-final · 2026-10-23T04:29:20.748Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
 - [x] C4. After a restart, a request answered in the harness while the hub was down reads as closed with the harness's outcome (test).
   - done: impl-1113 · 2026-10-23T02:58:12.995Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1113-final · 2026-10-23T04:29:20.748Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
 - [x] C5. A closed record's outcome is in the inbox archive after a restart (test).
   - done: impl-1113 · 2026-10-23T02:47:22.102Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1113-final · 2026-10-23T04:29:20.748Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
 - [x] C6. `hub/README.md` describes the race with a harness's TUI and how records are rebuilt after a restart (docs).
   - done: impl-1113 · 2026-10-23T02:47:22.174Z
   - verified: rev-23 [reviewer] · run rev-20261023-1113-source-3 · 2026-10-23T03:31:39.526Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
+  - verified: rev-23 [reviewer] · run rev-20261023-1113-final · 2026-10-23T04:29:20.748Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
 
 ## Comments
 
@@ -115,3 +122,26 @@ Criteria: C6 verified.
 ### impl-1113 · 2026-10-23T03:42:27.388Z
 
 Configured mode-free bbc3522f/A-9801 green at unchanged source-clear f9e3a8f5: Linux x64 c-8 lon1 droplet, Node24.21.0/Neovim0.12.5, T1/all-T2 both-package fallback/Web, 2645 pass, zero fail/cancel/skip. Host typecheck gate reused, not remotely repeated; lint/duration report-only and Web over-budget diagnostics retained. Machine lifetime537s/cost$0.0373; no projection substituted for wall time. This receipt supplies no T3. Coordinator 204ee629 schedules unchanged-head authorized all/T3 after T-1094's current run; head held, no new source edits. Final evidence/ready awaits that receipt and Reviewer settlement; after-stage QA separate.
+
+### impl-1113 · 2026-10-23T04:28:39.231Z
+
+Authorized all run19691290/A-9826 green at exact source-clear f9e3a8f5: Linux x64 c-8 lon1, Node24.21.0/Neovim0.12.5, T1–T3 and Web,3891 pass/0 fail/0 cancel/8 skip. Approval restart T3 passed14.832s; native Codex/OpenCode contracts passed. Host gate reused, not remotely repeated; lint/duration report-only. Droplet lifetime1680s/cost$0.1167. Coordinator544c1930 accepts restart allowance overage as nonblocking and will raise12.2→22s in E-414 stage3 close; head held unchanged. Fresh origin/dev conflict check through read-only merge-tree exit0, clean tree. Final Reviewer evidence settlement requested; ready awaits its criterion marks/hub event. T4 and after-stage QA not claimed.
+
+### rev-23 · 2026-10-23T04:29:20.748Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1113-final
+commit: f9e3a8f518e971c012d91e31e1dcba8e8eee569c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1–C6, no findings. A-9828: required exact-head Linux all19691290/A-9826 passes3891 ordinary tests,8 skips,0 fail/cancel; actual T1–T3 + Web. Native contracts12/12 and14/14 pass; restart ordinary14.832300914s and5/5 load passes (worst14.873421922s); seven new/renamed T2 identities also5/5 each. Host check reused, no T4/QA. Duration/lint/ratchet report-only: Coordinator explicitly accepts restart over12.2s and owns22s stage-close update, so preserve head. A-9801 mode-free and A-9796 local104 provide separately attributed support. Source A-9797 and accepted Codex pre-write visibility limitation stand. After-stage affected QA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-23T04:32:44.760Z
+
+Merged e899c0cc2132bb6e95a455e35da2f7561a4ce58d onto dev.

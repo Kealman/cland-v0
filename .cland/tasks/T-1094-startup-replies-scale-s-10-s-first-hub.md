@@ -3,7 +3,7 @@ id: T-1094
 kind: task
 title: startup-replies-scale's 10 s first hub.status bound fails on a slow-disk Linux droplet
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-885
 branch: t/T-1094-startup-replies-scale-s-10-s-first-hub
 created: 2026-10-22T05:08:58.980Z
-updated: 2026-10-23T04:00:22.880Z
+updated: 2026-10-23T04:22:17.671Z
 ---
 
 ## Summary
@@ -99,3 +99,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear, source A-9780 unchanged. Required all07b1f675/A-9808 passes T1–T3 but Web fails asks.test.ts:303 pageUntil 'fresh epoch live', false!==true. Parsed3883 ordinary pass/1fail/8skip, no load/T4. Owned startup passes counts/bytes/membership/plans:9196.6ms wall/10223.7ms diagnostic CPU,1checkpoint/1645jobs,3batches,1004files/1008reads/max2. A-9781 local loaded10/10 valid separate support; mode-free A-9789 lacks owned T3. A-9809: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9809-t-1094-all-run-evidence-not-clear-despite-passing-startup-counts.md. Coordinator owns diagnosis/authorized replacement; no unrelated/flaky inference or new source fix demanded. C2 remains incomplete until a green required all receipt.
 
 Criteria: C2 failed (Required Linux verify all exits 1 in Web fresh-epoch-live assertion; startup T3 passes, aggregate pass still required.).
+
+### rev-23 · 2026-10-23T04:22:17.671Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1094-source-3
+commit: 32c0f9704c02749995fe2b9f6890ed076b28b104
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear, no findings. A-9824: authorized merge of ed49f6fd into ebfab305; all six owned startup implementation/test/docs/skill files byte-identical to prior reviewed head. Shared asks test matches final-reviewed T-1163 d03507da; incoming Web docs and nine exact duration baselines/provenance introduce no startup or allowance change. Prior full source A-9780 stands. C1/C2 final runtime unverified: local10/10 A-9781 and controls A-9779 remain old-head support, A-9808 aggregate remains failed. Coordinator-owned replacement Linux verify all must run at32c0f970. No new-head tests/coverage claimed; no additional QA requirement inferred.
