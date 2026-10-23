@@ -3,7 +3,7 @@ id: T-1129
 kind: task
 title: Approval cards on the hub's approval records
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:14.682Z
-updated: 2026-10-22T15:16:14.682Z
+updated: 2026-10-23T07:33:36.879Z
 ---
 
 ## Summary

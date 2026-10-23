@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-866
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-23T03:28:04.891Z
+updated: 2026-10-23T07:33:36.089Z
 ---
 
 ## Summary
@@ -139,6 +139,7 @@ stages:
       - - T-1127
         - T-1128
         - T-1129
+      - - T-1164
 ```
 
 ## Comments
@@ -248,3 +249,66 @@ Both Coordinator-owned stage covers are green at e2b22f2f92e4fc234c53b8b6568b261
 After-stage verdict only; no epic criterion marks. All 15 scoped rows PASS. Real browser out of scope per committed brief. Cleanup complete, detached worktree retained until verdict only.
 
 Durable evidence A-9793: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9793-e-417-stage-message-block-runs-and-asks-15-pass-at-e2b22f2f-both-covers-green/report.md
+
+### qa-676 · 2026-10-23T07:33:36.089Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s3-2026-10-23-1
+commit: f2899a3e3f587d22351626d7e0b03b490e912834
+stage: inbox and composer
+stage_hash: 9c7e7b08ca8d20677a57ee8fcc0dcb77fe6a52311683019a52792bdfc907d19a
+findings: [{"severity":"low","text":"E417S3-11: thread key table omits r / Reply to Inbox sender; lines 53–54, 642 and 661–662 retain broad stand-in/snapshot/drawer wording contrary to the implemented Inbox thread/reply drawer. k11 and numbered context retained; all required T-1161 markers pass. Brief classifies surrounding docs contradictions as low. Filed T-1164 (XS, stage 4).","file":"web/README.md","line":209}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+# E-417 stage inbox and composer — clear
+
+Run qa-s3-2026-10-23-1; tested commit f2899a3e3f587d22351626d7e0b03b490e912834. All 15 scoped checks PASS.
+
+| Case | Result | Command and observation |
+| --- | --- | --- |
+| E417S3-00 | PASS | [QA shell] k00: HEAD=dev=S; 5/5 stage items merged; paths and files match; clean detached tree; system TMPDIR; 37 dropped names and zero credential prefixes; probe parses |
+| E417S3-01 | PASS | [sealed W] npm run build: exit 0, bundle/assets present and tree clean |
+| E417S3-02 | PASS | [test W] nt inbox.test.ts: 16/16 required named tests pass, no skips; 16 clean fixture censuses; sections, drawer reply, leave rules, archive, approvals and events footer |
+| E417S3-03 | PASS | [test W] nt composer.test.ts: 8/8 required named tests pass, no skips; 8 clean fixture censuses; kinds, recipients, physical keys, artifacts, drafts and refusal recovery |
+| E417S3-04 | PASS | [test W] nt withdraw.test.ts: 8/8 pass, 5 clean censuses; restoration, race/refusal, reload and one-recipient injection removes Withdraw while broadcast stays queued |
+| E417S3-05 | PASS | [test W] nt topic-withdraw,topics-component,human-routing,store: 6+41 pass without skips; all required delivery, kind and reopen assertions passed |
+| E417S3-06 | PASS | [test W] ten Web files serial: 9+5+4+3+11+9+6+9+4+5=65 passed without skips, all clean fixture censuses; T-1157 Retry test passed first attempt |
+| E417S3-07 | PASS | [test W; QA shell] web-keymap 2/2; k07 all bindings and help labels present, Escape0, Neovim leave rule and withdrawable fallback match |
+| E417S3-08 | PASS | [sealed W] k08 independent Headless Shell probe 1/1, no step errors; all kinds, withdrawal, partial-injection, leave-area, leave-pane and archive facts match; fixture census 4 to 0 |
+| E417S3-09 | PASS | [sealed W] k09 full typecheck and tier lint exit0; all four colour/token/HTML/hooks guards pass and four required classifications present |
+| E417S3-10 | PASS | [QA shell] k10 single keyboard listener, guarded preference/draft storage and separate reload guard only; no raw HTML sinks or dependency changes |
+| E417S3-11 | PASS | [docs] k11 plus context reads: all18 required markers; 3 forbidden T-1161 phrases absent; low stale drawer/palette and missing thread-r docs reported to Coordinator |
+| E417S3-12 | PASS | [sealed W] cland qa lint committed E-417-stage-3.md exit0 |
+| E417S3-13 | PASS | [QA shell; cited Coordinator covers] plan complete at fa60a3c7; Linux fe20dee1/A-9893 3971pass8skip0fail and macOS eb92db13/A-9897 3979pass0skip0fail at S; T1-T4+Web actual, budgets report-only; HEAD/dev unchanged clean |
+| E417S3-14 | PASS | [QA shell] k14 all 67 Web fixture censuses clean; T1/T2 logs0/0; tree clean and HEAD/dev=S; scratch root removed, worktree retained until verdict |
+
+## Findings
+
+Low — E417S3-11, web/README.md:209–220: thread table lacks r / Reply to Inbox sender, despite keymap.ts:16/:122 and prose at :294. Commands k11 and numbered context read retain absence and implemented binding; Inbox tests prove reply.
+
+Low — E417S3-11, web/README.md:53–54, :642, :661–662: broad stand-in wording, other drawers described as ID/title, snapshot described as future and drawer/pane as stand-in. The implemented Inbox drawer renders its thread/reply; current snapshot model is documented at :178–185/:328–329 and exercised by the named tests. Events remains a stand-in and is outside scope; that specific wording is not a finding. The brief expressly classifies these surrounding-text contradictions as low; all 18 required markers and T-1161's three absence conditions pass. Filed by Coordinator as T-1164 (E-417, XS, stage 4).
+
+QA capture note: E417S3-14's recorder method accidentally says 72 censuses. Raw logs total 67, all clean. Original line retained with census-count-correction.txt; no product/probe rerun. A supplementary source lookup named nonexistent palette-model.ts; it was a read-only lookup, not a scoped check or product result. No product edits or deviations from the brief's execution steps.
+
+Independent E417S3-08 facts: seeded item/topic/both fake workers true; Message/Decision open with no wait, Question waits for qa-coord, response opens it. Withdrawal returns exact old text before new text; withdrawn input never injected. Partial broadcast remains queued but loses Withdraw once qa-other is injected; refusal names qa-other/injected; single message injected with zero buttons. Folded asks remain inside the Inbox visit and disappear on area exit/non-Inbox pane focus, clearing selection; both archive rows retain human outcomes and archive toggles off. All eight expected fact records present, zero step errors.
+
+No epic criterion marks. After-stage verdict only. Both covers are green and the final plan reports complete; detached HEAD and refs/heads/dev still equal S with no changed paths. All original commands, logs, structured facts and recorder lines retained here.
+
+
+## Execution and cover evidence
+
+Local named tests: macOS arm64, Node v24.21.0, isolated Chrome Headless Shell. 146 named tests and one independent probe passed with zero failures/skips/retries. 67 Web fixture censuses clean; scratch root removed. Full build, typecheck, tier lint and brief lint pass. No real browser; no product fixes. System TMPDIR retained, full fixtureEnvironment after overlays, 37 inherited names dropped, zero credential-prefix count. Queue checked before every test file. No QA full suite. Local monetary cost is not reported and no droplet lifetime applies.
+
+Both Coordinator-owned stage covers tested f2899a3e3f587d22351626d7e0b03b490e912834, tree fa60a3c72ccd068c66a42b273a2e8852444b3f73.
+
+- Linux droplet fe20dee1-73c6-43fb-baac-cbdf84ea74f1: merged A-9893, shard logs A-9894/A-9895, coverage A-9896. 3971 pass, 0 fail, 8 skips; T1–T4 plus Web ran, Web 29 files/132 top-level tests. Two workers, linux x64. Shard 1 cland-v0-1778c772, c-8 lon1: admission-through-remote-finish 1124.48 s, collection 36.38 s, lifetime 1112 s, $0.0772, disk fsync 2.95 ms. Shard 2 cland-v0-815c6141: 924.48 s, collection 22.28 s, lifetime 913 s, $0.0634, disk fsync 2.63 ms. Actual overall admission-through-collection wall 1161.12 s, total $0.1406. Typecheck ran at the host gate and was not repeated on shards.
+- macOS local eb92db13-177d-4187-8a85-4a93aff53332: A-9897. 3979/3979 pass, zero failures/skips; T1–T4 plus Web ran, Web 29 files/132 top-level tests. Darwin arm64 27.0.0, Node v24.21.0, Neovim v0.12.5, two workers. Typecheck local. Overall macOS wall/cost not supplied in the receipt; no projection substituted. Measured per-phase runner walls below.
+- Both covers run T4 base files only and explicitly skip T4 repetitions. Duration budgets, lint and T3 ratchet report-only; this is not an enforced budget pass. No missing receipt is treated as zero. No cover rerun was needed.
+
+macOS phase runner walls in T1/T2/T3/T4/Web order: suite duration 30.77s, suite duration 182.47s, suite duration 950.26s, suite duration 50.01s, suite duration 64.83s.
+
+Final plan: `# inbox and composer: open; stage cover complete (Linux droplet, macOS); tree fa60a3c72ccd068c66a42b273a2e8852444b3f73`. Open is expected before this verdict; 5/5 stage members merged. No epic criterion marks.
+
+Durable evidence A-9899: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9899-e-417-inbox-and-composer-15-pass-at-f2899a3e-both-stage-covers-green/report.md

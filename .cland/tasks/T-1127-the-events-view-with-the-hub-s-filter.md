@@ -3,7 +3,7 @@ id: T-1127
 kind: task
 title: The events view with the hub's filter, day groups and the last look
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:14.417Z
-updated: 2026-10-22T15:16:14.417Z
+updated: 2026-10-23T07:33:36.674Z
 ---
 
 ## Summary

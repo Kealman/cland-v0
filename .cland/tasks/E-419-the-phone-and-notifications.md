@@ -11,10 +11,10 @@ assignee: null
 parent: R-377
 blocked_by:
   - E-417
-topic: null
+topic: topic-896
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-14T16:00:03.888Z
+updated: 2026-10-23T07:00:22.483Z
 ---
 
 ## Summary
@@ -96,3 +96,54 @@ The phone layouts are tried on the human's phone through their tunnel (spec §4)
 - Research: `research/web-stack` (`docs/research/web-stack.md` §2.7 and §4: the secure context, Tailscale Serve, the manifest, the service worker and the measured notifications); `research/web-prior-art` (`docs/research/web-prior-art.md` §6 and §7.3).
 - Mockups: `docs/design/web/PhoneHome.dc.html` (P26, P39 to P42), `PhoneAsk.dc.html` (P36 to P38), `PhoneThread.dc.html` (P31 to P35), `PhoneSessions.dc.html` (P27 to P30), `Phone.dc.html` (P24, P25); `screens/v02-phone-home.png`, `v02-phone-ask.png`, `v02-phone-thread.png`, `v02-phone-sessions.png`.
 - GLOSSARY: Web workbench, Snapshot, Ask.
+
+## Plan
+
+```yaml
+stages:
+  - name: bottom bar and inbox home
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1165
+        - T-1166
+        - T-1167
+  - name: asks, threads, the composer and install
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1168
+        - T-1169
+      - - T-1170
+        - T-1171
+      - - T-1174
+  - name: sessions and disconnected
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1172
+      - - T-1173
+  - name: notifications and the guide
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1175
+        - T-1176
+```
+
+## Comments
+
+### coord · 2026-10-23T07:00:15.723Z
+
+Coordinator decisions at the cut (2026-10-23 ~07:00Z, tickets T-1165–T-1176, plan set), where the spec is silent:
+1. Events on the phone is read-only and unfiltered (newest first) in 0.2.0; tap filters are a follow-up (T-1177).
+2. The disconnected strip (P41) is phone-only; the desktop keeps its hub dot.
+3. The phone composer has no attach in 0.2.0 (DoD C3 does not require it).
+4. A thread's ask card on the phone opens the ask sheet rather than answering inline, so phone asks have one answering surface.
+5. T-1174 (install) runs as its own lane in stage 2, since it depends only on T-1165.
+6. The web lane may make the small hub change in hub/src/hub/web-edge.ts that serves the project-named manifest, with a hub test (T-1174).
+External prerequisites outside the lanes: T-1129 gates T-1169; T-1128 and T-1142 gate T-1175. The epic itself waits for E-417 to close.
