@@ -3,7 +3,7 @@ id: T-1167
 kind: task
 title: The inbox as home on the phone
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-419
 blocked_by:
   - T-1165
-topic: null
-branch: null
+topic: topic-908
+branch: t/T-1167-the-inbox-as-home-on-the-phone
 created: 2026-10-23T07:00:02.411Z
-updated: 2026-10-23T07:00:15.502Z
+updated: 2026-10-23T14:59:38.150Z
 ---
 
 ## Summary
@@ -42,3 +42,9 @@ E-419 (§3.6 the inbox as home, P40 and P42; the waiting plan as a row; the last
 - [ ] C4. A waiting plan shows as a row with its counts and offers no approve or Open Plan control at 390x844 (Web test).
 - [ ] C5. The events line and the archive line close the list as controls at least 44 px tall, and the events line opens Events (Web test).
 - [ ] C6. `web/README.md` describes the inbox as home on the phone (docs).
+
+## Comments
+
+### impl-1167 · 2026-10-23T14:59:38.150Z
+
+Implementation started with implement + tdd guidance. Confirmed seam from E-419 brief: sealed public-frame/Web fixture at 390×844 touch/mobile. Waiting for T-1166 to land before source edits; will reuse existing folds, reply composer/drafts and event summary.
