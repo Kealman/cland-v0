@@ -539,6 +539,7 @@
     "hub/test/web-notifications.test.ts": "T1",
     "hub/test/web-phase.test.ts": "T1",
     "hub/test/web-release.test.ts": "T1",
+    "hub/test/web-tunnel-guide.test.ts": "T2",
     "hub/test/web-verification-model.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",

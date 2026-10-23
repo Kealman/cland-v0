@@ -231,6 +231,81 @@ redeems the exact token on the scratch edge's loopback address, with a synthetic
 tunnel origin and sealed browser openers. It never contacts a tunnel or opens
 the human's browser. Build first, then run this file and `hub/test/web-auth.test.ts`.
 
+## HTTPS on your phone
+
+A phone visiting a plain-HTTP LAN address is not in a secure context: it gets no
+service worker, no notifications and no installable app. Use HTTPS through your
+own tunnel. The hub and its web edge can both stay on loopback.
+
+### Tailscale Serve
+
+On your computer and phone, sign in to the same Tailscale tailnet. Enable HTTPS
+for the tailnet when Tailscale asks. Use the computer's full HTTPS name shown by
+Tailscale; `cland.example-tailnet.ts.net` below is an example to replace with yours.
+
+In the project's `.cland/config.toml`, update the existing `[web]` table (or add
+it if absent):
+
+```toml
+[web]
+bind = "127.0.0.1"
+origin = "https://cland.example-tailnet.ts.net"
+```
+
+The origin is only the scheme and hostname, with an optional port; it has no
+path, query or sign-in token. Apply the settings by stopping and starting the
+hub, then read the **web** listener's port:
+
+```sh
+cland hub stop
+cland hub start
+cland hub status
+```
+
+The `web` line shows an address such as `http://127.0.0.1:48123/`. The automatic
+web port is kept across restarts. Use that actual port as Serve's local target;
+48123 here is only an example. The spokes' separate port is not the web port.
+
+```sh
+tailscale serve --bg http://127.0.0.1:48123
+tailscale serve status
+```
+
+Serve terminates HTTPS at the computer's tailnet name and forwards to that
+loopback web edge. Its HTTPS URL must match `[web] origin`. From the project,
+run:
+
+```sh
+cland web --qr
+```
+
+Scan the QR code on the phone, connected to your tailnet. The command prints
+the HTTPS sign-in link and its QR code without opening a browser; the one-time
+link expires after five minutes. Opening it signs that browser in for 30 days.
+Keep the link private. The hub's spokes and Unix socket remain local.
+
+Any HTTPS reverse proxy of your own works the same way: forward to the loopback
+web port, support WebSocket upgrades, and preserve the browser's Host and exact
+Origin headers. Set `[web] origin` to its HTTPS origin; forwarded headers do not
+replace those checks. Keep the hub and proxy on your own machine, never publish
+the workbench through a cloud service. Tailscale Serve keeps this example within
+your tailnet.
+
+### Install and enable notifications
+
+On Android, open the HTTPS link in Chrome, then choose **Add to Home screen**
+(or **Install app**) from its menu. On iOS, open it in Safari, choose **Share →
+Add to Home Screen**, then launch the icon. The installed app opens on Inbox.
+On iOS, the installed app keeps its cookies apart from Safari: open the sign-in
+link inside the installed app, or run `cland web --qr` again and sign in there.
+
+In the app, open **More**, tap **Subscribe to notifications** and allow the
+system permission prompt. On iOS, do this inside the Home Screen app. Then set
+the **Needs you** and **Finished** switches as desired. The installed app's badge
+carries the needs-you count where the platform supports badges; zero clears it.
+Notifications need the page open and connected to the hub, and appear while it
+is hidden or unfocused. Push with the page closed is not in 0.2.0.
+
 ## Components and colours
 
 Copy `src/Shell.tsx` and `src/Shell.module.css`. Components use CSS Modules and
