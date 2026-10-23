@@ -126,6 +126,7 @@ test('At narrow width a tap or Enter opens the session page', async t => {
   assert.equal((await ui.request({ type: 'session.launch', name: 'narrow-worker', harness: 'codex', model: 'gpt-fake-1' })).ok, true);
   await fixture.pageCase(t, async page => {
     await page.setViewportSize({ width: 600, height: 900 });
+    await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'true', 'phone layout committed before session actions');
     assert.equal(await page.evaluate(() => window.matchMedia('(max-width: 639px)').matches), true);
     await page.getByRole('button', { name: 'Sessions', exact: true }).click();
     await page.locator('[data-object-id="narrow-worker"]').click();

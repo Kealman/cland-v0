@@ -94,6 +94,7 @@ test('Sessions rows render merged facts, holds, waiting detail and physical sele
     await second.press('k');
     assert.equal(await row.getAttribute('aria-pressed'), 'true');
     await page.setViewportSize({ width: 600, height: 900 });
+    await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'true', 'phone layout committed before measuring rows');
     const narrow = async () => {
       const facts = await row.evaluate(node => {
         const fact = (text: string) => [...node.querySelectorAll('span')].find(span => span.textContent === text)!;
