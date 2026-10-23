@@ -6377,7 +6377,6 @@
     "web/test/phone-more.test.ts::phone item action keys are inert and desktop keys still filter, compose and edit": 2.194871,
     "web/test/phone-more.test.ts::phone Items opens a reusable read-only full-screen card and returns by either back control": 2.103521,
     "web/test/phone.test.ts::phone badges share attention facts and count every event since the shared last look": 0.82692,
-    "web/test/phone.test.ts::phone Inbox selection keeps its cards inline without a drawer": 1.048797,
     "web/test/phone.test.ts::the phone frame replaces the rail without losing desktop state": 4.188336
   },
   "allow": {

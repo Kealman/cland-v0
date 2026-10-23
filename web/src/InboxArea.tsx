@@ -33,6 +33,7 @@ function InboxArea(props: AreaContentProps) {
   const phone = usePhone();
   const thread = useRef<ThreadControls>(null);
   const detail = useRef<HTMLDivElement>(null);
+  const [sheetAsk, setSheetAsk] = useState<string>();
   const [closed, setClosed] = useState<string>();
   const visit = useInboxVisit();
   const [now, setNow] = useState(Date.now);
@@ -137,12 +138,12 @@ function InboxArea(props: AreaContentProps) {
             const card = kind === 'ask' ? props.connection.askCards?.get(row.id) ?? { question: entry.row.question, options: entry.row.options, free: entry.row.free, state: 'open' as const } : undefined;
             const showCard = card && (selected === row.id || card.state !== 'open');
             return <div key={row.id} role="listitem" className={s.entry} data-inbox-kind={kind} data-key-context={kind === 'ask' || kind === 'approval' ? 'inbox-answer' : 'inbox'} data-ask-id={kind === 'ask' && !showCard ? row.id : undefined} data-ask-state={kind === 'ask' && !showCard ? card?.state : undefined} onFocus={() => { if (props.selected !== row.id) setClosed(undefined); props.select(row.id); }}>
-              <button hidden={folded || (card ? card.state !== 'open' : kind === 'approval' && entry.row.state === 'closed')} className={s.row} data-object-id={row.id} aria-pressed={selected === row.id} onClick={() => { setClosed(undefined); props.select(row.id); }} title={phone && kind === 'plan' ? `${info.text} · Plan approval needs the desktop Plan view` : info.text}>
+              <button hidden={folded || (card ? card.state !== 'open' : kind === 'approval' && entry.row.state === 'closed')} className={s.row} data-object-id={row.id} aria-pressed={selected === row.id} onClick={() => { setClosed(undefined); props.select(row.id); if (phone && kind === 'ask') setSheetAsk(row.id); }} title={phone && kind === 'plan' ? `${info.text} · Plan approval needs the desktop Plan view` : info.text}>
                 <span className={s.glyph}>{info.glyph}</span><span className={s.subject}>{phone && kind === 'plan' ? `${info.subject} · ${info.text}` : info.subject}</span><span className={s.preview}>{phone && kind === 'plan' ? `${entry.row.stages ?? '—'} stages · ${entry.row.lanes ?? '—'} lanes · ${entry.row.items ?? '—'} items` : info.text.split(/\r?\n/)[0]}</span>
                 <span className={s.sender} data-role={info.role}>{info.sender}</span><time dateTime={row.since} title={row.since}>{age(row.since, now)}</time>
               </button>
               {folded && <div tabIndex={0} className={s.outcome} data-inbox-outcome title={info.text}>✓ {info.subject} · {departure?.reason ?? 'left Inbox'}{departure && <time dateTime={departure.ts}> · {new Date(departure.ts).toLocaleString()}</time>}</div>}
-              {entry.kind === 'ask' && showCard && <AskCard id={row.id} topic={entry.row.topic.id} card={card} context="inbox-answer" connection={props.connection} />}
+              {entry.kind === 'ask' && showCard && <AskCard id={row.id} topic={entry.row.topic.id} card={card} context="inbox-answer" connection={props.connection} phoneOpen={sheetAsk === row.id} closePhone={() => setSheetAsk(undefined)} sender={entry.row.from} since={entry.row.ts} openThread={() => openEntry(entry)} />}
               {kind === 'approval' && (selected === row.id || entry.row.state === 'closed') && <ApprovalCard record={entry.row} connection={props.connection} />}
               {!folded && selected === row.id && (kind === 'request' || kind === 'message') && <div className={s.detail} ref={phone ? detail : undefined}><div>{info.text}</div><div className={s.actions}>
                 <button data-inbox-open onClick={() => openEntry(entry)}>Enter · Open topic</button>

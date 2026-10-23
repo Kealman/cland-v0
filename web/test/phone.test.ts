@@ -111,7 +111,7 @@ test('the phone frame replaces the rail without losing desktop state', async t =
   });
 });
 
-test('phone Inbox selection keeps its cards inline without a drawer', async t => {
+test('phone Inbox selection keeps asks in a sheet and replies inline without a drawer', async t => {
   const fixture = await webFixture(t);
   const sender = await inProcessSpoke(t, { discover: true, cwd: fixture.root, name: 'coord', role: 'coordinator', sessionId: 'phone-inbox-coord' });
   t.after(() => sender.close());
@@ -131,10 +131,12 @@ test('phone Inbox selection keeps its cards inline without a drawer', async t =>
     const row = page.locator(`[data-object-id="${asked.ask}"]`);
     await row.tap();
     await page.locator(`[data-object-id="${asked.ask}"][aria-pressed="true"]`).waitFor();
-    const card = page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-ask-id="${asked.ask}"]`);
+    const card = page.getByRole('dialog', { name: 'Answer ask', exact: true });
     await card.locator('[data-ask-option="1"]').waitFor();
     assert.equal(await page.getByRole('complementary', { name: 'Drawer', exact: true }).count(), 0);
-    assert.equal(await card.locator('[data-ask-option]').count(), 2, 'inline ask choices remain available');
+    assert.equal(await card.locator('[data-ask-option]').count(), 2, 'sheet ask choices remain available');
+    await card.getByRole('button', { name: 'Close sheet', exact: true }).tap();
+    await card.waitFor({ state: 'hidden' });
     for (const [id, action, body] of [[messageId, 'd · Mark read', 'Full phone body'], [requestId, 'd · Decline', 'Full request body']] as const) {
       const selected = page.locator(`[data-object-id="${id}"]`);
       await selected.tap();

@@ -1,7 +1,7 @@
 import { EVENT_KINDS } from '../../shared/wire/index.ts';
 export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'] as const;
 export type Area = typeof areas[number];
-export type Shortcut = Area | 'events-subject' | 'events-open' | 'events-next' | 'events-previous' | 'events-fold' | 'events-leader' | 'events-older' | 'events-warnings' | 'events-clear' | 'events-all' | `events-kind-${number}` | `inbox-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'inbox-archive' | 'inbox-reply' | 'inbox-free' | 'inbox-next' | 'inbox-previous' | 'inbox-open' | 'inbox-remove' | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
+export type Shortcut = Area | 'sheet-close' | 'events-subject' | 'events-open' | 'events-next' | 'events-previous' | 'events-fold' | 'events-leader' | 'events-older' | 'events-warnings' | 'events-clear' | 'events-all' | `events-kind-${number}` | `inbox-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'inbox-archive' | 'inbox-reply' | 'inbox-free' | 'inbox-next' | 'inbox-previous' | 'inbox-open' | 'inbox-remove' | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
   | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
   | 'approval-once' | 'approval-always' | 'approval-deny' | 'approval-cancel'
   | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
@@ -20,7 +20,7 @@ export function actionAtWidth(action: Shortcut, phone: boolean): boolean {
   ] as readonly Shortcut[]).includes(action);
 }
 
-export type KeyContext = 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch' | 'more';
+export type KeyContext = 'sheet' | 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch' | 'more';
 export type KeyAction = { action: Shortcut; label: string; description?: string };
 
 const composerKeys = { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always' } as const;
@@ -66,6 +66,7 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   accounts: {},
   palette: { Enter: 'accept', Tab: 'next-kind', 'Shift+Tab': 'previous-kind', ArrowDown: 'next-result', ArrowUp: 'previous-result' },
   help: {},
+  sheet: { Escape: 'sheet-close' },
   more: { Escape: 'dismiss' },
   launch: { Enter: 'accept', Escape: 'dismiss' },
 };

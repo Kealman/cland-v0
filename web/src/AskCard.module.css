@@ -8,9 +8,10 @@
 .meta { color: var(--ask-quiet); font-size: 12px; }
 .error { display: block; color: var(--failed); }
 .answer { display: flex; gap: 8px; align-items: end; margin-top: 10px; }
-.label { display: flex; flex: 1; min-width: 0; gap: 8px; align-items: end; }
-.label label { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; color: var(--ask-quiet); font-size: 12px; }
-.answer input { min-width: 0; background: var(--ask-option); border: 1px solid var(--ask-option-line); border-radius: 4px; padding: 6px 8px; }
+.label { display: grid; flex: 1; min-width: 0; gap: 4px 8px; grid-template-columns: 1fr auto; align-items: end; }
+.label label { grid-column: 1; min-width: 0; color: var(--ask-quiet); font-size: 12px; }
+.answer input { grid-column: 1; grid-row: 2; min-width: 0; background: var(--ask-option); border: 1px solid var(--ask-option-line); border-radius: 4px; padding: 6px 8px; }
+.label > button { grid-column: 2; grid-row: 2; }
 .answer button { background: var(--ask-option); border: 1px solid var(--ask-option-line); border-radius: 4px; padding: 6px 8px; }
 .answer .decline { color: var(--failed); border-color: var(--red-line); background: var(--red-surface); }
 .answer input:focus-visible, .answer button:focus-visible { outline: 2px solid var(--link); }
@@ -20,3 +21,15 @@
 .heading a { color: var(--link); font-size: 12px; white-space: nowrap; }
 
 .command { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); }
+
+.phoneAnswer { min-height: 44px; padding: 8px 16px; border: 1px solid var(--ask-option-line); border-radius: 4px; background: var(--ask-option); }
+.card[data-phone-sheet] { margin: 0; border: 0; padding: 12px; }
+.card[data-phone-sheet] .options { flex-direction: column; gap: 8px; }
+.card[data-phone-sheet] .options button { width: 100%; min-height: 48px; }
+.card[data-phone-sheet] .answer { flex-direction: column; align-items: stretch; }
+.card[data-phone-sheet] .label { display: grid; align-items: center; }
+.card[data-phone-sheet] .label > button { grid-column: 2; grid-row: 1; }
+.card[data-phone-sheet] .answer input { grid-column: 1 / -1; min-height: 44px; box-sizing: border-box; }
+.card[data-phone-sheet] .answer button { min-height: 44px; }
+.card[data-phone-sheet][data-editing] h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; line-height: 20px; }
+.card[data-phone-sheet][data-editing] .options button { min-height: 44px; }

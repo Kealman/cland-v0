@@ -1,0 +1,10 @@
+.overlay { position: fixed; box-sizing: border-box; margin: 0; padding: 0; border: 0; max-width: none; max-height: none; background: none; color: var(--text); overflow: hidden; }
+.overlay[open] { display: flex; flex-direction: column; justify-content: end; }
+.overlay::backdrop { background: var(--scrim); }
+.sheet { flex: 0 1 auto; min-height: 0; max-height: 100%; display: flex; flex-direction: column; border: 1px solid var(--border); border-bottom: 0; border-radius: 16px 16px 0 0; background: var(--panel); padding-bottom: env(safe-area-inset-bottom); }
+.header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-soft); font-size: 12px; }
+.header > button { flex: none; margin-left: auto; min-width: 44px; min-height: 44px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); }
+.header a { display: flex; align-items: center; min-height: 44px; color: var(--link); }
+.content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.header > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.header a { flex: none; }

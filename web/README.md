@@ -1255,3 +1255,22 @@ previous per-human receipt, then acknowledges the newest loaded history record
 through `marks.set`. That visit keeps its highlights, including later live
 changes; a new visit uses the hub's updated receipt. Marks agree with Neovim and
 other browsers and follow history order even when timestamps match.
+
+## Phone ask sheet
+
+A phone Inbox ask row opens `AskCard` in `BottomSheet`; the selected row stays
+behind the scrim. In a thread the card shows its question and Answer, opening the
+same sheet. The header carries the item (or topic), sender, age, Open thread and
+Close. Options fill the width at 48 px. Focusing the free answer clamps the
+question to three lines and uses 44 px options for the rest of that opening, so
+moving focus to an action does not shift it under a tap. Decline shares the field
+label row, switches the field to Reason and needs nonblank text before sending.
+The existing `topic.answer`, recovery and cross-client outcome paths are shared
+with desktop asks. A settled Inbox row stays folded until the visit ends.
+
+`BottomSheet` accepts a label, header, children and close callback for reuse by
+approval sheets. Its native modal dialog owns focus and background inertness;
+`visualViewport` resize/scroll receipts set its bounds. The `sheet` key context
+maps physical Escape to `sheet-close` through the shell's single dispatcher.
+Fields in a sheet declare that context for Escape while keeping normal typing.
+Close and scrim taps dismiss only; sheets have no swipe action.

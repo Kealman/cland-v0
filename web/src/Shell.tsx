@@ -11,6 +11,7 @@ import { focusedKeyContext, listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 import { runApprovalShortcut } from './ApprovalCard.tsx';
+import { runBottomSheetShortcut } from './BottomSheet.tsx';
 import { AskNavigation, runAskShortcut } from './AskCard.tsx';
 import { ComposerPicker, type ComposerSelection } from './ComposerPicker.ts';
 import { runComposerShortcut } from './Composer.tsx';
@@ -170,6 +171,7 @@ export function Shell() {
     setOverlay(mode);
   };
   const runShortcut = (action: Shortcut) => {
+    if (!overlay && runBottomSheetShortcut(action)) return;
     if (!actionAtWidth(action, phone)) return;
     if (more && action === 'dismiss') { setMoreOpen(false); moreButton.current?.focus(); return; }
     if (!overlay && phone && phonePage && (action === 'dismiss' || action === 'tree-close')) { history.back(); return; }
@@ -268,7 +270,7 @@ export function Shell() {
     return current.overlay ?? (current.more ? 'more' : undefined) ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
     if (!actionAtWidth(action, isPhone())) return false;
-    if (context === 'more' || context === 'shell' || context === 'composer' || context === 'session-composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'sheet' || context === 'more' || context === 'shell' || context === 'composer' || context === 'session-composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
