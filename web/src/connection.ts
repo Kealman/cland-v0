@@ -1,6 +1,7 @@
 import { PROTOCOL_VERSION, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
 import { replaceAccount, type AccountsState } from './accounts/state.ts';
+import type { AccountList } from '../../shared/wire/index.ts';
 import { replaceArtifact, type ArtifactInventoryPage, type ArtifactsState } from './artifacts/state.ts';
 import type { Area } from './keymap.ts';
 import { compareReleases } from './current-release.ts';
@@ -92,14 +93,19 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     for (const pending of commands.values()) { clearTimeout(pending.timer); pending.reject(new Error('Connection lost; check topic history before retrying')); }
     commands.clear();
   }
-  async function command<T>(frame: Command<WorkbenchRequest>): Promise<T> {
+  async function command<T>(frame: Command<WorkbenchRequest>, timeoutMs = 10_000): Promise<T> {
     if (!state.live || socket.readyState !== WebSocket.OPEN) throw new Error('Hub offline');
     return new Promise<T>((resolve, reject) => {
       const id = `action:${++commandSerial}`;
-      const timer = setTimeout(() => { commands.delete(id); reject(new Error('No receipt; check topic history before retrying')); }, 10_000);
+      const timer = setTimeout(() => { commands.delete(id); reject(new Error('No receipt; check topic history before retrying')); }, timeoutMs);
       commands.set(id, { resolve: value => resolve(value as T), reject, timer });
       request({ ...frame, id } as WorkbenchRequest);
     });
+  }
+  async function pollAccounts() {
+    const value = await command<AccountList>({ type: 'account.poll' }, (1 + Math.ceil((state.accounts?.accounts.length ?? 0) / 2)) * 30_000);
+    state = { ...state, accounts: value };
+    rows('Accounts', value.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
   }
   async function resolveItem(id: string): Promise<{ item: ExplorerSummary; ancestors: ExplorerSummary[] } | undefined> {
     const number = id.split('-').at(-1);
@@ -241,7 +247,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   }
   function connect() {
     artifactRead = undefined;
-    state = { ...state, command, resolveItem, loadItems, loadArchivedSessions, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
+    state = { ...state, command, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
     requestedPlans.clear();
     closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();

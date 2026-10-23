@@ -15,6 +15,7 @@ export type AreaContentProps = {
   rows: readonly ObjectRow[] | undefined;
   selected: string | undefined;
   select: (id: string) => void;
+  navigate?: (area: Area) => void;
   openPage?: (id: string) => void;
   controls?: Ref<AreaControls>;
 };

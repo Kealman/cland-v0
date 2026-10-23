@@ -23,7 +23,7 @@ export async function pageUntil(page: Page, predicate: () => boolean, what: stri
   assert.equal(await page.evaluate(predicate), true, what);
 }
 
-export async function webFixture(t: TestContext, options: { cliLink?: boolean; clock?: ProjectHubOptions['clock']; prepare?: (root: string) => Promise<void> } = {}) {
+export async function webFixture(t: TestContext, options: { cliLink?: boolean; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void> } = {}) {
   const root = await tempProject(t, 'w-');
   // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.
   // Keep it short and owned, including the browser's artifacts and crash paths.
@@ -33,7 +33,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; c
   process.env.PLAYWRIGHT_BROWSERS_PATH = browserCache;
   const env = await accountFixtureEnvironment({ TMPDIR: root, TMP: root, TEMP: root, PLAYWRIGHT_BROWSERS_PATH: browserCache });
   await options.prepare?.(root);
-  const hubOptions = options.clock ? { clock: options.clock } : {};
+  const hubOptions = { ...(options.clock ? { clock: options.clock } : {}), ...(options.accountReader ? { accountReader: options.accountReader } : {}) };
   let hub = await projectHub(t, root, {}, hubOptions);
   const openers = join(root, 'openers');
   if (options.cliLink) {
@@ -87,7 +87,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; c
   const tracePaths: string[] = [];
   const contexts = new Set<unknown>();
   async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>) {
-    const context = await browser!.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+    const context = await browser!.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block', ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}) });
     assert.ok(!contexts.has(context), 'fresh context'); contexts.add(context);
     context.setDefaultTimeout(3000);
     let passed = false;

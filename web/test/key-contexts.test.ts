@@ -50,7 +50,11 @@ test('area modules keep selection and drawers while unimplemented session action
   await fixture.pageCase(t, async page => {
     for (const area of ['Inbox', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts']) {
       await page.getByRole('button', { name: area, exact: true }).click();
-      await page.getByRole('list', { name: `${area} objects`, exact: true }).waitFor();
+      if (area === 'Accounts') {
+        const accounts = page.locator('[data-area-module="Accounts"][data-area-surface="pane"]');
+        await accounts.waitFor();
+        assert.equal(await accounts.getAttribute('data-key-context'), 'accounts');
+      } else await page.getByRole('list', { name: `${area} objects`, exact: true }).waitFor();
       assert.equal(await page.getByRole('heading', { name: area, exact: true }).count(), 1);
     }
     await page.getByRole('button', { name: 'Sessions', exact: true }).click();

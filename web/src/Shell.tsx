@@ -64,9 +64,9 @@ export function Shell() {
   };
   const split = preferences.secondary !== undefined;
   const area = active === 'secondary' && preferences.secondary ? preferences.secondary : preferences.area;
-  const setArea = (selected: Area) => {
+  const setArea = (selected: Area, pane = active) => {
     navigationSerial.current++;
-    setPreferences(previous => active === 'secondary' && previous.secondary
+    setPreferences(previous => pane === 'secondary' && previous.secondary
       ? { ...previous, secondary: selected, secondaryRow: undefined, secondaryDetail: false } : { ...previous, area: selected, row: undefined, detail: false });
   };
   const dismissed = preferences.dismissed;
@@ -326,6 +326,7 @@ export function Shell() {
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {paneArea !== 'Items' && <AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
+                navigate={target => setArea(target, pane)}
                 openPage={id => { navigationSerial.current++; setPreferences(previous => pane === 'primary'
                   ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}
                 controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'page' : 'pane'} />}

@@ -1,0 +1,13 @@
+.registry { margin: 12px 20px; color: var(--muted); font: 12px var(--mono); overflow-wrap: anywhere; }
+.account { margin: 8px 20px 16px; }
+.facts { padding: 10px 20px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); }
+.path { font-family: var(--mono); overflow-wrap: anywhere; }
+.windows { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; margin: 0; list-style: none; }
+.window { display: flex; gap: 8px; font-family: var(--mono); }
+.reset, .status { color: var(--muted); }
+.normal { color: var(--text); }
+.warning { color: var(--needs-human); }
+.critical { color: var(--failed); }
+.limit { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--failed); }
+.open { color: var(--link); border: 0; background: none; margin-left: auto; }

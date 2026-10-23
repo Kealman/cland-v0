@@ -544,6 +544,34 @@ button shares `A`'s toggle; showing it reads `session.list` with `archived: true
 and consumes its hub-merged `rows` field. It never composes raw processes with
 presence in the browser. There is no Attach in Sessions.
 
+### Accounts strip and Accounts area
+
+Sessions has a folding Accounts strip, with one cell per account in registry
+order and synthetic `default:` accounts last. Each cell shows its name, harness,
+highest-used window, share, reset and a meter along its foot. Shares turn amber
+from 75 percent and red from 90, unless the source supplies its own severity.
+A limited account is red and shows its reset (or `until cleared`) and the session
+that hit it. Missing readings, signed-out accounts and OpenCode show a dash;
+they never become zero percent or an empty meter. Tooltips carry every window,
+the reading's age and source, and limited details. The header link and each cell
+open Accounts in that pane. The strip's fold is browser-local under Sessions.
+
+Accounts lists a block per account, using the same pure projection in
+`src/accounts/model.ts`. It shows the harness and directory or database path
+(or `harness default`), every source window with its used share and reset,
+the reading's age and source session or poll, and a limited mark's since,
+reason, hitting session and reset. The registry path and its read error are
+shown too. Paths are the only account locations displayed; no secret or account
+file content enters either view. Reset and age formats follow Neovim's
+`accounts.lua`, in the browser's local timezone, sampled on redraw.
+
+Entering Accounts requests one `account.poll` once connected. The hub decides
+which idle accounts are eligible and enforces its polling limits. The reply
+refreshes the registry and readings; live account deltas update both views.
+Polls do not repeat on ordinary redraws or replay after a lost connection.
+Accounts is read-only; clearing a limited mark stays in `cland account clear`.
+Its account blocks use the shared `←`/`→` fold keys and `?` help.
+
 ## Folds and factual labels
 
 `src/Fold.tsx` is the reusable group/block component used by the reference
@@ -605,6 +633,8 @@ node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 3
 node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed deltas and focus
 node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
 node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
+node --test web/test/accounts.test.ts # fake registry, all windows, poll on entry and Sessions strip
+node --test hub/test/web-accounts.test.ts # T1 worst window, severity, missing data and clock formats
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
