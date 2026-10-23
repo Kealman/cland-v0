@@ -32,9 +32,11 @@
       "A-9755",
       "A-9764",
       "A-9785",
-      "A-9791"
+      "A-9791",
+      "A-9849",
+      "A-9863"
     ],
-    "commit": "e2b22f2f92e4fc234c53b8b6568b261ac3cc7af9"
+    "commit": "3609042ab7681b93fee33b59bd95d6a1771b3af5"
   },
   "budget": {
     "testSeconds": 5,
@@ -2411,6 +2413,18 @@
     "web/test/asks.test.ts": {
       "seconds": 9.631544,
       "tests": 9
+    },
+    "hub/test/approval-restart.test.ts": {
+      "seconds": 9.948492,
+      "tests": 1
+    },
+    "web/test/composer.test.ts": {
+      "seconds": 10.508994,
+      "tests": 8
+    },
+    "web/test/inbox.test.ts": {
+      "seconds": 15.235813,
+      "tests": 12
     }
   },
   "tests": {
@@ -6227,15 +6241,43 @@
     "web/test/asks.test.ts::Escape leaves an ask open and d requires a reason, allows Answer instead and delivers a decline": 0.901935,
     "web/test/asks.test.ts::In Inbox from a secondary thread opens and focuses that pane list while the primary thread keeps its ask": 0.801306,
     "web/test/asks.test.ts::offline asks disable writes and a fresh snapshot recovers an answer without replaying a draft": 0.892511,
-    "web/test/asks.test.ts::the thread ask links to its Inbox row and thread-row focus answers with physical keys": 0.931861
+    "web/test/asks.test.ts::the thread ask links to its Inbox row and thread-row focus answers with physical keys": 0.931861,
+    "hub/test/approval-records.test.ts::current native authorization survives a failed answer that was reserved before replay validation": 0.057983,
+    "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": 9.948492,
+    "hub/test/codex-native.test.ts::a harness answer wins while a hub Codex Deny is in flight": 0.11325,
+    "hub/test/codex-native.test.ts::Codex Always and Deny preserve the human outcome when the resolution echo follows delivery": 0.149341,
+    "hub/test/opencode-native.test.ts::an OpenCode not-found reply preserves the attached TUI once winner during a hub Deny": 0.190083,
+    "hub/test/opencode-native.test.ts::an OpenCode not-found reply preserves the attached TUI reject winner during a hub Deny": 0.180585,
+    "hub/test/opencode-native.test.ts::hub restart discovers a pre-existing OpenCode child permission and preserves its answer routing": 0.254289,
+    "hub/test/opencode-native.test.ts::OpenCode restart revalidates persisted authorization before answering and replaces stale public fields": 0.219459,
+    "web/test/composer.test.ts::a held successful receipt keeps newer typing and reload recovers uncertain text without sending it again": 1.076833,
+    "web/test/composer.test.ts::a pending send survives topic navigation and a real refusal restores text and artifacts before the newer draft": 1.413031,
+    "web/test/composer.test.ts::an item composer addresses the Coordinator by default and @ selects another session from the palette": 1.962812,
+    "web/test/composer.test.ts::composer physical Enter, Shift+Enter and Meta+Enter send or break lines and Meta+K keeps the draft": 0.955541,
+    "web/test/composer.test.ts::per-topic drafts survive reload and hub disconnection without replay and writing marks the sent message read": 1.439219,
+    "web/test/composer.test.ts::the artifact picker loads older inventory pages before selecting an available topic artifact": 1.488873,
+    "web/test/composer.test.ts::the composer sends Message, Decision and Question with their kinds in the thread and peer history": 1.169506,
+    "web/test/composer.test.ts::tilde attaches an artifact chip and the received message carries the selected artifact": 1.003179,
+    "web/test/inbox.test.ts::a fresh epoch recovers an approval answered by a peer while this browser was offline": 0.821936,
+    "web/test/inbox.test.ts::a held approval recovery cannot overwrite a newer same-id TUI authorization delta": 0.73023,
+    "web/test/inbox.test.ts::a refused approval race recovers only its exact archived winner and preserves a newer Inbox row": 0.848699,
+    "web/test/inbox.test.ts::asks and approvals share newest-first rows and the selected approval answers with Neovim keys": 1.315657,
+    "web/test/inbox.test.ts::Enter opens an Inbox message at its anchored thread row and a waiting plan in Plan": 3.840499,
+    "web/test/inbox.test.ts::held successful read and decline replies preserve newer pushed Inbox rows and counts": 1.011762,
+    "web/test/inbox.test.ts::In Inbox reveals an older-than-five ask through a saved fold and focuses its secondary-pane card": 0.963298,
+    "web/test/inbox.test.ts::Inbox answer keys remain visible through a complete native keyboard scroll in a small viewport": 1.102865,
+    "web/test/inbox.test.ts::Inbox keeps four ordered sections, newest five rows, oldest wait, live ages and saved folds": 2.208679,
+    "web/test/inbox.test.ts::selected request and message unfold, physical d declines to the sender or reads exactly that row": 0.962652,
+    "web/test/inbox.test.ts::the events footer counts all unread pages including a warning older than the newest 200": 0.677051,
+    "web/test/inbox.test.ts::the events footer survives four empty sections and follows shared last-look marks and warnings": 0.752485
   },
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
-      "seconds": 12.2,
+      "seconds": 22,
       "owner": "E-414",
       "added": "2026-10-23",
       "expires": "2026-10-30",
-      "reason": "T-1113: C3-C5 require three live fake harnesses and two actual scratch hub-process restarts, preserving pending native/fallback ids, delivering a replayed Codex answer, observing native TUI answers while the hub is down, and retaining the archived winner after restart. Local Darwin arm64 targeted working-tree run observed 6.075773 s with no skipped assertions; 12.2 s rounds up 2x for native process startup and cleanup under load. All waits are bounded native/frame/filesystem/PID receipts; no sleep is added. Revisit after E-414 stage QA."
+      "reason": "Coordinator raised 12.2 s to 22 s at the E-414 stage-3 close: Linux measured 14.83 s (A-9826, verify all 19691290) and 13.27 s (A-9849 stage cover), about 1.5 times the worst. T-1113: C3-C5 require three live fake harnesses and two actual scratch hub-process restarts, preserving pending native/fallback ids, delivering a replayed Codex answer, observing native TUI answers while the hub is down, and retaining the archived winner after restart. Local Darwin arm64 targeted working-tree run observed 6.075773 s with no skipped assertions; 12.2 s rounds up 2x for native process startup and cleanup under load. All waits are bounded native/frame/filesystem/PID receipts; no sleep is added. Revisit after E-414 stage QA."
     },
     "web/test/accounts.test.ts::Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry": {
       "seconds": 6.8,
