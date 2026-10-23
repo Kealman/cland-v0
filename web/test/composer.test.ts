@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
 import type { Page } from 'playwright-core';
 import type { TopicMessage } from '../../shared/wire/index.ts';
 import { until } from '../../hub/test/until.ts';
@@ -194,7 +194,7 @@ test('per-topic drafts survive reload and hub disconnection without replay and w
     await physical(page, 'Enter', { metaKey: true });
     assert.equal(await field.inputValue(), 'General kept draft');
     const live = () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Live';
-    for (let advanced = 0; advanced < 15_000 && !await page.evaluate(live); advanced += 250) await page.clock.runFor(250);
+    await reconnectUntilLive(page);
     assert.equal(await page.evaluate(live), true, 'bounded fresh-epoch reconnect');
     assert.equal(sent.filter(frame => frame.type === 'topic.send').length, before, 'no offline send or reconnect replay');
     assert.equal(await field.inputValue(), 'General kept draft');

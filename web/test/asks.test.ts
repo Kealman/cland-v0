@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
 import type { Page } from 'playwright-core';
 import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { until } from '../../hub/test/until.ts';
@@ -304,12 +304,7 @@ test('offline asks disable writes and a fresh snapshot recovers an answer withou
     const answered = await peer.request({ type: 'topic.answer', ask: id, option: 2 });
     assert.equal(answered.ok, true, answered.error);
     const isLive = () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Live';
-    // Keep driving retries and rendering: the clock is paused, and a failed
-    // attempt can leave the next backoff beyond a single 250 ms step.
-    // Bound fake time by the 10 s retry cap plus the 5 s handshake deadline.
-    for (let advanced = 0; advanced < 15_000 && !await page.evaluate(isLive); advanced += 250) {
-      await page.clock.runFor(250);
-    }
+    await reconnectUntilLive(page);
     assert.equal(await page.evaluate(isLive), true, 'fresh epoch live');
     await card.locator('[data-ask-outcome]').waitFor();
     assert.match(await card.innerText(), /2 Change.*human/s);

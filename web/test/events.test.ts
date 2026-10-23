@@ -9,7 +9,7 @@ import { until } from '../../hub/test/until.ts';
 import type { EventRow, EventsPage } from '../../shared/wire/index.ts';
 import { seedItem } from './items-fixture.ts';
 import type { Page } from 'playwright-core';
-import { webFixture, pageUntil } from './harness.ts';
+import { reconnectUntilLive, webFixture, pageUntil } from './harness.ts';
 
 async function eventsFixture(t: Parameters<typeof webFixture>[0], count = 405) {
   const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
@@ -370,7 +370,7 @@ test('Events refreshes its filtered feed after a hub restart without replaying t
     await fixture.restartHub();
     const next = await connectUi(t, fixture.hub.discovery);
     assert.equal((await next.request({ type: 'task.edit', item: 'T-1', status: 'planned' })).ok, true);
-    await page.clock.runFor(250);
+    await reconnectUntilLive(page);
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live', 'new epoch connected');
     await page.locator('[data-event-id]').filter({ hasText: 'backlog → planned' }).waitFor();
     const expected = (await next.request({ type: 'events.list', filter: { kinds: ['task'] } })).value as EventsPage;

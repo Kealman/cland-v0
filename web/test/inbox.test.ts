@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { reconnectUntilLive, webFixture, pageUntil } from './harness.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { seedItem } from './items-fixture.ts';
@@ -553,7 +553,7 @@ test('a fresh epoch recovers an approval answered by a peer while this browser w
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Offline', 'approval browser offline');
     assert.equal((await fixture.ui.request({ type: 'approval.answer', approval: fixture.approval.id, choice: 'once' })).ok, true);
     await fixture.restartHub();
-    await page.clock.runFor(250);
+    await reconnectUntilLive(page);
     const outcome = row.locator('..').locator('[data-approval-outcome]');
     await outcome.waitFor();
     assert.match(await outcome.innerText(), /Approved once.*human.*neovim/s);

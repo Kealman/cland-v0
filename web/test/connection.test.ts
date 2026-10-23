@@ -6,7 +6,7 @@ import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Response } from 'playwright-core';
 import { until } from '../../hub/test/until.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
 
 test('the printed web link connects the shell and reconnects with backoff after a hub restart', async t => {
   const fixture = await webFixture(t, { cliLink: true });
@@ -50,6 +50,7 @@ test('the printed web link connects the shell and reconnects with backoff after 
       await page.clock.runFor(499);
       assert.equal(attempts.length, 1, 'the second retry backs off to 500 ms');
       await page.clock.runFor(1);
+      await reconnectUntilLive(page);
       await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live', 'the restarted hub is live without reload');
       assert.equal(await dot.evaluate(element => getComputedStyle(element).backgroundColor), liveColour);
       assert.equal(attempts.length, 2);

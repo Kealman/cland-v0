@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { reconnectUntilLive, webFixture, pageUntil } from './harness.ts';
 import { until } from '../../hub/test/until.ts';
 import type { WebSocketRoute } from 'playwright-core';
 
@@ -283,7 +283,7 @@ test('reconnect resumes missed thread deltas and only rereads history after a fr
     socket!.close();
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Offline', 'browser disconnect observed');
     assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'During disconnect' })).ok, true);
-    await page.clock.runFor(250);
+    await reconnectUntilLive(page);
     await page.locator('[role="log"] [data-message-id]').filter({ hasText: 'During disconnect' }).waitFor();
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Live', 'resumed connection ready');
     assert.ok(frames.filter(frame => frame.type === 'hello').at(-1)?.resume, 'hello carries the last applied model cursor');
@@ -292,7 +292,7 @@ test('reconnect resumes missed thread deltas and only rereads history after a fr
     assert.equal(await page.locator('[role="log"] [data-message-id]').count(), 2);
     await fixture.restartHub();
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Offline', 'hub restart observed');
-    await page.clock.runFor(250);
+    await reconnectUntilLive(page);
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Live' && document.querySelectorAll('[role="log"] [data-message-id]').length === 2, 'fresh snapshot restores thread history');
     assert.equal(frames.filter(frame => frame.type === 'topic.history').length, reads + 1);
     assert.ok(snapshots.length > snapshotCount);

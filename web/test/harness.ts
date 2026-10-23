@@ -23,6 +23,29 @@ export async function pageUntil(page: Page, predicate: () => boolean, what: stri
   assert.equal(await page.evaluate(predicate), true, what);
 }
 
+/** Drive paused retry timers without racing real socket I/O or the handshake. */
+export async function reconnectUntilLive(page: Page): Promise<void> {
+  const live = () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live';
+  let advanced = 0;
+  await until(async () => {
+    if (await page.evaluate(live)) return true;
+    // The retry cap is 10 s and the handshake deadline is 5 s. Never
+    // advance beyond that ceiling, even while awaiting the final real receipt.
+    if (advanced < 15_000) {
+      await page.clock.runFor(250);
+      advanced += 250;
+    }
+    // Each evaluation yields to real browser/socket I/O. Poll for the receipt
+    // before advancing again, so a slow connection gets time to complete.
+    const pollDeadline = performance.now() + 100;
+    do {
+      if (await page.evaluate(live)) return true;
+    } while (performance.now() < pollDeadline);
+    return false;
+  }, { what: 'fake-clock hub reconnect is Live', timeoutMs: 15_000 });
+  assert.equal(await page.evaluate(live), true, 'fake-clock hub reconnect is Live');
+}
+
 export async function webFixture(t: TestContext, options: { cliLink?: boolean; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void> } = {}) {
   const root = await tempProject(t, 'w-');
   // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.

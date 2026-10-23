@@ -7,7 +7,7 @@ import { until } from '../../hub/test/until.ts';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi } from '../../hub/test/harness.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
 
 test('area modules keep their slots and live hub state across a restart', async t => {
   const fixture = await webFixture(t, { prepare: async root => {
@@ -124,7 +124,7 @@ test('area modules keep their slots and live hub state across a restart', async 
       await fixture.restartHub();
       const next = await connectUi(t, fixture.hub.discovery);
       assert.equal((await next.request({ type: 'session.launch', name: 'new-session', harness: 'codex' })).ok, true);
-      await page.clock.runFor(250);
+      await reconnectUntilLive(page);
       await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live', 'new hub authenticated');
       await page.locator('[data-object-id="codex/new-account"]').waitFor();
       assert.equal(await page.locator('[data-object-id="codex/slot-account"]').count(), 0);

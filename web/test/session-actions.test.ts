@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { until } from '../../hub/test/until.ts';
 import type { HarnessProcessView } from '../../shared/wire/index.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
 
 test('Stop confirms in place, Escape keeps the busy session, and Enter stops it', async t => {
   const fixture = await webFixture(t);
@@ -62,7 +62,7 @@ test('Offline session actions are disabled and do not replay after reconnect', a
     assert.equal(await actions.getByRole('button', { name: 'Stop', exact: true }).isDisabled(), true);
     await row.press('x');
     assert.equal(await actions.getByRole('group').count(), 0);
-    await page.clock.runFor(250);
+    await reconnectUntilLive(page);
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live', 'reconnected');
     assert.equal(await actions.getByRole('button', { name: 'Stop', exact: true }).isDisabled(), false);
     assert.deepEqual(mutations, []);

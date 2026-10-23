@@ -8,7 +8,7 @@ import type { HarnessProcessView } from '../../shared/wire/index.ts';
 import { cland, connectUi } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { until } from '../../hub/test/until.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { reconnectUntilLive, webFixture, pageUntil } from './harness.ts';
 
 async function launchFixture(t: TestContext, clock = new FakeClock()) {
   return webFixture(t, { clock, accountReader: async () => [], prepare: async root => {
@@ -283,7 +283,7 @@ test('Offline launch is disabled and reconnect never replays the draft', async t
     assert.equal(await form.getByRole('button', { name: 'Launch', exact: true }).isDisabled(), true);
     await page.keyboard.press('Enter');
     assert.deepEqual(sent, []);
-    await page.clock.runFor(250);
+    await reconnectUntilLive(page);
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live', 'reconnected page');
     assert.equal(await form.getByLabel('Brief', { exact: true }).inputValue(), 'Keep this draft');
     assert.equal(await form.getByRole('button', { name: 'Launch', exact: true }).isDisabled(), false);
