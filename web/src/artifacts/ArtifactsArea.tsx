@@ -1,16 +1,19 @@
-import { useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { Artifact } from '../../../shared/wire/index.ts';
 import type { ConnectionState } from '../connection.ts';
 import type { AreaContentProps, AreaModule } from '../AreaSlot.tsx';
 import { ArtifactViewer } from './ArtifactViewer.tsx';
 import { Fold } from '../Fold.tsx';
+import { TopicArtifacts } from './TopicArtifacts.tsx';
+import { attachComposerArtifact } from '../composer-drafts.ts';
 import s from './Artifacts.module.css';
 
 const roles = [['coordinator', 'Coordinator'], ['implementer', 'Implementers'], ['reviewer', 'Reviewers'], ['qa', 'QA'], ['other', 'Other']] as const;
 const human = (a: Artifact) => a.creatorKind === 'human' || a.creatorRole === 'aide' || (a.creatorKind === undefined && a.creator === 'human');
 const archived = (a: Artifact) => a.layer === 'archive' || (a.layer === undefined && a.status === 'archived') || a.fileDeleted;
 
-function ArtifactsArea({ connection, selected, select, controls, open: openArtifact }: AreaContentProps) {
+function ArtifactsArea({ connection, selected, select, controls, open: openArtifact, openTopic }: AreaContentProps) {
+  const { topic } = useContext(TopicArtifacts);
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
   const pending = useRef(new Set<string>());
@@ -36,6 +39,23 @@ function ArtifactsArea({ connection, selected, select, controls, open: openArtif
       }
       return true;
     }
+    if (action === 'artifact-compose') {
+      if (document.activeElement?.hasAttribute('data-fold-toggle')) return true;
+      const owner = document.activeElement?.closest<HTMLElement>('[data-artifact-row]')?.dataset.artifactOwner;
+      const a = all.find(a => a.id === (owner ?? selected));
+      if (!a) return true;
+      const reason = !topic || topic === 'agents' ? 'Open a writable topic to attach artifacts'
+        : a.topic !== topic ? `Artifact belongs to ${a.topic}; open that topic to attach`
+          : archived(a) ? 'Artifact is archived; keep it to attach' : undefined;
+      setError(reason ?? '');
+      if (!reason && topic) {
+        attachComposerArtifact(topic, { id: a.id, title: a.title });
+        const pane = root.current?.closest('[data-pane]')?.getAttribute('data-pane');
+        openTopic?.(topic);
+        requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(`[data-pane="${pane}"] [data-composer] textarea`)?.focus());
+      }
+      return true;
+    }
     if (action === 'artifact-keep' || action === 'artifact-archive') {
       if (document.activeElement?.hasAttribute('data-fold-toggle')) return true;
       const owner = document.activeElement?.closest<HTMLElement>('[data-artifact-row]')?.dataset.artifactOwner;
@@ -57,6 +77,7 @@ function ArtifactsArea({ connection, selected, select, controls, open: openArtif
     <div role="list" aria-label="Artifacts objects">
       {error && <p role="alert">{error}</p>}
       {group('mine', 'Mine', all.filter(a => human(a) && !archived(a)))}
+      {topic && group('topic', 'This topic', all.filter(a => a.topic === topic && !archived(a)))}
       {group('kept', 'Kept', all.filter(a => a.kept && !archived(a)))}
       <section aria-label="By role"><Fold area="artifacts" id="roles" label="By role" count={agents.length} defaultFolded>
         {roles.map(([role, label]) => group(`role:${role}`, label, agents.filter(a => (roles.some(([r]) => r === a.creatorRole) ? a.creatorRole : 'other') === role), true))}
@@ -102,4 +123,4 @@ function ArtifactPage(props: AreaContentProps) {
 function ArtifactDrawer(props: AreaContentProps) {
   return <section className={s.surface} data-area-module="Artifacts" data-area-surface="drawer" data-key-context="artifacts"><ArtifactViewer key={props.selected} {...props} /></section>;
 }
-export const artifactsModule: AreaModule = { context: 'artifacts', handledActions: ['artifact-next', 'artifact-previous', 'artifact-open', 'artifact-keep', 'artifact-archive', 'artifact-archive-toggle'], Pane: ArtifactsArea, Page: ArtifactPage, Drawer: ArtifactDrawer };
+export const artifactsModule: AreaModule = { context: 'artifacts', handledActions: ['artifact-next', 'artifact-previous', 'artifact-open', 'artifact-compose', 'artifact-keep', 'artifact-archive', 'artifact-archive-toggle'], Pane: ArtifactsArea, Page: ArtifactPage, Drawer: ArtifactDrawer };

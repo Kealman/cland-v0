@@ -3,10 +3,182 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import type { Artifact } from '../../shared/wire/index.ts';
+import type { Artifact, TopicMessage } from '../../shared/wire/index.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { pageUntil, webFixture } from './harness.ts';
+
+test('notes and prompts open rendered Markdown with literal HTML and a raw source toggle', async t => {
+  const fixture = await webFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const source = '# Review notes\n\n- First fact\n- Second fact\n\n```ts\nconst value = 7;\n```\n\n<script>untrusted()</script>';
+  const artifacts: Artifact[] = [];
+  for (const kind of ['note', 'prompt'] as const) {
+    const made = await ui.request({ type: 'artifact.create', kind, title: `${kind} Markdown`, topic: 'general', content: source });
+    assert.equal(made.ok, true, made.error);
+    artifacts.push((made.value as { artifact: Artifact }).artifact);
+  }
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Artifacts', exact: true }).click();
+    const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
+    for (const artifact of artifacts) {
+      const row = page.locator(`[data-artifact-section="mine"] [data-object-id="${artifact.id}"]`);
+      const rendered = drawer.locator(`[data-artifact-selection="${artifact.id}"]`).getByRole('heading', { name: 'Review notes', exact: true }).waitFor();
+      await row.click();
+      await row.press('Enter');
+      await rendered;
+      assert.deepEqual(await drawer.locator('li').allTextContents(), ['First fact', 'Second fact']);
+      assert.equal(await drawer.locator('pre code').textContent(), 'const value = 7;');
+      assert.ok((await drawer.textContent())?.includes('<script>untrusted()</script>'));
+      assert.equal(await drawer.locator('script, iframe').count(), 0);
+      await drawer.getByRole('button', { name: 'Show source', exact: true }).focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await drawer.getByRole('region', { name: 'File text', exact: true }).textContent(), source);
+      assert.equal(await drawer.getByRole('heading', { name: 'Review notes', exact: true }).count(), 0);
+      await drawer.getByRole('button', { name: 'Show rendered', exact: true }).click();
+      await drawer.getByRole('heading', { name: 'Review notes', exact: true }).waitFor();
+    }
+  });
+});
+
+test('This topic follows the last opened thread and s adds its artifact to the retained composer draft and sent history', async t => {
+  const fixture = await webFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const coordinator = await inProcessSpoke(t, { discover: true, cwd: fixture.root, name: 'artifact-coord', role: 'coordinator' });
+  await coordinator.waitForPresence(['artifact-coord']);
+  const created = await ui.request({ type: 'topic.create', title: 'Another topic' });
+  assert.equal(created.ok, true, created.error);
+  const other = (created.value as { topic: { id: string } }).topic.id;
+  const artifacts: Artifact[] = [];
+  for (const topic of ['general', other]) {
+    const made = await ui.request({ type: 'artifact.create', kind: 'note', title: `Notes for ${topic}`, topic, content: 'Topic note' });
+    assert.equal(made.ok, true, made.error);
+    artifacts.push((made.value as { artifact: Artifact }).artifact);
+  }
+  await fixture.pageCase(t, async page => {
+    const go = async (area: string) => page.getByRole('button', { name: area, exact: true }).click();
+    const section = page.locator('[data-artifact-section="topic"]');
+    await go('Artifacts');
+    await page.locator('[data-artifact-section="mine"] [data-artifact-row]').first().waitFor();
+    assert.equal(await section.count(), 0, 'absent before a thread is opened');
+    await go('Topics');
+    await page.locator('[data-object-id="general"]').click();
+    const form = page.getByRole('form', { name: 'Composer', exact: true });
+    await form.getByRole('textbox', { name: 'Message text' }).fill('Artifact attachment receipt');
+    await go('Artifacts');
+    await section.locator(`[data-object-id="${artifacts[0]!.id}"]`).waitFor();
+    assert.deepEqual(await section.locator('[data-object-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id'))), [artifacts[0]!.id]);
+    const row = section.locator(`[data-object-id="${artifacts[0]!.id}"]`);
+    const attached = form.locator('[data-composer-artifact]').waitFor();
+    await row.click();
+    await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 'ы', bubbles: true, cancelable: true })));
+    await attached;
+    assert.equal(await form.getByRole('textbox', { name: 'Message text' }).inputValue(), 'Artifact attachment receipt');
+    assert.ok((await form.locator('[data-composer-artifact]').textContent())?.includes(artifacts[0]!.id));
+    const delivered = coordinator.waitForEvent(event => event.params.content === 'Artifact attachment receipt');
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    await delivered;
+    await form.locator('[data-pending-message]').waitFor({ state: 'detached' });
+    const history = await ui.request({ type: 'topic.history', topic: 'general' });
+    assert.equal(history.ok, true, history.error);
+    const sent = (history.value as { messages: TopicMessage[] }).messages.find(message => message.text === 'Artifact attachment receipt');
+    assert.deepEqual(sent?.artifacts?.map(artifact => artifact.id), [artifacts[0]!.id]);
+    await page.locator(`[data-object-id="${other}"]`).click();
+    await page.getByRole('log', { name: 'Another topic thread', exact: true }).waitFor();
+    await go('Artifacts');
+    await section.locator(`[data-object-id="${artifacts[1]!.id}"]`).waitFor();
+    assert.deepEqual(await section.locator('[data-object-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id'))), [artifacts[1]!.id]);
+    await page.reload();
+    await section.locator(`[data-object-id="${artifacts[1]!.id}"]`).waitFor();
+  });
+});
+
+test('s refuses without a writable topic and for archived or other-topic artifacts without changing the draft', async t => {
+  const fixture = await webFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const created = await ui.request({ type: 'topic.create', title: 'Unrelated topic' });
+  assert.equal(created.ok, true, created.error);
+  const other = (created.value as { topic: { id: string } }).topic.id;
+  const artifacts: Artifact[] = [];
+  for (const [title, topic] of [['Available note', 'general'], ['Archived note', 'general'], ['Other topic note', other]]) {
+    const made = await ui.request({ type: 'artifact.create', kind: 'note', title, topic, content: 'Note' });
+    assert.equal(made.ok, true, made.error);
+    artifacts.push((made.value as { artifact: Artifact }).artifact);
+  }
+  assert.equal((await ui.request({ type: 'artifact.archive', artifact: artifacts[1]!.id })).ok, true);
+  await fixture.pageCase(t, async page => {
+    const go = async (area: string) => page.getByRole('button', { name: area, exact: true }).click();
+    const refuse = async (id: string, reason: string, section = 'mine') => {
+      const row = page.locator(`[data-artifact-section="${section}"] [data-object-id="${id}"]`);
+      const receipt = page.getByRole('alert').getByText(reason, { exact: true }).waitFor();
+      await row.click();
+      await row.press('s');
+      await receipt;
+      assert.equal(await page.locator('[data-composer-artifact]').count(), 0);
+    };
+    await go('Artifacts');
+    await refuse(artifacts[0]!.id, 'Open a writable topic to attach artifacts');
+    await go('Topics');
+    await page.locator('[data-object-id="general"]').click();
+    const form = page.getByRole('form', { name: 'Composer', exact: true });
+    await form.getByRole('textbox', { name: 'Message text' }).fill('Keep this draft');
+    await go('Artifacts');
+    await refuse(artifacts[2]!.id, `Artifact belongs to ${other}; open that topic to attach`);
+    await page.getByRole('button', { name: 'Fold Archived', exact: true }).click();
+    await refuse(artifacts[1]!.id, 'Artifact is archived; keep it to attach', 'archived');
+    assert.equal(await page.locator(`[data-artifact-section="topic"] [data-object-id="${artifacts[1]!.id}"]`).count(), 0);
+    await go('Topics');
+    await page.locator('[data-object-id="general"]').click();
+    assert.equal(await form.getByRole('textbox', { name: 'Message text' }).inputValue(), 'Keep this draft');
+    assert.equal(await form.locator('[data-composer-artifact]').count(), 0);
+    await page.locator('[data-object-id="agents"]').click();
+    await page.getByRole('log', { name: 'Agents thread', exact: true }).waitFor();
+    await go('Artifacts');
+    await refuse(artifacts[0]!.id, 'Open a writable topic to attach artifacts');
+    await page.reload();
+    await go('Topics');
+    await page.locator('[data-object-id="general"]').click();
+    assert.equal(await form.locator('[data-composer-artifact]').count(), 0);
+    assert.equal(await form.getByRole('textbox', { name: 'Message text' }).inputValue(), 'Keep this draft');
+  });
+});
+
+test('s in a split pane adds one shared composer chip while an open ask answer draft stays unchanged', async t => {
+  const fixture = await webFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const coordinator = await inProcessSpoke(t, { discover: true, cwd: fixture.root, name: 'artifact-coord', role: 'coordinator' });
+  await coordinator.waitForPresence(['artifact-coord']);
+  const ask = await coordinator.call<{ ok: boolean; ask: string; error?: string }>('ask', { topic: 'general', question: 'Keep the report?', options: ['Keep', 'Change'], free: true });
+  assert.equal(ask.ok, true, ask.error);
+  const made = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Ask companion', topic: 'general', content: 'Report' });
+  assert.equal(made.ok, true, made.error);
+  const artifact = (made.value as { artifact: Artifact }).artifact;
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Topics', exact: true }).click();
+    await page.locator('[data-object-id="general"]').click();
+    const primary = page.locator('[data-pane="primary"]');
+    const answer = primary.locator(`[data-ask-id="${ask.ask}"]`).getByRole('textbox', { name: 'Free answer', exact: true });
+    await answer.fill('Keep my unfinished answer');
+    await primary.getByRole('textbox', { name: 'Message text' }).fill('Separate message draft');
+    await primary.getByRole('heading', { name: 'General', exact: true }).click();
+    await page.keyboard.press('Meta+Backslash');
+    const secondary = page.locator('[data-pane="secondary"]');
+    await secondary.click({ position: { x: 10, y: 10 } });
+    for (let n = 0; n < 2; n++) {
+      await page.getByRole('button', { name: 'Artifacts', exact: true }).click();
+      const row = secondary.locator(`[data-artifact-section="topic"] [data-object-id="${artifact.id}"]`);
+      const attached = secondary.locator('[data-composer-artifact]').waitFor();
+      await row.click();
+      await row.press('s');
+      await attached;
+      assert.equal(await primary.locator('[data-composer-artifact]').count(), 1);
+      assert.equal(await secondary.locator('[data-composer-artifact]').count(), 1);
+      assert.equal(await answer.inputValue(), 'Keep my unfinished answer');
+      assert.equal(await secondary.getByRole('textbox', { name: 'Message text' }).inputValue(), 'Separate message draft');
+      assert.equal(await primary.locator('[data-ask-outcome]').count(), 0);
+    }
+  });
+});
 
 test('Artifacts groups human, Aide and crew records with remembered section folds', async t => {
   const fixture = await webFixture(t);

@@ -74,19 +74,20 @@ test('moving a thread-opened page into a folder does not resurrect a top-level a
     await page.locator('[data-pane="secondary"] iframe').contentFrame().getByRole('heading', { name: 'Moving artifact content' }).waitFor();
     await page.getByRole('button', { name: 'Artifacts', exact: true }).click();
     const list = page.locator('[data-pane="primary"]').getByRole('list', { name: 'Artifacts objects', exact: true });
-    const row = list.locator(`[data-object-id="${artifact.id}"]`);
-    await row.waitFor();
-    const removed = row.waitFor({ state: 'detached' }); void removed.catch(() => {});
+    const copies = ['Mine', 'This topic'].map(name => list.getByRole('region', { name, exact: true }).locator(`[data-object-id="${artifact.id}"]`));
+    await Promise.all(copies.map(row => row.waitFor()));
+    const removed = Promise.all(copies.map(row => row.waitFor({ state: 'detached' }))); void removed.catch(() => {});
     const moved = await ui.request({ type: 'artifact.move', artifact: artifact.id, folder: folder.id, name: 'moved.html' });
     assert.equal(moved.ok, true, moved.error);
     await removed;
-    assert.equal(await row.count(), 0, 'the moved child leaves the authoritative top-level inventory');
-    const folderRow = list.locator(`[data-object-id="${folder.id}"]`);
+    assert.equal(await list.locator(`[data-object-id="${artifact.id}"]`).count(), 0, 'the moved child leaves every top-level section');
+    const mine = list.getByRole('region', { name: 'Mine', exact: true });
+    const folderRow = mine.locator(`[data-object-id="${folder.id}"]`);
     await folderRow.press('Enter');
-    const child = list.locator(`[data-artifact-owner="${folder.id}"][data-artifact-file="moved.html"]`);
+    const child = mine.locator(`[data-artifact-owner="${folder.id}"][data-artifact-file="moved.html"]`);
     await child.waitFor();
     assert.match(await child.innerText(), /moved.html/);
-    assert.equal(await row.count(), 0, 'the child is listed only under its folder');
+    assert.equal(await list.locator(`[data-object-id="${artifact.id}"]`).count(), 0, 'the child is listed only under its folder');
   });
 });
 

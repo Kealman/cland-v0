@@ -23,6 +23,7 @@ import { AreaSlot, areaModules, type AreaControls } from './AreaSlot.tsx';
 import { useDesktop } from './desktop.ts';
 import type { Artifact } from '../../shared/wire/index.ts';
 import { ArtifactNavigation, ArtifactViewerFallback } from './artifacts/ArtifactNavigation.ts';
+import { TopicArtifactsProvider } from './artifacts/TopicArtifacts.tsx';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -275,7 +276,7 @@ export function Shell() {
         : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
-  return <InboxVisitProvider connection={connection} active={area === 'Inbox'}><ComposerPicker.Provider value={selection => { setOverlayContext(selection.kind === 'Subjects' ? 'events' : 'composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
+  return <TopicArtifactsProvider><InboxVisitProvider connection={connection} active={area === 'Inbox'}><ComposerPicker.Provider value={selection => { setOverlayContext(selection.kind === 'Subjects' ? 'events' : 'composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') === 'secondary' ? 'secondary' : 'primary';
     navigationSerial.current++;
     setMessage(undefined);
@@ -436,5 +437,5 @@ export function Shell() {
         </aside>}
       </main>
     </div>
-  </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider></ComposerPicker.Provider></InboxVisitProvider>;
+  </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider></ComposerPicker.Provider></InboxVisitProvider></TopicArtifactsProvider>;
 }

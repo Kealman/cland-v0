@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
+import { Fragment, useContext, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import type { TopicMessage, ThreadRun } from '../../shared/wire/index.ts';
 import type { ConnectionState } from './connection.ts';
 import { MessageBlock } from './MessageBlock.tsx';
@@ -6,10 +6,13 @@ import s from './Thread.module.css';
 import { useTopicRead } from './use-topic-read.ts';
 import type { Shortcut } from './keymap.ts';
 import { Composer, type InboxReply } from './Composer.tsx';
+import { TopicArtifacts } from './artifacts/TopicArtifacts.tsx';
 
 export type ThreadControls = { focus: () => void; run: (action: Shortcut) => boolean };
 
 export function Thread({ connection, topic, controls, targetMessage, reply, focusTarget = true }: { connection: ConnectionState; topic: string; reply?: InboxReply | undefined; focusTarget?: boolean; targetMessage?: string | undefined; controls?: Ref<ThreadControls> | undefined }) {
+  const { opened: openTopicArtifacts } = useContext(TopicArtifacts);
+  useEffect(() => openTopicArtifacts(topic), [topic, openTopicArtifacts]);
   const node = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ id: string; top: number } | null>(null);
   const atEnd = useRef(true);
@@ -89,7 +92,7 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
     if (run && last?.run?.id === run.id) last.messages.push(message);
     else blocks.push({ messages: [message], ...(run ? { run } : {}) });
   }
-  return <section className={s.thread} data-key-context="thread" aria-label={title}>
+  return <section className={s.thread} data-key-context="thread" aria-label={title} onFocusCapture={() => openTopicArtifacts(topic)} onPointerDownCapture={() => openTopicArtifacts(topic)}>
     <header className={s.heading}><h2>{title}</h2>{state?.loading && <span role="status">Loading</span>}
       {state?.error && <button title={state.error} onClick={() => { if (state.loaded) earlier(); else void connection.threads?.load(topic); }}>Retry</button>}</header>
     <div ref={node} className={s.messages} data-loaded={!!state?.loaded} role="log" aria-label={`${title} thread`} tabIndex={0}

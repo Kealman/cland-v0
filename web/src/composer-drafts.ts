@@ -70,3 +70,6 @@ export function restoreComposerText(topic: string, text: string): void {
   update(topic, { text: keep ? joined(text, draft.text) : text,
     ...(draft.pending ? { pendingAt: text.length + (keep ? 1 + (draft.pendingAt ?? 0) : 0) } : {}) });
 }
+export function attachComposerArtifact(topic: string, artifact: ObjectRow): void {
+  update(topic, { artifacts: merged(get(topic).artifacts, [artifact]) });
+}

@@ -426,12 +426,14 @@ without frames, replacement, spend reads and fold persistence in Headless Shell.
 
 ## Artifacts
 
-The Artifacts tree has **Mine** (the human’s and Aides’ artifacts), **Kept**,
+The Artifacts tree has **Mine** (the human’s and Aides’ artifacts), **This topic**, **Kept**,
 **By role** (Coordinator, Implementers, Reviewers, QA and Other), and **Archived**.
 By role, its role groups and Archived start folded. Each section shows its loaded
 artifact count and remembers explicit folds in this browser. Folders sort before
 files, then titles and ids. Rows show kind, id, title, creator, status and kept.
-“This topic” joins in the notes slice.
+This topic lists available artifacts from the last topic thread opened in this
+browser, remembered across navigation and reload; it is absent until a thread
+has been opened. Focusing either thread in a split makes it the current topic.
 
 `j` and ↓ move down through visible rows and section headers; ↑ moves up.
 `k` toggles keep, `d` archives, and `A` toggles Archived. Enter toggles a section
@@ -442,6 +444,14 @@ Archiving the human’s or an Aide’s artifact changes its layer and preserves 
 files. **More artifacts** loads the next bounded inventory page, preserving newer
 live rows and unique identities. Reload replaces the inventory.
 
+`s` attaches the selected artifact (a folder child's owning artifact) to that
+topic's shared composer draft and opens the thread, preserving text and existing
+chips without duplicating an attachment. With no writable topic, an archived
+artifact or an artifact belonging to another topic, the reason appears in place
+and the draft stays unchanged. The local draft can be edited offline; Send stays
+disabled and reconnect never replays a send.
+Unlike Neovim's single composer, the web's separate AskCard answer remains untouched by `s`, which always targets the topic composer.
+
 Enter opens a page in the drawer, and ⌘Enter opens it in the other pane. The
 shared `SandboxedArtifactFrame` fills the available height below the header;
 its `sandbox` attribute is exactly `allow-scripts`, never `allow-same-origin`.
@@ -451,7 +461,11 @@ its own sandbox response policy. Scripts cannot read the workbench document or
 cookies. The selected artifact id remains visible while capability reads load.
 Folder children use the same capability with encoded relative paths.
 
-Text files (including Markdown) open as literal text with a named download link;
+Notes and prompts with a Markdown file open rendered with the same `MarkdownBody`
+as messages: headings, lists, fenced code and the parser's other supported blocks.
+HTML remains literal text. **Show source** switches to raw text, and **Show
+rendered** switches back; both controls support Enter. The download remains available.
+Other text files (including Markdown file artifacts) open as literal text with a named download link;
 binary files offer a named download. The response type selects the view; `.mmd`
 and `.markdown` are text even when served as octet-stream. Missing files show
 **Artifact file not found**. Offline previews remain; reconnect refreshes through
@@ -739,8 +753,8 @@ control activation is preserved. Declared fields reserve their context chords. A
 action. Labels live in `contextActions`; help and palette combine shell actions
 with the handled actions, and derive the displayed chords from the focused
 context's table. Sessions enables its navigation, launch and lifecycle keys.
-Artifacts enables navigation, Keep (`k`), Archive (`d`) and archive visibility (`A`);
-its declared `s` compose action remains inactive.
+Artifacts enables navigation, Attach to composer (`s`), Keep (`k`), Archive (`d`)
+and archive visibility (`A`).
 
 The top-strip Palette and Help buttons expose the same overlays. Help names the
 active pane’s area and lists the shared shell keys;
