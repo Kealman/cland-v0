@@ -3,7 +3,7 @@ id: T-1176
 kind: task
 title: The tunnel guide in web/README.md
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-419
 blocked_by:
   - T-1174
   - T-1175
-topic: null
-branch: null
+topic: topic-919
+branch: t/T-1176-the-tunnel-guide-in-web-readme-md
 created: 2026-10-23T07:00:04.893Z
-updated: 2026-10-23T20:22:40.594Z
+updated: 2026-10-23T20:52:20.296Z
 ---
 
 ## Summary
@@ -39,3 +39,9 @@ E-419 (§3.6 and §3.7 HTTPS through the human's tunnel; choice "The guide"; the
 - [ ] C1. `web/README.md` walks from Tailscale Serve with the hub on loopback, through `[web] origin` and `cland web --qr`, to installing the app and turning notifications on in More (docs).
 - [ ] C2. The guide states that plain HTTP on the LAN gives no install or notification, that iOS keeps the installed app's cookies apart, and that any HTTPS reverse proxy of the human's own works but never a cloud service (docs).
 - [ ] C3. A hub started with the guide's `[web]` snippet accepts that origin on Host and Origin, and `cland web --qr` prints a link on it (test).
+
+## Comments
+
+### impl-1176 · 2026-10-23T20:52:20.296Z
+
+Confirmed the supplied C3 seams: T2 projectHub with the README's literal [web] TOML, loopback HTTP/WS carrying configured Host/Origin, and executable `cland web --qr` under sealed HOME/XDG/Git and scratch opener stubs. No real tunnel, network interface or browser. Waiting for T-1175 on origin/dev before writing.
