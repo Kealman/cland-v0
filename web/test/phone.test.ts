@@ -34,7 +34,7 @@ test('the phone frame replaces the rail without losing desktop state', async t =
       const sheet = page.getByRole('navigation', { name: 'More areas', exact: true });
       await more.tap();
       await sheet.waitFor();
-      assert.deepEqual(await sheet.locator('button').allTextContents(), ['Items', 'Artifacts', 'Accounts']);
+      assert.deepEqual(await sheet.locator('button').allTextContents(), ['Items', 'Artifacts', 'Accounts', 'Needs youoff', 'Finishedoff', 'Subscribe to notifications']);
       assert.equal(await page.locator('[aria-modal="true"], [data-scrim]').count(), 0);
       const controls = await page.locator('[data-phone] > header button, [data-phone] > header select, nav[aria-label="Phone areas"] button, nav[aria-label="More areas"] button').evaluateAll(nodes => nodes.map(node => ({ name: node.getAttribute('aria-label') ?? node.textContent, height: node.getBoundingClientRect().height, left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right })));
       for (const control of controls) {

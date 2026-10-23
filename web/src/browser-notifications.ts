@@ -6,6 +6,26 @@ import { notificationSnapshot, subscribeNotifications } from './notification-sta
 /** One lifetime per open page; snapshots seed identities instead of replaying old work. */
 export function browserNotifications(open: (target: NotificationNotice['target']) => void) {
   const unsubscribe = subscribeNotifications(() => {});
+  const message = (event: MessageEvent) => {
+    const target = event.data?.target;
+    if (event.data?.type === 'notification-open' && target && ['Inbox', 'Items'].includes(target.area) && typeof target.id === 'string') open(target);
+  };
+  navigator.serviceWorker?.addEventListener('message', message);
+  let closed = false;
+  async function deliver(notice: NotificationNotice) {
+    const registration = await navigator.serviceWorker?.getRegistration('/').catch(() => undefined);
+    if (closed || typeof Notification === 'undefined' || !shouldNotify(notice, {
+      ...notificationSnapshot(), permission: Notification.permission, visible: document.visibilityState === 'visible', focused: document.hasFocus(),
+    })) return;
+    if (registration?.active) {
+      await registration.showNotification(notice.title, { body: notice.body, tag: notice.tag, data: notice.target });
+      return;
+    }
+    const notification = new Notification(notice.title, { body: notice.body, tag: notice.tag });
+    active.add(notification);
+    notification.onclose = () => active.delete(notification);
+    notification.onclick = () => { window.focus(); open(notice.target); notification.close(); active.delete(notification); };
+  }
   const seen = new Set<string>();
   const active = new Set<Notification>();
   function receive(frame: HubFrame, connection: ConnectionState) {
@@ -19,13 +39,8 @@ export function browserNotifications(open: (target: NotificationNotice['target']
       if (frame.type === 'snapshot' || typeof Notification === 'undefined' || !shouldNotify(notice, {
         ...notificationSnapshot(), permission: Notification.permission, visible: document.visibilityState === 'visible', focused: document.hasFocus(),
       })) continue;
-      try {
-        const notification = new Notification(notice.title, { body: notice.body, tag: notice.tag });
-        active.add(notification);
-        notification.onclose = () => active.delete(notification);
-        notification.onclick = () => { window.focus(); open(notice.target); notification.close(); active.delete(notification); };
-      } catch { /* Unsupported delivery must not interrupt incoming hub state. */ }
+      void deliver(notice).catch(() => { /* Unsupported delivery must not interrupt incoming hub state. */ });
     }
   }
-  return { receive, close: () => { unsubscribe(); for (const notification of active) notification.close(); active.clear(); } };
+  return { receive, close: () => { closed = true; navigator.serviceWorker?.removeEventListener('message', message); unsubscribe(); for (const notification of active) notification.close(); active.clear(); } };
 }

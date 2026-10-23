@@ -90,12 +90,16 @@ on Inbox; its badge follows the authoritative needs-you count where supported.
 See [Installable app](../web/README.md#installable-app) for token-derived theme,
 committed brand icons and the isolated QR/cookie test seam.
 Open-page browser notifications use the hub's Inbox row layers and task transitions;
-there is no new frame, authority or hub-side setting. The Profile block in Accounts offers
-independent Needs you and Finished switches, saved per browser/origin; the palette
+there is no new frame, authority or hub-side setting. The desktop Profile block in Accounts
+and phone More offer independent Needs you and Finished switches, saved per browser/origin; the palette
 has no notification actions. Only Now work
 can notify, and only while the page is hidden or unfocused. Permission is requested
 from the enabling gesture; denial disables both with a tooltip. Clicks select the
 Inbox row or open the finished item's card. Snapshots never replay old waits.
+Phone More also registers `/sw.js` at root scope after a permission tap, without
+a Web Push subscription. The edge serves it as JavaScript with root scope allowed
+and revalidation; the worker has no fetch handler. Active registrations deliver
+through `showNotification`, falling back to page Notification when absent.
 See [Browser notifications](../web/README.md#browser-notifications) for the shared
 pure rules/store and open-page scope.
 Message Markdown uses the pure token parser in `web/src/markdown.ts`; renderers

@@ -72,6 +72,11 @@ test('the project manifest and linked PNG icons share the built panel theme', as
     assert.deepEqual(png.bytes.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
     assert.equal(`${png.bytes.readUInt32BE(16)}x${png.bytes.readUInt32BE(20)}`, icon.sizes);
   }
+  const worker = await get(`${origin}/sw.js`);
+  assert.equal(worker.status, 200);
+  assert.equal(worker.headers['content-type'], 'text/javascript; charset=utf-8');
+  assert.equal(worker.headers['service-worker-allowed'], '/');
+  assert.match(worker.body, /notificationclick/);
   const cached = await get(`${origin}/manifest.webmanifest`, { 'If-None-Match': response.headers.etag! });
   assert.equal(cached.status, 304);
 });

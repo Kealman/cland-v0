@@ -1,6 +1,7 @@
 // The frame ported from Q-405's App.tsx, connected to the production web edge.
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { PhoneNotifications } from './PhoneNotifications.tsx';
 import { browserNotifications } from './browser-notifications.ts';
 import type { NotificationNotice } from './notification-rules.ts';
 import { artifactSelection } from './artifacts/state.ts';
@@ -67,6 +68,11 @@ function savedShell(inboxLaunch: boolean): ShellPreferences {
 /** Reference component: semantic markup, CSS Module, tokens, and factual labels. */
 export function Shell() {
   const phone = usePhone();
+  const [notificationLaunch, setNotificationLaunch] = useState<NotificationNotice['target'] | undefined>(() => {
+    const query = new URLSearchParams(location.search);
+    const area = query.get('area'); const id = query.get('row');
+    return id && (area === 'inbox' || area === 'items') ? { area: area === 'inbox' ? 'Inbox' : 'Items', id } : undefined;
+  });
   const [inboxLaunch] = useState(() => new URLSearchParams(location.search).get('area') === 'inbox');
   useEffect(() => { if (inboxLaunch) history.replaceState(null, '', '/'); }, [inboxLaunch]);
   const navigationSerial = useRef(0);
@@ -342,6 +348,9 @@ export function Shell() {
   useEffect(() => { notificationOpen.current = target => {
     if (target.area === 'Items') { setOverlay(undefined); void openItem(target.id, true); return; }
     navigationSerial.current++;
+    if (phonePage) history.replaceState(null, '');
+    setPhonePage(undefined);
+    setMoreOpen(false);
     // Native notification clicks run outside React. Commit the destination and
     // palette focus cleanup before focusing its row; hidden pages may have no frames.
     flushSync(() => {
@@ -353,6 +362,18 @@ export function Shell() {
     });
     workspace.current?.querySelector<HTMLElement>(`[data-pane="${active}"] [data-area-module="Inbox"][data-area-surface="pane"] [data-object-id="${CSS.escape(target.id)}"]`)?.focus();
   }; });
+  useEffect(() => {
+    if (!notificationLaunch || !connection.live || !connection.inbox) return;
+    // Leave React's commit before the shared click path synchronously focuses its row.
+    let mounted = true;
+    queueMicrotask(() => {
+      if (!mounted) return;
+      notificationOpen.current(notificationLaunch);
+      setNotificationLaunch(undefined);
+      history.replaceState(null, '', '/');
+    });
+    return () => { mounted = false; };
+  }, [notificationLaunch, connection.live, connection.inbox]);
   return <TopicArtifactsProvider><InboxVisitProvider connection={connection} active={area === 'Inbox'}><ComposerPicker.Provider value={selection => { setOverlayContext(selection.kind === 'Subjects' ? 'events' : 'composer'); setComposerSelection(selection); setOverlay('palette'); }}><AskNavigation.Provider value={(id, source) => {
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') === 'secondary' ? 'secondary' : 'primary';
     navigationSerial.current++;
@@ -541,6 +562,7 @@ export function Shell() {
     {phone && <div className={s.phoneNavigation} data-phone-navigation>
       {more && <nav ref={moreSheet} className={s.moreSheet} aria-label="More areas" data-key-context="more">
         {(['Items', 'Artifacts', 'Accounts'] as const).map(name => <button key={name} aria-label={name} onClick={() => { setArea(name); setMoreOpen(false); }}>{name}</button>)}
+        <PhoneNotifications />
       </nav>}
       <nav className={s.phoneBar} data-area-navigation aria-label="Phone areas">
       {(['Inbox', 'Topics', 'Sessions', 'Events'] as const).map(name => <button key={name} aria-label={name} data-area={name}

@@ -2064,8 +2064,31 @@ and the Sessions files. Build first. New passing Web identities reaching four
 seconds on any platform require a dated, reasoned E-418 allowance near 1.5 times
 the worst passing sample, without relaxing assertions or request/DOM bounds.
 
+### phone-notifications.test.ts
+
+`web/test/phone-notifications.test.ts` uses the sealed 390×844 touch/mobile
+`webFixture` with `{ serviceWorkers: 'allow' }` in the context options. The default
+remains blocked for other cases. Stub permission, registration showNotification
+and PushManager.subscribe before navigation; registration and activation are real,
+notifications are fixture receipts. Prove More's shared switches/reload, tap-only
+root registration without push, denial clearing both switches with its tooltip,
+ask/plan/TUI approval delivery and exact row focus through worker messages and a
+cold URL entry. Hold getRegistration through a focus or switch-off transition,
+then release its real lookup receipt and assert both worker/page delivery stay silent.
+Public frames and fake adapters supply work. No live hub or human
+browser is used; real notifications remain QA's full-Chromium demo.
+`web-edge.test.ts` checks worker MIME, root scope, CSP and revalidation at T2;
+`web-auth.test.ts` checks the built worker is served. Build first, then run phone*,
+notifications, web-notifications, web-edge and web-auth targeted before mode-free
+verification. New passing identities reaching 80% of their tier budget need dated,
+reasoned E-880 allowances about 1.5× their worst passing sample, citing the run.
+
+### web-notifications.test.ts
+
 `hub/test/web-notifications.test.ts` owns the T1 pure notification eligibility,
 text and target seam, including all Inbox row kinds and pre-transition task layers.
+Its VM-loaded production worker tests notificationclick/waitUntil through fake
+client boundaries, retaining no-fetch, focus+message and encoded openWindow targets.
 `web/test/notifications.test.ts` uses sealed `webFixture` and fake sender frames
 with `Notification`, visibility and focus stubs: hidden ask text/tag/click,
 including an active secondary pane and open palette with exact ask-id row focus

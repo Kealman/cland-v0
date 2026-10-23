@@ -110,10 +110,10 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean | 
   let serial = 0;
   const tracePaths: string[] = [];
   const contexts = new Set<unknown>();
-  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>, device: { phone?: boolean } = {}) {
+  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>, device: { phone?: boolean; serviceWorkers?: 'allow' | 'block' } = {}) {
     const context = await browser!.newContext({
       ...(device.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } : { viewport: { width: 1440, height: 900 } }),
-      serviceWorkers: 'block', ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}),
+      serviceWorkers: device.serviceWorkers ?? 'block', ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}),
     });
     assert.ok(!contexts.has(context), 'fresh context'); contexts.add(context);
     context.setDefaultTimeout(3000);

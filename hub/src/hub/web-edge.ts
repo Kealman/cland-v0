@@ -123,6 +123,7 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
     }
     if (!physical || !(await stat(physical)).isFile()) { reply(404, 'Not found'); return; }
     let body = await readFile(physical);
+    if (path === '/sw.js') res.setHeader('Service-Worker-Allowed', '/');
     if (path === '/manifest.webmanifest') {
       const name = projectName();
       body = Buffer.from(JSON.stringify({ ...JSON.parse(body.toString()), name, short_name: name }) + '\n');

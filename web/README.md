@@ -92,9 +92,8 @@ More keeps its current mark while Items, Artifacts or Accounts is open:
   attach-to-composer actions are absent from phone help/palette and inert on
   the keyboard. Source/rendered toggles and downloads remain available.
 - Accounts keeps the registry paths, windows, limits and this browser's sign-in
-  facts. Notification switches are absent here on the phone; their phone home
-  in More arrives in a later E-419 ticket. For now More lists only Items,
-  Artifacts and Accounts. Account edits stay in the CLI.
+  facts. Notification switches and the subscription button live in More on
+  the phone. Account edits stay in the CLI.
 
 Item cards and artifact viewers have a 44 px back control; browser Back returns
 to the list too. At 640 px and wider the desktop views and actions remain,
@@ -569,7 +568,8 @@ Inbox are excluded by the hub's projection.
 
 ## Browser notifications
 
-The **Profile** block in **Accounts** offers **Needs you** and **Finished**,
+The **Profile** block in **Accounts** on desktop, and **More** on the phone,
+offer **Needs you** and **Finished**,
 independent on/off switches saved per browser and origin. They are absent from
 the palette. Turning the first switch on requests browser permission directly from
 that click or physical Enter. The second switch reuses granted permission. Denial
@@ -592,12 +592,21 @@ command, plan, request/message text or finished task title. Clicking it focuses
 the page and selects the exact Inbox row, revealing its fold/overflow, or opens
 the finished item's card, including in a split. It dismisses an open palette. Inbox navigation commits before row focus and does
 not wait for animation frames, which hidden pages may suspend.
-No service worker or closed-page push is installed here.
+On the phone, **Subscribe to notifications** asks for permission and registers
+`/sw.js` at root scope directly from a tap. It creates no Web Push subscription.
+Denial turns both switches off and the button tooltip explains the site setting.
+Use HTTPS (or localhost); on iOS, install the app on the Home Screen first.
+Notifications still require an open page connected to the hub; closed-page push
+is deferred. The worker has no fetch handler and never caches the shell.
+With an active registration, delivery uses `showNotification`; otherwise it uses
+the page's `Notification`. A worker click focuses an open window and messages its
+row target, or opens `/?area=inbox&row=<id>` (Items for a finished task).
+The shell consumes that entry once and restores `/` after opening the row.
 
 `src/notification-rules.ts` is the pure eligibility/text/target boundary reusable
-by the phone adapter. `src/notification-state.ts` owns the shared switch store
+by both delivery paths. `src/notification-state.ts` owns the shared switch store
 (`notificationSnapshot`, `subscribeNotifications`, `useNotifications`,
-`toggleNotification`) for the profile controls and notification delivery. Call the toggle
+`toggleNotification`, `refreshNotificationPermission`) for the Profile and More controls and notification delivery. Call the toggle
 directly from an enabling user gesture. `src/browser-notifications.ts` consumes
 incoming frames before the connection replaces its state, keeping the task's
 pre-transition facts and stable notification identities outside React rendering.
@@ -1162,7 +1171,8 @@ The profile is not a harness account and never enters account counts, selection
 or the Sessions strip. Its fold is remembered in this browser. It lists no
 other browser and offers no revoke; `cland web --sessions` and
 `cland web --revoke <id>` stay in the CLI. The **Notifications** group beside
-this sign-in has the **Needs you** and **Finished** switches. Turning either
+this sign-in on desktop has the **Needs you** and **Finished** switches; on a
+phone they live in More with the subscription button. Turning either
 off stops that kind in this browser only; the choice survives a reload.
 
 Below the profile, Accounts lists a block per account, using the same pure projection in
@@ -1254,7 +1264,8 @@ node --test web/test/withdraw.test.ts  # busy-session queue, receipt-gated draft
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
 node --test web/test/events.test.ts     # journal pages, hub filters, local day folds, subjects, live races and shared last-look
 node --test web/test/notifications.test.ts # profile switches/reload/tabs, palette absence, stubbed permission and exact click targets
-node --test hub/test/web-notifications.test.ts # T1 shared notification eligibility/text
+node --test web/test/phone-notifications.test.ts # opt-in workers, tap permission, stubbed delivery and row entry
+node --test hub/test/web-notifications.test.ts # T1 notification rules and worker click contract
 node --test web/test/inbox.test.ts      # Now sections, drawer replies, visit outcomes, seven-day archive, keys and Events footer
 node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect
 node --test web/test/thread-artifacts.test.ts # HTML capability frames, sandbox isolation and opening actions

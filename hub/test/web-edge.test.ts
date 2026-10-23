@@ -104,6 +104,11 @@ test('the bundle has strict headers, revalidation for entry files and immutable 
     assert.equal(file.status, 200, path);
     assert.equal(file.headers['cache-control'], 'no-cache', path);
     assert.ok(file.headers.etag, path);
+    if (path === '/sw.js') {
+      assert.equal(file.headers['content-type'], 'text/javascript; charset=utf-8');
+      assert.equal(file.headers['service-worker-allowed'], '/');
+      assert.match(String(file.headers['content-security-policy']), /worker-src 'self'/);
+    }
     const cached = await get(port, path, { 'If-None-Match': file.headers.etag! });
     assert.equal(cached.status, 304, path);
     assert.equal(cached.body, '');

@@ -21,6 +21,9 @@ function save(next: NotificationPreferences) {
   writeInterfaceState('notifications', { needsYou: next.needsYou, finished: next.finished });
   listeners.forEach(listener => listener());
 }
+export function refreshNotificationPermission() {
+  refresh();
+}
 function refresh() {
   if (state?.pending) return;
   state = undefined;

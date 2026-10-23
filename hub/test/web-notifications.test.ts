@@ -42,3 +42,26 @@ test('finished uses the task pre-transition layer and session, never a container
   assert.equal(finishedNotification(undefined, done), undefined);
   assert.equal(finishedNotification({ ...previous, kind: 'epic' }, { ...done, kind: 'epic' }), undefined);
 });
+
+test('worker notification clicks focus and message a window or open the exact row without a fetch handler', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { runInNewContext } = await import('node:vm');
+  const source = await readFile(new URL('../../web/public/sw.js', import.meta.url), 'utf8');
+  const handlers = new Map<string, (event: unknown) => void>();
+  const calls: unknown[] = [];
+  let windows: unknown[] = [{ focus: async () => { calls.push('focus'); }, postMessage: (data: unknown) => calls.push(data) }];
+  runInNewContext(source, { URL, self: {
+    location: { origin: 'https://cland.example' },
+    addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+    clients: { matchAll: async () => windows, openWindow: async (url: string) => calls.push(url) },
+  } });
+  assert.equal(handlers.has('fetch'), false);
+  const target = { area: 'Inbox', id: 'ask 1/&' };
+  let receipt: Promise<unknown> | undefined;
+  const click = () => handlers.get('notificationclick')!({ notification: { data: target, close: () => calls.push('close') }, waitUntil: (work: Promise<unknown>) => { receipt = work; } });
+  click(); await receipt;
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), ['close', 'focus', { type: 'notification-open', target }]);
+  calls.length = 0; windows = [];
+  click(); await receipt;
+  assert.deepEqual(calls, ['close', 'https://cland.example/?area=inbox&row=ask+1%2F%26']);
+});
