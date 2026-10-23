@@ -3,12 +3,76 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AccountList, HubFrame } from '../../shared/wire/index.ts';
+import type { AccountList, HubFrame, WebSessionsResult } from '../../shared/wire/index.ts';
+import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { until } from '../../hub/test/until.ts';
 import { connectUi } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { pageUntil, webFixture } from './harness.ts';
 import { visibleProse } from './prose.ts';
+
+test('Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry', async t => {
+  const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
+  const fixture = await webFixture(t, { clock, timezoneId: 'UTC' });
+  await fixture.pageCase(t, async page => {
+    const profile = page.getByRole('region', { name: 'Profile', exact: true });
+    const rendered = profile.locator('time').nth(2).waitFor();
+    await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+    await rendered;
+    const { sessions } = await askHubFrame(fixture.hub.discovery, { type: 'web.sessions' }, 3000, {}) as WebSessionsResult;
+    assert.equal(sessions.length, 1);
+    assert.equal(sessions[0]!.createdAt, '2026-10-23T12:00:00.000Z');
+    assert.deepEqual(await profile.locator('time').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), [sessions[0]!.createdAt, sessions[0]!.lastUsedAt, '2026-11-22T12:00:00.000Z']);
+    for (const fact of ['This browser', 'Created', 'Last used', 'Cookie expires', 'Oct 23, 2026', 'Nov 22, 2026', '12:00 PM']) assert.ok((await profile.textContent())?.includes(fact), fact);
+    assert.equal(await profile.locator('[data-account-id]').count(), 0, 'the profile is not a harness account');
+    assert.equal(await profile.getByRole('button', { name: /revoke/i }).count(), 0);
+    assert.deepEqual(await visibleProse(page), []);
+
+    // Admission updates last use, while creation and expiry retain the original cookie lifetime.
+    // Stay below the socket-silence deadline so only this reload changes admission.
+    await clock.advance(30_000);
+    const renewed = pageUntil(page, () => [...document.querySelectorAll('[aria-label="Profile"] time')].some(node => node.getAttribute('datetime') === '2026-10-23T12:00:30.000Z'), 'last use after browser reconnect');
+    await page.reload();
+    await renewed;
+    assert.deepEqual(await profile.locator('time').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), ['2026-10-23T12:00:00.000Z', '2026-10-23T12:00:30.000Z', '2026-11-22T12:00:00.000Z']);
+  });
+});
+
+test('Accounts profile excludes a second browser context sign-in on the same hub', async t => {
+  const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
+  const fixture = await webFixture(t, { clock, timezoneId: 'UTC' });
+  const frames: Array<{ type: string }> = [];
+  await fixture.pageCase(t, async first => {
+    await first.getByRole('button', { name: 'Accounts', exact: true }).click();
+    const firstProfile = first.getByRole('region', { name: 'Profile', exact: true });
+    await firstProfile.locator('time').nth(2).waitFor();
+    await clock.advance(30_000);
+    const secondContext = await fixture.browser.newContext({ timezoneId: 'UTC', serviceWorkers: 'block' });
+    secondContext.setDefaultTimeout(3000);
+    try {
+      const { url } = await askHubFrame(fixture.hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
+      const second = await secondContext.newPage();
+      await second.goto(url);
+      await second.getByRole('button', { name: 'Accounts', exact: true }).click();
+      const secondProfile = second.getByRole('region', { name: 'Profile', exact: true });
+      await secondProfile.locator('time').nth(2).waitFor();
+      const { sessions } = await askHubFrame(fixture.hub.discovery, { type: 'web.sessions' }, 3000, {}) as WebSessionsResult;
+      assert.equal(sessions.length, 2, 'two independent cookie records on the same hub');
+      assert.deepEqual(sessions.map(row => row.createdAt).sort(), ['2026-10-23T12:00:00.000Z', '2026-10-23T12:00:30.000Z']);
+      assert.deepEqual(await secondProfile.locator('time').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), ['2026-10-23T12:00:30.000Z', '2026-10-23T12:00:30.000Z', '2026-11-22T12:00:30.000Z']);
+      // Re-enter after the second admission: an own-profile read must still exclude it.
+      await first.getByRole('button', { name: 'Sessions', exact: true }).click();
+      const rendered = firstProfile.locator('time').nth(2).waitFor();
+      await first.getByRole('button', { name: 'Accounts', exact: true }).click();
+      await rendered;
+      assert.deepEqual(await firstProfile.locator('time').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), ['2026-10-23T12:00:00.000Z', '2026-10-23T12:00:00.000Z', '2026-11-22T12:00:00.000Z']);
+      assert.equal(await firstProfile.getByText('This browser', { exact: true }).count(), 1);
+      for (const record of sessions) assert.ok(!(await firstProfile.textContent())?.includes(record.id), 'browser identities are not exposed');
+      assert.ok(frames.some(frame => frame.type === 'web.session'));
+      assert.equal(frames.filter(frame => frame.type === 'web.sessions' || frame.type === 'web.revoke').length, 0);
+    } finally { await secondContext.close(); }
+  }, page => { page.on('websocket', socket => socket.on('framesent', event => frames.push(JSON.parse(String(event.payload))))); });
+});
 
 async function accountsFixture(t: TestContext) {
   const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));

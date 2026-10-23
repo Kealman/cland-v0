@@ -219,6 +219,7 @@ thread module. Items retains its tree, views and card.
 | --- | --- |
 | Sessions | `sessions` (complete merged rows by stable key), `archivedSessions`, on-demand `archivedSessionRows`/`loadArchivedSessions`, inbox `sessionAsks`, `roles` including launch defaults, `adapters`, and `verification` with `queue` and client `receivedAt` milliseconds |
 | Accounts, and the Sessions strip | `accounts`: registry path, optional registry error and complete views in registry order, including windows, source, reading time and limited mark |
+| Accounts profile | `web.session`: this socket's browser sign-in creation, last use and fixed cookie expiry; separate from the harness account model |
 | Artifacts | `artifacts`: complete inventory records, including status, author, kept and layer facts |
 | Topics | `topics` with authoritative unread counts and read positions, `marks`, and the per-topic `threads` cache |
 
@@ -612,7 +613,18 @@ they never become zero percent or an empty meter. Tooltips carry every window,
 the reading's age and source, and limited details. The header link and each cell
 open Accounts in that pane. The strip's fold is browser-local under Sessions.
 
-Accounts lists a block per account, using the same pure projection in
+Accounts opens with the human's **Profile** block, visually set apart above
+the registry. **This browser** shows Created, Last used and Cookie expires as
+local dates and times, with exact hub timestamps in their tooltips. Its own
+sign-in state comes from the authenticated socket's `web.session` read on entry
+and reconnect; the cookie expires 30 days after creation, even after later use.
+The profile is not a harness account and never enters account counts, selection
+or the Sessions strip. Its fold is remembered in this browser. It lists no
+other browser and offers no revoke; `cland web --sessions` and
+`cland web --revoke <id>` stay in the CLI. Notification switches join this block
+in their own slice.
+
+Below the profile, Accounts lists a block per account, using the same pure projection in
 `src/accounts/model.ts`. It shows the harness and directory or database path
 (or `harness default`), every source window with its used share and reset,
 the reading's age and source session or poll, and a limited mark's since,
@@ -690,7 +702,7 @@ node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed delta
 node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
 node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
 node --test web/test/artifacts.test.ts # tree, capability pages, sandbox isolation, text and downloads
-node --test web/test/accounts.test.ts # fake registry, all windows, poll on entry and Sessions strip
+node --test web/test/accounts.test.ts # own browser profile, two-context isolation, registry, windows, polls and Sessions strip
 node --test hub/test/web-accounts.test.ts # T1 worst window, severity, missing data and clock formats
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks

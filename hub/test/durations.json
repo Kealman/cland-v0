@@ -6077,6 +6077,13 @@
     "web/test/topics.test.ts::Topics groups separate waiting, standing, item and closed topics and remember folds": 0.84831
   },
   "allow": {
+    "web/test/accounts.test.ts::Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry": {
+      "seconds": 6.8,
+      "owner": "E-418",
+      "added": "2026-10-23",
+      "expires": "2026-10-30",
+      "reason": "T-1135: the sealed hub/Headless Shell profile case with public cookie-record readback, reload last-use and fixed expiry assertions measured 4.512101 s on local macOS arm64 at ff04573a in the targeted four-file run recorded by A-9650. The 6.8 s cap rounds up about 1.5x this worst observed sample, as the E-418 launch brief requires for any new Web identity reaching 4 s. Reconnect advances only 30 virtual seconds to stay below socket silence; all assertions and observed browser/hub teardown remain. Revisit after E-418 stage QA."
+    },
     "web/test/plan.test.ts::the Plan view in Items": {
       "seconds": 8.2,
       "owner": "E-880",

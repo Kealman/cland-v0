@@ -3,6 +3,7 @@ import type { AreaContentProps, AreaModule } from '../AreaSlot.tsx';
 import { Fold } from '../Fold.tsx';
 import { accountId } from './state.ts';
 import { accountModel, accountModels, harnessName } from './model.ts';
+import { Profile } from './Profile.tsx';
 import s from './Accounts.module.css';
 
 function AccountFacts({ account }: { account: ReturnType<typeof accountModel> }) {
@@ -33,6 +34,7 @@ function AccountsArea(props: AreaContentProps) {
     return () => { mounted = false; };
   }, [live, poll]);
   return <section data-area-module="Accounts" data-area-surface="pane" data-key-context="accounts">
+    <Profile connection={props.connection} />
     {list?.registry && <div className={s.registry}>{list.registry}</div>}
     {list?.error && <div role="alert" className={s.critical}>{list.error}</div>}
     {error && <div role="alert" className={s.critical} title={error}>Poll failed</div>}
