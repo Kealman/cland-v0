@@ -520,8 +520,13 @@ change, approval relay and terminal support, or a message that no adapter/table
 exists. Its reliability values come from the hub, including the web terminal's
 `none`. `c` toggles the table and Esc closes it. The session's page opens in the
 other pane with ⌘Enter and shows model, account, total tokens, cost when known,
-and capabilities with the same actions and confirmations. Below 640 px, tap or
-Enter opens the page in the current pane; the list shows no row actions.
+and capabilities with the same actions and confirmations. Below 640 px, rows are 52 px tall with two lines: glyph, name and coloured
+role with state and age at the right; then harness, item (including hold role
+and +N, or a dimmed request) and any pending command, clipped with its full text
+in a tooltip. Model, account and usage appear on the session page. Tap or Enter
+opens that page in the current pane; Esc cancels a confirmation first, otherwise
+returns to the list with focus on the same row, keeping the archive toggle. The narrow list has no row or
+swipe actions, no unfolded detail and no drawer; action keys work on the page.
 The launch and thread drawer arrive in following slices.
 
 | Key | Action |

@@ -7,8 +7,8 @@ import { SessionCapabilities } from './SessionCapabilities.tsx';
 import s from './Sessions.module.css';
 
 /** Row and page share the same confirmation and receipt handling. */
-export function SessionActions({ row, connection, controls, showCapabilities = false }: {
-  row: SessionRow; connection: ConnectionState; controls?: Ref<AreaControls> | undefined; showCapabilities?: boolean;
+export function SessionActions({ row, connection, controls, showCapabilities = false, onBack }: {
+  row: SessionRow; connection: ConnectionState; controls?: Ref<AreaControls> | undefined; showCapabilities?: boolean; onBack?: (() => void) | undefined;
 }) {
   const [confirm, setConfirm] = useState<'Stop' | 'Archive' | null>(null);
   const [pending, setPending] = useState(false);
@@ -44,6 +44,7 @@ export function SessionActions({ row, connection, controls, showCapabilities = f
     if (action === 'session-open' && focused instanceof HTMLButtonElement && root.current?.contains(focused)) { focused.click(); return true; }
     if (pending && ['session-open', 'session-stop', 'session-resume', 'session-archive', 'dismiss'].includes(action)) return true;
     if (confirm && action === 'dismiss') { cancel(); return true; }
+    if (action === 'dismiss' && onBack) { onBack(); return true; }
     if (capabilities && action === 'dismiss') { setCapabilities(false); return true; }
     if (confirm && action === 'session-open') { void execute(); return true; }
     if (confirm && ['session-stop', 'session-resume', 'session-archive', 'session-capabilities'].includes(action)) return true;

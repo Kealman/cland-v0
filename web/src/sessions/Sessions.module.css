@@ -37,7 +37,23 @@
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; font-size: 13px; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
-@media (max-width: 639px) { .detail { display: none; } }
+.identity, .summary { display: contents; }
+.command { display: none; }
+@media (max-width: 639px) {
+  .row { grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px;
+    align-content: center; min-height: 52px; height: 52px; padding: 0 10px; border-radius: 10px; }
+  .glyph { grid-row: 1; grid-column: 1; }
+  .identity { grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
+  .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+  .role { flex: none; }
+  .state { grid-row: 1; grid-column: 3; justify-self: end; white-space: nowrap; }
+  .summary { grid-row: 2; grid-column: 2 / 4; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
+  .meta { flex: none; }
+  .item { flex: none; }
+  .summary > :not(:first-child)::before { content: '·'; margin-right: 6px; color: var(--muted); }
+  .command { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 12px; line-height: 20px; }
+  .pageFact, .usage, .detail { display: none; }
+}
 .header button { margin-left: auto; padding: 3px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--muted); }
 .header button:hover { background: var(--control-hover); }
 .header button[aria-pressed="true"] { background: var(--selection); color: var(--text); }

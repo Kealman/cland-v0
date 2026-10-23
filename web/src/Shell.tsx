@@ -329,6 +329,15 @@ export function Shell() {
                 navigate={target => setArea(target, pane)}
                 openPage={id => { navigationSerial.current++; setPreferences(previous => pane === 'primary'
                   ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}
+                closePage={() => {
+                  navigationSerial.current++;
+                  setPreferences(previous => pane === 'primary' ? { ...previous, detail: false, dismissed: selectionKey }
+                    : { ...previous, secondaryDetail: false });
+                  requestAnimationFrame(() => {
+                    const rows = workspace.current?.querySelectorAll<HTMLButtonElement>(`[data-pane="${pane}"] [data-object-id]`);
+                    [...rows ?? []].find(node => node.dataset.objectId === selected)?.focus();
+                  });
+                }}
                 controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'page' : 'pane'} />}
               {detail && row && paneArea === 'Items' && findItem(connection, row.id) &&
                 <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />}
@@ -345,7 +354,7 @@ export function Shell() {
             </section>;
           })}
         </div>
-        {drawerOpen && <aside className={s.drawer} aria-label="Drawer">
+        {drawerOpen && <aside className={s.drawer} data-drawer-area={preferences.area} aria-label="Drawer">
           <Fold area={preferences.area.toLowerCase()} id={`drawer:${selectedRow.id}`} label={selectedRow.title} count={1} actions={<div className={s.actions}>
             <button title="Open in the other pane (⌘Enter)" onClick={openOther}>Split</button>
             <button onClick={() => { setDismissed(selectionKey); areaButtons.current[preferences.area]?.focus(); }}>Close</button>

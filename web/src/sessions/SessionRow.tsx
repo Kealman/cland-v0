@@ -33,14 +33,19 @@ export function SessionRow({ row, selected, select, connection, now, controls, o
       onPointerDown={event => { if (window.matchMedia('(max-width: 639px)').matches) event.preventDefault(); }}
       onFocus={() => select(row.name)} onClick={() => { select(row.name); if (window.matchMedia('(max-width: 639px)').matches) openPage?.(row.name); }}>
       <span className={s.glyph} aria-label={state}>{glyph}</span>
-      <span className={s.name}>{row.name}</span>
-      <span className={s.role} data-session-role={row.role ?? 'other'}>{role}</span>
-      <span className={s.meta} title={[row.harness, row.model, row.account].filter(Boolean).join(' · ')}>
-        <span>{row.harness ? harnesses[row.harness] ?? row.harness : '—'}</span>
-        <span>{row.model ?? '—'}</span><span>{row.account ?? '—'}</span>
+      <span className={s.identity}>
+        <span className={s.name}>{row.name}</span>
+        <span className={s.role} data-session-role={row.role ?? 'other'}>{role}</span>
       </span>
-      <span className={s.item} data-item-requested={row.itemRequested} title={row.holds.map(hold => `${hold.item} ${hold.role}`).join(', ')}>
-        {row.item ?? 'free'}{row.itemKind && row.itemKind !== 'item' ? ` ${row.itemKind}` : ''}{row.additionalHolds > 0 ? ` +${row.additionalHolds}` : ''}
+      <span className={s.summary}>
+        <span className={s.meta} title={[row.harness, row.model, row.account].filter(Boolean).join(' · ')}>
+          <span>{row.harness ? harnesses[row.harness] ?? row.harness : '—'}</span>
+          <span className={s.pageFact}>{row.model ?? '—'}</span><span className={s.pageFact}>{row.account ?? '—'}</span>
+        </span>
+        <span className={s.item} data-item-requested={row.itemRequested} title={row.holds.map(hold => `${hold.item} ${hold.role}`).join(', ')}>
+          {row.item ?? 'free'}{row.itemKind && row.itemKind !== 'item' ? ` ${row.itemKind}` : ''}{row.additionalHolds > 0 ? ` +${row.additionalHolds}` : ''}
+        </span>
+        {row.approvalCommand && <code className={s.command} title={row.approvalCommand}>{row.approvalCommand}</code>}
       </span>
       <span className={s.state}>{state} <span className={s.age} data-session-age>{sessionAge(row.live ? row.stateSince : row.stoppedAt, now)}</span></span>
       <span className={s.usage}>{usage(row)}</span>

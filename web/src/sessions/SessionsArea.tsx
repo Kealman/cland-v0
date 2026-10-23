@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useSyncExternalStore } from 'react';
 import type { AreaControls, AreaContentProps, AreaModule } from '../AreaSlot.tsx';
 import { AreaObjectDetail } from '../AreaObjects.tsx';
 
@@ -8,10 +8,22 @@ import { VerifyLine } from './VerifyLine.tsx';
 import { SessionGroups } from './SessionGroups.tsx';
 import { SessionPage } from './SessionPage.tsx';
 
+// Keep the list context while its page occupies the pane, including without storage.
+let archivedVisible = false;
+const archiveListeners = new Set<() => void>();
+function subscribeArchive(listener: () => void) {
+  archiveListeners.add(listener);
+  return () => { archiveListeners.delete(listener); };
+}
+function toggleArchive() {
+  archivedVisible = !archivedVisible;
+  for (const listener of archiveListeners) listener();
+}
+
 function SessionsArea(props: AreaContentProps) {
-  const [archived, setArchived] = useState(false);
+  const archived = useSyncExternalStore(subscribeArchive, () => archivedVisible);
   const groups = useRef<AreaControls>(null);
-  const toggle = () => setArchived(value => !value);
+  const toggle = toggleArchive;
   const load = props.connection.loadArchivedSessions;
   const live = props.connection.live;
   useEffect(() => { if (archived && live) load?.(); }, [archived, live, load]);

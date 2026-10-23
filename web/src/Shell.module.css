@@ -67,3 +67,5 @@
 
 .heading h1, .heading h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .actions { flex-shrink: 0; }
+
+@media (max-width: 639px) { .drawer[data-drawer-area="Sessions"] { display: none; } }

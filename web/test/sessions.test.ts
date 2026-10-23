@@ -77,6 +77,8 @@ test('Sessions rows render merged facts, holds, waiting detail and physical sele
     assert.equal(await row.locator('[data-session-age]').textContent(), '1m');
     for (const fact of ['▲', 'facts-reviewer', 'Reviewer', 'Claude Code', 'opus', 'row-account', ids[1]!, 'review +1', 'waiting for approval', '$0.25']) assert.ok(text?.includes(fact), fact);
     assert.equal(await row.locator('[data-session-role]').evaluate(node => getComputedStyle(node).color), 'rgb(247, 120, 186)');
+    const desktop = await row.locator('[aria-label="waiting for approval"], [data-session-role], [data-item-requested]').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().y));
+    assert.equal(new Set(desktop).size, 1, 'P22 facts share one desktop line at 1440 px');
     await row.click();
     const detail = page.locator('[data-session-detail="facts-reviewer"]');
     await detail.waitFor();
@@ -91,11 +93,42 @@ test('Sessions rows render merged facts, holds, waiting detail and physical sele
     await row.press('ArrowDown');
     await second.press('k');
     assert.equal(await row.getAttribute('aria-pressed'), 'true');
+    await page.setViewportSize({ width: 600, height: 900 });
+    const narrow = async () => {
+      const facts = await row.evaluate(node => {
+        const fact = (text: string) => [...node.querySelectorAll('span')].find(span => span.textContent === text)!;
+        const rect = (element: Element) => { const r = element.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, height: r.height }; };
+        return { row: rect(node), name: rect(fact('facts-reviewer')), role: rect(fact('Reviewer')),
+          state: rect(node.querySelector('[data-session-age]')!.parentElement!), harness: rect(fact('Claude Code')),
+          item: rect(node.querySelector('[data-item-requested]')!) };
+      });
+      assert.equal(facts.row.height, 52, 'P27 row is 52 px tall');
+      assert.equal(facts.name.y, facts.role.y);
+      assert.equal(facts.name.y, facts.state.y);
+      assert.ok(facts.state.x > facts.role.right, 'state and age sit at the right');
+      assert.ok(facts.harness.y > facts.name.y, 'harness is on the second line');
+      assert.equal(facts.harness.y, facts.item.y);
+      assert.ok(facts.row.right <= 600, 'row fits the viewport');
+      assert.ok(facts.item.right <= facts.row.right);
+      for (const text of ['opus', 'row-account', '$0.25']) assert.equal(await row.getByText(text, { exact: true }).isVisible(), false, text);
+      assert.equal(await row.locator('[data-session-role]').evaluate(node => getComputedStyle(node).color), 'rgb(247, 120, 186)');
+      assert.equal(await page.locator('[data-session-detail="facts-reviewer"]').isVisible(), false);
+      assert.equal(await page.locator('[data-session-slot="groups"] [data-session-actions]:visible').count(), 0);
+    };
+    await narrow();
+    assert.equal((await second.boundingBox())?.height, 52, 'ordinary rows are also two lines');
+    assert.equal(await second.locator('code').count(), 0, 'ordinary rows have no pending command');
+    const pending = row.locator('code');
+    assert.equal(await pending.isVisible(), true, 'waiting command is visible without unfolding');
+    assert.equal(await pending.textContent(), command);
+    const commandBox = await pending.boundingBox();
+    assert.ok(commandBox && commandBox.width > 0 && commandBox.x + commandBox.width <= 600);
     for (const id of ids.slice(0, 2)) assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id, release: true })).ok, true);
     assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: ['facts-reviewer'], text: `review request ${ids[2]}` })).ok, true);
     await pageUntil(page, () => document.querySelector('[data-object-id="facts-reviewer"] [data-item-requested]')?.getAttribute('data-item-requested') === 'true', 'requested work arrives as a dimmed hub row');
     assert.ok((await row.textContent())?.includes(`${ids[2]} review`));
     assert.equal(await row.locator('[data-item-requested]').evaluate(node => getComputedStyle(node).color), 'rgb(138, 148, 163)');
+    await narrow();
   }, async page => {
     await page.clock.install({ time: new Date(clock.now().getTime() - 1000) });
     await page.clock.pauseAt(clock.now());

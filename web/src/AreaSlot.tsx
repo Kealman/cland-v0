@@ -17,6 +17,7 @@ export type AreaContentProps = {
   select: (id: string) => void;
   navigate?: (area: Area) => void;
   openPage?: (id: string) => void;
+  closePage?: () => void;
   controls?: Ref<AreaControls>;
 };
 export type AreaModule = {
