@@ -7,6 +7,7 @@ import { areas, areaKey, actionKeys, displayKey, treeActions, planActions, conte
 import { focusedKeyContext, listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
+import { AskNavigation, runAskShortcut } from './AskCard.tsx';
 import { Fold, runFoldShortcut } from './Fold.tsx';
 import { ItemCard } from './ItemCard.tsx';
 import { ItemNavigation } from './ItemText.tsx';
@@ -105,7 +106,7 @@ export function Shell() {
   const focusedContext = overlay ? overlayContext : areaContext(area);
   const handledActions = area === 'Items'
     ? (view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
-    : (contextActions[focusedContext] ?? []).filter(row => areaModules[area].handledActions.includes(row.action));
+    : (contextActions[focusedContext] ?? []).filter(row => focusedContext === 'ask' && row.action.startsWith('ask-') || areaModules[area].handledActions.includes(row.action));
   const paletteControls = useRef<PaletteControls>(null);
   const cardOrigin = useRef<{ item: string; pane: string } | null>(null);
   const primaryTree = useRef<TreeControls>(null);
@@ -177,6 +178,7 @@ export function Shell() {
     }
     if (!overlay && area === 'Items' && (active === 'primary' ? primaryTree : secondaryTree).current?.run(action)) return;
     if (!overlay && area !== 'Items' && areaModules[area].handledActions.includes(action) && (active === 'primary' ? primaryArea : secondaryArea).current?.run(action)) return;
+    if (!overlay && runAskShortcut(action)) return;
     if (runFoldShortcut(action)) return;
     if (action === 'palette') openOverlay('palette');
     else if (overlay) paletteControls.current?.run(action);
@@ -204,7 +206,7 @@ export function Shell() {
     const current = keyboard.current;
     return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
-    if (context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
@@ -256,7 +258,16 @@ export function Shell() {
         : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
-  return <ArtifactNavigation.Provider value={(artifact, source) => {
+  return <AskNavigation.Provider value={(id, source) => {
+    const pane = source.closest('[data-pane]')?.getAttribute('data-pane') === 'secondary' ? 'secondary' : 'primary';
+    navigationSerial.current++;
+    setMessage(undefined);
+    setActive(pane);
+    setPreferences(previous => pane === 'secondary'
+      ? { ...previous, secondary: 'Inbox', secondaryRow: id, secondaryDetail: false }
+      : { ...previous, area: 'Inbox', row: id, detail: false, dismissed: undefined });
+    requestAnimationFrame(() => workspace.current?.querySelector<HTMLElement>(`[data-pane="${pane}"] [data-area-module="Inbox"][data-area-surface="pane"] [data-ask-id="${CSS.escape(id)}"]`)?.focus());
+  }}><ArtifactNavigation.Provider value={(artifact, source) => {
     navigationSerial.current++;
     setMessage(undefined);
     setOpenedArtifacts(previous => [...previous.filter(row => row.id !== artifact.id), artifact]);
@@ -381,5 +392,5 @@ export function Shell() {
         </aside>}
       </main>
     </div>
-  </div></ItemNavigation.Provider></ArtifactNavigation.Provider>;
+  </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider>;
 }

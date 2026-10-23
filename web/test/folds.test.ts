@@ -12,7 +12,7 @@ test('browser folds and the prose guard', async t => {
       await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Live', 'authenticated shell');
       const toggle = page.getByRole('button', { name: 'Fold Inbox', exact: true });
       await toggle.waitFor();
-      const objects = page.getByRole('list', { name: 'Inbox objects' });
+      const objects = page.getByRole('list', { name: 'Inbox objects', exact: true });
       assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
       sent.length = 0;
       await toggle.click();
@@ -84,10 +84,10 @@ test('browser folds and the prose guard', async t => {
 
   await t.test('folds share the client state between panes and preserve unrelated area preferences', async t => {
     await fixture.pageCase(t, async page => {
-      const first = page.locator('[data-pane="primary"] [data-fold-toggle]');
+      const first = page.locator('[data-pane="primary"]').getByRole('button', { name: 'Fold Inbox', exact: true });
       assert.equal(await first.getAttribute('aria-expanded'), 'true', 'a fresh browser context has independent state');
       await page.keyboard.press('Meta+Backslash');
-      const second = page.locator('[data-pane="secondary"] [data-fold-toggle]');
+      const second = page.locator('[data-pane="secondary"]').getByRole('button', { name: 'Fold Inbox', exact: true });
       await second.waitFor();
       await first.click();
       assert.equal(await second.getAttribute('aria-expanded'), 'false', 'same area and fold agree across panes');

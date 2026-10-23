@@ -1,6 +1,6 @@
 export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'] as const;
 export type Area = typeof areas[number];
-export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
+export type Shortcut = Area | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
   | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
   | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
   | 'composer-send' | 'composer-newline'
@@ -10,8 +10,10 @@ export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | '
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
-export type KeyContext = 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
+export type KeyContext = 'ask' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
 export type KeyAction = { action: Shortcut; label: string };
+
+const threadKeys = { KeyJ: 'thread-next', ArrowDown: 'thread-next', KeyK: 'thread-previous', ArrowUp: 'thread-previous', KeyH: 'thread-back', Escape: 'thread-back', Enter: 'thread-toggle', KeyZ: 'thread-leader', 'KeyZ KeyA': 'thread-toggle' } as const;
 
 /** One physical-code/modifier map, partitioned by focused context. */
 export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcut>>>> = {
@@ -35,7 +37,8 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
     KeyZ: 'tree-leader', 'KeyZ KeyA': 'tree-toggle', 'Shift+KeyD': 'tree-done', 'Shift+KeyA': 'tree-archive',
   },
   topics: { KeyJ: 'topic-next', ArrowDown: 'topic-next', KeyK: 'topic-previous', ArrowUp: 'topic-previous', Enter: 'topic-open', KeyL: 'topic-open', KeyH: 'topic-close' },
-  thread: { KeyJ: 'thread-next', ArrowDown: 'thread-next', KeyK: 'thread-previous', ArrowUp: 'thread-previous', KeyH: 'thread-back', Escape: 'thread-back', Enter: 'thread-toggle', KeyZ: 'thread-leader', 'KeyZ KeyA': 'thread-toggle' },
+  thread: threadKeys,
+  ask: { ...threadKeys, KeyD: 'ask-decline', KeyI: 'ask-free', KeyR: 'ask-free', Digit1: 'ask-1', Digit2: 'ask-2', Digit3: 'ask-3', Digit4: 'ask-4', Digit5: 'ask-5', Digit6: 'ask-6', Digit7: 'ask-7', Digit8: 'ask-8', Digit9: 'ask-9' },
   inbox: {}, events: {},
   composer: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send' },
   sessions: { KeyJ: 'session-next', ArrowDown: 'session-next', KeyK: 'session-previous', ArrowUp: 'session-previous',
@@ -114,6 +117,10 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
   topics: [{ action: 'topic-next', label: 'Next topic or group' }, { action: 'topic-previous', label: 'Previous topic or group' },
     { action: 'topic-open', label: 'Enter thread or unfold group' }, { action: 'topic-close', label: 'Fold topic group' }],
   thread: [{ action: 'thread-next', label: 'Next message' }, { action: 'thread-previous', label: 'Previous message' }, { action: 'thread-back', label: 'Return to topic list' }, { action: 'thread-toggle', label: 'Toggle agent run' }],
+  ask: [
+    ...Array.from({ length: 9 }, (_, index) => ({ action: `ask-${index + 1}` as Shortcut, label: `Answer with option ${index + 1}` })),
+    { action: 'ask-free', label: 'Free answer' }, { action: 'ask-decline', label: 'Decline with a reason' },
+  ],
   composer: [{ action: 'composer-send', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }],
   sessions: [
     { action: 'session-next', label: 'Next session' }, { action: 'session-previous', label: 'Previous session' },

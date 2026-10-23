@@ -1,0 +1,20 @@
+.card { background: var(--ask-surface); border-left: 3px solid var(--needs-human); padding: 12px; margin-top: 4px; }
+.card h3 { margin: 0 0 10px; color: var(--text-strong); font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.card:focus-visible, .folded:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.options { display: flex; flex-wrap: wrap; gap: 8px; }
+.options button { background: var(--ask-option); border: 1px solid var(--ask-option-line); border-radius: 4px; padding: 6px 10px; text-align: left; white-space: pre-wrap; }
+.options kbd { color: var(--needs-human); font: 12px var(--mono); }
+.options button:focus-visible { outline: 2px solid var(--link); }
+.meta { color: var(--ask-quiet); font-size: 12px; }
+.error { display: block; color: var(--failed); }
+.answer { display: flex; gap: 8px; align-items: end; margin-top: 10px; }
+.label { display: flex; flex: 1; min-width: 0; gap: 8px; align-items: end; }
+.label label { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; color: var(--ask-quiet); font-size: 12px; }
+.answer input { min-width: 0; background: var(--ask-option); border: 1px solid var(--ask-option-line); border-radius: 4px; padding: 6px 8px; }
+.answer button { background: var(--ask-option); border: 1px solid var(--ask-option-line); border-radius: 4px; padding: 6px 8px; }
+.answer .decline { color: var(--failed); border-color: var(--red-line); background: var(--red-surface); }
+.answer input:focus-visible, .answer button:focus-visible { outline: 2px solid var(--link); }
+.folded { color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; padding: 6px 0; }
+
+.heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.heading a { color: var(--link); font-size: 12px; white-space: nowrap; }

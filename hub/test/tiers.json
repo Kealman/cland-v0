@@ -608,6 +608,7 @@
     "web/test/accounts.test.ts": "Web",
     "web/test/area-slots.test.ts": "Web",
     "web/test/artifacts.test.ts": "Web",
+    "web/test/asks.test.ts": "Web",
     "web/test/board.test.ts": "Web",
     "web/test/connection.test.ts": "Web",
     "web/test/folds.test.ts": "Web",

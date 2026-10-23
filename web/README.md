@@ -125,6 +125,29 @@ and human/Aide traffic; the browser does not infer membership. A closed anchor
 represents its last loaded message for visible read marks. Enter on message links
 and other native controls keeps their own activation.
 
+`AskCard.tsx` renders the same hub ask in a thread and in the Inbox's Asks and
+approvals section. With the card or its thread row focused, physical `1`–`9`
+answer immediately; `i` or `r` focuses the free answer. `d` switches to a required
+reason and a red Decline button, and Answer instead restores answer mode. Escape
+never answers or declines. Agent-directed asks show their receiving lead and have
+no human answer controls. All bindings use the central key map and shell listener;
+typing in an answer field keeps native text input.
+
+Answers use the human `topic.answer` frame, whose durable hub record supplies the
+chosen text/reason, answerer and time. Both views fold to that outcome, including
+answers from another client. An Inbox fold stays until its mounted Inbox is left.
+Other Inbox kinds retain their stand-in rows until the full Inbox slice. Sending
+disables the card until receipt, a refusal preserves its draft, and disconnected
+cards disable writes without replaying them. A refused race or a fresh snapshot
+that omits a previously open ask uses bounded `topic.history` reads for its durable
+record, independent of the Inbox archive's seven-day window. A loaded ask needs
+one forward row; an Inbox-only ask first reads one row before its id, then one
+row after that predecessor's numeric sequence. Only an exact id match is merged,
+preserving newer live rows and counts. Answering
+already marks the topic read in the hub; the browser sends no extra broad read.
+The thread's In Inbox link opens the source pane's Inbox list and focuses the
+same ask within that destination pane.
+
 `MarkdownBody.tsx` renders the parser tokens as React elements, with external
 links underlined and opened using `_blank` and `noopener noreferrer`. Whole item
 tokens use the shared item navigation and never wrap at the hyphen; code stays
@@ -751,6 +774,7 @@ node --test web/test/items-order.test.ts # rank-event cache invalidation on a mi
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
+node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect
 node --test web/test/thread-artifacts.test.ts # HTML capability frames, sandbox isolation and opening actions
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```

@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
+import { PROTOCOL_VERSION, type AskCard, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
 import { replaceAccount, type AccountsState } from './accounts/state.ts';
 import type { AccountList } from '../../shared/wire/index.ts';
@@ -33,6 +33,9 @@ export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   threads?: TopicThreads;
   marks?: SnapshotValues['topics']['marks'];
   crew?: SnapshotValues['sessions']['crew']['config'];
+  inbox?: Inbox;
+  askCards?: ReadonlyMap<string, AskCard>;
+  recoverAsk?: (id: string, topic: string) => Promise<void>;
   needsYou?: number;
   approvals?: number;
   plans?: number;
@@ -101,6 +104,32 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       commands.set(id, { resolve: value => resolve(value as T), reject, timer });
       request({ ...frame, id } as WorkbenchRequest);
     });
+  }
+  const askTopics = new Map<string, string>();
+  const missingSnapshotAsks = new Set<string>();
+  async function recoverAsk(id: string, topic: string) {
+    const known = threads.get(topic).messages.find(row => row.id === id)?.seq;
+    // A string cursor locates the immediate predecessor even when this ask has
+    // never been loaded as a thread. Read forward one numeric row to recover
+    // the exact durable ask, independent of the seven-day Inbox archive.
+    const after = known === undefined
+      ? (await command<ThreadPage>({ type: 'topic.history', topic, before: id, limit: 1 })).messages.at(-1)?.seq ?? 0
+      : known - 1;
+    const page = await command<ThreadPage>({ type: 'topic.history', topic, after, limit: 1 });
+    const card = page.messages.find(row => row.id === id)?.ask;
+    if (card && card.state !== 'open') {
+      // Merge only the requested record: a history read cannot replace newer live rows/counts.
+      state = { ...state, askCards: new Map(state.askCards).set(id, card) };
+      changed(state);
+    }
+  }
+  function recoverSnapshotAsks() {
+    if (!state.live) return;
+    for (const id of missingSnapshotAsks) {
+      const topic = askTopics.get(id);
+      if (topic) void recoverAsk(id, topic).catch(() => {});
+    }
+    missingSnapshotAsks.clear();
   }
   async function pollAccounts() {
     const value = await command<AccountList>({ type: 'account.poll' }, (1 + Math.ceil((state.accounts?.accounts.length ?? 0) / 2)) * 30_000);
@@ -234,7 +263,12 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     rows('Items', value);
   }
   function inbox(value: Inbox) {
-    state = { ...state, sessionAsks: value.asks, needsYou: value.needsYou, approvals: value.approvals.length,
+    const cards = new Map(state.askCards);
+    for (const row of value.asks) {
+      askTopics.set(row.id, row.topic.id);
+      if (!cards.has(row.id)) cards.set(row.id, { question: row.question, options: row.options, free: row.free, state: 'open' });
+    }
+    state = { ...state, inbox: value, askCards: cards, sessionAsks: value.asks, needsYou: value.needsYou, approvals: value.approvals.length,
       plans: value.plans.length, waitingTopics: value.waiting.length };
     rows('Inbox', [
       ...value.asks.map(row => ({ id: row.id, title: row.question })),
@@ -247,7 +281,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   }
   function connect() {
     artifactRead = undefined;
-    state = { ...state, command, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
+    state = { ...state, command, recoverAsk, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
     requestedPlans.clear();
     closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
@@ -270,6 +304,10 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       catch { socket.close(); return; }
       if (frame.type === 'snapshot.end' || ('epoch' in frame && 'seq' in frame && frame.type !== 'snapshot')) cursor = { epoch: frame.epoch, seq: frame.seq };
       threads.apply(frame);
+      if (frame.type === 'ask') askTopics.set(frame.ask, frame.topic);
+      if (frame.type === 'message' && frame.message.ask) askTopics.set(frame.message.id, frame.topic.id);
+      if (frame.type === 'ask') state = { ...state, askCards: new Map(state.askCards).set(frame.ask, frame.card) };
+      if (frame.type === 'message' && frame.message.ask && !frame.message.ask.to && !state.askCards?.has(frame.message.id)) state = { ...state, askCards: new Map(state.askCards).set(frame.message.id, frame.message.ask) };
       if (frame.type === 'result' && commands.has(frame.id)) {
         const pending = commands.get(frame.id)!;
         commands.delete(frame.id); clearTimeout(pending.timer);
@@ -303,7 +341,12 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         else if (frame.domain === 'sessions') {
           state = { ...state, coordinator: frame.value.coordinator, ...sessionSnapshot(frame.value, Date.now()), crew: frame.value.crew.config, idleFrom: frame.value.crew.config.idle_from ?? [] };
           rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
-        } else if (frame.domain === 'inbox') inbox(frame.value);
+        } else if (frame.domain === 'inbox') {
+          const open = new Set(frame.value.asks.map(row => row.id));
+          for (const [id, card] of state.askCards ?? []) if (card.state === 'open' && !card.to && !open.has(id)) missingSnapshotAsks.add(id);
+          inbox(frame.value);
+          recoverSnapshotAsks();
+        }
         else if (frame.domain === 'topics') { threads.reset(); state = { ...state, topics: frame.value.topics, marks: frame.value.marks }; rows('Topics', frame.value.topics); }
         else if (frame.domain === 'events') rows('Events', frame.value.rows.map(row => ({ id: row.id, title: row.text })));
         else if (frame.domain === 'accounts') {
@@ -321,6 +364,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         state = { ...state, project: status.root.split(/[\\/]/).filter(Boolean).at(-1) ?? status.root,
           live: true, coordinator: status.coordinator ?? null, needsYou: status.needsYou ?? 0 };
         for (const parent of closedWanted) loadClosed(parent);
+        recoverSnapshotAsks();
         changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-inbox') {
         inbox(frame.value as Inbox);
