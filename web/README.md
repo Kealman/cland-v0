@@ -1,5 +1,35 @@
 # Web workbench
 
+## Getting started
+
+Use Node 24.13 or newer in the 24.x line, Git, and a human shell on macOS or
+Linux. From a fresh clone, run this sequence with development dependencies included:
+
+```sh
+git clone https://github.com/Kealman/cland-v0.git cland-v0
+cd cland-v0
+npm install
+npm run build
+cland() { node ./hub/bin/cland.ts "$@"; }
+cland hub start
+cland web
+```
+
+The shell function runs this checkout's CLI; keep this shell at the repository
+root. For use from other project folders, see [cland on the PATH](../hub/README.md#cland-on-the-path)
+and the hub README's project initialization instructions.
+
+`npm install` prepares the browser bundle and the pinned test browser;
+`npm run build` explicitly refreshes the production bundle. `cland hub start`
+starts this project's hub. `cland web` requires that running hub, prints a
+one-time sign-in link and opens it in your browser. Use `cland web --no-open`
+to print the link without opening a browser. Keep the link private: it expires
+after five minutes and can be used once. A signed-in page shows the project
+directory name and **Live**. Stop the hub with `cland hub stop` when finished.
+For a phone, follow [HTTPS on your phone](#https-on-your-phone).
+
+## Development
+
 `@cland/web` is the React 19/Vite workspace beside `hub`. The root owns the lockfile
 and the existing TypeScript compilers; the web reuses `hub/bin/typecheck.ts`. Browser code
 has the hub's strict flags plus DOM libraries, JSX, bundler resolution and
@@ -8,9 +38,7 @@ has the hub's strict flags plus DOM libraries, JSX, bundler resolution and
 From the repository root:
 
 ```sh
-npm install                         # prepare builds web/dist
 npm run typecheck                   # hub, Neovim, web and web guards
-npm run build                       # production browser bundle
 npm run watch --workspace web       # vite build --watch; reload the page
 ```
 
@@ -47,13 +75,12 @@ Watch builds use the same stamp hook. Inputs changing during a build refuse a st
 The welcome reads the served receipt at connection time, including a configured
 `[web] dist`; a missing or invalid receipt is reported as `buildStamp: null`.
 
-The development loop uses a build and reload, with E-412's same-origin web edge.
+The development loop uses a build and reload with the hub's same-origin web edge.
 There is no Vite dev server or development bridge. The shell navigates the seven
-areas through the rail or physical `Digit1`–`Digit7` keys. Items, Inbox, Sessions,
+areas through the rail or physical `Digit1`–`Digit7` keys. Inbox, Items, Sessions,
 Topics, Events, Artifacts and Accounts have their area views. Dashes represent unavailable facts. The palette searches the shell’s actions and hub objects; help
 shows the active area’s keys.
-Ported from `prototype/web-shell`'s frame and tokens, slice by
-slice, following spec v0.2 before prototype behaviour before the accepted boards.
+The frame and tokens follow spec v0.2 and the accepted design boards.
 
 ## Phone
 
@@ -218,8 +245,10 @@ is needed at build time.
 Where `navigator.setAppBadge` exists, the authoritative needs-you count sets the
 app badge; zero calls `clearAppBadge`. Unknown counts leave it alone, and missing
 APIs or rejected platform promises leave the shell usable. Real badges and
-installation require platform support and a secure origin; QA checks them in the
-full Chromium demo, separately from the suite's Badging API stubs.
+installation require platform support and a secure origin. The full Chromium
+demo checks installability through DevTools and one service-worker notification.
+Real badges, install prompts and standalone windows are the human's dogfooding
+on a device; the suite uses Badging API stubs.
 
 `cland web --qr` prints the phone sign-in link and QR code. Redeeming the link
 sets the fixed 30-day HttpOnly cookie and opens `/`. On iOS, the installed app
@@ -425,7 +454,7 @@ needs-you count prefixes the tab title. The Coordinator and needs-you controls
 navigate to Sessions and Inbox respectively.
 
 The connection negotiates snapshots, numbered deltas and slim frames. The initial
-snapshot supplies tracker configuration, open item summaries and all non-task rows,
+snapshot supplies tracker configuration, open item summaries and their ancestors,
 merged sessions, roles, the verification queue, topics, inbox, events and account
 views. `hub.status` supplies the project name; one `session.list` reads adapter
 capabilities and one `artifact.list` reads the artifact inventory per connection.
@@ -1300,7 +1329,8 @@ the serving origin. Their unmodified SIL OFL 1.1 licences are alongside the font
 WOFF2 signatures, licences, no absolute external resource URL in HTML/CSS and no
 external literal import/fetch/XHR/WebSocket/EventSource target in JS. React's diagnostic links,
 namespace strings and OFL licence links are metadata, not network requests.
-Browser request observation belongs to T-991's Web phase.
+The Web smoke observes font and bundle requests and requires them to stay on the
+serving origin.
 
 ## Browser tests
 
@@ -1320,6 +1350,8 @@ change; the preparation step's `npm ci` installs the pinned shell on a cold imag
 npm run test:web                     # just Web, under the normal suite queue
 node --test web/test/smoke.test.ts    # targeted file; build first with npm run build
 node --test web/test/connection.test.ts # sign-in, connection and hub restart
+node --test web/test/readme.test.ts     # sealed source clone, documented build/start commands and CLI sign-in
+node --test hub/test/web-readme.test.ts # stale feature wording and bidirectional web option/config reference
 node --test web/test/palette.test.ts    # palette, prefixes, keys help and physical-code controls
 node --test web/test/folds.test.ts      # local folds, zero fold frames and visible-prose guard
 node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
@@ -1356,7 +1388,8 @@ exclude it. Periodic dev, integrated, stage, epic, release and soak runs include
 The root check builds `web/dist` once; a hand-run package suite reuses that source
 receipt or builds once before workers if it is missing/stale.
 
-`test/harness.ts` creates one scratch `projectHub` and one Headless Shell per file.
+Each `webFixture(t)` call in `test/harness.ts` creates a scratch `projectHub` and
+Headless Shell.
 Use `webFixture(t)` and `fixture.pageCase(t, body)` in sequential cases. Each case
 gets a fresh context, a one-time `web.link` minted by a local test-client frame,
 a real `/auth` cookie trade and a `Notification` init stub. HOME/XDG/Git and child
@@ -1387,6 +1420,16 @@ It scans every served bundle file, browser storage, cookie values, HTTP response
 and WebSocket frames for the scratch hub's secret. Restarting the in-process hub
 proves offline/live rendering and cookie persistence without navigation; a
 controlled browser clock proves the retry schedule without latency assertions.
+
+The README case instead clones a sealed source repository locally and follows
+the literal getting-started block. It substitutes the root `node_modules`
+symlink for `npm install`, as task worktrees do, avoiding registry and browser
+downloads; the build and detached hub startup run from the new clone. It appends
+`--no-open` to the documented `cland web`, spends that exact link in a fresh
+Headless Shell context, and observes Live. Browser openers and harness binaries
+are scratch stubs; no live Git metadata, project state, human HOME or external
+network is used. Teardown observes the owned browser group and hub PID gone
+before removing the clone.
 
 The runner calls `test/prerequisite.ts` before a selected Web phase. It resolves
 the pinned package's Headless Shell revision and checkout-local executable; Linux

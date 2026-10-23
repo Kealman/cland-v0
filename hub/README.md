@@ -81,6 +81,13 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 ## Web workspace
 
+To build a fresh checkout and reach a signed-in browser, follow the single
+[getting-started sequence](../web/README.md#getting-started). The web workbench
+has Inbox, Items, Sessions, Topics, Events, Artifacts and Accounts. Its README
+describes each area's keys, desktop panes and drawer, the below-640-px phone
+frame, install and [HTTPS tunnel guide](../web/README.md#https-on-your-phone).
+The [web edge](#web-edge) below documents every CLI option and `[web]` setting.
+
 Classify each new human frame in the web authority table before admitting it; the default is refusal. Validate routing inputs before permission classification, apply the sandbox response policy to executable artifacts as well as their iframe, and close credential admission before closing sockets and observing their close receipts (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
 
 The sibling `web/` workspace builds the browser bundle with React 19 and Vite.
@@ -118,7 +125,7 @@ source filenames, content digest and latest modification time. Missing, invalid,
 changed or newer inputs warn to run `npm run build` in the installation. A Vite
 build, including watch rebuilds, writes a stamp only after checking local asset
 references and unchanged inputs. See [web/README.md](../web/README.md) for tokens,
-fonts and the development loop. E-412 serves this bundle; there is no dev bridge.
+fonts and the development loop. The hub serves this bundle on its web edge.
 
 ## Modules
 
@@ -198,6 +205,8 @@ fonts and the development loop. E-412 serves this bundle; there is no dev bridge
 | `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. Every CLI invocation records its time, arguments and effective config directory in `invocations.jsonl` (and the compatible `calls.jsonl`); sessions are partitioned by that directory and job records include only the names of inherited auth variables; a `logged-out` marker refuses `agents` and `--bg` with token expiry. Like the real one it also runs the project's `.claude/settings.json` hooks and reads `CLAUDE.md` with its `@` imports, else `AGENTS.md`; what a session loaded goes to `jobs/<id>.context.json`. |
 | `test/fakes/codex/` | The fake Codex the adapter is tested against (`codex`, a script; `fake-codex.ts`): `app-server --listen unix://…` speaking Codex's JSON-RPC over a WebSocket on the socket, with the real spoke started from the `-c mcp_servers…` overrides; `resume --remote …`, which refuses any `-c`/`--profile`; `--version`. |
 
+## Web edge
+
 The hub also owns an independent **web edge**, an HTTP listener defaulting to `127.0.0.1`.
 It serves the installed `web/dist` bundle. Its stable port is `webPort` in
 `.cland/hub.json`; `port` remains the spokes' WebSocket port. With `[web] port = 0`
@@ -212,17 +221,28 @@ and reports `{ port, bind, available: false, reason }` as `hub.status.web`.
 change the setting and restart the hub. A running edge reports
 `hub.status.web = { port, bind, available: true }`; stdio-only hubs omit it.
 
+### [web] configuration
+
+All four keys are optional in `.cland/config.toml`:
+
+| Key | Default | Accepted value and effect |
+| --- | --- | --- |
+| `bind` | `"127.0.0.1"` | IPv4 or IPv6 address, without a zone id; binds only the web edge. |
+| `origin` | `""` | Empty or an HTTPS tunnel origin, with an optional port and no credentials, path, query or fragment; admits that Host and exact Origin and supplies QR links. |
+| `port` | `0` | Integer 0–65535; zero chooses and keeps the first free port, a nonzero value fixes the listener port. |
+| `dist` | `""` | Bundle directory path without NUL; empty uses the installation's `web/dist`, otherwise relative to the project root or absolute. |
+
 For development, `[web] dist = "path/to/bundle"` serves another bundle; relative
 paths resolve from the project root, absolute paths are accepted, and the empty
-default uses the installed bundle. All `[web]` settings take effect on hub restart.
-For example:
+default uses the installed bundle. Apply `[web]` changes with `cland hub stop`
+followed by `cland hub start`; reload does not recreate the listener. The defaults are:
 
 ```toml
 [web]
-port = 54321
+port = 0
 bind = "127.0.0.1"
 origin = ""
-dist = "web/dist"
+dist = ""
 ```
 
 `[web] bind` accepts an IPv4 or IPv6 address. A LAN address opens only the web
@@ -244,6 +264,22 @@ do not gain `Secure` from a forwarded header. A top-level GET may omit Origin, i
 which case this rule does not set Secure. The tunnel and its TLS are human-managed;
 cland starts no tunnel service.
 
+### cland web options
+
+Run these from a human shell in the project, with its hub already running:
+
+| Option | Effect |
+| --- | --- |
+| No option | Print a one-time sign-in link and open it with the platform browser opener. |
+| `--no-open` | Print the link without opening a browser. |
+| `--qr` | Print the phone link and a terminal QR code without opening a browser; may accompany `--no-open`. |
+| `--sessions` | List unexpired browser sign-ins with public id, creation, last use and socket count; mint no link. |
+| `--revoke <id>` | Revoke that browser sign-in and wait for its server-side sockets to close; mint no link. |
+| `--help`, `-h` | Print command help without contacting a hub. |
+
+`--no-open`, `--sessions` and `--revoke` are mutually exclusive. `--qr` cannot
+combine with `--sessions` or `--revoke`. Revocation requires a nonempty id.
+
 `cland web --qr` prints the one-time link and a Unicode half-block QR code with a
 four-module quiet zone and explicit terminal colours. It never opens a browser;
 `--no-open` may accompany it. The link uses `[web] origin` first, otherwise the
@@ -258,6 +294,8 @@ The QR and printed URL contain the same five-minute single-use token: treat both
 as sign-in credentials. `cland doctor` warns when a network bind has no tunnel:
 plain HTTP carries the cookie in clear and gives phones no notifications or install.
 
+### Browser sign-in and protocol
+
 The spokes' authentication and refusal of client hellos are unchanged.
 Paths stay inside the bundle,
 including symlinks; extensionless routes fall back to `index.html`. Missing
@@ -269,7 +307,8 @@ Entry files, manifest, service worker and icons use `no-cache` and an ETag
 `public, max-age=31536000, immutable`. SPA fallbacks keep `no-cache`.
 
 `cland web` asks the running hub for a one-time sign-in link over its Unix
-socket, prints `http://127.0.0.1:<webPort>/auth?token=…`, and opens it with
+socket, prints `http://<bind-address>:<webPort>/auth?token=…` (loopback by default
+and for wildcard binds), and opens it with
 `open` on macOS or `xdg-open` on Linux. `cland web --no-open` only prints the
 link; `cland web --help` describes the command. It does not start the hub.
 This is a human-shell command: a session's shell is refused, including an
@@ -327,8 +366,9 @@ or invalid cookie gets 401. An authenticated socket accepts only a client hello
 `{type: "hello", protocol: 2, client: "web"}` without a secret, welcomes it as
 `human` regardless of the client label, and dispatches human requests such as
 `hub.status`. A spoke hello is refused and its socket closed. Server pings keep
-idle browser connections alive and reap a peer that misses a pong at the next
-30-second sweep. The hub secret remains in local machine processes: it is never
+idle browser connections alive. Every 30 seconds the edge terminates sockets
+with at least 60 seconds of silence; pongs and incoming bytes refresh that
+deadline. The hub secret remains in local machine processes: it is never
 sent in bundle files, auth responses or browser frames. The browser uses its
 cookie for every socket; no bearer secret belongs in its JavaScript or storage.
 
@@ -1689,11 +1729,11 @@ credential store, calls no provider usage endpoint itself, and reads limits
 through the harness. It never rotates, fails over or chooses another account:
 the human makes and authorizes any account choice.
 
-## Not here yet
+## Lifecycle notes
 
-- **The rest of the human side.** Verdict event announcements come from hub-written verdicts; hand edits to an item's file do not announce them.
-- **Roles, the rest.** The Coordinator's role requests come later. A handover's `waiting` reads the topics `waiting for agent` (#32), and `asks` the open asks its holders put (#33). The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
-- **Claims.** A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
+- **Verdict announcements.** Verdict event announcements come from hub-written verdicts; hand edits to an item's file do not announce them.
+- **Roles.** A handover's `waiting` reads the topics `waiting for agent`, and `asks` the open asks its holders put. The workbench shows the role beside the session name and warns when there is no Coordinator.
+- **Claims.** A claim stays until released, forced or the item is closed; a session ending does not release its Implementer's claim.
 
 ## The cland CLI
 
@@ -2073,7 +2113,7 @@ An `EventRow` is `{id, ts, kind, subject: {kind, id}, glyph, text, item?, sessio
 
 Bookkeeping launches, resumes, stops, claims, status moves, criterion marks and topic closes carry `bookkeeping: true`. Not-clear verdicts, deaths, configured promotions to now and failed suites on `dev` carry `warning: true` and `glyph: "⚠"`; a failed task-branch suite is ordinary. Heartbeat firings retain separate rows. Other equal kind/subject/text events whose consecutive occurrences are within 60 seconds coalesce, even when other events interleave. `count` is their multiplicity and `firstTs` the oldest occurrence; the row's timestamp and id are the newest occurrence. Coalescing crosses page boundaries without repeats. Startup restores recent coalesced groups from the journal tail before announcements begin, including groups beyond the first page, so a first equal event after restart replaces the restored row. Optional restoration failures are logged; the journal retains its error and the normal stop path still rejects while releasing the project lock. Pending inbox approval notices and waiting-topic events are omitted; asks, requests and messages are not translated into event rows. Follow-up events such as plan approval can appear.
 
-`filter` accepts `kinds` (any of the ten kinds), `warnings: true`, `subject: {kind, id}` and `muted: [{kind, id}]`. A subject is an item (with descendants), session, topic, artifact or rule; navigation references also match subject filters. The cap applies to matching, coalesced rows. These mutes affect only the response; they do not write the hub's visibility preferences. The workbench owns `events.filter`, `events.muted` and `events.last_look` in `.cland/ui.json` under the existing shared lock. The inbox events line uses an unfiltered newest-page count, independently of needsYou and the selected filter.
+`filter` accepts `kinds` (any of the ten kinds), `warnings: true`, `subject: {kind, id}` and `muted: [{kind, id}]`. A subject is an item (with descendants), session, topic, artifact or rule; navigation references also match subject filters. The cap applies to matching, coalesced rows. These mutes affect only the response; they do not write the hub's visibility preferences. Neovim keeps `events.filter` and `events.muted` in `.cland/ui.json`; the browser keeps its filters and day folds in local storage. Both use the human's shared hub `marks.events` last look. The browser's Inbox events line follows unfiltered older pages to that mark, independently of needsYou and the selected filter.
 
 Usable historical launch, stop, death, handover, claim, merge, topic, release and notification records are translated too. Older periods may lack suite and artifact rows: there is no backfill from `hub.db`. Usage events currently require a subscription threshold crossing; no default threshold is added, so that kind may be empty.
 
@@ -4322,7 +4362,7 @@ Artifacts record immutable author kind and role at creation. The human's and Aid
 
 Folder retention uses a rename to a deterministic `.retained` directory until the index commits. Failed index writes or a concurrent keep/reopen restore the entire folder; interrupted cleanup recovers on the next sweep. Deletion or housekeeping failures remain retryable. Ordinary file retention keeps its existing hard-link recovery.
 
-`artifact.delete {artifact: "A-3"}` is a human-only UI protocol frame, used by the browser’s confirmed `x` action. Agent sessions, including session-attributed client frames, are refused; there is no agent tool or CLI command. It removes the artifact’s stored file or folder and retains `fileDeleted: true` in the index. A moved id deletes its file inside the owning folder. Artifact events update the browser and deleted chips in topic history. Promoted project copies are retained.
+`artifact.delete {artifact: "A-3"}` is a human-only UI protocol frame, used by Neovim's confirmed `x` action. The web authority policy refuses deletion; desktop web Artifacts offers Keep (`k`) and Archive (`d`). Agent sessions, including session-attributed client frames, are refused; there is no agent tool or CLI command. It removes the artifact’s stored file or folder and retains `fileDeleted: true` in the index. A moved id deletes its file inside the owning folder. Artifact events update the browser and deleted chips in topic history. Promoted project copies are retained.
 
 The built-in role tool lists now grant `artifact.keep`, `artifact.move` and `artifact.archive`. Existing explicit `roles.toml` lists need those grants added; `artifact.list` uses the existing history/read grant. No role clause changes are required.
 
@@ -4385,7 +4425,7 @@ never establishes ownership.
 
 Commands in table command/method/action/note columns are checked for known subcommands and flags; check IDs must be unique across case/manual tables and surfaces must match the recorder: `headless-grid`, `tmux`, `web-terminal`, `hub-api` or `real-browser`. A `role` or `actor` column, `Role: Implementer`, or a heading naming a role assigns commands to that built-in role. Implementer verification reports cannot target General or Agents; `topic create` needs a nonempty `--item` binding for that role. Variable `rm` operands in commands and shell fences fail even behind a path guard. Use literal cleanup paths. This static check does not resolve shell helpers, claims, live topic ownership or custom grants; the hub remains authoritative. See [QA brief lint](../docs/agents/qa-brief-lint.md).
 
-Web briefs include local `real-browser` cases run by QA on Codex `gpt-6-astra` through computer use after the Coordinator tells the human. Open the `cland web` link (or a brief-specified local static page until available) in the human’s default browser, with normal HOME/login keychain and a dedicated cland profile; keep fixture commands in sealed disposable projects. Touch only the cland page and its browser permission prompts, save screenshots under `.cland/qa/<item>/<run>/`, close the opened tab and record with `qa-record.sh note`. Implementers and Reviewers never launch the real browser or GUI on the human’s Mac. Never press Reset or change keychain, profile or system settings; Cancel unexpected dialogs and report any that cannot be cancelled, missing permissions/profile or harness refusal to the item lead as a blocker. See [review and QA](../docs/review-and-qa.md#web-qa-in-the-real-browser) and the qa skill’s Web briefs procedure.
+Web briefs include local `real-browser` cases run by QA on Codex `gpt-6-astra` through computer use under a brief naming that surface. Open the `cland web` link in the dedicated cland QA browser profile; keep fixture commands in sealed disposable projects. Touch only the cland page and its browser permission prompts, save screenshots under `.cland/qa/<item>/<run>/`, close the opened tabs and record with `qa-record.sh note`. Implementers and Reviewers never launch the real browser or GUI on the human’s Mac. Never press Reset or change keychain, profile or system settings; Cancel unexpected dialogs and report any that cannot be cancelled, missing permissions/profile or harness refusal to the item lead as a blocker. See [review and QA](../docs/review-and-qa.md#web-qa-in-the-real-browser) and the qa skill’s Web briefs procedure.
 
 ### The item’s review and QA loop
 

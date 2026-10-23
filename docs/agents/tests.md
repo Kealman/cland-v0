@@ -1782,6 +1782,26 @@ edge; artifact paths outside it retain full-path no-follow checks.
 removal on revocation and expiry at T1. The frame is web-only; local test clients create source artifacts and manage
 sessions through the Unix socket. Capability digests persist beside their cookie sessions across hub restarts.
 
+### README startup and reference contracts
+
+`hub/test/web-readme.test.ts` checks stale feature-status wording and compares the
+hub README's complete `cland web` option/alias and `[web]` key references with the
+actual parser/default inventories at T1. Live pending states and human answer
+attribution remain valid terminology.
+
+`web/test/readme.test.ts` follows the web README's single getting-started block
+through a local clone of a disposable source seed, the production build, real
+detached hub startup and CLI-minted `web --no-open` link into a fresh Headless
+Shell context. Its explicit `npm install` substitution symlinks the root install,
+as task worktrees do; no registry or browser download runs. Source copying
+excludes live Git metadata, tracker/runtime state and generated output. HOME,
+XDG, Git and child account/provider environments are sealed; openers and harness
+binaries are stubbed, browser HTTP/WebSocket traffic is confined to the scratch
+loopback edge, and cleanup observes the browser group and hub PID gone before
+removing roots. It uses a real hub process because the README's hub-start lifecycle
+is the subject. Build first, then run both new files, web-auth.test.ts and
+web-tunnel-guide.test.ts targeted before mode-free verification.
+
 ### HTTPS tunnel guide contract
 
 `hub/test/web-tunnel-guide.test.ts` reads the literal TOML block from
@@ -1984,8 +2004,10 @@ token on the scratch loopback edge in a fresh phone context. Observe the auth
 response, 30-day cookie and live authenticated socket. `web-auth.test.ts` checks
 the project-named manifest, token theme, HTML links and PNG signatures/dimensions
 at T2. Build first; run web-auth, phone*.test.ts, shell and web typecheck guards
-before mode-free task verification. Real installability and the real badge stay
-in QA's full-Chromium demo. New passing identities reaching their tier's 80%
+before mode-free task verification. The full Chromium demo checks installability
+through DevTools and one service-worker notification. Real badges, install
+prompts and standalone windows are the human's dogfooding on a device. New
+passing identities reaching their tier's 80%
 threshold need dated, reasoned E-880 allowances at about 1.5× the worst sample.
 
 `web/test/phone-approvals.test.ts` owns phone approval presentation through the

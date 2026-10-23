@@ -8876,6 +8876,13 @@
       "expires": "2026-10-30",
       "reason": "T-1165 shares one sealed hub and Headless Shell across four sequential phone-frame cases covering area taps, More dismissal and touch controls, the 640/639 transition, and saved desktop split restoration after a phone reload. Linux x64 c-8 lon1 run 2abdc836-d810-479b-846a-db54d6206af0 at 0da86127 (A-10055) observed the assertion-green parent at 5.760834262 s with workers 2; all 2727 reported tests passed, but configured evidence failed this new-identity gate. The launch brief requires a dated E-880 allowance for any new passing Web sample reaching 4 s. The 8.7 s cap is about 1.5 times the worst passing sample; no child identity, assertion, request/DOM wait bound or teardown is relaxed."
     },
+    "web/test/readme.test.ts::the README fresh clone builds, starts its own hub and signs a Headless Shell context in": {
+      "seconds": 11.8,
+      "owner": "E-880",
+      "added": "2026-10-23",
+      "expires": "2026-10-30",
+      "reason": "T-1186 C1 follows the literal README through an independent local source clone, the root dependency symlink in place of npm install, a real bundle build, detached hub startup and CLI-minted Headless Shell sign-in. Initial local macOS arm64 targeted run A-10261 on the worktree based on 9ef54e9f passed at 3.579514583 s and established the original 5.4 s allowance. Linux x64 c-8 lon1 mode-free run cafaab89-60d9-4b38-8508-5dc1efe05f22 at b3a6658a (A-10276), with four Web workers, passed this identity at 7.858444498 s; all 2784 ordinary assertions and T1 guard load 15/15 passed, with duration budgets in report mode. The refreshed 11.8 s cap rounds up about 1.5 times that worst passing sample, as the launch requires above 80% of the 4 s Web budget. Owned process-group/PID cleanup, external-network refusal and all request/DOM bounds remain intact. E-880 owns reducing fixture cost."
+    },
     "hub/test/cover-quiet.test.ts::fixture lifecycle worker admits its cover lease before starting its detached hub": {
       "seconds": 7,
       "owner": "E-880",
