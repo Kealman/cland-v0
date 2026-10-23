@@ -3,6 +3,7 @@ export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifac
 export type Area = typeof areas[number];
 export type Shortcut = Area | 'events-subject' | 'events-open' | 'events-next' | 'events-previous' | 'events-fold' | 'events-leader' | 'events-older' | 'events-warnings' | 'events-clear' | 'events-all' | `events-kind-${number}` | `inbox-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'inbox-archive' | 'inbox-reply' | 'inbox-free' | 'inbox-next' | 'inbox-previous' | 'inbox-open' | 'inbox-remove' | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
   | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
+  | 'approval-once' | 'approval-always' | 'approval-deny' | 'approval-cancel'
   | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
   | 'composer-send' | 'composer-send-always' | 'composer-newline' | 'composer-session' | 'composer-artifact'
   | 'topic-next' | 'topic-previous' | 'topic-open' | 'topic-close' | 'thread-next' | 'thread-previous' | 'thread-back' | 'thread-leader' | 'thread-toggle'
@@ -11,7 +12,7 @@ export type Shortcut = Area | 'events-subject' | 'events-open' | 'events-next' |
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
-export type KeyContext = 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
+export type KeyContext = 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
 export type KeyAction = { action: Shortcut; label: string; description?: string };
 
 const threadKeys = { KeyR: 'inbox-reply', KeyJ: 'thread-next', ArrowDown: 'thread-next', KeyK: 'thread-previous', ArrowUp: 'thread-previous', KeyH: 'thread-back', Escape: 'thread-back', Enter: 'thread-toggle', KeyZ: 'thread-leader', 'KeyZ KeyA': 'thread-toggle' } as const;
@@ -39,6 +40,8 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   },
   topics: { KeyJ: 'topic-next', ArrowDown: 'topic-next', KeyK: 'topic-previous', ArrowUp: 'topic-previous', Enter: 'topic-open', KeyL: 'topic-open', KeyH: 'topic-close' },
   thread: threadKeys,
+  approval: { Digit1: 'approval-once', Digit2: 'approval-always', KeyD: 'approval-deny', Escape: 'approval-cancel' },
+  'approval-note': { Escape: 'approval-cancel' },
   ask: { ...threadKeys, KeyD: 'ask-decline', KeyI: 'ask-free', KeyR: 'ask-free', Digit1: 'ask-1', Digit2: 'ask-2', Digit3: 'ask-3', Digit4: 'ask-4', Digit5: 'ask-5', Digit6: 'ask-6', Digit7: 'ask-7', Digit8: 'ask-8', Digit9: 'ask-9' },
   inbox: { 'Shift+KeyA': 'inbox-archive', KeyR: 'inbox-reply', KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
   'inbox-answer': { 'Shift+KeyA': 'inbox-archive', Digit1: 'inbox-1', Digit2: 'inbox-2', Digit3: 'inbox-3', Digit4: 'inbox-4', Digit5: 'inbox-5', Digit6: 'inbox-6', Digit7: 'inbox-7', Digit8: 'inbox-8', Digit9: 'inbox-9', KeyI: 'inbox-free', KeyR: 'inbox-free', KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
@@ -129,6 +132,8 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
   topics: [{ action: 'topic-next', label: 'Next topic or group' }, { action: 'topic-previous', label: 'Previous topic or group' },
     { action: 'topic-open', label: 'Enter thread or unfold group' }, { action: 'topic-close', label: 'Fold topic group' }],
   thread: [{ action: 'inbox-reply', label: 'Reply to Inbox sender' }, { action: 'thread-next', label: 'Next message' }, { action: 'thread-previous', label: 'Previous message' }, { action: 'thread-back', label: 'Return to topic list' }, { action: 'thread-toggle', label: 'Toggle agent run' }],
+  approval: [{ action: 'approval-once', label: 'Approve once' }, { action: 'approval-always', label: 'Always for this command' }, { action: 'approval-deny', label: 'Deny with optional note' }, { action: 'approval-cancel', label: 'Cancel denial' }],
+  'approval-note': [{ action: 'approval-cancel', label: 'Cancel denial' }],
   ask: [
     ...Array.from({ length: 9 }, (_, index) => ({ action: `ask-${index + 1}` as Shortcut, label: `Answer with option ${index + 1}` })),
     { action: 'ask-free', label: 'Free answer' }, { action: 'ask-decline', label: 'Decline with a reason' },

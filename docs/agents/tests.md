@@ -2031,6 +2031,17 @@ Pending state is checked
 before release and the refusal receipt before restored-state assertions. No live
 hub, real harness or human browser participates.
 
+`web/test/inbox.test.ts` also owns the reusable approval-card seam (T-1129):
+complete command and file-change subjects, session/harness/since, once and always
+answers, attributed frame/archive outcome, optional denial notes and Escape's
+no-answer boundary, Claude Code and adapter/payload fallback without controls,
+and held native delivery with failure-to-pending and manual retry. The selected
+approval drawer reads the session's recent messages through `session.history`;
+retain the exact rendered message id, refresh on a different approval from the
+same session, and hold the prior history result across that selection to prove
+it cannot replace the new message. All use sealed fake adapters and the
+authenticated isolated browser; no live hub or native binary is needed.
+
 `web/test/inbox.test.ts` owns the four Now sections through the sealed
 `webFixture`, a fake Coordinator sender, fake native approvals and authenticated
 Headless Shell. Literal DOM assertions cover section order, counts, the five-row

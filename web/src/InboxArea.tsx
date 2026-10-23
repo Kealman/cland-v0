@@ -4,6 +4,7 @@ import type { AreaContentProps, AreaModule } from './AreaSlot.tsx';
 import { Thread, type ThreadControls } from './Thread.tsx';
 import { InboxArchive } from './InboxArchive.tsx';
 import { ApprovalCard } from './ApprovalCard.tsx';
+import { SessionRecentThread } from './SessionRecentThread.tsx';
 import { AskCard } from './AskCard.tsx';
 import { Fold, revealFold } from './Fold.tsx';
 import { useEventSummary } from './use-event-summary.ts';
@@ -164,8 +165,9 @@ function InboxArea(props: AreaContentProps) {
 
 function InboxThread({ entry, thread, ...props }: AreaContentProps & { entry: Entry; thread?: Ref<ThreadControls> }) {
   const approval = entry.kind === 'approval' ? props.connection.approvalCards?.get(entry.row.id) ?? entry.row : undefined;
-  const topic = entry.kind === 'plan' ? undefined : entry.kind === 'approval' ? approval?.topic : entry.row.topic.id;
-  if (!topic) return approval ? <ApprovalCard record={approval} connection={props.connection} /> : null;
+  if (approval) return <><ApprovalCard key={approval.id} record={approval} connection={props.connection} /><SessionRecentThread key={approval.id} session={approval.session} connection={props.connection} /></>;
+  const topic = entry.kind === 'plan' || entry.kind === 'approval' ? undefined : entry.row.topic.id;
+  if (!topic) return null;
   return <Thread key={topic} connection={props.connection} topic={topic} focusTarget={false} targetMessage={entry.kind === 'approval' ? undefined : entry.row.id}
     controls={thread} reply={entry.kind === 'message' || entry.kind === 'request' ? { id: entry.row.id, sender: entry.row.from } : undefined} />;
 }

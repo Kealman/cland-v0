@@ -898,6 +898,15 @@ Pending allowlisted record metadata is retained in `hub.db`, with the session-sc
 
 The optional adapter method `answerApproval(process, nativeRequestId, {choice, note?})` resolves with `{noteDelivered: boolean}` only after confirming delivery, or rejects with the delivery reason. A rejection restores `pending` and clears the attempted outcome unless a native winner has already closed the record, refuses the client with the delivery reason or the recorded winner and journals `approval-answer-failed` at warn level. The hub never converts Deny to consent and never retries by itself. If the native protocol cannot carry a supplied note (`noteDelivered: false`), the hub posts it as a human message addressed to the session in its item's topic, otherwise General. Codex and OpenCode's native relays follow this gate; TUI-only records direct the human to the harness through Neovim.
 
+The Web Inbox's reusable approval card displays the full public subject and
+native offered choices. Physical `1` and `2` approve once or always; `d` opens
+the optional denial note, Enter sends, and Escape cancels without answering.
+Offline, answering and outcome-recovery states disable writes. A refused race
+reads only that approval's archived winner, preserving newer rows. A closed card
+folds to its attributed outcome until the Inbox visit ends. TUI-only cards show
+`Answer in Neovim` without buttons. The drawer reads the session's latest 20
+messages across topics with the existing human-only `session.history` frame.
+
 `needsYou` is the sum of now asks, command approvals, pending plans, open requests and now messages. `inbox.list`, pushed `inbox` events and `hub.status` agree. The workbench chip uses this count; the workbench and CLI render the four sections. Informational notifications appear only in the events view and never count, even when a project override raises them to `now`. A not-clear verdict and a session death appear there as warnings (D17). See [visibility classification](../docs/visibility.md). Human pin/mute choices use `visibility.set` (`surface: topics|sessions|artifacts`, `target`, `mode: pin|mute`), persist under `visibility` in `.cland/ui.json`, and publish a `visibility` invalidation event. They apply in the shared classifier to history, snapshots, live frames and now counts; session callers cannot set them. Preference writes are async and serialized with resumed-request measurement. Hub and Neovim share a nonempty directory lock at `ui.json.lock`; recovery removes only the dead owner's unique file, so a replacement writer is preserved. Uncertain PID owners remain held. Retention never removes an open ask or its message, or a waiting inbox request/message, whatever its age; an answered, withdrawn or cancelled ask goes with its message. Deleting a topic (its asks go with it) and a prune both publish the inbox again. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
 
 Rows leave by these rules:

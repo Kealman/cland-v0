@@ -10,6 +10,7 @@ import { areas, areaKey, actionKeys, displayKey, treeActions, planActions, conte
 import { focusedKeyContext, listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
+import { runApprovalShortcut } from './ApprovalCard.tsx';
 import { AskNavigation, runAskShortcut } from './AskCard.tsx';
 import { ComposerPicker, type ComposerSelection } from './ComposerPicker.ts';
 import { runComposerShortcut } from './Composer.tsx';
@@ -119,7 +120,7 @@ export function Shell() {
   const view = useItemsView();
   const desktop = useDesktop();
   const focusedContext = overlay ? overlayContext : areaContext(area);
-  const handledActions = focusedContext === 'composer' || focusedContext === 'reply' ? contextActions[focusedContext] ?? [] : area === 'Items'
+  const handledActions = focusedContext === 'composer' || focusedContext === 'reply' || focusedContext === 'approval' || focusedContext === 'approval-note' ? contextActions[focusedContext] ?? [] : area === 'Items'
     ? (view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
     : (contextActions[focusedContext] ?? []).filter(row => focusedContext === 'ask' && row.action.startsWith('ask-') || areaModules[area].handledActions.includes(row.action));
   const paletteControls = useRef<PaletteControls>(null);
@@ -198,6 +199,7 @@ export function Shell() {
     }
     if (!overlay && area === 'Items' && (active === 'primary' ? primaryTree : secondaryTree).current?.run(action)) return;
     if (!overlay && area !== 'Items' && areaModules[area].handledActions.includes(action) && (active === 'primary' ? primaryArea : secondaryArea).current?.run(action)) return;
+    if (!overlay && runApprovalShortcut(action)) return;
     if (!overlay && runAskShortcut(action)) return;
     if (!overlay && runComposerShortcut(action)) return;
     if (runFoldShortcut(action)) return;
@@ -227,7 +229,7 @@ export function Shell() {
     const current = keyboard.current;
     return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
-    if (context === 'shell' || context === 'composer' || context === 'reply' || context === 'ask' || context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'shell' || context === 'composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);

@@ -260,14 +260,20 @@ counts every journal row since the human's shared last look and its warnings,
 reading older pages until the mark is reached. It stays when all sections are
 empty and opens [Events](#events), recording the shared last look.
 
-Approval rows offer only the native record's choices: Approve once, Always for
+The reusable `ApprovalCard` shows the session, harness, original start time and
+complete command, cwd, reason, paths and file change. Long subjects wrap and
+scroll without clipping the source. Approval rows offer only the native record's choices: Approve once, Always for
 this command and Deny with an optional note. The hub supplies the attributed
 outcome. Closed approval and ask rows stay folded for the Inbox visit. Missing pending
 approvals on a fresh snapshot and refused answer races recover that exact id's
 archived outcome; unavailable outcomes keep controls disabled. A selected ask
 reached from its thread reveals its section and the rows beyond the five-row cap. A TUI-only
 approval says **Answer in Neovim** and has no answer controls. Offline and pending
-writes are disabled; no mutation is replayed after reconnect.
+writes are disabled; no mutation is replayed after reconnect. Deny opens an
+optional note; Enter or Deny sends it, and Escape or Cancel discards the note
+without answering. A delivery failure keeps the draft for a manual retry.
+The card owns physical `1`, `2` and `d` through the shell's shared dispatcher,
+including in a drawer; the denial field keeps native typing and Enter.
 
 | Key | Inbox action |
 | --- | --- |
@@ -275,7 +281,8 @@ writes are disabled; no mutation is replayed after reconnect.
 | `Enter` | Open topic/message or Plan; activate fold/footer controls |
 | `d` | Decline request, mark message read, ask decline reason or approval denial note |
 | `1`–`9` on an ask row | Answer with that option |
-| `1`, `2` on an approval row | Approve once, always for this command |
+| `Esc` in an approval denial | Cancel without answering |
+| `1`, `2` on an approval row or card | Approve once, always for this command |
 | `i`, `r` on an ask or approval row | Focus the free answer or denial note when available |
 | `r` on a request or message | Focus the drawer reply to its sender |
 | `A` | Show or hide seven days of departures |
@@ -291,7 +298,10 @@ Its one-line composer replies to the original sender through `topic.send.replyTo
 `r` on a request or message focuses it. The fixed-address reply keeps `@` and `~` as text. It shares the topic draft, pending receipt,
 offline guard and failure recovery with the full composer. Split opens the same
 row's thread in the other pane; `r` reaches that split reply from the list or thread. Retained approval detail identities resolve their subject, choices and outcome against current native records and recovery state. Close dismisses the drawer until another row is
-selected or reply is requested. Approvals without a topic show their native record.
+selected or reply is requested. An approval's drawer shows its current native
+record and the session's latest 20 messages across topics through `session.history`.
+This bounded recent-thread read refreshes on selection, reconnect or explicit
+retry; it does not mark an unrelated topic read.
 
 Answered asks, closed approvals, approved plans and settled requests/messages
 stay in their sections as folded outcomes for the active visit. Counts still come

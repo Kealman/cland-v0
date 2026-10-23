@@ -461,6 +461,201 @@ async function approvalFixture(t: Parameters<typeof webFixture>[0]) {
   return { ...fixture, approval: inbox.approvals.find(row => row.session === 'race-worker')! };
 }
 
+test('approval card shows the complete command and session facts, then folds to the human once outcome', async t => {
+  const fixture = await approvalFixture(t);
+  const command = 'printf "' + 'complete command '.repeat(300) + '\\n"';
+  fixture.fakes.codex!.raiseApproval('race-worker', { id: 'race-native', kind: 'command', subject: { command, cwd: '/scratch/work', reason: 'Run the requested check' }, choices: ['once', 'always', 'deny'], answerIn: 'hub' });
+  await fixture.pageCase(t, async page => {
+    const row = page.locator(`[data-object-id="${fixture.approval.id}"]`);
+    await row.click();
+    const card = row.locator('..').getByRole('region', { name: 'Command approval', exact: true });
+    assert.equal(await card.locator('pre').textContent(), command);
+    assert.match(await card.innerText(), /race-worker.*codex/s);
+    assert.equal(await card.locator('time').getAttribute('datetime'), fixture.approval.since);
+    await card.getByRole('button', { name: '2 · Always for this command', exact: true }).waitFor();
+    await card.getByRole('button', { name: 'd · Deny', exact: true }).waitFor();
+    await card.getByRole('button', { name: '1 · Approve once', exact: true }).click();
+    const outcome = row.locator('..').locator('[data-approval-outcome]');
+    await outcome.waitFor();
+    assert.match(await outcome.innerText(), /Approved once by the human.*web/s);
+    const archive = (await fixture.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+    assert.deepEqual(archive.archive?.find(record => record.id === fixture.approval.id)?.outcome, {
+      choice: 'once', by: 'human', via: 'web', at: fixture.clock.now().toISOString(),
+    });
+    fixture.fakes.codex!.raiseApproval('race-worker', { id: 'card-always', kind: 'command', subject: { command: 'echo always' }, choices: ['once', 'always', 'deny'], answerIn: 'hub' });
+    await fixture.clock.advance(250);
+    const next = page.locator(`[data-object-id="${fixture.approval.sessionId}:card-always"]`);
+    await next.click();
+    const nextCard = next.locator('..').getByRole('region', { name: 'Command approval', exact: true });
+    await nextCard.focus();
+    await page.keyboard.press('Shift+Slash');
+    const help = page.getByRole('dialog');
+    await help.locator('[data-key-action="approval-once"]').waitFor();
+    assert.equal(await help.locator('[data-key-action="approval-always"] kbd').textContent(), '2');
+    await page.keyboard.press('Escape');
+    await nextCard.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit2', key: 'я', bubbles: true, cancelable: true })));
+    await next.locator('..').locator('[data-approval-outcome]').waitFor();
+    assert.equal(fixture.fakes.codex!.approvalAnswers.at(-1)?.choice, 'always');
+  });
+});
+
+test('Escape cancels a denial without answering and Deny accepts an optional note', async t => {
+  const fixture = await approvalFixture(t);
+  await fixture.pageCase(t, async page => {
+    const row = page.locator(`[data-object-id="${fixture.approval.id}"]`);
+    await row.click();
+    const card = row.locator('..').getByRole('region', { name: 'Command approval', exact: true });
+    await card.getByRole('button', { name: 'd · Deny', exact: true }).click();
+    const note = card.getByRole('textbox', { name: 'Denial note', exact: true });
+    await note.fill('Cancelled note');
+    await note.press('Escape');
+    await note.waitFor({ state: 'detached' });
+    assert.equal(fixture.fakes.codex!.approvalAnswers.length, 0);
+    const pending = (await fixture.ui.request({ type: 'inbox.list' })).value as Inbox;
+    assert.equal(pending.approvals.find(record => record.id === fixture.approval.id)?.state, 'pending');
+    assert.equal(await card.getByRole('button', { name: 'd · Deny', exact: true }).evaluate(node => node === document.activeElement), true);
+    // Physical keys on the reusable card work independently of the Inbox row.
+    await page.keyboard.press('d');
+    await note.waitFor();
+    await note.press('Enter');
+    await row.locator('..').locator('[data-approval-outcome]').waitFor();
+    let archive = (await fixture.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+    const withoutNote = archive.archive?.find(record => record.id === fixture.approval.id)?.outcome;
+    assert.ok(withoutNote && 'choice' in withoutNote);
+    assert.equal(withoutNote.choice, 'deny');
+    assert.equal(withoutNote.note, undefined);
+    fixture.fakes.codex!.raiseApproval('race-worker', { id: 'with-note', kind: 'command', subject: { command: 'echo note' }, choices: ['deny'], answerIn: 'hub' });
+    await fixture.clock.advance(250);
+    const next = page.locator(`[data-object-id="${fixture.approval.sessionId}:with-note"]`);
+    await next.click();
+    const detail = next.locator('..');
+    await detail.getByRole('button', { name: 'd · Deny', exact: true }).click();
+    await detail.getByRole('textbox', { name: 'Denial note', exact: true }).fill('Wait for review');
+    await detail.getByRole('button', { name: 'Deny', exact: true }).click();
+    await detail.locator('[data-approval-outcome]').waitFor();
+    archive = (await fixture.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+    const withNote = archive.archive?.find(record => record.id === `${fixture.approval.sessionId}:with-note`)?.outcome;
+    assert.ok(withNote && 'choice' in withNote);
+    assert.equal(withNote.note, 'Wait for review');
+    assert.deepEqual(fixture.fakes.codex!.approvalAnswers.map(answer => answer.choice), ['deny', 'deny']);
+  });
+});
+
+test('approval cards retain the complete file change and TUI-only records have no answer buttons', async t => {
+  const fixture = await approvalFixture(t);
+  const subject = { command: 'apply patch', files: ['src/first.ts', 'src/second.ts'], change: '--- src/first.ts\n+++ src/first.ts\n@@ -1 +1 @@\n-old\n+new' };
+  fixture.fakes.codex!.raiseApproval('race-worker', { id: 'race-native', kind: 'file change', subject, choices: ['once', 'deny'], answerIn: 'hub' });
+  assert.equal((await fixture.ui.request({ type: 'session.launch', name: 'claude-card', harness: 'claude-code' })).ok, true);
+  fixture.fakes['claude-code']!.raiseApproval('claude-card', { id: 'claude', kind: 'command', subject: { command: 'echo Claude TUI' }, choices: [], answerIn: 'tui' });
+  const inbox = (await fixture.ui.request({ type: 'inbox.list' })).value as Inbox;
+  const claude = inbox.approvals.find(record => record.session === 'claude-card')!;
+  await fixture.pageCase(t, async page => {
+    const row = page.locator(`[data-object-id="${fixture.approval.id}"]`);
+    await row.click();
+    const card = row.locator('..').getByRole('region', { name: 'Command approval', exact: true });
+    assert.deepEqual(await card.locator('pre').allTextContents(), [subject.command, subject.change]);
+    for (const file of subject.files) assert.equal(await card.getByText(file, { exact: true }).textContent(), file);
+    assert.equal(await card.locator('[data-approval-choice="always"]').count(), 0);
+    const claudeRow = page.locator(`[data-object-id="${claude.id}"]`);
+    await claudeRow.click();
+    const tui = claudeRow.locator('..').getByRole('region', { name: 'Command approval', exact: true });
+    assert.equal(await tui.locator('pre').textContent(), 'echo Claude TUI');
+    await tui.getByText('Answer in Neovim', { exact: true }).waitFor();
+    assert.equal(await tui.getByRole('button').count(), 0);
+    // The same rendering boundary covers adapter-check and payload-cap fallback.
+    await row.click();
+    const fallback = card.getByText('Answer in Neovim', { exact: true }).waitFor();
+    fixture.fakes.codex!.raiseApproval('race-worker', { id: 'race-native', kind: 'file change', subject, choices: [], answerIn: 'tui' });
+    await fallback;
+    assert.equal(await card.getByRole('button').count(), 0);
+  });
+});
+
+test('selecting an approval shows the session recent thread in the drawer', async t => {
+  const fixture = await approvalFixture(t);
+  const sent = await fixture.ui.request({ type: 'topic.send', topic: 'general', to: ['race-worker'], text: 'Inspect the command before approval' });
+  assert.equal(sent.ok, true, sent.error);
+  const message = (sent.value as { message: { id: string } }).message;
+  await fixture.pageCase(t, async page => {
+    await page.locator(`[data-object-id="${fixture.approval.id}"]`).click();
+    const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
+    const recent = drawer.getByRole('log', { name: 'race-worker recent thread', exact: true });
+    await recent.locator(`[data-message-id="${message.id}"]`).waitFor();
+    assert.match(await recent.innerText(), /Inspect the command before approval/);
+  });
+});
+
+test('selecting another approval from one session refreshes recent messages and fences a held prior read', async t => {
+  const fixture = await approvalFixture(t);
+  let release: (() => void) | undefined;
+  let heldId = '';
+  let delivered = false;
+  await fixture.pageCase(t, async page => {
+    await page.locator(`[data-object-id="${fixture.approval.id}"]`).click();
+    await until(() => !!release, { what: 'first session history reply held', timeoutMs: 3000 });
+    const sent = await fixture.ui.request({ type: 'topic.send', topic: 'general', to: ['race-worker'], text: 'New context for the next approval' });
+    assert.equal(sent.ok, true, sent.error);
+    const message = (sent.value as { message: { id: string } }).message;
+    fixture.fakes.codex!.raiseApproval('race-worker', { id: 'next-approval', kind: 'command', subject: { command: 'echo next' }, choices: ['once', 'deny'], answerIn: 'hub' });
+    await fixture.clock.advance(250);
+    await page.locator(`[data-object-id="${fixture.approval.sessionId}:next-approval"]`).click();
+    const recent = page.getByRole('complementary', { name: 'Drawer', exact: true }).getByRole('log', { name: 'race-worker recent thread', exact: true });
+    await recent.locator(`[data-message-id="${message.id}"]`).waitFor();
+    release!();
+    await until(() => delivered, { what: 'held prior history result delivered to browser', timeoutMs: 3000 });
+    assert.match(await recent.locator(`[data-message-id="${message.id}"]`).innerText(), /New context for the next approval/);
+  }, async page => {
+    page.on('websocket', socket => socket.on('framereceived', event => {
+      const frame = JSON.parse(String(event.payload));
+      if (frame.type === 'result' && frame.id === heldId) delivered = true;
+    }));
+    await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      route.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        if (frame.type === 'session.history' && !heldId) heldId = frame.id;
+        server.send(message);
+      });
+      server.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        if (frame.type === 'result' && frame.id === heldId) release = () => route.send(message);
+        else route.send(message);
+      });
+    });
+  });
+});
+
+test('approval delivery stays pending until its receipt and failure preserves the denial draft for a manual retry', async t => {
+  const fixture = await approvalFixture(t);
+  fixture.fakes.codex!.scriptApproval('hold');
+  await fixture.pageCase(t, async page => {
+    const row = page.locator(`[data-object-id="${fixture.approval.id}"]`);
+    await row.click();
+    const card = row.locator('..').getByRole('region', { name: 'Command approval', exact: true });
+    await card.getByRole('button', { name: 'd · Deny', exact: true }).click();
+    await card.getByRole('textbox', { name: 'Denial note', exact: true }).fill('Keep this file');
+    await card.getByRole('button', { name: 'Deny', exact: true }).click();
+    await card.getByRole('status').getByText('Sending answer', { exact: true }).waitFor();
+    const held = (await fixture.ui.request({ type: 'inbox.list' })).value as Inbox;
+    assert.equal(held.approvals.find(record => record.id === fixture.approval.id)?.state, 'answering');
+    assert.equal(await card.locator('[data-approval-choice="once"]').isDisabled(), true);
+    assert.equal(await card.getByRole('button', { name: 'Deny', exact: true }).isDisabled(), true);
+    const failed = card.getByRole('alert').getByText('fake approval delivery failed', { exact: true }).waitFor();
+    fixture.fakes.codex!.settleApproval('race-worker', 'race-native', 'fail');
+    await failed;
+    await pageUntil(page, () => !document.querySelector<HTMLButtonElement>('[data-approval-id] button[type="submit"]')?.disabled, 'manual retry enabled after pending recovery');
+    assert.equal(await card.getByRole('textbox', { name: 'Denial note', exact: true }).inputValue(), 'Keep this file');
+    assert.equal(fixture.fakes.codex!.approvalAnswers.length, 1);
+    await card.getByRole('button', { name: 'Deny', exact: true }).click();
+    await row.locator('..').locator('[data-approval-outcome]').waitFor();
+    const archive = (await fixture.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+    const outcome = archive.archive?.find(record => record.id === fixture.approval.id)?.outcome;
+    assert.ok(outcome && 'choice' in outcome);
+    assert.equal(outcome.note, 'Keep this file');
+    assert.deepEqual(fixture.fakes.codex!.approvalAnswers.map(answer => answer.choice), ['deny', 'deny']);
+  });
+});
+
 test('split approval detail follows revalidation and peer closure after leaving the Inbox visit', async t => {
   const fixture = await approvalFixture(t);
   await fixture.pageCase(t, async page => {

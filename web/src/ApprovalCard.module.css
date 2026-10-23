@@ -1,0 +1,4 @@
+.card { min-width: 0; max-height: 60dvh; overflow: auto; overflow-wrap: anywhere; flex-shrink: 0; }
+.denial { flex-wrap: wrap; }
+.denial label { display: flex; flex: 1 1 100%; min-width: 0; flex-direction: column; gap: 4px; color: var(--ask-quiet); font-size: 12px; }
+.folded { flex: none; }
