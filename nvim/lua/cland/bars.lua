@@ -255,7 +255,9 @@ function M.status()
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
   elseif role == 'inbox' or role == 'inbox_full' then
-    hint = '1-9 answer · i free answer · r reply · d decline/read · A archive'
+    local info = require('cland.panels').row_at(api.nvim_get_current_buf(), api.nvim_win_get_cursor(0)[1])
+    hint = info and info.approval and '1 once · 2 always · d deny (optional note) · ↵ attach · A archive'
+      or '1-9 answer · i free answer · r reply · d decline/read · A archive'
   else
     hint = '␣i ␣s ␣t ␣n panels · ␣p palette · ␣␣ back · gi gt gs'
   end

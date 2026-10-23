@@ -133,6 +133,10 @@ _Avoid_: lobby, main chat, default channel
 The standing, read-only topic that records agent-to-agent messages and the lifecycle events of sessions and roles.
 _Avoid_: log, console, drivers channel, mirror
 
+**Approval**:
+A harness's request for the human to permit a command or file change, with its offered choices and the outcome of the first answer. It belongs to one session and may be answered through cland or in that harness's TUI.
+_Avoid_: ask (a question to the human), plan approval (the human's agreement to an epic plan), permission prompt
+
 **Ask**:
 A decision question sent up the lead chain in a topic: each lead answers locally or forwards it unchanged one level, and only the Coordinator asks the human. An open ask keeps its topic waiting for its current receiving party.
 _Avoid_: prompt, poll, question dialog, request

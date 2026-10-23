@@ -407,6 +407,7 @@ local function wire_client(client)
   end)
   -- the inbox, whole, whenever any of it changed (#33)
   client:on('event', function(event) require('cland.events').push(event.row) end)
+  client:on('approval', function(event) require('cland.inbox').approval_changed(event.approval) end)
   client:on('inbox', function(event)
     state.set_inbox(event.inbox)
   end)
@@ -437,7 +438,8 @@ M.HELP = {
   '          > actions · # items · @ sessions · ~ artifacts · / topics; Tab kind · C-v split · Esc close',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · ␣P drafts a prompt · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
-  'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free · r reply · ↵ open or attach · d decline/read · A archive',
+  'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free · r reply · ↵ open or attach · d deny/decline/read · A archive',
+  '          approvals: 1 once · 2 always for this command · d deny (optional note, Enter sends); TUI rows: ↵ attach',
   '          za more · A seven-day archive · e events (or ↵ on the events line)',
   'Rulebook  ␣R or palette Rulebook · ↵ unfold · gt origin · a add · e edit · X retire · :w save draft · q back',
   'Events    1-8 kinds · 0 all · w warnings · s subject · F clear · gM mute · A older · za day fold',

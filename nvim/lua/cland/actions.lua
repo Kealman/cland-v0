@@ -91,12 +91,15 @@ for i, kind in ipairs(require('cland.event_kinds')) do
     end})
   end
 end
-group('inbox', {{'za', 'Fold or unfold inbox section'}, {'e', 'Events view'}, {'r','Reply to selected inbox row'}, {'d','Decline request or mark message read'}, {'A','Show or hide seven-day inbox archive'}})
+group('inbox', {{'za', 'Fold or unfold inbox section'}, {'e', 'Events view'}, {'r','Reply to selected inbox row'}, {'d','Decline request, deny approval or mark message read'}, {'A','Show or hide seven-day inbox archive'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
-  for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end
+  for n=1,9 do
+    local approval = scope ~= 'thread' and ({ [1] = ' or approve once', [2] = ' or always for this command' })[n] or ''
+    add(scope, tostring(n), 'Answer selected ask with option ' .. n .. (approval or ''))
+  end
   add(scope, 'i', 'Free answer to selected ask' .. (scope == 'thread' and ' or focus composer' or ''))
 end
-group('inbox_full', {{'za', 'Fold or unfold inbox section'}, {'e', 'Events view'}, {'<CR>','Open inbox row'}, {'r','Reply to selected inbox row'}, {'d','Decline request or mark message read'}, {'A','Show or hide seven-day inbox archive'}})
+group('inbox_full', {{'za', 'Fold or unfold inbox section'}, {'e', 'Events view'}, {'<CR>','Open inbox row'}, {'r','Reply to selected inbox row'}, {'d','Decline request, deny approval or mark message read'}, {'A','Show or hide seven-day inbox archive'}})
 group('thread', {{'<CR>','Toggle agent run or open artifact chip'}, {'ga','Artifacts in this topic'},
   {'zo','Open agent run'}, {'za','Toggle agent run'}, {'zc','Close agent run'},
   {'zR','Open all agent runs'}, {'zM','Fold all agent runs'}})

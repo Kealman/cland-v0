@@ -1300,7 +1300,7 @@ test('i on an ask opens its topic with the composer armed: Enter sends the text 
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option, f.text]), [['a1', undefined, 'keep both behind a flag']]);
   assert.deepEqual(await requestsOf(c, 'topic.send'), [], 'an answer, not a plain message');
   // the composer is a plain composer again
-  await c.waitScreen((x) => x.includes('to: Coordinator'), 'the composer disarmed');
+  s = await c.waitScreen((x) => x.includes('to: Coordinator') && centreOf(x).includes('answered in your words'), 'the answer rendered and composer disarmed');
   assert.match(s, /answered in your words/);
 });
 

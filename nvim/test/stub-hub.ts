@@ -66,6 +66,8 @@ export type Scenario = {
   historyPageSize?: number;
   attach?: Record<string, string>;
   send?: 'ok' | 'refuse' | 'hold';
+  /** Scripted approval gate reply; production gate rules live in hub tests. */
+  approvalAnswer?: { approval?: Record<string, unknown>; error?: string; hold?: boolean };
   /** `hub.status`'s `coordinator` (the live holder, or null); absent, the field is left out. */
   coordinator?: string | null;
   /** `role.list`'s roles; absent, the four default roles with their launch defaults. */
@@ -375,6 +377,9 @@ function answer(f: Frame) {
       if (scenario.send === 'refuse') return fail(f.id, 'the message is larger than 8192 bytes');
       if (scenario.send === 'hold') return void held.push(f);
       return acceptSend(f);
+    case 'approval.answer':
+      if (scenario.approvalAnswer?.hold) return;
+      return scenario.approvalAnswer?.error ? fail(f.id, scenario.approvalAnswer.error) : ok(f.id, { approval: scenario.approvalAnswer?.approval });
     case 'topic.create': {
       if (typeof f.title !== 'string' || !f.title.trim()) return fail(f.id, 'a topic needs a title');
       if (f.title.length > 200) return fail(f.id, 'a topic title is at most 200 characters');

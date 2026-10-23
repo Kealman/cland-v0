@@ -17,6 +17,44 @@ local function section(c, name, count, extra, amber)
 end
 
 M.selected, M.expanded = {}, {}
+-- Completed rows stay folded for this inbox visit; the hub still owns the count.
+local completed, sending, noting = {}, {}, {}
+local choices = { once = '1 approve once', always = '2 always for this command', deny = 'd deny with optional note' }
+local function outcome_label(outcome)
+  local choice = ({ once = 'approved once', always = 'approved always', deny = 'denied', withdrawn = 'withdrawn' })[outcome.choice] or outcome.choice
+  return choice .. ' by ' .. (outcome.by == 'human' and 'the human' or outcome.by)
+end
+local function outcome_text(outcome)
+  return outcome_label(outcome) .. ' via ' .. outcome.via .. ' at ' .. outcome.at
+end
+
+function M.approval_changed(record)
+  if type(record) ~= 'table' then return end
+  if record.state == 'closed' then
+    local role = vim.b.cland_role
+    if role == 'inbox' or role == 'inbox_full' then completed[record.id] = record
+    else
+      for i, r in ipairs(state.S.inbox.approvals) do if r.id == record.id then table.remove(state.S.inbox.approvals, i); break end end
+      state.changed()
+      return
+    end
+  end
+  for i, r in ipairs(state.S.inbox.approvals) do
+    if r.id == record.id then state.S.inbox.approvals[i] = record; state.changed(); return end
+  end
+  if record.state ~= 'closed' then table.insert(state.S.inbox.approvals, record) end
+  state.changed()
+end
+
+function M.approvals(rows)
+  local out, seen = {}, {}
+  for _, r in ipairs(rows or {}) do
+    out[#out + 1] = completed[r.id] or r
+    seen[r.id] = true
+  end
+  for id, r in pairs(completed) do if not seen[id] then out[#out + 1] = r end end
+  return out
+end
 local hl = require('cland.hl')
 local function since(r) return r.since or r.ts end
 local function first_line(s) return tostring(s or ''):match('[^\r\n]*') end
@@ -67,8 +105,16 @@ local function render_row(c, entry, selected)
     local where = r.topic and (r.topic.item ~= vim.NIL and r.topic.item or r.topic.title) or ''
     left = { { ' ? ', 'ClandAmber' }, { where .. ' ', 'ClandBlue' }, { first_line(r.question), 'ClandBold' } }
   elseif kind == 'approval' then
-    info.approval, info.session = true, r.session
-    left = { { ' ▲ ', 'ClandAmber' }, { r.session .. ' ', 'ClandBold' }, { first_line(r.command or 'waiting for approval') } }
+    info.approval, info.session = r, r.session
+    if r.state == 'closed' and type(r.outcome) == 'table' then
+      info.text = outcome_text(r.outcome)
+      local summary = outcome_label(r.outcome)
+      local where_when = c.width >= 90 and (r.outcome.via .. ' · ' .. r.outcome.at) or clock(r.outcome.at)
+      c:add({ { ' ✓ ' .. summary, 'ClandDim' } }, { { where_when .. ' ', 'ClandDim' } }, info)
+      return
+    end
+    local subject = type(r.subject) == 'table' and r.subject or {}
+    left = { { ' ▲ ', 'ClandAmber' }, { r.session .. ' ', 'ClandBold' }, { first_line(r.command or subject.change or 'waiting for approval') } }
   elseif kind == 'plan' then
     info.plan, info.item = true, r.id
     left = { { ' ▲ ', 'ClandAmber' }, { r.id .. ' ', 'ClandBlue' }, { r.title .. ' · ' .. (r.stages or '?') .. ' stages · ' .. (r.lanes or '?') .. ' lanes · ' .. (r.items or '?') .. ' items' } }
@@ -98,15 +144,38 @@ local function render_row(c, entry, selected)
       end
     end
     detail({ { '   ' .. (r.free ~= false and 'i free answer · ' or '') .. '↵ open the topic', 'ClandFaint' } })
-  elseif kind == 'approval' and r.command then
-    for _, line in ipairs(wrapped(r.command, c.width - 4)) do detail({ { '   ' .. line, 'ClandBold' } }) end
+  elseif kind == 'approval' then
+    local subject = type(r.subject) == 'table' and r.subject or {}
+    for _, text in ipairs({ r.command or subject.command or subject.change or 'waiting for approval' }) do
+      for _, line in ipairs(wrapped(text, c.width - 4)) do detail({ { '   ' .. line, 'ClandBold' } }) end
+    end
+    if subject.cwd then
+      for _, line in ipairs(wrapped('cwd: ' .. subject.cwd, c.width - 4)) do detail({ { '   ' .. line, 'ClandDim' } }) end
+    end
+    if subject.reason then
+      for _, line in ipairs(wrapped(subject.reason, c.width - 4)) do detail({ { '   ' .. line, 'ClandDim' } }) end
+    end
+    for _, path in ipairs(subject.files or {}) do
+      for _, line in ipairs(wrapped(path, c.width - 4)) do detail({ { '   ' .. line, 'ClandDim' } }) end
+    end
+    if r.state == 'answering' then
+      detail({ { '   answering · waiting for delivery', 'ClandFaint' } })
+    elseif r.answerIn == 'hub' then
+      for _, choice in ipairs(r.choices or {}) do
+        if choices[choice] then
+          for _, line in ipairs(wrapped(choices[choice], c.width - 4)) do detail({ { '   ' .. line, 'ClandFaint' } }) end
+        end
+      end
+    else
+      detail({ { '   answer in the session TUI: ↵ attaches', 'ClandFaint' } })
+    end
   end
 end
 
 function M.render_sections(c, buf)
   local ib = state.S.inbox
   local asks = now_rows(ib.asks, 'ask')
-  vim.list_extend(asks, now_rows(ib.approvals, 'approval'))
+  vim.list_extend(asks, now_rows(M.approvals(ib.approvals), 'approval'))
   local sections = {
     { 'asks and approvals', asks }, { 'plan approvals', now_rows(ib.plans, 'plan') },
     { 'requests to you', now_rows(ib.requests, 'request') }, { 'messages to you', now_rows(ib.messages, 'message') },
@@ -120,7 +189,9 @@ function M.render_sections(c, buf)
     end)
     if #rows > 0 then
       c:add({})
-      section(c, name, #rows, nil, true)
+      local waiting = 0
+      for _, entry in ipairs(rows) do if entry.value.state ~= 'closed' then waiting = waiting + 1 end end
+      section(c, name, waiting, nil, true)
       for i, entry in ipairs(rows) do
         if i <= 5 or M.expanded[name] then render_row(c, entry, M.selected[buf]) end
       end
@@ -152,9 +223,9 @@ function M.render(c, full, buf)
     if #rows == 0 then c:add({ { ' No rows left in the last seven days', 'ClandDim' } }) end
   end
   if full then
-    return { ' 1-9 answer · i free · r reply · za more · ↵ open · d decline/read · A archive · ␣N or ␣␣ back' }
+    return { ' 1-9 ask · 1 once · 2 always · i free · r reply · za more · ↵ open · d deny/decline/read · A archive · ␣N or ␣␣ back' }
   end
-  return { ' 1-9 answer · i free · r reply · za more · ↵ act · d decline/read · A archive · ␣N full width' }
+  return { ' 1-9 ask · 1 once · 2 always · i free · r reply · za more · ↵ act · d deny/decline/read · A archive · ␣N full width' }
 end
 
 function M.follow_row(c, info)
@@ -162,6 +233,11 @@ function M.follow_row(c, info)
   for r = 1, #c.lines do
     local candidate = c.info[r]
     if candidate and candidate.inbox_key == info.inbox_key and info.inbox_key and candidate.inbox_detail == info.inbox_detail then return r end
+  end
+  -- A folded outcome replaces the selected detail on its root row.
+  for r = 1, #c.lines do
+    local candidate = c.info[r]
+    if candidate and candidate.inbox_key == info.inbox_key and candidate.approval and candidate.approval.state == 'closed' then return r end
   end
   -- A selected row pushed past the five-row cap lands on its section's inert fold line.
   local kind = info.inbox_key and info.inbox_key:match('^([^:]+):')
@@ -179,6 +255,17 @@ function M.cursor(buf)
   local key = info and info.inbox_key
   if M.selected[buf] == key then return end
   M.selected[buf] = key
+  state.changed()
+end
+
+-- Leaving the inbox retires its completed rows; moving among its rows keeps them in place.
+local function leave_visit()
+  local role = vim.b.cland_role
+  if role == 'inbox' or role == 'inbox_full' then return end
+  completed, M.selected = {}, {}
+  local rows = {}
+  for _, r in ipairs(state.S.inbox.approvals) do if r.state ~= 'closed' then rows[#rows + 1] = r end end
+  state.S.inbox.approvals = rows
   state.changed()
 end
 
@@ -228,6 +315,47 @@ local function request(frame)
   end)
 end
 
+function M.answer_approval(record, choice, note)
+  if record.answerIn ~= 'hub' then return state.say('answer this command approval in its session TUI: ↵ attaches', 'ClandAmberBar') end
+  if record.state == 'closed' and type(record.outcome) == 'table' then return state.say(outcome_text(record.outcome)) end
+  if sending[record.id] or record.state == 'answering' then return state.say('this approval is being answered', 'ClandAmberBar') end
+  if not vim.tbl_contains(record.choices or {}, choice) then return state.say('choice ' .. choice .. ' is not offered by this approval', 'ClandAmberBar') end
+  local client = require('cland.views').client
+  if not (client and client:connected()) then return state.say('approval.answer: the hub is not connected', 'ClandRedBar') end
+  if choice == 'deny' and note == nil then
+    if noting[record.id] then return end
+    noting[record.id] = true
+    return vim.ui.input({ prompt = 'Denial note (optional): ' }, function(text)
+      noting[record.id] = nil
+      if text ~= nil then M.answer_approval(record, choice, text) end
+    end)
+  end
+  sending[record.id] = true
+  client:request({ type = 'approval.answer', approval = record.id, choice = choice, note = note }, function(err, value)
+    sending[record.id] = nil
+    if err then
+      state.say('not answered: ' .. tostring(err), 'ClandRedBar')
+      if tostring(err):find('approval already answered by ', 1, true) then
+        client:request({ type = 'inbox.list', archive = true }, function(read_error, inbox)
+          if read_error then return end
+          for _, departure in ipairs(inbox.archive or {}) do
+            if departure.kind == 'approval' and departure.id == record.id and type(departure.outcome) == 'table' then
+              M.approval_changed(vim.tbl_extend('force', record, { state = 'closed', outcome = departure.outcome }))
+              break
+            end
+          end
+          -- This reply may predate newer inbox/approval pushes. Only its exact winner is consumed.
+        end)
+      end
+      return
+    end
+    if value and value.approval then
+      M.approval_changed(value.approval)
+      if type(value.approval.outcome) == 'table' then state.say(outcome_text(value.approval.outcome)) end
+    end
+  end)
+end
+
 function M.refresh_archive()
   request({ type = 'inbox.list', archive = true })
 end
@@ -236,7 +364,10 @@ function M.reply(buf)
   local info = row(buf)
   if not info then return end
   if info.ask then return ask_card.free(info.ask) end
-  if info.approval then return state.say('answer this command approval in its session: ↵ attaches', 'ClandAmberBar') end
+  if info.approval then
+    if info.approval.answerIn == 'hub' then return state.say('answer this approval: 1 once · 2 always · d deny with optional note', 'ClandAmberBar') end
+    return state.say('answer this command approval in its session: ↵ attaches', 'ClandAmberBar')
+  end
   if info.plan then return state.say('answer this plan approval in its plan: ↵ opens it', 'ClandAmberBar') end
   if info.message and info.topic then
     require('cland.views').topic(info.topic).composer:reply_to(info.message, info.text)
@@ -273,7 +404,7 @@ function M.dismiss(buf)
   if info and info.inbox_kind == 'request' then return request({ type = 'inbox.decline', request = info.message }) end
   if info and info.inbox_kind == 'message' then return request({ type = 'inbox.read', message = info.message }) end
   if info and info.plan then return state.say('answer this plan approval in its plan: ↵ opens it', 'ClandAmberBar') end
-  if info and info.approval then return state.say('answer this command approval in its session: ↵ attaches', 'ClandAmberBar') end
+  if info and info.approval then return M.answer_approval(info.approval, 'deny') end
   if info and info.ask then return state.say('answer this ask: 1-9 chooses an option, i or r gives a free answer', 'ClandAmberBar') end
   state.say('d declines a request or marks a message read')
 end
@@ -282,6 +413,8 @@ end
 function M.keys(buf)
   M.start_clock()
   api.nvim_create_autocmd('CursorMoved', { buffer = buf, callback = function() M.cursor(buf) end })
+  -- A scheduled check sees the destination after a panel/full-width view switch.
+  api.nvim_create_autocmd({ 'BufLeave', 'WinLeave', 'BufWinLeave' }, { buffer = buf, callback = function() vim.schedule(leave_visit) end })
   local function map(lhs, fn, desc)
     require('cland.actions').map('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })
   end
@@ -304,10 +437,24 @@ function M.keys(buf)
     state.changed()
     if state.S.ui.inbox_archive then M.refresh_archive() end
   end, 'show or hide archived inbox entries')
-  require('cland.ask_card').keys(buf, function(r)
-    local info = require('cland.panels').row_at(buf, r)
-    return info and info.ask or nil
-  end)
+  for n = 1, 9 do
+    require('cland.actions').map('n', tostring(n), function()
+      local info = row(buf)
+      if info and (info.ask or info.approval and n <= 2) then
+        vim.schedule(function()
+          if info.ask then ask_card.answer(info.ask, n)
+          else M.answer_approval(info.approval, n == 1 and 'once' or 'always') end
+        end)
+        return ''
+      end
+      return tostring(n)
+    end, { buffer = buf, expr = true, nowait = true, silent = true })
+  end
+  map('i', function()
+    local info = row(buf)
+    if info and info.ask then return ask_card.free(info.ask) end
+    state.say('i types a free answer: put the cursor on an ask')
+  end, 'a free answer to the ask')
 end
 
 -- The full-width view ----------------------------------------------------------------------------------------

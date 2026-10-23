@@ -838,7 +838,7 @@ The **inbox** (v0.1.2 §3.7, `InboxNow.dc.html`) carries four now sections, newe
 | Section | What feeds it |
 | --- | --- |
 | `asks` | The open asks: `{"id","topic":{"id","title","item"?},"question","options","free","from","label","ts"}`. |
-| `approvals` | One pending `ApprovalRecord` per harness request, or one TUI-only record per waiting episode for adapters that report only state. Existing `id`, `session`, `label`, `harness`, `since`, `attach` and `command` fields remain. Enter in Neovim attaches the session. |
+| `approvals` | One pending `ApprovalRecord` per harness request, or one TUI-only record per waiting episode for adapters that report only state. Existing `id`, `session`, `label`, `harness`, `since`, `attach` and `command` fields remain. In either Neovim inbox view, `1` approves once, `2` approves always when offered, and `d` opens an optional denial note (Enter sends, Esc cancels). TUI-only rows keep Enter to attach. |
 | `plans` | Open epics with a valid plan whose approval is pending under `[plan] approval = "human"`: `{"id","subject","title","since","layer":"now"}`. No row under approval `none`. |
 | `requests` | Unsettled explicit request messages: `{"id","from","fromRole"?,"request","subject","topic","text","ts","since","layer":"now"}`. |
 | `messages` | One row per now message addressed to the human, excluding progress, hub events, asks and requests. A waiting topic without an open ask contributes its latest eligible message. Each row carries `id`, sender/role, subject, topic, text, `ts`, `since` and layer. |

@@ -42,4 +42,5 @@ Codex closed-first lookup/disconnect receipts and complete authorization subject
 session history, own-browser profile and launch directory boundary (T-1131)
 startup lease recovery after serving, held-provider T2 receipts and phase durations (T-1152)
 bounded provisioning shutdown, signal deadline and late-resource reconciliation (T-1151)
+T-1114: Document the recorded-headless Neovim approval-key, outcome and TUI-only test seam.
 T-1112: Document the OpenCode scripted relay seam, child/reconnect/shape checks and targeted fake-binary Deny-with-note receipt.
