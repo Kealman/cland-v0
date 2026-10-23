@@ -214,15 +214,16 @@ shortcuts through a ref. The module declares its key `context` and `handledActio
 The shell's shared dispatcher, help and palette use those declarations. Declared actions remain inactive until their area implements them. Modules mark their own content with the matching `data-key-context`.
 
 Sessions, Accounts and Artifacts live in `src/sessions/`, `src/accounts/` and
-`src/artifacts/`. Sessions owns its counts, grouped rows and unfolded selection
-through `SessionsHeader` and `SessionGroups`. `SessionPage` shows the session's
-model, account, usage and capabilities; it shares `SessionActions` with the
-selected row. Its drawer and Artifacts page/drawer retain the ID/title details
-from `AreaObjects.tsx`. The Accounts area owns the registry, limits and profile;
-`AccountsStrip` shows the registry's account meters. `VerifyLine` owns the
-verification summary and its queue view.
-Inbox and Events keep their existing stand-ins; Topics owns its grouped list and
-thread module. Items retains its tree, views and card.
+`src/artifacts/`. [Sessions](#sessions) owns its counts, grouped rows and unfolded
+selection through `SessionsHeader` and `SessionGroups`. `SessionPage` shows the
+session's model, account, usage and capabilities; it shares `SessionActions` with
+the selected row. [Accounts](#accounts-strip-and-accounts-area) owns the registry,
+limits and profile; `AccountsStrip` shows its account meters in Sessions.
+`VerifyLine` owns the [verification summary and queue view](#verification-in-sessions).
+[Artifacts](#artifacts) owns its grouped tree and sandboxed page/drawer viewer.
+[Topics](#topics-and-threads) owns its grouped list and thread module.
+Inbox and Events keep their existing stand-ins. Items retains its
+[tree and card](#items-tree) and [views](#items-views).
 
 `ConnectionState` includes the state types from each area's `state.ts`:
 
