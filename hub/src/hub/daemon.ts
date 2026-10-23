@@ -108,7 +108,8 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     if (starting || String(entry.event).startsWith('orphan-sweep-') || entry.event === 'orphan-ended' || entry.event === 'orphan-preserved') fatalLog(entry);
     else processJournal!.write(entry as { event: string } & Record<string, unknown>);
   });
-  processLog({ event: 'hub-startup-step', step: 'reading startup journal', pid: process.pid });
+  let startupStep: { step: string; started: number } | undefined = { step: 'reading startup journal', started: performance.now() };
+  processLog({ event: 'hub-startup-step', step: startupStep.step, pid: process.pid });
   // The lock excludes another writer. New lifecycle notices are held by
   // agentsRecord, and new subagent records are indexed by Journal.write.
   let startupHistory = readJournal(journalPath(l.dir), { startupOnly: true });
@@ -117,6 +118,14 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   let hub!: HubBase;
   const tapped = agents.tap(journal.tap(processLog));
   log = entry => {
+    // Keep the existing start receipts for failed-start diagnostics. A separate
+    // completion names all work up to the next step, using real monotonic time
+    // even when a fixture injects a scheduling clock.
+    if (entry.event === 'hub-startup-step' || entry.event === 'serving') {
+      const now = performance.now(), previous = startupStep;
+      startupStep = entry.event === 'hub-startup-step' ? { step: String(entry.step), started: now } : undefined;
+      if (previous) log({ event: 'hub-startup-step-completed', step: previous.step, durationMs: now - previous.started, pid: process.pid });
+    }
     const record: JournalRecord = { ts: clock.now().toISOString(), ...entry, event: String(entry.event), eventsVersion: 1 };
     const row = eventRow(record);
     if (row) {
@@ -235,6 +244,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     log({ event: 'hub-startup-step', step: 'restoring core and suites', pid: process.pid });
     log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });
     hub = createHubBase({
+      deferExecutorRecovery: true,
       clock,
       secret,
       env,
@@ -399,11 +409,13 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     primeInbox();
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     starting = false;
+    hub.dispatcher.startExecutorRecovery();
     tracker.resumeReadyChecks();
     lintWarmer.request(devTip);
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; } };
   }
 
+  log({ event: 'hub-startup-step', step: 'binding web listener', pid: process.pid });
   web = await createWebEdge({ root, store, log, ...(options.artifactOpen ? { artifactOpen: options.artifactOpen } : {}), dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, bind: config.web.bind, origin: config.web.origin, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
   if (!web.status.available) log({ event: 'web-unavailable', ...web.status });
 
@@ -420,10 +432,12 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   }
 
   const discovery: Discovery = { root, socket: l.socket, port: ws.port, webPort: web.status.port, secret, pid: process.pid, version: VERSION };
+  log({ event: 'hub-startup-step', step: 'publishing discovery', pid: process.pid });
   primeInbox();
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
+  hub.dispatcher.startExecutorRecovery();
   tracker.resumeReadyChecks();
   lintWarmer.request(devTip);
   accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock, options.accountReader);

@@ -40,5 +40,6 @@ human-only approval gate and scripted answer receipts (T-1110)
 Codex approval relay native frame seam and explicit fake-binary denial receipt (T-1111)
 Codex closed-first lookup/disconnect receipts and complete authorization subject cap (T-1111)
 session history, own-browser profile and launch directory boundary (T-1131)
+startup lease recovery after serving, held-provider T2 receipts and phase durations (T-1152)
 bounded provisioning shutdown, signal deadline and late-resource reconciliation (T-1151)
 T-1112: Document the OpenCode scripted relay seam, child/reconnect/shape checks and targeted fake-binary Deny-with-note receipt.

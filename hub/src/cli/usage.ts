@@ -70,6 +70,7 @@ export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, 
 `;
 
 export const HUB_USAGE = `  hub start       start the project's hub in the background (idempotent)
+                  serves before executor recovery; startup steps log durations
                   --autostart: honor the deliberate-stop grace period; --client cli|nvim|other identifies the starter
   hub subscriptions list every session's event subscriptions (--json for JSON)
   hub reload      validate and reload config.toml and roles.toml (also SIGHUP)

@@ -126,6 +126,8 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  /** The project daemon admits provider recovery only after publishing serving. */
+  deferExecutorRecovery?: boolean;
   publishRelease?: typeof import('../territory-release.ts').releaseGit;
   devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository;
   batchRepository?: import('./merge-batch-territory.ts').BatchRepository;
@@ -201,6 +203,7 @@ export class Dispatcher {
   readonly #droplets: DropletExecutor | null;
   readonly #demos: Demos | null;
   readonly #dropletReady: Promise<void>;
+  readonly #admitExecutorRecovery: () => void;
   readonly #dropletTimer: ClockTimer | null;
   #dropletWork: Promise<void> | null = null;
 
@@ -234,7 +237,15 @@ export class Dispatcher {
       const item = options.tracker!.view(lease.demo!.epic);
       options.core.noticeTo(item.topic ?? AGENTS.id, { id, kind: 'report', to: ['coordinator'], text: options.core.boundedText(text), detail: { event: 'executor-release-unconfirmed', lease: lease.lease, item: item.id } });
     }, options.git) : null;
-    this.#dropletReady = this.#droplets?.sweep(true).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
+    const recovery = Promise.withResolvers<void>();
+    this.#admitExecutorRecovery = () => recovery.resolve();
+    this.#dropletReady = recovery.promise.then(async () => {
+      if (this.#closed || !this.#droplets) return;
+      this.#log({ event: 'executor-recovery-started' });
+      await this.#droplets.sweep(true);
+      if (!this.#closed) await this.#demos?.reconcile();
+    }).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' }));
+    if (!options.deferExecutorRecovery) this.startExecutorRecovery();
     const retryMs = Number((options.env ?? process.env).CLAND_TEST_EXECUTOR_SWEEP_MS);
     const sweepMs = retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000;
     let nextSweep = options.core.clock.now().getTime() + sweepMs;
@@ -356,6 +367,8 @@ export class Dispatcher {
 
   async close(): Promise<void> {
     this.#closed = true;
+    // A startup failure can close the dispatcher before serving admits recovery.
+    this.#admitExecutorRecovery();
     if (this.#dropletTimer) this.#options.core.clock.clearInterval(this.#dropletTimer);
     const closingDroplets = this.#droplets?.close();
     await this.#dropletReady;
@@ -372,6 +385,9 @@ export class Dispatcher {
     await this.#models?.close();
     await this.#suites?.close();
   }
+
+  /** Idempotent startup admission; ordinary frames never await provider recovery. */
+  startExecutorRecovery(): void { this.#admitExecutorRecovery(); }
 
   /** Holds and delivered requests share one trailing process projection per tick. */
   #refreshSessionWork(): void {

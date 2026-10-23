@@ -4673,7 +4673,13 @@ the current inbox count until a section changes or a message crosses its seven-d
 age boundary. Non-approval process metadata and journal event projections do not
 invalidate that count; ordinary coalesced inbox publications still refresh details.
 `hub-startup-step` records identify tracker, journal, store, suite and session
-restore phases. To profile a disposable copy, use
+restore phases. Each phase ends with `hub-startup-step-completed`, naming its
+monotonic `durationMs` through the next phase or serving. The listening-to-serving
+window names listener binding, web listener binding, session restoration and
+discovery publication separately. Executor lease recovery is admitted only after
+serving (`executor-recovery-started`); neither startup nor ordinary status and
+bridge traffic waits for its provider calls. Recovery keeps its existing bounded
+completion/deferred receipts and periodic retries. To profile a disposable copy, use
 `node hub/scripts/measure-startup.ts /absolute/project/.cland`; add `--cli` to
 measure the real `cland hub start` through the first status socket reply against
 the five-second target. The default run measures dispatcher composition separately

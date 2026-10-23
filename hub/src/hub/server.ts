@@ -32,6 +32,7 @@ export type HubBaseOptions = CoreOptions & {
   batchRepository?: DispatcherOptions['batchRepository'];
   git?: DispatcherOptions['git'];
   droplet?: DropletDependencies;
+  deferExecutorRecovery?: DispatcherOptions['deferExecutorRecovery'];
   verification?: DispatcherOptions['verification'];
   hasTerritory?: DispatcherOptions['hasTerritory'];
   territoryLock?: DispatcherOptions['territoryLock'];
@@ -107,6 +108,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     });
   });
   const dispatcher = new Dispatcher({
+    ...(options.deferExecutorRecovery ? { deferExecutorRecovery: true } : {}),
     core,
     ...(options.env ? { env: options.env } : {}),
     ...(options.journal ? { journal: options.journal } : {}),

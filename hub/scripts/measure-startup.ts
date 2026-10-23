@@ -54,7 +54,7 @@ test('measure copied durable startup state', async t => {
         console.log(JSON.stringify({ platform: `${process.platform}/${process.arch}`, source, firstStatusMs,
           note: 'Actual cland hub start, native daemon, UI hello and first hub.status socket receipt; excludes copy/setup. Scratch accounts/config, no source hub or workers.' }));
         const entries = (await readFile(join(dest, 'log/hub.log'), 'utf8')).split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
-        for (const entry of entries) if (entry.event === 'hub-startup-step' || entry.event === 'serving') console.log(JSON.stringify(entry));
+        for (const entry of entries) if (entry.event === 'hub-startup-step' || entry.event === 'hub-startup-step-completed' || entry.event === 'serving') console.log(JSON.stringify(entry));
         if (firstStatusMs >= 5000) throw new Error(`first hub.status took ${firstStatusMs.toFixed(3)} ms; budget 5000 ms`);
       } finally { ui.close(); }
     } finally {
@@ -68,7 +68,7 @@ test('measure copied durable startup state', async t => {
     if (entry.event === 'explorer-recomputed') recomputes++;
     if (entry.event === 'listening') listeningAt ??= performance.now();
     if (entry.event === 'serving') servingAt = performance.now();
-    if (entry.event === 'hub-startup-step' || entry.event === 'serving') console.error(JSON.stringify({ ...entry, elapsedMs: +(performance.now() - setup).toFixed(3) }));
+    if (entry.event === 'hub-startup-step' || entry.event === 'hub-startup-step-completed' || entry.event === 'serving') console.error(JSON.stringify({ ...entry, elapsedMs: +(performance.now() - setup).toFixed(3) }));
   } });
   const startupRecomputes = recomputes;
   try {

@@ -1,5 +1,5 @@
-// T2: embedded startup must publish discovery and answer CLI probes before a held
-// ready-check read completes. The CLI is the subject; no hub child is launched.
+// T2: embedded startup publishes timed phases and serves before held ready-check
+// storage or provider recovery finishes. No hub child is launched.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import files from 'node:fs/promises';
@@ -9,9 +9,85 @@ import { syncBuiltinESMExports } from 'node:module';
 import { runHub } from '../src/cli/hub.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { join } from 'node:path';
-import { connectUi, eventually, projectHub, tempProject } from './harness.ts';
+import { connectUi, eventually, projectHub, tempProject, until } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
+import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
+import { readLeases, writeLease } from '../src/executor/droplet/lease.ts';
 import { onCleanup } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
+
+test('startup logs named durations for every step from listener binding through serving', async t => {
+  const root = await tempProject(t);
+  const entries: Record<string, unknown>[] = [];
+  await projectHub(t, root, {}, { log: entry => { entries.push(entry); } });
+  const binding = entries.findIndex(entry => entry.event === 'hub-startup-step' && entry.step === 'binding listeners');
+  const serving = entries.findIndex(entry => entry.event === 'serving');
+  const window = entries.slice(binding, serving);
+  const starts = window.filter(entry => entry.event === 'hub-startup-step');
+  assert.deepEqual(starts.map(entry => entry.step), ['binding listeners', 'binding web listener', 'restoring sessions', 'publishing discovery']);
+  for (const start of starts) {
+    const completion = window.find(entry => entry.event === 'hub-startup-step-completed' && entry.step === start.step);
+    assert.ok(completion, `${start.step} logs its completion`);
+    assert.ok(window.indexOf(completion) > window.indexOf(start), `${start.step} completes after it starts`);
+    assert.ok(typeof completion.durationMs === 'number' && Number.isFinite(completion.durationMs) && completion.durationMs >= 0, `${start.step} logs a monotonic duration`);
+  }
+});
+
+test('startup restores sessions and serves before recovering a lease with a hanging provider', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const token = 'cland-test-startup-recovery';
+  const api = await fakeDigitalOcean(token, { machine: 'scripted', clock });
+  const release = Promise.withResolvers<void>();
+  let entered = false, providerBeforeServing = false;
+  let listening: number | undefined, restoring: number | undefined, serving: number | undefined;
+  const entries: Record<string, unknown>[] = [];
+  api.beforeDropletList(async () => {
+    entered = true;
+    providerBeforeServing ||= serving === undefined;
+    await release.promise;
+  });
+  await writeLease(root, {
+    kind: 'droplet', provider: 'digitalocean', lease: 'orphan', run: 'orphan-run',
+    name: 'cland-startup-orphan', tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 0.25,
+    keyName: 'cland-startup-orphan', keyId: null, resource: null, state: 'releasing',
+    created: clock.now().toISOString(), deadline: clock.now().toISOString(),
+  });
+  let starting: ReturnType<typeof projectHub> | undefined;
+  onCleanup(t, async () => {
+    release.resolve();
+    try { if (starting) await (await starting).stop(); }
+    finally { await api.close(); }
+  });
+  starting = projectHub(t, root, {}, {
+    clock, droplet: { api: api.provider, processes: { alive: pid => pid === process.pid, started: () => null } },
+    syntheticProvider: { token, api: api.provider },
+    log: entry => {
+      entries.push(entry);
+      if (entry.event === 'listening') listening ??= performance.now();
+      if (entry.event === 'hub-startup-step' && entry.step === 'restoring sessions') restoring = performance.now();
+      if (entry.event === 'serving') serving = performance.now();
+    },
+  });
+  await until(() => listening !== undefined, { what: 'startup listener receipt', timeoutMs: 15000 });
+  await until(() => serving !== undefined, { what: 'serving receipt with provider held', timeoutMs: 2000, loadFactor: 1 });
+  const hub = await starting;
+  assert.ok(restoring !== undefined && restoring - listening! < 2000, 'sessions restore within two seconds of listening');
+  const gap = serving! - listening!;
+  assert.ok(gap < 2000, `listening to serving took ${gap.toFixed(3)} ms; bound 2000 ms`);
+  await until(() => entered, { what: 'lease recovery provider call entered', timeoutMs: 15000 });
+  assert.equal(providerBeforeServing, false, 'provider recovery starts only after serving');
+  const ui = await connectUi(t, hub.discovery);
+  assert.equal((await ui.request({ type: 'hub.status' })).ok, true, 'status replies while provider is held');
+  assert.equal((await readLeases(root))[0]!.state, 'releasing');
+  release.resolve();
+  await until(() => entries.some(entry => entry.event === 'executor-sweep'), { what: 'recovery completion receipt', timeoutMs: 15000 });
+  assert.equal((await readLeases(root))[0]!.state, 'released');
+  const recovery = entries.findIndex(entry => entry.event === 'executor-recovery-started');
+  assert.ok(recovery > entries.findIndex(entry => entry.event === 'serving'), 'recovery admission is logged after serving');
+  assert.ok(entries.findIndex(entry => entry.event === 'executor-sweep') > entries.findIndex(entry => entry.event === 'serving'));
+  t.diagnostic(`${process.platform}/${process.arch}; local projectHub; listening to serving ${gap.toFixed(3)} ms; bound 2000 ms`);
+});
 
 test('hub start reports the serving hub while its startup ready check holds tracker storage', async t => {
   const root = await tempProject(t);
