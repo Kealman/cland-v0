@@ -42,6 +42,7 @@ export function listenForShortcuts(
     if (mode === 'items' && action === 'accept' && !cardAccept) return;
     if ((mode === 'thread' || mode === 'ask') && action === 'thread-toggle' && event.code === 'Enter' && event.target instanceof Element &&
       event.target.closest('a, button, [role="button"]') && !event.target.closest('[data-run-anchor]')) return;
+    if ((mode === 'inbox' || mode === 'inbox-answer') && action === 'inbox-open' && event.target instanceof Element && event.target.closest('button:not([data-object-id])')) return;
     // Session Enter owns rows, confirmations and the queue; other buttons keep native activation.
     if (mode === 'sessions' && action === 'session-open' && event.target instanceof Element &&
         event.target.closest('button') && !event.target.closest('[data-object-id], [data-session-actions], [data-session-slot="verification"]')) return;

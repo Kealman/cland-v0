@@ -18,3 +18,5 @@
 
 .heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .heading a { color: var(--link); font-size: 12px; white-space: nowrap; }
+
+.command { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); }

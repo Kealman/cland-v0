@@ -6,7 +6,7 @@ import { Thread, type ThreadControls } from './Thread.tsx';
 
 export const topicActions = ['topic-next', 'topic-previous', 'topic-open', 'topic-close', 'thread-next', 'thread-previous', 'thread-back', 'thread-leader', 'thread-toggle'] as const;
 
-export function TopicDetail({ connection, selected, controls }: AreaContentProps) {
+export function TopicDetail({ connection, selected, controls, targetMessage }: AreaContentProps) {
   const thread = useRef<ThreadControls>(null);
   useImperativeHandle(controls, () => ({ run: action => {
     if (action === 'thread-back') {
@@ -15,7 +15,7 @@ export function TopicDetail({ connection, selected, controls }: AreaContentProps
     }
     return thread.current?.run(action) ?? false;
   } }), [selected]);
-  return <div className={s.area}>{connection && selected && <Thread key={selected} connection={connection} topic={selected} controls={thread} />}</div>;
+  return <div className={s.area}>{connection && selected && <Thread key={selected} connection={connection} topic={selected} targetMessage={targetMessage} controls={thread} />}</div>;
 }
 
 function TopicPage(props: AreaContentProps) {
@@ -27,7 +27,7 @@ function TopicDrawer(props: AreaContentProps) {
 
 export const topicsModule: AreaModule = { context: 'topics', handledActions: topicActions, Pane: TopicsArea, Page: TopicPage, Drawer: TopicDrawer };
 
-export function TopicsArea({ connection, selected, select, controls }: AreaContentProps) {
+export function TopicsArea({ connection, selected, select, controls, targetMessage }: AreaContentProps) {
   const list = useRef<HTMLDivElement>(null);
   const thread = useRef<ThreadControls>(null);
   useImperativeHandle(controls, () => ({ run: action => {
@@ -75,6 +75,6 @@ export function TopicsArea({ connection, selected, select, controls }: AreaConte
         </Fold>
       </div>)}
     </div>
-    {connection && selected && <Thread key={selected} connection={connection} topic={selected} controls={thread} />}
+    {connection && selected && <Thread key={selected} connection={connection} topic={selected} targetMessage={targetMessage} controls={thread} />}
   </div>;
 }

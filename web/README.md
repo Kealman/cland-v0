@@ -136,7 +136,7 @@ typing in an answer field keeps native text input.
 Answers use the human `topic.answer` frame, whose durable hub record supplies the
 chosen text/reason, answerer and time. Both views fold to that outcome, including
 answers from another client. An Inbox fold stays until its mounted Inbox is left.
-Other Inbox kinds retain stand-in rows; full Inbox sections are pending in T-1123. Sending
+Sending
 disables the card until receipt, a refusal preserves its draft, and disconnected
 cards disable writes without replaying them. A refused race or a fresh snapshot
 that omits a previously open ask uses bounded `topic.history` reads for its durable
@@ -242,6 +242,49 @@ Changing the last visible message, hiding, folding and disconnecting cancel an i
 messages below the viewport stay unread. The hub's updated topic row supplies
 the shared unread count. Failed writes are never replayed automatically.
 
+## Inbox
+
+Inbox shows the hub's Now rows in **Asks and approvals**, **Plan approvals**,
+**Requests** and **Messages to you**, each newest first. Headers show the pending
+count. An empty section stays as one muted header; a section with more than five
+rows has a More line with the hidden count and oldest wait. Section folds persist
+in browser preferences. Waiting ages update locally without polling the hub.
+The hub already includes a waiting topic's latest message when it has no ask.
+
+Focusing or selecting a row unfolds it in place. Asks use the shared card;
+requests and messages show their full text and buttons; plans show stage, lane
+and item counts. Enter opens the topic at that exact message, loading earlier
+history pages when needed, or opens the epic's Plan view. Request decline tells
+the sender; marking a message read removes only that message. A delayed action reply cannot replace
+newer pushed Inbox rows or counts. The Events footer
+counts every journal row since the human's shared last look and its warnings,
+reading older pages until the mark is reached. It stays when all sections are
+empty and opens Events. The full Events view follows in its own slice.
+
+Approval rows offer only the native record's choices: Approve once, Always for
+this command and Deny with an optional note. The hub supplies the attributed
+outcome. Closed approval and ask rows stay folded for the Inbox visit. Missing pending
+approvals on a fresh snapshot and refused answer races recover that exact id's
+archived outcome; unavailable outcomes keep controls disabled. A selected ask
+reached from its thread reveals its section and the rows beyond the five-row cap. A TUI-only
+approval says **Answer in Neovim** and has no answer controls. Offline and pending
+writes are disabled; no mutation is replayed after reconnect.
+
+| Key | Inbox action |
+| --- | --- |
+| `j` / `↓`, `k` / `↑` | Next or previous visible row, fold or footer |
+| `Enter` | Open topic/message or Plan; activate fold/footer controls |
+| `d` | Decline request, mark message read, ask decline reason or approval denial note |
+| `1`–`9` on an ask row | Answer with that option |
+| `1`, `2` on an approval row | Approve once, always for this command |
+| `i`, `r` on an ask row | Focus the free answer |
+| `←`, `→` | Fold or unfold section |
+| `?` | Inbox keys for the focused context |
+
+Number keys keep shell area navigation outside ask and approval rows. Inputs keep
+native typing. Reply composition, archive and the selected topic drawer follow
+in T-1124–T-1126.
+
 ## Area modules and live state
 
 `src/AreaSlot.tsx` registers each non-Items area as an `AreaModule`: `Pane` is
@@ -260,8 +303,7 @@ limits and profile; `AccountsStrip` shows its account meters in Sessions.
 `VerifyLine` owns the [verification summary and queue view](#verification-in-sessions).
 [Artifacts](#artifacts) owns its grouped tree and sandboxed page/drawer viewer.
 [Topics](#topics-and-threads) owns its grouped list and thread module.
-Inbox renders shared ask cards in **Asks and approvals**; approvals and other
-Inbox kinds retain stand-in rows, with full sections pending in T-1123. Events
+[Inbox](#inbox) owns its four sections, selected row and actions. Events
 remains a stand-in list; its full area is pending in E-417 stage 4. Items retains its
 [tree and card](#items-tree) and [views](#items-views).
 
@@ -551,7 +593,7 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 
 | Key | Shell | Palette |
 | --- | --- | --- |
-| `1`–`7` | Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts in the active pane; focused ask cards use option keys instead | Type in the input |
+| `1`–`7` | Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts in the active pane; focused ask cards and Inbox ask/approval rows use option keys instead | Type in the input |
 | `⌘K`, `Space p` | Open palette (`Space p` outside fields) | `⌘K` keeps palette open |
 | `?` | Show current area’s keys, outside fields | Type in the input |
 | `⌘\` | Toggle split | — |
@@ -562,7 +604,7 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 | `Esc` | Close help or drawer | Close without acting |
 
 `src/keymap.ts` partitions the physical-code table into shell, Items (including
-Plan), Topics, thread, ask, inbox, events, composer, Sessions, Artifacts, Accounts and
+Plan), Topics, thread, ask, inbox, inbox-answer, events, composer, Sessions, Artifacts, Accounts and
 modal contexts. The focused context resolves first, then the shell. Modifiers
 must match exactly. The shell asks `focusedKeyContext` for a nested
 `data-key-context` declaration, falling back to the active pane's area. A field
@@ -791,6 +833,7 @@ node --test web/test/items-order.test.ts # rank-event cache invalidation on a mi
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
+node --test web/test/inbox.test.ts      # Now sections, ages/folds, row actions, approval keys, navigation and events footer
 node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect
 node --test web/test/thread-artifacts.test.ts # HTML capability frames, sandbox isolation and opening actions
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords

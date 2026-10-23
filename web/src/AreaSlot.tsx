@@ -18,6 +18,9 @@ export type AreaContentProps = {
   select: (id: string) => void;
   open?: () => void;
   navigate?: (area: Area) => void;
+  targetMessage?: string | undefined;
+  openTopic?: (topic: string, message?: string) => void;
+  openPlan?: (id: string) => void;
   openPage?: (id: string) => void;
   closePage?: () => void;
   controls?: Ref<AreaControls>;

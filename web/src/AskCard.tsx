@@ -6,7 +6,7 @@ import s from './AskCard.module.css';
 
 export const AskNavigation = createContext<(id: string, source: HTMLElement) => void>(() => {});
 
-export function AskCard({ id, topic, card, connection }: { id: string; topic: string; card: Card; connection: ConnectionState }) {
+export function AskCard({ id, topic, card, connection, context = 'ask' }: { id: string; topic: string; card: Card; connection: ConnectionState; context?: 'ask' | 'inbox-answer' }) {
   const openInbox = useContext(AskNavigation);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -26,11 +26,11 @@ export function AskCard({ id, topic, card, connection }: { id: string; topic: st
     finally { setPending(false); }
   };
   const outcome = card.outcome;
-  if (card.state !== 'open') return <div tabIndex={0} data-key-context="ask" data-ask-id={id} data-ask-state={card.state} className={s.folded} title={card.question}>
+  if (card.state !== 'open') return <div tabIndex={0} data-key-context={context} data-ask-id={id} data-ask-state={card.state} className={s.folded} title={card.question}>
     <span data-ask-outcome>{outcome ? outcome.status === 'declined' ? `Declined: ${outcome.reason}` : `${outcome.option ? `${outcome.option} ` : ''}${outcome.text}` : card.state}</span>
     {outcome && <><span> · {outcome.by} · </span><time dateTime={outcome.at}>{new Date(outcome.at).toLocaleString()}</time></>}
   </div>;
-  return <section tabIndex={0} data-key-context="ask" data-ask-id={id} data-ask-state="open" className={s.card} aria-label={card.question}>
+  return <section tabIndex={0} data-key-context={context} data-ask-id={id} data-ask-state="open" className={s.card} aria-label={card.question}>
     <div className={s.heading}><h3>{card.question}</h3>{!card.to && <a href={`#inbox/${encodeURIComponent(id)}`} onClick={event => { event.preventDefault(); openInbox(id, event.currentTarget); }}>In Inbox</a>}</div>
     {card.to ? <span className={s.meta}>Waiting for {card.to}</span> : <>
       <div className={s.options}>{card.options.map((option, index) => <button key={index} data-ask-option={index + 1} disabled={!connection.live || pending} onClick={() => void answer({ option: index + 1 })}><kbd>{index + 1}</kbd> {option}</button>)}</div>

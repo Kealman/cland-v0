@@ -1884,6 +1884,28 @@ Clause procedure (defaults implementer, project implementer):
 
 ## Web phase
 
+`web/test/inbox.test.ts` owns the four Now sections through the sealed
+`webFixture`, a fake Coordinator sender, fake native approvals and authenticated
+Headless Shell. Literal DOM assertions cover section order, counts, the five-row
+cap and oldest wait, saved folds and controlled browser age updates. Request
+removal waits for the fake sender's decline delivery and the removed DOM row;
+message removal retains a peer Inbox read proving the other message survives.
+Enter navigation loads an exact message older than the latest history page and
+focuses it in the thread; the plan case waits for the rendered stage heading.
+The empty Inbox's Events footer compares real journal rows and shared last-look
+marks, including warning counts beyond the first 200 rows. Held successful
+read/decline replies retain newer pushed Inbox rows/counts after the action's
+pending marker clears. An older-than-five ask link reveals saved folds and
+focuses the secondary-pane card while the primary copy remains mounted. Exact-id
+approval recovery covers a peer answer while offline across a new hub epoch and
+a real refused answer; a held archive reply cannot replace newer rows/counts or
+a later same-id authorization delta. Approval controls use the native record's
+choices and Neovim's keys; TUI-only rows have no answer controls. Existing
+`asks.test.ts` retains multi-client winner, receipt, failure and reconnect checks.
+`palette.test.ts` retains shell number keys outside answer rows and now expects
+the four handled Inbox navigation/action rows in help.
+
+
 `web/test/asks.test.ts` owns the shared ask-card seam through the sealed
 `webFixture`, a fake Coordinator asker and authenticated Headless Shell contexts.
 It covers physical option keys with a Cyrillic key value, thread and Inbox cards,

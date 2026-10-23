@@ -109,7 +109,7 @@ test('the palette and area keys help', async t => {
       const help = page.getByRole('dialog', { name: 'Inbox keys', exact: true });
       await help.waitFor();
       assert.deepEqual(await help.locator('[data-key-action="split"] kbd').evaluate(node => Array.from(node.textContent!, character => character.codePointAt(0))), [8984, 92], 'command plus exactly one backslash');
-      assert.deepEqual(await help.locator('kbd').allTextContents(), ['1', '2', '3', '4', '5', '6', '7', '⌘K / Space p', '?', '⌘\\', '⌘Enter', 'Esc', '←', '→']);
+      assert.deepEqual(await help.locator('kbd').allTextContents(), ['1', '2', '3', '4', '5', '6', '7', '⌘K / Space p', '?', '⌘\\', '⌘Enter', 'Esc', '←', '→', 'j / ↓', 'k / ↑', 'Enter', 'd']);
       await physical(page, 'Escape');
       await help.waitFor({ state: 'detached' });
       for (const [index, area] of ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'].entries()) {
@@ -118,7 +118,7 @@ test('the palette and area keys help', async t => {
         await physical(page, 'Shift+Slash');
         const localHelp = page.getByRole('dialog', { name: `${area} keys`, exact: true });
         await localHelp.waitFor();
-        assert.equal(await localHelp.locator('kbd').count(), area === 'Items' ? 33 : area === 'Topics' ? 18 : area === 'Sessions' ? 24 : area === 'Artifacts' ? 20 : 14);
+        assert.equal(await localHelp.locator('kbd').count(), area === 'Inbox' ? 18 : area === 'Items' ? 33 : area === 'Topics' ? 18 : area === 'Sessions' ? 24 : area === 'Artifacts' ? 20 : 14);
         if (area === 'Topics') {
           assert.deepEqual(await localHelp.locator('[data-key-action^="topic-"] dt').allTextContents(), [
             'Next topic or group', 'Previous topic or group', 'Enter thread or unfold group', 'Fold topic group',

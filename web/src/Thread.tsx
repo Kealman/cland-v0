@@ -8,7 +8,7 @@ import type { Shortcut } from './keymap.ts';
 
 export type ThreadControls = { focus: () => void; run: (action: Shortcut) => boolean };
 
-export function Thread({ connection, topic, controls }: { connection: ConnectionState; topic: string; controls?: Ref<ThreadControls> }) {
+export function Thread({ connection, topic, controls, targetMessage }: { connection: ConnectionState; topic: string; targetMessage?: string | undefined; controls?: Ref<ThreadControls> }) {
   const node = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ id: string; top: number } | null>(null);
   const atEnd = useRef(true);
@@ -55,6 +55,20 @@ export function Thread({ connection, topic, controls }: { connection: Connection
     } else if (!opened.current || atEnd.current) log.scrollTop = log.scrollHeight;
     opened.current = true;
   }, [state?.messages, state?.loaded, state?.loading]);
+  const navigated = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (!targetMessage || navigated.current === targetMessage || !state?.loaded || !node.current) return;
+    const message = state.messages.find(row => row.id === targetMessage);
+    if (!message) {
+      if (state.more && !state.loading && !state.error && connection.live) void connection.threads?.load(topic, true);
+      return;
+    }
+    if (message.runId && !expanded.has(message.runId)) { setExpanded(previous => new Set(previous).add(message.runId!)); return; }
+    const target = [...node.current.querySelectorAll<HTMLElement>('[data-message-id]')].find(row => row.dataset.messageId === targetMessage);
+    if (!target) return;
+    atEnd.current = false; navigated.current = targetMessage;
+    target.focus({ preventScroll: true }); target.scrollIntoView({ block: 'center' });
+  }, [targetMessage, state, expanded, connection.live, connection.threads, topic]);
   const earlier = () => {
     if (!node.current || state?.loading || !state?.more || !connection.live) return;
     // In an open run, anchor its first message: the sticky summary cannot

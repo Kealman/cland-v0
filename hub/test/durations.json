@@ -8603,6 +8603,13 @@
       "added": "2026-10-23",
       "expires": "2026-10-30",
       "reason": "T-1139 Artifacts sections Web case measured 4.02 s on Linux c-8 lon1 in A-9692 (T-1133 verify at 0a8ed77a, reported by impl-1133) against the 4 s Web gate; 2.09 s baseline elsewhere. Coordinator directed 6 s (about 1.5 times the worst sample) for Linux Web timing variance; assertions unchanged."
+    },
+    "web/test/inbox.test.ts::Enter opens an Inbox message at its anchored thread row and a waiting plan in Plan": {
+      "seconds": 9.6,
+      "owner": "E-417",
+      "added": "2026-10-23",
+      "expires": "2026-10-30",
+      "reason": "T-1123 uses a sealed hub and Headless Shell to create 105 later agent messages, page back to the exact Inbox message, assert focus, then open the pending epic's Plan stage. Linux x64 c-8 lon1 run 1a38504f at 5cd0852b (A-9816) observed this assertion-green test at 6.336998379 s; Web assertions passed 164/164 and the overall run was red on this new-identity gate. The launch brief requires a dated E-417 allowance when any passing Web sample reaches 4 s. The 9.6 s cap is about 1.5 times the worst measured sample; request/DOM bounds, assertions and fixture teardown are unchanged. After this receipt, independent setup sends were batched within the same rate-limit windows to remove serial socket round trips; this remains the worst measured Linux sample."
     }
   }
 }

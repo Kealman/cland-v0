@@ -111,6 +111,7 @@ export function Shell() {
   const cardOrigin = useRef<{ item: string; pane: string } | null>(null);
   const primaryTree = useRef<TreeControls>(null);
   const secondaryTree = useRef<TreeControls>(null);
+  const [threadTargets, setThreadTargets] = useState<Partial<Record<'primary' | 'secondary', { topic: string; message?: string | undefined }>>>({});
   const [navigationError, setNavigationError] = useState('');
   const [message, setMessage] = useState<MessageTarget>();
   const openOverlay = (mode: 'palette' | 'help') => {
@@ -229,7 +230,7 @@ export function Shell() {
     });
   };
   const selectedRow = preferences.area === 'Items' ? findItem(connection, preferences.row) : preferences.area === 'Artifacts' ? artifactSelection(connection.artifacts, preferences.row) : connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
-  const drawerOpen = !split && preferences.area !== 'Topics' && selectedRow && dismissed !== selectionKey && !preferences.detail;
+  const drawerOpen = !split && preferences.area !== 'Topics' && preferences.area !== 'Inbox' && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
   const release = releases.find(item => item.id === preferences.release) ?? releases[0];
   const counts: Partial<Record<Area, number | undefined>> = {
@@ -352,6 +353,16 @@ export function Shell() {
               {paneArea !== 'Items' && <ArtifactViewerFallback.Provider value={fallback}><AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
                 open={() => { setDismissed(undefined); if (split) openOther(); }}
                 navigate={target => setArea(target, pane)}
+                targetMessage={threadTargets[pane]?.topic === selected ? threadTargets[pane]?.message : undefined}
+                openTopic={(topic, message) => {
+                  navigationSerial.current++;
+                  setThreadTargets(previous => ({ ...previous, [pane]: { topic, message } }));
+                  setPreferences(previous => pane === 'primary' ? { ...previous, area: 'Topics', row: topic, detail: false } : { ...previous, secondary: 'Topics', secondaryRow: topic, secondaryDetail: false });
+                }}
+                openPlan={id => {
+                  navigationSerial.current++; showItemsView('plan');
+                  setPreferences(previous => pane === 'primary' ? { ...previous, area: 'Items', row: id, detail: false } : { ...previous, secondary: 'Items', secondaryRow: id, secondaryDetail: false });
+                }}
                 openPage={id => { navigationSerial.current++; setPreferences(previous => pane === 'primary'
                   ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}
                 closePage={() => {

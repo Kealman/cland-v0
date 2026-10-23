@@ -56,3 +56,13 @@ export function runFoldShortcut(action: Shortcut): boolean {
   if ((toggle.getAttribute('aria-expanded') === 'true') === (action === 'fold-close')) toggle.click();
   return true;
 }
+
+/** Reveal a navigation target without disturbing the area's other fold choices. */
+export function revealFold(area: string, id: string) {
+  if (!folded(area, id, false)) return;
+  const saved = record(readInterfaceState(area));
+  const changes = new Map(volatile.get(area));
+  changes.set(id, false); volatile.set(area, changes);
+  writeInterfaceState(area, { ...saved, folds: { ...record(saved.folds), ...Object.fromEntries(changes) } });
+  for (const listener of listeners) listener();
+}
