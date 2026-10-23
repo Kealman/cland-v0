@@ -120,6 +120,26 @@ test('release worker admits its cover lease before isolated scratch startup', as
   assert.match(result.stdout, /pass 1/);
 });
 
+test('fixture lifecycle worker admits its cover lease before starting its detached hub', async t => {
+  const { root, lock, lease } = await cover(t);
+  const result = await target(t, root, new URL('./fixture-worker-lifecycle.test.ts', import.meta.url).href,
+    { ...external(root), CLAND_SUITE_LEASE: JSON.stringify({ ...lease, dirs: [lock] }) },
+    '', '^SIGTERM of a fixture worker reaps its detached hub before removing the temp project$');
+  assert.equal(result.code, 0, result.stderr + result.stdout);
+  assert.match(result.stdout, /SIGTERM of a fixture worker reaps its detached hub before removing the temp project/);
+  assert.match(result.stdout, /pass 1/);
+});
+
+test('remote fixture owner admits its cover lease before starting its fixture', async t => {
+  const { root, lock, lease } = await cover(t);
+  const result = await target(t, root, new URL('./remote-fixture-lifecycle.test.ts', import.meta.url).href,
+    { ...external(root), CLAND_SUITE_LEASE: JSON.stringify({ ...lease, dirs: [lock] }) },
+    '', '^remote fixture cleans up after owner SIGTERM$');
+  assert.equal(result.code, 0, result.stderr + result.stdout);
+  assert.match(result.stdout, /remote fixture cleans up after owner SIGTERM/);
+  assert.match(result.stdout, /pass 1/);
+});
+
 test('targeted startup passes without a project hub or with an ordinary local holder', async t => {
   const root = await tempProject(t);
   const standalone = await target(t, root, harness, external(root));

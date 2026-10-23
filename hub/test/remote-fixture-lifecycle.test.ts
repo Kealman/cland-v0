@@ -1,5 +1,5 @@
 // T4 harness self-test: real owner death, watchdog teardown and writer cleanup.
-import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -14,7 +14,8 @@ for (const mode of ['timeout', 'SIGTERM', 'watchdog-SIGKILL', 'watchdog-teardown
     // Keep the real socket inside its project on macOS's 100-byte socket limit.
     const scratch = await tempProject(t, 'rf-', '/tmp');
     beforeDirectories(t, () => cleanupProcesses(scratch, [], undefined, undefined, []));
-    const child = spawn(process.execPath, [fileURLToPath(new URL('./remote-fixture-parent.ts', import.meta.url)), mode], { env: fixtureEnvironment(scratch, process.env, { TMPDIR: scratch, NODE_TEST_CONTEXT: '' }), stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+    // The owner runs test fixtures, so it must retain this cover's admission lease.
+    const child = spawn(process.execPath, [fileURLToPath(new URL('./remote-fixture-parent.ts', import.meta.url)), mode], { env: runnerFixtureEnvironment(scratch, { ...process.env, TMPDIR: scratch, NODE_TEST_CONTEXT: '' }), stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
     ownProcess(t, child.pid);
     let output = '';
     child.stdout!.on('data', chunk => { output += chunk; });
