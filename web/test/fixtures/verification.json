@@ -1,0 +1,144 @@
+{
+  "queueFrame": {
+    "type": "verification.queue",
+    "queue": {
+      "version": 1,
+      "at": "2026-10-16T12:00:13.000Z",
+      "holder": {
+        "kind": "run",
+        "executor": "local",
+        "id": "recorded-run-1",
+        "session": "caller-2",
+        "item": null,
+        "mode": "hub-only",
+        "pid": null,
+        "worktree": "/scratch/queue",
+        "since": "2026-10-16T12:00:10.000Z",
+        "runMs": 3000,
+        "etaMs": 6000
+      },
+      "remote": [
+        {
+          "kind": "run",
+          "executor": "droplet",
+          "id": "recorded-run-2",
+          "session": "caller-3",
+          "item": null,
+          "mode": "hub-only",
+          "pid": null,
+          "worktree": "/scratch/queue",
+          "since": "2026-10-16T12:00:10.000Z",
+          "runMs": 3000,
+          "etaMs": null,
+          "machine": {
+            "name": "cland-recorded-run-2",
+            "size": "c-8",
+            "region": "lon1"
+          }
+        }
+      ],
+      "remoteBudget": 1,
+      "localFallback": true,
+      "waiters": [
+        {
+          "kind": "run",
+          "executor": "local",
+          "id": "recorded-run-3",
+          "session": "caller-4",
+          "item": null,
+          "mode": "hub-only",
+          "worktree": "/scratch/queue",
+          "position": 1,
+          "queuedAt": "2026-10-16T12:00:10.000Z",
+          "waitMs": 3000,
+          "etaMs": 6000,
+          "expectedRunMs": 9000
+        },
+        {
+          "waitingFor": "remote",
+          "kind": "run",
+          "executor": "droplet",
+          "id": "recorded-run-4",
+          "session": "caller-5",
+          "item": null,
+          "mode": "hub-only",
+          "worktree": "/scratch/queue",
+          "position": 2,
+          "queuedAt": "2026-10-16T12:00:11.000Z",
+          "waitMs": 2000,
+          "etaMs": null,
+          "expectedRunMs": null
+        }
+      ],
+      "metrics": {
+        "queueWait": {
+          "targetP90Ms": 1200000,
+          "last24Hours": {
+            "local": {
+              "count": 1,
+              "cacheHits": 0,
+              "p50Ms": 0,
+              "p90Ms": 0
+            },
+            "droplet": {
+              "count": 0,
+              "cacheHits": 0,
+              "p50Ms": null,
+              "p90Ms": null
+            }
+          },
+          "last50Runs": {
+            "local": {
+              "count": 1,
+              "cacheHits": 0,
+              "p50Ms": 0,
+              "p90Ms": 0
+            },
+            "droplet": {
+              "count": 0,
+              "cacheHits": 0,
+              "p50Ms": null,
+              "p90Ms": null
+            }
+          }
+        },
+        "window": 20,
+        "count": 1,
+        "wait": {
+          "count": 1,
+          "medianMs": 0,
+          "p90Ms": 0
+        },
+        "run": {
+          "count": 1,
+          "medianMs": 9000,
+          "p90Ms": 9000
+        }
+      }
+    }
+  },
+  "executorFrame": {
+    "type": "result",
+    "id": "r1",
+    "ok": true,
+    "value": {
+      "reconciliation": "idle",
+      "spend": {
+        "path": "/scratch/executor/.cland/executor-state/spend.json",
+        "day": "2026-10-22",
+        "spent": 0,
+        "reserved": 0,
+        "cap": 5,
+        "legacyRetirement": 1
+      },
+      "snapshotRecovery": [],
+      "snapshot": null,
+      "prepare": null,
+      "token": false,
+      "leases": [],
+      "todayCostUsd": 0,
+      "taggedDroplets": null,
+      "summary": "executor: idle\nsnapshot: none\ntoken: absent (DIGITALOCEAN_TOKEN)\nleases: none\nledger: /scratch/executor/.cland/executor-state/spend.json\ntoday: spent $0.0000 + reserved $0.0000 / cap $5\ntagged droplets: unavailable"
+    }
+  }
+}

@@ -206,9 +206,10 @@ Sessions, Accounts and Artifacts live in `src/sessions/`, `src/accounts/` and
 `src/artifacts/`. Sessions owns its counts, grouped rows and unfolded selection
 through `SessionsHeader` and `SessionGroups`. `SessionPage` shows the session's
 model, account, usage and capabilities; it shares `SessionActions` with the
-selected row. Its drawer, the Accounts area and Artifacts page/drawer retain
-the ID/title details from `AreaObjects.tsx`.
-`AccountsStrip` and `VerifyLine` remain reserved slots for their following slices.
+selected row. Its drawer and Artifacts page/drawer retain the ID/title details
+from `AreaObjects.tsx`. The Accounts area owns the registry, limits and profile;
+`AccountsStrip` shows the registry's account meters. `VerifyLine` owns the
+verification summary and its queue view.
 Inbox and Events keep their existing stand-ins; Topics owns its grouped list and
 thread module. Items retains its tree, views and card.
 
@@ -240,6 +241,28 @@ scripted WebSocket and fake time, using the shared wire types. It covers model
 facts that do not yet have UI. `web/test/area-slots.test.ts` keeps the real hub,
 production socket and isolated Headless Shell proof: all slots, delta delivery
 without inventory requests, and a new hub's Sessions/Accounts without a reload.
+
+## Verification in Sessions
+
+The `verify:` line shows the local holder and running time, remote slots in use
+against their budget, waiters and the next admission estimate. Click it or press
+Enter on it to toggle the queue in place. The shared fold keys also work; the
+open state is browser-only under the Sessions preferences and survives reload.
+
+The queue lists the local holder's item, mode or occasion, PID, worktree, start,
+running time and remaining ETA; each remote slot's droplet name, size, region and
+start; and waiters in the hub's order with their requested executor, wait and
+admission ETA. It includes the last 20 runs' run/wait median and p90. Opening the
+view reads `executor.status` once for today's droplet spend and cap; it does not
+poll the provider. A failed read keeps a dash with the error in its tooltip.
+
+`src/sessions/verification.ts` is a pure queue/elapsed/status presentation model.
+Snapshots and `verification.queue` deltas reset the client receipt time. A local
+clock advances running and waiting durations without network reads. Estimates
+keep the hub's durations and `~` marker, rather than counting down. Unknown
+facts remain unknown. `hub/test/web-verification-model.test.ts` replays sealed
+scratch frames at T1; `web/test/verification.test.ts` proves Enter, elapsed time
+without frames, replacement, spend reads and fold persistence in Headless Shell.
 
 ## Artifacts
 
@@ -277,6 +300,7 @@ Diagram HTML and SVG use the sandboxed viewer; raw Mermaid `.mmd` stays source t
 
 Attaching to the composer is the following slice. Creating, moving, promoting,
 deleting and editing remain in Neovim and the CLI in 0.2.0.
+
 
 ## Items tree
 

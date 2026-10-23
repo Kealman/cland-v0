@@ -22,7 +22,7 @@ function subscribe(listener: () => void) {
 export function Fold({ area, id, label, count, level = 2, defaultFolded = false, actions, children }: {
   area: string; id: string; label: string; count: number | string; level?: 1 | 2;
   defaultFolded?: boolean;
-  actions?: ReactNode; children: ReactNode;
+  actions?: ReactNode; children: ReactNode | ((open: boolean) => ReactNode);
 }) {
   const closed = useSyncExternalStore(subscribe, () => folded(area, id, defaultFolded));
   const content = useId();
@@ -43,7 +43,7 @@ export function Fold({ area, id, label, count, level = 2, defaultFolded = false,
       </button></Heading>
       <span className={s.count}>{count}</span>{actions}
     </header>
-    <div id={content} hidden={closed}>{children}</div>
+    <div id={content} hidden={closed}>{typeof children === 'function' ? children(!closed) : children}</div>
   </div>;
 }
 

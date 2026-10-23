@@ -8428,6 +8428,13 @@
       "added": "2026-10-22",
       "expires": "2026-10-29",
       "reason": "T-1104 startup identity measured 2.2 to 2.7 s on local macOS (A-9251) and 7.413 s on a Linux c-8 blr1 droplet (run 814f79d4, A-9316) against the 5 s new-identity gate; its 2 s listening-to-serving assertion is unchanged. Headroom about 1.5x the worst sample until E-880 restores tier budgets."
+    },
+    "web/test/verification.test.ts::Sessions verification queue shows hand runs, ages receipts and remembers its fold": {
+      "seconds": 7,
+      "owner": "E-418",
+      "added": "2026-10-22",
+      "expires": "2026-10-29",
+      "reason": "T-1133 queue view Web case covers hand holder/waiter rendering, native and queue Enter, receipt ageing, frame replacement, spend reads, fold reload persistence and observed fixture teardown. Linux c-8 lon1 A-9574 at ee0dce9b measured the assertion-green parent at 4.446933277 s; earlier A-9540 at 35a35f72 measured 3.986645884 s. Coordinator directed 7 s (about 1.5 times the worst original sample) for Linux Web timing variance; assertions and their bounds are unchanged."
     }
   }
 }

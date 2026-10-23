@@ -1951,6 +1951,16 @@ The merged-facts case checks P22 geometry at 1440 px and P27's 52 px two-line
 rows at a test-set 600 px viewport, including the pending command, hold/request
 facts, page-only metadata and absent list actions.
 
+`hub/test/web-verification-model.test.ts` is the pure T1 queue presentation seam,
+using recorded sealed scratch frames in `web/test/fixtures/verification.json`.
+`web/test/verification.test.ts` covers the Sessions verification line and in-place
+queue with hand-run reservations in a sealed `projectHub`: physical Enter,
+executor-status read per opening, no-frame ageing with the browser fake clock,
+replacement receipt and browser-only fold persistence. It runs no suite worker
+or real droplet. The explicit recording refresh is
+`node --test web/test/record-verification.ts`; its executor and machine receipts
+are fake, and its public executor-status read uses a second sealed scratch hub.
+
 `web/test/session-actions.test.ts` owns Stop confirmation/cancellation, Resume
 identity/role/claim retention, Archive, adapter capabilities and missing adapters,
 the session page at desktop and narrow widths, and the fresh-launch brief after
@@ -1961,6 +1971,7 @@ the receipt, releases the gate in cleanup and retains the final stopped row.
 The narrow-page case checks Stop cancellation, Esc back to the same focused row,
 inert list action keys, Enter re-entry and archived-row return with the toggle retained. Failed actions retain the hub's reason.
 No real harness or live hub is used.
+
 
 `web/test/item-criteria.test.ts` owns T-1078's three card-edit seams, one Web
 case per criterion against one sealed scratch hub and Headless Shell. C1 adds,

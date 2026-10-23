@@ -75,7 +75,7 @@ test('area modules keep selection and drawers while unimplemented session action
     await row.press('Shift+/');
     const help = page.getByRole('dialog', { name: 'Sessions keys', exact: true });
     await help.waitFor();
-    assert.deepEqual(await help.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
+    assert.deepEqual(await help.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session or queue', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
     assert.equal(await help.locator('kbd').count(), 22);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Meta+k');

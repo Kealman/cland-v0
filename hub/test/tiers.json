@@ -536,6 +536,7 @@
     "hub/test/web-network-unit.test.ts": "T1",
     "hub/test/web-phase.test.ts": "T1",
     "hub/test/web-release.test.ts": "T1",
+    "hub/test/web-verification-model.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",
     "nvim/test/agents-filters.test.ts": "T2",
@@ -625,6 +626,7 @@
     "web/test/shell.test.ts": "Web",
     "web/test/smoke.test.ts": "Web",
     "web/test/thread-runs.test.ts": "Web",
-    "web/test/topics.test.ts": "Web"
+    "web/test/topics.test.ts": "Web",
+    "web/test/verification.test.ts": "Web"
   }
 }

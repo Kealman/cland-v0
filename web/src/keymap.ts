@@ -116,7 +116,7 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
   composer: [{ action: 'composer-send', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }],
   sessions: [
     { action: 'session-next', label: 'Next session' }, { action: 'session-previous', label: 'Previous session' },
-    { action: 'session-open', label: 'Open session' }, { action: 'session-launch', label: 'Launch a session' },
+    { action: 'session-open', label: 'Open session or queue' }, { action: 'session-launch', label: 'Launch a session' },
     { action: 'session-aide', label: 'New Aide' }, { action: 'session-stop', label: 'Stop session' },
     { action: 'session-resume', label: 'Resume session' }, { action: 'session-archive', label: 'Archive session' },
     { action: 'session-capabilities', label: 'Capabilities' }, { action: 'session-archive-toggle', label: 'Show archived sessions' },

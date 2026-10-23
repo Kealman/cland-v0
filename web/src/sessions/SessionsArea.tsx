@@ -28,6 +28,10 @@ function SessionsArea(props: AreaContentProps) {
   const live = props.connection.live;
   useEffect(() => { if (archived && live) load?.(); }, [archived, live, load]);
   useImperativeHandle(props.controls, () => ({ run(action) {
+    if (action === 'session-open') {
+      const toggle = document.activeElement?.closest('[data-session-slot="verification"]')?.querySelector<HTMLButtonElement>('[data-fold-toggle]');
+      if (toggle) { toggle.click(); return true; }
+    }
     if (action === 'session-archive-toggle') { toggle(); return true; }
     return groups.current?.run(action) ?? false;
   } }));

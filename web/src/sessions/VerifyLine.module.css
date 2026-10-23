@@ -1,0 +1,12 @@
+.queue { margin: 4px 12px 8px; font-family: var(--mono); font-size: 12px; }
+.queue header { min-height: 28px; padding: 0 8px; border: 0; }
+.queue h2 { font-family: var(--mono); font-size: 12px; }
+.view { padding: 0 8px 8px; }
+.scroll { overflow-x: auto; }
+.view table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.view th { text-align: left; font-weight: 400; color: var(--muted); }
+.view td, .view th { padding: 6px 8px; vertical-align: top; white-space: nowrap; }
+.view td { background: var(--panel); border-bottom: 2px solid var(--ground); }
+.detail { color: var(--text-soft); }
+.detail span { display: block; }
+.metrics { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px; color: var(--muted); }
