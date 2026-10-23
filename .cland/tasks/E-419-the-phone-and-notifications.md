@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-896
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-23T19:06:52.690Z
+updated: 2026-10-23T20:22:39.937Z
 ---
 
 ## Summary
@@ -325,3 +325,50 @@ Final plan line: `# asks, threads, the composer and install: open; stage cover c
 The project-rule proposal—decode binary fields using the pinned runtime rather than parse platform-specific command formatting—was logged by the Coordinator in topic-896.
 
 Durable evidence A-10188: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10188-e-419-stage-2-at-4b294347-all-18-cases-pass-188-local-tests-and-green-stage-cove/report.md
+
+### qa-676 · 2026-10-23T20:22:39.937Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s3-2026-10-23-1
+commit: b5ce93f3d690cbb72bfad0bc26334da92696769f
+stage: sessions and disconnected
+stage_hash: 6569dc46af6fdc61ce6dff1ec304280188ee211fdfdb29301a559ebf1009106b
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Observation |
+| --- | --- | --- |
+| E419S3-00 | PASS | Clean detached HEAD=dev=S; both stage members merged once; sealed environment, zero credential prefixes |
+| E419S3-01 | PASS | Exact-source bundle build exit 0, stamp retained |
+| E419S3-02 | PASS | All code/selector greps positive; merged Shell retains both items; names unchanged |
+| E419S3-03 | PASS | Keyboard/storage/HTML/touch/dependency rules pass |
+| E419S3-04 | PASS | Required docs read; disconnected state and no queue explained; candidates dismissed by phone-specific wording |
+| E419S3-05 | PASS | Committed brief lint passes |
+| E419S3-06 | PASS | Phone disconnected 3/3; all 3 required names |
+| E419S3-07 | PASS | Phone Sessions 5/5; all 5 required names |
+| E419S3-08 | PASS | Connection 4/4; all 4 required names |
+| E419S3-09 | PASS | Six desktop regression files 40/40; all 16 required names |
+| E419S3-10 | PASS | Eight prior-phone files 43/43; all 12 required names |
+| E419S3-11 | PASS | Six Web plus three hub T2 files 98/98; all 7 required names |
+| E419S3-12 | PASS | Independent probe 1/1 TAP AND all 16 separately judged fact groups match |
+| E419S3-13 | PASS | Full typecheck, four web guards, 23 contrast tokens and tier lint/classifications |
+| E419S3-14 | PASS | Same-S Linux/macOS full stage covers green, plan complete |
+| E419S3-15 | PASS | 135 owned Web census lines clean; scratch removed; final HEAD/dev unchanged, zero changed paths |
+
+Findings: none (high 0, medium 0, low 0). No rerun, brief deviation, selector/oracle correction or product fix. Stage verdict only; no epic criterion marks.
+
+Tested S: b5ce93f3d690cbb72bfad0bc26334da92696769f. Members T-1172 (db598a49), T-1173 (3b4e3be5). Run qa-s3-2026-10-23-1. Local Darwin arm64, Node24.21.0, pinned Chrome Headless Shell; scratch HOME/XDG/Git, full fixtureEnvironment after overlays, system TMPDIR. 26 named files 193/193 plus independent probe 1/1 = 194/194 TAP, no fail/cancel/skip/todo. All 47 required names matched. Runtime started after Coordinator's macOS cover released the local slot; all files serial, queue checked.
+
+Independent observations include a painted sheet surface and overlay both 390×844, 44px controls, restored focus for both Back paths, complete command, CLI-confirmed Stop/Archive outcomes, desktop640/1440 queue/dot preservation, exact countdown and Retry reset, disabled offline writes, zero replay/durable draft messages, cursor resume/new epoch and retained document identity. Probe TAP alone was not the verdict.
+
+Cited Coordinator covers at S/tree 843225c5d3058819df92ee37e870a6ec68df1462:
+- Linux 0f6777e2-5255-4b6c-ae2e-bc5c308b5836, A-10210 merged / A-10211 and A-10212 shards: full check+T1/T2/T3/T4/Web, exit0; 4068 pass,8 skips,0 fail of4076. Linuxx64 6.8.0-142-generic,Node24.21.0,Neovim0.12.5,c-8lon1. cland-v0-4f42beed:1258.54s admission→remote finish,1243s lifetime,$0.0864; cland-v0-ed868301:1021.54s,1003s lifetime,$0.0697. Hub total measured wall1300.12s admission→collection,cost$0.1560 (rounded shard prices). Web42 files/216 named tests ran on shard1; shard2 no allocated Web files.
+- macOS d64f9e24-d06d-4abf-995e-7e9bb35487fa, A-10214: full check+T1/T2/T3/T4/Web,4076/4076,0 skipped/fail. Darwinarm64 27.0.0,Node24.21.0,Neovim0.12.5,two workers; phase durations33/184/927/50/99s. Queue→artifact publication1320.987s including queue/collection; local cost N/A. Web42 files/216 named tests,97.70s measured phase.
+Both T4 base ten files, extra T4 repetitions skipped. Budget/lint/ratchet report-only (132 lint findings/59 files,2 missing baselines); projections are not measured wall times or enforced passes.
+
+Evidence A-10216, report.md and complete commands/captures, raw facts, assessments, screenshots, 16 recorder lines and original cover logs:
+ /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10216-e-419-stage-3-at-b5ce93f3-16-cases-pass-194-local-tests-and-green-stage-covers/report.md
+
+Real browser/phone/tunnel, live-hub sign-in, notifications/guide(stage4), unrelated checks and epic DoD out of scope per brief. Scratch removed; detached worktree removal follows this verdict.

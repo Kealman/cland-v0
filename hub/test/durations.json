@@ -44,9 +44,11 @@
       "A-10108",
       "A-10106",
       "A-10182",
-      "A-10186"
+      "A-10186",
+      "A-10210",
+      "A-10214"
     ],
-    "commit": "4b29434743273db9010a52da914dde3121da45b6"
+    "commit": "b5ce93f3d690cbb72bfad0bc26334da92696769f"
   },
   "budget": {
     "testSeconds": 5,
@@ -2491,6 +2493,14 @@
     "web/test/phone-thread.test.ts": {
       "seconds": 7.986207,
       "tests": 6
+    },
+    "web/test/phone-disconnected.test.ts": {
+      "seconds": 3.951188,
+      "tests": 3
+    },
+    "web/test/phone-sessions.test.ts": {
+      "seconds": 7.815721,
+      "tests": 5
     }
   },
   "tests": {
@@ -6429,7 +6439,15 @@
     "web/test/phone-thread.test.ts::phone topic item card is read-only and both Back paths retain the exact reading anchor": 1.586495,
     "web/test/phone-thread.test.ts::phone topic opens full screen with its facts and both Back paths return to Topics": 1.637297,
     "web/test/phone-thread.test.ts::phone verdicts long ids and fenced code fit 390 px with horizontal scrolling inside code only": 1.134092,
-    "web/test/phone.test.ts::phone Inbox selection keeps asks in a sheet and replies inline without a drawer": 0.956014
+    "web/test/phone.test.ts::phone Inbox selection keeps asks in a sheet and replies inline without a drawer": 0.956014,
+    "web/test/phone-disconnected.test.ts::phone disconnect shows a counting backoff and immediate Retry resets it without reloading": 1.670923,
+    "web/test/phone-disconnected.test.ts::phone keeps the last Inbox time and disables every answer and reply while disconnected": 1.316708,
+    "web/test/phone-disconnected.test.ts::phone reconnect keeps offline drafts unsent and refreshes a refused resume from the last sequence": 0.963557,
+    "web/test/phone-sessions.test.ts::phone Back restores focus when Stop moves the session into a folded group": 1.845188,
+    "web/test/phone-sessions.test.ts::phone session page confirms 44 px Stop/Archive actions with scratch CLI receipts": 1.809798,
+    "web/test/phone-sessions.test.ts::phone Sessions shows counts, one account row and two-line sessions without row actions": 1.878501,
+    "web/test/phone-sessions.test.ts::phone verify line opens the shared queue in a full-height sheet and Close restores the list": 1.088339,
+    "web/test/phone-sessions.test.ts::phone waiting session page shows its command and both Back paths focus the same row": 1.193895
   },
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {

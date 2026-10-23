@@ -3,7 +3,7 @@ id: T-1176
 kind: task
 title: The tunnel guide in web/README.md
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:04.893Z
-updated: 2026-10-23T07:00:04.893Z
+updated: 2026-10-23T20:22:40.594Z
 ---
 
 ## Summary

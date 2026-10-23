@@ -3,7 +3,7 @@ id: T-1175
 kind: task
 title: Notifications on the phone through a service worker
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:04.656Z
-updated: 2026-10-23T07:00:04.656Z
+updated: 2026-10-23T20:22:40.484Z
 ---
 
 ## Summary
