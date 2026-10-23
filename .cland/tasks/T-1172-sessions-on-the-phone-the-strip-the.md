@@ -3,7 +3,7 @@ id: T-1172
 kind: task
 title: "Sessions on the phone: the strip, the queue sheet and the page"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:04.138Z
-updated: 2026-10-23T07:00:04.138Z
+updated: 2026-10-23T19:06:53.266Z
 ---
 
 ## Summary

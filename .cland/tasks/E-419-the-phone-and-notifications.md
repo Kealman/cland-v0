@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-896
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-23T16:51:23.007Z
+updated: 2026-10-23T19:06:52.690Z
 ---
 
 ## Summary
@@ -261,3 +261,67 @@ Pre-verdict plan line is retained exactly in E419S1-14.txt: `# bottom bar and in
 Cleanup: 120 fixture-owned Web census lines report after 0 and scratch hub stopped; T1 keymap census 0/0 as expected. Scratch /private/tmp/qa-e419s1-l0AC9B removed; final detached HEAD and dev still equal full S and tree clean. Worktree removal follows publication/verdict. Original captures retained. The rule proposal on verifying brief selectors/test names at the tested build remains logged in topic-896.
 
 Durable evidence A-10112: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10112-e-419-stage-1-at-1bd43fe0-all-16-cases-pass-after-t-1182/report.md
+
+### qa-676 · 2026-10-23T19:06:52.690Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s2-2026-10-23-1
+commit: 4b29434743273db9010a52da914dde3121da45b6
+stage: asks, threads, the composer and install
+stage_hash: ee5138024adcd2b95ade763e093d65c27cb132b0d5af74b614e4ecd6c05fc04b
+findings: [{"severity":"low","text":"E419S2-02: od/awk PNG dimension helper prints spurious zero lines on macOS. Coordinator-authorized Node readUInt32BE(16/20) gives correct 192/512/512/180 dimensions. Original and corrected outputs retained; brief helper defect, not product.","file":"qa/briefs/E-419-stage-2.md","line":750}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Result | Command / observation | Evidence |
+| --- | --- | --- | --- |
+| E419S2-00 | PASS | Build, plan, landings, environment: clean S; five merged members | E419S2-00.txt, setup.txt |
+| E419S2-01 | PASS | Sealed web build; manifest and four PNGs; clean tree | E419S2-01.txt, E419S2-01.log |
+| E419S2-02 | PASS | Source seams, selectors, names and PNG dimensions; authorized IHDR probe correction | E419S2-02.txt, E419S2-02-ihdr.txt |
+| E419S2-03 | PASS | Shared keyboard/storage rules; no raw HTML, swipe handler or dependency change | E419S2-03.txt |
+| E419S2-04 | PASS | Required docs and full section reads, including T-1171 C6 | E419S2-04-assessment.txt and numbered reads |
+| E419S2-05 | PASS | Committed brief lint | E419S2-05.txt |
+| E419S2-06 | PASS | Phone asks 6/6 | E419S2-06.txt, .log |
+| E419S2-07 | PASS | Phone approvals 6/6 | E419S2-07.txt, .log |
+| E419S2-08 | PASS | Phone thread 6/6 | E419S2-08.txt, .log |
+| E419S2-09 | PASS | Phone composer 6/6 | E419S2-09.txt, .log |
+| E419S2-10 | PASS | Install 4/4, hub auth 29/29, edge 8/8, auth unit 3/3 | E419S2-10.txt, 10a–10d logs |
+| E419S2-11 | PASS | Phone regression: frame 7/7, More 5/5, Inbox 3/3 | E419S2-11.txt, 11a–11c logs |
+| E419S2-12 | PASS | Eight desktop thread/composer regression files, 72/72 | E419S2-12.txt, 12a–12h logs |
+| E419S2-13 | PASS | Shell, key contexts, palette, session drawer and keymap, 32/32 | E419S2-13.txt, 13a–13e logs |
+| E419S2-14 | PASS | Independent probe 1/1; all 27 fact groups match; no step errors | E419S2-14.jsonl, .log, -assessment.txt |
+| E419S2-15 | PASS | Typecheck, four web guards and tier lint | E419S2-15.txt, .log, -tiers.log |
+| E419S2-16 | PASS | Same-S Linux and macOS stage covers; plan complete | E419S2-16.txt, cover receipts/metrics |
+| E419S2-17 | PASS | 122 clean owned Web censuses; scratch removed; clean unchanged S | E419S2-17.txt, final-build.txt |
+
+**Clear: every scoped case passed.** E-419 stage **asks, threads, the composer and install**, run `qa-s2-2026-10-23-1`, full tested dev SHA `4b29434743273db9010a52da914dde3121da45b6`. This is a stage verdict, with no epic or item criterion marks.
+
+Findings, ranked by severity:
+
+- **Low — brief helper defect (Bugs, XS), E419S2-02, qa/briefs/E-419-stage-2.md:750.** The committed `od -An -tu1 -j16 -N4 … | awk …` width/height parser produced `icon-192.png 192\n0x192\n0` and analogous extra zero lines for the other files. Original output is retained unchanged. Coordinator decision `e319cb5c-2126-415b-8072-12bc6cd53e9e` authorized a read-only Node IHDR check: `fs.readFileSync(file).readUInt32BE(16)` for width and offset `20` for height. It reports `192x192`, `512x512`, `512x512`, `180x180` for the four required files. Sizes pass; this is not a product defect. The brief/helper and product were not edited. The Coordinator will correct the brief after this verdict.
+
+No high or medium findings; no product findings. The full docs read confirms the required phone composer description. The four candidate contradictions in the brief were dismissed: single-pane navigation is compatible with the full-screen viewer over the mounted thread; the stale in-place ask sentence has been replaced by the bottom-sheet description; the heading hierarchy is correct; notification controls in More explicitly belong to stage 4. Coarse-pointer Return and the three phone Return chords are distinguished in adjacent sentences.
+
+The requested five members are merged: T-1168 `a2a90824`, T-1169 `fab25fe3`, T-1170 `41a0a378`, T-1171 `6ca5a58d`, T-1174 `15460be9`. The recorded plan shows 5/5 and affected/after-stage. T-1174's web-edge and daemon code ran through sealed scratch hubs at S; the live hub's older code is outside scope. Source/name checks at S found all 71 current required names; the brief's quoted historical inline-card name is explicitly a rename, not an additional requirement.
+
+All 24 named files executed once, serially, on local Darwin arm64 with Node v24.21.0 and the pinned Chrome Headless Shell, using `node --test --test-concurrency=1 --test-reporter=tap`. They passed **187/187**, with zero failures, cancellations, skips or todos. Every required name appears on a passing test line. Counts are observed totals, not the brief's orientation counts: Withdraw is 8 tests at S. The independent probe adds 1/1, for **188/188 local TAP tests**. Its TAP receipt establishes completion and cleanup only; `E419S2-14-assessment.txt` separately judges all 27 emitted fact groups. No product command was rerun.
+
+The unchanged probe independently confirms: stubbed badge clear/1/clear; project-named manifest and token-derived colours; four served PNG signatures/dimensions; installed-start routing after saved Sessions; executable QR decode and fresh loopback sign-in with the 30-day cookie (credentials masked); ask header, 48px options, viewport-following 44px focused options, decline delivery, no accidental answer, peer settlement and thread Answer; full approval subject and native/archive outcomes, optional denial notes, no accidental answer, TUI-only marks; both Back paths, read-only item card with retained position, two-line runs and stable expansion, sandboxed full-screen HTML, 390px layout; two-row touch composer, all Return chords as newline, exact sent content/kind/address, inline kind group, queued Withdraw and reload draft; desktop controls at 1440 and 640px. The long approval subject requires internal scrolling before tapping its actions; initial button coordinates are retained and are not claimed as viewport containment. Named tests also exercise the full change and competing winner paths.
+
+Supporting screenshots from the named tests are retained under `screenshots/`: phone-thread.png, phone-item-card.png and phone-composer.png. They are Headless Shell fixture captures, not real-browser receipts. Real Chrome, installation prompts, a real phone or keyboard, a real badge/notification, and tunnel access are out of scope.
+
+Isolation and checks: clean detached worktree, permitted root node_modules symlink, scratch HOME/XDG/Git, full fixtureEnvironment applied after overlays, 37 inherited names unset and zero credential-prefix names. System macOS TMPDIR retained. Runtime waited for Coordinator cover `be3e5c91` to release the local slot and checked admission before every file; the probe's queue was empty and its CPU samples were 87.12% and 93.9% idle. These checks have no speed criterion. Typecheck found zero diagnostics; HTML/colour/hooks guards and all 23 text tokens at least 4.5:1 passed; tier lint and all seven expected classifications passed. Static PNG correction is the only brief deviation. An initial recording wrapper used the wrong directory and failed before launching the recorder; the corrected recording invocation appended each row once, without rerunning checks. `recorded-cases.jsonl` contains exactly 18 unique PASS rows.
+
+Cited Coordinator stage covers at S and verification tree `8beb3c7fdfab87a01c1eec5a3cfe37e3f0e55212` (QA submitted no suite):
+
+- **Linux droplet d55fd671-d16e-4084-8ece-7f91e0cdee67**: merged log **A-10182**, shard logs **A-10183** and **A-10184**. Full stage, host `npm run check`, T1/T2/T3/T4/Web completed, exit 0; 4068 tests, 4060 pass, 8 platform/prerequisite skips, zero fail/cancel/todo. Linux x64 6.8.0-142-generic, Node 24.21.0, Neovim 0.12.5, two c-8 lon1 shards, two workers. Shard 1 `cland-v0-bcdfefcf`: 1178.18 s admission through remote finish, lifetime 1158 s, $0.0804, collection 20.78 s. Shard 2 `cland-v0-afa73211`: 969.18 s admission through remote finish, lifetime 961 s, $0.0667, collection 47.68 s. Overall measured wall **1199.26 s**, admission through collection; total **$0.1471**. Web allocated to shard 1: 40 files / 208 named tests, 128.09 s shard execution; shard 2's Web command has no allocated files.
+- **macOS local be3e5c91-907d-4e81-9af2-ff8ccf195f32**: **A-10186**. Full stage check and T1/T2/T3/T4/Web exit 0; **4068/4068**, no skips/failures/cancellations/todos. Darwin arm64 27.0.0, Node 24.21.0, Neovim 0.12.5, two workers. Phase command durations 33/184/922/48/95 s. Queued 18:39:08.819Z through durable publication 19:00:56.114Z is **1307.295 s**, including collection/publication, not pure execution wall. Local cost N/A. Web 40 files / 208 named tests, 92.78 s shard execution.
+
+Both covers run T4's ten base files; extra repetitions were skipped. Lint, duration budgets and T3 ratchet are **report-only**: 132 lint findings in 59 files, five missing duration baselines, reported budget/projection overages retained. Projections are not measured wall times. Cited receipts and extracted metric lines retain the evidence and durable log paths.
+
+Final plan line: `# asks, threads, the composer and install: open; stage cover complete (Linux droplet, macOS); tree 8beb3c7fdfab87a01c1eec5a3cfe37e3f0e55212`. It awaits this verdict. Final detached HEAD and dev still equal S, with zero changed paths. All 122 fixture-owned Web census lines end `after 0; scratch hub stopped`; hub T1/T2 logs correctly have no browser census. Scratch `/private/tmp/qa-e419s2-hrQFx5` was removed by verified literal, non-force `rm -r`. Worktree removal follows publication/verdict, as the brief prescribes.
+
+The project-rule proposal—decode binary fields using the pinned runtime rather than parse platform-specific command formatting—was logged by the Coordinator in topic-896.
+
+Durable evidence A-10188: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10188-e-419-stage-2-at-4b294347-all-18-cases-pass-188-local-tests-and-green-stage-cove/report.md

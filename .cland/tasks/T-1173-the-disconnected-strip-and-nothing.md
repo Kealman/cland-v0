@@ -3,7 +3,7 @@ id: T-1173
 kind: task
 title: The disconnected strip and nothing queued
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:04.276Z
-updated: 2026-10-23T07:00:04.276Z
+updated: 2026-10-23T19:06:53.363Z
 ---
 
 ## Summary

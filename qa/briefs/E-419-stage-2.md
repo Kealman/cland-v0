@@ -747,7 +747,7 @@ k02() {   # QA shell: the sheet seam, the thread screen, the approvals, the touc
   c web/src/Shell.tsx "typeof navigator.setAppBadge !== 'function'"
   c web/test/harness.ts "cliLink?: boolean | 'qr'"
   ls "$W"/web/public/icons/
-  for p in icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png; do f="$W/web/public/icons/$p"; [ -f "$f" ] && printf '%s %sx%s\n' "$p" "$(od -An -tu1 -j16 -N4 "$f" | awk '{print $1*16777216+$2*65536+$3*256+$4}')" "$(od -An -tu1 -j20 -N4 "$f" | awk '{print $1*16777216+$2*65536+$3*256+$4}')"; done
+  for p in icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png; do f="$W/web/public/icons/$p"; [ -f "$f" ] && node -e 'const fs=require("fs"),b=fs.readFileSync(process.argv[1]);console.log(process.argv[2]+" "+b.readUInt32BE(16)+"x"+b.readUInt32BE(20))' "$f" "$p"; done
   echo "-- colour values outside tokens.css in the stage's sources"
   git -C "$W" grep -n -E "#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(" -- web/vite.config.ts web/index.html web/src/BottomSheet.module.css web/src/PhoneTopicThread.module.css web/src/Composer.module.css web/src/ApprovalCard.module.css web/src/AskCard.module.css web/src/Thread.module.css web/src/TopicsArea.module.css web/src/MessageBlock.module.css web/src/artifacts/InlineArtifact.module.css web/src/InboxArea.module.css
   echo "-- probe selectors (each count at least 1)"; for a in data-bottom-sheet data-ask-open data-ask-outcome data-ask-send data-ask-decline data-approval-choice data-approval-outcome data-phone-thread data-run-anchor data-artifact-viewer data-phone-composer data-delivery-stage data-inbox-archive-toggle; do printf '%s %s\n' "$(git -C "$W" grep -c -F -- "$a" -- web/src | awk -F: '{n+=$2} END {print n+0}')" "$a"; done
