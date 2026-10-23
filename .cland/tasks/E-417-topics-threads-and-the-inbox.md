@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-866
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-22T23:07:34.497Z
+updated: 2026-10-23T02:33:00.313Z
 ---
 
 ## Summary
@@ -130,6 +130,7 @@ stages:
         - T-1124
         - T-1125
         - T-1126
+      - - T-1161
   - name: events, notifications and approvals
     qa:
       scope: affected
