@@ -2,7 +2,8 @@
 id: E-414
 kind: epic
 title: The approvals relay
-state: open
+state: closed
+criterion_seq: 7
 labels:
   - epic
   - v0.2
@@ -14,7 +15,8 @@ blocked_by:
 topic: topic-862
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-23T06:13:48.496Z
+updated: 2026-10-23T06:36:14.642Z
+closed: 2026-10-23T06:36:14.642Z
 ---
 
 ## Summary
@@ -62,12 +64,19 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project with the fake harnesses, QA launches a fake Codex session with approvals on, a fake OpenCode session and a fake Claude Code session, each made to ask for approval of a command. A frame client reads three records in the snapshot: the Codex and OpenCode ones with their choices, the Claude Code one marked to answer in Neovim. QA approves the Codex command once and reads that the fake ran it; it denies the OpenCode permission with a note and reads the note in the fake's reply. Two frame clients answer a fourth request at once: one wins, the other is refused naming the winner, and both read the same outcome. QA answers a fifth request through the fake's own TUI path and reads the record closed with that outcome. QA restarts the hub with a request pending and reads its record rebuilt. In the headless Neovim workbench the inbox shows the same records and approves a sixth request on its key. `cland inbox` prints the approvals with their outcomes.
 
 - [ ] C1. An approval has one record in the hub with the session, the harness, the command or change in full, the choices and its state, carried in the snapshot and the deltas.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T06:35:53.789Z · commit c3752bf019169533173a91dc6cff9cae7b7b0237
 - [ ] C2. Codex app-server approvals and OpenCode permission requests are answered through the hub with Approve once, Always for this command or Deny with a note, and an answer in the harness's own TUI closes the record.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T06:35:53.789Z · commit c3752bf019169533173a91dc6cff9cae7b7b0237
 - [ ] C3. Claude Code's approvals stay in its TUI, and their records say so, so that the web marks them "answer in Neovim".
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T06:35:53.789Z · commit c3752bf019169533173a91dc6cff9cae7b7b0237
 - [ ] C4. The first answer from any client wins, a later one is refused naming who answered and when, and every client sees the outcome.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T06:35:53.789Z · commit c3752bf019169533173a91dc6cff9cae7b7b0237
 - [ ] C5. Nothing answers an approval on a timer or by default, and pending records survive a hub restart.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T06:35:53.789Z · commit c3752bf019169533173a91dc6cff9cae7b7b0237
 - [ ] C6. Neovim's inbox shows the same records and answers a relayed approval on its keys.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T06:35:53.789Z · commit c3752bf019169533173a91dc6cff9cae7b7b0237
 - [ ] C7. `hub/README.md`, `nvim/README.md` and the adapters' capability table describe the relay and the gate.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T06:35:53.790Z · commit c3752bf019169533173a91dc6cff9cae7b7b0237
 
 ## Dogfooding
 
@@ -292,3 +301,89 @@ Both Coordinator-owned stage covers passed at 3609042ab7681b93fee33b59bd95d6a177
 All 17 scoped rows PASS. Stage verdict only, no epic criterion marks. Epic Definition-of-done demo remains separate. Scratch cleanup completed; detached worktree removed after verdict.
 
 Durable evidence A-9865: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9865-e-414-races-and-restarts-17-pass-at-3609042a-both-covers-green/report.md
+
+### hub · 2026-10-23T06:15:10.832Z
+
+demo 54bfac09-2455-4e8c-9d55-ebfd04cade4b created: droplet cland-v0-54bfac09, commit c3752bf019169533173a91dc6cff9cae7b7b0237, deadline 2026-10-23T07:28:56.460Z.
+
+### hub · 2026-10-23T06:26:00.443Z
+
+demo 54bfac09-2455-4e8c-9d55-ebfd04cade4b destroyed: lifetime 709624 ms; cost $0.0493.
+
+### qa-676 · 2026-10-23T06:35:53.790Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-dod-2026-10-23-1
+commit: c3752bf019169533173a91dc6cff9cae7b7b0237
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Where | Result | Evidence |
+| --- | --- | --- | --- |
+| E414D-00 | local | PASS | E414D-00.txt |
+| E414D-01 | local | PASS | E414D-01-epic.json, E414D-01-children.txt, E414D-01-plan.json |
+| E414D-02 | droplet | PASS | E414D-02.json |
+| E414D-03 | droplet | PASS | E414D-03-output.txt, E414D-03-local.sums, E414D-03-remote.sums |
+| E414D-04 | droplet | PASS | E414D-04.txt |
+| E414D-05 | droplet | PASS | E414D-05.txt |
+| E414D-06 | droplet | PASS | E414D-06.txt |
+| E414D-07 | droplet | PASS | E414D-07.txt |
+| E414D-08 | droplet | PASS | E414D-08.txt |
+| E414D-09 | droplet | PASS | E414D-09.txt |
+| E414D-10 | droplet | PASS | E414D-10.txt |
+| E414D-11 | droplet | PASS | E414D-11.txt |
+| E414D-12 | droplet | PASS | E414D-12.txt |
+| E414D-13 | droplet | PASS | E414D-13.txt |
+| E414D-14 | droplet | PASS | E414D-14.txt |
+| E414D-15 | droplet | PASS | E414D-15.txt |
+| E414D-16 | droplet | PASS | E414D-16.txt |
+| E414D-17 | droplet | PASS | E414D-17.txt |
+| E414D-18 | droplet | PASS | E414D-18.txt |
+| E414D-19 | droplet | PASS | E414D-19.txt, E414D-19w.txt |
+| E414D-20 | local | PASS | E414D-20.txt, E414D-20-output.txt, E414D-20-section.txt |
+| E414D-21 | droplet | PASS | E414D-21.txt, E414D-21-output.txt |
+| E414D-22 | local | PASS | E414D-22.json, E414D-22-dev.txt |
+| E414D-23 | local | PASS | E414D-23.json, E414D-23-after.json, E414D-23-comments.txt |
+| E414D-COVER | local macOS receipt audit; Linux x64 droplet cover | PASS | E414D-COVER.txt, E414D-COVER-admission.txt, A-9878-suite-3d1caba9-f7e2-4ccb-a2fc-bfd3b2751604-all-at-19d843d.log, A-9879-suite-3d1caba9-f7e2-4ccb-a2fc-bfd3b2751604-shard-1-at-19d843d.log, A-9880-suite-3d1caba9-f7e2-4ccb-a2fc-bfd3b2751604-shard-2-at-19d843d.log |
+
+E-414 Definition of done, run qa-dod-2026-10-23-1. All scoped checks PASS; clear QA verdict verifies C1,C2,C3,C4,C5,C6,C7.
+
+Tested source: c3752bf019169533173a91dc6cff9cae7b7b0237. Cover submitted from clean root dev matching fetched origin/dev at 19d843dcc9f685a7ee910b5a0af870169579ec40, tracker-only E-414 hold change; authorized by Coordinator 4add1852. All seven children and three stages closed. Criteria C1–C7 read unchanged.
+
+25 scoped rows PASS, including E414D-COVER. The walkthrough produced three exact approval records, headless Web TUI marking, Codex Once/Always, OpenCode Deny with note, native TUI outcomes, 301s unchanged waiting record, one headless Neovim workbench, native-validated pending rebuild after restart, and CLI agreement on all 11 archived outcomes. All privacy/fallback/failure scans 0.
+
+Race E414D-11: the local Once answer won via neovim at 2026-10-23T06:17:51.594Z. Clients released 1ms apart; both read the same single outcome; losing web Deny and late answer refused with identical attribution, one native accept and no losing note.
+
+Supporting tests at S on Linux x86_64 droplet, Node v24.21.0 and Neovim v0.12.5: 78 hub tests + 22 Neovim tests + 2 named Web tests = 102/102, with no failures/skips/cancellations. Live Neovim walkthrough separately 1/1; no retries. approval-restart named test measured 12193.418633ms (report-only; no speed claim). Full epic occasion completed green; details below.
+
+C7 documentation: all 30 required statements present; both stale statements absent. Full section and capability/key text read and consistent with the walkthrough. T-1162 remains an explicit out-of-scope Codex protocol limitation.
+
+Demo lease 54bfac09-2455-4e8c-9d55-ebfd04cade4b, machine cland-v0-54bfac09, deadline 2026-10-23T07:28:56.460Z, confirmed destroyed: 709624ms lifetime, $0.049279444444444445. 67 fixture PIDs checked with no survivors; all three sessions and hub stopped; 95 captures pulled; scratch removed. Local read-only checks have no droplet cost.
+
+Coordinator e03d016d authorized cleanup/freshness/stop before cover completion to avoid idle lease cost. Initial and final freshness current:true; E414D-22-final.json was read after the cover at 06:35Z before recording the verdict. Original ordering deviation retained here.
+
+QA probe limitation: E414D-23-output.txt retains the wrapper error that a generated E414D-23.sh file was missing. No product command ran in that attempt. The exact committed stop/status/comment commands were then invoked directly once; E414D-23.json and comments prove release. This was a launcher correction, not a product failure or repeat. E414D-07 and -17 exit 1 comes from the final expected no-match grep; their asserted counts are all correct.
+
+Screenshots D08-cx/oc/cc.png inspected: relay choices and Claude Answer in Neovim are visible. Five Neovim screens and nv-facts.jsonl retained alongside raw transcripts and test TAP logs.
+
+Findings: none. Rule proposal to reserve clean-root cover admission with the hold was accepted for the Coordinator list.
+
+
+Epic suite 3d1caba9-f7e2-4ccb-a2fc-bfd3b2751604 at 19d843dcc9f685a7ee910b5a0af870169579ec40: full T1–T4 and Web, exit 0, 3975 tests / 3967 pass / 0 fail / 8 skipped / 0 cancelled / 0 todo. This is an actual Linux x64 droplet run (kernel 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, two workers per shard). T4 ran its 10 files in the base phase only; repetitions skipped. Lint, duration budgets and T3 ratchet were report-only: 132 lint findings in 59 files and reported timing overruns do not establish enforced budget compliance. No projection is used as wall time.
+
+| Receipt | Machine | Admission through remote finish | Collection | Billed lifetime | Cost |
+| --- | --- | --- | --- | --- | --- |
+| A-9879 shard-1 | cland-v0-63232034, c-8 lon1 | 1185.34 s | 28.20 s | 1179 s | $0.0819 |
+| A-9880 shard-2 | cland-v0-b69fd0cd, c-8 lon1 | 1023.34 s | 19.11 s | 1008 s | $0.0700 |
+
+Merged log A-9878 and both shard logs confirm exit 0 and Web phase exit 0. Overall suite wall from admission through final collection: 1213.79 s. Suite total cost: $0.1519. Demo plus suite cost: approximately $0.20118; their wall intervals overlap and are not summed. Logs have durable paths in E414D-COVER.txt.
+
+Criterion marks: C1 (records/snapshot/deltas/CLI); C2 (native relay/TUI/Neovim/restart); C3 (Claude TUI-only, Web and Neovim marking); C4 (single winner and shared attribution); C5 (301s pending, 24h fake-time test, native rebuild); C6 (headless Neovim keys and supporting tests); C7 (30 required doc statements and two stale statements absent). Every mapped check in the committed brief passed. No criterion is deferred.
+
+Pending evidence A-9875 remains historical; this report adds the epic receipt and final freshness. The QA hold is released by the verdict; the detached worktree is removed after successful recording. The Coordinator owns epic closure.
+
+Final evidence: A-9882, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9882-e-414-dod-at-c3752bf0-25-pass-green-epic-cover-c1-c7-clear/report.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
