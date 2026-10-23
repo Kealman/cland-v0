@@ -2,8 +2,8 @@
 id: T-1122
 kind: task
 title: Ask cards in the thread and the inbox on one record
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-884
 branch: t/T-1122-ask-cards-in-the-thread-and-the-inbox-on
 created: 2026-10-22T15:16:13.408Z
-updated: 2026-10-23T02:01:32.179Z
+updated: 2026-10-23T02:24:58.578Z
+closed: 2026-10-23T02:24:58.578Z
 ---
 
 ## Summary
@@ -144,3 +145,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-1122 · 2026-10-23T02:01:32.179Z
 
 Ready at unchanged e1681f19f49aa720ee66136906ede152ce8a95b0. Hub status ready; C1–C5 verified; final Reviewer clear/no findings A-9760. Same-head 622dd4fb/A-9759 green 2639/2639, Linux x64 droplet c-8 lon1 actual T1/all fallback hub+Neovim T2/Web; T3/T4 absent, host check reused, generic diagnostics report-only. Largest new passing Web case 2.831s; no allowance. Final origin/dev d32c6a8f conflict check clean with identical resulting tree; source head/worktree unchanged. Provenance A-9761. Reported ready to Coordinator; claim retained, no merge during freeze and no local tests during cover-quiet. After-stage QA separate.
+
+### coord · 2026-10-23T02:24:58.578Z
+
+Merged 269ea26fa7a4ce99677ce330fba498d61dd0aa78 onto dev.

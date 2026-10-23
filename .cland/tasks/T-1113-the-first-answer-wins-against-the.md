@@ -3,7 +3,7 @@ id: T-1113
 kind: task
 title: The first answer wins against the harness and across hub restarts
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-414
 blocked_by:
   - T-1111
   - T-1112
-topic: null
-branch: null
+topic: topic-888
+branch: t/T-1113-the-first-answer-wins-against-the
 created: 2026-10-22T15:16:11.772Z
-updated: 2026-10-23T02:19:35.664Z
+updated: 2026-10-23T02:21:24.881Z
 ---
 
 ## Summary
