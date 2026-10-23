@@ -2,8 +2,8 @@
 id: T-1185
 kind: task
 title: "Version bump: the root package.json and lockfile at 0.2.0"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-921
 branch: t/T-1185-version-bump-the-root-package-json-and
 created: 2026-10-23T21:24:13.344Z
-updated: 2026-10-23T21:50:28.694Z
+updated: 2026-10-23T21:55:20.287Z
+closed: 2026-10-23T21:55:20.287Z
 ---
 
 ## Summary
@@ -157,3 +158,7 @@ Standards: 0 findings. Spec: 0 findings.
 Durable final review: A-10260.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-23T21:55:20.287Z
+
+Merged 4db0183ad18670bf2168d0dd1c91607ce398027a onto dev.
