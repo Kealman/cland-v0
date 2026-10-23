@@ -3,7 +3,7 @@ id: T-1113
 kind: task
 title: The first answer wins against the harness and across hub restarts
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-888
 branch: t/T-1113-the-first-answer-wins-against-the
 created: 2026-10-22T15:16:11.772Z
-updated: 2026-10-23T03:07:46.981Z
+updated: 2026-10-23T03:42:27.388Z
 ---
 
 ## Summary
@@ -39,14 +39,15 @@ When the hub restarts, the records of pending requests come back with the same i
   - done: impl-1113 · 2026-10-23T02:47:21.688Z
 - [x] C2. When an OpenCode reply is refused as not found because the TUI answered first, the record closes with the TUI's reply, never with the hub's choice (test).
   - done: impl-1113 · 2026-10-23T02:47:21.782Z
-- [ ] C3. A hub restarted with one pending Codex request, one OpenCode request and one Claude Code request serves the three records with their ids, and an Approve once after the restart reaches the Codex request (test).
-  - failed: rev-23 [reviewer] · 2026-10-23T03:00:34.303Z · note Restored OpenCode hub choices/subject remain answerable before replay validation and after a TUI-only fallback.
+- [x] C3. A hub restarted with one pending Codex request, one OpenCode request and one Claude Code request serves the three records with their ids, and an Approve once after the restart reaches the Codex request (test).
+  - done: impl-1113 · 2026-10-23T03:29:51.111Z
 - [x] C4. After a restart, a request answered in the harness while the hub was down reads as closed with the harness's outcome (test).
   - done: impl-1113 · 2026-10-23T02:58:12.995Z
 - [x] C5. A closed record's outcome is in the inbox archive after a restart (test).
   - done: impl-1113 · 2026-10-23T02:47:22.102Z
 - [x] C6. `hub/README.md` describes the race with a harness's TUI and how records are rebuilt after a restart (docs).
   - done: impl-1113 · 2026-10-23T02:47:22.174Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1113-source-3 · 2026-10-23T03:31:39.526Z · commit f9e3a8f518e971c012d91e31e1dcba8e8eee569c
 
 ## Comments
 
@@ -91,3 +92,26 @@ Criteria: C3 failed (Restored OpenCode hub choices/subject remain answerable bef
 ### impl-1113 · 2026-10-23T03:07:46.981Z
 
 M3 uncommitted correction in progress; native held/malformed/reconnect authorization regression red→green before cover-quiet, both native files and hub typecheck passed on working tree. One additional gate failure-reset/interleaving regression is written but unrun in approval-records.test.ts; implementation awaits its red receipt. Local tests paused under Coordinator 897deb12 (macOS E-417 stage cover), all had exited before notice. No configured verification/source re-request/new head. Resume after cover-quiet lifted, complete red/green, commit/push, fresh source review.
+
+### impl-1113 · 2026-10-23T03:30:53.896Z
+
+M3 final correction at f9e3a8f518e971c012d91e31e1dcba8e8eee569c (M3 commit 1b186a57 + Coordinator c3ee498d-authorized merge of origin/dev 4d6ab58c). A-9794 explains native validation, refreshed authorization at stable id/since and reservation-preserving failure reset. Exact-head local raw folder A-9796: check exit0; 104/104 targeted tests, zero fail/cancel/skip (T2 native28+30, records19, T3 restart1/contracts12+14); restart identity 5.964156 s on Darwin arm64. Lint report-only 132 findings/59 files, 0 refusals. No tests during cover-quiet. All criteria claimant done, fresh source review pending. No configured verification claimed.
+
+### rev-23 · 2026-10-23T03:31:39.526Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1113-source-3
+commit: f9e3a8f518e971c012d91e31e1dcba8e8eee569c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear, C6 docs verified; C1–C5 runtime pending. A-9797: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9797-t-1113-corrected-source-clear-at-f9e3a8f5.md. M1/M2 child-owner recovery/exact native-ready receipt retained. M3 fixed by current reported/hub eligibility, invalidation per fresh lookup, superseded-generation guard and validated public-field rebuild preserving id/since/answering reservation. Failed answer resets to latest fields; public held/malformed/changed-valid replay and fake-adapter failure-reset regressions retain no-endpoint-call assertions. Accepted Codex observable boundary and explicit limitation unchanged. Directed dev merge adds tracker/duration only. Corrected exact-head local checks/targeted collection still pending at request, not claimed passing. After local check completes, proceed with exact-head mode-free run and authorized Coordinator T3 coverage; final evidence/after-stage QA separate.
+
+Criteria: C6 verified.
+
+### impl-1113 · 2026-10-23T03:42:27.388Z
+
+Configured mode-free bbc3522f/A-9801 green at unchanged source-clear f9e3a8f5: Linux x64 c-8 lon1 droplet, Node24.21.0/Neovim0.12.5, T1/all-T2 both-package fallback/Web, 2645 pass, zero fail/cancel/skip. Host typecheck gate reused, not remotely repeated; lint/duration report-only and Web over-budget diagnostics retained. Machine lifetime537s/cost$0.0373; no projection substituted for wall time. This receipt supplies no T3. Coordinator 204ee629 schedules unchanged-head authorized all/T3 after T-1094's current run; head held, no new source edits. Final evidence/ready awaits that receipt and Reviewer settlement; after-stage QA separate.
