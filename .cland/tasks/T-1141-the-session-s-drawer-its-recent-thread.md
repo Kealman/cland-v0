@@ -3,7 +3,7 @@ id: T-1141
 kind: task
 title: "The session's drawer: its recent thread, pending approval and a composer"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -16,10 +16,10 @@ blocked_by:
   - T-1124
   - T-1129
   - T-1110
-topic: null
-branch: null
+topic: topic-904
+branch: t/T-1141-the-session-s-drawer-its-recent-thread
 created: 2026-10-22T15:16:16.460Z
-updated: 2026-10-23T02:19:51.220Z
+updated: 2026-10-23T10:24:08.162Z
 ---
 
 ## Summary
@@ -44,3 +44,9 @@ E-418 (§3.2 the drawer, P23; tracer step 4). Ordered after E-417's thread, comp
 - [ ] C3. A message from the drawer's composer reaches the fake session in its item's topic, or in General without one, as the fake receives it (Web test with the fake harness).
 - [ ] C4. Enter on a desktop row and Open thread move focus to the drawer's thread (Web test).
 - [ ] C5. `web/README.md` describes the session's drawer (docs).
+
+## Comments
+
+### impl-1141 · 2026-10-23T10:24:08.162Z
+
+Implementation/test seams recorded as A-9974 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9974-t-1141-implementation-and-test-seams.md). Initial build passed on local macOS arm64 at 4624720e. Awaiting T-1129 landing before code; subscribed to its item event. Existing session.history has numeric before paging; no protocol expansion anticipated.

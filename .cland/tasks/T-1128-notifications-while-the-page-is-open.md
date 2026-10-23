@@ -2,8 +2,8 @@
 id: T-1128
 kind: task
 title: Notifications while the page is open
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-900
 branch: t/T-1128-notifications-while-the-page-is-open
 created: 2026-10-22T15:16:14.550Z
-updated: 2026-10-23T09:39:23.615Z
+updated: 2026-10-23T09:56:29.837Z
+closed: 2026-10-23T09:56:29.837Z
 ---
 
 ## Summary
@@ -34,12 +35,16 @@ E-417 (§3.6 notifications; choices "Needs you and finished" and "The switches a
 
 - [x] C1. With the page hidden and "needs you" on, a new ask raises one notification naming the session, the item and the question, and its click opens the inbox row (Web test).
   - done: impl-1128 · 2026-10-23T09:28:29.348Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1128-final · 2026-10-23T09:51:56.374Z · commit 1a6eb9a2f20c87bfbeb1bd8132285bc98dd2e818
 - [x] C2. With the page visible and focused, or with "needs you" off, a new ask raises none, and a watch-layer event never raises one (Web test).
   - done: impl-1128 · 2026-10-23T09:01:33.622Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1128-final · 2026-10-23T09:51:56.374Z · commit 1a6eb9a2f20c87bfbeb1bd8132285bc98dd2e818
 - [x] C3. With "finished" on and the page hidden, a now-layer task reaching done raises one notification whose click opens the item's card (Web test).
   - done: impl-1128 · 2026-10-23T09:01:33.843Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1128-final · 2026-10-23T09:51:56.374Z · commit 1a6eb9a2f20c87bfbeb1bd8132285bc98dd2e818
 - [x] C4. The switches are palette actions kept per browser across a reload, and the permission is requested only when the first switch is turned on (Web test).
   - done: impl-1128 · 2026-10-23T09:01:33.993Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1128-final · 2026-10-23T09:51:56.374Z · commit 1a6eb9a2f20c87bfbeb1bd8132285bc98dd2e818
 
 ## Comments
 
@@ -131,3 +136,42 @@ Regression: existing secondary-active/open-palette hidden-ask case installs and 
 Evidence limits: A-9939 reports two deterministic red focus timeouts after row mount, corrected 665.7ms green, full npm run check and 46 core targeted tests passing locally on Darwin arm64 Node v24.21.0. These are implementer-retained precommit working-tree summaries; no raw standalone stdout is embedded in that note and no configured same-head green receipt exists yet. The exact scheduling order of the failed Linux run is not claimed; the remote trace was not examined. Original stdout/exits/timings should be preserved from tool records without transcription reruns. The failed A-9938/4a75682d evidence remains failed, recorded in A-9940.
 
 Proceed with fresh mode-free verification at this exact head after refreshing the historical C1 done mark; inspect actual passing new Web samples for the launch allowance rule. No criterion is verified from source alone here. Reviewer ran no tests or browser. After-stage QA remains separate.
+
+### rev-23 · 2026-10-23T09:51:56.374Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1128-final
+commit: 1a6eb9a2f20c87bfbeb1bd8132285bc98dd2e818
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1128 final evidence review
+Head 1a6eb9a2f20c87bfbeb1bd8132285bc98dd2e818 / tree b21a62a8ebb25f972290bcad20e184fe66121b01; branch tip remains identical.
+Run rev-20261023-1128-final. Clear; findings []; verified C1,C2,C3,C4.
+
+Standards: source review A-9941 carries forward unchanged, including bounded exact mounted-id/focus regression and preserved T-1143 integration. Coordinator 0df57648 explicitly classified the prior composer reconnect failure as shared T-1178 and authorized this single unchanged mode-free retry. Historical A-9938 remains failed focus evidence; A-9942 remains failed composer evidence. A-9943 and its topic report preserve that latter audit; no historical task.comment retry is attempted after its rejected empty failed-marks payload, per 2b77eabb disposition.
+
+Spec/criterion mapping:
+C1 verified: hidden Now ask yields one coord/T-900001/question notification with exact tag; click from active secondary pane/open palette reveals exact Inbox row and focuses it with browser animation paused. Mounted id, final focus, question and count assertions pass.
+C2 verified: visible+focused, disabled and Watch asks stay silent without later replay; task layer-demotion case also suppresses a later Finished notification, using prior task layer.
+C3 verified: hidden Now task completion emits once and opens its exact card, including split/palette path.
+C4 verified: state persists across reload and tabs; permission occurs only on first enabling gesture; denied/revoked permission disables switches with explanatory tooltip.
+
+Configured mode-free run 1cf81c81-ff1b-4257-8e28-996a9dee3661 / A-9948 exits0 at the exact source-reviewed head. Raw progress audit:2706/2706 ordinary tests and402/402 file records pass, no fail/skip/cancel. Additional pure notification load-gate20/20: exactly5 repetitions for each of four identities. Actual phases T1, fallback all T2 across hub+Neovim and complete Web all exit0; T3/T4 not executed, T3 deferred by configured task policy. Host gate46a1f445ae6962ffd9525078c599226dd05e7f09 reused, not repeated remotely. Executor Linux x64 c-8 lon1 cland-v0-71d6a888, Node24.21.0/Neovim0.12.5, workers2/Web4; lifetime538s/$0.0374.
+
+All eight notification tests pass; native durations seconds:
+hidden ask/focus2.205099131; switches1.917838165; looking/off/watch1.633552088; denial1.649733151; Finished/card1.464694253; revocation1.199306303; cross-tab1.627251788; pre-transition-layer1.146146106.
+All below4s, so no allowance is triggered. Earlier passing same-head A-9942 maximum2.407671877 also stays below4s. The failing old8.524s was never used for an allowance. Previously failing composer reconnect now passes1.903486497s; all eight composer cases pass.
+
+Retained report-only diagnostics: generic duration/test-lint/tier/ratchet warnings and four missing baselines. Web phase100.87s is actual execution duration and exceeds40s in report mode; projected95.162s at2workers is not measured wall time. No clean-budget or integration/T3 coverage claim.
+
+Reviewer performed only read-only source/log/identity inspection, no tests/browser or Git mutations. After-stage affected QA remains separate. Final clear at this head; no merge performed by Reviewer.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-23T09:56:29.837Z
+
+Merged 68209237b8d1cd6ea5ed20ffcd9abb606eed8799 onto dev.
