@@ -78,7 +78,7 @@ test('agent clear reports retain target navigation in their one-row summary', as
   });
 });
 
-test('whole item links navigate without wrapping and posted or attached artifacts stay chips', async t => {
+test('whole item links navigate without wrapping and posted or attached files and folders stay chips', async t => {
   const fixture = await webFixture(t, { prepare: async root => {
     await seedItem(root, 'T-900001', 'task', 'Linked message item');
     await seedItem(root, 'E-900002', 'epic', 'Linked message epic');
@@ -86,7 +86,7 @@ test('whole item links navigate without wrapping and posted or attached artifact
   const ui = await connectUi(t, fixture.hub.discovery);
   assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'Open T-900001 and E-900002; Z-42 stays text; `T-900001` stays code.' })).ok, true);
   const artifacts: Artifact[] = [];
-  for (const [kind, title, folder, content] of [['file', 'Receipt file', false, 'Receipt bytes'], ['note', 'Receipt folder', true, 'Folder entry'], ['page', 'HTML preview', false, '<h1>Artifact HTML</h1>']] as const) {
+  for (const [kind, title, folder, content] of [['file', 'Receipt file', false, 'Receipt bytes'], ['note', 'Receipt folder', true, 'Folder entry']] as const) {
     const made = await ui.request({ type: 'artifact.create', topic: 'general', kind, title, folder, content });
     assert.equal(made.ok, true, made.error);
     artifacts.push((made.value as { artifact: Artifact }).artifact);
@@ -100,7 +100,7 @@ test('whole item links navigate without wrapping and posted or attached artifact
       assert.ok((await chip.innerText()).includes(artifact.title));
       if (artifact.folder) assert.match(await chip.innerText(), /folder/);
     }
-    assert.equal(await thread.locator('iframe').count(), 0, 'HTML remains a chip until the inline slice');
+    assert.equal(await thread.locator('iframe').count(), 0, 'files and folders remain chips');
     const attached = thread.locator('article').filter({ hasText: 'Attached receipts' });
     const rendered = attached.locator('[data-artifact-id]').nth(1).waitFor(); void rendered.catch(() => {});
     assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'Attached receipts', artifacts: artifacts.slice(0, 2).map(row => row.id) })).ok, true);

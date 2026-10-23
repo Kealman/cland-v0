@@ -103,6 +103,17 @@ marks read the hub's structured facts; legacy agent verdicts retain the first-li
 convention. A clear verdict stays on one row. `Thread.tsx` inserts local-day
 separators without changing message ids or the scrolling anchor.
 
+Page artifacts in a thread use `artifact.url` from the authenticated browser
+connection. HTML renders at 240 px in the shared `SandboxedArtifactFrame`, with
+`sandbox="allow-scripts"` alone. Its header names the artifact; Open full follows
+that capability address in a new tab without an opener, and Open in a pane opens
+the artifact at full height beside the thread. This also works for artifacts older
+than the loaded inventory page: their thread metadata is a viewer-only fallback,
+kept out of the authoritative inventory and its counts. Files and folders remain chips; an unavailable
+page remains a chip with the serving reason in its tooltip. A HEAD request checks
+availability and HTML type before embedding. Disconnected pages fall back to
+chips; reconnect mints a fresh capability.
+
 The thread groups only messages carrying the hub's `runId`, using the supplied
 `ThreadRun.foldLine` verbatim. A click, Enter or `za` opens or closes the run in
 place; its anchor keeps its viewport position and stays pinned at the top while
@@ -739,6 +750,7 @@ node --test web/test/items-order.test.ts # rank-event cache invalidation on a mi
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Markdown, item links and chips
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
+node --test web/test/thread-artifacts.test.ts # HTML capability frames, sandbox isolation and opening actions
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```
 

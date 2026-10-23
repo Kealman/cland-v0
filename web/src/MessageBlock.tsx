@@ -1,6 +1,8 @@
 import type { TopicMessage } from '../../shared/wire/index.ts';
 import { ItemText } from './ItemText.tsx';
 import { MarkdownBody } from './MarkdownBody.tsx';
+import type { ConnectionState } from './connection.ts';
+import { InlineArtifact } from './artifacts/InlineArtifact.tsx';
 import s from './MessageBlock.module.css';
 
 const roles: Record<string, string> = { human: 'Human', aide: 'Aide', coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', hub: 'Hub', other: 'Other' };
@@ -13,7 +15,7 @@ function verdictOf(message: TopicMessage): { kind: string; result: 'clear' | 'no
   if (match) return { kind: match[1]!, result: match[2] as 'clear' | 'not clear' };
 }
 
-export function MessageBlock({ message }: { message: TopicMessage }) {
+export function MessageBlock({ message, connection }: { message: TopicMessage; connection: ConnectionState }) {
   const role = message.fromKind === 'human' ? 'human' : message.fromKind === 'hub' ? 'hub' : message.fromRole && Object.hasOwn(roles, message.fromRole) ? message.fromRole : 'other';
   const kind = message.kind ?? (message.fromKind === 'human' ? 'message' : 'report');
   const shownKind = message.fromKind === 'human' ? kind[0]!.toUpperCase() + kind.slice(1) : kind;
@@ -38,9 +40,7 @@ export function MessageBlock({ message }: { message: TopicMessage }) {
       </header>
       {verdict?.result !== 'clear' && <div className={s.body}><MarkdownBody text={message.text} /></div>}
       {verdict?.result === 'not clear' && <div className={s.criteria}>{criteria}</div>}
-      {artifacts.length > 0 && <div className={s.artifacts}>{artifacts.map(artifact => <span key={artifact.id} data-artifact-id={artifact.id} className={s.chip}>
-        <span className={s.artifactId}>{artifact.id} {artifact.kind}{artifact.folder ? ' · folder' : ''}</span><span>{artifact.title}</span>
-      </span>)}</div>}
+      {artifacts.length > 0 && <div className={s.artifacts}>{artifacts.map(artifact => <InlineArtifact key={artifact.id} artifact={connection.artifacts?.find(row => row.id === artifact.id) ?? artifact} connection={connection} />)}</div>}
     </div>
   </article>;
 }

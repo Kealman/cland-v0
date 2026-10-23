@@ -26,5 +26,3 @@
 .failed { color: var(--failed); }
 .criteria { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 12px; }
 .artifacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.chip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px; border: 1px solid var(--control-border); border-radius: 5px; background: var(--control); padding: 3px 8px; font-size: 12px; overflow-wrap: anywhere; }
-.artifactId { font: 11px var(--mono); color: var(--muted); white-space: nowrap; }

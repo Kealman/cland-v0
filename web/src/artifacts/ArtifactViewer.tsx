@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import type { AreaContentProps } from '../AreaSlot.tsx';
 import { SandboxedArtifactFrame } from './SandboxedArtifactFrame.tsx';
 import { artifactSelection } from './state.ts';
+import { ArtifactViewerFallback } from './ArtifactNavigation.ts';
 import s from './Artifacts.module.css';
 
 type Content = { url: string; name: string; type: 'page' | 'text' | 'download'; text?: string };
 export function ArtifactViewer({ connection, selected }: AreaContentProps) {
-  const selection = artifactSelection(connection.artifacts, selected);
+  const fallback = useContext(ArtifactViewerFallback);
+  const selection = artifactSelection(connection.artifacts, selected) ?? artifactSelection(fallback ? [fallback] : undefined, selected);
   const artifact = selection?.artifact;
   const file = selection?.file;
   const [content, setContent] = useState<Content>();

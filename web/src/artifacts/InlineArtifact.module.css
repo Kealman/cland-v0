@@ -1,0 +1,9 @@
+.preview { width: 100%; min-width: 0; border: 1px solid var(--control-border); border-radius: 5px; overflow: hidden; }
+.header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 6px 8px; background: var(--control); color: var(--text); font-size: 12px; }
+.header strong { margin-right: auto; overflow-wrap: anywhere; }
+.header a { color: var(--link); }
+.header button { border: 0; background: none; color: var(--link); font: inherit; cursor: pointer; padding: 0; }
+.header a:focus-visible, .header button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.preview .frame { display: block; width: 100%; height: 240px; min-height: 240px; flex: none; border: 0; }
+.chip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px; border: 1px solid var(--control-border); border-radius: 5px; background: var(--control); padding: 3px 8px; font-size: 12px; overflow-wrap: anywhere; }
+.id { font: 11px var(--mono); color: var(--muted); white-space: nowrap; }

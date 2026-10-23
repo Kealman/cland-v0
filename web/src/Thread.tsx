@@ -85,8 +85,8 @@ export function Thread({ connection, topic, controls }: { connection: Connection
           {run ? <div data-run-id={run.id} className={s.run}>
             <button data-run-anchor data-thread-row={run.id} data-message-id={open ? undefined : last.id} data-message-seq={open ? undefined : last.seq}
               className={s.runAnchor} aria-expanded={open} aria-controls={`${regionId}-${run.id}`} title={run.foldLine} onClick={event => toggle(event.currentTarget)}>{run.foldLine}</button>
-            <div id={`${regionId}-${run.id}`}>{open && messages.map(message => <MessageBlock key={message.id} message={message} />)}</div>
-          </div> : <MessageBlock message={first} />}
+            <div id={`${regionId}-${run.id}`}>{open && messages.map(message => <MessageBlock key={message.id} message={message} connection={connection} />)}</div>
+          </div> : <MessageBlock message={first} connection={connection} />}
         </Fragment>;
       })}
     </div>

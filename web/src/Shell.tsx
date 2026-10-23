@@ -17,6 +17,8 @@ import { ItemsView, ItemsViewSwitcher, showItemsView, useItemsView } from './Ite
 
 import { AreaSlot, areaModules, type AreaControls } from './AreaSlot.tsx';
 import { useDesktop } from './desktop.ts';
+import type { Artifact } from '../../shared/wire/index.ts';
+import { ArtifactNavigation, ArtifactViewerFallback } from './artifacts/ArtifactNavigation.ts';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -207,6 +209,7 @@ export function Shell() {
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
   const [connection, setConnection] = useState<ConnectionState>({ project: 'Workbench', live: false });
+  const [openedArtifacts, setOpenedArtifacts] = useState<Artifact[]>([]);
   useEffect(() => connectHub(setConnection), []);
   useEffect(() => {
     document.title = `${connection.needsYou ? `(${connection.needsYou}) ` : ''}${connection.project} · cland`;
@@ -253,7 +256,15 @@ export function Shell() {
         : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
     } catch { if (serial === navigationSerial.current) setNavigationError(id); }
   };
-  return <ItemNavigation.Provider value={{ open: id => { void openItem(id); }, prefixes: ['T', ...Object.values(connection.tracker?.prefixes ?? {})] }}><div className={s.app}>
+  return <ArtifactNavigation.Provider value={(artifact, source) => {
+    navigationSerial.current++;
+    setMessage(undefined);
+    setOpenedArtifacts(previous => [...previous.filter(row => row.id !== artifact.id), artifact]);
+    const pane = source.closest('[data-pane]')?.getAttribute('data-pane') ?? active;
+    setPreferences(previous => pane === 'primary'
+      ? { ...previous, secondary: 'Artifacts', secondaryRow: artifact.id, secondaryDetail: true, dismissed: selectionKey, ratio: split ? previous.ratio : 2 / 3 }
+      : { ...previous, area: 'Artifacts', row: artifact.id, detail: true, dismissed: `Artifacts/${artifact.id}` });
+  }}><ItemNavigation.Provider value={{ open: id => { void openItem(id); }, prefixes: ['T', ...Object.values(connection.tracker?.prefixes ?? {})] }}><div className={s.app}>
     {navigationError && <div role="alert" title={`Could not open ${navigationError}`}>Item unavailable · {navigationError}</div>}
     {overlay && <PaletteDialog mode={overlay} area={area} context={overlayContext} actions={handledActions} connection={connection} controls={paletteControls}
       close={() => setOverlay(undefined)} run={action => {
@@ -313,7 +324,8 @@ export function Shell() {
             const selected = pane === 'primary' ? preferences.row : preferences.secondaryRow;
             const detail = pane === 'primary' ? preferences.detail : preferences.secondaryDetail;
             const rows = connection.rows?.[paneArea];
-            const row = paneArea === 'Items' ? findItem(connection, selected) : paneArea === 'Artifacts' ? artifactSelection(connection.artifacts, selected) : rows?.find(object => object.id === selected);
+            const fallback = detail && paneArea === 'Artifacts' ? openedArtifacts.find(artifact => artifact.id === selected) : undefined;
+            const row = paneArea === 'Items' ? findItem(connection, selected) : paneArea === 'Artifacts' ? artifactSelection(connection.artifacts, selected) ?? fallback : rows?.find(object => object.id === selected);
             return <section key={pane} className={s.pane} data-pane={pane} aria-label={`${pane} pane`} tabIndex={-1}
               style={{ flex: split ? `${pane === 'primary' ? preferences.ratio : 1 - preferences.ratio} 1 0` : '1' }}
               onPointerDown={() => focusPane(pane)} onFocus={() => focusPane(pane)}>
@@ -326,7 +338,7 @@ export function Shell() {
                 </div>}</>}>
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
-              {paneArea !== 'Items' && <AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
+              {paneArea !== 'Items' && <ArtifactViewerFallback.Provider value={fallback}><AreaSlot connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
                 open={() => { setDismissed(undefined); if (split) openOther(); }}
                 navigate={target => setArea(target, pane)}
                 openPage={id => { navigationSerial.current++; setPreferences(previous => pane === 'primary'
@@ -340,7 +352,7 @@ export function Shell() {
                     [...rows ?? []].find(node => node.dataset.objectId === selected)?.focus();
                   });
                 }}
-                controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'page' : 'pane'} />}
+                controls={pane === 'primary' ? primaryArea : secondaryArea} surface={detail ? 'page' : 'pane'} /></ArtifactViewerFallback.Provider>}
               {detail && row && paneArea === 'Items' && findItem(connection, row.id) &&
                 <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />}
               </Fold>
@@ -369,5 +381,5 @@ export function Shell() {
         </aside>}
       </main>
     </div>
-  </div></ItemNavigation.Provider>;
+  </div></ItemNavigation.Provider></ArtifactNavigation.Provider>;
 }
