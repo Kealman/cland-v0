@@ -2,8 +2,8 @@
 id: T-1169
 kind: task
 title: "Approvals on the phone: the sheet and the TUI mark"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-913
 branch: t/T-1169-approvals-on-the-phone-the-sheet-and-the
 created: 2026-10-23T07:00:02.795Z
-updated: 2026-10-23T17:44:07.439Z
+updated: 2026-10-23T18:08:53.832Z
+closed: 2026-10-23T18:08:53.832Z
 ---
 
 ## Summary
@@ -38,12 +39,15 @@ E-419 (§3.6 what stays on the desktop; §3.8; P41's marked row; tracer step 2, 
 - [x] C1. At 390x844 a fake Codex approval row opens a sheet with its command in full and Approve once, Always for this command and Deny, each at least 44 px tall, and Approve once folds the row to its outcome as a frame client reads it (Web test).
   - done: impl-1169 · 2026-10-23T17:30:00.459Z
   - verified: rev-26 [reviewer] · run rev-20261023-1169-final-1 · 2026-10-23T17:44:07.343Z · commit 2cb931c780289191d0dac21db554eee5ef50e04d
+  - verified: rev-26 [reviewer] · run rev-20261023-1169-final-2 · 2026-10-23T18:03:37.749Z · commit 2874c89686de905c7e99b98ed6bb9f3860274018
 - [x] C2. Deny on the label row sends with or without a typed note and a typed note reaches the record, and Escape, the scrim and a swipe leave the approval pending (Web test).
   - done: impl-1169 · 2026-10-23T17:27:28.157Z
   - verified: rev-26 [reviewer] · run rev-20261023-1169-final-1 · 2026-10-23T17:44:07.343Z · commit 2cb931c780289191d0dac21db554eee5ef50e04d
+  - verified: rev-26 [reviewer] · run rev-20261023-1169-final-2 · 2026-10-23T18:03:37.749Z · commit 2874c89686de905c7e99b98ed6bb9f3860274018
 - [x] C3. A fake Claude Code approval row shows marked "answer in Neovim" with no buttons and opens no sheet at 390x844 (Web test).
   - done: impl-1169 · 2026-10-23T17:27:28.230Z
   - verified: rev-26 [reviewer] · run rev-20261023-1169-final-1 · 2026-10-23T17:44:07.343Z · commit 2cb931c780289191d0dac21db554eee5ef50e04d
+  - verified: rev-26 [reviewer] · run rev-20261023-1169-final-2 · 2026-10-23T18:03:37.749Z · commit 2874c89686de905c7e99b98ed6bb9f3860274018
 
 ## Comments
 
@@ -109,3 +113,43 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 2cb931c7/tree ac52e0a6, C1–C3 verified; no findings. A-10148/run 8591914f exits 0: independently counted 2747 ordinary test passes and 408 file passes, zero fail/cancel/skip. T1, fallback all T2 hub/Neovim and actual Web pass on Linux x64 c-8 lon1 (Node24.21/Neovim0.12.5; machine workers2/Web4). Host root check passes with zero lint refusals; gate977d5623 not repeated remotely. Six phone approval cases pass at 3.079/1.412/1.911/1.710/1.533/2.060 seconds, all below4s; exact departure retention correction, optional notes, TUI fallback and native/peer winner assertions execute. Source A-10142/A-10145 carries forward. Generic budgets/lint/ratchet report-only, two missing baselines; measured Web wall151s exceeds report-only40s. No T3/T4, repetition, enforcing phase-budget or after-stage QA claim; local stdout provenance retained. No Reviewer runtime. A-10149: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10149-t-1169-final-evidence-review-at-2cb931c7.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1169 · 2026-10-23T17:48:26.616Z
+
+Per Coordinator's 17:44/17:47Z instruction, merged landed T-1170 via origin/dev 39a0a1bb into 2cb931c7. Pushed merge head 2874c89686de905c7e99b98ed6bb9f3860274018. Only conflict: docs/agents/tests.md Web-phase insertions; preserved both complete paragraphs. npm run build, root npm run typecheck, git diff --check --cached exit 0. Targeted phone*.test.ts + inbox + session-drawer + key-contexts exit 0, 66/66 on merged source/local macOS; phone-thread and phone-asks run once. Stdout A-10153. Delta source review requested from reviewer; fresh mode-free verification awaits clear verdict. Prior run 8591914f/A-10148 applies only to 2cb931c7.
+
+### rev-26 · 2026-10-23T17:49:02.386Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261023-1169-source-3
+commit: 2874c89686de905c7e99b98ed6bb9f3860274018
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head delta source clear at 2874c896/tree 1a4224a5, Coordinator-authorized 93265d0d/f27fbf9e. Standards and Spec: no findings. Compared both parents and combined resolution: both complete Web seam paragraphs retained; approval runtime/Inbox/BottomSheet/corrected tests byte-unchanged from 2cb931c7, incoming phone-thread navigation and reading behavior retained. No budget/assertion changes. A-10153 supporting local66/66 stdout inspected; build/typecheck/command/head attribution remains lead-reported, not embedded configured evidence. C1–C3 await new-head mode-free verification and actual duration audit; A-10148/A-10149 historical for pre-merge head only. No Reviewer runtime; QA after-stage. A-10154: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10154-t-1169-merged-head-source-review-at-2874c896.md.
+
+### impl-1169 · 2026-10-23T18:00:14.229Z
+
+Fresh merged-head mode-free verify 0bea4012-fc51-4c8c-bada-63209c2a5920 passed at exact source-reviewed 2874c89686de905c7e99b98ed6bb9f3860274018: 2753 passed, 0 failed/cancelled/skipped. A-10159. Linux x64 6.8.0-142-generic droplet c-8 lon1, workers 2; T1 + fallback all T2 across hub/Neovim + Web completed. Duration budgets/test lint report-only; Web shard wall 131.68 s >40 s warning retained. T3/T4 and after-stage QA separate. All six phone approval cases <4 s (worst this run 2.496854617 s, prior run worst 3.078801244 s); no allowance required. Executor lifetime 594 s, cost $0.0413. Post-run origin/dev 39a0a1bb; merge-tree conflict check exit 0, head unchanged and clean. Awaiting final Reviewer evidence verdict.
+
+### rev-26 · 2026-10-23T18:03:37.749Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261023-1169-final-2
+commit: 2874c89686de905c7e99b98ed6bb9f3860274018
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at merged head 2874c896/tree 1a4224a5; C1–C3 verified, no findings. Source A-10154 carries forward. Independently audited A-10159/run 0bea4012: exit0, 2753 ordinary test passes plus 409 file passes, zero fail/cancel/skip; T1, fallback all T2 hub/Neovim and actual Web completed on Linux x64 c-8 lon1 (Node24.21/Neovim0.12.5, machine workers2/Web4). Host root check passes with zero lint refusals; gate330714e5 not repeated remotely. Six approval cases pass, worst2.496854617s; optional deny notes, non-answer dismissals, TUI marking, peer/native outcomes and corrected departure retention execute. Incoming phone-thread six cases also pass. Historical worst3.078801244s stays below4s, no allowance trigger. Generic budgets/lint/ratchet report-only; three missing baselines; measured Web suite131.79s/shard131.68s exceeds report-only40s. No T3/T4, repetition, enforcing tier-budget or after-stage QA claim. No Reviewer runtime. A-10163: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10163-t-1169-final-merged-head-evidence-at-2874c896.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-23T18:08:53.832Z
+
+Merged fab25fe309948a5c477fac9fc560c37159493830 onto dev.
