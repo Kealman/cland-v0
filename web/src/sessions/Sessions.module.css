@@ -40,7 +40,7 @@
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .identity, .summary { display: contents; }
 .command { display: none; }
-@media (max-width: 639px) {
+:global([data-phone="true"]) {
   .row { grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px;
     align-content: center; min-height: 52px; height: 52px; padding: 0 10px; border-radius: 10px; }
   .glyph { grid-row: 1; grid-column: 1; }

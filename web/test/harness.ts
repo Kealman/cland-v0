@@ -109,8 +109,11 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; c
   let serial = 0;
   const tracePaths: string[] = [];
   const contexts = new Set<unknown>();
-  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>) {
-    const context = await browser!.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block', ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}) });
+  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>, device: { phone?: boolean } = {}) {
+    const context = await browser!.newContext({
+      ...(device.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } : { viewport: { width: 1440, height: 900 } }),
+      serviceWorkers: 'block', ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}),
+    });
     assert.ok(!contexts.has(context), 'fresh context'); contexts.add(context);
     context.setDefaultTimeout(3000);
     let passed = false;
@@ -141,7 +144,8 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; c
       const page = await context.newPage();
       await beforeNavigate?.(page);
       await page.goto(url, { waitUntil: 'load' });
-      await pageUntil(page, () => document.querySelector('nav[aria-label="Areas"]')?.children.length === 7, 'seven rendered rail areas');
+      if (device.phone) await pageUntil(page, () => document.querySelector('nav[aria-label="Phone areas"]')?.children.length === 5, 'five rendered phone slots');
+      else await pageUntil(page, () => document.querySelector('nav[aria-label="Areas"]')?.children.length === 7, 'seven rendered rail areas');
       assert.equal(page.url(), `${origin}/`);
       assert.ok((await context.cookies()).some(cookie => /^cland_[a-f0-9]{12}$/.test(cookie.name) && cookie.httpOnly));
       assert.equal((await context.request.get(url)).status(), 401, 'one-time frame link was spent');

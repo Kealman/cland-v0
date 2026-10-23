@@ -55,6 +55,38 @@ shows the active area’s keys.
 Ported from `prototype/web-shell`'s frame and tokens, slice by
 slice, following spec v0.2 before prototype behaviour before the accepted boards.
 
+## Phone
+
+`src/phone.ts` owns the below-640-CSS-px width check: `isPhone()` for event
+handlers and `usePhone()` for rendering. The shell and Sessions row tap/Enter
+paths use it. At 640–1279 px the desktop shell retains its collapsed rail.
+Resizing changes the frame without reloading.
+
+On a phone the rail gives way to Inbox, Topics, Sessions, Events and More in a
+bottom bar. A fresh browser opens Inbox. The first three badges use the rail's
+attention facts; Events uses the same complete, unfiltered last-look summary as
+the Inbox events line, including older pages. More has no badge. Missing facts
+show a dash, and known zero counts stay visible.
+
+The compact header keeps the project, release picker, Search and needs-you pill
+with the hub dot. Coordinator and Help leave the header; help remains available
+in the palette. Header, bar and More controls are at least 44 px tall. More opens
+Items, Artifacts and Accounts in a sheet above the bar without a scrim. Selection,
+a tap outside or physical Escape closes it; Escape routes through `keymap.ts`'s
+`more` context and restores focus to More.
+
+The phone renders one pane and no drawer. Split shortcuts do nothing; the saved
+desktop secondary pane and ratio return on widening, including after a phone
+reload. Inline artifact navigation opens its page in the phone's single pane.
+
+Web cases request the phone context with
+`fixture.pageCase(t, body, beforeNavigate, { phone: true })` (use `undefined` for
+an unused setup callback). It creates a fresh 390×844 Headless Shell context with
+touch and the mobile flag, then waits for the bar's five slots. Desktop cases
+retain their 1440×900 context and seven-area rail readiness. Both keep the sealed
+HOME/XDG/Git environment, CSP and owned browser profile. Run
+`node --test web/test/phone.test.ts` after building the bundle.
+
 ## Components and colours
 
 Copy `src/Shell.tsx` and `src/Shell.module.css`. Components use CSS Modules and

@@ -12,7 +12,7 @@ export type Shortcut = Area | 'events-subject' | 'events-open' | 'events-next' |
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
-export type KeyContext = 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
+export type KeyContext = 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch' | 'more';
 export type KeyAction = { action: Shortcut; label: string; description?: string };
 
 const composerKeys = { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always' } as const;
@@ -58,6 +58,7 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   accounts: {},
   palette: { Enter: 'accept', Tab: 'next-kind', 'Shift+Tab': 'previous-kind', ArrowDown: 'next-result', ArrowUp: 'previous-result' },
   help: {},
+  more: { Escape: 'dismiss' },
   launch: { Enter: 'accept', Escape: 'dismiss' },
 };
 

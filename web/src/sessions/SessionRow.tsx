@@ -1,3 +1,4 @@
+import { isPhone } from '../phone.ts';
 import type { SessionRow as Row } from '../../../shared/wire/index.ts';
 import type { ConnectionState } from '../connection.ts';
 import type { Ref } from 'react';
@@ -31,8 +32,8 @@ export function SessionRow({ row, selected, select, connection, now, controls, o
   const topics = row.state === 'waiting for human' ? connection.sessionAsks?.filter(ask => ask.from === row.name).map(ask => ask.topic) ?? [] : [];
   return <div className={s.session} data-state={state}>
     <button className={s.row} data-object-id={row.name} aria-pressed={selected}
-      onPointerDown={event => { if (window.matchMedia('(max-width: 639px)').matches) event.preventDefault(); }}
-      onFocus={() => select(row.name)} onClick={() => { select(row.name); if (window.matchMedia('(max-width: 639px)').matches) openPage?.(row.name); }}>
+      onPointerDown={event => { if (isPhone()) event.preventDefault(); }}
+      onFocus={() => select(row.name)} onClick={() => { select(row.name); if (isPhone()) openPage?.(row.name); }}>
       <span className={s.glyph} aria-label={state}>{glyph}</span>
       <span className={s.identity}>
         <span className={s.name}>{row.name}</span>

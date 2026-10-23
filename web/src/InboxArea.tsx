@@ -8,6 +8,7 @@ import { SessionRecentThread } from './SessionRecentThread.tsx';
 import { AskCard } from './AskCard.tsx';
 import { Fold, revealFold } from './Fold.tsx';
 import { useEventSummary } from './use-event-summary.ts';
+import { usePhone } from './phone.ts';
 import s from './InboxArea.module.css';
 
 export const inboxActions = ['inbox-archive', 'inbox-reply', 'thread-next', 'thread-previous', 'thread-back', 'thread-toggle', 'inbox-next', 'inbox-previous', 'inbox-open', 'inbox-remove', 'inbox-free', 'inbox-1', 'inbox-2', 'inbox-3', 'inbox-4', 'inbox-5', 'inbox-6', 'inbox-7', 'inbox-8', 'inbox-9'] as const;
@@ -28,6 +29,7 @@ function facts(entry: Entry) {
 }
 
 function InboxArea(props: AreaContentProps) {
+  const phone = usePhone();
   const thread = useRef<ThreadControls>(null);
   const detail = useRef<HTMLDivElement>(null);
   const [closed, setClosed] = useState<string>();
@@ -156,7 +158,7 @@ function InboxArea(props: AreaContentProps) {
       <button className={s.events} data-inbox-events title={eventError || "Events newer than the human’s shared last look"} onClick={() => props.navigate?.('Events')}>△ {summary?.events ?? '—'} new events · ⚠ {summary?.warnings ?? '—'}</button>
       <InboxArchive connection={props.connection} now={now} />
     </div>
-    {!props.split && selectedEntry && closed !== selectedEntry.row.id && selectedEntry.kind !== 'plan' && <aside className={s.drawer} aria-label="Drawer" data-drawer-area="Inbox">
+    {!phone && !props.split && selectedEntry && closed !== selectedEntry.row.id && selectedEntry.kind !== 'plan' && <aside className={s.drawer} aria-label="Drawer" data-drawer-area="Inbox">
       <div className={s.actions}><button onClick={props.splitSelection}>Split</button><button onClick={() => { setClosed(selectedEntry.row.id); list.current?.querySelector<HTMLButtonElement>(`[data-object-id="${CSS.escape(selectedEntry.row.id)}"]`)?.focus(); }}>Close</button></div>
       <div className={s.thread} ref={detail} data-area-module="Inbox" data-area-surface="drawer" data-key-context="inbox"><InboxThread {...props} entry={selectedEntry} thread={thread} /></div>
     </aside>}

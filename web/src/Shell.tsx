@@ -25,6 +25,8 @@ import { ItemsView, ItemsViewSwitcher, showItemsView, useItemsView } from './Ite
 import { InboxVisitProvider } from './inbox-visit.tsx';
 import { AreaSlot, areaModules, type AreaControls } from './AreaSlot.tsx';
 import { useDesktop } from './desktop.ts';
+import { usePhone } from './phone.ts';
+import { useEventSummary } from './use-event-summary.ts';
 import type { Artifact } from '../../shared/wire/index.ts';
 import { ArtifactNavigation, ArtifactViewerFallback } from './artifacts/ArtifactNavigation.ts';
 import { TopicArtifactsProvider } from './artifacts/TopicArtifacts.tsx';
@@ -62,20 +64,28 @@ function savedShell(): ShellPreferences {
 
 /** Reference component: semantic markup, CSS Module, tokens, and factual labels. */
 export function Shell() {
+  const phone = usePhone();
   const [preferences, setPreferences] = useState(savedShell);
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
   const [overlay, setOverlay] = useState<'palette' | 'help' | undefined>();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const more = phone && moreOpen;
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const moreSheet = useRef<HTMLElement>(null);
+  useEffect(() => { if (more) moreSheet.current?.querySelector<HTMLButtonElement>('button')?.focus(); }, [more]);
+  useEffect(() => { if (!phone) setMoreOpen(false); }, [phone]);
   const [composerSelection, setComposerSelection] = useState<ComposerSelection>();
   const pendingPaletteAction = useRef<Shortcut | undefined>(undefined);
   const [overlayContext, setOverlayContext] = useState<KeyContext>('shell');
-  const [active, setActive] = useState<'primary' | 'secondary'>('primary');
+  const [desktopActive, setActive] = useState<'primary' | 'secondary'>('primary');
+  const active = phone ? 'primary' : desktopActive;
   const navigationSerial = useRef(0);
   useEffect(() => subscribeItems(() => { navigationSerial.current++; }), []);
   const focusPane = (pane: 'primary' | 'secondary') => {
     if (pane !== active) navigationSerial.current++;
     setActive(pane);
   };
-  const split = preferences.secondary !== undefined;
+  const split = !phone && preferences.secondary !== undefined;
   const area = active === 'secondary' && preferences.secondary ? preferences.secondary : preferences.area;
   const setArea = (selected: Area, pane = active) => {
     navigationSerial.current++;
@@ -108,6 +118,7 @@ export function Shell() {
     setActive('primary');
   };
   const openOther = () => {
+    if (phone) return;
     navigationSerial.current++;
     const selected = active === 'primary' ? preferences.row : preferences.secondaryRow;
     if (!selected) return;
@@ -141,6 +152,8 @@ export function Shell() {
     setOverlay(mode);
   };
   const runShortcut = (action: Shortcut) => {
+    if (more && action === 'dismiss') { setMoreOpen(false); moreButton.current?.focus(); return; }
+    if (more) setMoreOpen(false);
     if (!overlay && action.startsWith('jump-')) {
       const focused = document.activeElement?.closest('[data-item-link]')?.getAttribute('data-item-link');
       const selectedId = focused ?? (active === 'primary' ? preferences.row : preferences.secondaryRow);
@@ -210,6 +223,7 @@ export function Shell() {
     else if (overlay) paletteControls.current?.run(action);
     else if (action === 'help') openOverlay('help');
     else if (action === 'split') {
+      if (phone) return;
       if (split) closePane('secondary');
       else setPreferences(previous => ({ ...previous, secondary: previous.area, secondaryRow: undefined, secondaryDetail: false, ratio: 2 / 3 }));
     } else if (action === 'open-other') openOther();
@@ -219,8 +233,8 @@ export function Shell() {
       areaButtons.current[action as Area]?.focus();
     }
   };
-  const keyboard = useRef({ run: runShortcut, overlay, area });
-  useEffect(() => { keyboard.current = { run: runShortcut, overlay, area }; });
+  const keyboard = useRef({ run: runShortcut, overlay, area, more });
+  useEffect(() => { keyboard.current = { run: runShortcut, overlay, area, more }; });
   // Modal cleanup restores the originating focus before contextual actions run.
   useEffect(() => {
     if (overlay || !pendingPaletteAction.current) return;
@@ -230,13 +244,14 @@ export function Shell() {
   }, [overlay]);
   useEffect(() => listenForShortcuts(action => keyboard.current.run(action), target => {
     const current = keyboard.current;
-    return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
+    return current.overlay ?? (current.more ? 'more' : undefined) ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
-    if (context === 'shell' || context === 'composer' || context === 'session-composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'more' || context === 'shell' || context === 'composer' || context === 'session-composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
   const [connection, setConnection] = useState<ConnectionState>({ project: 'Workbench', live: false });
+  const { summary: eventSummary, error: eventSummaryError } = useEventSummary(connection, phone);
   const [openedArtifacts, setOpenedArtifacts] = useState<Artifact[]>([]);
   const notificationOpen = useRef<(target: NotificationNotice['target']) => void>(() => {});
   useEffect(() => {
@@ -251,7 +266,7 @@ export function Shell() {
     navigationSerial.current++;
     setMessage(undefined);
     setPreferences(previous => {
-      if (pane) return active === 'primary'
+      if (pane && !phone) return active === 'primary'
         ? { ...previous, secondary: target, secondaryRow: row.id, secondaryDetail: true, dismissed: selectionKey, ratio: split ? previous.ratio : 2 / 3 }
         : { ...previous, area: target, row: row.id, detail: true, dismissed: `${target}/${row.id}` };
       return active === 'secondary' && previous.secondary
@@ -260,7 +275,7 @@ export function Shell() {
     });
   };
   const selectedRow = preferences.area === 'Items' ? findItem(connection, preferences.row) : preferences.area === 'Artifacts' ? artifactSelection(connection.artifacts, preferences.row) : connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
-  const drawerOpen = !split && preferences.area !== 'Topics' && preferences.area !== 'Inbox' && preferences.area !== 'Events' && selectedRow && dismissed !== selectionKey && !preferences.detail;
+  const drawerOpen = !phone && !split && preferences.area !== 'Topics' && preferences.area !== 'Inbox' && preferences.area !== 'Events' && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
   const release = releases.find(item => item.id === preferences.release) ?? releases[0];
   const counts: Partial<Record<Area, number | undefined>> = {
@@ -317,10 +332,16 @@ export function Shell() {
     setMessage(undefined);
     setOpenedArtifacts(previous => [...previous.filter(row => row.id !== artifact.id), artifact]);
     const pane = source.closest('[data-pane]')?.getAttribute('data-pane') ?? active;
+    if (phone) {
+      setPreferences(previous => ({ ...previous, area: 'Artifacts', row: artifact.id, detail: true, dismissed: undefined }));
+      return;
+    }
     setPreferences(previous => pane === 'primary'
       ? { ...previous, secondary: 'Artifacts', secondaryRow: artifact.id, secondaryDetail: true, dismissed: selectionKey, ratio: split ? previous.ratio : 2 / 3 }
       : { ...previous, area: 'Artifacts', row: artifact.id, detail: true, dismissed: `Artifacts/${artifact.id}` });
-  }}><ItemNavigation.Provider value={{ open: id => { void openItem(id); }, prefixes: ['T', ...Object.values(connection.tracker?.prefixes ?? {})] }}><div className={s.app}>
+  }}><ItemNavigation.Provider value={{ open: id => { void openItem(id); }, prefixes: ['T', ...Object.values(connection.tracker?.prefixes ?? {})] }}><div className={s.app} data-phone={phone} onPointerDownCapture={event => {
+    if (more && !(event.target instanceof Element && event.target.closest('[data-phone-navigation]'))) setMoreOpen(false);
+  }}>
     {navigationError && <div role="alert" title={`Could not open ${navigationError}`}>Item unavailable · {navigationError}</div>}
     {overlay && <PaletteDialog mode={overlay} area={area} context={overlayContext} actions={handledActions} connection={connection} controls={paletteControls} selection={composerSelection}
       close={() => { setOverlay(undefined); setComposerSelection(undefined); }} run={action => {
@@ -328,7 +349,7 @@ export function Shell() {
         else { pendingPaletteAction.current = action; setOverlay(undefined); }
       }} open={openResult} />}
     <header className={s.top}>
-      <span className={s.brand}>cland</span>
+      {!phone && <span className={s.brand}>cland</span>}
       <span className={s.project} aria-label="Project">{connection.project}</span>
       <label className={s.release}>
         <span className={s.mono} data-item-id>{release?.id ?? '—'}</span>
@@ -340,20 +361,21 @@ export function Shell() {
       </label>
       <button className={s.search} aria-label="Palette" title={`Palette (${actionKeys('palette').map(displayKey).join(' / ')})`} onClick={() => openOverlay('palette')}>Search<kbd>{displayKey(actionKeys('palette')[0]!)}</kbd></button>
       <div className={s.right}>
-        <button className={s.coordinator} aria-label="Coordinator" title="Open Coordinator in Sessions" onClick={() => setArea('Sessions')}>
+        {!phone && <button className={s.coordinator} aria-label="Coordinator" title="Open Coordinator in Sessions" onClick={() => setArea('Sessions')}>
           Coordinator<span className={s.mono}>{connection.coordinator ?? '—'}</span>
-        </button>
+        </button>}
         <button className={s.needs} aria-label="Needs you" title="Open Inbox" onClick={() => setArea('Inbox')}>
+          {phone && <span className={s.live} role="status" aria-label="Hub connection" title={connection.restartRequired ? 'Restart hub' : connection.live ? 'Live' : 'Offline'}><span className={s.dot} data-live={connection.live} /><span className={s.statusText}>{connection.restartRequired ? 'Restart hub' : connection.live ? 'Live' : 'Offline'}</span></span>}
           Needs you<span className={connection.needsYou === 0 ? s.clear : s.mono}>{connection.needsYou === undefined ? '—' : connection.needsYou || '✓'}</span>
         </button>
-        <span className={s.live} role="status" aria-label="Hub connection">
+        {!phone && <span className={s.live} role="status" aria-label="Hub connection">
           <span className={s.dot} data-live={connection.live} />{connection.restartRequired ? 'Restart hub' : connection.live ? 'Live' : 'Offline'}
-        </span>
-        <button className={s.help} aria-label="Help" title="Area keys" onClick={() => openOverlay('help')}>?</button>
+        </span>}
+        {!phone && <button className={s.help} aria-label="Help" title="Area keys" onClick={() => openOverlay('help')}>?</button>}
       </div>
     </header>
     <div className={s.body}>
-      <aside className={s.sidebar} data-collapsed={split || preferences.collapsed}>
+      {!phone && <aside className={s.sidebar} data-collapsed={split || preferences.collapsed}>
         <nav data-area-navigation className={s.rail} aria-label="Areas">
           {areas.map((name, index) => <button key={name}
             ref={node => { if (node) areaButtons.current[name] = node; else delete areaButtons.current[name]; }}
@@ -372,7 +394,7 @@ export function Shell() {
           onClick={() => setPreferences({ ...preferences, collapsed: !preferences.collapsed })}>
           {preferences.collapsed ? '»' : '«'}
         </button>
-      </aside>
+      </aside>}
       <main className={s.main} aria-label={area}>
         <div className={s.workspace} ref={workspace}>
           {(['primary', 'secondary'] as const).filter(pane => pane === 'primary' || split).map(pane => {
@@ -473,5 +495,18 @@ export function Shell() {
         </aside>}
       </main>
     </div>
+    {phone && <div className={s.phoneNavigation} data-phone-navigation>
+      {more && <nav ref={moreSheet} className={s.moreSheet} aria-label="More areas" data-key-context="more">
+        {(['Items', 'Artifacts', 'Accounts'] as const).map(name => <button key={name} aria-label={name} onClick={() => { setArea(name); setMoreOpen(false); }}>{name}</button>)}
+      </nav>}
+      <nav className={s.phoneBar} data-area-navigation aria-label="Phone areas">
+      {(['Inbox', 'Topics', 'Sessions', 'Events'] as const).map(name => <button key={name} aria-label={name} data-area={name}
+        ref={node => { if (node) areaButtons.current[name] = node; else delete areaButtons.current[name]; }}
+        aria-current={name === area ? 'page' : undefined} onClick={() => { setArea(name); setMoreOpen(false); }}>
+        <svg className={s.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d={iconPaths[areas.indexOf(name)]} /></svg>
+        <span>{name}</span><span data-count title={name === 'Events' ? eventSummaryError || 'Events since your last look' : undefined}>{(name === 'Events' ? eventSummary?.events : counts[name]) ?? '—'}</span>
+      </button>)}
+      <button ref={moreButton} aria-label="More" aria-expanded={more} aria-current={['Items', 'Artifacts', 'Accounts'].includes(area) ? 'page' : undefined} onClick={() => setMoreOpen(!more)}><svg className={s.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 12h2 M11 12h2 M18 12h2" /></svg><span>More</span></button>
+    </nav></div>}
   </div></ItemNavigation.Provider></ArtifactNavigation.Provider></AskNavigation.Provider></ComposerPicker.Provider></InboxVisitProvider></TopicArtifactsProvider>;
 }

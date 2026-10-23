@@ -1,3 +1,4 @@
+import { isPhone } from '../phone.ts';
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { AreaContentProps, AreaControls } from '../AreaSlot.tsx';
 import { Fold } from '../Fold.tsx';
@@ -16,7 +17,7 @@ export function SessionGroups({ connection, selected, select, controls, archived
     row?.scrollIntoView({ block: 'nearest' });
   }, [selected]);
   useImperativeHandle(controls, () => ({ run(action) {
-    const narrow = window.matchMedia('(max-width: 639px)').matches;
+    const narrow = isPhone();
     if (!narrow && actions.current?.run(action)) return true;
     if (narrow && action === 'session-open' && selected) { openPage?.(selected); return true; }
     if (!narrow && action === 'session-open' && selected && document.activeElement?.hasAttribute('data-object-id')) { open?.(); return true; }

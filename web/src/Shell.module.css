@@ -73,4 +73,23 @@
 .drawer:has([data-artifact-viewer]) > [data-fold-block] > :last-child, .pane:has([data-artifact-viewer]) > [data-fold-block] > :last-child { flex: 1; min-height: 0; }
 .drawer[data-drawer-area="Sessions"] > [data-fold-block] { height: 100%; display: flex; flex-direction: column; }
 .drawer[data-drawer-area="Sessions"] > [data-fold-block] > :last-child { flex: 1; min-height: 0; }
-@media (max-width: 639px) { .drawer[data-drawer-area="Sessions"] { display: none; } }
+
+.phoneBar { flex: none; display: flex; padding-bottom: env(safe-area-inset-bottom); background: var(--panel); border-top: 1px solid var(--border); }
+.phoneBar button { flex: 1; min-width: 0; min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 0; background: var(--panel); color: var(--muted); position: relative; }
+.phoneBar [aria-current="page"] { background: var(--selection); color: var(--text); }
+.phoneBar [data-count] { position: absolute; top: 2px; right: 4px; font-family: var(--mono); color: var(--needs-human); font-size: 11px; }
+
+.phoneNavigation { flex: none; position: relative; }
+.moreSheet { position: absolute; bottom: 100%; right: 8px; width: 200px; padding: 4px; z-index: 2; background: var(--panel); border: 1px solid var(--control-border); border-radius: 8px 8px 0 0; }
+.moreSheet button { display: block; width: 100%; min-height: 44px; padding: 8px 12px; text-align: left; border: 0; background: var(--panel); color: var(--text); }
+.moreSheet button:hover { background: var(--row-hover); }
+.phoneBar button:focus-visible, .moreSheet button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.app[data-phone="true"] .top { height: 48px; padding: 0 8px; gap: 6px; }
+.app[data-phone="true"] .project { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.app[data-phone="true"] .release { position: relative; height: 44px; box-sizing: border-box; padding: 0 6px; }
+.app[data-phone="true"] .release select { position: absolute; inset: 0; width: 100%; height: 44px; opacity: 0; }
+.app[data-phone="true"] .search { flex: none; width: auto; height: 44px; margin: 0; padding: 0 6px; }
+.app[data-phone="true"] .search kbd { display: none; }
+.app[data-phone="true"] .right { margin-left: 0; }
+.app[data-phone="true"] .needs { min-height: 44px; align-items: center; gap: 4px; }
+.statusText { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
