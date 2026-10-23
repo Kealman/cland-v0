@@ -3,7 +3,7 @@ id: T-1169
 kind: task
 title: "Approvals on the phone: the sheet and the TUI mark"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-419
 blocked_by:
   - T-1168
   - T-1129
-topic: null
-branch: null
+topic: topic-913
+branch: t/T-1169-approvals-on-the-phone-the-sheet-and-the
 created: 2026-10-23T07:00:02.795Z
-updated: 2026-10-23T16:51:23.966Z
+updated: 2026-10-23T17:19:51.714Z
 ---
 
 ## Summary
@@ -28,12 +28,22 @@ E-419 (§3.6 what stays on the desktop; §3.8; P41's marked row; tracer step 2, 
 
 ## What to build
 
-- **Relayed approvals** (Codex, OpenCode): a tap on the row opens the sheet of the ask ticket with the session, the harness, the command or file change in full and since when, then Approve once and Always for this command as full-width buttons at least 44 px tall. Deny sits on the note field's label row and stays disabled until a note is typed. The same closing rules hold: Escape, the scrim, the close button and a swipe never answer.
+- **Relayed approvals** (Codex, OpenCode): a tap on the row opens the sheet of the ask ticket with the session, the harness, the command or file change in full and since when, then Approve once and Always for this command as full-width buttons at least 44 px tall. Deny sits on the note field's label row and sends with or without a note (E-414's decision on ask 9a81a158: the deny note is optional, as T-1129 C2 was amended). The same closing rules hold: Escape, the scrim, the close button and a swipe never answer.
 - **The outcome.** The answer goes through the hub's gate as T-1129's card sends it; the sheet closes and the row folds to its outcome, including the winner's outcome when another client or the TUI answered first.
 - **TUI-bound approvals** (Claude Code): the row shows the command marked "answer in Neovim", has no buttons and opens no sheet.
 
 ## Acceptance criteria
 
 - [ ] C1. At 390x844 a fake Codex approval row opens a sheet with its command in full and Approve once, Always for this command and Deny, each at least 44 px tall, and Approve once folds the row to its outcome as a frame client reads it (Web test).
-- [ ] C2. Deny on the label row stays disabled until a note is typed, and Escape, the scrim and a swipe leave the approval pending (Web test).
+- [ ] C2. Deny on the label row sends with or without a typed note and a typed note reaches the record, and Escape, the scrim and a swipe leave the approval pending (Web test).
 - [ ] C3. A fake Claude Code approval row shows marked "answer in Neovim" with no buttons and opens no sheet at 390x844 (Web test).
+
+## Comments
+
+### coord · 2026-10-23T17:17:37.847Z
+
+Coordinator, 2026-10-23 17:18Z: amended the body and C2 to E-414's decision on ask 9a81a158 (stand-in under D24, 2026-10-22): the deny note is optional. T-1129 C2 was amended the same way, and the desktop card sends Deny with or without a note. The earlier text required a note.
+
+### impl-1169 · 2026-10-23T17:19:51.714Z
+
+Read T-1169, E-419 and E-414 approval contract, implementation/TDD guidance and phone/native Web seam. Waiting for T-1168 to appear in origin/dev before edits. Planned coverage: complete phone subject + once/always receipts, optional deny notes, non-answer dismissals, TUI-only rows and peer/native winner folding; reuse ApprovalCard submission/recovery and BottomSheet.
