@@ -2,8 +2,8 @@
 id: T-971
 kind: task
 title: Re-land the T-0 sealed child-launch guard (T-962) without breaking the Claude adapter, open, prepare and pid-reuse tests
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ found_by: cover
 topic: topic-895
 branch: t/T-971-re-land-the-t-0-sealed-child-launch
 created: 2026-10-20T13:29:14.123Z
-updated: 2026-10-23T07:09:23.313Z
+updated: 2026-10-23T08:12:26.679Z
+closed: 2026-10-23T08:12:26.679Z
 ---
 
 ## Summary
@@ -31,10 +32,12 @@ Start from T-962's branch content and the revert. For each failing test, find wh
 ## Acceptance criteria
 
 - [x] C1. T-962's C1 and C2 hold again (T0 guard plus inventory), and the seven tests that failed in the v0.1.5 cover logs A-7657/A-7658/A-7659 (Claude attach, pid-reuse resume, open fixtures, prepare snapshot inputs, fixture-worker SIGTERM and the two tracker-native-boundary tests) pass in targeted local runs on the merged head.
-  - done: impl-971 · 2026-10-23T07:08:24.938Z
+  - done: impl-971 · 2026-10-23T08:05:28.413Z
+  - verified: rev-26 [reviewer] · run rev-20261023-971-final-1 · 2026-10-23T08:07:13.299Z · commit 56437bd164d30625edc68074a8315f755c0a5cc7
 - [x] C2. The evidence lists each of the seven failures with whether it still fails with the guard restored on current dev, its cause in the sealed-environment change and its fix.
   - done: impl-971 · 2026-10-23T07:02:21.734Z
   - verified: rev-23 [reviewer] · run rev-20261023-971-source-2 · 2026-10-23T07:09:23.313Z · commit 56437bd164d30625edc68074a8315f755c0a5cc7
+  - verified: rev-26 [reviewer] · run rev-20261023-971-final-1 · 2026-10-23T08:07:13.299Z · commit 56437bd164d30625edc68074a8315f755c0a5cc7
 
 ## Comments
 
@@ -75,3 +78,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings; M1 fully resolved by exactly 24 generated-program import restorations across all nine files, no assertion/bound/receipt changes. A-9892 records the corrected source audit. A-9891 raw logs confirm the original ReferenceError reds and 100/100 corrected-tree local macOS targeted passes, zero fail/skip/cancel; these are tree-attributed targets, not integrated coverage. T0 guard/check successful, generic lint report-only; inventory 276=186 sealed+90 reasoned exemptions, no unsealed. C2 historical seven-case diagnosis verified with its attribution limits. C1 remains pending Coordinator-owned verify all at this exact head, including T2/T3. A-9889 parent-head seven targets remain supplemental. Reviewer ran no tests; no Linux/load/QA pass claimed.
 
 Criteria: C2 verified.
+
+### impl-971 · 2026-10-23T08:05:28.479Z
+
+Coordinator-owned verify all 319feb12-f919-4c76-9e38-1a9dd4bcd1e9 at exact reviewed 56437bd164d30625edc68074a8315f755c0a5cc7 completed exit 0 (A-9903). Linux x64 c-8 lon1 droplet, Node24.21.0/Neovim0.12.5, workers2: T1, T2, T3 and Web all exit0; aggregate 3933 tests = 3925 pass, 0 fail, 0 cancelled, 8 skip. Lint/duration budgets and T3 ratchet report-only, two timing baselines missing; no timing-enforcement pass claimed. Droplet lifetime1930s/cost$0.1340; slow disk fsync24.78ms. C1 done reaffirmed; final reviewer settlement requested, source/head unchanged.
+
+### rev-26 · 2026-10-23T08:07:13.299Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261023-971-final-1
+commit: 56437bd164d30625edc68074a8315f755c0a5cc7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged 56437bd1, building on rev-23 source-2/A-9892. A-9904 independently audits Coordinator all run 319feb12/A-9903: exit 0, 3925 ordinary tests passed/8 explicit skips/0 failures/cancellations, 583 files passed. T1/T2/T3/Web all completed on Linux x64 c-8 lon1; host check and enforcing child-environment guard passed, host gate 570659e6 not repeated remotely. All seven named historical regressions have passing current-head records, none skipped. Inventory independently counts 276=186 sealed+90 reasoned exemptions, zero unsealed. A-9889 parent-head seven local targets and A-9891 byte-identical correction-tree 100/100 local targets retain their provenance; C2 accepted diagnosis limits carried forward. C1/C2 verified, no findings. Eight skips are macOS sandbox/sleep and absent real OpenCode cases; no skip treated as pass. Generic lint/budgets/ratchet report-only, two missing baselines, actual Web wall 109.174 seconds > report-only 40 seconds. No enforced timing, T4 or QA claim. A-9904: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9904-t-971-final-integrated-evidence-at-56437bd1.md.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-23T08:12:26.679Z
+
+Merged 2cd84fb882bc76c0cf412e68d3ef952c6d28676c onto dev.
