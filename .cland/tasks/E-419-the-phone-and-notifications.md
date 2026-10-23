@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-896
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-23T07:00:22.483Z
+updated: 2026-10-23T16:06:47.516Z
 ---
 
 ## Summary
@@ -109,6 +109,7 @@ stages:
       - - T-1165
         - T-1166
         - T-1167
+      - - T-1182
   - name: asks, threads, the composer and install
     qa:
       scope: affected
@@ -147,3 +148,60 @@ Coordinator decisions at the cut (2026-10-23 ~07:00Z, tickets T-1165–T-1176, p
 5. T-1174 (install) runs as its own lane in stage 2, since it depends only on T-1165.
 6. The web lane may make the small hub change in hub/src/hub/web-edge.ts that serves the project-named manifest, with a hub test (T-1174).
 External prerequisites outside the lanes: T-1129 gates T-1169; T-1128 and T-1142 gate T-1175. The epic itself waits for E-417 to close.
+
+### qa-676 · 2026-10-23T16:06:13.936Z
+
+verdict: qa
+result: not clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-23-1
+commit: e53bc5a323c98352f206f3b1d2387ca68e94a8b3
+stage: bottom bar and inbox home
+stage_hash: d0c6e061cdab2915e28259a2244f2fef4e15ef6928ddda19967ce357d4500ea3
+findings: [{"severity":"medium","text":"E419S1-11: sealed local node --test web/test/sessions.test.ts failed “P27 row is 52 px tall”: 88 !== 52 after resize to600px (narrow line105, call line118). File4pass/1fail; trace retained, no rerun. MatchMedia/render race is Coordinator's hypothesis, not proven diagnosis.","file":"web/test/sessions.test.ts","line":105}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Case | Surface / executor | Result | Command and evidence |
+| --- | --- | --- | --- |
+| E419S1-00 | hub-api / local macOS | PASS | [local macOS; sealed where required] committed brief row E419S1-00; captured command outputs; E419S1-00.txt |
+| E419S1-01 | hub-api / local macOS | PASS | [local macOS; sealed where required] committed brief row E419S1-01; captured command outputs; E419S1-01.txt |
+| E419S1-02 | hub-api / local macOS | PASS | [local macOS; sealed where required] committed brief row E419S1-02; captured command outputs; E419S1-02.txt |
+| E419S1-03 | hub-api / local macOS | PASS | [local macOS; sealed where required] committed brief row E419S1-03; captured command outputs; E419S1-03.txt |
+| E419S1-04 | hub-api / local macOS | PASS | [docs at S] k04 and full specified section reads; 4 candidates dismissed; E419S1-04.txt, E419S1-04-read.txt, E419S1-04-assessment.txt |
+| E419S1-05 | hub-api / local macOS | PASS | [local macOS; sealed where required] committed brief row E419S1-05; captured command outputs; E419S1-05.txt |
+| E419S1-06 | hub-api / local macOS | PASS | [test macOS arm64; sealed] nt, oks, census per committed brief; clean TAP and all required names; E419S1-06.txt, E419S1-06.log |
+| E419S1-07 | hub-api / local macOS | PASS | [test macOS arm64; sealed] nt, oks, census per committed brief; clean TAP and all required names; E419S1-07.txt, E419S1-07.log |
+| E419S1-08 | hub-api / local macOS | PASS | [test macOS arm64; sealed] phone-inbox.test.ts 3/3, C1–C5 assertion-body mapping and passing names, clean census; E419S1-08-phone-inbox.txt, E419S1-08-phone-inbox.log, E419S1-08-map.txt |
+| E419S1-09 | hub-api / local macOS | PASS | [test macOS arm64; sealed] Inbox 23/23, folds 6/6, Events 11/11, all required names, clean censuses; E419S1-09.txt, E419S1-09a.log, E419S1-09b.log, E419S1-09c.log |
+| E419S1-10 | hub-api / local macOS | PASS | [test macOS arm64; sealed] 8 desktop regression files, all clean and every required passing name; E419S1-10.txt, test-summary.json |
+| E419S1-11 | hub-api / local macOS | FAIL | [test macOS arm64; sealed] 8 regression files; sessions.test.ts failed P27 row height 88 !== 52 at line105 after resize600; others clean; E419S1-11.txt, E419S1-11e.log, E419S1-11e-trace.zip, test-summary.json |
+| E419S1-12 | hub-api / local macOS | PASS | [sealed macOS; Headless Shell] k12 independent probe; TAP1/1 and every fact separately matched; no step errors; E419S1-12.txt, E419S1-12.log, E419S1-12.jsonl, E419S1-12-assessment.txt |
+| E419S1-13 | hub-api / local macOS | PASS | [local macOS] committed brief row13; typecheck/tier guards or green same-S stage covers; E419S1-13.txt |
+| E419S1-14 | hub-api / local macOS | PASS | [local macOS] committed brief row14; typecheck/tier guards or green same-S stage covers; E419S1-14.txt |
+| E419S1-15 | hub-api / local macOS | PASS | [QA shell] k15:120 clean fixture censuses, T1 0/0, clean tree, unchanged HEAD/dev S, scratch removed; E419S1-15.txt, E419S1-15-final-build.txt |
+
+**Not clear — E419S1-11 FAIL.** Stage `bottom bar and inbox home`, run `qa-s1-2026-10-23-1`, full tested commit `e53bc5a323c98352f206f3b1d2387ca68e94a8b3`. All 16 rows completed: 15 PASS, 1 FAIL. Stage verdict carries no item or epic criterion marks.
+
+Findings, by severity:
+
+- **Medium — E419S1-11, web/test/sessions.test.ts:105.** Command (sealed macOS arm64, Node v24.21.0): `node --test --test-concurrency=1 --test-reporter=tap web/test/sessions.test.ts`. The test “Sessions rows render merged facts, holds, waiting detail and physical selection keys” failed with `P27 row is 52 px tall` and `88 !== 52` (expected 52, actual 88), at narrow() line105, called line118 after `setViewportSize({width:600,height:900})`. File exit1, 4 pass / 1 fail / 0 skipped. E419S1-11e.log and E419S1-11e-trace.zip retain the original output and Playwright trace. No rerun or product change. Coordinator message bac60232 notes that the same test passed in both covers and proposes a matchMedia re-render/measurement race; this run establishes the assertion failure, not that root cause. The brief requires this regression file to pass, so green covers do not override it.
+
+No high or low findings. The other 21 named files and independent probe passed; total local TAP counts: 160 tests, 159 pass, 1 fail, 0 skipped/cancelled/todo. Every required test name passed except the failing Sessions test. Required-name source checks and T-1167's criterion-to-test mapping are retained. The three new phone-Inbox tests cover all C1–C5 of T-1167, each with `{phone:true}`; this stage verdict makes no separate criterion marks.
+
+Independent probe E419S1-12: TAP1/1 and every fact separately matched the brief, zero step-error lines. Verified the 390×844 touch/mobile frame, four ordered 44 px fold headers/zero counts/empty green-check title, live ask count, two-line row/no overflow, inline message and request replies, exact sender/topic/reply_to delivery, per-topic reload draft, waiting plan without actions, Events/Archive order/touch sizes/navigation, More dismissal and read-only areas,640/639 boundary and preserved desktop split, inert phone actions with unchanged CLI facts, desktop640/1440 actions and drawer. Detailed fact assessment is E419S1-12-assessment.txt. No guessed PASS from TAP alone; no probe correction or rerun.
+
+Documentation: all required strings present, full specified sections read. The four flagged README candidates are dismissed: More notification controls explicitly deferred; desktop item drawers distinguished from full-screen phone cards; Requests to you distinguished from desktop Requests; inline phone replies distinguished from desktop drawer replies. No new contradiction observed in this scope.
+
+Build and isolation: clean detached S equals dev before and after; all three exact stage landing receipts present,3/3 merged. Only expected web/docs/tier/duration paths. Installed dependencies linked as permitted; web bundle built at S. Scratch HOME/XDG/Git; full fixtureEnvironment after overlays,37 inherited variables unset,0 credential-prefix names; system macOS TMPDIR preserved. No real Chrome, live sign-in, providers or human HOME access. Waited for c8041fe3 to free the local slot; named files ran serially with admission checks. No suite submitted by QA. Typecheck, all four web guards, tier lint and brief lint passed.
+
+Cited stage covers at the same full S, tree 406e5573e12f94006cf7c6edc2adc2b8471a0180:
+
+- Linux droplet f3ed4769-c0b3-4501-806c-6c87a1ec9265: A-10090 merged; A-10091 shard1, A-10092 shard2. Full stage occasion, host check and T1/T2/T3/T4/Web completed, exit 0; 4039 tests / 4031 pass / 8 platform-or-prerequisite skips / 0 fail. Linux x64, Node 24.21.0, Neovim 0.12.5, two c-8 lon1 shards. Shard1 cland-v0-0045d23e duration 1172.27s (admission through remote finish), lifetime 1152s/$0.0800; shard2 cland-v0-e2fc796d duration 1104.27s, lifetime 1092s/$0.0758. Overall wall 1195.50s (admission through collection), total cost $0.1558. Web 35 files / 180 tests on shard1; shard2's Web command has no allocated files. T4 ten base files, extra repetitions skipped.
+- macOS local c8041fe3-490d-4507-93d2-1e9821fac535: A-10094. Full stage occasion, check plus T1/T2/T3/T4/Web exit 0; 4039/4039, 0 skip/fail. Darwin arm64, Node 24.21.0, Neovim 0.12.5, two workers. Phase command durations 33/183/970/51/83s; queued 15:37:51.766Z to durable log publication 16:00:18.101Z elapsed 1346.335s (includes collection/publication, not a pure execution timing). Cost N/A. Web 35 files / 180 tests. T4 ten base files, extra repetitions skipped.
+
+Both cover receipts have report-only lint/budgets/T3 ratchet; 132 lint findings in 59 files, projected T3/Web wall overages and measured Web budget reports are report-only. Projections are not reported as measured wall. E419S1-14-cover-metrics.txt preserves receipt details and durable paths. Plan read: `# bottom bar and inbox home: open; stage cover complete (Linux droplet, macOS); tree 406e5573e12f94006cf7c6edc2adc2b8471a0180`.
+
+Cleanup: 120 Web fixture census lines all end after 0 and scratch hub stopped; T1 keymap has 0/0 as expected. Scratch /private/tmp/qa-e419s1-jEEt8u removed. Detached tree clean and HEAD/dev remained S. Failure trace copied into this evidence bundle before worktree removal. No extra reruns. Rule proposal sent in topic-896: explicitly separate verified selectors/test names from criterion-derived guesses in pre-implementation briefs and recheck at the tested build.
+
+
+Durable evidence A-10096: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10096-e-419-stage-1-at-e53bc5a3-15-pass-sessions-row-height-regression/report.md
