@@ -113,7 +113,7 @@ export class FakeHarness implements HarnessAdapter {
   model(name: string, model: string): void { this.#signal(name, undefined, model); }
   busy(name: string): void { this.#signal(name, 'busy'); }
   idle(name: string): void { this.#signal(name, 'idle'); }
-  waitingForApproval(name: string): void { this.#signal(name, 'waiting for approval'); }
+  waitingForApproval(name: string, approvalCommand?: string): void { this.#publish(this.#session(name), 'waiting for approval', undefined, approvalCommand); }
   raiseApproval(name: string, request: ApprovalRequest & { subject: ApprovalRequest['subject'] & Record<string, unknown> } & Record<string, unknown>): void {
     this.#host?.approvalRequested?.(this.#session(name).process.sessionId, request);
   }
@@ -192,11 +192,11 @@ export class FakeHarness implements HarnessAdapter {
   #signal(name: string, state?: SessionState, model?: string): void {
     this.#publish(this.#session(name), state, model);
   }
-  #publish(session: FakeSession, state?: SessionState, model?: string): void {
+  #publish(session: FakeSession, state?: SessionState, model?: string, approvalCommand?: string): void {
     if (!this.#host) throw new Error('fake harness needs an AdapterHost to publish signals');
     if (!session.alive) throw new Error(`fake session ${session.process.name} is gone`);
     if (state) session.state = state;
-    this.#host.signal(session.process.sessionId, { source: 'fake', at: this.#clock.now().getTime(), ...(state ? { state } : {}), ...(model ? { model } : {}) });
+    this.#host.signal(session.process.sessionId, { source: 'fake', at: this.#clock.now().getTime(), ...(state ? { state } : {}), ...(model ? { model } : {}), ...(approvalCommand !== undefined ? { approvalCommand } : {}) });
   }
   #later(sessionId: string, ms: number, callback: () => void): ClockTimer {
     const timer = this.#clock.setTimeout(() => { this.#timers.delete(timer); callback(); }, ms);

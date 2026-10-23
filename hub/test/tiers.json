@@ -635,6 +635,7 @@
     "web/test/phone-inbox.test.ts": "Web",
     "web/test/phone-install.test.ts": "Web",
     "web/test/phone-more.test.ts": "Web",
+    "web/test/phone-sessions.test.ts": "Web",
     "web/test/phone-thread.test.ts": "Web",
     "web/test/phone.test.ts": "Web",
     "web/test/plan.test.ts": "Web",

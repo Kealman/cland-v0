@@ -10,3 +10,6 @@
 .detail { color: var(--text-soft); }
 .detail span { display: block; }
 .metrics { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px; color: var(--muted); }
+.open { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; text-align: left; }
+.open > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.open > :last-child { flex: none; }

@@ -22,6 +22,7 @@ export function SessionPage({ connection, selected, controls, closePage, childre
         <dt>State</dt><dd>{row.live ? row.state : row.status}</dd>
         <dt>Usage</dt><dd>{usage ? `${usage.totalTokens} tok${usage.cost === undefined ? '' : ` · $${usage.cost.toFixed(2)}`}` : '—'}</dd>
       </dl>
+      {row.approvalCommand && <pre className={s.waitingCommand}><code>{row.approvalCommand}</code></pre>}
       <SessionActions key={row.key} row={row} connection={connection} controls={actions} onBack={closePage} showCapabilities />
       {props.focusThread && <SessionDrawer {...props} connection={connection} selected={selected} controls={thread} inline />}
     </> : <p>Session unavailable</p>}

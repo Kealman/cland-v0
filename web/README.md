@@ -109,6 +109,27 @@ HOME/XDG/Git environment, CSP and owned browser profile. Run
 `node --test web/test/phone.test.ts` and
 `node --test web/test/phone-more.test.ts` after building the bundle.
 
+### Phone Sessions
+
+Sessions shows Waiting, Busy, Idle and Yours counts above one row of account
+cells in registry order. Each cell keeps the worst window's share and meter,
+the limited reset or a dash without data; tapping opens read-only Accounts.
+Groups retain their folds and two-line rows, with actions on the session page.
+
+The `verify:` summary opens the shared queue in a full-height `BottomSheet`.
+Close or physical Escape dismisses it and restores focus to the summary. Desktop
+verification keeps its in-place queue and saved fold.
+
+Tapping a session opens its page in the single pane, with model, account, usage
+and the complete waiting command. Back and browser Back return to the selected
+row and restore its focus. Stop, Resume, Archive and Capabilities use the shared
+page actions with at least 44 px touch targets. Stop and Archive confirm in
+place; Escape cancels the confirmation before leaving the page.
+
+Build first, then run `node --test web/test/phone-sessions.test.ts`. Its sealed
+390×844 touch/mobile fixture uses fake Codex and reads Stop and Archive receipts
+through `cland session list` against the scratch hub.
+
 ### Phone topic thread
 
 Tapping a topic below 640 px opens the shared `Thread` full screen. Its header

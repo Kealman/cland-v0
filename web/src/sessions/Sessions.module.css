@@ -1,4 +1,5 @@
 .header { display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 20px; color: var(--muted); font-size: 12px; }
+.counts { display: flex; flex-wrap: wrap; gap: 16px; }
 .row { width: 100%; text-align: left; border: 0; background: none; padding: 8px; border-radius: 6px;
   display: grid; grid-template-columns: 16px minmax(76px, 1fr) 88px minmax(100px, 1.7fr) 124px minmax(150px, 1.5fr) 65px; gap: 10px; align-items: center; min-height: 34px; font-size: 12px; }
 .row:hover { background: var(--row-hover); }
@@ -35,12 +36,15 @@
 .capabilities th, .capabilities td { padding: 4px 12px 4px 0; text-align: left; font-weight: normal; }
 .capabilities td { font-family: var(--mono); color: var(--muted); }
 .page { padding: 16px; }
+.waitingCommand { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px var(--mono); color: var(--text); }
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; font-size: 13px; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .identity, .summary { display: contents; }
 .command { display: none; }
 :global([data-phone="true"]) {
+  .header { padding: 8px 12px; gap: 8px; }
+  .counts { width: 100%; gap: 12px; }
   .row { grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px;
     align-content: center; min-height: 52px; height: 52px; padding: 0 10px; border-radius: 10px; }
   .glyph { grid-row: 1; grid-column: 1; }

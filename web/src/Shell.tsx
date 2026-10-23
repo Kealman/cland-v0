@@ -70,18 +70,18 @@ export function Shell() {
   const [inboxLaunch] = useState(() => new URLSearchParams(location.search).get('area') === 'inbox');
   useEffect(() => { if (inboxLaunch) history.replaceState(null, '', '/'); }, [inboxLaunch]);
   const navigationSerial = useRef(0);
-  const [phonePage, setPhonePage] = useState<{ area: 'Items' | 'Artifacts' | 'Topics'; id: string } | undefined>(() => inboxLaunch ? undefined : history.state?.clandPhonePage);
+  const [phonePage, setPhonePage] = useState<{ area: 'Items' | 'Artifacts' | 'Topics' | 'Sessions'; id: string } | undefined>(() => inboxLaunch ? undefined : history.state?.clandPhonePage);
   useEffect(() => {
     const back = (event: PopStateEvent) => {
       navigationSerial.current++;
-      const page = event.state?.clandPhonePage as { area: 'Items' | 'Artifacts' | 'Topics'; id: string } | undefined;
+      const page = event.state?.clandPhonePage as { area: 'Items' | 'Artifacts' | 'Topics' | 'Sessions'; id: string } | undefined;
       setPhonePage(page);
       if (page) setPreferences(previous => ({ ...previous, area: page.area, row: page.id, detail: false }));
     };
     window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
-  const openPhonePage = (area: 'Items' | 'Artifacts' | 'Topics', id: string) => {
+  const openPhonePage = (area: 'Items' | 'Artifacts' | 'Topics' | 'Sessions', id: string) => {
     navigationSerial.current++;
     const page = { area, id };
     history.pushState({ clandPhonePage: page }, '');
@@ -177,7 +177,7 @@ export function Shell() {
     if (!overlay && runBottomSheetShortcut(action)) return;
     if (!actionAtWidth(action, phone)) return;
     if (more && action === 'dismiss') { setMoreOpen(false); moreButton.current?.focus(); return; }
-    if (!overlay && phone && phonePage && (action === 'dismiss' || action === 'tree-close')) { history.back(); return; }
+    if (!overlay && phone && phonePage && phonePage.area !== 'Sessions' && (action === 'dismiss' || action === 'tree-close')) { history.back(); return; }
     if (more) setMoreOpen(false);
     if (!overlay && action.startsWith('jump-')) {
       const focused = document.activeElement?.closest('[data-item-link]')?.getAttribute('data-item-link');
@@ -449,7 +449,7 @@ export function Shell() {
                 label={detail && row ? row.title : paneArea} count={phone && paneArea === 'Inbox' && !detail
                   ? connection.needsYou === undefined ? '—' : connection.needsYou ? `${connection.needsYou} need you` : '✓ Nothing needs you'
                   : detail ? 1 : rows?.length ?? '—'} level={1}
-                actions={<>{phone && !connection.live && paneArea === 'Inbox' && connection.lastAppliedAt !== undefined && <span>as of <time dateTime={new Date(connection.lastAppliedAt).toISOString()}>{connectionTime(connection.lastAppliedAt)}</time></span>}{phone && detail && (paneArea === 'Items' || paneArea === 'Artifacts') && <button className={s.phoneBack} onClick={() => { if (page) history.back(); else setPreferences(previous => ({ ...previous, detail: false })); }}>Back to {paneArea}</button>}{!phone && !detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
+                actions={<>{phone && !connection.live && paneArea === 'Inbox' && connection.lastAppliedAt !== undefined && <span>as of <time dateTime={new Date(connection.lastAppliedAt).toISOString()}>{connectionTime(connection.lastAppliedAt)}</time></span>}{phone && detail && (paneArea === 'Items' || paneArea === 'Artifacts' || paneArea === 'Sessions') && <button className={s.phoneBack} onClick={() => { if (page) history.back(); else setPreferences(previous => ({ ...previous, detail: false })); }}>Back to {paneArea}</button>}{!phone && !detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
                   <button onClick={() => { navigationSerial.current++; setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
                     row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail })); }}>Swap</button>
                   <button onClick={() => closePane(pane)}>Close</button>
@@ -496,7 +496,7 @@ export function Shell() {
                   navigationSerial.current++; showItemsView('plan');
                   setPreferences(previous => pane === 'primary' ? { ...previous, area: 'Items', row: id, detail: false } : { ...previous, secondary: 'Items', secondaryRow: id, secondaryDetail: false });
                 }}
-                openPage={id => { navigationSerial.current++; if (phone && (paneArea === 'Artifacts' || paneArea === 'Topics')) { openPhonePage(paneArea, id); return; } setPreferences(previous => pane === 'primary'
+                openPage={id => { navigationSerial.current++; if (phone && (paneArea === 'Artifacts' || paneArea === 'Topics' || paneArea === 'Sessions')) { openPhonePage(paneArea, id); return; } setPreferences(previous => pane === 'primary'
                   ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}
                 closePage={() => {
                   navigationSerial.current++;

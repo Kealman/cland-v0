@@ -3,6 +3,8 @@ import type { AreaContentProps } from '../AreaSlot.tsx';
 import { Fold } from '../Fold.tsx';
 import { verificationModel, type ExecutorStatus, type QueueRow } from './verification.ts';
 import s from './VerifyLine.module.css';
+import { BottomSheet } from '../BottomSheet.tsx';
+import { usePhone } from '../phone.ts';
 
 function QueueView({ connection, view }: Pick<AreaContentProps, 'connection'> & { view: ReturnType<typeof verificationModel> }) {
   const [executor, setExecutor] = useState<ExecutorStatus>();
@@ -36,13 +38,20 @@ function QueueView({ connection, view }: Pick<AreaContentProps, 'connection'> & 
 }
 
 export function VerifyLine({ connection }: AreaContentProps) {
+  const phone = usePhone();
+  const [sheet, setSheet] = useState(false);
   const [now, setNow] = useState(Date.now);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const received = connection.verification;
   const view = verificationModel(received?.queue, received ? now - received.receivedAt : 0);
   return <div className={s.queue} data-session-slot="verification" title="Verification queue. Enter toggles the view. Running times and waits age from receipt; ~ marks the hub’s unchanged estimates.">
-    <Fold area="sessions" id="verification" label={view.summary} count="" defaultFolded>
+    {phone ? <>
+      <button className={s.open} data-fold-toggle aria-expanded={sheet} aria-haspopup="dialog" onClick={() => setSheet(true)}><span>{view.summary}</span><span aria-hidden="true">›</span></button>
+      {sheet && <BottomSheet label="Verification queue" header={<span>Verification queue</span>} close={() => setSheet(false)} fullHeight>
+        <QueueView connection={connection} view={view} />
+      </BottomSheet>}
+    </> : <Fold area="sessions" id="verification" label={view.summary} count="" defaultFolded>
       {open => open && <QueueView connection={connection} view={view} />}
-    </Fold>
+    </Fold>}
   </div>;
 }

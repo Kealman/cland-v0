@@ -4,7 +4,7 @@ import type { Shortcut } from './keymap.ts';
 import s from './BottomSheet.module.css';
 
 /** Shared phone modal: the native dialog owns focus/inertness, the viewport owns geometry. */
-export function BottomSheet({ label, header, children, close }: { label: string; header: ReactNode; children: ReactNode; close: () => void }) {
+export function BottomSheet({ label, header, children, close, fullHeight = false }: { label: string; header: ReactNode; children: ReactNode; close: () => void; fullHeight?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useLayoutEffect(() => {
     const node = dialog.current!;
@@ -31,7 +31,7 @@ export function BottomSheet({ label, header, children, close }: { label: string;
     };
   }, []);
   return createPortal(<dialog ref={dialog} tabIndex={-1} aria-label={label} data-bottom-sheet data-key-context="sheet" className={s.overlay} onCancel={event => event.preventDefault()} onClick={event => { if (event.target === event.currentTarget) close(); }}>
-    <section className={s.sheet}>
+    <section className={s.sheet} data-full-height={fullHeight || undefined}>
       <header className={s.header}>{header}<button type="button" data-sheet-close aria-label="Close sheet" onClick={close}>×</button></header>
       <div className={s.content}>{children}</div>
     </section>

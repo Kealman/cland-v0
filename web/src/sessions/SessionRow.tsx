@@ -1,7 +1,7 @@
 import { isPhone } from '../phone.ts';
 import type { SessionRow as Row } from '../../../shared/wire/index.ts';
 import type { ConnectionState } from '../connection.ts';
-import type { Ref } from 'react';
+import { useLayoutEffect, useRef, type Ref } from 'react';
 import type { AreaControls } from '../AreaSlot.tsx';
 import { SessionActions } from './SessionActions.tsx';
 import s from './Sessions.module.css';
@@ -19,19 +19,26 @@ function usage(row: Row) {
 }
 const harnesses: Record<string, string> = { 'claude-code': 'Claude Code', codex: 'Codex', opencode: 'OpenCode' };
 
-export function SessionRow({ row, selected, select, connection, now, controls, openPage, openThread }: {
-  row: Row; selected: boolean; select: (id: string) => void; connection: ConnectionState; now: number;
+export function SessionRow({ row, selected, groupOpen, select, connection, now, controls, openPage, openThread }: {
+  row: Row; selected: boolean; groupOpen: boolean; select: (id: string) => void; connection: ConnectionState; now: number;
   controls?: Ref<AreaControls> | undefined;
   openPage?: ((id: string) => void) | undefined;
   openThread?: (() => void) | undefined;
 }) {
+  const button = useRef<HTMLButtonElement>(null);
+  // Fold's open value is committed with its hidden attribute before this effect.
+  useLayoutEffect(() => {
+    if (!selected || !groupOpen || !isPhone()) return;
+    button.current?.focus();
+    button.current?.scrollIntoView({ block: 'nearest' });
+  }, [selected, groupOpen]);
   const state = !row.live ? (row.status === 'stopped' ? 'stopped' : 'died') : row.state;
   const glyph = !row.live ? (row.status === 'stopped' ? '×' : '✗') : row.state === 'busy' || row.state === 'waiting for human' ? '●'
     : row.state === 'idle' ? '○' : row.state === 'waiting for approval' ? '▲' : '?';
   const role = connection.roles?.roles.find(role => role.role === row.role)?.label ?? row.role ?? '—';
   const topics = row.state === 'waiting for human' ? connection.sessionAsks?.filter(ask => ask.from === row.name).map(ask => ask.topic) ?? [] : [];
   return <div className={s.session} data-state={state}>
-    <button className={s.row} data-object-id={row.name} aria-pressed={selected}
+    <button ref={button} className={s.row} data-object-id={row.name} aria-pressed={selected}
       onPointerDown={event => { if (isPhone()) event.preventDefault(); }}
       onFocus={() => select(row.name)} onClick={() => { select(row.name); if (isPhone()) openPage?.(row.name); }}>
       <span className={s.glyph} aria-label={state}>{glyph}</span>

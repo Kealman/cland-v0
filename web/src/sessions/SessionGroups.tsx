@@ -1,5 +1,5 @@
 import { isPhone } from '../phone.ts';
-import { useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import type { AreaContentProps, AreaControls } from '../AreaSlot.tsx';
 import { Fold } from '../Fold.tsx';
 import { sessionGroups } from './state.ts';
@@ -10,7 +10,7 @@ export function SessionGroups({ connection, selected, select, controls, archived
   const actions = useRef<AreaControls>(null);
   const [now, setNow] = useState(Date.now);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const row = [...root.current?.querySelectorAll<HTMLElement>('[data-object-id]') ?? []].find(node => node.dataset.objectId === selected);
     const toggle = row?.closest('[data-fold-block]')?.querySelector<HTMLButtonElement>('[data-fold-toggle]');
     if (toggle?.getAttribute('aria-expanded') === 'false') toggle.click();
@@ -33,13 +33,15 @@ export function SessionGroups({ connection, selected, select, controls, archived
     {sessionGroups(connection.sessions ?? []).map(group => <section key={group.name} aria-label={group.name}>
       <Fold area="sessions" id={group.name.toLowerCase()} label={group.name} count={group.rows.length}
         actions={group.name === 'Stopped' ? <span>{connection.archivedSessions ?? '—'} archived</span> : undefined}>
-        {(group.name === 'Stopped' ? group.rows.slice(0, 20) : group.rows).map(row => <SessionRow key={row.key} row={row} selected={selected === row.name} select={select} connection={connection} now={now} controls={selected === row.name ? actions : undefined} openPage={openPage} openThread={open} />)}
+        {groupOpen => (group.name === 'Stopped' ? group.rows.slice(0, 20) : group.rows).map(row => <SessionRow key={row.key} row={row} groupOpen={groupOpen} selected={selected === row.name} select={select} connection={connection} now={now} controls={selected === row.name ? actions : undefined} openPage={openPage} openThread={open} />)}
       </Fold>
     </section>)}
     {archived && <section aria-label="Archived">
       <Fold area="sessions" id="archived" label="Archived" count={connection.archivedSessionRows?.length ?? '—'}>
-        {connection.archivedSessionsError && <span role="alert">{connection.archivedSessionsError}</span>}
-        {connection.archivedSessionRows?.map(row => <SessionRow key={row.key} row={row} selected={selected === row.name} select={select} connection={connection} now={now} controls={selected === row.name ? actions : undefined} openPage={openPage} openThread={open} />)}
+        {groupOpen => <>
+          {connection.archivedSessionsError && <span role="alert">{connection.archivedSessionsError}</span>}
+          {connection.archivedSessionRows?.map(row => <SessionRow key={row.key} row={row} groupOpen={groupOpen} selected={selected === row.name} select={select} connection={connection} now={now} controls={selected === row.name ? actions : undefined} openPage={openPage} openThread={open} />)}
+        </>}
       </Fold>
     </section>}
   </div>;
