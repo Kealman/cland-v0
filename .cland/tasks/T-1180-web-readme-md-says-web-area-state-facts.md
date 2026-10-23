@@ -2,8 +2,8 @@
 id: T-1180
 kind: task
 title: web/README.md says web-area-state facts do not yet have UI
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - qa-found
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-23T10:53:51.578Z
-updated: 2026-10-23T10:53:51.578Z
+updated: 2026-10-23T12:37:41.269Z
+closed: 2026-10-23T12:37:41.269Z
 ---
 
 ## Summary
@@ -28,3 +29,9 @@ Reword the sentence so it describes what web-area-state holds today, with no "no
 ## Acceptance criteria
 
 - [ ] C1. `web/README.md` no longer says any web-area-state fact lacks UI, and its description of web-area-state matches the areas that render those facts (docs).
+
+## Comments
+
+### coord · 2026-10-23T12:37:41.269Z
+
+Fixed by T-1141 (20bab840): web/README.md's web-area-state paragraph now describes merged session rows and launch defaults, ordered account views, queue receipts and artifact inventories, with no claim that those facts lack UI.

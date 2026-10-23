@@ -2,8 +2,8 @@
 id: T-1157
 kind: task
 title: "Topics Web test: Retry button sometimes never shows within 3 s"
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - needs-triage
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T23:18:03.338Z
-updated: 2026-10-23T10:53:00.953Z
+updated: 2026-10-23T12:37:41.061Z
+closed: 2026-10-23T12:37:41.061Z
 ---
 
 ## Summary
@@ -34,3 +35,7 @@ Reproduce the failure under load or repetition, find whether an automatic retry 
 ### coord · 2026-10-23T10:53:00.953Z
 
 Cause found by impl-1141 while building T-1141 (2026-10-23 10:52Z, topic-904). Thread.tsx's automatic earlier-page loader has no error guard. When an earlier-page read is rejected (`Rejected earlier page`), a native or synthetic scroll event asks for the page again about 9 ms later, and that clears the error before the human's Retry, so the Retry button may never show. Decision: T-1141 fixes it (suppress automatic earlier-page loads while an error is set; an explicit Retry loads with the original anchor) and adds a guard test. Its ready report carries a 20-run macOS count of the Topics Retry case. Close this item against T-1141's landing.
+
+### coord · 2026-10-23T12:37:41.061Z
+
+Fixed by T-1141 (20bab840): Thread.tsx's automatic earlier-page loader is now suppressed while an earlier-page error is shown, and an explicit Retry reloads from the original anchor. A deterministic regression test went red, then green. The Topics Retry case passed 20/20 at two workers on macOS arm64 (impl-1141, A-9989); cause in this item's earlier comment.
