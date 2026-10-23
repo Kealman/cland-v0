@@ -2,8 +2,8 @@
 id: T-1174
 kind: task
 title: "The installable app: manifest, icons, badge and the phone sign-in"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-912
 branch: t/T-1174-the-installable-app-manifest-icons-badge
 created: 2026-10-23T07:00:04.518Z
-updated: 2026-10-23T18:11:54.042Z
+updated: 2026-10-23T18:38:49.389Z
+closed: 2026-10-23T18:38:49.389Z
 ---
 
 ## Summary
@@ -39,18 +40,23 @@ E-419 (§3.6 and §3.7 installing and signing in, P39; choice "The manifest"; th
 - [x] C1. The edge serves `/manifest.webmanifest` as `application/manifest+json` with the project's name, `display: standalone`, a start URL that opens the inbox, the panel token's colour and icons of 192, 512 and maskable (test).
   - done: impl-1174 · 2026-10-23T17:13:21.933Z
   - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final-2 · 2026-10-23T18:34:08.678Z · commit ea26887c5af8c8187330c8a9696e443e64ef4b94
 - [x] C2. `index.html` links the manifest and an `apple-touch-icon`, every icon the manifest names is served as a PNG of its stated size, and the web typecheck finds no colour outside the tokens (test).
   - done: impl-1174 · 2026-10-23T17:01:12.581Z
   - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final-2 · 2026-10-23T18:34:08.678Z · commit ea26887c5af8c8187330c8a9696e443e64ef4b94
 - [x] C3. Opening the manifest's start URL at 390x844 after the saved area was Sessions opens the inbox (Web test).
   - done: impl-1174 · 2026-10-23T17:01:12.753Z
   - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final-2 · 2026-10-23T18:34:08.678Z · commit ea26887c5af8c8187330c8a9696e443e64ef4b94
 - [x] C4. With `setAppBadge` and `clearAppBadge` stubbed, the badge follows the needs-you count and clears at 0 (Web test).
   - done: impl-1174 · 2026-10-23T17:01:13.027Z
   - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final-2 · 2026-10-23T18:34:08.678Z · commit ea26887c5af8c8187330c8a9696e443e64ef4b94
 - [x] C5. The link `cland web --qr` prints, opened on the edge's loopback address in a fresh 390x844 context, signs it in with the 30-day cookie and opens the inbox (Web test).
   - done: impl-1174 · 2026-10-23T17:01:13.205Z
   - verified: rev-23 [reviewer] · run rev-20261023-1174-final · 2026-10-23T17:25:32.420Z · commit bfcc16c99c33fc27925957006514be7b3390950c
+  - verified: rev-23 [reviewer] · run rev-20261023-1174-final-2 · 2026-10-23T18:34:08.678Z · commit ea26887c5af8c8187330c8a9696e443e64ef4b94
 
 ## Comments
 
@@ -206,3 +212,71 @@ A-10166 original raw targeted log inspected:87/87, zero fail/cancel/skip, clean 
 
 Proceed with mode-free verification at exact0da55df8, followed by fresh final C1–C5 settlement and actual passing new-identity samples. bfcc16c9 green receipt stays prior-head only. Preserve original stdout/exits/timings/head attribution without transcription reruns. Reviewer read-only Git/files/log/hub; no tests/probes/live browser/GUI/edits/merge/delegation. Real platform installability/badge remain after-stage QA, no per-item brief/qaCriteria.
 Standards:0 findings. Spec:0 findings.
+
+### impl-1174 · 2026-10-23T18:21:56.475Z
+
+Final Coordinator-authorized merge ea26887c5af8c8187330c8a9696e443e64ef4b94 (tree5214c0c6557d664329402afb2f0d1a7e16995dea), pushed origin, incorporates dev b5afd486 including T-1171 and stage-2 QA brief. Only conflict README: retained complete Phone composer subsection under Phone, then unchanged Installable app section. No T-1174 production/test edits. Fresh local Darwinarm64 Node24.21 build/full root typecheck+guards passed; targeted web-auth/web-edge/allphone*/shell/smoke93/93,0fail/skip/cancel, raw A-10173, includes phone-composer once. Prior0da55df8 run35a5bd64 was explicitly cancelled by own-run command at Coordinator's suggestion (A-10170), partial only; no current-head suite evidence yet. Requesting short delta source review, then exact-head mode-free verify.
+
+### rev-23 · 2026-10-23T18:22:47.896Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1174-source-4
+commit: ea26887c5af8c8187330c8a9696e443e64ef4b94
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1174 final composer-merge delta source review
+Head ea26887c5af8c8187330c8a9696e443e64ef4b94; tree5214c0c6557d664329402afb2f0d1a7e16995dea. Parents0da55df800c063397b1e3e6ed9706a0b8d48413c andb5afd486d4ace17a11d4af4a466b0174eb915682; branch t/T-1174-the-installable-app-manifest-icons-badge. Run rev-20261023-1174-source-4. Clear; findings[]; allC1–C5 current-head runtime pending. Prior A-10167 source audit carries forward; bfcc16c9 final evidence remains historical.
+
+Coordinator messages868741b8/e024be43/8e688a3f independently read: authorized own-run cancellation, wait for T-1171 landing, merge b5afd486 preserving both README sections, check once including phone-composer, short delta review then exact-head verify. A-10170 cancelled143/partial run is no landing pass; no current runtime criterion established by it.
+
+## Standards
+No findings. Only manual resolution README: complete Phone composer subsection byte-identical to incoming dev, complete Installable app section byte-identical to prior reviewed0da55df8; correct heading order Phone topic thread→Phone composer→Installable app. Independent ###phone-composer test seam guidance preserved. Shell blob unchanged from0da55df8. Own manifest/edge/QR/icon/install sources/tests unchanged. Incoming Composer/keyboard/keymap/Palette/MessageBlock and phone-composer test blobs exactly equal reviewed incoming dev; full T-1171 source/final audits A-10160/A-10162/A-10169 carry forward, including44px recipient clear. Diff check clean. Stage-2 QA brief is incoming Coordinator-owned content, no per-item QA source change.
+
+## Spec
+No merge findings. Installed start URL still resets primary area/page/history to Inbox; shared authoritative Badging API effect unchanged. Incoming touch composer keeps shared draft/withdrawal state, phone Return newline, normal-flow kind sheet and recipient clear; independent install entry and phone routing are preserved. All prior C1–C5 source behavior remains intact.
+
+A-10173 original raw targeted log inspected:93/93, zero fail/cancel/skip, clean owned browser censuses, includes six phone-composer identities once along with requested web-auth/web-edge/allphone/shell/smoke. Request reports fresh local Darwinarm64 Node24.21.0 isolated Headless Shell build/root typecheck/guards exit0 at source-as-committed merge tree; raw log is targeted stdout, not separate command-exit/head metadata. No configured/Linux current-head pass claimed. New own passing local samples reported below prescribed thresholds, no allowance trigger yet.
+
+Proceed with mode-free verify at exactea26887c; fresh finalC1–C5 and actual passing-sample audit follow. Preserve raw receipts without transcription reruns. Reviewer read-only Git/files/log/hub, no tests/probes/live browser/GUI/edits/merge/delegation. Real installability/badge remain stage QA under incoming E-419-stage-2 brief; source review does not run/claim that QA.
+Standards:0findings. Spec:0findings.
+
+### rev-23 · 2026-10-23T18:34:08.678Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1174-final-2
+commit: ea26887c5af8c8187330c8a9696e443e64ef4b94
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1174 final merged-head evidence review
+Head ea26887c5af8c8187330c8a9696e443e64ef4b94; tree5214c0c6557d664329402afb2f0d1a7e16995dea, branch t/T-1174-the-installable-app-manifest-icons-badge. Run rev-20261023-1174-final-2. Clear; C1–C5 verified, findings[]. Source audits A-10116/A-10131 and merge deltas A-10167/A-10174 carry forward. Old bfcc16c9 final A-10138 is historical; cancelled0da55df8 runA-10170 is partial/no pass.
+
+## Standards
+A-10177 raw mode-free run986f0c1b-cb4c-4ba8-a412-69800971e8fe independently audited: exact source-clear head, exit0; ordinary2764/2764 test finishes and411/411 file finishes pass, no fail/skip/cancel. Separate load-gate scope actually contains5test/5file passes for the new T2 project-manifest identity; this is evidence beyond generic repetition headers. Actual allT1(132files), fallback all hub+NeovimT2(239files), completeWeb(40files); noT3/T4. Configured T3 deferred periodic/integrated, no stageQA claim.
+
+Host npmruncheck includes typecheck/build/static guards and report-only test lint; gate8beb3c7fdfab87a01c1eec5a3cfe37e3f0e55212 reused remotely, not repeated. Linuxx64 c-8lon1 cland-v0-f466603f, Node24.21.0/Nvim0.12.5, workers2/Web4, lifetime575s/$0.0399. Actual phases49.28sT1/308.24sT2/130.65sWeb. Sum test-seconds/projections are not phase wall. Generic budgets/lint/ratchet remain report-only,132lint findings59files and5missing file baselines; existing warnings are retained, not claimed fixed.
+
+Manifest T2 base0.202081980s, actual5load repetitions0.178966617/0.171377088/0.195699265/0.151043677/0.151026726s: all<1.6s prescribed threshold. Four new Web identities: installed entry2.215660886s, executable QR0.992995479s, badge1.196930389s, missingAPI0.850493690s: all<3.2s prescribed threshold. Earlier own Linux/local passing samples also below thresholds; no new allowance trigger. Per-file5.256s test sum is not an individual sample or Web phase wall.
+
+## Spec
+C1 verified:project-named application/manifest+json, standalone Inbox startURL, panel theme and192/512/maskable icon fields pass.
+C2 verified:HTML manifest/Apple links, every stated PNG served with matching dimensions/signature, token-only typecheck/static guard pass.
+C3 verified:actual built manifest start URL overrides saved Sessions at390x844 to Inbox and plain root, ordinary persistence retained.
+C4 verified:stubbed setAppBadge/clearAppBadge tracks authoritative needs-you through answer-to-zero, missingAPI fallback stays live.
+C5 verified:real executable QR prints/decodes synthetic-origin link, exact token redeemed on scratch loopback by fresh390x844 context,30-daycookie and authenticated Inbox/live receipt pass. No tunnel contacted or real-user browser driven.
+
+Branch tip/tree independently match reviewed head. Full runtime evidence plus source settles criteria at this exact head. Lead's fresh dev-conflict/ready check remains part of landing; any authorized new merge requires fresh source/current-head evidence. Actual platform installation/badge and after-stage affected QA remain separate under incoming E-419-stage-2 brief. Reviewer read-only Git/files/log/hub, no tests/probes/live browser/GUI/edits/merge/delegation.
+Standards:0findings. Spec:0findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-23T18:38:49.389Z
+
+Merged 15460be97b992a87d8b8d39c461dad468a7f7284 onto dev.
