@@ -83,7 +83,7 @@ test('Sessions rows render merged facts, holds, waiting detail and physical sele
     const detail = page.locator('[data-session-detail="facts-reviewer"]');
     await detail.waitFor();
     assert.equal(await detail.locator('code').textContent(), command);
-    assert.equal(await page.getByRole('button', { name: /attach/i }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Attach', exact: true }).count(), 0, 'Sessions has no terminal Attach action');
     await row.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyJ', key: 'о', bubbles: true, cancelable: true })));
     const second = page.locator('[data-object-id="second-row"]');
     await pageUntil(page, () => document.querySelector('[data-object-id="second-row"]')?.getAttribute('aria-pressed') === 'true', 'j selects the next session');

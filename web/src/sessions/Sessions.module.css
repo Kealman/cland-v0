@@ -25,6 +25,7 @@
 .session[data-state="stopped"] .glyph, .session[data-state="died"] .glyph { color: var(--failed); }
 .detail { display: flex; flex-direction: column; gap: 6px; padding: 8px 34px 12px; color: var(--muted); background: var(--selection); border-radius: 0 0 6px 6px; }
 .detail code { font-family: var(--mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail > button { align-self: flex-start; padding: 4px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--text); }
 .actions { display: flex; flex-direction: column; gap: 8px; color: var(--text); }
 .buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .actions button { padding: 4px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); }
@@ -58,3 +59,7 @@
 .header button:first-of-type { margin-left: auto; }
 .header button:hover { background: var(--control-hover); }
 .header button[aria-pressed="true"] { background: var(--selection); color: var(--text); }
+.drawer { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.approval { flex: none; max-height: 35%; overflow: auto; }
+.page:has([data-session-thread]) { display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }
+.page > .drawer { flex: 1; min-height: 240px; }

@@ -18,10 +18,11 @@ function usage(row: Row) {
 }
 const harnesses: Record<string, string> = { 'claude-code': 'Claude Code', codex: 'Codex', opencode: 'OpenCode' };
 
-export function SessionRow({ row, selected, select, connection, now, controls, openPage }: {
+export function SessionRow({ row, selected, select, connection, now, controls, openPage, openThread }: {
   row: Row; selected: boolean; select: (id: string) => void; connection: ConnectionState; now: number;
   controls?: Ref<AreaControls> | undefined;
   openPage?: ((id: string) => void) | undefined;
+  openThread?: (() => void) | undefined;
 }) {
   const state = !row.live ? (row.status === 'stopped' ? 'stopped' : 'died') : row.state;
   const glyph = !row.live ? (row.status === 'stopped' ? '×' : '✗') : row.state === 'busy' || row.state === 'waiting for human' ? '●'
@@ -54,6 +55,7 @@ export function SessionRow({ row, selected, select, connection, now, controls, o
       {row.approvalCommand && <code>{row.approvalCommand}</code>}
       {[...new Map(topics.map(topic => [topic.id, topic])).values()].map(topic => <span key={topic.id}>{topic.title}</span>)}
       {!row.approvalCommand && topics.length === 0 && <span>{state}</span>}
+      <button onClick={openThread}>Open thread</button>
       <SessionActions row={row} connection={connection} controls={controls} />
     </div>}
   </div>;

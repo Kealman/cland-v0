@@ -12,9 +12,10 @@ export type Shortcut = Area | 'events-subject' | 'events-open' | 'events-next' |
   | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
-export type KeyContext = 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
+export type KeyContext = 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch';
 export type KeyAction = { action: Shortcut; label: string; description?: string };
 
+const composerKeys = { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always' } as const;
 const threadKeys = { KeyR: 'inbox-reply', KeyJ: 'thread-next', ArrowDown: 'thread-next', KeyK: 'thread-previous', ArrowUp: 'thread-previous', KeyH: 'thread-back', Escape: 'thread-back', Enter: 'thread-toggle', KeyZ: 'thread-leader', 'KeyZ KeyA': 'thread-toggle' } as const;
 
 /** One physical-code/modifier map, partitioned by focused context. */
@@ -46,8 +47,9 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   inbox: { 'Shift+KeyA': 'inbox-archive', KeyR: 'inbox-reply', KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
   'inbox-answer': { 'Shift+KeyA': 'inbox-archive', Digit1: 'inbox-1', Digit2: 'inbox-2', Digit3: 'inbox-3', Digit4: 'inbox-4', Digit5: 'inbox-5', Digit6: 'inbox-6', Digit7: 'inbox-7', Digit8: 'inbox-8', Digit9: 'inbox-9', KeyI: 'inbox-free', KeyR: 'inbox-free', KeyJ: 'inbox-next', ArrowDown: 'inbox-next', KeyK: 'inbox-previous', ArrowUp: 'inbox-previous', Enter: 'inbox-open', KeyD: 'inbox-remove' },
   events: { KeyS: 'events-subject', Enter: 'events-open', KeyJ: 'events-next', ArrowDown: 'events-next', KeyK: 'events-previous', ArrowUp: 'events-previous', KeyZ: 'events-leader', 'KeyZ KeyA': 'events-fold', 'Shift+KeyA': 'events-older', KeyW: 'events-warnings', 'Shift+KeyF': 'events-clear', Digit0: 'events-all', ...Object.fromEntries(Array.from({length: 8}, (_, i) => [`Digit${i + 1}`, `events-kind-${i + 1}` as Shortcut])) },
-  reply: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always' },
-  composer: { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always', 'Shift+Digit2': 'composer-session', 'Shift+Backquote': 'composer-artifact' },
+  reply: composerKeys,
+  composer: { ...composerKeys, 'Shift+Digit2': 'composer-session', 'Shift+Backquote': 'composer-artifact' },
+  'session-composer': { ...composerKeys, 'Shift+Backquote': 'composer-artifact' },
   sessions: { KeyJ: 'session-next', ArrowDown: 'session-next', KeyK: 'session-previous', ArrowUp: 'session-previous',
     Enter: 'session-open', KeyL: 'session-launch', KeyA: 'session-aide', KeyX: 'session-stop', KeyR: 'session-resume',
     KeyD: 'session-archive', KeyC: 'session-capabilities', 'Shift+KeyA': 'session-archive-toggle' },
@@ -131,7 +133,7 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
   items: [...treeActions, ...planActions],
   topics: [{ action: 'topic-next', label: 'Next topic or group' }, { action: 'topic-previous', label: 'Previous topic or group' },
     { action: 'topic-open', label: 'Enter thread or unfold group' }, { action: 'topic-close', label: 'Fold topic group' }],
-  thread: [{ action: 'inbox-reply', label: 'Reply to Inbox sender' }, { action: 'thread-next', label: 'Next message' }, { action: 'thread-previous', label: 'Previous message' }, { action: 'thread-back', label: 'Return to topic list' }, { action: 'thread-toggle', label: 'Toggle agent run' }],
+  thread: [{ action: 'inbox-reply', label: 'Reply to Inbox sender' }, { action: 'thread-next', label: 'Next message' }, { action: 'thread-previous', label: 'Previous message' }, { action: 'thread-back', label: 'Return to list' }, { action: 'thread-toggle', label: 'Toggle agent run' }],
   approval: [{ action: 'approval-once', label: 'Approve once' }, { action: 'approval-always', label: 'Always for this command' }, { action: 'approval-deny', label: 'Deny with optional note' }, { action: 'approval-cancel', label: 'Cancel denial' }],
   'approval-note': [{ action: 'approval-cancel', label: 'Cancel denial' }],
   ask: [
@@ -142,9 +144,10 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
   'inbox-answer': [{ action: 'inbox-archive', label: 'Show Inbox archive' }, ...Array.from({ length: 9 }, (_, index) => ({ action: `inbox-${index + 1}` as Shortcut, label: `Answer Inbox option ${index + 1}` })), { action: 'inbox-free', label: 'Free answer' }, { action: 'inbox-next', label: 'Next Inbox row' }, { action: 'inbox-previous', label: 'Previous Inbox row' }, { action: 'inbox-open', label: 'Open Inbox subject' }, { action: 'inbox-remove', label: 'Decline request or read message' }],
   reply: [{ action: 'composer-send', label: 'Send one line' }, { action: 'composer-send-always', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }],
   composer: [{ action: 'composer-send', label: 'Send one line' }, { action: 'composer-send-always', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }, { action: 'composer-session', label: 'Choose addressee' }, { action: 'composer-artifact', label: 'Attach an artifact' }],
+  'session-composer': [{ action: 'composer-send', label: 'Send one line' }, { action: 'composer-send-always', label: 'Send message' }, { action: 'composer-newline', label: 'New line' }, { action: 'composer-artifact', label: 'Attach an artifact' }],
   sessions: [
     { action: 'session-next', label: 'Next session' }, { action: 'session-previous', label: 'Previous session' },
-    { action: 'session-open', label: 'Open session or queue' }, { action: 'session-launch', label: 'Launch a session' },
+    { action: 'session-open', label: 'Open session thread, page or queue' }, { action: 'session-launch', label: 'Launch a session' },
     { action: 'session-aide', label: 'New Aide' }, { action: 'session-stop', label: 'Stop session' },
     { action: 'session-resume', label: 'Resume session' }, { action: 'session-archive', label: 'Archive session' },
     { action: 'session-capabilities', label: 'Capabilities' }, { action: 'session-archive-toggle', label: 'Show archived sessions' },

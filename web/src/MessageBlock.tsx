@@ -17,7 +17,7 @@ function verdictOf(message: TopicMessage): { kind: string; result: 'clear' | 'no
   if (match) return { kind: match[1]!, result: match[2] as 'clear' | 'not clear' };
 }
 
-export function MessageBlock({ message, connection }: { message: TopicMessage; connection: ConnectionState }) {
+export function MessageBlock({ message, connection, showTopic = false }: { message: TopicMessage; connection: ConnectionState; showTopic?: boolean }) {
   const withdrawal = useMessageWithdrawal(message.id);
   const canWithdraw = message.fromKind === 'human' && message.from === 'human' && !message.answerTo && (message.withdrawable ?? message.stage === 'queued') && !withdrawal.complete;
   const card = message.ask && message.ask.state !== 'open' ? message.ask : connection.askCards?.get(message.id) ?? message.ask;
@@ -37,6 +37,7 @@ export function MessageBlock({ message, connection }: { message: TopicMessage; c
         <span data-message-role className={s.role}>{roles[role]}</span>
         <span>→ {message.to.length ? message.to.map(name => name === 'human' ? 'you' : name).join(', ') : 'you'}</span>
         <span>{shownKind}</span>
+        {showTopic && <span data-message-topic={message.topic}>{connection.topics?.find(topic => topic.id === message.topic)?.title ?? message.topic}</span>}
         {verdict && <span data-verdict={verdict.result} className={verdict.result === 'clear' ? s.verified : s.failed}>
           {verdict.result === 'clear' && message.fromKind === 'agent' ? <ItemText text={message.text.split(/[\r\n]/)[0]!} /> : `${verdict.kind} ${verdict.result}`}
         </span>}

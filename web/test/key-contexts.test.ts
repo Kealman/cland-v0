@@ -79,7 +79,7 @@ test('area modules keep selection and drawers and session launch actions appear 
     await row.press('Shift+/');
     const help = page.getByRole('dialog', { name: 'Sessions keys', exact: true });
     await help.waitFor();
-    assert.deepEqual(await help.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session or queue', 'Launch a session', 'New Aide', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
+    assert.deepEqual(await help.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session thread, page or queue', 'Launch a session', 'New Aide', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
     assert.equal(await help.locator('kbd').count(), 24);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Meta+k');

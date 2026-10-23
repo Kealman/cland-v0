@@ -22,6 +22,7 @@ export type AreaContentProps = {
   open?: () => void;
   navigate?: (area: Area) => void;
   targetMessage?: string | undefined;
+  focusThread?: number | undefined;
   openTopic?: (topic: string, message?: string) => void;
   openPlan?: (id: string) => void;
   openSubject?: (subject: EventSubject) => void;

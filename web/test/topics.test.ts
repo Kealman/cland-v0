@@ -60,6 +60,7 @@ test('a rejected earlier page retries with its old top message anchored', async 
   }
   const earlierIds = new Set<string>();
   let rejected = false;
+  let rejectPage: (() => void) | undefined;
   let release: (() => void) | undefined;
   await fixture.pageCase(t, async page => {
     await page.getByRole('button', { name: 'Topics', exact: true }).click();
@@ -70,16 +71,25 @@ test('a rejected earlier page retries with its old top message anchored', async 
     const anchorTop = await thread.evaluate(node => {
       node.scrollTop = 0;
       const top = node.querySelector('[data-message-id]')!.getBoundingClientRect().top - node.getBoundingClientRect().top;
-      node.dispatchEvent(new Event('scroll'));
       return top;
     });
+    await until(() => !!rejectPage, { what: 'first earlier page ready to reject', timeoutMs: 3000 });
+    rejectPage!();
     const retry = page.getByRole('button', { name: 'Retry', exact: true });
     await retry.waitFor();
     assert.equal(await retry.getAttribute('title'), 'Rejected earlier page');
+    const live = thread.getByText('Retry guard receipt', { exact: true }).waitFor();
+    await thread.evaluate(node => node.dispatchEvent(new Event('scroll')));
+    const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'Retry guard receipt' });
+    assert.equal(sent.ok, true, sent.error);
+    expected.push((sent.value as { message: { id: string } }).message.id);
+    await live;
+    assert.equal(await retry.isVisible(), true, 'scroll leaves the rejected page error visible until explicit Retry');
+    assert.equal(earlierIds.size, 1, 'scroll while failed does not request another older page');
     await retry.click();
     await until(() => !!release, { what: 'retried earlier reply held', timeoutMs: 3000 });
     release!();
-    await thread.locator('[data-message-id]').nth(149).waitFor();
+    await thread.locator('[data-message-id]').nth(150).waitFor();
     assert.equal(await thread.locator(`[data-message-id="${anchor}"]`).evaluate((node, top) => Math.abs(node.getBoundingClientRect().top - node.parentElement!.getBoundingClientRect().top - top) < 3, anchorTop), true, 'successful retry preserves the old top message');
     assert.deepEqual(await thread.locator('[data-message-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-message-id'))), expected);
   }, async page => {
@@ -89,7 +99,7 @@ test('a rejected earlier page retries with its old top message anchored', async 
       server.onMessage(message => {
         const frame = JSON.parse(String(message));
         if (frame.type === 'result' && earlierIds.has(frame.id)) {
-          if (!rejected) { rejected = true; route.send(JSON.stringify({ type: 'result', id: frame.id, ok: false, error: 'Rejected earlier page' })); }
+          if (!rejected) { rejected = true; rejectPage = () => route.send(JSON.stringify({ type: 'result', id: frame.id, ok: false, error: 'Rejected earlier page' })); }
           else release = () => route.send(message);
         } else route.send(message);
       });

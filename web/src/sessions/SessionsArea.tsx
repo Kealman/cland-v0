@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore } from 'react';
 import type { AreaControls, AreaContentProps, AreaModule } from '../AreaSlot.tsx';
-import { AreaObjectDetail } from '../AreaObjects.tsx';
+import { SessionDrawer } from './SessionDrawer.tsx';
 
 import { SessionLaunch } from './SessionLaunch.tsx';
 import { SessionsHeader } from './SessionsHeader.tsx';
@@ -49,7 +49,4 @@ function SessionsArea(props: AreaContentProps & { page?: boolean }) {
   </section>;
 }
 function SessionsPage(props: AreaContentProps) { return <SessionsArea {...props} page />; }
-function SessionDrawer(props: AreaContentProps) {
-  return <section data-area-module="Sessions" data-area-surface="drawer" data-key-context="sessions"><AreaObjectDetail {...props} /></section>;
-}
-export const sessionsModule: AreaModule = { context: 'sessions', handledActions: ['session-launch', 'session-aide', 'accept', 'session-next', 'session-previous', 'session-archive-toggle', 'session-stop', 'session-resume', 'session-archive', 'session-capabilities', 'session-open', 'dismiss'], Pane: SessionsArea, Page: SessionsPage, Drawer: SessionDrawer };
+export const sessionsModule: AreaModule = { context: 'sessions', handledActions: ['session-launch', 'session-aide', 'accept', 'session-next', 'session-previous', 'session-archive-toggle', 'session-stop', 'session-resume', 'session-archive', 'session-capabilities', 'session-open', 'dismiss', 'thread-next', 'thread-previous', 'thread-back', 'thread-leader', 'thread-toggle'], Pane: SessionsArea, Page: SessionsPage, Drawer: SessionDrawer };

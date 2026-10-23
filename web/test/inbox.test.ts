@@ -585,6 +585,38 @@ test('selecting an approval shows the session recent thread in the drawer', asyn
   });
 });
 
+test('an Inbox approval recent thread routes physical message navigation and returns to its selected row', async t => {
+  const fixture = await approvalFixture(t);
+  const messages: string[] = [];
+  for (const text of ['First approval context', 'Latest approval context']) {
+    const sent = await fixture.ui.request({ type: 'topic.send', topic: 'general', to: ['race-worker'], text });
+    assert.equal(sent.ok, true, sent.error);
+    messages.push((sent.value as { message: { id: string } }).message.id);
+  }
+  await fixture.pageCase(t, async page => {
+    const row = page.locator(`[data-object-id="${fixture.approval.id}"]`);
+    await row.click();
+    const recent = page.getByRole('complementary', { name: 'Drawer', exact: true }).getByRole('log', { name: 'race-worker recent thread', exact: true });
+    const first = recent.locator(`[data-message-id="${messages[0]}"]`);
+    const last = recent.locator(`[data-message-id="${messages[1]}"]`);
+    await last.waitFor();
+    await recent.focus();
+    const next = until(() => last.evaluate(node => node === document.activeElement), { what: 'physical j focuses the exact latest approval context', timeoutMs: 3000 });
+    await recent.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyJ', key: 'о', bubbles: true, cancelable: true })));
+    await next;
+    assert.equal(await last.evaluate(node => node === document.activeElement), true);
+    const previous = until(() => first.evaluate(node => node === document.activeElement), { what: 'physical k focuses the exact previous approval context', timeoutMs: 3000 });
+    await last.evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyK', key: 'л', bubbles: true, cancelable: true })));
+    await previous;
+    assert.equal(await first.evaluate(node => node === document.activeElement), true);
+    const back = until(() => row.evaluate(node => node === document.activeElement), { what: 'approval thread Escape restores its selected Inbox row', timeoutMs: 3000 });
+    await first.press('Escape');
+    await back;
+    assert.equal(await row.evaluate(node => node === document.activeElement), true);
+    assert.equal(await row.getAttribute('aria-pressed'), 'true');
+  });
+});
+
 test('selecting another approval from one session refreshes recent messages and fences a held prior read', async t => {
   const fixture = await approvalFixture(t);
   let release: (() => void) | undefined;

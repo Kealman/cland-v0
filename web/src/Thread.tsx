@@ -1,4 +1,4 @@
-import { Fragment, useContext, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
+import { Fragment, useContext, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref, type ReactNode } from 'react';
 import type { TopicMessage, ThreadRun } from '../../shared/wire/index.ts';
 import type { ConnectionState } from './connection.ts';
 import { MessageBlock } from './MessageBlock.tsx';
@@ -6,13 +6,14 @@ import s from './Thread.module.css';
 import { useTopicRead } from './use-topic-read.ts';
 import type { Shortcut } from './keymap.ts';
 import { Composer, type InboxReply } from './Composer.tsx';
+import type { TopicThreads } from './topic-threads.ts';
 import { TopicArtifacts } from './artifacts/TopicArtifacts.tsx';
 
 export type ThreadControls = { focus: () => void; run: (action: Shortcut) => boolean };
 
-export function Thread({ connection, topic, controls, targetMessage, reply, focusTarget = true }: { connection: ConnectionState; topic: string; reply?: InboxReply | undefined; focusTarget?: boolean; targetMessage?: string | undefined; controls?: Ref<ThreadControls> | undefined }) {
+export function Thread({ connection, topic, controls, targetMessage, reply, focusTarget = true, source, title: suppliedTitle, composer, logLabel }: { source?: TopicThreads | undefined; title?: string; logLabel?: string; composer?: ReactNode; connection: ConnectionState; topic: string; reply?: InboxReply | undefined; focusTarget?: boolean; targetMessage?: string | undefined; controls?: Ref<ThreadControls> | undefined }) {
   const { opened: openTopicArtifacts } = useContext(TopicArtifacts);
-  useEffect(() => openTopicArtifacts(topic), [topic, openTopicArtifacts]);
+  useEffect(() => { if (!source) openTopicArtifacts(topic); }, [topic, openTopicArtifacts, source]);
   const node = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ id: string; top: number } | null>(null);
   const atEnd = useRef(true);
@@ -20,7 +21,8 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const toggleAnchor = useRef<{ row: HTMLElement; top: number } | null>(null);
   const regionId = useId();
-  const state = connection.threads?.get(topic);
+  const threads = source ?? connection.threads;
+  const state = threads?.get(topic);
   const toggle = (row: HTMLElement) => {
     const id = row.closest<HTMLElement>('[data-run-id]')?.dataset.runId;
     if (!id) return false;
@@ -46,8 +48,8 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
     node.current.scrollTop += row.getBoundingClientRect().top - top;
     toggleAnchor.current = null;
   }, [expanded]);
-  useTopicRead(node, connection, topic, state?.messages, expanded);
-  useEffect(() => { if (connection.live) void connection.threads?.load(topic); }, [connection.live, connection.threads, connection.threads?.generation, topic, state?.loaded]);
+  useTopicRead(node, connection, topic, state?.messages, expanded, !source);
+  useEffect(() => { if (connection.live) void threads?.load(topic); }, [connection.live, threads, threads?.generation, topic, state?.loaded]);
   useLayoutEffect(() => {
     const log = node.current;
     if (!log || !state?.loaded) return;
@@ -64,7 +66,7 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
     if (!targetMessage || navigated.current === targetMessage || !state?.loaded || !node.current) return;
     const message = state.messages.find(row => row.id === targetMessage);
     if (!message) {
-      if (state.more && !state.loading && !state.error && connection.live) void connection.threads?.load(topic, true);
+      if (state.more && !state.loading && !state.error && connection.live) void threads?.load(topic, true);
       return;
     }
     if (message.runId && !expanded.has(message.runId)) { setExpanded(previous => new Set(previous).add(message.runId!)); return; }
@@ -75,16 +77,16 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
     // Keep the Inbox row under the cursor while its drawer follows it.
     const log = node.current;
     log.scrollTop += target.getBoundingClientRect().top - log.getBoundingClientRect().top - (log.clientHeight - target.offsetHeight) / 2;
-  }, [targetMessage, state, expanded, connection.live, connection.threads, topic, focusTarget]);
-  const earlier = () => {
-    if (!node.current || state?.loading || !state?.more || !connection.live) return;
+  }, [targetMessage, state, expanded, connection.live, threads, topic, focusTarget]);
+  const earlier = (retry = false) => {
+    if (!node.current || state?.loading || !state?.more || !connection.live || state.error && !retry) return;
     // In an open run, anchor its first message: the sticky summary cannot
     // measure content prepended inside the same run.
     const first = node.current.querySelector<HTMLElement>('[data-message-id]');
     if (first) anchor.current = { id: first.dataset.threadRow!, top: first.getBoundingClientRect().top };
-    void connection.threads?.load(topic, true);
+    void threads?.load(topic, true);
   };
-  const title = connection.topics?.find(row => row.id === topic)?.title ?? topic;
+  const title = suppliedTitle ?? connection.topics?.find(row => row.id === topic)?.title ?? topic;
   const blocks: { messages: TopicMessage[]; run?: ThreadRun }[] = [];
   for (const message of state?.messages ?? []) {
     const run = message.runId ? state?.runs[message.runId] : undefined;
@@ -92,10 +94,10 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
     if (run && last?.run?.id === run.id) last.messages.push(message);
     else blocks.push({ messages: [message], ...(run ? { run } : {}) });
   }
-  return <section className={s.thread} data-key-context="thread" aria-label={title} onFocusCapture={() => openTopicArtifacts(topic)} onPointerDownCapture={() => openTopicArtifacts(topic)}>
+  return <section className={s.thread} data-key-context="thread" aria-label={title} onFocusCapture={() => { if (!source) openTopicArtifacts(topic); }} onPointerDownCapture={() => { if (!source) openTopicArtifacts(topic); }}>
     <header className={s.heading}><h2>{title}</h2>{state?.loading && <span role="status">Loading</span>}
-      {state?.error && <button title={state.error} onClick={() => { if (state.loaded) earlier(); else void connection.threads?.load(topic); }}>Retry</button>}</header>
-    <div ref={node} className={s.messages} data-loaded={!!state?.loaded} role="log" aria-label={`${title} thread`} tabIndex={0}
+      {state?.error && <button title={state.error} onClick={() => { if (state.errorAt === 'earlier') earlier(true); else void threads?.refresh(topic); }}>Retry</button>}</header>
+    <div ref={node} className={s.messages} data-loaded={!!state?.loaded} role="log" aria-label={logLabel ?? `${title} thread`} tabIndex={0}
       onScroll={() => { const log = node.current!; atEnd.current = log.scrollHeight - log.clientHeight - log.scrollTop < 2; if (log.scrollTop === 0) earlier(); }}>
       {blocks.map(({ messages, run }, index) => {
         const first = messages[0]!, last = messages.at(-1)!;
@@ -107,10 +109,10 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
             <button data-run-anchor data-thread-row={run.id} data-message-id={open ? undefined : last.id} data-message-seq={open ? undefined : last.seq}
               className={s.runAnchor} aria-expanded={open} aria-controls={`${regionId}-${run.id}`} title={run.foldLine} onClick={event => toggle(event.currentTarget)}>{run.foldLine}</button>
             <div id={`${regionId}-${run.id}`}>{open && messages.map(message => <MessageBlock key={message.id} message={message} connection={connection} />)}</div>
-          </div> : <MessageBlock message={first} connection={connection} />}
+          </div> : <MessageBlock message={first} connection={connection} showTopic={!!source} />}
         </Fragment>;
       })}
     </div>
-    {(topic !== 'agents' || reply) && <Composer key={topic} connection={connection} topic={topic} reply={reply} />}
+    {composer === undefined ? (topic !== 'agents' || reply) && <Composer key={topic} connection={connection} topic={topic} reply={reply} /> : composer}
   </section>;
 }

@@ -630,6 +630,7 @@
     "web/test/palette.test.ts": "Web",
     "web/test/plan.test.ts": "Web",
     "web/test/session-actions.test.ts": "Web",
+    "web/test/session-drawer.test.ts": "Web",
     "web/test/session-launch.test.ts": "Web",
     "web/test/sessions.test.ts": "Web",
     "web/test/shell.test.ts": "Web",

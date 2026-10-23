@@ -165,7 +165,7 @@ function InboxArea(props: AreaContentProps) {
 
 function InboxThread({ entry, thread, ...props }: AreaContentProps & { entry: Entry; thread?: Ref<ThreadControls> }) {
   const approval = entry.kind === 'approval' ? props.connection.approvalCards?.get(entry.row.id) ?? entry.row : undefined;
-  if (approval) return <><ApprovalCard key={approval.id} record={approval} connection={props.connection} /><SessionRecentThread key={approval.id} session={approval.session} connection={props.connection} /></>;
+  if (approval) return <><ApprovalCard key={approval.id} record={approval} connection={props.connection} /><SessionRecentThread key={approval.id} session={approval.session} connection={props.connection} controls={thread} /></>;
   const topic = entry.kind === 'plan' || entry.kind === 'approval' ? undefined : entry.row.topic.id;
   if (!topic) return null;
   return <Thread key={topic} connection={props.connection} topic={topic} focusTarget={false} targetMessage={entry.kind === 'approval' ? undefined : entry.row.id}

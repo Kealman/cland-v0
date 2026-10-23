@@ -3,13 +3,13 @@ import type { ConnectionState } from './connection.ts';
 import type { TopicMessage } from '../../shared/wire/index.ts';
 
 /** A read receipt names the last rendered message actually visible for a full second. */
-export function useTopicRead(root: RefObject<HTMLDivElement | null>, connection: ConnectionState, topic: string, messages: readonly TopicMessage[] | undefined, presentation?: unknown) {
+export function useTopicRead(root: RefObject<HTMLDivElement | null>, connection: ConnectionState, topic: string, messages: readonly TopicMessage[] | undefined, presentation?: unknown, enabled = true) {
   const { live, command } = connection;
   const reschedule = useRef<(() => void) | undefined>(undefined);
   const readSeq = connection.topics?.find(row => row.id === topic)?.readSeq ?? 0;
   useEffect(() => {
     const log = root.current;
-    if (!log || !live || !command) return;
+    if (!enabled || !log || !live || !command) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let pending = '';
     const visible = () => {
@@ -47,6 +47,6 @@ export function useTopicRead(root: RefObject<HTMLDivElement | null>, connection:
       document.removeEventListener('visibilitychange', schedule);
       window.removeEventListener('scroll', schedule, true);
     };
-  }, [root, live, command, topic, readSeq]);
+  }, [root, live, command, topic, readSeq, enabled]);
   useEffect(() => { reschedule.current?.(); }, [messages, presentation]);
 }

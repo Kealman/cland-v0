@@ -131,7 +131,7 @@ test('the palette and area keys help', async t => {
         }
         assert.equal(await localHelp.locator('[data-key-action="dismiss"]').count(), 1, 'one contextual row per action');
         if (area === 'Sessions') {
-          assert.deepEqual(await localHelp.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session or queue', 'Launch a session', 'New Aide', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
+          assert.deepEqual(await localHelp.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session thread, page or queue', 'Launch a session', 'New Aide', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
         }
         if (area === 'Items') {
           assert.equal(await localHelp.locator('[data-key-action="accept"] kbd').textContent(), 'Enter');

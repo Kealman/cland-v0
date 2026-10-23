@@ -1,29 +1,18 @@
-import { useEffect, useState } from 'react';
-import type { SessionHistoryResult } from '../../shared/wire/index.ts';
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type { ConnectionState } from './connection.ts';
-import { MessageBlock } from './MessageBlock.tsx';
-import s from './Thread.module.css';
+import { Thread, type ThreadControls } from './Thread.tsx';
 
-/** A bounded, read-only view of the session's messages across topics. */
-export function SessionRecentThread({ session, connection }: { session: string; connection: ConnectionState }) {
-  const [history, setHistory] = useState<SessionHistoryResult>();
-  const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
-  const { command, live } = connection;
+/** Session traffic uses the shared numeric-page/live cache and thread presentation. */
+export function SessionRecentThread({ session, connection, controls, composer = false, focusRequest }: { session: string; connection: ConnectionState; controls?: Ref<ThreadControls> | undefined; composer?: ReactNode; focusRequest?: number | undefined }) {
+  const [ready, setReady] = useState(false);
+  const thread = useRef<ThreadControls>(null);
+  useImperativeHandle(controls, () => ({ focus: () => thread.current?.focus(), run: action => thread.current?.run(action) ?? false }), []);
+  const source = connection.sessionThreads;
   useEffect(() => {
-    let current = true;
-    setHistory(undefined); setError('');
-    if (live && command) void command<SessionHistoryResult>({ type: 'session.history', session, limit: 20 }).then(
-      value => { if (current) setHistory(value); },
-      error => { if (current) setError(error instanceof Error ? error.message : 'History unavailable'); },
-    );
-    return () => { current = false; };
-  }, [command, live, session, retry]);
-  return <section className={s.thread} aria-label={`${session} recent thread`}>
-    <header className={s.heading}><h2>{session}</h2>{!history && live && !error && <span role="status">Loading</span>}
-      {error && <button title={error} onClick={() => setRetry(value => value + 1)}>Retry</button>}</header>
-    <div className={s.messages} role="log" aria-label={`${session} recent thread`} tabIndex={0}>
-      {history?.messages.map(message => <MessageBlock key={message.id} message={{ ...message, topic: message.topic ?? 'general' }} connection={connection} />)}
-    </div>
-  </section>;
+    if (!source) return;
+    void source.refresh(session);
+    setReady(true);
+  }, [session, source]);
+  useLayoutEffect(() => { if (ready && focusRequest) thread.current?.focus(); }, [ready, focusRequest]);
+  return ready && source && <Thread connection={connection} topic={session} source={source} title={session} logLabel={`${session} recent thread`} composer={composer} controls={thread} />;
 }

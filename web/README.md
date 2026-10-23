@@ -212,7 +212,7 @@ derive these actions from the same physical-code key map.
 | `j`, `k`, `↓`, `↑` | Thread, including ask rows | Move across run anchors and visible messages |
 | `Enter`, `za` | Thread, on a run anchor or message in that run | Toggle agent run in place; Enter on native controls keeps their activation |
 | `r` | Thread opened from an Inbox request or message, outside ask rows and fields | Reply to Inbox sender |
-| `h`, `Esc` | Thread | Return to the source list (Topics or Inbox) |
+| `h`, `Esc` | Thread | Return to list |
 | `1`–`9` | Human-directed ask card or its thread row, outside fields | Answer with the corresponding option immediately |
 | `i`, `r` | Human-directed ask card or its thread row, outside fields | Focus the free-answer field when available |
 | `d` | Human-directed ask card or its thread row, outside fields | Switch to decline mode with a required reason; in decline mode, restore answer mode |
@@ -223,7 +223,9 @@ Threads open at their end with the latest 100 messages and request exclusive
 numeric `before` pages on upward scrolling. Identity merges keep live messages
 and newer delivery/ask facts when a page reply races them. Prepending keeps the
 reader's top message in place, including when a live message arrives during the
-fetch or an earlier-page error is retried. New messages follow the end only while the reader is already there.
+fetch or an earlier-page error is retried. An earlier-page error stays visible
+through further scroll events until explicit Retry; retrying preserves the
+numeric boundary and reading anchor. New messages follow the end only while the reader is already there.
 Messages use the role-coloured blocks and Markdown described above, with verdict
 and criterion marks, inline HTML artifacts, folded agent runs and shared ask cards.
 
@@ -442,8 +444,10 @@ A resync reconnects, and fresh hub snapshots/inventories replace earlier state,
 including clearing registry errors and rows absent from the new hub.
 
 `hub/test/web-area-state.test.ts` tests the public connection callback at T1 with a
-scripted WebSocket and fake time, using the shared wire types. It covers model
-facts that do not yet have UI. `web/test/area-slots.test.ts` keeps the real hub,
+scripted WebSocket and fake time, using the shared wire types. It covers merged
+session rows and launch defaults, ordered account views, verification queue
+receipts and artifact inventories across snapshots, deltas and reconnects.
+`web/test/area-slots.test.ts` keeps the real hub,
 production socket and isolated Headless Shell proof: all slots, delta delivery
 without inventory requests, and a new hub's Sessions/Accounts without a reload.
 
@@ -848,7 +852,30 @@ in a tooltip. Model, account and usage appear on the session page. Tap or Enter
 opens that page in the current pane; Esc cancels a confirmation first, otherwise
 returns to the list with focus on the same row, keeping the archive toggle. The narrow list has no row or
 swipe actions, no unfolded detail and no drawer; action keys work on the page.
-The Sessions drawer shows the selected session's identity; its page carries the full session facts.
+Selecting a session opens its drawer with the shared recent thread, approval card
+and composer. The thread reads `session.history` in pages of 20 across all topics,
+including messages sent by and delivered to that session. Each message names its
+topic. Scrolling to the top loads the next exclusive numeric `before` page and
+keeps the reading anchor; live messages and delivery updates merge by identity
+while a page is pending. A new selection refreshes recent history and fences old
+replies. Reconnection resumes deltas or reloads the recent page after a snapshot.
+This cross-topic view sends no broad topic-read mark.
+
+The latest pending approval uses `ApprovalCard`: Approve once and Always for this
+command answer immediately, and Deny accepts an optional note through
+`approval.answer`. The card follows the authoritative pending, answering and
+closed records, retaining the attributed outcome after the session leaves Waiting.
+TUI-only approvals say **Answer in Neovim** and have no answer buttons.
+
+The shared composer says **To &lt;session&gt; in &lt;topic&gt;** and addresses that
+session in its existing item's topic, or General when there is none. Its addressee
+stays fixed to the selected session; `@` remains message text and `~` still chooses
+an artifact. Drafts, send receipts, offline disabling and manual retries follow the
+shared composer. Enter on a desktop row or Open thread in its unfolded detail
+reveals the drawer and focuses its thread, including after Close or a saved fold.
+In a split, Open thread places the thread beside the list on the session's page.
+`j`/`k` visit its messages; `h` or Escape returns to the selected row. The session's
+page retains the full session facts and actions.
 
 | Key | Action |
 | --- | --- |
@@ -860,7 +887,7 @@ The Sessions drawer shows the selected session's identity; its page carries the 
 | `r` | Resume a stopped launched session |
 | `d` | Confirm Archive on a stopped launched session |
 | `c` | Toggle capabilities |
-| `Enter` | Confirm the pending action, toggle the focused verification queue, or open the session page below 640 px |
+| `Enter` | Confirm the pending action, toggle the focused verification queue, focus the desktop session thread, or open the session page below 640 px |
 | `⌘Enter` | Open the session page in the other pane |
 | `Esc` | Cancel a confirmation, close capabilities, or return from the narrow session page |
 | `←`, `→` | Fold or unfold the focused group |
@@ -1002,6 +1029,7 @@ node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed delta
 node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
 node --test web/test/session-launch.test.ts # role defaults, fake Aide launch, no cwd and account refusals
 node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
+node --test web/test/session-drawer.test.ts # approval outcomes, cross-topic numeric pages/live races, composer routing and thread focus
 node --test web/test/artifacts.test.ts # tree, capability pages, sandbox isolation, text and downloads
 node --test web/test/accounts.test.ts # own browser profile, two-context isolation, registry, windows, polls and Sessions strip
 node --test hub/test/web-accounts.test.ts # T1 worst window, severity, missing data and clock formats

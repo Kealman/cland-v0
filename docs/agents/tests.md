@@ -1958,6 +1958,27 @@ Clause procedure (defaults implementer, project implementer):
 
 ## Web phase
 
+`web/test/session-drawer.test.ts` owns the selected session → thread/card/composer
+seam through sealed `webFixture`, fake Codex harnesses and public hub frames.
+Keep both directions of cross-topic history, exclusive numeric page boundaries,
+the exact older rows and live messages after a held history reply, and the reading
+anchor. The reusable `SessionRecentThread` feeds the shared `Thread`; the existing
+Inbox same-session/new-approval held-read regression must still pass. Session
+selection refresh failures retry the recent page even after older history is
+complete; retain the actual retry request and its held successful reply. Approval
+drawers in Inbox forward the same thread controls: physical j/k focus exact recent
+message ids and Escape returns to the selected approval row. Approval
+answers retain the fake native receipt and folded human outcome; drive the fake's
+post-answer state explicitly before asserting Waiting departure. TUI-only cards
+have no controls. Composer routing is proven by the fake adapter's injected
+message and topic, both for an item's topic and General. Arm focus observers
+before physical Enter or Open thread and observe the exact log/row; no elapsed
+frame wait proves focus. Shared composer/key routing changes also run composer,
+topics, thread-runs and shell alongside area-slots, key-contexts, palette, inbox
+and the Sessions files. Build first. New passing Web identities reaching four
+seconds on any platform require a dated, reasoned E-418 allowance near 1.5 times
+the worst passing sample, without relaxing assertions or request/DOM bounds.
+
 `hub/test/web-notifications.test.ts` owns the T1 pure notification eligibility,
 text and target seam, including all Inbox row kinds and pre-transition task layers.
 `web/test/notifications.test.ts` uses sealed `webFixture` and fake sender frames
@@ -2416,7 +2437,9 @@ that buffer with an independently armed PerformanceObserver capture.
 300-message numeric history traversal and item links. It holds real history
 replies while an ask is answered and a message arrives, then retains the final
 ordered identities and prepend anchor assertions against fresh history pages.
-A rejected earlier page followed by a held retry retains the old top message
+A rejected earlier page stays failed after another scroll event; a later live
+DOM row fences that event before asserting the error and absence of another
+request. Explicit Retry followed by a held reply retains the old top message
 and complete ordered identities. A real public resume request forces a fresh
 snapshot across a held initial read: the replacement request must arrive before
 the stale reply is released, and a later live DOM row fences that stale reply.

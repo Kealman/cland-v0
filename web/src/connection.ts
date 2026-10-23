@@ -33,6 +33,7 @@ export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   coordinator?: string | null;
   topics?: Topic[];
   threads?: TopicThreads;
+  sessionThreads?: TopicThreads;
   marks?: SnapshotValues['topics']['marks'];
   crew?: SnapshotValues['sessions']['crew']['config'];
   inbox?: Inbox;
@@ -107,6 +108,10 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
   let commandSerial = 0;
   let cursor: { epoch: string; seq: number } | undefined;
   const threads = new TopicThreads((topic, before) => command<ThreadPage>({ type: 'topic.history', topic, limit: 100, ...(before === undefined ? {} : { before }) }), () => { state = { ...state }; changed(state); });
+  const sessionThreads = new TopicThreads(async (session, before) => {
+    const page = await command<import('../../shared/wire/index.ts').SessionHistoryResult>({ type: 'session.history', session, limit: 20, ...(before === undefined ? {} : { before }) });
+    return { ...page, messages: page.messages.map(message => ({ ...message, topic: message.topic ?? 'general' })), runs: [] };
+  }, () => { state = { ...state }; changed(state); }, 'session');
   let inboxGeneration = 0;
   const commands = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   function rejectCommands() {
@@ -420,7 +425,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
   }
   function connect() {
     artifactRead = undefined;
-    state = { ...state, eventsFilter, activateEvents, setEventsFilter, loadEvents, command, recoverAsk, recoverApproval, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads };
+    state = { ...state, eventsFilter, activateEvents, setEventsFilter, loadEvents, command, recoverAsk, recoverApproval, resolveItem, loadItems, loadArchivedSessions, pollAccounts, loadMoreArtifacts, artifactsLoading: false, artifactsError: undefined, threads, sessionThreads };
     requestedPlans.clear();
     closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
@@ -444,6 +449,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       if (frame.type === 'snapshot.end' || ('epoch' in frame && 'seq' in frame && frame.type !== 'snapshot')) cursor = { epoch: frame.epoch, seq: frame.seq };
       received?.(frame, state);
       threads.apply(frame);
+      sessionThreads.apply(frame);
       if (frame.type === 'ask') askTopics.set(frame.ask, frame.topic);
       if (frame.type === 'message' && frame.message.ask) askTopics.set(frame.message.id, frame.topic.id);
       if (frame.type === 'ask') state = { ...state, askCards: new Map(state.askCards).set(frame.ask, frame.card) };
@@ -490,7 +496,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
           inbox(frame.value);
           recoverSnapshotAsks();
         }
-        else if (frame.domain === 'topics') { threads.reset(); state = { ...state, topics: frame.value.topics, marks: frame.value.marks }; rows('Topics', frame.value.topics); }
+        else if (frame.domain === 'topics') { threads.reset(); sessionThreads.reset(); state = { ...state, topics: frame.value.topics, marks: frame.value.marks }; rows('Topics', frame.value.topics); }
         else if (frame.domain === 'events') { state = { ...state, events: frame.value }; rows('Events', frame.value.rows.map(row => ({ id: row.id, title: row.text }))); }
         else if (frame.domain === 'accounts') {
           state = { ...state, accounts: frame.value };

@@ -71,4 +71,6 @@
 /* Artifact pages fill the available drawer or split pane below its fold header. */
 .drawer:has([data-artifact-viewer]) > [data-fold-block], .pane:has([data-artifact-viewer]) > [data-fold-block] { height: 100%; display: flex; flex-direction: column; }
 .drawer:has([data-artifact-viewer]) > [data-fold-block] > :last-child, .pane:has([data-artifact-viewer]) > [data-fold-block] > :last-child { flex: 1; min-height: 0; }
+.drawer[data-drawer-area="Sessions"] > [data-fold-block] { height: 100%; display: flex; flex-direction: column; }
+.drawer[data-drawer-area="Sessions"] > [data-fold-block] > :last-child { flex: 1; min-height: 0; }
 @media (max-width: 639px) { .drawer[data-drawer-area="Sessions"] { display: none; } }

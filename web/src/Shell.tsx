@@ -14,7 +14,7 @@ import { runApprovalShortcut } from './ApprovalCard.tsx';
 import { AskNavigation, runAskShortcut } from './AskCard.tsx';
 import { ComposerPicker, type ComposerSelection } from './ComposerPicker.ts';
 import { runComposerShortcut } from './Composer.tsx';
-import { Fold, runFoldShortcut } from './Fold.tsx';
+import { Fold, revealFold, runFoldShortcut } from './Fold.tsx';
 import { ItemCard } from './ItemCard.tsx';
 import { ItemNavigation } from './ItemText.tsx';
 import { itemsSnapshot, saveItems, subscribeItems } from './items-state.ts';
@@ -92,8 +92,9 @@ export function Shell() {
   const dismissed = preferences.dismissed;
   const setDismissed = (key: string | undefined) => setPreferences(previous => ({ ...previous, dismissed: key }));
   const selectionKey = `${preferences.area}/${preferences.row ?? ''}`;
+  const [sessionThreadFocus, setSessionThreadFocus] = useState<{ session: string; request: number }>();
   const selectRow = (pane: 'primary' | 'secondary', id: string) => {
-    if (id !== (pane === 'primary' ? preferences.row : preferences.secondaryRow)) { navigationSerial.current++; setDismissed(undefined); setMessage(undefined); }
+    if (id !== (pane === 'primary' ? preferences.row : preferences.secondaryRow)) { navigationSerial.current++; setDismissed(undefined); setMessage(undefined); setSessionThreadFocus(undefined); }
     setPreferences(previous => pane === 'primary' ? { ...previous, row: id } : { ...previous, secondaryRow: id });
   };
   const areaButtons = useRef<Partial<Record<Area, HTMLButtonElement>>>({});
@@ -117,10 +118,11 @@ export function Shell() {
   };
   const primaryArea = useRef<AreaControls>(null);
   const secondaryArea = useRef<AreaControls>(null);
+  const sessionDrawer = useRef<AreaControls>(null);
   const view = useItemsView();
   const desktop = useDesktop();
   const focusedContext = overlay ? overlayContext : areaContext(area);
-  const handledActions = focusedContext === 'composer' || focusedContext === 'reply' || focusedContext === 'approval' || focusedContext === 'approval-note' ? contextActions[focusedContext] ?? [] : area === 'Items'
+  const handledActions = focusedContext === 'composer' || focusedContext === 'session-composer' || focusedContext === 'reply' || focusedContext === 'approval' || focusedContext === 'approval-note' ? contextActions[focusedContext] ?? [] : area === 'Items'
     ? (view === 'plan' ? planActions.filter(row => desktop || row.action !== 'plan-approve') : treeActions)
     : (contextActions[focusedContext] ?? []).filter(row => focusedContext === 'ask' && row.action.startsWith('ask-') || areaModules[area].handledActions.includes(row.action));
   const paletteControls = useRef<PaletteControls>(null);
@@ -198,6 +200,7 @@ export function Shell() {
       if (inCard && action.startsWith('tree-')) return;
     }
     if (!overlay && area === 'Items' && (active === 'primary' ? primaryTree : secondaryTree).current?.run(action)) return;
+    if (!overlay && area === 'Sessions' && document.activeElement?.closest('[data-drawer-area="Sessions"]') && sessionDrawer.current?.run(action)) return;
     if (!overlay && area !== 'Items' && areaModules[area].handledActions.includes(action) && (active === 'primary' ? primaryArea : secondaryArea).current?.run(action)) return;
     if (!overlay && runApprovalShortcut(action)) return;
     if (!overlay && runAskShortcut(action)) return;
@@ -229,7 +232,7 @@ export function Shell() {
     const current = keyboard.current;
     return current.overlay ?? focusedKeyContext(target, current.area === 'Items' ? 'items' : areaModules[current.area].context);
   }, (action, context) => {
-    if (context === 'shell' || context === 'composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
+    if (context === 'shell' || context === 'composer' || context === 'session-composer' || context === 'reply' || context === 'ask' || context === 'approval' || context === 'approval-note' || context === 'items' || context === 'palette' || context === 'help') return true;
     const current = keyboard.current.area;
     return current !== 'Items' && areaModules[current].handledActions.includes(action);
   }), []);
@@ -392,7 +395,15 @@ export function Shell() {
               {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {paneArea !== 'Items' && <ArtifactViewerFallback.Provider value={fallback}><AreaSlot split={split} splitSelection={openOther} connection={connection} area={paneArea} rows={rows} selected={selected} select={id => selectRow(pane, id)}
-                open={() => { setDismissed(undefined); if (split) openOther(); }}
+                open={() => {
+                  setDismissed(undefined);
+                  if (paneArea === 'Sessions' && selected) {
+                    revealFold('sessions', `drawer:${selected}`);
+                    setSessionThreadFocus(previous => ({ session: selected, request: (previous?.request ?? 0) + 1 }));
+                  }
+                  if (split) openOther();
+                }}
+                focusThread={sessionThreadFocus && sessionThreadFocus.session === selected ? sessionThreadFocus.request : undefined}
                 openSubject={async subject => {
                   const serial = ++navigationSerial.current;
                   const target = subject.kind === 'session' ? 'Sessions' : subject.kind === 'topic' ? 'Topics' : subject.kind === 'artifact' ? 'Artifacts' : undefined;
@@ -456,7 +467,8 @@ export function Shell() {
           {preferences.area === 'Items' && findItem(connection, selectedRow.id)
             ? <ItemCard key={selectedRow.id} item={findItem(connection, selectedRow.id)!} connection={connection} message={message?.card === selectedRow.id ? message : undefined} />
             : preferences.area !== 'Items' && <AreaSlot connection={connection} area={preferences.area} rows={connection.rows?.[preferences.area]} selected={selectedRow.id}
-              select={id => selectRow('primary', id)} surface="drawer" />}
+              select={id => selectRow('primary', id)} surface="drawer" controls={sessionDrawer}
+              focusThread={sessionThreadFocus?.session === selectedRow.id ? sessionThreadFocus.request : undefined} />}
           </Fold>
         </aside>}
       </main>
