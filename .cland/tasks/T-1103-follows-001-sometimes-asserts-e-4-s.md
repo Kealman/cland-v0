@@ -2,8 +2,8 @@
 id: T-1103
 kind: task
 title: FOLLOWS-001 sometimes asserts E-4's follows before its card facts arrive under the stub hub
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-1091
 topic: topic-877
 branch: t/T-1103-follows-001-sometimes-asserts-e-4-s
 created: 2026-10-22T09:55:15.125Z
-updated: 2026-10-22T23:38:17.891Z
+updated: 2026-10-22T23:53:05.519Z
+closed: 2026-10-22T23:53:05.519Z
 ---
 
 ## Summary
@@ -27,8 +28,10 @@ Periodic dev T3 run ca10630b (A-9077, dev ff6edeaa, Linux droplet) failed `nvim/
 
 - [x] C1. FOLLOWS-001 waits, with a bound, for E-4's card to show its follows relationship (the durable receipt, rule 9) before asserting it, under both the stdio and stub hubs, and keeps every existing assertion (test).
   - done: impl-1103 · 2026-10-22T23:36:39.731Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1103-final · 2026-10-22T23:48:36.368Z · commit 4aa41dc3d6edf638d4c5f3fed85174cd70b71315
 - [x] C2. The case passes 20/20 locally under both hubs with a parallel CPU load, in a disposable root under rule 15, and the samples are listed in the item topic (test).
   - done: impl-1103 · 2026-10-22T23:36:40.161Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1103-final · 2026-10-22T23:48:36.368Z · commit 4aa41dc3d6edf638d4c5f3fed85174cd70b71315
 
 ## Comments
 
@@ -56,3 +59,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear; no findings. Predicate now waits for anchored E-4 rendered follows E-2 plus the exact cached whole-item follows fact used by its next assertion. All final assertions, fixture steps and 5000 ms bound retained; no production/stub/tier changes. A-9547 raw audit confirms controlled stub red exit1 then green, with organic macOS baseline explicitly non-reproducing. Green JSONL contains 20/20 each hub, code0/PASS, local Darwin arm64 under two owned CPU workers; retained case bytes match this head. Runner uses sealed disposable environment and joins load cleanup. Those are local targeted T3 case receipts, not suite/Linux/budget proof. C1/C2 final verification remains pending configured exact-head mode-free result. Detailed source/evidence audit posted in topic-877; no Reviewer runtime execution or QA claim.
+
+### rev-23 · 2026-10-22T23:48:36.368Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1103-final
+commit: 4aa41dc3d6edf638d4c5f3fed85174cd70b71315
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged 4aa41dc3d6edf638d4c5f3fed85174cd70b71315. C1/C2 verified using source A-9550, original local targeted T3/20-per-hub CPU-load A-9547, and same-head configured Linux 6cc433d4/A-9572 (2530 pass, no failures/skips). Actual T1/all hub+Neovim T2/Web; configured T3/T4 absent, host gate reused remotely, existing budget/lint/ratchet report-only. Local targeted FOLLOWS proof is explicitly distinct from the configured receipt; no Linux T3/load proof inferred. A-9576: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9576-t-1103-final-evidence-local-follows-samples-and-same-head-linux-verify.md. No findings.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-22T23:53:05.519Z
+
+Merged 3bc0c78b990cb0fbc79bc0fe10594d04777e51c5 onto dev.

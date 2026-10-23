@@ -3,7 +3,7 @@ id: T-1152
 kind: task
 title: Hub start spends 16 s silent between binding listeners and restoring sessions when a lease needs recovery
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-865
 branch: t/T-1152-hub-start-spends-16-s-silent-between
 created: 2026-10-22T18:04:51.408Z
-updated: 2026-10-22T22:10:44.022Z
+updated: 2026-10-23T00:24:48.024Z
 ---
 
 ## Summary
@@ -28,10 +28,12 @@ Startup restores sessions without waiting on executor lease recovery or any prov
 
 ## Acceptance criteria
 
-- [ ] C1. A hub start with a recorded lease whose provider calls hang reaches "restoring sessions" and serving within 2 s of listening, and recovery completes or defers afterwards (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T22:10:44.022Z · note Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.
-- [ ] C2. Each startup step between listening and serving logs its duration (test).
-  - failed: rev-23 [reviewer] · 2026-10-22T22:10:44.022Z · note Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.
+- [x] C1. A hub start with a recorded lease whose provider calls hang reaches "restoring sessions" and serving within 2 s of listening, and recovery completes or defers afterwards (test).
+  - done: impl-1152 · 2026-10-23T00:23:48.812Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1152-final-2 · 2026-10-23T00:24:47.846Z · commit 55a382d6fe7c0e180e19f0204079e339645cf106
+- [x] C2. Each startup step between listening and serving logs its duration (test).
+  - done: impl-1152 · 2026-10-23T00:23:48.984Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1152-final-2 · 2026-10-23T00:24:47.846Z · commit 55a382d6fe7c0e180e19f0204079e339645cf106
 
 ## Comments
 
@@ -138,3 +140,31 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear; A-9475/c06bc92d failed at reviewed ebe47ab8. Actual FOLLOWS-001 stub result FAIL ('the hub reports E-4 follows E-2'), FAIL !== PASS at qa.test.ts:224. T1/T2 exit 0, sole T3 test failure, Web absent. Parsed ordinary 3682 pass/1 fail/8 skip plus 10 passing load repetitions; Linux x64 c-8 lon1, 1430 s/$0.0993; host a4f2cf0 reused remotely, generic diagnostics report-only. Coordinator's known-T-1103 classification and one same-head retry after covers confirmed in topic. Source clear A-9456 unchanged; no source edits or independent retry requested. Both final criteria held pending required replacement full receipt. Detailed evidence artifact posted in topic-865.
 
 Criteria: C1 failed (Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.), C2 failed (Required merged-head full pre-merge receipt A-9475 failed in T3/FOLLOWS-001; Web unrun. Await Coordinator's authorized same-head replacement.).
+
+### rev-23 · 2026-10-22T23:55:32.440Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1152-source-4
+commit: 55a382d6fe7c0e180e19f0204079e339645cf106
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear at 55a382d6fe7c0e180e19f0204079e339645cf106. No findings. Owned startup code/fixture byte-unchanged; incoming production/test blobs match final-clear landed T-1112/T-1119/T-1139/T-1155 and T-1103 FOLLOWS fix, with guidance/provenance retained. Full imported scope recorded in A-9594: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9594-t-1152-delta-source-clear-after-landed-follows-fix-at-55a382d6.md. C1/C2 runtime verification remains pending Coordinator-owned exact-head verify all. A-9590 is local targeted summary only; failed/cancelled historical receipts retain their original status. No Reviewer runtime execution.
+
+### rev-23 · 2026-10-23T00:24:47.846Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1152-final-2
+commit: 55a382d6fe7c0e180e19f0204079e339645cf106
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1/C2 at unchanged 55a382d6. A-9657/e99a1fe6 full Linux T1/T2/T3/Web exit0: 3798 pass/8 skip/0 fail/cancel, plus 10 separate load passes. Startup identities each distinct 5/5, zero owned tier-mismatch; held-provider listening→serving 8.692ms against unchanged 2000ms. FOLLOWS-001 now passes both hubs. Host T0 reused remotely; T4/QA absent; generic budget/lint/ratchet/resource gates report-only. Skip reasons and historical failure/latency limits retained in A-9661: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9661-t-1152-final-full-evidence-clear-after-follows-shared-fix.md. No findings; Coordinator landing.
+
+Criteria: C1 verified, C2 verified.

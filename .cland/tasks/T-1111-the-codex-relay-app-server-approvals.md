@@ -2,8 +2,8 @@
 id: T-1111
 kind: task
 title: "The Codex relay: app-server approvals answered through the gate"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 9
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-870
 branch: t/T-1111-the-codex-relay-app-server-approvals
 created: 2026-10-22T15:16:11.398Z
-updated: 2026-10-22T23:41:24.215Z
+updated: 2026-10-23T00:11:11.479Z
+closed: 2026-10-23T00:11:11.479Z
 ---
 
 ## Summary
@@ -44,23 +45,42 @@ The scripted app-server double also takes responses.
 
 - [x] C1. Through the scripted app-server, a command request becomes one record answered in the hub, with the command, its cwd, its three choices and `pending` (test).
   - done: impl-1111 · 2026-10-22T23:20:56.272Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.933Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C2. Approve once, Always for this command and Deny reach the app-server as `accept`, `acceptForSession` and `decline` responses to that request's id. A Deny never reaches it as anything else (test).
   - done: impl-1111 · 2026-10-22T23:20:56.495Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C3. A file-change request becomes a record of kind file change, and its answer reaches the app-server the same way (test).
   - done: impl-1111 · 2026-10-22T23:27:43.923Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C4. `serverRequest/resolved` for a request no hub client answered closes its record as answered in the harness, and every client reads that outcome (test).
   - done: impl-1111 · 2026-10-22T23:39:46.208Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C5. A request missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event (test).
   - done: impl-1111 · 2026-10-22T23:27:44.184Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C6. After the adapter's connection drops and returns, the replayed pending request keeps the same record id, and an answer given then reaches the app-server (test).
   - done: impl-1111 · 2026-10-22T23:27:44.264Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C7. The capability table reads `approvalRelay: reliable` for Codex (test).
   - done: impl-1111 · 2026-10-22T23:20:57.002Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C8. A targeted run of the Codex contract file, with its receipt posted in the item topic, shows through the fake binary that Approve once runs the command and Deny does not (test).
   - done: impl-1111 · 2026-10-22T23:20:57.082Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 - [x] C9. `hub/README.md`'s Codex capability row describes the relay, the three choices and their Codex decisions, and where the note goes (docs).
   - done: impl-1111 · 2026-10-22T23:20:57.266Z
   - verified: rev-23 [reviewer] · run rev-20261022-1111-source-4 · 2026-10-22T23:41:24.215Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-23 [reviewer] · run rev-20261022-1111-final · 2026-10-22T23:51:54.561Z · commit 41bedb404306194cc1873cabd0426e79db0c455c
+  - verified: rev-26 [reviewer] · run rev-20261022-1111-delta-1 · 2026-10-22T23:56:03.146Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
+  - verified: rev-26 [reviewer] · run rev-20261023-1111-final-1 · 2026-10-23T00:06:24.934Z · commit ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
 
 ## Comments
 
@@ -139,3 +159,56 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear against C1–C9 and binding payload-cap decision. All prior M1/M2/M3/L1 findings resolved: invalid routing fallback, validation-ready answer fence, exact closed outcome across read/disconnect/terminal/early publication, valid chronology. Internal host admission receipt preserves ready closures until watch; pending remains running-only. Full serialized UTF-8 subject cap forces oversized TUI/no choices/native refusal; exact-boundary/hidden-operation regressions retained. C9 verified from matching README. C1–C8 runtime marks await configured same-head mode-free evidence; A-9554 local exact-head contract12 and A-9555 native27 are targeted receipts only. Under Coordinator bar2560269e: no prior finding moved out, all were within named criteria and are fixed; no unnamed lifecycle blocker added. T-1112 optional migration stays the existing separate follow-up. Public wire/OpenCode unchanged; docs/provenance match; no Reviewer runtime execution. Detailed final source audit posted in topic-870.
 
 Criteria: C9 verified.
+
+### rev-23 · 2026-10-22T23:51:54.561Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1111-final
+commit: 41bedb404306194cc1873cabd0426e79db0c455c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged 41bedb404306194cc1873cabd0426e79db0c455c; C1–C9 verified. A-9583/c30d37b5: Linux T1/all hub+Neovim T2/Web, 2544 ordinary passes, no fail/cancel/skip; 14 native relay identities each explicit 5/5 load passes (70 separate load outcomes). C8 is the distinct exact-head local Darwin binary contract A-9554, 12/12, approve executes/deny does not; configured T3/T4 absent. Host check reused remotely, generic budgets/lint/ratchet report-only. Source A-9561 stands, all previous named findings resolved, none moved out; after-stage QA remains separate. A-9586: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9586-t-1111-final-clear-native-relay-binary-contract-and-same-head-linux-receipt.md. No findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### impl-1111 · 2026-10-22T23:54:42.874Z
+
+Coordinator-authorized post-clear dev merge complete at ad4173cf1d90f6edebac443c5dd13e4b1604a3d3 (parents 41bedb40 + ee1421c7). Conflicts in implement skill/tests docs resolved by retaining both relay sections. Fresh sealed Neovim owning-file capture: shell 25/25 + shell-component 61/61, 5701 frames, live drift 1/1 (A-9589); canonical generated catalog unchanged after regeneration. Full typecheck passed on same merge tree. Exact committed-head local Darwin arm64: native T2 27/27; C8 targeted Codex contract T3 12/12, 16.773964 s file wall, new topic artifact. Prior 41bedb40 Linux verification is historical and does not certify this changed head. Requesting delta source review; fresh mode-free verification follows clearance, then a fresh read-only dev conflict check before ready.
+
+### rev-26 · 2026-10-22T23:56:03.146Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1111-delta-1
+commit: ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear at ad4173cf; A-9597 builds on rev-23’s full source A-9561 and prior final A-9586. Coordinator 6c0c8e37 authorized the merge. Codex source/tests unchanged; landed OpenCode source retained, both skill/docs paragraphs and CHANGES entries preserved, both README capability rows correct. Actual merged catalog capture A-9589 shows 25/25 + 61/61, 5701 frames and drift 1/1; targeted provenance/exit retention requested. C9 docs verified. C1–C8 await mode-free configured same-head evidence and attributable targeted C8 receipt; A-9592 12/12 remains local targeted evidence, not configured/Linux proof. Old final evidence remains historical at 41bedb40. No findings, merge or QA claim.
+
+Criteria: C9 verified.
+
+### rev-26 · 2026-10-23T00:06:24.934Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261023-1111-final-1
+commit: ad4173cf1d90f6edebac443c5dd13e4b1604a3d3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear at ad4173cf; C1–C9 verified, A-9628. A-9626/3e62249d exits 0: Linux T1/all hub+Neovim T2/Web, 2565 passed with zero fail/cancel/skip; host T0 reused, not repeated remotely. All 27 native cases pass; 14 new relay identities each have five distinct passing load outcomes, 70 total. Exact-head local C8 A-9592/A-9599 is 12/12 with retained approve filesystem/log and deny ENOENT/no extra execution assertions; A-9598 local native 27/27. Actual merged capture A-9589 plus original sealed command/environment provenance A-9599 retained with precommit source-equivalence limits. Current delta A-9597 carries rev-23 full source. Generic lint/duration/ratchet report-only, including actual Web wall 50.524 s >40 s. No full Linux T3/T4/QA or merge claim; after-stage QA separate. No findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-23T00:11:11.479Z
+
+Merged ac3dcf154465235f13be2b1f97327c7748414439 onto dev.

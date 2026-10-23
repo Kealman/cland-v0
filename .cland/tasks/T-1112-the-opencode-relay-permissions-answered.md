@@ -2,8 +2,8 @@
 id: T-1112
 kind: task
 title: "The OpenCode relay: permissions answered through the gate"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 9
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-869
 branch: t/T-1112-the-opencode-relay-permissions-answered
 created: 2026-10-22T15:16:11.536Z
-updated: 2026-10-22T23:32:27.587Z
+updated: 2026-10-22T23:49:49.677Z
+closed: 2026-10-22T23:49:49.677Z
 ---
 
 ## Summary
@@ -38,23 +39,32 @@ The fake OpenCode logs the decision and the message each reply carries. The scri
 
 - [x] C1. A scripted `permission.asked` with a shell tool part becomes one record answered in the hub, with the full command, its three choices and `pending` (test).
   - done: impl-1112 · 2026-10-22T23:31:29.374Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.760Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C2. Approve once, Always for this command and Deny with a note reach the reply endpoint as `once`, `always` and `reject`, with the note as the message (test).
   - done: impl-1112 · 2026-10-22T23:22:45.528Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.760Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C3. `permission.replied` from another client closes the record with that reply as the harness's outcome, and every client reads it (test).
   - done: impl-1112 · 2026-10-22T23:22:45.608Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.760Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C4. A child session's permission is a record of the parent session, and its answer goes to the child's endpoint (test).
   - done: impl-1112 · 2026-10-22T23:22:45.799Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.760Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C5. After the event stream reconnects, the snapshot's pending permission keeps the same record id, and a permission answered while the stream was down reads as closed (test).
   - done: impl-1112 · 2026-10-22T23:22:45.872Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.761Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C6. A permission missing a field the adapter relies on becomes a record answered in the TUI, with a warn-level event, and the permission's private metadata never reaches a frame (test).
   - done: impl-1112 · 2026-10-22T23:31:29.459Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.761Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C7. The capability table reads `approvalRelay: reliable` for OpenCode (test).
   - done: impl-1112 · 2026-10-22T23:22:46.030Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.761Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C8. A targeted run of the OpenCode contract file, with its receipt posted in the item topic, shows through the fake binary that a Deny with a note reaches the fake as `reject` with that note (test).
   - done: impl-1112 · 2026-10-22T23:22:46.213Z
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.761Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 - [x] C9. `hub/README.md`'s OpenCode capability row describes the relay, the three choices and their OpenCode replies, and that the note travels as the reply's message (docs).
   - done: impl-1112 · 2026-10-22T23:22:46.288Z
   - verified: rev-32 [reviewer] · run rev-20261023-1112-source-2 · 2026-10-22T23:32:27.586Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
+  - verified: rev-32 [reviewer] · run rev-20261023-1112-final · 2026-10-22T23:44:14.761Z · commit 0d06915a59ebb37c1568accd61a958066883aef7
 
 ## Comments
 
@@ -91,3 +101,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear A-9531, carrying full audit A-9521. M1 resolved by safe status/not-found/transport categories; regression excludes planted native body from result/all frames/log and retains pending/no-outcome/later deny close. M2 resolved by whole-subject serialized UTF-8 64 KiB check before choices; exact boundary and oversized ASCII/multibyte tests preserve full in-bound command and refuse TUI/no choices/no endpoint beyond cap. Resources use same check; matching docs updated. No remaining findings, no dev merge. C9 docs verified; C1–C8 source/test paths established and await fresh same-head configured evidence for final marks. A-9528 exact-head local Darwin targeted T3 contract 14/14, exit0/signal null and literal reject/note receipt retained for C8; A-9526 26/26 targeted T2 and A-9527 static check supplemental. No configured/Linux/full-suite pass claimed. Mode-free verify permitted at this exact head.
 
 Criteria: C9 verified.
+
+### rev-32 · 2026-10-22T23:44:14.761Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261023-1112-final
+commit: 0d06915a59ebb37c1568accd61a958066883aef7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, A-9565. A-9562/run e2ae91d7 at unchanged source-clear 0d06915a: Linux x64 c-8 lon1 droplet, T1/all-T2 hub+Neovim/Web exit 0, aggregate 2541 pass and zero fail/cancel/skip/todo. Ten new native identities and one Neovim capability identity each have actual 5/5 load completion receipts. Host check/typecheck gate reused, not remotely repeated. C8 separately established by exact-head sealed local Darwin arm64 targeted T3 contract A-9528: 14/14, child exit0/signal null, literal reject plus note receipt. C9 carried from source A-9531. Generic lint/duration/ratchet report-only; Web actual phase wall 47.981s exceeded report budget40s, so no timing-budget pass claimed. Configured Linux T3/T4 and per-item QA not claimed (QA affected/after-stage). No remaining findings across Standards or Spec; all C1–C9 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-22T23:49:49.677Z
+
+Merged ee1421c70105c311a3e47f0d77c91655db3ea4a1 onto dev.

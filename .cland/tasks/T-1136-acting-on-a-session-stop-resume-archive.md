@@ -2,8 +2,8 @@
 id: T-1136
 kind: task
 title: "Acting on a session: Stop, Resume, Archive, Capabilities and the session's page"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-873
 branch: t/T-1136-acting-on-a-session-stop-resume-archive
 created: 2026-10-22T15:16:15.750Z
-updated: 2026-10-22T23:41:06.653Z
+updated: 2026-10-22T23:55:42.999Z
+closed: 2026-10-22T23:55:42.999Z
 ---
 
 ## Summary
@@ -41,27 +42,34 @@ A refused or failed action shows its reason in place; the cookie's refused actio
 - [x] C1. `x` on a busy fake session asks for a confirmation in place, Esc leaves it running, and Enter stops it as `cland session list` reads (Web test with the fake harness).
   - done: impl-1136 · 2026-10-22T23:21:46.925Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-2 · 2026-10-22T23:50:45.034Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 - [x] C2. `r` on the stopped session resumes it with its name and role, as `cland session list` reads (Web test with the fake harness).
   - done: impl-1136 · 2026-10-22T23:21:47.019Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-2 · 2026-10-22T23:50:45.034Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 - [x] C3. `d` on a stopped session asks for a confirmation and archives it, and it leaves Stopped for the archive (Web test).
   - done: impl-1136 · 2026-10-22T23:21:47.101Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-2 · 2026-10-22T23:50:45.034Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 - [x] C4. `c` shows the session's adapter capability table read-only, and a session without an adapter says so (Web test).
   - done: impl-1136 · 2026-10-22T23:21:47.302Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-2 · 2026-10-22T23:50:45.035Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 - [x] C5. The session's page shows the model, account, usage and capabilities and runs the same four actions with the same confirmations (Web test).
   - done: impl-1136 · 2026-10-22T23:21:47.390Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-2 · 2026-10-22T23:50:45.035Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 - [x] C6. A resume the harness cannot perform shows the hub's reason and offers a fresh launch with the same brief (Web test with the fake harness).
   - done: impl-1136 · 2026-10-22T23:21:47.479Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-2 · 2026-10-22T23:50:45.035Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 - [x] C7. `web/README.md` documents the actions, the confirmations and the session's page (docs).
   - done: impl-1136 · 2026-10-22T23:21:47.568Z
   - verified: rev-26 [reviewer] · run rev-20261022-1136-source-1 · 2026-10-22T23:25:17.610Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
   - verified: rev-26 [reviewer] · run rev-20261022-1136-final-1 · 2026-10-22T23:36:00.379Z · commit c361576fadcf03c3bd803056dc97fcf0dcb8b878
   - verified: rev-26 [reviewer] · run rev-20261022-1136-source-2 · 2026-10-22T23:40:22.844Z · commit 57b26eed5f4d27bc197435452094b909e40a85d0
   - verified: rev-26 [reviewer] · run rev-20261022-1136-source-3 · 2026-10-22T23:41:06.653Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
+  - verified: rev-26 [reviewer] · run rev-20261022-1136-final-2 · 2026-10-22T23:50:45.035Z · commit 810fb3413ceabdba1dc020f217cfc7dd514a45c8
 
 ## Comments
 
@@ -128,3 +136,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Docs-only delta clear at810fb341; A-9560. L1 resolved: overview now correctly describes SessionPage facts/capabilities and shared SessionActions. Only README changed from source-clear57b26eed; no runtime/test or merge changes, no new tests needed for prose. C7 verified; C1–C6 await new mode-free configured same-head evidence. Existing source audits carry forward; old runtime receipt remains historical atc361576f. No remaining findings, QA or merge claim.
 
 Criteria: C7 verified.
+
+### rev-26 · 2026-10-22T23:50:45.035Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1136-final-2
+commit: 810fb3413ceabdba1dc020f217cfc7dd514a45c8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at810fb341; C1–C7 verified, A-9581. Same-head533414f1/A-9580 exits0,2544passed0failed/cancelled/skipped; Linuxc-8lon1 T1/all-T2 hub+Neovim/Web with hostT0 reused, not repeated remotely. All9owned Web action cases have distinct passing receipts0.932–2.465s, below4s trigger; no owned5/5load claim. Source3/A-9560 resolved L1 and carried source/merge audits. Generic budgets/lint/ratchet report-only, including actualWeb55.470s>40s and missing owned baseline12.785test-seconds. NoT3/T4/QA pass or merge claim; affected QA remains after-stage. Previous runtime evidence remains historical at its own head.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-22T23:55:42.999Z
+
+Merged ac26b027c3aa730b716f4e41b1959217496ad4ce onto dev.

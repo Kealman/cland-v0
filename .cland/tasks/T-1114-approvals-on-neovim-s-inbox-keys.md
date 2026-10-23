@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-872
 branch: t/T-1114-approvals-on-neovim-s-inbox-keys
 created: 2026-10-22T15:16:11.910Z
-updated: 2026-10-22T23:40:31.815Z
+updated: 2026-10-23T00:26:27.701Z
 ---
 
 ## Summary
@@ -32,17 +32,25 @@ In Neovim's inbox, in both the panel and the full-width view, a relayed approval
 
 ## Acceptance criteria
 
-- [ ] C1. In headless Neovim on recorded frames, `1` on a relayed approval row sends one `approval.answer` with `once`, and the row folds to "approved once by the human" with its time (test).
-  - failed: rev-31 [reviewer] · 2026-10-22T23:40:31.815Z · note Required configured c88cd262 fails shell-component final /answered in your words/ screen assertion; own approval identities5/5, no owning source defect established.
+- [x] C1. In headless Neovim on recorded frames, `1` on a relayed approval row sends one `approval.answer` with `once`, and the row folds to "approved once by the human" with its time (test).
+  - done: impl-1114 · 2026-10-23T00:12:33.037Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
 - [x] C2. `d` on a relayed row opens the note field, and Enter sends `deny` with the typed note (test).
-  - done: impl-1114 · 2026-10-22T23:21:16.832Z
+  - done: impl-1114 · 2026-10-23T00:12:33.123Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
 - [x] C3. A refused answer folds the row to the winner's outcome and says who answered and when (test).
-  - done: impl-1114 · 2026-10-22T23:30:35.244Z
+  - done: impl-1114 · 2026-10-23T00:12:33.201Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
 - [x] C4. On a row answered in the TUI, ↵ still attaches, and `1`, `2` and `d` send nothing and say where to answer (test).
-  - done: impl-1114 · 2026-10-22T23:21:17.110Z
+  - done: impl-1114 · 2026-10-23T00:12:33.382Z
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
 - [x] C5. `nvim/README.md` lists the approval keys, the folded outcome and the row answered in the TUI, and `GLOSSARY.md` defines Approval (docs).
   - done: impl-1114 · 2026-10-22T23:21:17.185Z
   - verified: rev-31 [reviewer] · run rev-20261023-1114-source2 · 2026-10-22T23:31:43.623Z · commit c781c316df6095789ab28dd8654a13598d7342c2
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-source3 · 2026-10-22T23:43:52.390Z · commit 80cca05ec178cfcfc8f6472a6d9e500ae45b4fc9
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-source4 · 2026-10-22T23:57:46.107Z · commit 8c4fa1c8fe2e9db2ef6010a9e9546fdc6a3d5703
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-source5 · 2026-10-23T00:14:00.090Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+  - verified: rev-31 [reviewer] · run rev-20261023-1114-final · 2026-10-23T00:24:37.058Z · commit 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
 
 ## Comments
 
@@ -98,3 +106,108 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Configured runtime not clear; A-9557. A-9553 exact failure at14145, existing shell-component1289 checks old screen s after a separate disarmed wait; possible observer gap needs Coordinator triage, not classified/reproduced by Reviewer. All16 new approval identities have actual5 distinct load passes+5/5; overall T2exit1/Web unrun. Source A-9530/C5 remains clear. S Bugs candidate reported to lead; await shared/task-owned disposition, no independent retry or edit requested. Restore claimant C1 before later final settlement.
 
 Criteria: C1 failed (Required configured c88cd262 fails shell-component final /answered in your words/ screen assertion; own approval identities5/5, no owning source defect established.).
+
+### rev-31 · 2026-10-22T23:43:52.390Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-source3
+commit: 80cca05ec178cfcfc8f6472a6d9e500ae45b4fc9
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-9564, no findings. One-line carrier fix captures answered-card+disarmed screen and retains final/outgoing/no-send assertions and bounds. A-9563 sealed base-pass/head-fail and corrected five targeted/full60-case receipts audited; task-owned clipping/selection change explains early predicate. No runtime/fixture change or post-review dev merge. C5 verified; C1-C4 await fresh exact-head configured mode-free run; historical A-9553 remains failed. No merge enqueue.
+
+Criteria: C5 verified.
+
+### rev-31 · 2026-10-22T23:46:25.685Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-bundle-refusal
+commit: 80cca05ec178cfcfc8f6472a6d9e500ae45b4fc9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Verification not run (changed HEAD), A-9570. A-9567 exact bundler failure,host output only,T1/T2/Web unexecuted. A-9564 source/C5 remains for restored80cca05e; docs delta cancelled by Coordinator. Replacement0dbcd10c already admitted,pending; no duplicate requested. Restore claimant C1 before final settlement, no source defect or merge enqueue.
+
+Criteria: C1 failed (Verification not run: 9a20a49d bundle refused because HEAD changed; no runtime counts/platform, no functional finding.).
+
+### rev-31 · 2026-10-22T23:55:26.430Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-pending-receipt
+commit: 80cca05ec178cfcfc8f6472a6d9e500ae45b4fc9
+scope: evidence
+findings: [{"severity":"medium","text":"M1: Pending delta is emitted then retry1 pressed before selected rendered approval metadata is observed pending. Control ack is not UI readiness; failure shows old answering guard and no delivery error. Wait for exact pending/choices receipt, retain all assertions.","file":"nvim/test/inbox-actions.test.ts","line":237}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear; A-9593. Exact A-9591:14146 timeout delivery failure is visible; status14190 still says approval is being answered. Task-owned test237-239 lacks selected rendered pending/choices receipt before retry1. Base/load failures precede consequent10.396s>5s gate. Add bounded readiness and retain all outgoing/error/closed/count assertions; no allowance/bound increase. No new product code finding,source A-9564/C5 remains. Corrected head requires source review before verify.
+
+Criteria: C3 failed (Owned live-approval recovery test times out; it retries before pending is rendered, hitting old answering guard. Missing rule9 readiness receipt.).
+
+### rev-31 · 2026-10-22T23:57:46.107Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-source4
+commit: 8c4fa1c8fe2e9db2ef6010a9e9546fdc6a3d5703
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-9602, runtime M1 resolved. Prearmed selected approval pending-choice screen receipt precedes retry1; all final/outgoing/error/closed/count assertions and bounds retained. Product/fixture/docs unchanged. A-9600 exact-head21/21/typecheck and five targeted samples audited;20 old-head local attempts correctly labelled nonreproductions. C5 verified,C1-C4 await new exact-head mode-free configured result. No merge enqueue.
+
+Criteria: C5 verified.
+
+### rev-31 · 2026-10-23T00:08:47.175Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-panel-receipt
+commit: 8c4fa1c8fe2e9db2ef6010a9e9546fdc6a3d5703
+scope: evidence
+findings: [{"severity":"medium","text":"M1: approvalClient waits/selects by full command text in a deliberately clipped panel summary. Actual row is echo approv… beside age1h4m, causing all6 panel base cases+30 load failures. Observe/select exact approval row id/metadata, retain unfolded subject/action assertions and bounds.","file":"nvim/test/inbox-actions.test.ts","line":165}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Configured run not clear; A-9630. A-9629 actual setup error13774 etc; summary already shows echo approv… with1h4m age. Six panel base cases+30 repetitions fail helper165/166 full-text wait/select before actions. Use stable rendered row identity and retain unfolded subject/action assertions; add clipping/age control, no widenedUI/timeouts/allowance. Corrected live-delta base+5/5 passed. No new product source finding; C5/source remains, Web unrun. C1-C4 failed setup; corrected head requires source review.
+
+Criteria: C1 failed (Panel scenario times out in common approvalClient setup matching full command in clipped summary; exact rendered approval row already exists.), C2 failed (Panel scenario times out in common approvalClient setup matching full command in clipped summary; exact rendered approval row already exists.), C3 failed (Panel scenario times out in common approvalClient setup matching full command in clipped summary; exact rendered approval row already exists.), C4 failed (Panel scenario times out in common approvalClient setup matching full command in clipped summary; exact rendered approval row already exists.).
+
+### rev-31 · 2026-10-23T00:14:00.090Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-source5
+commit: 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at 6f0d149e, tree 9f2b9fb5. A-9641: exact rendered approval-ID setup, full expanded literal subject receipt and explicit +2h clipped-command regression correct A-9630 without product/bound changes. Fixture audit adds 3 records per catalog/slice with zero old changes/removals. A-9636 retains local targeted 5×22/22 and typecheck; these are not configured verification. C1–C4 await fresh exact-head mode-free run; C5 source established. Standards 0, Spec 0.
+
+Criteria: C5 verified.
+
+### rev-31 · 2026-10-23T00:24:37.058Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261023-1114-final
+commit: 6f0d149e5e8ca80e4d2c3f4a793f96af4e71a4a9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-9660. A-9656 configured16a1616f exits0,2547/2547 no fail/cancel/skip; Linux c8lon1 T1/all fallback hub+NeovimT2/Web. Independently parsed all22 base approvals and17 new identities each5 distinct load passes plus explicit5/5; worst0.554656969s. Corrected free-answer carrier passes. A-9641 source remains exact; C1–C5 verified. Host T0 not remotely repeated, generic lint/durations report-only, T3/T4/after-stageQA separate. No findings or merge enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

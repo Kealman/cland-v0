@@ -3,7 +3,7 @@ id: T-1138
 kind: task
 title: Launch a session and New Aide from the header
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-418
 blocked_by:
   - T-1132
-topic: null
-branch: null
+topic: topic-882
+branch: t/T-1138-launch-a-session-and-new-aide-from-the
 created: 2026-10-22T15:16:16.038Z
-updated: 2026-10-22T23:07:37.413Z
+updated: 2026-10-23T00:19:11.205Z
 ---
 
 ## Summary

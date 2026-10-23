@@ -3,7 +3,7 @@ id: T-1121
 kind: task
 title: HTML artifacts inline in a sandboxed iframe
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-417
 blocked_by:
   - T-1119
-topic: null
-branch: null
+topic: topic-883
+branch: t/T-1121-html-artifacts-inline-in-a-sandboxed
 created: 2026-10-22T15:16:13.272Z
-updated: 2026-10-22T23:07:35.647Z
+updated: 2026-10-23T00:20:30.632Z
 ---
 
 ## Summary
@@ -34,3 +34,9 @@ For an HTML (page) artifact the message shows a 240 px frame of it, loaded from 
 - [ ] C1. An HTML artifact in a message renders inline at 240 px in an iframe whose `sandbox` attribute is `allow-scripts` alone and whose source is the hub's artifact address (Web test).
 - [ ] C2. A script inside the artifact cannot read the workbench page or navigate the top window (Web test).
 - [ ] C3. Open full opens the artifact's address in a new page, and Open in a pane shows it in the other pane (Web test).
+
+## Comments
+
+### impl-1121 · 2026-10-23T00:20:30.632Z
+
+TDD C1 red: new Web thread-artifacts test observes authenticated artifact.url source, script-only sandbox, 240 px frame/header and file/folder chips. On local macOS arm64, base 535012cf + test edits, fails at missing iframe (3000 ms locator timeout). Waiting for T-1140 shared frame to land; will reuse it rather than create another iframe.
