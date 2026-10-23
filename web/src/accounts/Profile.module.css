@@ -6,3 +6,10 @@
 .dates dd { margin: 0; font-family: var(--mono); }
 .pending { color: var(--muted); }
 .error { color: var(--failed); }
+.notifications { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+.notifications h3 { flex-basis: 100%; margin-bottom: 4px; }
+.notifications button { display: flex; align-items: center; gap: 20px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--ground); color: var(--text); font: inherit; cursor: pointer; }
+.notifications button span { color: var(--muted); font-family: var(--mono); }
+.notifications button[aria-checked="true"] { border-color: var(--link); }
+.notifications button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.notifications button:disabled { cursor: wait; }

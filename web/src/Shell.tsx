@@ -1,7 +1,6 @@
 // The frame ported from Q-405's App.tsx, connected to the production web edge.
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { toggleNotification } from './notification-state.ts';
 import { browserNotifications } from './browser-notifications.ts';
 import type { NotificationNotice } from './notification-rules.ts';
 import { artifactSelection } from './artifacts/state.ts';
@@ -320,8 +319,7 @@ export function Shell() {
     {navigationError && <div role="alert" title={`Could not open ${navigationError}`}>Item unavailable · {navigationError}</div>}
     {overlay && <PaletteDialog mode={overlay} area={area} context={overlayContext} actions={handledActions} connection={connection} controls={paletteControls} selection={composerSelection}
       close={() => { setOverlay(undefined); setComposerSelection(undefined); }} run={action => {
-        if (action === 'notifications-needs-you' || action === 'notifications-finished') { void toggleNotification(action === 'notifications-needs-you' ? 'needsYou' : 'finished'); setOverlay(undefined); }
-        else if (action === 'palette' || action === 'help') openOverlay(action);
+        if (action === 'palette' || action === 'help') openOverlay(action);
         else { pendingPaletteAction.current = action; setOverlay(undefined); }
       }} open={openResult} />}
     <header className={s.top}>

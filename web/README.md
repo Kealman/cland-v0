@@ -351,11 +351,11 @@ Inbox are excluded by the hub's projection.
 
 ## Browser notifications
 
-While this page is open, the palette offers **Notifications · Needs you: on/off**
-and **Notifications · Finished: on/off**, independent switches saved per browser
-and origin. Turning the first switch on requests browser permission directly from
+The **Profile** block in **Accounts** offers **Needs you** and **Finished**,
+independent on/off switches saved per browser and origin. They are absent from
+the palette. Turning the first switch on requests browser permission directly from
 that click or physical Enter. The second switch reuses granted permission. Denial
-turns both off; each action's tooltip explains the browser setting. A revoked
+turns both off; each switch's tooltip explains the browser setting. A revoked
 permission disables saved switches on the next load or window focus. Switch
 changes follow other open tabs of the same browser through local storage.
 
@@ -379,7 +379,7 @@ No service worker or closed-page push is installed here.
 `src/notification-rules.ts` is the pure eligibility/text/target boundary reusable
 by the phone adapter. `src/notification-state.ts` owns the shared switch store
 (`notificationSnapshot`, `subscribeNotifications`, `useNotifications`,
-`toggleNotification`) for the palette and future profile controls. Call the toggle
+`toggleNotification`) for the profile controls and notification delivery. Call the toggle
 directly from an enabling user gesture. `src/browser-notifications.ts` consumes
 incoming frames before the connection replaces its state, keeping the task's
 pre-transition facts and stable notification identities outside React rendering.
@@ -910,8 +910,9 @@ and reconnect; the cookie expires 30 days after creation, even after later use.
 The profile is not a harness account and never enters account counts, selection
 or the Sessions strip. Its fold is remembered in this browser. It lists no
 other browser and offers no revoke; `cland web --sessions` and
-`cland web --revoke <id>` stay in the CLI. Notification switches join this block
-in their own slice.
+`cland web --revoke <id>` stay in the CLI. The **Notifications** group beside
+this sign-in has the **Needs you** and **Finished** switches. Turning either
+off stops that kind in this browser only; the choice survives a reload.
 
 Below the profile, Accounts lists a block per account, using the same pure projection in
 `src/accounts/model.ts`. It shows the harness and directory or database path
@@ -1000,7 +1001,7 @@ node --test web/test/messages.test.ts  # P12 headers, bands, verdicts, safe Mark
 node --test web/test/withdraw.test.ts  # busy-session queue, receipt-gated draft restoration, injection and real refusal
 node --test web/test/thread-runs.test.ts # hub fold lines, inline expansion, pinned anchors and live growth
 node --test web/test/events.test.ts     # journal pages, hub filters, local day folds, subjects, live races and shared last-look
-node --test web/test/notifications.test.ts # stubbed notifications, visibility, permission, switches and exact click targets
+node --test web/test/notifications.test.ts # profile switches/reload/tabs, palette absence, stubbed permission and exact click targets
 node --test hub/test/web-notifications.test.ts # T1 shared notification eligibility/text
 node --test web/test/inbox.test.ts      # Now sections, drawer replies, visit outcomes, seven-day archive, keys and Events footer
 node --test web/test/asks.test.ts       # shared cards, physical answers, declines, two-client races and reconnect

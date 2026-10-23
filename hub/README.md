@@ -85,8 +85,9 @@ Classify each new human frame in the web authority table before admitting it; th
 
 The sibling `web/` workspace builds the browser bundle with React 19 and Vite.
 Open-page browser notifications use the hub's Inbox row layers and task transitions;
-there is no new frame, authority or hub-side setting. The browser's palette offers
-independent Needs you and Finished switches, saved per browser/origin. Only Now work
+there is no new frame, authority or hub-side setting. The Profile block in Accounts offers
+independent Needs you and Finished switches, saved per browser/origin; the palette
+has no notification actions. Only Now work
 can notify, and only while the page is hidden or unfocused. Permission is requested
 from the enabling gesture; denial disables both with a tooltip. Clicks select the
 Inbox row or open the finished item's card. Snapshots never replay old waits.

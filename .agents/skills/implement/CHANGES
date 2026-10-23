@@ -61,3 +61,4 @@ T-971: Restore sealed child-launch builder, T0 guard and inventory guidance; ret
 2026-10-23 · T-1128: document pure/shared notification seams, direct gesture permission, snapshot deduplication and stubbed Web receipt checks.
 2026-10-23 · T-1128 review M1: require explicit Inbox-list destination and exact row-id focus for secondary-active notification clicks with an open palette.
 2026-10-23 · T-1128 verification correction: require paused-animation notification focus regression and mounted-row receipt before final exact-focus assertion.
+2026-10-23 · T-1142: move notification controls to Accounts Profile, retaining the shared store and sealed reload/permission seam; remove palette actions.

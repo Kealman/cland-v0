@@ -82,28 +82,42 @@ test('hidden now ask raises one named notification whose click focuses and opens
   });
 });
 
-async function palette(page: Page, label: string) {
-  await page.getByRole('button', { name: 'Palette', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Search palette', exact: true }).fill(label);
-  return page.getByRole('option').filter({ hasText: label });
+async function profileSwitch(page: Page, name: string, checked: boolean) {
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+  const profile = page.getByRole('region', { name: 'Profile', exact: true });
+  await profile.getByRole('switch', { name, exact: true, checked }).waitFor();
+  return profile.getByRole('switch', { name, exact: true });
 }
 
-test('palette switches persist per browser and request permission only on the first enabling gesture', async t => {
+test('profile switches persist Finished off across reload and request permission only on first enable', async t => {
   const fixture = await notificationFixture(t);
   await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+    const profile = page.getByRole('region', { name: 'Profile', exact: true });
+    const needs = profile.getByRole('switch', { name: 'Needs you', exact: true });
+    const finished = profile.getByRole('switch', { name: 'Finished', exact: true });
+    await needs.waitFor();
+    assert.equal(await profile.getByRole('switch').count(), 2);
+    assert.equal(await needs.getAttribute('aria-checked'), 'false');
+    assert.equal(await finished.getAttribute('aria-checked'), 'false');
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 0);
-    await (await palette(page, 'Notifications · Needs you: off')).click();
+    await needs.focus(); await page.keyboard.press('Enter');
+    await profile.getByRole('switch', { name: 'Needs you', checked: true }).waitFor();
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 1);
-    await (await palette(page, 'Notifications · Finished: off')).click();
+    await page.getByRole('button', { name: 'Palette', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Search palette', exact: true }).fill('>Notifications');
+    assert.equal(await page.getByRole('option').filter({ hasText: /Notifications · (Needs you|Finished)/ }).count(), 0, 'notification switches have moved out of the palette');
+    await page.keyboard.press('Escape');
+    await finished.click();
+    await profile.getByRole('switch', { name: 'Finished', checked: true }).waitFor();
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 1);
+    await finished.click();
+    await profile.getByRole('switch', { name: 'Finished', checked: false }).waitFor();
     await page.reload();
-    await (await palette(page, 'Notifications · Needs you: on')).waitFor();
-    await page.keyboard.press('Escape');
-    await (await palette(page, 'Notifications · Finished: on')).waitFor();
-    assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 1);
-    await page.keyboard.press('Escape');
-    await (await palette(page, 'Notifications · Needs you: on')).click();
-    await (await palette(page, 'Notifications · Needs you: off')).click();
+    await profile.getByRole('switch', { name: 'Needs you', checked: true }).waitFor();
+    assert.equal(await finished.getAttribute('aria-checked'), 'false');
+    await needs.click(); await needs.click();
+    await profile.getByRole('switch', { name: 'Needs you', checked: true }).waitFor();
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 1);
   }, page => stub(page, { needsYou: false, finished: false, permission: 'default', answer: 'granted' }));
 });
@@ -116,12 +130,14 @@ test('looking, disabled and watch-layer asks stay silent without later replay', 
     const visible = await fixture.ask('Visible question');
     await page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${visible}"]`).waitFor();
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).notices.length), 0);
-    await (await palette(page, 'Notifications · Needs you: on')).click();
+    await (await profileSwitch(page, 'Needs you', true)).click();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
     await page.evaluate(() => { (globalThis as NotificationWindow).looking = { visible: false, focused: false }; });
     const disabled = await fixture.ask('Disabled question');
     await page.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${disabled}"]`).waitFor();
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).notices.length), 0);
-    await (await palette(page, 'Notifications · Needs you: off')).click();
+    await (await profileSwitch(page, 'Needs you', false)).click();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
     assert.equal((await fixture.ui.request({ type: 'visibility.set', surface: 'topics', target: fixture.topic, mode: 'mute' })).ok, true);
     const watched = await fixture.ask('Muted question');
     const inbox = await fixture.ui.request({ type: 'inbox.list' });
@@ -144,15 +160,13 @@ test('looking, disabled and watch-layer asks stay silent without later replay', 
 test('denied permission keeps both switches off with a browser-settings tooltip', async t => {
   const fixture = await notificationFixture(t);
   await fixture.pageCase(t, async page => {
-    await (await palette(page, 'Notifications · Needs you: off')).click();
-    const needs = await palette(page, 'Notifications · Needs you: off');
+    await (await profileSwitch(page, 'Needs you', false)).click();
+    const needs = await profileSwitch(page, 'Needs you', false);
     assert.match(await needs.getAttribute('title') ?? '', /blocked.*site settings/);
-    await page.keyboard.press('Escape');
-    const finished = await palette(page, 'Notifications · Finished: off');
+    const finished = await profileSwitch(page, 'Finished', false);
     assert.match(await finished.getAttribute('title') ?? '', /blocked.*site settings/);
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 1);
-    await page.keyboard.press('Escape');
-    await (await palette(page, 'Notifications · Finished: off')).click();
+    await (await profileSwitch(page, 'Finished', false)).click();
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 1, 'a denied browser is never prompted again');
   }, page => stub(page, { needsYou: false, finished: false, permission: 'default', answer: 'denied' }));
 });
@@ -160,7 +174,7 @@ test('denied permission keeps both switches off with a browser-settings tooltip'
 test('hidden now task reaching done notifies once and its click opens the item card', async t => {
   const fixture = await notificationFixture(t);
   await fixture.pageCase(t, async page => {
-    await (await palette(page, 'Notifications · Finished: off')).click();
+    await (await profileSwitch(page, 'Finished', false)).click();
     await page.keyboard.press('Meta+Backslash');
     const done = await fixture.ui.request({ type: 'task.edit', item: 'T-900001', status: 'done' });
     assert.equal(done.ok, true, done.error);
@@ -183,11 +197,10 @@ test('hidden now task reaching done notifies once and its click opens the item c
 test('revoked browser permission disables saved switches on reload and explains why', async t => {
   const fixture = await notificationFixture(t);
   await fixture.pageCase(t, async page => {
-    const needs = await palette(page, 'Notifications · Needs you: off');
+    const needs = await profileSwitch(page, 'Needs you', false);
     await needs.waitFor();
     assert.match(await needs.getAttribute('title') ?? '', /blocked.*site settings/);
-    await page.keyboard.press('Escape');
-    const finished = await palette(page, 'Notifications · Finished: off');
+    const finished = await profileSwitch(page, 'Finished', false);
     await finished.waitFor();
     assert.match(await finished.getAttribute('title') ?? '', /blocked.*site settings/);
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).permissionRequests), 0);
@@ -200,12 +213,12 @@ test('one browser shares switch changes between its open tabs', async t => {
     const second = await page.context().newPage();
     try {
       await second.goto(origin);
-      await (await palette(second, 'Notifications · Needs you: on')).waitFor();
-      await page.getByRole('button', { name: 'Palette', exact: true }).click();
-      await page.getByRole('combobox', { name: 'Search palette', exact: true }).fill('Notifications · Needs you');
-      await second.getByRole('option').filter({ hasText: 'Notifications · Needs you: on' }).click();
-      await page.getByRole('option').filter({ hasText: 'Notifications · Needs you: off' }).waitFor();
-      assert.equal(await page.getByRole('option').filter({ hasText: 'Notifications · Needs you: on' }).count(), 0);
+      const secondSwitch = await profileSwitch(second, 'Needs you', true);
+      const firstSwitch = await profileSwitch(page, 'Needs you', true);
+      const changed = page.getByRole('region', { name: 'Profile', exact: true }).getByRole('switch', { name: 'Needs you', checked: false }).waitFor();
+      await secondSwitch.click();
+      await changed;
+      assert.equal(await firstSwitch.getAttribute('aria-checked'), 'false');
     } finally { await second.close(); }
   }, stub);
 });
@@ -214,7 +227,7 @@ test('a task moved out of Now by another item delta stays silent when it later f
   const fixture = await notificationFixture(t);
   let layerReceived = false;
   await fixture.pageCase(t, async page => {
-    await (await palette(page, 'Notifications · Finished: off')).click();
+    await (await profileSwitch(page, 'Finished', false)).click();
     const created = await fixture.ui.request({ type: 'task.create', title: 'Earlier current release', kind: 'release', version: '98.0.0' });
     assert.equal(created.ok, true, created.error);
     await until(() => layerReceived, { what: 'browser receives task layer demotion from another item', timeoutMs: 3000 });
