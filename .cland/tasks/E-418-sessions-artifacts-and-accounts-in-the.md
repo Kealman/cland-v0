@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-867
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-22T23:07:36.436Z
+updated: 2026-10-23T02:19:50.641Z
 ---
 
 ## Summary
@@ -132,6 +132,7 @@ stages:
       - - T-1141
       - - T-1142
       - - T-1143
+      - - T-1160
 ```
 
 ## Comments
@@ -201,3 +202,62 @@ T4 base phase ran on both; T4 repetitions were explicitly skipped. Duration budg
 All fixture cleanup and earlier detailed observations remain in report-before-covers.md and original captures. Final HEAD/dev still equal S; detached tree clean apart from the allowed node_modules symlink. Stage verdict only; no criterion marks.
 
 Evidence A-9489: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9489-e-418-stage-qa-clear-at-4411dcc9-final-cases-and-both-stage-covers/report.md
+
+### qa-676 · 2026-10-23T02:19:50.641Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s2-2026-10-23-1
+commit: d32c6a8ff74d2052596f68c77d38dccaad879163
+stage: acting, the queue, accounts and artifacts
+stage_hash: 903a3531f1d145867765a1a9c44f0a863bf6b93a17329818625c730f87753574
+findings: [{"severity":"low","text":"E418S2-12 lines 220–221 still describe Artifacts ID/title details. Prescribed documentation counts pass; current viewer is proven. Coordinator 96456659 accepts low finding, fix T-1160 in stage 3.","file":"web/README.md","line":220},{"severity":"low","text":"E418S2-14 screenshot expectation: rig captures after strip() clicks Accounts. Structured cells/colours/meters/tooltips/link facts pass; screenshot retained as Accounts-link evidence under Coordinator a081aa37. No rerun. Prescribed E418S2-20 screenshot also shows strip above verify.","file":"qa/briefs/E-418-stage-2.md"}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| E418S2-00 | hub-api | PASS | E418S2-00-output.txt, E418S2-00-plan.json, E418S2-00-stage.txt |
+| E418S2-01 | hub-api | PASS | E418S2-01-output.txt, E418S2-01.log |
+| E418S2-02 | hub-api | PASS | E418S2-02-output.txt, E418S2-02.log |
+| E418S2-03 | hub-api | PASS | E418S2-03-output.txt, E418S2-03.log |
+| E418S2-04 | hub-api | PASS | E418S2-04-output.txt, E418S2-04.log |
+| E418S2-05 | hub-api | PASS | E418S2-05-output.txt, E418S2-05.log |
+| E418S2-06 | hub-api | PASS | E418S2-06-output.txt, E418S2-06.log |
+| E418S2-07 | hub-api | PASS | E418S2-07-output.txt, E418S2-07.log |
+| E418S2-08 | hub-api | PASS | E418S2-08-output.txt, E418S2-08.log |
+| E418S2-09 | hub-api | PASS | E418S2-09-output.txt, E418S2-09-test-names.txt, E418S2-09a.log, E418S2-09b.log, E418S2-09c.log, E418S2-09d.log, E418S2-09e.log |
+| E418S2-10 | hub-api | PASS | E418S2-10-output.txt, E418S2-10-tiers.log, E418S2-10.log |
+| E418S2-11 | hub-api | PASS | E418S2-11-output.txt, E418S2-11.txt |
+| E418S2-12 | hub-api | PASS | E418S2-12-disposition.txt, E418S2-12-docs-context.txt, E418S2-12-output.txt, E418S2-12-stale-lines.txt, E418S2-12.txt |
+| E418S2-13 | hub-api | PASS | E418S2-13-list.json, E418S2-13-output.txt, E418S2-13-ready.json |
+| E418S2-14 | hub-api | PASS | E418S2-14-disposition.txt, E418S2-14-output.txt, E418S2-14.json, E418S2-14.png, E418S2-14.txt |
+| E418S2-15 | hub-api | PASS | E418S2-15-output.txt, E418S2-15.json, E418S2-15.png, E418S2-15.txt |
+| E418S2-16 | hub-api | PASS | E418S2-16-output.txt, E418S2-16.json, E418S2-16.png, E418S2-16.txt |
+| E418S2-17 | hub-api | PASS | E418S2-17-output.txt, E418S2-17.json, E418S2-17.png, E418S2-17.txt |
+| E418S2-18 | hub-api | PASS | E418S2-18-output.txt, E418S2-18.json, E418S2-18.png, E418S2-18.txt |
+| E418S2-19 | hub-api | PASS | E418S2-19-output.txt, E418S2-19.json, E418S2-19.png, E418S2-19.txt |
+| E418S2-20 | hub-api | PASS | E418S2-20-output.txt, E418S2-20.json, E418S2-20.png, E418S2-20.txt |
+| E418S2-21 | hub-api | PASS | E418S2-21-output.txt, E418S2-21.json, E418S2-21.png, E418S2-21.txt |
+| E418S2-22 | hub-api | PASS | E418S2-22-output.txt, E418S2-22.json, E418S2-22.png, E418S2-22.txt |
+| E418S2-23 | hub-api | PASS | E418S2-23-plan-final.json, E418S2-23-cover-receipt.txt |
+| E418S2-24 | hub-api | PASS | E418S2-24-output.txt, E418S2-24.txt |
+| E418S2-25 | hub-api | PASS | E418S2-25-output.txt |
+
+Build: d32c6a8ff74d2052596f68c77d38dccaad879163, clean detached tree before and after. Run qa-s2-2026-10-23-1. Local macOS arm64, Node24.21.0, isolated Chrome Headless Shell. Web bundle built from S. 89 named tests plus the one walkthrough rig passed, zero failures/skips; typecheck, lint tiers, colour/contrast/hooks guards and brief lint passed. Every named Web fixture census clean; walkthrough browser before4/after0, scratch hub stopped, owned two-PID census empty, scratch root removed. No real browser, live-edge mutation or full suite run by QA. All scoped cases PASS.
+
+Low findings:
+- E418S2-12, web/README.md:220–221 still says Artifacts page/drawer retain ID/title details. Current capability viewer proven by tests and walkthrough; all prescribed documentation counts pass. Coordinator disposition 96456659 accepts low finding; fix T-1160 (XS, stage 3). See retained docs context and disposition.
+- E418S2-14 brief screenshot expectation: strip() navigates to Accounts before the rig captures its screenshot, so E418S2-14.png is Accounts-link evidence. All structured strip measurements pass. Coordinator a081aa37 authorized PASS with this low brief finding and no rerun. E418S2-20.png independently shows the strip above verify, plus aide-1 under Yours, as part of that prescribed step.
+
+All page steps ran once on the same sealed scratch hub. Account profile remains isolated across contexts; queue ages without frames and resets on a replacement frame; session actions preserve identity and require confirmations; launch has no cwd field and honors defaults/limited account refusal; capability iframe sandbox is exactly allow-scripts and all three document/cookie probes return SecurityError. Text remains literal, binary bytes match, raw Mermaid remains text and SVG stays sandboxed. Help final rows are visible.
+
+Queue sample none/waiters0; sampled CPU idle92.97%. Test duration diagnostics are report-only and are not stage speed claims. No stage criterion marks.
+
+Stage covers at d32c6a8ff74d2052596f68c77d38dccaad879163, verification tree f3ac7b4d73c8e68f127bceb4ced633ac27e3e6f0: final plan missing=[]; all stage members merged. Detached HEAD and dev both equal S, clean detached status.
+- Linux droplet 83a773e8-7ec5-43fb-b117-d4d2e0f60b2a: green, 3923 pass, 0 fail, 8 skip. Merged A-9755; shard logs A-9756 and A-9757. linux x64, 2 workers, T1–T4 and Web. Shard 1 cland-v0-75f6311a (c-8 lon1): 1095.56 s admission through remote finish, lifetime 1086 s, $0.0754; collection 25.39 s. Shard 2 cland-v0-afc1850f (c-8 lon1): 954.56 s, lifetime 938 s, $0.0652; collection 19.07 s. Overall wall 1121.20 s; total $0.1406.
+- macOS local bd2aafa5-9fec-4161-8d87-3a4de930cac3: green, 3931 pass, 0 fail, 0 skip; A-9764. darwin arm64, 2 workers, T1–T4 and Web. Overall macOS wall/cost not stated in the receipt; no projection substituted.
+- Both covers ran T4 base files only; T4 repetitions skipped. Timing budgets and lint report-only; projected tier walls are not observed overall walls.
+- Original failed Linux 10fcb1d8 retained as A-9739, shard logs A-9740/A-9741. Exact failure: `AssertionError [ERR_ASSERTION]: first hub.status took 10424.6 ms; T-1081 budget 10000 ms` (startup-replies-scale.test.ts:81). Coordinator classified known flake T-1094 and authorized same-head retry. Original incomplete run is not counted as passing coverage: overall wall 996.20 s, total $0.1273. Original and retry Linux billed total $0.2679; summed observed run walls 2117.40 s, not an end-to-end elapsed-time claim.
+
+Durable evidence A-9767: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9767-e-418-stage-acting-queue-accounts-and-artifacts-26-pass-at-d32c6a8f-both-covers-/report.md

@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-862
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-22T23:29:51.149Z
+updated: 2026-10-23T02:19:35.053Z
 ---
 
 ## Summary
@@ -116,6 +116,7 @@ stages:
       when: after-stage
     lanes:
       - - T-1113
+      - - T-1159
 ```
 
 ## Comments
@@ -190,3 +191,56 @@ Evidence A-9487: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9487-
 ### coord · 2026-10-22T23:29:51.149Z
 
 Coordinator decision (2026-10-22 23:30Z, from rev-32's review of T-1112; it refines ask 9a81a158's 64 KB cap): an approval whose complete authorization subject (command, or file paths and change) does not fit the public payload cap is a record answered in the TUI. It is not answerable in the hub, and it directs the human to the harness; truncated text is informational only. This applies to the Codex (T-1111) and OpenCode (T-1112) relays alike. Error paths use the same public-field allowlist as success paths.
+
+### qa-676 · 2026-10-23T02:19:35.053Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s2-2026-10-23-1
+commit: d32c6a8ff74d2052596f68c77d38dccaad879163
+stage: relays and Neovim
+stage_hash: 95d923e27ee229eb553322594f2b877e04839026eda925869911a14951656358
+findings: [{"severity":"low","text":"E414S2-19 documentation sweep also at line 857 still describes re-keying and unlanded relays. Prescribed counts pass; Coordinator disposition 3273cf45 accepts low finding. Fix T-1159 in stage 3.","file":"hub/README.md","line":847},{"severity":"low","text":"QA capture limitation: wrapper and tee collided. Original kept unchanged; separate launch logs, sessions.json, S1 JSONL/pid and read-only liveness establish PASS under Coordinator b3d672f1. No relaunch.","file":"E414S2-10.txt"}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| E414S2-00 | hub-api | PASS | E414S2-00-init.txt, E414S2-00-p1-start.txt, E414S2-00-plan.json, E414S2-00-stage.txt, E414S2-00.txt |
+| E414S2-01 | hub-api | PASS | E414S2-01.log, E414S2-01.txt |
+| E414S2-02 | hub-api | PASS | E414S2-02.log, E414S2-02.txt |
+| E414S2-03 | hub-api | PASS | E414S2-03.log, E414S2-03.txt |
+| E414S2-04 | hub-api | PASS | E414S2-04.log, E414S2-04.txt |
+| E414S2-05 | hub-api | PASS | E414S2-05.txt, E414S2-05a.log, E414S2-05b.log |
+| E414S2-06 | hub-api | PASS | E414S2-06.log, E414S2-06.txt |
+| E414S2-07 | hub-api | PASS | E414S2-07.txt, E414S2-07a.log, E414S2-07b.log, E414S2-07c.log |
+| E414S2-08 | hub-api | PASS | E414S2-08.log, E414S2-08.txt |
+| E414S2-09 | hub-api | PASS | E414S2-09.log, E414S2-09.txt |
+| E414S2-10 | hub-api | PASS | E414S2-10-capture-limitation.txt, E414S2-10-cx.txt, E414S2-10-oc.txt, E414S2-10-readback.txt, E414S2-10-sessions.json, E414S2-10.txt |
+| E414S2-11 | hub-api | PASS | E414S2-11-inbox.txt, E414S2-11-list.jsonl, E414S2-11-output.txt, E414S2-11-send.jsonl, E414S2-11.txt |
+| E414S2-12 | hub-api | PASS | E414S2-12-answer.jsonl, E414S2-12-archive.jsonl, E414S2-12-archive.txt, E414S2-12-fake.log, E414S2-12-history.jsonl, E414S2-12-output.txt, E414S2-12.txt |
+| E414S2-13 | hub-api | PASS | E414S2-13-history.jsonl, E414S2-13-output.txt, E414S2-13a-answer.jsonl, E414S2-13a-fake.log, E414S2-13a-list.jsonl, E414S2-13a-send.jsonl, E414S2-13b-answer.jsonl, E414S2-13b-fake.log, E414S2-13b-list.jsonl, E414S2-13b-send.jsonl |
+| E414S2-14 | hub-api | PASS | E414S2-14-answer.jsonl, E414S2-14-fake.log, E414S2-14-inbox.txt, E414S2-14-list.jsonl, E414S2-14-output.txt, E414S2-14-send.jsonl, E414S2-14.txt |
+| E414S2-15 | hub-api | PASS | E414S2-15-archive.jsonl, E414S2-15-archive.txt, E414S2-15-closed.jsonl, E414S2-15-fake.log, E414S2-15-late.jsonl, E414S2-15-list.jsonl, E414S2-15-output.txt, E414S2-15-send.jsonl, E414S2-15.txt |
+| E414S2-16 | hub-api | PASS | E414S2-16-always-answer.jsonl, E414S2-16-always-inbox.txt, E414S2-16-always-list.jsonl, E414S2-16-always-send.jsonl, E414S2-16-deny-answer.jsonl, E414S2-16-deny-inbox.txt, E414S2-16-deny-list.jsonl, E414S2-16-deny-send.jsonl, E414S2-16-fake.log, E414S2-16-history.jsonl, E414S2-16-once-answer.jsonl, E414S2-16-once-inbox.txt, E414S2-16-once-list.jsonl, E414S2-16-once-send.jsonl, E414S2-16-output.txt, E414S2-16.txt |
+| E414S2-17 | hub-api | PASS | E414S2-17-archive.jsonl, E414S2-17-archive.txt, E414S2-17-closed.jsonl, E414S2-17-fake.log, E414S2-17-late.jsonl, E414S2-17-list.jsonl, E414S2-17-output.txt, E414S2-17-send.jsonl, E414S2-17-tui.txt, E414S2-17.txt |
+| E414S2-18 | hub-api | PASS | E414S2-18-inbox.jsonl, E414S2-18-output.txt |
+| E414S2-19 | hub-api | PASS | E414S2-19-docs-context.txt, E414S2-19-output.txt |
+| E414S2-20 | hub-api | PASS | E414S2-20-plan-final.json, E414S2-20-cover-receipt.txt |
+| E414S2-21 | hub-api | PASS | E414S2-21-output.txt, E414S2-21-stop-cx.txt, E414S2-21-stop-oc.txt |
+
+Build: d32c6a8ff74d2052596f68c77d38dccaad879163, clean detached macOS arm64, Node24.21.0, pinned Neovim0.12.5. Run qa-s2-2026-10-23-1; 127 targeted tests passed, zero skip/fail/cancelled; typecheck and wire lint passed. Behavioral live checks used a sealed scratch HOME/XDG/Git and fake Codex/OpenCode only. No local full suite was run. All scratch processes stopped, 40-PID fixture census empty; scratch root removed. All scoped cases PASS.
+
+Low findings:
+- E414S2-19, hub/README.md:847 and :857: surrounding documentation still says reconnects may re-key a request and the relay implementations have yet to land. All prescribed counts passed; Coordinator disposition 3273cf45 accepts this as low finding, with fix T-1159 in stage 3. Retained docs context and disposition.
+- E414S2-10 QA capture limitation: the stdout wrapper and helper tee targeted the same file, overwriting early launch-exit lines. Original retained unaltered. Separate launch logs, sessions.json and S1 capture plus read-only PID liveness prove both sessions running in p1 with reliable relays and subscribed S1. Coordinator b3d672f1 authorized judging those receipts; no launch repeated. Later wrapper output uses separate -output.txt.
+
+Criterion marks: none; after-stage QA.
+
+Stage covers at d32c6a8ff74d2052596f68c77d38dccaad879163, verification tree f3ac7b4d73c8e68f127bceb4ced633ac27e3e6f0: final plan missing=[]; all stage members merged. Detached HEAD and dev both equal S, clean detached status.
+- Linux droplet 83a773e8-7ec5-43fb-b117-d4d2e0f60b2a: green, 3923 pass, 0 fail, 8 skip. Merged A-9755; shard logs A-9756 and A-9757. linux x64, 2 workers, T1–T4 and Web. Shard 1 cland-v0-75f6311a (c-8 lon1): 1095.56 s admission through remote finish, lifetime 1086 s, $0.0754; collection 25.39 s. Shard 2 cland-v0-afc1850f (c-8 lon1): 954.56 s, lifetime 938 s, $0.0652; collection 19.07 s. Overall wall 1121.20 s; total $0.1406.
+- macOS local bd2aafa5-9fec-4161-8d87-3a4de930cac3: green, 3931 pass, 0 fail, 0 skip; A-9764. darwin arm64, 2 workers, T1–T4 and Web. Overall macOS wall/cost not stated in the receipt; no projection substituted.
+- Both covers ran T4 base files only; T4 repetitions skipped. Timing budgets and lint report-only; projected tier walls are not observed overall walls.
+- Original failed Linux 10fcb1d8 retained as A-9739, shard logs A-9740/A-9741. Exact failure: `AssertionError [ERR_ASSERTION]: first hub.status took 10424.6 ms; T-1081 budget 10000 ms` (startup-replies-scale.test.ts:81). Coordinator classified known flake T-1094 and authorized same-head retry. Original incomplete run is not counted as passing coverage: overall wall 996.20 s, total $0.1273. Original and retry Linux billed total $0.2679; summed observed run walls 2117.40 s, not an end-to-end elapsed-time claim.
+
+Durable evidence A-9766: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9766-e-414-stage-relays-and-neovim-22-pass-at-d32c6a8f-both-covers-green/report.md

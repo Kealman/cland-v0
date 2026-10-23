@@ -3,7 +3,7 @@ id: T-1141
 kind: task
 title: "The session's drawer: its recent thread, pending approval and a composer"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:16.460Z
-updated: 2026-10-22T15:16:16.460Z
+updated: 2026-10-23T02:19:51.220Z
 ---
 
 ## Summary

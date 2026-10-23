@@ -3,7 +3,7 @@ id: T-1143
 kind: task
 title: Notes rendered, This topic and `s` to the composer
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:16.723Z
-updated: 2026-10-22T15:16:16.723Z
+updated: 2026-10-23T02:19:51.428Z
 ---
 
 ## Summary

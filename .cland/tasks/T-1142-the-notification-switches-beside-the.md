@@ -3,7 +3,7 @@ id: T-1142
 kind: task
 title: The notification switches beside the profile
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T15:16:16.594Z
-updated: 2026-10-22T15:16:16.594Z
+updated: 2026-10-23T02:19:51.323Z
 ---
 
 ## Summary
