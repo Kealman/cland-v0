@@ -3,7 +3,7 @@ id: T-1125
 kind: task
 title: Queued messages and Withdraw in the thread
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-417
 blocked_by:
   - T-1124
   - T-1117
-topic: null
-branch: null
+topic: topic-893
+branch: t/T-1125-queued-messages-and-withdraw-in-the
 created: 2026-10-22T15:16:14.021Z
-updated: 2026-10-23T03:28:05.700Z
+updated: 2026-10-23T05:01:31.818Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ The thread shows the human's message with its delivery stage from the hub. While
 - [ ] C1. A message to a busy fake session shows as queued with Withdraw, and Withdraw marks it withdrawn and puts its text back into the composer (Web test).
 - [ ] C2. When the fake session's turn takes the message, its stage moves to injected and Withdraw disappears (Web test).
 - [ ] C3. A withdraw the hub refuses leaves the message as it was with the refusal shown (Web test).
+
+## Comments
+
+### impl-1125 · 2026-10-23T05:01:31.818Z
+
+Preparation: initial npm run build passed on local macOS. Confirmed Web public-frame/fake-spoke seam from E-417 and launch brief; no source edits until T-1124 is present on origin/dev. Existing MessageBlock renders hub delivery stages; planned browser slice will restore into T-1124's per-topic draft store after withdrawal receipt, preserving newer text.

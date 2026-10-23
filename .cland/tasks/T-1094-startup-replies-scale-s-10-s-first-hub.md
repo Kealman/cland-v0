@@ -2,8 +2,8 @@
 id: T-1094
 kind: task
 title: startup-replies-scale's 10 s first hub.status bound fails on a slow-disk Linux droplet
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-885
 branch: t/T-1094-startup-replies-scale-s-10-s-first-hub
 created: 2026-10-22T05:08:58.980Z
-updated: 2026-10-23T04:22:17.671Z
+updated: 2026-10-23T05:01:39.725Z
+closed: 2026-10-23T05:01:39.725Z
 ---
 
 ## Summary
@@ -26,8 +27,10 @@ The E-413 "fields" Linux stage cover 7ccc6238 (A-8935, dev 9ab12f2a, shard-2 on 
 
 - [x] C1. The first-hub.status assertion measures the hub's own startup work (or normalises by the run's recorded machine health) so that a slow-disk droplet does not cross it while a real regression of T-1081's bounded startup still fails; the planted-regression control stays red (test).
   - done: impl-1094 · 2026-10-23T01:44:08.966Z
-- [ ] C2. The test passes in one same-head `verify all` on a Linux droplet and 10/10 in local targeted runs under two CPU-load loops, with every run's first-hub.status CPU and wall times listed in the item topic (test).
-  - failed: rev-23 [reviewer] · 2026-10-23T04:00:22.880Z · note Required Linux verify all exits 1 in Web fresh-epoch-live assertion; startup T3 passes, aggregate pass still required.
+  - verified: rev-23 [reviewer] · run rev-20261023-1094-final · 2026-10-23T04:56:38.024Z · commit 32c0f9704c02749995fe2b9f6890ed076b28b104
+- [x] C2. The test passes in one same-head `verify all` on a Linux droplet and 10/10 in local targeted runs under two CPU-load loops, with every run's first-hub.status CPU and wall times listed in the item topic (test).
+  - done: impl-1094 · 2026-10-23T04:55:48.524Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1094-final · 2026-10-23T04:56:38.024Z · commit 32c0f9704c02749995fe2b9f6890ed076b28b104
 
 ## Comments
 
@@ -112,3 +115,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear, no findings. A-9824: authorized merge of ed49f6fd into ebfab305; all six owned startup implementation/test/docs/skill files byte-identical to prior reviewed head. Shared asks test matches final-reviewed T-1163 d03507da; incoming Web docs and nine exact duration baselines/provenance introduce no startup or allowance change. Prior full source A-9780 stands. C1/C2 final runtime unverified: local10/10 A-9781 and controls A-9779 remain old-head support, A-9808 aggregate remains failed. Coordinator-owned replacement Linux verify all must run at32c0f970. No new-head tests/coverage claimed; no additional QA requirement inferred.
+
+### impl-1094 · 2026-10-23T04:56:08.128Z
+
+C2 done. Replacement all e065c1bd-7b1d-4172-a231-e506a821cf21 passed at source-reviewed32c0f9704c02749995fe2b9f6890ed076b28b104 (A-9836):3884pass/0fail/8skip; T1,T2,T3,Web exit0; Linux x64 droplet c-8 lon1/Nodev24.21.0, lifetime1629s/$0.1131. Actual first-hub.status7172.8ms wall/8069.1ms process CPU (diagnostic), one checkpoint/1645jobs,3explorer batches,1004files/1008reads/max2; all byte/membership/plan guards pass (461244replybytes/99497snapshotbytes). Duration and lint gates report-only; host typecheck b0abeb7385d12d41e2feeaf44e03a5ceb0dae895 reused/not repeated; no T4 claim. Loaded10/10 half is A-9781 at ebfab305, all six owned files confirmed byte-identical at current head by A-9824 delta review; CPU loops reaped. Independent count REDs A-9779 retained. Final Reviewer evidence settlement requested at32c0f970; automatic hub-ready transition pending. Working tree clean; no source change or Implementer merge.
+
+### rev-23 · 2026-10-23T04:56:38.024Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1094-final
+commit: 32c0f9704c02749995fe2b9f6890ed076b28b104
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1/C2, no findings. A-9837 audits required current-head Linux all e065c1bd/A-9836:3884 ordinary passes,8 skips,0 fail/cancel, actual T1–T3/Web. Owned startup passes at7172.8ms status wall/8069.1ms diagnostic CPU, one checkpoint/1645 jobs/three batches/1004 files/1008 reads/max2 plus all byte/membership/plan guards. A-9779 independent count RED controls and A-9781 loaded10/10 remain attributed to ebfab305; A-9824 proved all six owned files unchanged across authorized merge, supporting carry-forward. Host check reused, generic budgets/lint report-only, no T4/QA. Historical A-9808 and A-9776 stay failed/rejected; source A-9780/A-9824 stands.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-23T05:01:39.725Z
+
+Merged 3c244f437fbfbfe27f41ed1e19485198495a9094 onto dev.
