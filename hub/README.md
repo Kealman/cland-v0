@@ -84,6 +84,11 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 Classify each new human frame in the web authority table before admitting it; the default is refusal. Validate routing inputs before permission classification, apply the sandbox response policy to executable artifacts as well as their iframe, and close credential admission before closing sockets and observing their close receipts (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
 
 The sibling `web/` workspace builds the browser bundle with React 19 and Vite.
+The edge adds the configured project name to the build's `/manifest.webmanifest`
+template and computes its ETag from the final response. The standalone app starts
+on Inbox; its badge follows the authoritative needs-you count where supported.
+See [Installable app](../web/README.md#installable-app) for token-derived theme,
+committed brand icons and the isolated QR/cookie test seam.
 Open-page browser notifications use the hub's Inbox row layers and task transitions;
 there is no new frame, authority or hub-side setting. The Profile block in Accounts offers
 independent Needs you and Finished switches, saved per browser/origin; the palette

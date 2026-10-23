@@ -156,6 +156,42 @@ newer typing. Text, kind and addressee use the existing per-topic drafts and
 survive navigation and reload; nothing sends automatically on reload.
 Build first, then run `node --test web/test/phone-composer.test.ts`.
 
+## Installable app
+
+The edge serves `/manifest.webmanifest` as `application/manifest+json`, adding the
+current `[project] name` as both `name` and `short_name` (the directory name is the
+default). The shared Vite build emits its fixed fields: `id` and `scope` are `/`,
+`display` is `standalone`, and `start_url` is `/?area=inbox`. The shell consumes
+that parameter, opens the Inbox list over the saved area and replaces the URL
+with `/`. Ordinary reloads keep the saved area. The manifest's theme/background
+and the built HTML's `theme-color` all come from `--panel` in `src/tokens.css`.
+The bundle stamp remains the source receipt; rebuilding is enough to serve new
+manifest fields without restarting the hub.
+
+`index.html` links the manifest and the 180 px Apple touch icon. Committed PNGs
+in `public/icons/` come from `docs/brand/`: the existing 512 and 180 px favicons
+are copied, and `rsvg-convert` renders the 192 px favicon from `src/favicon.svg`.
+The 512 px maskable icon uses the same SVG, scaled to 80% around its centre on
+an opaque panel-token background, keeping the mark within the central safe circle.
+Render these assets again if the brand or panel token changes; no image dependency
+is needed at build time.
+
+Where `navigator.setAppBadge` exists, the authoritative needs-you count sets the
+app badge; zero calls `clearAppBadge`. Unknown counts leave it alone, and missing
+APIs or rejected platform promises leave the shell usable. Real badges and
+installation require platform support and a secure origin; QA checks them in the
+full Chromium demo, separately from the suite's Badging API stubs.
+
+`cland web --qr` prints the phone sign-in link and QR code. Redeeming the link
+sets the fixed 30-day HttpOnly cookie and opens `/`. On iOS, the installed app
+keeps its cookies apart from Safari: open the link in the app or repeat sign-in
+there. `web/test/phone-install.test.ts` uses the existing 390×844 touch/mobile
+fixture for installed entry, live badge counts, missing API and executable QR
+sign-in. Its `cliLink: 'qr'` mode decodes the printed QR against the link and
+redeems the exact token on the scratch edge's loopback address, with a synthetic
+tunnel origin and sealed browser openers. It never contacts a tunnel or opens
+the human's browser. Build first, then run this file and `hub/test/web-auth.test.ts`.
+
 ## Components and colours
 
 Copy `src/Shell.tsx` and `src/Shell.module.css`. Components use CSS Modules and

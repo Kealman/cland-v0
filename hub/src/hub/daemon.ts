@@ -416,7 +416,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   }
 
   log({ event: 'hub-startup-step', step: 'binding web listener', pid: process.pid });
-  web = await createWebEdge({ root, store, log, ...(options.artifactOpen ? { artifactOpen: options.artifactOpen } : {}), dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, bind: config.web.bind, origin: config.web.origin, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
+  web = await createWebEdge({ root, store, log, projectName: () => roles.config().name, ...(options.artifactOpen ? { artifactOpen: options.artifactOpen } : {}), dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, bind: config.web.bind, origin: config.web.origin, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
   if (!web.status.available) log({ event: 'web-unavailable', ...web.status });
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again

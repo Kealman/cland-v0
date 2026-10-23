@@ -64,3 +64,4 @@ T-971: Restore sealed child-launch builder, T0 guard and inventory guidance; ret
 2026-10-23 · T-1142: move notification controls to Accounts Profile, retaining the shared store and sealed reload/permission seam; remove palette actions.
 2026-10-23 · T-1129: document reusable Web approval card and bounded session-history drawer seams, optional denial cancellation, native delivery and exact-winner receipts.
 2026-10-23 · T-1129 review M1: refresh recent history for each selected approval identity and retain a held-old-read/new-message Web regression.
+2026-10-23 · T-1174: point install metadata, Inbox startup, Badging API and QR sign-in changes to the T2 edge and sealed phone seams; keep real installability/badge in QA.

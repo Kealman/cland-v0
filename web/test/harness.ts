@@ -14,6 +14,7 @@ import { onCleanup, ownProcess, captureProcess } from '../../hub/test/process-cl
 import { until } from '../../hub/test/until.ts';
 import { browserCache, webPrerequisite } from './prerequisite.ts';
 import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
+import { decodeTerminalQr } from '../../hub/test/qr-decode.ts';
 
 const traces = fileURLToPath(new URL('../test-results/', import.meta.url));
 
@@ -46,7 +47,7 @@ export async function reconnectUntilLive(page: Page): Promise<void> {
   assert.equal(await page.evaluate(live), true, 'fake-clock hub reconnect is Live');
 }
 
-export async function webFixture(t: TestContext, options: { cliLink?: boolean; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void> } = {}) {
+export async function webFixture(t: TestContext, options: { cliLink?: boolean | 'qr'; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void> } = {}) {
   const root = await tempProject(t, 'w-');
   // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.
   // Keep it short and owned, including the browser's artifacts and crash paths.
@@ -131,10 +132,20 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; c
       });
       let url: string;
       if (options.cliLink) {
-        const result = await clandWithEnv(root, { PATH: `${openers}:${env.PATH ?? ''}` }, 'web', '--no-open');
+        const result = await clandWithEnv(root, { PATH: `${openers}:${env.PATH ?? ''}` }, 'web', options.cliLink === 'qr' ? '--qr' : '--no-open');
         assert.equal(result.code, 0, result.stderr);
-        url = result.stdout.trim();
-        assert.match(url, /^http:\/\/127\.0\.0\.1:\d+\/auth\?token=[a-f0-9]{64}$/);
+        if (options.cliLink === 'qr') {
+          const [printed, ...qr] = result.stdout.trimEnd().split('\n');
+          assert.equal(decodeTerminalQr(qr.join('\n')), printed, 'QR encodes the printed sign-in link');
+          assert.match(printed!, /^https:\/\/phone\.example\/auth\?token=[a-f0-9]{64}$/);
+          const status = await askHubFrame(hub.discovery, { type: 'hub.status' }, 3000, {}) as { web: { port: number } };
+          const link = new URL(printed!);
+          // The tunnel is synthetic: redeem its exact path/token on this fixture's loopback edge.
+          url = `http://127.0.0.1:${status.web.port}${link.pathname}${link.search}`;
+        } else {
+          url = result.stdout.trim();
+          assert.match(url, /^http:\/\/127\.0\.0\.1:\d+\/auth\?token=[a-f0-9]{64}$/);
+        }
       } else {
         ({ url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string });
       }

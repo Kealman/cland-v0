@@ -20,12 +20,12 @@ import { ensureWebBuild } from './web-build.ts';
 // Suites build outside workers; standalone runs need the same prerequisite.
 before(() => ensureWebBuild(fileURLToPath(new URL('../../', import.meta.url))));
 
-function get(url: string, headers: Record<string, string> = {}): Promise<{ status: number; headers: IncomingHttpHeaders; body: string }> {
+function get(url: string, headers: Record<string, string> = {}): Promise<{ status: number; headers: IncomingHttpHeaders; body: string; bytes: Buffer }> {
   return new Promise((resolve, reject) => {
     const req = request(url, { agent: false, headers }, res => {
       const chunks: Buffer[] = [];
       res.on('data', chunk => chunks.push(chunk));
-      res.on('end', () => resolve({ status: res.statusCode!, headers: res.headers, body: Buffer.concat(chunks).toString() }));
+      res.on('end', () => { const bytes = Buffer.concat(chunks); resolve({ status: res.statusCode!, headers: res.headers, body: bytes.toString(), bytes }); });
       res.on('error', reject);
     });
     req.setTimeout(2000, () => req.destroy(new Error('web request timed out')));
@@ -34,6 +34,47 @@ function get(url: string, headers: Record<string, string> = {}): Promise<{ statu
     req.end();
   });
 }
+
+test('the project manifest and linked PNG icons share the built panel theme', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/config.toml'), '[project]\nname = "Crew & Café"\n');
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const { url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
+  const origin = new URL(url).origin;
+  const response = await get(`${origin}/manifest.webmanifest`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['content-type'], 'application/manifest+json');
+  const manifest = JSON.parse(response.body);
+  assert.equal(manifest.name, 'Crew & Café');
+  assert.equal(manifest.short_name, 'Crew & Café');
+  assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.id, '/');
+  assert.equal(manifest.scope, '/');
+  assert.equal(manifest.start_url, '/?area=inbox');
+  const tokens = await readFile(new URL('../../web/src/tokens.css', import.meta.url), 'utf8');
+  const panel = tokens.match(/--panel:\s*([^;]+);/)![1]!;
+  assert.equal(manifest.theme_color, panel);
+  assert.equal(manifest.background_color, panel);
+  const html = (await get(`${origin}/`)).body;
+  assert.match(html, /<link[^>]+rel="manifest"[^>]+href="\/manifest.webmanifest"/);
+  assert.match(html, /<meta[^>]+name="theme-color"[^>]+content="([^"]+)"/);
+  assert.equal(html.match(/name="theme-color"[^>]+content="([^"]+)"/)![1], panel);
+  const apple = html.match(/<link[^>]+rel="apple-touch-icon"[^>]+href="([^"]+)"/)![1]!;
+  assert.deepEqual(manifest.icons.map((icon: { sizes: string; purpose: string }) => [icon.sizes, icon.purpose]), [
+    ['192x192', 'any'], ['512x512', 'any'], ['512x512', 'maskable'],
+  ]);
+  for (const icon of [...manifest.icons, { src: apple, sizes: '180x180', type: 'image/png' }]) {
+    const png = await get(`${origin}${icon.src}`);
+    assert.equal(png.status, 200, icon.src);
+    assert.equal(png.headers['content-type'], 'image/png');
+    assert.equal(icon.type, 'image/png');
+    assert.deepEqual(png.bytes.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    assert.equal(`${png.bytes.readUInt32BE(16)}x${png.bytes.readUInt32BE(20)}`, icon.sizes);
+  }
+  const cached = await get(`${origin}/manifest.webmanifest`, { 'If-None-Match': response.headers.etag! });
+  assert.equal(cached.status, 304);
+});
 
 // A regression in --no-open must still never open the human's browser/keychain.
 async function openers(root: string): Promise<Record<string, string>> {

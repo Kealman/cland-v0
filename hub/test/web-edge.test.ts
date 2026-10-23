@@ -65,7 +65,8 @@ async function fixtureBundle(root: string): Promise<void> {
   await mkdir(join(root, 'bundle/assets'), { recursive: true });
   await writeFile(join(root, 'bundle/index.html'), '<!doctype html><title>fixture shell</title>');
   await writeFile(join(root, 'bundle/assets/app-a1.js'), 'export const shell = true;');
-  for (const file of ['manifest.webmanifest', 'sw.js', 'icon-192.png']) await writeFile(join(root, 'bundle', file), 'fixture');
+  await writeFile(join(root, 'bundle/manifest.webmanifest'), JSON.stringify({ display: 'standalone' }));
+  for (const file of ['sw.js', 'icon-192.png']) await writeFile(join(root, 'bundle', file), 'fixture');
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[web]\ndist = "bundle"\n');
 }

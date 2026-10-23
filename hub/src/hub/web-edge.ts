@@ -9,7 +9,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile, realpath, rename, stat, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
-import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
 import { FRAME_LIMITS_BYTES, BINARY_RESERVED_CLOSE_CODE } from '../protocol.ts';
@@ -39,7 +39,7 @@ function allowedHost(req: IncomingMessage, hostsAllowed: string[], origin: strin
   return hosts.length === 1 && [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`, ...hostsAllowed.map(host => `${host}:${port}`), ...(origin ? [new URL(origin).host] : [])].includes(req.headers.host?.toLowerCase() ?? '');
 }
 
-async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts, hosts: string[], origin: string): Promise<void> {
+async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts, hosts: string[], origin: string, projectName: () => string): Promise<void> {
   // Supply Date directly: Node's automatic Date cache creates a process-global timer.
   res.setHeader('Date', new Date().toUTCString());
   res.setHeader('Content-Security-Policy', CSP);
@@ -122,7 +122,11 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
       return;
     }
     if (!physical || !(await stat(physical)).isFile()) { reply(404, 'Not found'); return; }
-    const body = await readFile(physical);
+    let body = await readFile(physical);
+    if (path === '/manifest.webmanifest') {
+      const name = projectName();
+      body = Buffer.from(JSON.stringify({ ...JSON.parse(body.toString()), name, short_name: name }) + '\n');
+    }
     const etag = `"${createHash('sha256').update(body).digest('hex')}"`;
     res.setHeader('ETag', etag);
     res.setHeader('Content-Type', MIME[extname(target)] ?? 'application/octet-stream');
@@ -142,7 +146,7 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
 }
 
 /** A selected origin never drifts when its port is occupied. The daemon holds the project lock. */
-export async function createWebEdge(options: { artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; bind?: string; origin?: string; dist?: string }): Promise<WebEdge> {
+export async function createWebEdge(options: { artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; bind?: string; origin?: string; dist?: string; projectName?: () => string }): Promise<WebEdge> {
   const clock = options.clock ?? realClock;
   const bind = options.bind ?? '127.0.0.1';
   const origin = options.origin ?? '';
@@ -169,7 +173,7 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
       return stamp?.version === 1 && typeof stamp.sources === 'string' && /^[a-f0-9]{64}$/.test(stamp.sources) ? stamp.sources : null;
     } catch { return null; }
   };
-  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin); });
+  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin, options.projectName ?? (() => basename(options.root))); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: FRAME_LIMITS_BYTES.json });
   const sockets = new Map<WebSocket, { seen: number; session: string }>();
   http.on('upgrade', (req, socket, head) => {

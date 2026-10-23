@@ -47,15 +47,15 @@ type ShellPreferences = {
   secondary?: Area | undefined; row?: string | undefined; detail?: boolean | undefined;
   secondaryRow?: string | undefined; secondaryDetail?: boolean | undefined; dismissed?: string | undefined;
 };
-function savedShell(): ShellPreferences {
+function savedShell(inboxLaunch: boolean): ShellPreferences {
   const saved = readInterfaceState('shell') as Partial<ShellPreferences> | null;
   return {
     collapsed: saved?.collapsed === true,
-    area: areas.includes(saved?.area as Area) ? saved!.area! : 'Inbox',
+    area: !inboxLaunch && areas.includes(saved?.area as Area) ? saved!.area! : 'Inbox',
     release: typeof saved?.release === 'string' ? saved.release : '',
     secondary: areas.includes(saved?.secondary as Area) ? saved!.secondary : undefined,
-    row: typeof saved?.row === 'string' ? saved.row : undefined,
-    detail: saved?.detail === true,
+    row: !inboxLaunch && typeof saved?.row === 'string' ? saved.row : undefined,
+    detail: !inboxLaunch && saved?.detail === true,
     dismissed: typeof saved?.dismissed === 'string' ? saved.dismissed : undefined,
     secondaryRow: typeof saved?.secondaryRow === 'string' ? saved.secondaryRow : undefined,
     secondaryDetail: saved?.secondaryDetail === true,
@@ -66,8 +66,10 @@ function savedShell(): ShellPreferences {
 /** Reference component: semantic markup, CSS Module, tokens, and factual labels. */
 export function Shell() {
   const phone = usePhone();
+  const [inboxLaunch] = useState(() => new URLSearchParams(location.search).get('area') === 'inbox');
+  useEffect(() => { if (inboxLaunch) history.replaceState(null, '', '/'); }, [inboxLaunch]);
   const navigationSerial = useRef(0);
-  const [phonePage, setPhonePage] = useState<{ area: 'Items' | 'Artifacts' | 'Topics'; id: string } | undefined>(() => history.state?.clandPhonePage);
+  const [phonePage, setPhonePage] = useState<{ area: 'Items' | 'Artifacts' | 'Topics'; id: string } | undefined>(() => inboxLaunch ? undefined : history.state?.clandPhonePage);
   useEffect(() => {
     const back = (event: PopStateEvent) => {
       navigationSerial.current++;
@@ -84,7 +86,7 @@ export function Shell() {
     history.pushState({ clandPhonePage: page }, '');
     setPhonePage(page);
   };
-  const [preferences, setPreferences] = useState(savedShell);
+  const [preferences, setPreferences] = useState(() => savedShell(inboxLaunch));
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
   const [overlay, setOverlay] = useState<'palette' | 'help' | undefined>();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -286,6 +288,12 @@ export function Shell() {
   useEffect(() => {
     document.title = `${connection.needsYou ? `(${connection.needsYou}) ` : ''}${connection.project} · cland`;
   }, [connection.project, connection.needsYou]);
+  useEffect(() => {
+    const count = connection.needsYou;
+    if (count === undefined || typeof navigator.setAppBadge !== 'function') return;
+    const badge = count === 0 ? navigator.clearAppBadge?.() : navigator.setAppBadge(count);
+    void badge?.catch(() => { /* Platform permission and install state are optional. */ });
+  }, [connection.needsYou]);
   const openResult = (target: Area, row: ObjectRow, pane: boolean) => {
     navigationSerial.current++;
     setMessage(undefined);
