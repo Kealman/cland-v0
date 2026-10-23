@@ -2,7 +2,8 @@
 id: E-419
 kind: epic
 title: The phone and notifications
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.2
@@ -14,7 +15,8 @@ blocked_by:
 topic: topic-896
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-23T21:50:27.463Z
+updated: 2026-10-23T22:17:06.129Z
+closed: 2026-10-23T22:17:06.129Z
 ---
 
 ## Summary
@@ -68,13 +70,21 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project with the fake harnesses, QA opens the web at 390x844: the inbox is home, with the bottom bar's five slots and their counts, and More opens Items, Artifacts and Accounts read-only. A fake Implementer's ask opens as a sheet; focusing the free answer brings the sheet onto the keyboard with 44 px options; Escape and a tap on the scrim close it unanswered; Decline on the label row stays disabled until QA types a reason, and the fake receives `declined` with it; the answered row stays folded until QA leaves the inbox. QA opens a topic full screen, unfolds a run, types a return in the composer and reads two lines, sends with Send, and queues a message to a busy fake session and withdraws it. QA opens a waiting session's page, reads its command, and stops a busy session after the confirmation. QA stops the hub and reads the strip with its times and Send and the answers disabled; it restarts the hub and reads the strip gone and the page current. A waiting plan shows as a row without an approve control, a fake Claude Code approval shows marked "answer in Neovim", and an HTML artifact is a chip that opens full screen. `cland web --qr` prints a QR code whose link signs a fresh context in. With the full Chromium build QA reads the page installable on loopback, with only the automation's own error, and with the permission granted a new ask raises a notification through the service worker. With `[web] origin` set as the guide says, the edge accepts that origin and `cland web --qr` prints it.
 
 - [ ] C1. Below 640 px the bottom bar of Inbox, Topics, Sessions, Events and More replaces the rail; the inbox is home with 44 px fold buttons and "Nothing needs you" when every section is empty; More opens Items, Artifacts and Accounts read-only.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.574Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 - [ ] C2. An ask opens as a bottom sheet that rides on the keyboard with 44 px options; Decline sits on the label row and needs a reason; nothing answers on a swipe, the scrim or Escape; an answered row stays folded until the human leaves the inbox.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.574Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 - [ ] C3. A topic opens full screen with a back control; folded runs show the hub's two lines; the touch composer breaks the line on return and sends only on Send; queued messages have a 44 px Withdraw; drafts survive a reload.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.574Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 - [ ] C4. Session rows are two lines with no row or swipe actions; the session's page holds Stop, Resume, Archive and Capabilities, with Stop and Archive confirmed; the queue view opens as a full-height sheet.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.574Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 - [ ] C5. When the socket drops, the strip says since when and when the next retry runs, the last snapshot stays with its time, answers, approvals and Send are disabled and nothing is queued, and on reconnect the client resumes.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.574Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 - [ ] C6. A waiting plan shows as a row and an approval bound to a TUI shows marked, neither answerable on the phone, and an HTML artifact is a chip that opens full screen.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.574Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 - [ ] C7. The manifest and icons make the page installable, opening on the inbox; `cland web --qr` signs a phone in; notifications on the phone go through a service worker, with the switches and the subscription button in More.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.575Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 - [ ] C8. `web/README.md` holds the tunnel guide, from a tunnel of the human's own to an installed app with notifications.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T22:16:48.575Z · commit a6c34f456020ef42e0d1841c754bcc58c32d093b
 
 ## Dogfooding
 
@@ -431,3 +441,96 @@ Both covers run T4's ten base files; extra T4 repetitions were skipped. Lint, du
 Final plan line: `# notifications and the guide: open; stage cover complete (Linux droplet, macOS); tree fb94282043b34e32a0d10521521258408d30ace1`. It awaits this verdict. Final HEAD and dev equal S, zero changed paths. All **150 fixture-owned Web census lines** end after 0/scratch hub stopped; hub tests and static checks correctly have no browser census. Verified literal scratch path /private/tmp/qa-e419s4-LT74YS was removed with non-force rm -r after captures. Detached worktree removal follows publication and verdict. recorded-cases.jsonl has exactly 18 unique PASS rows.
 
 Durable evidence **A-10259**: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10259-e-419-stage-4-at-9ef54e9f-18-pass-201-local-tests-and-green-stage-covers/report.md
+
+### hub · 2026-10-23T21:58:03.529Z
+
+demo b4aedf96-b1a6-4248-9d28-5d0bfb07a3a9 created: droplet cland-v0-b4aedf96, commit a6c34f456020ef42e0d1841c754bcc58c32d093b, deadline 2026-10-23T23:11:45.990Z.
+
+### hub · 2026-10-23T22:07:29.520Z
+
+demo b4aedf96-b1a6-4248-9d28-5d0bfb07a3a9 destroyed: lifetime 541526 ms; cost $0.0376.
+
+### qa-676 · 2026-10-23T22:16:48.575Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-dod-2026-10-23-1
+commit: a6c34f456020ef42e0d1841c754bcc58c32d093b
+findings: [{"severity":"low","text":"E419D-25: Installable app prose claims real badges and installation are checked by this demo, whose scope establishes CDP installability and a worker notification instead. Coordinator assigned the README overclaim to T-1186; non-blocking under the brief.","file":"web/README.md","line":220}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Where | Result | Evidence / observation |
+| --- | --- | --- | --- |
+| E419D-00 | local macOS | PASS | Clean S/on dev, committed brief and all 14 child landings checked; numbered capture and recorder references |
+| E419D-01 | local macOS | PASS | QA hold, C1–C8 unchanged, all children/stages closed, approval not required; numbered capture and recorder references |
+| E419D-02 | Linux droplet | PASS | One Linux demo lease active at full S; numbered capture and recorder references |
+| E419D-03 | Linux droplet | PASS | Clean delivered S, Node 24.21.0, Linux x64, 12 identical helper hashes; numbered capture and recorder references |
+| E419D-04 | Linux droplet | PASS | Sealed environment, zero credential prefixes, exact-source bundle and Headless Shell; numbered capture and recorder references |
+| E419D-05 | Linux droplet | PASS | Inbox home, ordered bottom bar/counts, 44px folds, read-only More areas; numbered capture and recorder references |
+| E419D-06 | Linux droplet | PASS | Forwarded question, keyboard sheet, no accidental answer, decline and folded outcome; numbered capture and recorder references |
+| E419D-07 | Linux droplet | PASS | Full-screen topic/run, multiline Return, Send, withdrawal and retained draft; numbered capture and recorder references |
+| E419D-08 | Linux droplet | PASS | Two-line sessions, full-height queue, command page, confirmed Stop and capabilities; numbered capture and recorder references |
+| E419D-09 | Linux droplet | PASS | Disconnect timing, retained snapshot, disabled mutations and same-document reconnect; numbered capture and recorder references |
+| E419D-10 | Linux droplet | PASS | Plan/TUI rows non-answerable; sandboxed artifact chip opens full screen; numbered capture and recorder references |
+| E419D-11 | Linux droplet | PASS | Manifest/icons, installed start Inbox, More controls, fresh QR sign-in/cookie; numbered capture and recorder references |
+| E419D-12 | Linux droplet | PASS | Literal README TOML, loopback binding, exact Host/Origin and Secure QR sign-in; numbered capture and recorder references |
+| E419D-13 | Linux droplet | PASS | 15/15 named tests; all 11 required names; 11 clean browser census lines; numbered capture and recorder references |
+| E419D-14 | Linux droplet | PASS | 12/12 named tests; all 9 required names; 12 clean browser census lines; numbered capture and recorder references |
+| E419D-15 | Linux droplet | PASS | 12/12 named tests; all 9 required names; 12 clean browser census lines; numbered capture and recorder references |
+| E419D-16 | Linux droplet | PASS | 12/12 named tests; all 10 required names; 9 clean browser census lines; numbered capture and recorder references |
+| E419D-17 | Linux droplet | PASS | 67/67 named tests; all 10 required names and T-1175 C1–C5 mapped; 21 clean census lines; numbered capture and recorder references |
+| E419D-18 | Linux droplet | PASS | 1/1 literal tunnel-guide test; body checks the current README snippet; numbered capture and recorder references |
+| E419D-19 | Linux droplet | PASS | 53 remote captures, 30 screenshots; unclean census zero; remote scratch removed; numbered capture and recorder references |
+| E419D-20 | hub demo lifecycle | PASS | Lease destruction confirmed, 541526 ms/$0.0376059722 final lifetime/cost; numbered capture and recorder references |
+| E419D-21 | local macOS | PASS | Full Chromium 156.0.8078.4, scratch-only download, 377896 KiB, root browser directory unchanged; numbered capture and recorder references |
+| E419D-22 | local macOS | PASS | Full-browser facts PASS: only in-incognito, real worker subscription and exact notification; numbered capture and recorder references |
+| E419D-23 | local macOS | PASS | Four local screenshots/captures retained, both groups gone, full browser and scratch deleted; numbered capture and recorder references |
+| E419D-24 | local macOS | PASS | Typecheck/four Web guards and all static rules pass; exact-source tree clean; numbered capture and recorder references |
+| E419D-25 | local macOS | PASS | 18 strings/13 guide terms present; full sections read; one low overclaim assigned T-1186; numbered capture and recorder references |
+| E419D-26 | local macOS | PASS | Committed brief lint passes; numbered capture and recorder references |
+| E419D-COVER | Coordinator Linux epic occasion | PASS | e02cc78e at S, A-10271 merged and A-10272/A-10273 shards, full T1–T4/Web exit 0 |
+| E419D-27 | local hub read | PASS | Final freshness.current true; no later commits on dev |
+
+Run **qa-dod-2026-10-23-1**, E-419 Definition of done, tested full **a6c34f456020ef42e0d1841c754bcc58c32d093b**. All behavioral, supporting-test, static, documentation and epic-cover checks pass. Final freshness is recorded below.
+
+Findings ranked by severity: high 0, medium 0, low 1. **E419D-25 / web/README.md:220–222**: reading the Installable app section found “Real badges and installation … QA checks them in the full Chromium demo”. This run's committed scope excludes real app badges, installation prompts and standalone windows. It establishes CDP installability and one real worker notification. The Coordinator incorporated the overclaim into **T-1186** (Follow-ups, XS), reply **9f0e552e-5783-4b84-b571-e3610a66bb5d**. The brief explicitly treats prose contradictions beyond its counted conditions as low non-blocking findings. No product fix was made.
+
+All evidence is fresh at S; historical stage receipts are context only. Four stages and 14 children were closed before this run; T-1183 was checked in addition to the 13 listed at writing. The clean detached worktree has only the permitted root node_modules symlink. Exact helper scripts and hashes, original outputs, JSONL facts, named TAP logs, all 34 screenshots, and every recorder line are retained here. Every fixture used its own HOME, XDG and Git configuration with the complete credential filter after overlays; prefix count zero. macOS TMPDIR stayed at the system /var/folders path. No real profile, live project fixture, tunnel, provider account or real harness was used.
+
+Part D: Linux x64, Node v24.21.0, pinned Chrome Headless Shell, one hub-managed lease **b4aedf96-b1a6-4248-9d28-5d0bfb07a3a9**, created 2026-10-23T21:56:47.314Z, deadline 23:11:45.990Z. Final confirmed destroyed lifetime **541526 ms**, cost **$0.03760597222222222** (hub comment rounds $0.0376). Initial stop/status said releasing; the later status and destroyed comment confirmed release. Provisional releasing lifetime/cost values are retained but superseded by that final receipt. All captures were pulled and scratch removed before stop; the lease was not held for local work or the epic cover.
+
+Eight walkthroughs completed 1/1 each, and every fact group was independently compared with the brief; TAP completion alone was never treated as a product pass. Walk 2 forwarded the fake Implementer's question through the fake Coordinator, and the decline reason reached both. A separate Coordinator ask supplied keyboard/options checks. Read walk-assessment.md for each group's observed result.
+
+The supporting files completed **119/119 tests**, zero failure/cancellation/skip/todo, with all **49 required names** on passing TAP lines. Totals by row: 15,12,12,12,67,1. T-1175's C1–C5 were mapped to actual landed test bodies (More permission/worker, hidden ask, plan/TUI notifications, click focus/open without fetch, denied permission); T-1176's test uses the literal README snippet. No selector/name correction or product rerun was needed. Part D had **72 clean owned Web census lines**; the guide-only walk/test have no browser.
+
+Part L: Darwin arm64 / Node v24.21.0 / playwright-core 1.64.1. Only this run fetched full **Google Chrome for Testing 156.0.8078.4**, pinned revision **1248**, from cdn.playwright.dev into /private/tmp/qa-e419dodl/browsers. The install took 13 seconds and used **377896 KiB**. Root local-browsers remained exactly chromium_headless_shell-1248 and ffmpeg-1013, with no sealed HOME browser cache. The executable and bundle version matched the pin.
+
+Walk 9 completed 1/1, no steps/skips, and its separate facts all passed: the executable was Google Chrome for Testing in new headless mode, own process group; secure loopback sign-in, five slots, Inbox, Live, permission granted. Manifest errors were empty, standalone/start Inbox correct, and CDP returned exactly **in-incognito**, the automation's expected limitation. Subscribe to notifications changed no worker into an activated **/sw.js** at scope /, without Push; Needs you enabled. Worker has notificationclick and no fetch handler. Its getNotifications returned exactly one **coord · T-900001 / QA real notification?**, matching the ask tag, and none before. Browser PID gone/group 7→0 and the companion Headless Shell fixture group 3→0/hub stopped. Four screenshots reviewed; they support UI state, not an OS banner. No OS notification click, installation prompt, standalone window, actual phone or real keyboard claim is made. Read walk9-assessment.md.
+
+Full Chromium and the entire literal local scratch root were removed immediately after the walk was recorded and captures copied. Full typecheck then passed all four HTML/colour/contrast/hooks guards. Static checks confirm central keyboard and preference storage, zero raw HTML/touch listeners/unsafe sandbox/hex colour literals/Push/fetch handlers, notification worker and harness serviceWorkers default block. All 18 expected docs strings and 13 guide terms are present. The guide's loopback→own HTTPS tunnel→origin→QR→install→More flow and plain-HTTP/iOS-cookie/reverse-proxy limitations were read in full. Brief lint passes.
+
+QA capture limitation: gates-output.txt retains an extraction-wrapper parse error before any gate command ran. The corrected wrapper ran the actual gates once; both outputs are preserved separately from product findings. No product retry resulted. No brief/helper selector modification was made in this run.
+
+Criterion mapping is unchanged from task.view: C1→05/13; C2→06/14; C3→07/15; C4→08/16; C5→09/16; C6→10/13/14/15; C7→11/17/21/22/24; C8→12/18/25. Shared gates/setup/cleanup/typecheck/lint/cover/freshness also must pass before verification. The clear verdict verifies C1,C2,C3,C4,C5,C6,C7,C8 after the final freshness gate.
+
+The proposed rule about naming the browser binary and distinguishing DevTools/worker evidence from OS or device claims was logged by the Coordinator.
+
+Coordinator epic cover **e02cc78e-a22e-495c-9811-1bbe63127339**, same full S, verification tree **b5575b4ca527f0cb07ffbe08c62b7fa09ade0147**. Merged **A-10271**, shard logs **A-10272/A-10273**, coverage map **A-10274**. The host check and T1/T2/T3/T4/Web completed with exit 0: **4076 pass, 8 skipped, 0 fail/cancelled/todo out of 4084**. Linux x64 6.8.0-142-generic / Node v24.21.0 / Neovim v0.12.5, two c-8 lon1 droplets, two workers. Web allocated 43 files/222 tests to shard 1; shard 2's Web command had no allocated files. T4 ran ten base files; extra load repetitions were explicitly skipped. This is an actual completed run, not a cache receipt or a projection.
+
+| Shard | Machine | Admission through remote finish | Lifetime | Cost | Collection |
+| --- | --- | --- | --- | --- | --- |
+| 1 / A-10272 | cland-v0-64e3594c, c-8 lon1 | 1163.09 s | 1141 s | $0.0792 | 19.00 s |
+| 2 / A-10273 | cland-v0-7f335baa, c-8 lon1 | 1005.09 s | 982 s | $0.0682 | 18.75 s |
+
+Hub total **1182.39 s overall wall** from admission through collection, **$0.1474** total. Demo lease plus cited epic suite total cost **approximately $0.1850**; local cases have no droplet cost. Tier command seconds by shard: 36/207/607/67/137 and 30/163/687/10/4 (T1/T2/T3/T4/Web). Lint (132 findings in 59 files), duration budgets and T3 ratchet are **report-only**; T3/Web projected walls and reported overages are not enforced-budget passes or measured wall times. The eight suite skips remain skips, not passing tests; no walkthrough or supporting named test was skipped. The complete receipts preserve every diagnostic.
+
+Final freshness: **current true**, read immediately before publication/verdict; S remains dev, with no later tracker or product commit to name. **29 unique PASS records** (00–27 plus COVER), all at full S. **Clear**, verifying **C1–C8**. One low finding T-1186; no failed, blocked or inconclusive scoped case. Detached worktree removal and QA hold release follow the recorded verdict.
+
+Durable evidence A-10275: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10275-e-419-epic-dod-at-a6c34f45-29-pass-full-chromium-notification-and-green-epic-cov/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-23T22:17:06.129Z
+
+Closed on QA's clear Definition-of-done demo qa-dod-2026-10-23-1 at a6c34f45 (A-10275): C1–C8 verified, 29/29 checks PASS. Full Chrome for Testing 156.0.8078.4 showed installability (only in-incognito) and a worker notification. Epic cover e02cc78e green (A-10271): 4076 passed, 0 failed. All four stages closed; 16 children landed. One low README overclaim goes to T-1186 (E-420).
