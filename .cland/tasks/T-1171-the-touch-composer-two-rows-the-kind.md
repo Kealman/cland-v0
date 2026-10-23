@@ -3,7 +3,7 @@ id: T-1171
 kind: task
 title: "The touch composer: two rows, the kind sheet and Withdraw"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:03.184Z
-updated: 2026-10-23T07:00:03.184Z
+updated: 2026-10-23T16:51:24.451Z
 ---
 
 ## Summary

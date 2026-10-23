@@ -3,7 +3,7 @@ id: T-1174
 kind: task
 title: "The installable app: manifest, icons, badge and the phone sign-in"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:04.518Z
-updated: 2026-10-23T07:00:04.518Z
+updated: 2026-10-23T16:51:24.644Z
 ---
 
 ## Summary

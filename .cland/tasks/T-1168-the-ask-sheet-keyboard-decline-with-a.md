@@ -3,7 +3,7 @@ id: T-1168
 kind: task
 title: "The ask sheet: keyboard, Decline with a reason, no answer by accident"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:02.549Z
-updated: 2026-10-23T07:00:02.549Z
+updated: 2026-10-23T16:51:23.885Z
 ---
 
 ## Summary

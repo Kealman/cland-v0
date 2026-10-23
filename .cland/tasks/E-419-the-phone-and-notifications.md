@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-896
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-23T16:06:47.516Z
+updated: 2026-10-23T16:51:23.007Z
 ---
 
 ## Summary
@@ -205,3 +205,59 @@ Cleanup: 120 Web fixture census lines all end after 0 and scratch hub stopped; T
 
 
 Durable evidence A-10096: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10096-e-419-stage-1-at-e53bc5a3-15-pass-sessions-row-height-regression/report.md
+
+### qa-676 · 2026-10-23T16:51:23.007Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s1-2026-10-23-2
+commit: 1bd43fe0abb104bf8c7e50545d28f3e76e3d41f9
+stage: bottom bar and inbox home
+stage_hash: de8c2956cbb683813e3b4625c44ac23b4716f014635cd857df5118d11dd5026e
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Command / observation | Evidence |
+| --- | --- | --- | --- |
+| E419S1-00 | PASS | Build/plan/landings/isolation: clean S; 4/4 members including T-1182 | E419S1-00.txt |
+| E419S1-01 | PASS | Sealed web build exit 0; clean tree | E419S1-01.txt |
+| E419S1-02 | PASS | Width seam, key map, phone harness and selector reads | E419S1-02.txt |
+| E419S1-03 | PASS | Keyboard/storage/raw-HTML/dependency rules | E419S1-03.txt |
+| E419S1-04 | PASS | Required docs and full section reads; four candidates dismissed | E419S1-04.txt |
+| E419S1-05 | PASS | Committed brief lint | E419S1-05.txt |
+| E419S1-06 | PASS | Phone frame: 7/7 | E419S1-06.txt |
+| E419S1-07 | PASS | More read-only areas: 5/5 | E419S1-07.txt |
+| E419S1-08 | PASS | Phone Inbox: 3/3; T-1167 C1–C5 test-body mapping | E419S1-08.txt |
+| E419S1-09 | PASS | Inbox 23/23, folds 6/6, Events 11/11 | E419S1-09.txt |
+| E419S1-10 | PASS | Eight desktop regression files: 54/54 | E419S1-10.txt |
+| E419S1-11 | PASS | Eight shell/keys/Sessions files: 50/50; Sessions 5/5 | E419S1-11.txt |
+| E419S1-12 | PASS | Independent probe: 1/1 plus every fact matched | E419S1-12.txt |
+| E419S1-13 | PASS | Typecheck, four web guards and tier lint exit 0 | E419S1-13.txt |
+| E419S1-14 | PASS | Green same-S Linux/macOS stage covers | E419S1-14.txt |
+| E419S1-15 | PASS | 120 clean Web censuses; scratch removed; clean unchanged S | E419S1-15.txt |
+
+**Clear — all 16 scoped cases PASS.** Stage `bottom bar and inbox home`, run `qa-s1-2026-10-23-2`, full tested dev SHA `1bd43fe0abb104bf8c7e50545d28f3e76e3d41f9`. Stage verdict: no criterion marks.
+
+Findings, ranked by severity: none (high, medium or low).
+
+This is the full fresh brief run requested after T-1182 landed at `1eab7e7ce28ff6b2bf431d5ed9b87510fa1eaee4`. The exact non-tracker diff from the previous build is two test waits for `[data-phone]` after viewport changes, in sessions.test.ts and session-actions.test.ts; no web/src, docs or brief change. The original failure remains in A-10096 and its not-clear verdict. It is not overwritten or relabelled. Fresh E419S1-11e passed 5/5, including “Sessions rows render merged facts, holds, waiting detail and physical selection keys”; E419S1-11f passed 9/9, including the narrow session-page test. No extra reruns or probe corrections in this pass.
+
+Runtime: all 22 named files executed serially on local Darwin arm64 with Node v24.21.0 and Chrome Headless Shell, using `node --test --test-concurrency=1 --test-reporter=tap <file>`. Total 159/159, no fail/cancel/skip/todo; every required name passed, including all three T-1167 test bodies mapped to C1–C5. The independent probe adds 1/1, for 160/160 local TAP tests overall. `test-summary.json`, all original logs, and E419S1-08-map.txt retain the evidence. The mapping describes coverage; it makes no separate tracker criterion marks.
+
+Independent probe: every fresh E419S1-12.jsonl fact was judged separately from TAP. No step-error line. Verified Inbox home, ordered four sections/counts/44px folds, matching green empty title, ask count, two-line rows, inline message/request fields, sender/topic/reply_to and reload draft; waiting plan counts without actions; Events/Archive touch targets and navigation. Verified 390×844 touch/mobile frame, badges, header, More contents/dismissal/focus, 640/639 boundary, preserved desktop split and one explicit document reload. Phone Items/Artifacts/Accounts are read-only with working back paths and unchanged CLI facts; desktop controls at 640/1440 and desktop Inbox drawer remain. See E419S1-12-assessment.txt for the fact-by-fact assessment. TAP proves completion only; the recorded facts establish behavior.
+
+Static/docs/build: all rows 00–05 re-executed at S. Four merged members T-1165, T-1166, T-1167 and T-1182; exact clean detached HEAD/dev. Sealed bundle built at S. Full fixtureEnvironment applied after overlays, scratch HOME/XDG/Git, 37 inherited variables unset and zero credential-prefix names; system macOS TMPDIR retained. No real Chrome, live sign-in or human HOME/provider access. Named files waited for the macOS cover's slot and checked admission before each file. Typecheck, all four web guards (23 text tokens at least 4.5:1), tier lint and brief lint passed. Required docs are present; the four README candidates are dismissed by their explicit phone/desktop or deferred-stage distinctions. No new contradiction found.
+
+Cited Coordinator stage covers at S, verification tree `209119a231bdb8631cc62319afa084f1de4e1874` (QA submitted no suite):
+
+- Linux droplet `90dcf010-0b40-476a-a1e8-8d8733e188bc`: A-10108 merged, A-10109 shard 1, A-10110 shard 2. Full stage, host `npm run check` plus T1/T2/T3/T4/Web completed, exit 0; 4039 tests, 4031 pass, 8 platform/prerequisite skips, zero fail/cancel/todo. Linux x64 6.8.0-142-generic, Node 24.21.0, Neovim 0.12.5, two c-8 lon1 shards. Shard 1 cland-v0-f562e617: duration 1352.11 s (admission through remote finish), lifetime 1328 s, cost $0.0922; collection 8.35 s. Shard 2 cland-v0-7e5a711e: duration 1082.11 s, lifetime 1069 s, cost $0.0742; collection 28.80 s. Overall wall 1360.78 s (admission through collection); total cost $0.1664. Web allocated to shard 1: 35 files / 180 named tests; shard 2's Web command has no allocated files.
+- macOS local `8a5ef4e3-abfd-4b34-a89d-3cbfc43d9120`: A-10106, full stage check plus T1/T2/T3/T4/Web exit 0; 4039/4039, no fail/skip. Darwin arm64 27.0.0, Node 24.21.0, Neovim 0.12.5, two workers. Phase command durations 33/183/926/48/84 s. Queued 16:23:50.914Z through durable file publication 16:45:33.037Z: 1302.123 s including collection/publication, not pure execution wall. Cost N/A. Web 35 files / 180 named tests.
+
+Both covers run T4's ten base files; extra repetitions were skipped. Lint, duration budgets and T3 ratchet are report-only (132 lint findings in 59 files; projected T3/Web overages and measured budget warnings retained). Projections are not measured wall times. Cover metrics files retain the exact receipt lines and durable log paths.
+
+Pre-verdict plan line is retained exactly in E419S1-14.txt: `# bottom bar and inbox home: open; stage cover missing Linux droplet; tree 406e5573e12f94006cf7c6edc2adc2b8471a0180`. It points to the prior not-clear verdict's build. Both new-S receipts are green; the merged hub receipt explicitly reports complete at tree 209119a2. Recheck the plan after this verdict updates its build.
+
+Cleanup: 120 fixture-owned Web census lines report after 0 and scratch hub stopped; T1 keymap census 0/0 as expected. Scratch /private/tmp/qa-e419s1-l0AC9B removed; final detached HEAD and dev still equal full S and tree clean. Worktree removal follows publication/verdict. Original captures retained. The rule proposal on verifying brief selectors/test names at the tested build remains logged in topic-896.
+
+Durable evidence A-10112: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10112-e-419-stage-1-at-1bd43fe0-all-16-cases-pass-after-t-1182/report.md

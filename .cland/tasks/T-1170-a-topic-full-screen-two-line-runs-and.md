@@ -3,7 +3,7 @@ id: T-1170
 kind: task
 title: A topic full screen, two-line runs and artifact chips
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:02.941Z
-updated: 2026-10-23T07:00:02.941Z
+updated: 2026-10-23T16:51:24.159Z
 ---
 
 ## Summary

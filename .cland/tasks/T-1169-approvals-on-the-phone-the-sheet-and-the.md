@@ -3,7 +3,7 @@ id: T-1169
 kind: task
 title: "Approvals on the phone: the sheet and the TUI mark"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-23T07:00:02.795Z
-updated: 2026-10-23T07:00:02.795Z
+updated: 2026-10-23T16:51:23.966Z
 ---
 
 ## Summary
