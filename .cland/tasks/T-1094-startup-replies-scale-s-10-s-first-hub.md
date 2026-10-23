@@ -3,7 +3,7 @@ id: T-1094
 kind: task
 title: startup-replies-scale's 10 s first hub.status bound fails on a slow-disk Linux droplet
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-885
 branch: t/T-1094-startup-replies-scale-s-10-s-first-hub
 created: 2026-10-22T05:08:58.980Z
-updated: 2026-10-23T03:07:11.902Z
+updated: 2026-10-23T04:00:22.880Z
 ---
 
 ## Summary
@@ -27,6 +27,7 @@ The E-413 "fields" Linux stage cover 7ccc6238 (A-8935, dev 9ab12f2a, shard-2 on 
 - [x] C1. The first-hub.status assertion measures the hub's own startup work (or normalises by the run's recorded machine health) so that a slow-disk droplet does not cross it while a real regression of T-1081's bounded startup still fails; the planted-regression control stays red (test).
   - done: impl-1094 · 2026-10-23T01:44:08.966Z
 - [ ] C2. The test passes in one same-head `verify all` on a Linux droplet and 10/10 in local targeted runs under two CPU-load loops, with every run's first-hub.status CPU and wall times listed in the item topic (test).
+  - failed: rev-23 [reviewer] · 2026-10-23T04:00:22.880Z · note Required Linux verify all exits 1 in Web fresh-epoch-live assertion; startup T3 passes, aggregate pass still required.
 
 ## Comments
 
@@ -79,3 +80,22 @@ Revised/pushed head ebfab3052f1d7a664771ce577b90c3f9416d8ad3 after Coordinator-d
 ### impl-1094 · 2026-10-23T03:07:11.902Z
 
 New-head mode-free run632e58f3-553b-4ff4-9284-6db20610a0a0 passed at reviewed ebfab3052f1d7a664771ce577b90c3f9416d8ad3, A-9789:2639/2639 tests, exit0; all T1 + both-package all-T2 fallback + Web. Linux x64 droplet c-8 lon1/Node v24.21.0; machine lifetime609s/$0.0423. Duration and test-lint gates report-only; overruns are not enforce passes. Host typecheck gate5c5753d4a1279043c13ea2355fa4c8cebf160910 reused, not repeated at task head. T3 was not selected, so this does not complete C2 or claim a Linux startup-work receipt. Exact-head local loaded10/10 A-9781 and independent count REDs A-9779 remain supporting evidence. Waiting for Coordinator-owned same-head Linux verify all after current macOS cover, plus Reviewer final settlement. Cover-quiet/dev freeze obeyed; no local tests/head changes/landing.
+
+### impl-1094 · 2026-10-23T03:59:11.049Z
+
+Same-head Linux all07b1f675-9897-460f-a5a3-f197055175ae at ebfab305 has completed T1/T2/T3 exit0, but full run exit1 in Web (A-9808); not a full-suite pass. Actual startup receipt: first completed hub.status9196.6ms wall/10223.7ms process CPU (diagnostic only); one checkpoint/1645jobs,3explorer batches,1004files/1008reads/max2; startup replies461244bytes/items snapshot99497bytes, all guards pass. This demonstrates the count gate on Linux despite CPU exceeding the rejected old10000ms gate. Droplet Linux x64 c-8 lon1, Nodev24.21.0, fsync13.69ms/SQLite15.62ms, lifetime1822s/$0.1265. Whole test11.598s; duration/lint gates report-only, so no enforce-budget pass claimed. Actual unrelated failure: web/test/asks.test.ts 'offline asks disable writes and a fresh snapshot recovers an answer without replaying a draft', AssertionError 'fresh epoch live', false!==true at asks.test.ts:303/pageUntil. Coordinator owns diagnosis on dev and one flaky resubmit after T-1113 verify all; instructed hold head. No source change/new run/merge. C2 and final review remain pending full required receipt; local loaded10/10 A-9781 remains exact-head supporting evidence.
+
+### rev-23 · 2026-10-23T04:00:22.880Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261023-1094-evidence
+commit: ebfab3052f1d7a664771ce577b90c3f9416d8ad3
+scope: evidence
+findings: [{"severity":"medium","text":"Required same-head Linux verify all 07b1f675/A-9808 exits 1: offline asks case fails pageUntil 'fresh epoch live', false !== true. T-1094 startup counts pass, but C2's full-run requirement is unmet. Coordinator owns diagnosis and authorized replacement; no unrelated/flaky classification is inferred.","file":"web/test/asks.test.ts","line":303}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear, source A-9780 unchanged. Required all07b1f675/A-9808 passes T1–T3 but Web fails asks.test.ts:303 pageUntil 'fresh epoch live', false!==true. Parsed3883 ordinary pass/1fail/8skip, no load/T4. Owned startup passes counts/bytes/membership/plans:9196.6ms wall/10223.7ms diagnostic CPU,1checkpoint/1645jobs,3batches,1004files/1008reads/max2. A-9781 local loaded10/10 valid separate support; mode-free A-9789 lacks owned T3. A-9809: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9809-t-1094-all-run-evidence-not-clear-despite-passing-startup-counts.md. Coordinator owns diagnosis/authorized replacement; no unrelated/flaky inference or new source fix demanded. C2 remains incomplete until a green required all receipt.
+
+Criteria: C2 failed (Required Linux verify all exits 1 in Web fresh-epoch-live assertion; startup T3 passes, aggregate pass still required.).
