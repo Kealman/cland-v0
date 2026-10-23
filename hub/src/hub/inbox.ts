@@ -80,6 +80,7 @@ export class InboxBoard {
   readonly #fallbacks = new Map<string, InboxApproval>();
   readonly #approvals = new Map<string, InboxApproval>();
   readonly #reported = new Set<string>();
+  readonly #restored = new Set<string>();
   #syncingApprovals = false;
   /** One timer per idle session, by session id. */
   readonly #idle = new Map<string, ClockTimer>();
@@ -93,6 +94,15 @@ export class InboxBoard {
   constructor(port: InboxPort) {
     this.#port = port;
     this.#clock = port.clock ?? realClock;
+    for (const { record: saved, fallback } of port.store.pendingApprovals()) {
+      // A previous delivery attempt is not a native answer receipt.
+      const { outcome: _attempt, ...facts } = saved;
+      const record: InboxApproval = { ...facts, state: 'pending' };
+      this.#approvals.set(record.id, record);
+      this.#since.set(record.sessionId, record.since);
+      if (fallback) this.#fallbacks.set(record.sessionId, record);
+      else { this.#reported.add(record.sessionId); this.#restored.add(record.id); }
+    }
   }
 
   /** Who lists the launched sessions (the adapters' side); null when the hub has none. */
@@ -349,8 +359,8 @@ export class InboxBoard {
     if (!proc || (proc.status !== 'running' && !request.outcome)) return false;
     const id = `${sessionId}:${request.id}`;
     const previous = this.#approvals.get(id);
-    if (previous) {
-      if (request.outcome) this.closeApproval(sessionId, request.id, request.outcome);
+    if (previous && request.outcome) {
+      this.closeApproval(sessionId, request.id, request.outcome);
       return true;
     }
     if (this.#port.store.leftInbox('approval', id)) return true;
@@ -363,11 +373,17 @@ export class InboxBoard {
       label: proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, kind: request.kind, subject,
       ...(subject.command !== undefined ? { command: subject.command } : {}),
       choices: tui ? [] : [...new Set(request.choices.filter(c => c === 'once' || c === 'always' || c === 'deny'))],
-      answerIn: tui ? 'tui' : 'hub', attach: proc.attach, since: request.since ?? this.#port.now().toISOString(),
-      ...(request.topic !== undefined ? { topic: request.topic } : {}), state: 'pending' };
+      answerIn: tui ? 'tui' : 'hub', attach: proc.attach, since: previous?.since ?? request.since ?? this.#port.now().toISOString(),
+      ...(request.topic !== undefined ? { topic: request.topic } : previous?.topic !== undefined ? { topic: previous.topic } : {}),
+      state: previous?.state ?? 'pending', ...(previous?.outcome ? { outcome: previous.outcome } : {}) };
     this.#approvals.set(id, record);
     // An adapter can finish subject enrichment after another native client already answered.
     if (request.outcome) { this.#closeApproval(record, request.outcome); return true; }
+    if (this.#restored.delete(id)) {
+      // This receipt follows current native subject validation, never disk restoration alone.
+      this.#port.log({ event: 'approval-rebuilt', session: record.session, approval: id, answerIn: record.answerIn });
+    }
+    if (isDeepStrictEqual(previous, record)) return true;
     this.#waitApproval(record);
     this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', record, 'approval') });
     this.#changed();
@@ -393,8 +409,10 @@ export class InboxBoard {
     try {
       delivery = await deliver(record.sessionId, id.slice(record.sessionId.length + 1), { choice, ...(note !== undefined ? { note } : {}) });
     } catch (error) {
-      resumed(() => {
+      const winner = resumed(() => {
         if (this.#closed) return;
+        const settled = this.#port.store.inboxOutcome('approval', id);
+        if (settled) return settled;
         const current = this.#approvals.get(id);
         if (current?.state === 'answering' && current.outcome === outcome) {
           const { outcome: _attempt, ...facts } = current;
@@ -406,11 +424,16 @@ export class InboxBoard {
         this.#port.log({ event: 'approval-answer-failed', severity: 'warn', session: record.session, approval: id,
           error: error instanceof Error ? error.message : String(error) });
       });
+      if (winner && 'via' in winner) throw new Error(`approval already answered by ${winner.by} via ${winner.via} at ${winner.at}`);
       throw error;
     }
     return resumed(() => {
       if (this.#closed) throw new Error('the hub stopped while answering; check the harness outcome');
       const current = this.#approvals.get(id);
+      const winner = this.#port.store.inboxOutcome('approval', id);
+      if (!current && winner && 'via' in winner && !isDeepStrictEqual(winner, outcome)) {
+        throw new Error(`approval already answered by ${winner.by} via ${winner.via} at ${winner.at}`);
+      }
       const closed = current ? this.#closeApproval(current, outcome) : { ...record, state: 'closed' as const, outcome: this.#port.store.inboxOutcome('approval', id) as ApprovalOutcome };
       if (note?.trim() && !delivery.noteDelivered) this.#port.approvalNote(closed, note);
       return closed;
@@ -419,12 +442,28 @@ export class InboxBoard {
 
   closeApproval(sessionId: string, requestId: string, outcome: ApprovalOutcome): void {
     const record = this.#approvals.get(`${sessionId}:${requestId}`);
-    if (record) this.#closeApproval(record, record.state === 'answering' && record.outcome?.choice === outcome.choice ? record.outcome : outcome);
+    if (record) this.#closeApproval(record, outcome);
+  }
+
+  /** A successful native subscription rebuilds pending identities; absent requests were answered off-stream.
+   * A snapshot cannot tell which unobserved choice won, so it must never infer consent. */
+  reconcileApprovals(sessionId: string, requestIds: string[]): void {
+    const pending = new Set(requestIds.map(id => `${sessionId}:${id}`));
+    for (const id of this.#restored) {
+      const record = this.#approvals.get(id);
+      if (!record || record.sessionId !== sessionId) continue;
+      if (pending.has(id)) continue;
+      this.#restored.delete(id);
+      this.closeApproval(sessionId, record.id.slice(sessionId.length + 1), {
+        choice: 'answered in the harness', by: 'harness', via: 'harness', at: this.#port.now().toISOString(),
+      });
+    }
   }
 
   #waitApproval(record: InboxApproval): void {
     this.#port.store.waitInInbox({ kind: 'approval', id: record.id, subject: record.session, since: record.since,
       text: record.command ?? record.subject.change ?? 'waiting for approval' });
+    this.#port.store.saveApproval(record, this.#fallbacks.get(record.sessionId)?.id === record.id);
   }
 
   #closeApproval(record: InboxApproval, reported: ApprovalOutcome): InboxApproval {
@@ -433,10 +472,13 @@ export class InboxBoard {
       ...(reported.note !== undefined ? { note: reported.note } : {}) };
     const closed: InboxApproval = { ...record, state: 'closed', outcome };
     this.#approvals.set(record.id, closed);
-    this.#waitApproval(record);
-    this.#depart({ kind: 'approval', id: record.id, subject: record.session, since: record.since,
-      text: record.command ?? record.subject.change ?? 'waiting for approval' }, outcome.choice === 'withdrawn' ? 'withdrawn' : 'answered', outcome.at);
+    this.#port.store.transaction(() => {
+      this.#waitApproval(record);
+      this.#depart({ kind: 'approval', id: record.id, subject: record.session, since: record.since,
+        text: record.command ?? record.subject.change ?? 'waiting for approval' }, outcome.choice === 'withdrawn' ? 'withdrawn' : 'answered', outcome.at);
+    });
     this.#approvals.delete(record.id);
+    this.#restored.delete(record.id);
     if (this.#fallbacks.get(record.sessionId)?.id === record.id) this.#fallbacks.delete(record.sessionId);
     this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', closed, 'approval') });
     this.#changed();
@@ -480,14 +522,18 @@ export class InboxBoard {
           since: this.#since.get(current.sessionId) ?? p.now().toISOString() });
       }
       for (const [sessionId, previous] of this.#fallbacks) if (!candidates.has(sessionId)) {
+        const proc = byId.get(sessionId);
+        // Startup and a native disconnect have no completion receipt yet.
+        if (!this.#processes || proc?.status === 'running' && (live.get(sessionId)?.state ?? proc.state) === 'unknown') continue;
         this.#closeApproval(previous, { choice: 'answered in the harness', by: 'harness', via: 'harness', at: p.now().toISOString() });
       }
       for (const [sessionId, row] of candidates) {
         if (this.#reported.has(sessionId)) continue;
-        const previous = this.#fallbacks.get(sessionId), subject = approvalSubject(row.command !== undefined ? { command: row.command } : {});
+        const previous = this.#fallbacks.get(sessionId), command = row.command ?? previous?.command;
+        const subject = approvalSubject(command !== undefined ? { command } : {});
         const record: InboxApproval = { ...row, id: previous?.id ?? `${sessionId}:${randomUUID()}`, since: previous?.since ?? row.since,
           ...(subject.command !== undefined ? { command: subject.command } : {}),
-          kind: row.command ? 'command' : 'other', subject, choices: [], answerIn: 'tui', state: 'pending' };
+          kind: command ? 'command' : 'other', subject, choices: [], answerIn: 'tui', state: 'pending' };
         this.#fallbacks.set(sessionId, record);
         this.#approvals.set(record.id, record);
         if (!isDeepStrictEqual(previous, record)) {

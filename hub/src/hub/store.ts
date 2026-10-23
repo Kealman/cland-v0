@@ -11,7 +11,7 @@ import { isHeldDelivery } from '../protocol.ts';
 import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, ThreadRun, TopicHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskOutcome, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
-import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
+import type { InboxApproval, InboxDeparture, InboxRowKind } from '../protocol.ts';
 export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
 import { vacancyWarning } from './topics.ts';
 
@@ -178,6 +178,7 @@ create table if not exists hygiene (
  */
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
   { table: 'inbox_waits', column: 'text', type: "text not null default ''" },
+  { table: 'inbox_waits', column: 'approval_json', type: 'text' },
   { table: 'inbox_departures', column: 'text', type: "text not null default ''" },
   { table: 'inbox_departures', column: 'outcome_json', type: 'text' },
   { table: 'messages', column: 'request_kind', type: 'text' },
@@ -1694,6 +1695,17 @@ export class Store implements HygieneMemory {
 
   inboxWaits(): InboxWait[] {
     return this.#prepare('select kind, id, subject, since, text from inbox_waits').all() as InboxWait[];
+  }
+
+  /** Only allowlisted public records are retained; native private payloads never enter this journal. */
+  pendingApprovals(): Array<{ record: InboxApproval; fallback: boolean }> {
+    return this.#prepare("select approval_json from inbox_waits where kind = 'approval' and approval_json is not null").all()
+      .map(row => JSON.parse(row.approval_json as string) as { record: InboxApproval; fallback: boolean });
+  }
+
+  saveApproval(record: InboxApproval, fallback: boolean): void {
+    this.#prepare("update inbox_waits set approval_json = ? where kind = 'approval' and id = ?")
+      .run(JSON.stringify({ record, fallback }), record.id);
   }
 
   /** The first human reply's time, using topic/sequence and reply indexes separately. */

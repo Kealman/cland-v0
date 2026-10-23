@@ -7,7 +7,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { OpenCodeAdapter } from '../../src/adapters/opencode.ts';
 import { HttpError, OpenCodeClient, type PermissionRequest, type ServerEvent } from '../../src/adapters/opencode/client.ts';
-import type { HarnessProcess } from '../../src/adapters/contract.ts';
+import type { AdapterHost, HarnessProcess } from '../../src/adapters/contract.ts';
 import type { Message } from '../../src/protocol.ts';
 import { FakeClock } from '../fake-clock.ts';
 import { connectUi, eventually, inProcessSpoke, projectHub, tempProject } from '../harness.ts';
@@ -28,6 +28,7 @@ export class ScriptedOpenCode {
   readonly prompts: Array<{ id: string; text: string; delivery: string; running: boolean }> = [];
   readonly promptAttempts: Array<{ id?: string; text: string; delivery: string }> = [];
   readonly replies: Array<{ session: string; request: string; decision: string; message?: string }> = [];
+  onReply?: () => unknown;
   replyFailure: { status: number; body: string } | undefined;
   losePromptResponse = false;
   readonly lookups: Array<ReturnType<typeof deferred<unknown>>> = [];
@@ -62,6 +63,7 @@ export class ScriptedOpenCode {
     ]) };
     const sid = decodeURIComponent(path.split('/')[3] ?? '');
     if (path.includes('/permission/') && path.endsWith('/reply') && method === 'POST') {
+      if (this.onReply) return this.onReply();
       if (this.replyFailure) throw new HttpError(this.replyFailure.status, this.replyFailure.body);
       const request = decodeURIComponent(path.split('/')[5]!);
       const answer = body as { decision: string; message?: string };
@@ -142,8 +144,9 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false,
   let adapter!: OpenCodeAdapter;
   let process!: HarnessProcess;
   let launchToken: string | undefined;
-  const { discovery } = await projectHub(t, root, {}, { clock, adapters: [(host) => {
+  const factory = (host: AdapterHost) => {
     const lifecycle = fakeHarness('opencode', { host, clock });
+    if (process) lifecycle.scriptResume(process.name, 'found');
     adapter = new OpenCodeAdapter({ ...host, reconnected: id => { native.reconnected++; host.reconnected?.(id); } }, { clock, roleInstructions });
     const spawn = lifecycle.spawn.bind(lifecycle);
     lifecycle.spawn = async (...args) => {
@@ -162,8 +165,10 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false,
     const close = lifecycle.close.bind(lifecycle);
     lifecycle.close = () => { adapter.close(); close(); };
     return lifecycle;
-  }] });
-  const ui = await connectUi(t, discovery);
+  };
+  let hub = await projectHub(t, root, {}, { clock, adapters: [factory] });
+  let discovery = hub.discovery;
+  let ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const created = withItem ? await ui.request({ type: 'task.create', title: 'OpenCode item', kind: 'epic' }) : null;
   const item = created ? (created.value as { item: { id: string } }).item.id : undefined;
@@ -208,5 +213,15 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false,
   // Every positive state wait starts after the caller's mark, avoiding a prior episode's receipt.
   function markStates() { mark = ui.frames.length; return mark; }
   async function state(state: string) { return ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.state === state && ui.frames.indexOf(f) >= mark); }
-  return { root, discovery, clock, native, ui, peer, sender, coord, adapter, process, records, log, send, reply, reconnect, states, row, idle, markStates, state };
+  async function restartHub() {
+    ui.close();
+    await hub.stop();
+    const before = native.reconnected;
+    hub = await projectHub(t, root, {}, { clock, adapters: [factory] });
+    discovery = hub.discovery;
+    ui = await connectUi(t, discovery);
+    await ui.request({ type: 'subscribe' });
+    await eventually('new hub native snapshot applied', () => native.reconnected > before || undefined);
+  }
+  return { root, get discovery() { return discovery; }, clock, native, get ui() { return ui; }, peer, sender, coord, get adapter() { return adapter; }, process, restartHub, records, log, send, reply, reconnect, states, row, idle, markStates, state };
 }

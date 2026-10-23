@@ -28,7 +28,7 @@ export class ScriptedCodex extends EventEmitter implements AppServerConnection {
   closed = false;
   readonly calls: NativeCall[] = [];
   readonly responses: Array<{ id: string | number; result: Record<string, unknown> }> = [];
-  onResponse?: (id: string | number, result: Record<string, unknown>) => void;
+  onResponse?: (id: string | number, result: Record<string, unknown>) => void | Promise<void>;
   readonly turns = new Map<string, NativeItem[]>();
   readonly handlers = new Map<string, Handler>();
   thread = '';
@@ -37,7 +37,7 @@ export class ScriptedCodex extends EventEmitter implements AppServerConnection {
   async respond(id: string | number, result: Record<string, unknown>): Promise<void> {
     if (this.closed) throw new Error('app-server disconnected');
     this.responses.push({ id, result });
-    this.onResponse?.(id, result);
+    await this.onResponse?.(id, result);
   }
   async request<T = unknown>(method: string, params: Record<string, unknown>): Promise<T> {
     if (this.closed) throw new Error('app-server disconnected');

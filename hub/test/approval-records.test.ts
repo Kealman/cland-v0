@@ -394,7 +394,7 @@ test('adapter close confirmation during delivery preserves the reserved human ou
   const answer = ui.request({ type: 'approval.answer', approval: record.id, choice: 'deny', note: 'Keep it' });
   const winner = ((await answering).approval as typeof record).outcome!;
   const closed = ui.waitFor(f => f.type === 'approval' && (f.approval as typeof record).state === 'closed');
-  fakes.codex!.closeApproval('worker', 'callback', { choice: 'deny', by: 'harness', via: 'harness', at: clock.now().toISOString() });
+  fakes.codex!.closeApproval('worker', 'callback', winner);
   assert.deepEqual(((await closed).approval as typeof record).outcome, winner);
   fakes.codex!.settleApproval('worker', 'callback');
   const result = await answer;
@@ -404,6 +404,37 @@ test('adapter close confirmation during delivery preserves the reserved human ou
   const after = await ok<Inbox>(ui, { type: 'inbox.list', archive: true });
   assert.equal(after.archive?.length, 1);
   assert.deepEqual(after.archive?.[0]?.outcome, winner);
+});
+
+test('current native authorization survives a failed answer that was reserved before replay validation', async t => {
+  const root = await tempProject(t), clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  await ok(ui, { type: 'session.launch', name: 'worker', harness: 'opencode', role: 'implementer' });
+  const request = { id: 'revalidation-race', kind: 'command' as const, subject: { command: 'touch original' }, choices: ['once', 'deny'] as Array<'once' | 'deny'> };
+  fakes.opencode!.raiseApproval('worker', request);
+  const original = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals[0]!;
+  fakes.opencode!.scriptApproval('hold');
+  const answering = ui.waitFor(f => f.type === 'approval' && (f.approval as typeof original).state === 'answering');
+  const answer = ui.request({ type: 'approval.answer', approval: original.id, choice: 'once' });
+  const reserved = ((await answering).approval as typeof original).outcome;
+  const refreshed = ui.waitFor(f => f.type === 'approval' && (f.approval as typeof original).id === original.id && (f.approval as typeof original).answerIn === 'tui');
+  fakes.opencode!.raiseApproval('worker', { ...request, subject: {}, choices: [], answerIn: 'tui' });
+  const updated = (await refreshed).approval as typeof original;
+  assert.equal(updated.state, 'answering');
+  assert.deepEqual(updated.outcome, reserved);
+  fakes.opencode!.settleApproval('worker', request.id, 'fail');
+  assert.equal((await answer).ok, false);
+  const current = (await ok<Inbox>(ui, { type: 'inbox.list' })).approvals[0]!;
+  assert.equal(current.id, original.id);
+  assert.equal(current.since, original.since);
+  assert.equal(current.state, 'pending');
+  assert.equal(current.answerIn, 'tui');
+  assert.deepEqual(current.choices, []);
+  assert.deepEqual(current.subject, {});
+  assert.equal((await ui.request({ type: 'approval.answer', approval: current.id, choice: 'once' })).ok, false);
+  assert.equal(fakes.opencode!.approvalAnswers.length, 1);
 });
 
 for (const cap of [8192, 1024]) test(`an oversized fallback note is refused before delivering deny and can be corrected (cap ${cap})`, async t => {

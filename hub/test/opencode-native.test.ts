@@ -2,6 +2,8 @@
 // in-process spokes and FakeClock. Native completion, lookup and journal receipts bound negatives.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { HttpError } from '../src/adapters/opencode/client.ts';
+import { deferred } from './fakes/scripted-codex.ts';
 import { scriptedOpenCode } from './fakes/scripted-opencode.ts';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -63,6 +65,33 @@ test('an attached client permission reply closes the record for every hub client
   }
 });
 
+for (const reply of ['once', 'reject']) test(`an OpenCode not-found reply preserves the attached TUI ${reply} winner during a hub Deny`, { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const other = await connectUi(t, f.discovery);
+  await other.request({ type: 'subscribe' });
+  const id = `${f.process.sessionId}:race`;
+  const pending = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id);
+  f.native.ask('race');
+  await pending;
+  const submitted = deferred<void>(), response = deferred<unknown>();
+  f.native.onReply = () => { submitted.resolve(); return response.promise; };
+  const answer = f.ui.request({ type: 'approval.answer', approval: id, choice: 'deny' });
+  await submitted.promise;
+  const closed = other.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id && (e.approval as ApprovalRecord).state === 'closed');
+  f.native.approve('race', reply);
+  response.reject(new HttpError(404, 'private-permission-metadata'));
+  const record = (await closed).approval as ApprovalRecord;
+  const result = await answer;
+  assert.equal(result.ok, false);
+  assert.match(result.error!, /already answered by harness via harness at /);
+  assert.deepEqual(record.outcome, { choice: reply === 'reject' ? 'deny' : 'once', by: 'harness', via: 'harness', at: f.clock.now().toISOString() });
+  const inbox = (await f.ui.request({ type: 'inbox.list', archive: true })).value as { archive: Array<{ id: string; outcome?: unknown }>; approvals: ApprovalRecord[] };
+  assert.deepEqual(inbox.archive.find(row => row.id === id)?.outcome, record.outcome);
+  assert.equal(inbox.approvals.some(row => row.id === id), false);
+  assert.doesNotMatch(JSON.stringify(f.ui.frames), /private-permission-metadata/);
+  for (const client of [f.ui, other]) assert.equal(client.frames.filter(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id && (e.approval as ApprovalRecord).state === 'closed').length, 1);
+});
+
 test('a child permission belongs to the parent record and answers the child endpoint', { timeout: 2000 }, async t => {
   const f = await scriptedOpenCode(t);
   f.native.emit('session.created', { sessionID: 'child/one', parentID: f.native.session });
@@ -92,6 +121,65 @@ test('reconnect keeps the same pending permission id and closes an off-stream an
   assert.equal(record.outcome?.choice, 'answered in the harness');
   assert.equal(record.outcome?.via, 'harness');
   assert.deepEqual(((await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] }).approvals, []);
+});
+
+test('hub restart discovers a pre-existing OpenCode child permission and preserves its answer routing', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const child = 'existing-child';
+  const permission = { id: 'child-before-restart', action: 'edit', resources: ['src/existing.ts'] };
+  f.native.children.set(child, { running: false, permissions: [permission], forms: [] });
+  const pending = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id.endsWith(':child-before-restart'));
+  f.native.emit('session.created', { sessionID: child, parentID: f.native.session });
+  f.native.emit('permission.asked', { sessionID: child, ...permission });
+  const original = (await pending).approval as ApprovalRecord;
+  await f.restartHub();
+  const inbox = (await f.ui.request({ type: 'inbox.list', archive: true })).value as { approvals: ApprovalRecord[]; archive: Array<{ id: string }> };
+  assert.deepEqual(inbox.approvals.map(row => row.id), [original.id]);
+  assert.deepEqual(inbox.approvals[0]!.subject, original.subject);
+  assert.equal(inbox.archive.some(row => row.id === original.id), false);
+  const answer = await f.ui.request({ type: 'approval.answer', approval: original.id, choice: 'deny' });
+  assert.equal(answer.ok, true, answer.error);
+  assert.deepEqual(f.native.replies.at(-1), { session: child, request: permission.id, decision: 'reject' });
+});
+
+test('OpenCode restart revalidates persisted authorization before answering and replaces stale public fields', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const id = `${f.process.sessionId}:revalidate`;
+  const pending = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id);
+  f.native.ask('revalidate');
+  const original = (await pending).approval as ApprovalRecord;
+  f.native.holdMessages = true;
+  await f.restartHub();
+  await eventually('replayed command lookup held', () => f.native.lookups.length === 1 || undefined);
+  const held = await f.ui.request({ type: 'approval.answer', approval: id, choice: 'once' });
+  assert.equal(held.ok, false);
+  assert.match(held.error!, /validat/);
+  assert.deepEqual(f.native.replies, []);
+  const fallback = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id && (e.approval as ApprovalRecord).answerIn === 'tui');
+  f.native.lookups.shift()!.resolve({ data: { type: 'assistant', content: [], private: 'private-replay-metadata' } });
+  const invalid = (await fallback).approval as ApprovalRecord;
+  assert.equal(invalid.id, original.id);
+  assert.equal(invalid.since, original.since);
+  assert.deepEqual(invalid.choices, []);
+  assert.deepEqual(invalid.subject, {});
+  assert.equal((await f.ui.request({ type: 'approval.answer', approval: id, choice: 'once' })).ok, false);
+  assert.deepEqual(f.native.replies, []);
+  assert.doesNotMatch(JSON.stringify(f.ui.frames), /private-replay-metadata/);
+  // A later complete replay replaces the authorization subject, retaining only its identity/time.
+  f.native.holdMessages = false;
+  f.native.shellCommand = 'touch revalidated';
+  await f.reconnect();
+  const refreshed = await eventually('current validated authorization published', async () => {
+    const inbox = (await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] };
+    return inbox.approvals.find(row => row.id === id && row.subject.command === 'touch revalidated');
+  });
+  assert.equal(refreshed.id, original.id);
+  assert.equal(refreshed.since, original.since);
+  assert.equal(refreshed.answerIn, 'hub');
+  assert.deepEqual(refreshed.choices, ['once', 'always', 'deny']);
+  const answer = await f.ui.request({ type: 'approval.answer', approval: id, choice: 'once' });
+  assert.equal(answer.ok, true, answer.error);
+  assert.deepEqual(f.native.replies, [{ session: f.native.session, request: 'revalidate', decision: 'once' }]);
 });
 
 test('permission shape drift stays in the TUI with a warning and no private frame fields', { timeout: 2000 }, async t => {

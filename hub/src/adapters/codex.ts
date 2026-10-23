@@ -286,7 +286,7 @@ const pidAlive = (pid: number): boolean => {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-type NativeApproval = { nativeId: string | number; request: ApprovalRequest; ready: boolean; answering?: boolean; resolved?: ApprovalOutcome };
+type NativeApproval = { nativeId: string | number; request: ApprovalRequest; ready: boolean; resolved?: ApprovalOutcome };
 
 /** What the hub knows of one session's app-server. */
 type Live = {
@@ -478,7 +478,7 @@ export class CodexAdapter implements HarnessAdapter {
           if (!pending) return;
           const outcome: ApprovalOutcome = { choice: 'answered in the harness', by: 'harness', via: 'harness', at: this.#clock.now().toISOString() };
           pending.resolved = outcome;
-          if (!pending.answering) this.#publishApproval(live, pending);
+          this.#publishApproval(live, pending);
           return;
         }
         case 'thread/status/changed':
@@ -651,11 +651,9 @@ export class CodexAdapter implements HarnessAdapter {
       case 'deny': decision = 'decline'; break;
       default: throw new Error('unknown approval choice');
     }
-    pending.answering = true;
     try {
       await live.client.respond(pending.nativeId, { decision });
     } catch (error) {
-      pending.answering = false;
       if (pending.resolved) {
         live.approvals!.delete(requestId);
         this.#host.approvalClosed?.(p.sessionId, requestId, pending.resolved);
@@ -748,6 +746,7 @@ export class CodexAdapter implements HarnessAdapter {
       const sequence = live.eventSequence;
       try {
         const r = (yield* wait(client.request<ThreadResult>('thread/resume', { threadId, ...extra })));
+        if (!this.#closed && live.client === client) this.#host.approvalsReconciled?.(live.p.sessionId, [...live.approvals?.keys() ?? []]);
         return { state: stateOfStatus(r.thread.status), model: r.model ?? r.thread.model ?? null, sequence };
       } catch (err) {
         if (!(err instanceof RpcError) || Object.keys(extra).length)

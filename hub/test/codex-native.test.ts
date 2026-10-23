@@ -38,9 +38,8 @@ test('a Codex command approval is one allowlisted record and Approve once respon
   assert.equal(JSON.stringify(f.ui.frames).includes('PRIVATE-TOOL-INPUT'), false);
 });
 
-test('Codex Always and Deny preserve the human outcome when resolved arrives during the response', async t => {
+test('Codex Always and Deny preserve the human outcome when the resolution echo follows delivery', async t => {
   const f = await scriptedCodex(t);
-  f.native.onResponse = id => f.native.notify('serverRequest/resolved', { requestId: id });
   for (const [choice, decision] of [['always', 'acceptForSession'], ['deny', 'decline']] as const) {
     const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { id: string }).id.endsWith(`:${choice}`));
     f.native.emit('serverRequest', { id: choice, method: 'item/commandExecution/requestApproval', params: {
@@ -50,6 +49,7 @@ test('Codex Always and Deny preserve the human outcome when resolved arrives dur
     const note = choice === 'deny' ? 'Keep this worktree' : undefined;
     const result = await f.ui.request({ type: 'approval.answer', approval: row.id, choice, ...(note ? { note } : {}) });
     assert.equal(result.ok, true, result.error);
+    f.native.notify('serverRequest/resolved', { requestId: choice });
     const closed = (result.value as { approval: typeof row }).approval;
     assert.deepEqual(closed.outcome, { choice, by: 'human', via: 'neovim', at: f.clock.now().toISOString(), ...(note ? { note } : {}) });
     assert.deepEqual(f.native.responses.at(-1), { id: choice, result: { decision } });
@@ -83,6 +83,37 @@ test('a Codex request resolved by another client closes for every subscribed cli
   assert.deepEqual(archive.find(record => record.id === row.id)?.outcome, record.outcome);
   assert.equal((await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'deny' })).ok, false);
   assert.deepEqual(f.native.responses, []);
+});
+
+test('a harness answer wins while a hub Codex Deny is in flight', async t => {
+  const f = await scriptedCodex(t);
+  const other = await connectUi(t, f.discovery);
+  await other.request({ type: 'subscribe' });
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  f.native.emit('serverRequest', { id: 'race', method: 'item/commandExecution/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'turn', itemId: 'command', command: 'touch approved', cwd: f.root,
+  } });
+  const row = (await pending).approval as Inbox['approvals'][number];
+  const delivery = deferred<void>();
+  f.native.onResponse = () => delivery.promise;
+  const answering = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as typeof row).state === 'answering');
+  const answer = f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'deny', note: 'Do not run' });
+  await answering;
+  const closed = other.waitFor(frame => frame.type === 'approval' && (frame.approval as typeof row).state === 'closed');
+  f.native.notify('serverRequest/resolved', { requestId: 'race' });
+  delivery.resolve();
+  const result = await answer;
+  assert.equal(result.ok, false);
+  assert.match(result.error!, /already answered by harness via harness at /);
+  const outcome = (await closed).approval as typeof row;
+  assert.deepEqual(outcome.outcome, { choice: 'answered in the harness', by: 'harness', via: 'harness', at: f.clock.now().toISOString() });
+  const archive = ((await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox).archive!;
+  assert.deepEqual(archive.find(record => record.id === row.id)?.outcome, outcome.outcome);
+  for (const client of [f.ui, other]) {
+    assert.equal(client.frames.filter(frame => frame.type === 'approval' && (frame.approval as typeof row).state === 'closed').length, 1);
+  }
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Message[] };
+  assert.equal(history.messages.some(message => message.from === 'human' && message.text === 'Do not run'), false);
 });
 
 test('a replayed Codex request after reconnect keeps its record id and accepts an answer', async t => {

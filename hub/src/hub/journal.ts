@@ -167,6 +167,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'notification',
   'inbox-departure',
   'approval-answer-failed',
+  'approval-rebuilt',
   // hygiene
   'loop-breaker',
   'unmuted',

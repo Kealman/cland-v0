@@ -96,10 +96,10 @@ const pidAlive = (pid: number): boolean => {
   }
 };
 
-type WatchedApproval = { tracker: SessionTracker; reported: boolean; outcome?: ApprovalOutcome };
+type WatchedApproval = { tracker: SessionTracker; reported: boolean; validation?: number; answerIn?: 'hub' | 'tui'; answering?: boolean; outcome?: ApprovalOutcome };
 
 /** One watched session: its server's client, the event subscription, and what the stream says. */
-type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; approvals: Map<string, WatchedApproval>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
+type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; approvals: Map<string, WatchedApproval>; owners: Map<string, string>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
 /** PID supervision survives missing native connection material. One attempt per session may read it. */
 type WatchTicket = { process: HarnessProcess; pending: boolean; warned: boolean };
 
@@ -338,15 +338,40 @@ export class OpenCodeAdapter implements HarnessAdapter {
     const w = this.#watched.get(p.sessionId);
     const tracker = w && [w.tracker, ...w.children.values()].find(t => t.permissions.has(requestId));
     if (!w || !tracker) throw new Error('no pending OpenCode permission; waiting for the harness outcome');
+    const approval = w.approvals.get(requestId);
+    if (!approval?.reported) throw new Error('the OpenCode approval subject is still being validated');
+    if (approval.answerIn !== 'hub') throw new Error('this approval stays in the harness TUI');
+    approval.answering = true;
     try {
       await w.client.request('POST', `/api/session/${encodeURIComponent(tracker.sessionId)}/permission/${encodeURIComponent(requestId)}/reply`, {
         decision: answer.choice === 'deny' ? 'reject' : answer.choice,
         ...(answer.note !== undefined ? { message: answer.note } : {}),
       });
     } catch (error) {
+      if (approval) {
+        approval.answering = false;
+        if (approval.outcome) {
+          const outcome = approval.outcome;
+          delete approval.outcome;
+          this.#closePermission(w, requestId, outcome);
+        }
+      }
       // Native error bodies can contain permission metadata; only safe categories leave the adapter.
       const category = error instanceof HttpError ? `HTTP ${error.status}${error.status === 404 ? '; not found' : ''}` : 'transport';
       throw new Error(`OpenCode permission reply failed (${category}); waiting for the harness outcome`);
+    }
+    if (approval) {
+      approval.answering = false;
+      // A successful reply confirms our own choice. A different observed choice won externally.
+      if (approval.outcome && approval.outcome.choice !== answer.choice) {
+        const outcome = approval.outcome;
+        delete approval.outcome;
+        this.#closePermission(w, requestId, outcome);
+      } else if (approval.outcome) {
+        w.approvals.delete(requestId);
+        w.owners.delete(requestId);
+        this.#saveOwners(w);
+      }
     }
     return { noteDelivered: true };
   }
@@ -376,7 +401,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
         ticket.warned = true;
         return;
       }
-      const w: Watch = { process: ticket.process, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children: new Map(), approvals: new Map(), abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
+      const owners = new Map<string, string>(JSON.parse(this.#host.adapterState?.read(`opencode.approvalOwners:${p.sessionId}`) ?? '[]') as Array<[string, string]>);
+      const children = new Map([...owners.values()].filter(id => id !== p.harnessSessionId).map(id => [id, new SessionTracker(id)]));
+      const w: Watch = { process: ticket.process, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children, approvals: new Map(), owners, abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
       this.#watched.set(p.sessionId, w);
       void this.#subscribe(w);
     } finally { ticket.pending = false; }
@@ -417,13 +444,19 @@ export class OpenCodeAdapter implements HarnessAdapter {
     if (!approval) {
       approval = { tracker, reported: false };
       w.approvals.set(request.id, approval);
+      if (tracker !== w.tracker) { w.owners.set(request.id, tracker.sessionId); this.#saveOwners(w); }
     }
     const current = approval;
+    const validation = (current.validation ?? 0) + 1;
+    current.validation = validation;
+    current.reported = false;
+    delete current.answerIn;
     void w.client.approvalDetails(tracker.sessionId, request).then(({ command, subject }) => {
-      if (this.#watched.get(w.process.sessionId) !== w || w.approvals.get(request.id) !== current) return;
+      if (this.#watched.get(w.process.sessionId) !== w || w.approvals.get(request.id) !== current || current.validation !== validation) return;
       // A late description may finish a closed record, but cannot change a later waiting episode.
       this.#apply(w, tracker.describePermission(pending, command), this.#clock.now().getTime());
       if (current.reported) return;
+      current.answerIn = subject ? 'hub' : 'tui';
       this.#host.approvalRequested?.(w.process.sessionId, {
         id: request.id, kind: request.action === 'shell' ? 'command' : 'other',
         subject: subject ?? {}, choices: subject ? ['once', 'always', 'deny'] : [], answerIn: subject ? 'hub' : 'tui',
@@ -438,11 +471,17 @@ export class OpenCodeAdapter implements HarnessAdapter {
     });
   }
 
+  #saveOwners(w: Watch): void {
+    this.#host.adapterState?.write(`opencode.approvalOwners:${w.process.sessionId}`, JSON.stringify([...w.owners]));
+  }
+
   #closePermission(w: Watch, id: string, outcome: ApprovalOutcome): void {
     const approval = w.approvals.get(id);
     if (!approval || approval.outcome) return;
-    if (!approval.reported) { approval.outcome = outcome; return; }
+    if (!approval.reported || approval.answering) { approval.outcome = outcome; return; }
     w.approvals.delete(id);
+    w.owners.delete(id);
+    this.#saveOwners(w);
     this.#host.approvalClosed?.(w.process.sessionId, id, outcome);
   }
 
@@ -538,6 +577,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
                 }
                 this.#apply(w, { state: w.tracker.state() }, Date.now());
                 for (const { tracker } of snapshots) for (const permission of tracker.permissions.values()) this.#describePermission(w, permission.request, tracker);
+                for (const [id, owner] of w.owners) if (!(w.children.get(owner)?.permissions.has(id))) w.owners.delete(id);
+                this.#saveOwners(w);
+                this.#host.approvalsReconciled?.(w.process.sessionId, snapshots.flatMap(({ tracker }) => [...tracker.permissions.keys()]));
                 // the stream is back: what failed to inject while it was down is retried, state change or not
                 this.#host.reconnected?.(w.process.sessionId);
               })

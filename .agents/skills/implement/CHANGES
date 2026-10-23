@@ -44,3 +44,6 @@ startup lease recovery after serving, held-provider T2 receipts and phase durati
 bounded provisioning shutdown, signal deadline and late-resource reconciliation (T-1151)
 T-1114: Document the recorded-headless Neovim approval-key, outcome and TUI-only test seam.
 T-1112: Document the OpenCode scripted relay seam, child/reconnect/shape checks and targeted fake-binary Deny-with-note receipt.
+T-1113: Document native approval race receipts, persisted restart identity/subject recovery and the explicit T3 scratch-hub restart test.
+T-1113 review M1/M2: Record pending child-owner recovery and held native replay readiness receipts in the approval restart guidance.
+T-1113 review M3: Require current native validation, refusal without endpoint calls for held/malformed replays, and refreshed authorization with stable id/since.
