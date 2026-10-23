@@ -2596,6 +2596,17 @@ connection, inbox, asks, composer and withdraw targeted before mode-free task
 verification. New passing Web identities reaching 4 s need dated, reasoned
 E-880 allowances at about 1.5× the worst sample, citing its run.
 
+### Paused page clocks
+
+Use `pausePageClock(page, time)` from `web/test/harness.ts` when a browser test
+needs a clock paused at an exact `Date`. It installs one minute before the target
+and pauses at the requested time, leaving headroom for browser command scheduling
+under load. Installing at the target and then pausing there races the running
+fake clock and can throw `Cannot fast-forward to the past`.
+The T0 `lint-web-workspace.ts` guard rejects raw same-time install/pause pairs,
+including pairs separated by comments or other statements; already-ahead pauses
+remain valid. Keep existing DOM and socket receipts before advancing paused time.
+
 ## Human marks fixtures
 
 `web/test/topics.test.ts` uses the isolated Headless Shell and disposable

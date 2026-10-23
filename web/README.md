@@ -1290,6 +1290,11 @@ belong to short scratch roots. Keep CSP enabled; `pageUntil` polls with
 `page.evaluate`, retaining the final assertion. Observe the exact DOM/event
 boundary before asserting a result, with setup bounded separately.
 
+For an exact paused browser time, use `pausePageClock(page, time)` from the shared
+harness. It installs a minute before the requested `Date`, then pauses exactly
+there. T0 rejects raw install/pause pairs with the same time because the running
+clock can pass the pause target between browser commands under load.
+
 A failed case writes a Playwright trace ZIP under ignored `web/test-results/` and
 closes its context. Publish the file with `artifact.create` when reporting a
 failure. Teardown explicitly closes the browser, observes its process exit and

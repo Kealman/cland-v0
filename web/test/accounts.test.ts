@@ -8,7 +8,7 @@ import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { until } from '../../hub/test/until.ts';
 import { connectUi } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { pageUntil, webFixture, pausePageClock } from './harness.ts';
 import { visibleProse } from './prose.ts';
 
 test('Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry', async t => {
@@ -120,8 +120,7 @@ test('Accounts lists the fake registry with every window, path, source and limit
     assert.deepEqual(await visibleProse(page), []);
   }, async page => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.clock.install({ time: fixture.clock.now() });
-    await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
   });
 });
 
@@ -189,7 +188,7 @@ test('Sessions account strip shows worst windows, limited reset, tooltips and a 
     assert.deepEqual(await visibleProse(page), []);
   }, async page => {
     page.on('websocket', socket => socket.on('framesent', event => sent.push(JSON.parse(String(event.payload)))));
-    await page.clock.install({ time: fixture.clock.now() }); await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
   });
 });
 

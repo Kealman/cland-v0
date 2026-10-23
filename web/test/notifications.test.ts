@@ -5,7 +5,7 @@ import type { Page } from 'playwright-core';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { until } from '../../hub/test/until.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { webFixture, pageUntil, pausePageClock } from './harness.ts';
 import { seedItem } from './items-fixture.ts';
 
 export type NoticeStub = { title: string; options: { body: string; tag: string }; onclick?: () => void; closed?: boolean };
@@ -76,8 +76,7 @@ test('hidden now ask raises one named notification whose click focuses and opens
     assert.equal(await row.getByRole('heading', { name: 'Ship the plan?', exact: true }).count(), 1);
     assert.equal(await page.evaluate(() => (globalThis as NotificationWindow).focusedCalls), 1);
   }, async page => {
-    await page.clock.install({ time: fixture.clock.now() });
-    await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
     await stub(page);
   });
 });

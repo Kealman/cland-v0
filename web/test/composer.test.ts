@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
-import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
+import { reconnectUntilLive, pageUntil, webFixture, pausePageClock } from './harness.ts';
 import type { Page } from 'playwright-core';
 import type { TopicMessage } from '../../shared/wire/index.ts';
 import { until } from '../../hub/test/until.ts';
@@ -201,8 +201,7 @@ test('per-topic drafts survive reload and hub disconnection without replay and w
     await thread(page, topic);
     assert.equal(await field.inputValue(), 'Another kept draft');
   }, async page => {
-    await page.clock.install({ time: new Date('2026-10-23T12:00:00Z') });
-    await page.clock.pauseAt(new Date('2026-10-23T12:00:00Z'));
+    await pausePageClock(page, new Date('2026-10-23T12:00:00Z'));
     page.on('websocket', socket => socket.on('framesent', event => { const frame = JSON.parse(String(event.payload)); if (frame.type === 'topic.send' || frame.type === 'topic.read') sent.push(frame); }));
   });
 });

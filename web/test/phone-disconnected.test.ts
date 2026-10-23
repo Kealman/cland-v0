@@ -5,14 +5,13 @@ import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import type { Inbox } from '../../shared/wire/index.ts';
 import { until } from '../../hub/test/until.ts';
-import { webFixture, pageUntil, reconnectUntilLive } from './harness.ts';
+import { webFixture, pageUntil, reconnectUntilLive, pausePageClock } from './harness.ts';
 
 test('phone disconnect shows a counting backoff and immediate Retry resets it without reloading', async t => {
   const fixture = await webFixture(t, { timezoneId: 'UTC' });
   await fixture.pageCase(t, async page => {
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live', 'initial live connection');
-    await page.clock.install({ time: new Date('2026-10-23T14:10:00Z') });
-    await page.clock.pauseAt(new Date('2026-10-23T14:10:00Z'));
+    await pausePageClock(page, new Date('2026-10-23T14:10:00Z'));
     let documents = 0;
     page.on('framenavigated', frame => { if (frame === page.mainFrame()) documents++; });
     const attempts: boolean[] = [];
@@ -101,8 +100,7 @@ test('phone keeps the last Inbox time and disables every answer and reply while 
     assert.match(await title.innerText(), /as of 14:09/);
     assert.deepEqual(mutations, [], 'offline controls send no mutation');
   }, async page => {
-    await page.clock.install({ time: new Date('2026-10-23T14:09:00Z') });
-    await page.clock.pauseAt(new Date('2026-10-23T14:09:00Z'));
+    await pausePageClock(page, new Date('2026-10-23T14:09:00Z'));
     page.on('websocket', socket => socket.on('framesent', event => { const frame = JSON.parse(String(event.payload)); if (['topic.send', 'topic.answer', 'approval.answer'].includes(frame.type)) mutations.push(frame.type); }));
   }, { phone: true });
 });
@@ -117,8 +115,7 @@ test('phone reconnect keeps offline drafts unsent and refreshes a refused resume
     const composer = page.locator('[data-phone-composer]');
     await composer.waitFor();
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live', 'initial live connection');
-    await page.clock.install({ time: new Date('2026-10-23T14:10:00Z') });
-    await page.clock.pauseAt(new Date('2026-10-23T14:10:00Z'));
+    await pausePageClock(page, new Date('2026-10-23T14:10:00Z'));
     const documentTime = await page.evaluate(() => performance.timeOrigin);
     await fixture.hub.stop(); await fixture.hub.stopped;
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Offline', 'offline before drafting');

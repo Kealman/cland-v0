@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { reconnectUntilLive, webFixture, pageUntil } from './harness.ts';
+import { reconnectUntilLive, webFixture, pageUntil, pausePageClock } from './harness.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { seedItem } from './items-fixture.ts';
@@ -55,8 +55,7 @@ test('Inbox keeps four ordered sections, newest five rows, oldest wait, live age
     assert.equal(await fold.getAttribute('aria-expanded'), 'false');
     assert.equal(await inbox.locator('[data-inbox-empty]').count(), 3);
   }, async page => {
-    await page.clock.install({ time: fixture.clock.now() });
-    await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
   });
 });
 
@@ -204,8 +203,7 @@ test('Inbox drawer follows the selected message and physical r replies to its fa
     await page.clock.runFor(16); await detailFocused;
     assert.equal(await splitField.evaluate(node => node === document.activeElement), true);
   }, async page => {
-    await page.clock.install({ time: fixture.clock.now() });
-    await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
   });
 });
 
@@ -299,8 +297,7 @@ test('A opens seven days of Inbox departures with outcomes and an archive line b
     await archived.waitFor();
     assert.match(await archived.innerText(), /answered.*human/s);
   }, async page => {
-    await page.clock.install({ time: fixture.clock.now() });
-    await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
   });
 });
 
@@ -786,8 +783,7 @@ test('a fresh epoch recovers an approval answered by a peer while this browser w
     assert.match(await outcome.innerText(), /Approved once.*human.*neovim/s);
     assert.equal(await row.locator('..').locator('[data-approval-choice]').count(), 0);
   }, async page => {
-    await page.clock.install({ time: fixture.clock.now() });
-    await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
     await page.routeWebSocket('**/ws', route => { const server = route.connectToServer(); disconnect = () => { route.close(); server.close(); }; });
   });
 });

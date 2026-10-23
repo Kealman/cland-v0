@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { connectUi } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { until } from '../../hub/test/until.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { pageUntil, webFixture, pausePageClock } from './harness.ts';
 import type { Page } from 'playwright-core';
 import type { HubFrame } from '../../shared/wire/index.ts';
 
@@ -80,8 +80,7 @@ test('Sessions verification queue shows hand runs, ages receipts and remembers i
       await until(() => sent.filter(frame => frame.type === 'executor.status').length === 2, { what: 'one new executor read on reopening', timeoutMs: 3000 });
       assert.equal(sent.filter(frame => frame.type === 'executor.status').length, 2);
     }, async page => {
-      await page.clock.install({ time: clock.now() });
-      await page.clock.pauseAt(clock.now());
+      await pausePageClock(page, clock.now());
       page.on('websocket', socket => {
         socket.on('framereceived', event => frames.push(JSON.parse(String(event.payload))));
         socket.on('framesent', event => sent.push(JSON.parse(String(event.payload))));
@@ -109,8 +108,7 @@ test('Sessions verification queue shows hand runs, ages receipts and remembers i
       assert.equal(await page.locator('[data-verification-row] td:nth-child(5)').textContent(), '5s');
       assert.ok(!((await line.textContent())?.includes('waiting')));
     }, async page => {
-      await page.clock.install({ time: clock.now() });
-      await page.clock.pauseAt(clock.now());
+      await pausePageClock(page, clock.now());
       page.on('websocket', socket => socket.on('framereceived', event => frames.push(JSON.parse(String(event.payload)))));
     });
   });

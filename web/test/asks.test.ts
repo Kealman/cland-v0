@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
+import { reconnectUntilLive, pageUntil, webFixture, pausePageClock } from './harness.ts';
 import type { Page } from 'playwright-core';
 import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { until } from '../../hub/test/until.ts';
@@ -313,8 +313,7 @@ test('offline asks disable writes and a fresh snapshot recovers an answer withou
     await historyCard.locator('[data-ask-outcome]').waitFor();
     assert.match(await historyCard.innerText(), /2 Change.*human/s);
   }, async page => {
-    await page.clock.install({ time: fixture.clock.now() });
-    await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
     page.on('websocket', socket => socket.on('framesent', event => { const frame = JSON.parse(String(event.payload)); if (frame.type === 'topic.answer') sent.push(frame.type); }));
   });
 });

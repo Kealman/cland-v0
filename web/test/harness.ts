@@ -18,6 +18,12 @@ import { decodeTerminalQr } from '../../hub/test/qr-decode.ts';
 
 const traces = fileURLToPath(new URL('../test-results/', import.meta.url));
 
+/** Leave a minute of install-to-pause headroom while preserving the exact target. */
+export async function pausePageClock(page: Page, time: Date): Promise<void> {
+  await page.clock.install({ time: new Date(time.getTime() - 60_000) });
+  await page.clock.pauseAt(time);
+}
+
 /** Poll in Playwright's isolated evaluation world; never inject a script tag or eval. */
 export async function pageUntil(page: Page, predicate: () => boolean, what: string): Promise<void> {
   await until(() => page.evaluate(predicate), { what, timeoutMs: 3000 });

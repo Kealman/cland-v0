@@ -9,7 +9,7 @@ import { until } from '../../hub/test/until.ts';
 import type { EventRow, EventsPage } from '../../shared/wire/index.ts';
 import { seedItem } from './items-fixture.ts';
 import type { Page } from 'playwright-core';
-import { reconnectUntilLive, webFixture, pageUntil } from './harness.ts';
+import { reconnectUntilLive, webFixture, pageUntil, pausePageClock } from './harness.ts';
 
 async function eventsFixture(t: Parameters<typeof webFixture>[0], count = 405) {
   const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
@@ -118,7 +118,7 @@ test('Events dims bookkeeping, shows hub coalescing, folds a local day with za a
     await row.focus(); await physical(page, 'Enter');
     await page.getByRole('region', { name: 'Item card', exact: true }).waitFor();
     assert.equal(await page.getByRole('region', { name: 'Item card', exact: true }).getAttribute('data-item-id'), 'T-1');
-  }, async page => { await page.clock.install({ time: clock.now() }); await page.clock.pauseAt(clock.now()); });
+  }, async page => { await pausePageClock(page, clock.now()); });
 });
 
 test('opening Events shares the last look, marks newer rows for the visit and clears the Inbox events line', async t => {
@@ -144,7 +144,7 @@ test('opening Events shares the last look, marks newer rows for the visit and cl
     await page.getByRole('button', { name: 'Inbox', exact: true }).click();
     await pageUntil(page, () => document.querySelector('[data-inbox-events]')?.textContent === '△ 0 new events · ⚠ 0', 'Inbox reflects the Events visit receipt');
     assert.equal(await footer.innerText(), '△ 0 new events · ⚠ 0');
-  }, async page => { await page.clock.install({ time: fixture.clock.now() }); await page.clock.pauseAt(fixture.clock.now()); });
+  }, async page => { await pausePageClock(page, fixture.clock.now()); });
 });
 
 test('physical s selects an Events subject in the palette and Enter opens topic, session and artifact subjects', async t => {
@@ -304,7 +304,7 @@ test('an Inbox alongside filtered Events still counts new events outside that fi
     assert.equal(await secondary.locator('[data-inbox-events]').innerText(), '△ 1 new events · ⚠ 0');
     const events = page.locator('[data-pane="primary"]');
     assert.equal(await events.locator('[data-event-id][data-bookkeeping="true"]').count(), 0);
-  }, async page => { await page.clock.install({ time: fixture.clock.now() }); await page.clock.pauseAt(fixture.clock.now()); });
+  }, async page => { await pausePageClock(page, fixture.clock.now()); });
 });
 
 test('Events help keeps every key reachable by native scrolling in a small viewport', async t => {
@@ -378,7 +378,7 @@ test('Events refreshes its filtered feed after a hub restart without replaying t
     assert.equal(writes.length, 1, 'reads resume, visit write does not replay');
     assert.deepEqual((await next.request({ type: 'marks.get' })).value, before);
   }, async page => {
-    await page.clock.install({ time: fixture.clock.now() }); await page.clock.pauseAt(fixture.clock.now());
+    await pausePageClock(page, fixture.clock.now());
     page.on('websocket', socket => socket.on('framesent', event => { const frame = JSON.parse(String(event.payload)); if (frame.type === 'marks.set') writes.push(frame); }));
   });
 });
