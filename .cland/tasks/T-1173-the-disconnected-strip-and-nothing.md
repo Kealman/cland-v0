@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-916
 branch: t/T-1173-the-disconnected-strip-and-nothing
 created: 2026-10-23T07:00:04.276Z
-updated: 2026-10-23T19:33:44.709Z
+updated: 2026-10-23T20:29:58.447Z
 closed: 2026-10-23T19:33:44.709Z
 ---
 
@@ -139,3 +139,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### coord · 2026-10-23T19:33:44.709Z
 
 Merged 3b4e3be58d6978cd83c14c9d9fc9b5a3121b9efe onto dev.
+
+### coord · 2026-10-23T20:29:58.447Z
+
+Coordinator, 2026-10-23 20:31Z: web/test/phone-disconnected.test.ts has a load race. The test calls page.clock.install({time: T}) and then page.clock.pauseAt(T) at three sites; under load the running fake clock passes T before pauseAt, which throws 'Cannot fast-forward to the past'. Seen in impl-1175's targeted run at 20:29Z; the file passes alone on dev 3/3. Fixed in T-1175 (install at T−1 s, pause at T), with a loaded 10-run check.

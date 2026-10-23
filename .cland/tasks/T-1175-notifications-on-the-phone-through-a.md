@@ -3,7 +3,7 @@ id: T-1175
 kind: task
 title: Notifications on the phone through a service worker
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -13,10 +13,10 @@ blocked_by:
   - T-1166
   - T-1128
   - T-1142
-topic: null
-branch: null
+topic: topic-917
+branch: t/T-1175-notifications-on-the-phone-through-a
 created: 2026-10-23T07:00:04.656Z
-updated: 2026-10-23T20:22:40.484Z
+updated: 2026-10-23T20:28:40.721Z
 ---
 
 ## Summary
@@ -41,3 +41,9 @@ E-419 (§3.6 notifications on the phone; choices "The subscription button" and "
 - [ ] C3. A waiting plan and a fake Claude Code approval entering the inbox each raise one notification through the worker (Web test).
 - [ ] C4. The worker has no fetch handler, and its click handler focuses an open client and sends it the row, or opens the app at the inbox row when none is open (test).
 - [ ] C5. A denied permission turns both switches off and the subscription button's tooltip says why (Web test).
+
+## Comments
+
+### impl-1175 · 2026-10-23T20:28:40.721Z
+
+Implemented worker click/no-fetch contract, More subscription and shared switches, active-worker delivery with page fallback, encoded cold-entry row navigation, and edge MIME/root-scope headers. Vertical red→green receipts: missing worker script, missing More controls (0 !== 2), missing worker showNotification receipt, missing root header (undefined !== '/'). New sealed Web tests cover ask/plan/TUI approval and denial; required targeted regression set now running. Docs and implement skill updated with one-line CHANGES provenance; role clauses unchanged.
