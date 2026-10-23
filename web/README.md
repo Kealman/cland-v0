@@ -109,6 +109,31 @@ HOME/XDG/Git environment, CSP and owned browser profile. Run
 `node --test web/test/phone.test.ts` and
 `node --test web/test/phone-more.test.ts` after building the bundle.
 
+### Phone topic thread
+
+Tapping a topic below 640 px opens the shared `Thread` full screen. Its header
+keeps Back to Topics, the title, topic id, status and the linked item's Card.
+The bottom bar keeps Topics current. Browser Back and the shared thread
+Escape/h binding follow the same path.
+
+`PhoneTopicThread` shows the reusable read-only item card or artifact viewer
+over the mounted thread. Back returns to the same message position and restores
+focus. Covered messages do not produce read receipts. Item links in the card
+replace that card, retaining the Back to thread destination. HTML artifacts are
+44 px chips on the phone; they open the existing capability-backed iframe full
+screen with `allow-scripts` alone. File and folder artifacts stay chips.
+
+Runs use two lines from the existing hub facts: participants and message count,
+then latest kind, preview and age. The preview truncates before the age; the
+full summary remains in the tooltip. Expanding keeps the run anchor in place.
+Long ids and verdict criteria wrap, while fenced code scrolls inside its block.
+At 640 px and wider, the desktop list/thread layout, fold line and 240 px inline
+HTML preview remain available.
+
+Build first, then run `node --test web/test/phone-thread.test.ts`. Its sealed
+390×844 touch/mobile cases cover the two Back paths, same-message card return,
+run facts and anchors, sandboxed HTML and horizontal code scrolling.
+
 ## Components and colours
 
 Copy `src/Shell.tsx` and `src/Shell.module.css`. Components use CSS Modules and

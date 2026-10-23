@@ -4,8 +4,10 @@ import type { ConnectionState } from '../connection.ts';
 import { ArtifactNavigation } from './ArtifactNavigation.ts';
 import { SandboxedArtifactFrame } from './SandboxedArtifactFrame.tsx';
 import s from './InlineArtifact.module.css';
+import { usePhone } from '../phone.ts';
 
 export function InlineArtifact({ artifact, connection }: { artifact: Artifact; connection: ConnectionState }) {
+  const phone = usePhone();
   const open = useContext(ArtifactNavigation);
   const [preview, setPreview] = useState<{ url?: string; error?: string }>({});
   const command = connection.command;
@@ -24,6 +26,9 @@ export function InlineArtifact({ artifact, connection }: { artifact: Artifact; c
     return () => { current = false; controller.abort(); };
   }, [artifact.id, artifact.fileDeleted, page, connection.live, command]);
   const reason = artifact.fileDeleted ? 'Artifact file not found' : !connection.live ? 'Disconnected' : preview.error;
+  if (phone && page && !reason) return <button data-artifact-id={artifact.id} className={s.chip} onClick={event => open(artifact, event.currentTarget)}>
+    <span className={s.id}>{artifact.id} {artifact.kind}</span><span>{artifact.title}</span>
+  </button>;
   if (!page || reason || !preview.url) return <span data-artifact-id={artifact.id} className={s.chip} title={reason}>
     <span className={s.id}>{artifact.id} {artifact.kind}{artifact.folder ? ' · folder' : ''}</span><span>{artifact.title}</span>
   </span>;

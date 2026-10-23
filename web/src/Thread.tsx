@@ -8,10 +8,17 @@ import type { Shortcut } from './keymap.ts';
 import { Composer, type InboxReply } from './Composer.tsx';
 import type { TopicThreads } from './topic-threads.ts';
 import { TopicArtifacts } from './artifacts/TopicArtifacts.tsx';
+import { usePhone } from './phone.ts';
 
 export type ThreadControls = { focus: () => void; run: (action: Shortcut) => boolean };
 
-export function Thread({ connection, topic, controls, targetMessage, reply, focusTarget = true, source, title: suppliedTitle, composer, logLabel }: { source?: TopicThreads | undefined; title?: string; logLabel?: string; composer?: ReactNode; connection: ConnectionState; topic: string; reply?: InboxReply | undefined; focusTarget?: boolean; targetMessage?: string | undefined; controls?: Ref<ThreadControls> | undefined }) {
+function runAge(ageMs: number) {
+  return ageMs < 60_000 ? `${Math.floor(ageMs / 1000)}s` : ageMs < 3_600_000 ? `${Math.floor(ageMs / 60_000)}m`
+    : ageMs < 86_400_000 ? `${Math.floor(ageMs / 3_600_000)}h` : `${Math.floor(ageMs / 86_400_000)}d`;
+}
+
+export function Thread({ connection, topic, controls, targetMessage, reply, focusTarget = true, source, title: suppliedTitle, composer, logLabel, heading, readable = true }: { readable?: boolean; heading?: ReactNode; source?: TopicThreads | undefined; title?: string; logLabel?: string; composer?: ReactNode; connection: ConnectionState; topic: string; reply?: InboxReply | undefined; focusTarget?: boolean; targetMessage?: string | undefined; controls?: Ref<ThreadControls> | undefined }) {
+  const phone = usePhone();
   const { opened: openTopicArtifacts } = useContext(TopicArtifacts);
   useEffect(() => { if (!source) openTopicArtifacts(topic); }, [topic, openTopicArtifacts, source]);
   const node = useRef<HTMLDivElement>(null);
@@ -48,11 +55,17 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
     node.current.scrollTop += row.getBoundingClientRect().top - top;
     toggleAnchor.current = null;
   }, [expanded]);
-  useTopicRead(node, connection, topic, state?.messages, expanded, !source);
+  useTopicRead(node, connection, topic, state?.messages, expanded, !source && readable);
   useEffect(() => { if (connection.live) void threads?.load(topic); }, [connection.live, threads, threads?.generation, topic, state?.loaded]);
   useLayoutEffect(() => {
     const log = node.current;
     if (!log || !state?.loaded) return;
+    // A covering card/viewer keeps the reader's position, even if it was the end.
+    // Hidden arrivals stop following until the reader scrolls to the new end.
+    if (!readable) {
+      if (log.scrollHeight - log.clientHeight - log.scrollTop >= 2) atEnd.current = false;
+      return;
+    }
     if (anchor.current) {
       if (state.loading) return;
       const element = [...log.querySelectorAll<HTMLElement>('[data-thread-row]')].find(row => row.dataset.threadRow === anchor.current!.id);
@@ -60,7 +73,7 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
       anchor.current = null;
     } else if (!opened.current || atEnd.current) log.scrollTop = log.scrollHeight;
     opened.current = true;
-  }, [state?.messages, state?.loaded, state?.loading]);
+  }, [state?.messages, state?.loaded, state?.loading, readable]);
   const navigated = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
     if (!targetMessage || navigated.current === targetMessage || !state?.loaded || !node.current) return;
@@ -95,7 +108,7 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
     else blocks.push({ messages: [message], ...(run ? { run } : {}) });
   }
   return <section className={s.thread} data-key-context="thread" aria-label={title} onFocusCapture={() => { if (!source) openTopicArtifacts(topic); }} onPointerDownCapture={() => { if (!source) openTopicArtifacts(topic); }}>
-    <header className={s.heading}><h2>{title}</h2>{state?.loading && <span role="status">Loading</span>}
+    <header className={s.heading}>{heading ?? <h2>{title}</h2>}{state?.loading && <span role="status">Loading</span>}
       {state?.error && <button title={state.error} onClick={() => { if (state.errorAt === 'earlier') earlier(true); else void threads?.refresh(topic); }}>Retry</button>}</header>
     <div ref={node} className={s.messages} data-loaded={!!state?.loaded} role="log" aria-label={logLabel ?? `${title} thread`} tabIndex={0}
       onScroll={() => { const log = node.current!; atEnd.current = log.scrollHeight - log.clientHeight - log.scrollTop < 2; if (log.scrollTop === 0) earlier(); }}>
@@ -107,7 +120,10 @@ export function Thread({ connection, topic, controls, targetMessage, reply, focu
             <div role="separator" className={s.date}>{new Date(first.ts).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>}
           {run ? <div data-run-id={run.id} className={s.run}>
             <button data-run-anchor data-thread-row={run.id} data-message-id={open ? undefined : last.id} data-message-seq={open ? undefined : last.seq}
-              className={s.runAnchor} aria-expanded={open} aria-controls={`${regionId}-${run.id}`} title={run.foldLine} onClick={event => toggle(event.currentTarget)}>{run.foldLine}</button>
+              className={s.runAnchor} aria-expanded={open} aria-controls={`${regionId}-${run.id}`} title={run.foldLine} onClick={event => toggle(event.currentTarget)}>{phone ? <>
+                <span>{run.participants.join(', ')}{run.otherParticipants ? ` +${run.otherParticipants}` : ''} · {run.messageCount} {run.messageCount === 1 ? 'message' : 'messages'}</span>
+                <span className={s.runLatest}><span>{run.latest.kind} · </span><span className={s.runPreview}>{run.latest.preview}</span><span> · {runAge(run.ageMs)} ago</span></span>
+              </> : run.foldLine}</button>
             <div id={`${regionId}-${run.id}`}>{open && messages.map(message => <MessageBlock key={message.id} message={message} connection={connection} />)}</div>
           </div> : <MessageBlock message={first} connection={connection} showTopic={!!source} />}
         </Fragment>;

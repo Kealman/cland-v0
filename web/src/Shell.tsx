@@ -67,18 +67,18 @@ function savedShell(): ShellPreferences {
 export function Shell() {
   const phone = usePhone();
   const navigationSerial = useRef(0);
-  const [phonePage, setPhonePage] = useState<{ area: 'Items' | 'Artifacts'; id: string } | undefined>(() => history.state?.clandPhonePage);
+  const [phonePage, setPhonePage] = useState<{ area: 'Items' | 'Artifacts' | 'Topics'; id: string } | undefined>(() => history.state?.clandPhonePage);
   useEffect(() => {
     const back = (event: PopStateEvent) => {
       navigationSerial.current++;
-      const page = event.state?.clandPhonePage as { area: 'Items' | 'Artifacts'; id: string } | undefined;
+      const page = event.state?.clandPhonePage as { area: 'Items' | 'Artifacts' | 'Topics'; id: string } | undefined;
       setPhonePage(page);
       if (page) setPreferences(previous => ({ ...previous, area: page.area, row: page.id, detail: false }));
     };
     window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
-  const openPhonePage = (area: 'Items' | 'Artifacts', id: string) => {
+  const openPhonePage = (area: 'Items' | 'Artifacts' | 'Topics', id: string) => {
     navigationSerial.current++;
     const page = { area, id };
     history.pushState({ clandPhonePage: page }, '');
@@ -289,7 +289,7 @@ export function Shell() {
   const openResult = (target: Area, row: ObjectRow, pane: boolean) => {
     navigationSerial.current++;
     setMessage(undefined);
-    if (phone && (target === 'Items' || target === 'Artifacts')) openPhonePage(target, row.id);
+    if (phone && (target === 'Items' || target === 'Artifacts' || target === 'Topics')) openPhonePage(target, row.id);
     setPreferences(previous => {
       if (pane && !phone) return active === 'primary'
         ? { ...previous, secondary: target, secondaryRow: row.id, secondaryDetail: true, dismissed: selectionKey, ratio: split ? previous.ratio : 2 / 3 }
@@ -468,6 +468,7 @@ export function Shell() {
                       if (!artifact) throw new Error('Artifact unavailable');
                       setOpenedArtifacts(previous => [...previous.filter(row => row.id !== artifact.id), artifact]);
                     }
+                    if (phone && target === 'Topics') openPhonePage('Topics', subject.id);
                     setPreferences(previous => pane === 'primary'
                       ? { ...previous, area: target, row: subject.id, detail: subject.kind === 'artifact', dismissed: undefined }
                       : { ...previous, secondary: target, secondaryRow: subject.id, secondaryDetail: subject.kind === 'artifact', dismissed: undefined });
@@ -478,16 +479,18 @@ export function Shell() {
                 openTopic={(topic, message) => {
                   navigationSerial.current++;
                   setThreadTargets(previous => ({ ...previous, [pane]: { topic, message } }));
+                  if (phone) openPhonePage('Topics', topic);
                   setPreferences(previous => pane === 'primary' ? { ...previous, area: 'Topics', row: topic, detail: false } : { ...previous, secondary: 'Topics', secondaryRow: topic, secondaryDetail: false });
                 }}
                 openPlan={id => {
                   navigationSerial.current++; showItemsView('plan');
                   setPreferences(previous => pane === 'primary' ? { ...previous, area: 'Items', row: id, detail: false } : { ...previous, secondary: 'Items', secondaryRow: id, secondaryDetail: false });
                 }}
-                openPage={id => { navigationSerial.current++; if (phone && paneArea === 'Artifacts') { openPhonePage('Artifacts', id); return; } setPreferences(previous => pane === 'primary'
+                openPage={id => { navigationSerial.current++; if (phone && (paneArea === 'Artifacts' || paneArea === 'Topics')) { openPhonePage(paneArea, id); return; } setPreferences(previous => pane === 'primary'
                   ? { ...previous, row: id, detail: true } : { ...previous, secondaryRow: id, secondaryDetail: true }); }}
                 closePage={() => {
                   navigationSerial.current++;
+                  if (phone && page) { history.back(); return; }
                   setPreferences(previous => pane === 'primary' ? { ...previous, detail: false, dismissed: selectionKey }
                     : { ...previous, secondaryDetail: false });
                   requestAnimationFrame(() => {

@@ -631,6 +631,7 @@
     "web/test/phone-asks.test.ts": "Web",
     "web/test/phone-inbox.test.ts": "Web",
     "web/test/phone-more.test.ts": "Web",
+    "web/test/phone-thread.test.ts": "Web",
     "web/test/phone.test.ts": "Web",
     "web/test/plan.test.ts": "Web",
     "web/test/session-actions.test.ts": "Web",

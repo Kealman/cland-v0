@@ -10,3 +10,12 @@
 .runAnchor { position: sticky; top: 0; z-index: 1; display: block; width: 100%; padding: 10px 20px; border: 0; border-bottom: 1px solid var(--border); background: var(--ground); color: var(--muted); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 12px var(--prose); }
 .runAnchor:hover { background: var(--row-hover); }
 .runAnchor:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; background: var(--selection); }
+@media (width < 640px) {
+  .heading { padding: 4px 12px; gap: 8px; flex-wrap: wrap; }
+  .heading button { min-height: 44px; flex: none; padding: 8px; border: 1px solid var(--control-border); background: var(--control); }
+  .runAnchor { min-height: 44px; padding: 8px 12px; line-height: 18px; }
+  .runAnchor > span { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .runAnchor > .runLatest { display: flex; }
+  .runLatest > span { flex: none; white-space: pre; }
+  .runLatest > .runPreview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

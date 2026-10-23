@@ -100,3 +100,7 @@
 .pane[data-inbox-home] > [data-fold-block] > :last-child { flex: 1; min-height: 0; }
 .phoneBack { min-height: 44px; padding: 8px; border: 1px solid var(--control-border); background: var(--control); color: var(--text); }
 .app[data-phone="true"] .pane button { min-height: 44px; }
+.app[data-phone="true"] .pane:has([data-area-module="Topics"]) > [data-fold-block] { height: 100%; display: flex; flex-direction: column; }
+.app[data-phone="true"] .pane:has([data-area-module="Topics"]) > [data-fold-block] > :last-child { flex: 1; min-height: 0; }
+.app[data-phone="true"] .pane:has([data-phone-thread]) > [data-fold-block] > header { display: none; }
+.app[data-phone="true"] [data-area-module="Topics"][data-area-surface="page"] { height: 100%; }

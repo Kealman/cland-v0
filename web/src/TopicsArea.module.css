@@ -8,3 +8,8 @@
 .row:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 .title { color: var(--text-strong); }
 .meta { display: flex; justify-content: space-between; gap: 8px; width: 100%; color: var(--muted); font: 11px var(--mono); }
+@media (width < 640px) {
+  .area { height: 100%; }
+  .list { flex: 1; border: 0; }
+  .title, .meta { overflow-wrap: anywhere; }
+}

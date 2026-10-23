@@ -1,21 +1,27 @@
 import type { AreaContentProps, AreaModule } from './AreaSlot.tsx';
-import { useImperativeHandle, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef } from 'react';
 import { Fold } from './Fold.tsx';
 import s from './TopicsArea.module.css';
 import { Thread, type ThreadControls } from './Thread.tsx';
+import { usePhone } from './phone.ts';
+import { PhoneTopicThread } from './PhoneTopicThread.tsx';
 
 export const topicActions = ['topic-next', 'topic-previous', 'topic-open', 'topic-close', 'thread-next', 'thread-previous', 'thread-back', 'thread-leader', 'thread-toggle'] as const;
 
-export function TopicDetail({ connection, selected, controls, targetMessage }: AreaContentProps) {
+export function TopicDetail({ connection, selected, controls, targetMessage, closePage }: AreaContentProps) {
+  const phone = usePhone();
   const thread = useRef<ThreadControls>(null);
   useImperativeHandle(controls, () => ({ run: action => {
     if (action === 'thread-back') {
+      if (phone) return thread.current?.run(action) ?? false;
       document.querySelector<HTMLButtonElement>(`[data-key-context="topics"] [data-object-id="${CSS.escape(selected ?? '')}"]`)?.focus();
       return true;
     }
     return thread.current?.run(action) ?? false;
-  } }), [selected]);
-  return <div className={s.area}>{connection && selected && <Thread key={selected} connection={connection} topic={selected} targetMessage={targetMessage} controls={thread} />}</div>;
+  } }), [selected, phone]);
+  return <div className={s.area}>{connection && selected && (phone
+    ? <PhoneTopicThread key={selected} connection={connection} topic={selected} targetMessage={targetMessage} controls={thread} back={closePage} />
+    : <Thread key={selected} connection={connection} topic={selected} targetMessage={targetMessage} controls={thread} />)}</div>;
 }
 
 function TopicPage(props: AreaContentProps) {
@@ -27,9 +33,13 @@ function TopicDrawer(props: AreaContentProps) {
 
 export const topicsModule: AreaModule = { context: 'topics', handledActions: topicActions, Pane: TopicsArea, Page: TopicPage, Drawer: TopicDrawer };
 
-export function TopicsArea({ connection, selected, select, controls, targetMessage }: AreaContentProps) {
+export function TopicsArea({ connection, selected, select, controls, targetMessage, openPage }: AreaContentProps) {
+  const phone = usePhone();
   const list = useRef<HTMLDivElement>(null);
   const thread = useRef<ThreadControls>(null);
+  useEffect(() => {
+    if (phone && selected) list.current?.querySelector<HTMLButtonElement>(`[data-object-id="${CSS.escape(selected)}"]`)?.focus({ preventScroll: true });
+  }, [phone, selected]);
   useImperativeHandle(controls, () => ({ run: action => {
     if (action.startsWith('thread-')) {
       if (action === 'thread-back') {
@@ -47,6 +57,7 @@ export function TopicsArea({ connection, selected, select, controls, targetMessa
     }
     if (action === 'topic-open') {
       if (focused?.hasAttribute('data-fold-toggle')) { if (focused.getAttribute('aria-expanded') === 'false') (focused as HTMLButtonElement).click(); }
+      else if (phone && selected) openPage?.(selected);
       else thread.current?.focus();
       return true;
     }
@@ -55,7 +66,7 @@ export function TopicsArea({ connection, selected, select, controls, targetMessa
       toggle?.focus(); if (toggle?.getAttribute('aria-expanded') === 'true') toggle.click(); return true;
     }
     return false;
-  } }), [selected]);
+  } }), [selected, phone, openPage]);
   const topics = [...connection?.topics ?? []].sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || a.id.localeCompare(b.id));
   const groups = [
     { id: 'waiting', label: 'Waiting for you', rows: topics.filter(row => row.status === 'waiting for human') },
@@ -68,13 +79,13 @@ export function TopicsArea({ connection, selected, select, controls, targetMessa
       {groups.map(group => <div key={group.id} data-topic-group={group.id} className={group.id === 'standing' ? s.standing : undefined}>
         <Fold area="topics" id={`group:${group.id}`} label={group.label} count={group.rows.length} defaultFolded={group.id === 'closed'}>
           {group.rows.map(topic => <button key={topic.id} className={s.row} data-standing={topic.standing} data-object-id={topic.id} aria-pressed={selected === topic.id}
-            onFocus={() => select(topic.id)} onClick={() => select(topic.id)}>
+            onFocus={() => select(topic.id)} onClick={() => { select(topic.id); if (phone) openPage?.(topic.id); }}>
             <span className={s.title}>{topic.title}</span><span className={s.meta}><span>{topic.item}</span>
               <span aria-label="Unread">{topic.unread}</span><time title={topic.lastMessageAt ?? undefined} dateTime={topic.lastMessageAt ?? undefined}>{topic.lastMessageAt ? new Date(topic.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</time></span>
           </button>)}
         </Fold>
       </div>)}
     </div>
-    {connection && selected && <Thread key={selected} connection={connection} topic={selected} targetMessage={targetMessage} controls={thread} />}
+    {!phone && connection && selected && <Thread key={selected} connection={connection} topic={selected} targetMessage={targetMessage} controls={thread} />}
   </div>;
 }
