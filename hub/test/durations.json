@@ -8724,14 +8724,14 @@
     },
     "web/test/events.test.ts::physical s selects an Events subject in the palette and Enter opens topic, session and artifact subjects": {
       "seconds": 6.8,
-      "owner": "E-417",
+      "owner": "E-880",
       "added": "2026-10-23",
       "expires": "2026-10-30",
       "reason": "T-1127 uses a sealed hub and Headless Shell to select a subject through the palette, then navigate topic, session and an artifact older than the newest 100 inventory rows. Independent artifact setup is already batched in groups of 20. Linux x64 c-8 lon1 run 692b1a23 at 24c8d5ee (A-9910) observed this assertion-green identity at 4.528953661 s; all ten Events identities passed, while the overall run was red on separate rail routing regressions. Launch instructions require an E-417 allowance for every passing Web sample reaching 4 s. The 6.8 s cap is about 1.5 times that worst measured sample; no request/DOM bound, assertion or teardown is relaxed."
     },
     "web/test/inbox.test.ts::Enter opens an Inbox message at its anchored thread row and a waiting plan in Plan": {
       "seconds": 9.6,
-      "owner": "E-417",
+      "owner": "E-880",
       "added": "2026-10-23",
       "expires": "2026-10-30",
       "reason": "T-1123 uses a sealed hub and Headless Shell to create 105 later agent messages, page back to the exact Inbox message, assert focus, then open the pending epic's Plan stage. Linux x64 c-8 lon1 run 1a38504f at 5cd0852b (A-9816) observed this assertion-green test at 6.336998379 s; Web assertions passed 164/164 and the overall run was red on this new-identity gate. The launch brief requires a dated E-417 allowance when any passing Web sample reaches 4 s. The 9.6 s cap is about 1.5 times the worst measured sample; request/DOM bounds, assertions and fixture teardown are unchanged. After this receipt, independent setup sends were batched within the same rate-limit windows to remove serial socket round trips; this remains the worst measured Linux sample."
