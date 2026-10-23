@@ -2,7 +2,8 @@
 id: E-418
 kind: epic
 title: Sessions, artifacts and accounts in the web
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.2
@@ -14,7 +15,8 @@ blocked_by:
 topic: topic-867
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-23T13:05:37.768Z
+updated: 2026-10-23T13:49:26.835Z
+closed: 2026-10-23T13:49:26.835Z
 ---
 
 ## Summary
@@ -68,13 +70,21 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project with the fake harnesses, a registry of three fake accounts with limit readings (one of them limited), fake sessions in every state (an Aide, one waiting for an approval, busy, idle and stopped ones) and a fake run holding the verification queue with one waiter, QA opens the web at 1440x900 on the Sessions area. QA reads the groups with their counts, folds Idle and finds it folded after a reload; reads the accounts strip with the limited account in red; opens the verify line into the queue view and reads the holder, the waiter, its executor, its wait and its ETA. QA selects the waiting session and reads its command in the row and in the drawer's card; launches a new Aide from the header and reads it under Yours; stops a busy session after the confirmation, resumes it, and archives a stopped one after the confirmation, reading each change with `cland session list`; opens Capabilities. QA opens the Accounts area, reads every window with its reset, age and source, turns "finished" off and finds it off after a reload. In the Artifacts area QA opens a note, an HTML page (its iframe's `sandbox` is `allow-scripts` alone) and a file, attaches one to the composer with `s` and keeps one with `k`. At 600 px wide the session rows are two lines with no row actions, and a tap opens the session's page.
 
 - [ ] C1. The Sessions area shows Yours, Waiting, Busy, Idle and Stopped with their counts and folds remembered per client, and rows with the facts of P22 from the hub's merged sessions; there is no Attach.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.310Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 - [ ] C2. The verify line summarizes the queue and opens the queue view with the slots, the waiters with their executor, wait and ETA, and the metrics of the last 20 runs.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.310Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 - [ ] C3. The accounts strip shows each account's worst window, a limited account in red with its reset and a dash without data; the Accounts area lists the registry with every window, its reset, the reading's age and its source.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.310Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 - [ ] C4. Stop, Resume, Archive and Capabilities work from the selected row and from the session's page, Stop and Archive after a confirmation; Launch a session and New Aide work from the header, in the project's directory only.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.311Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 - [ ] C5. The session's drawer shows its recent thread, its pending approval as a card and a composer to the session.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.311Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 - [ ] C6. The notification switches and this browser's sign-in sit beside the profile in the Accounts area.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.311Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 - [ ] C7. The Artifacts area shows the tree of v0.1 §3.6 and opens notes, pages and files, HTML in a sandboxed iframe never given `allow-same-origin`; `s`, `k` and `d` work as in Neovim.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.311Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 - [ ] C8. `web/README.md` and `?` describe the Sessions, Accounts and Artifacts areas and their keys.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:49:11.311Z · commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd
 
 ## Dogfooding
 
@@ -309,3 +319,79 @@ Cited stage covers at the same full SHA (not rerun by QA):
 Coordinator decision61439049 authorized running this stage during E-417's epic-cover wait, with E-417 local13 first after the Mac freed. Holds and evidence stayed separate. No source/brief correction or test rerun was needed. Rule proposal sent in topic-867: distinguish parameterized passing names and fixture census expectations from drafting-time TAP counts.
 
 Durable evidence: A-10037 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10037-e-418-stage-3-at-d64dad5a-16-pass-140-tests-and-probes-both-covers-green/report.md
+
+### hub · 2026-10-23T13:29:06.484Z
+
+demo da9e8b4b-d1de-425c-b156-0b6a064676da created: droplet cland-v0-da9e8b4b, commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd, deadline 2026-10-23T14:42:45.607Z.
+
+### hub · 2026-10-23T13:33:35.148Z
+
+demo da9e8b4b-d1de-425c-b156-0b6a064676da destroyed: lifetime 334982 ms; cost $0.0233.
+
+### qa-676 · 2026-10-23T13:49:11.311Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-dod-2026-10-23-1
+commit: adfc24801a9eb7be9aa3ba4427417daa7ff264cd
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Executor | Result | Command and evidence |
+| --- | --- | --- | --- |
+| E418D-00 | local | PASS | [local macOS] clean detached HEAD, ancestry, committed brief, Node and 17 landing receipts; E418D-00.txt |
+| E418D-01 | local | PASS | [local macOS] task hold (taken 13:23:20Z), view, list --under E-418, plan show; E418D-01-epic.json, E418D-01-children.txt, E418D-01-plan.json |
+| E418D-02 | droplet | PASS | [droplet] demo start E-418 --commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd --json; E418D-02.json |
+| E418D-03 | droplet | PASS | [droplet] HEAD, clean tree, Node, uname, fresh scratch; install eight brief helpers; compare SHA-256; E418D-03.txt, E418D-03-local.sums, E418D-03-remote.sums |
+| E418D-04 | droplet | PASS | [droplet] s0.sh: seal fixture environment, build web, verify Headless Shell and clean tree; E418D-04.txt |
+| E418D-05 | droplet | PASS | [droplet, Chrome Headless Shell] wk.sh E418D-05 w1.test.mjs; all printed facts match; screenshots reviewed at capture collection; E418D-05.txt |
+| E418D-06 | droplet | PASS | [droplet, Chrome Headless Shell] wk.sh E418D-06 w2.test.mjs; registry, own sign-in, switches and second-context facts match; E418D-06.txt |
+| E418D-07 | droplet | PASS | [droplet, Chrome Headless Shell] wk.sh E418D-07 w3.test.mjs; tree, Markdown, sandbox SecurityErrors, files, keep/archive/attach match; E418D-07.txt |
+| E418D-08 | droplet | PASS | [droplet, Chrome Headless Shell] wk.sh E418D-08 w4.test.mjs; 600px rows, page tap/Escape, desktop restoration and all help labels/visibility match; E418D-08.txt |
+| E418D-09 | droplet | PASS | [droplet] nt.sh: sessions, area-slots, web-area-state, connection-snapshot; 31/31, required names present, 6 clean censuses; E418D-09.txt, test-name-scan.txt |
+| E418D-10 | droplet | PASS | [droplet] nt.sh: verification, accounts, web-verification-model, web-accounts; 15/15, required names present, 7 clean censuses; E418D-10.txt |
+| E418D-11 | droplet | PASS | [droplet] nt.sh: session-actions, session-launch, session-drawer, web-authority, web-authority-unit; 69/69, required names present, 25 clean censuses; E418D-11.txt |
+| E418D-12 | droplet | PASS | [droplet] nt.sh: artifacts, notifications, key-contexts, palette, web-keymap; 35/35, required names present, 24 clean censuses; E418D-12.txt |
+| E418D-13 | local | PASS | [local macOS] quiet; npm run typecheck; keyboard/storage/HTML/sandbox/colour/launch/profile source guards, clean tree; E418D-13.txt, E418D-13.log, E418D-13-queue.txt |
+| E418D-14 | local | PASS | [local macOS] 34 required README strings present, 5 obsolete absent; read area modules, Sessions/launch/strip/profile, verification and artifacts prose against walks; E418D-14.txt |
+| E418D-15 | local | PASS | [local macOS] cland qa lint qa/briefs/E-418.md; E418D-15.txt |
+| E418D-16 | droplet | PASS | [droplet] pull captures, 36 files/23 screenshots, zero unclean censuses, remove scratch and confirm absent; E418D-16.txt, ev.tgz |
+| E418D-17 | local | PASS | [droplet control from local macOS] demo stop/status; released and destroyed comment confirmed, 334982ms/$0.023262638888888888; E418D-17.json, E418D-17-after.json, E418D-17-comments.txt |
+| E418D-COVER | Linux droplet, two shards | PASS | f3e104e9-bc24-4c45-902f-175eb2c22cd7 at S, full epic occasion exit 0; A-10050 merged, A-10051/A-10052 shards; E418D-COVER.txt |
+| E418D-18 | local macOS | PASS | git fetch origin; no dev commits after S; demo status freshness.current true; E418D-18.json, E418D-18-dev.txt |
+
+E-418 Definition-of-done demo, run qa-dod-2026-10-23-1. Tested commit adfc24801a9eb7be9aa3ba4427417daa7ff264cd. All 20 scoped checks PASS, including the full epic cover and final freshness. QA result: clear. Findings: none (high, medium or low).
+
+Four independent walkthroughs ran on the demo droplet, Linux x86_64, Node v24.21.0, pinned Chrome Headless Shell. Every fact was compared against the committed brief, not inferred from TAP success. All four walks passed with zero step-error lines. All 150 supporting tests passed (31 + 15 + 69 + 35), zero failures, skips, cancellations or todos. All required named tests appeared on passing lines. The 66 Web fixture censuses end with after 0 and scratch hub stopped. No failed attempt or rerun.
+
+All 23 original screenshots were opened and inspected with view_image; inspection-notes.txt lists them. No contradiction with the scoped facts found. W4 confirms 52px two-line rows contained within the 600px viewport; the command is clipped with its full text retained, as README specifies. Broader phone layouts are out of scope. Help screenshots capture the final rows after scrolling; structured geometry confirms reachability.
+
+Isolation: fresh scratch projects and fake adapters/accounts only; the full fixtureEnvironment result is applied after overlays. E418D-04 reported 6 unset inherited keys, zero credential-prefix names, scratch HOME/XDG, and system TMPDIR unset on Linux. The eight helpers exactly matched SHA-256 sums. The served bundle was built from the tested tree with stamp version 1 and valid source hash; no real browser or live sign-in was used.
+
+Lease da9e8b4b-d1de-425c-b156-0b6a064676da, machine cland-v0-da9e8b4b, commit S, created 2026-10-23T13:27:47.141Z, deadline 2026-10-23T14:42:45.607Z. Captures pulled (36 files including 23 PNGs), scratch removed, lease released and destruction comment confirmed. Lifetime 334982 ms; cost $0.023262638888888888 (hub comment rounded $0.0233). Released before local checks and the epic-cover wait, per the brief.
+
+Local macOS arm64 checks ran after verify queue reported none, waiters 0: typecheck exit 0 with all four web guards, read-only source guards clean, brief lint exit 0. Documentation: all 34 required strings present, all five stale strings absent. Read full named sections and compared with the walkthroughs; no prose contradiction found. No performance claim is made from these checks.
+
+The waiting Claude Code command is a TUI-only fallback approval, visible in the selected row and drawer with Answer in Neovim and no web answer buttons. Separate fake Codex qa-approve demonstrates Approve once and the folded outcome; its busy transition is explicitly driven by the fixture. E-417/E-414 overlap is limited to E-418 placement/integration, fixed session composer, and profile switches. No claim about real harnesses, OS notifications or closed-page push.
+
+No product findings or brief corrections in this pass. Proposed rule in topic-867: distinguish TAP completion from independent probe facts and step errors. This verdict verifies C1,C2,C3,C4,C5,C6,C7,C8 with this run. Criterion map: C1 → 05,08,09; C2 → 05,10; C3 → 05,06,10; C4 → 05,08,11,13; C5 → 05,11; C6 → 06,10,12,13; C7 → 07,12,13; C8 → 08,12,14 (all check numbers prefixed E418D-). The committed brief supplies the detailed criterion mapping.
+
+Coordinator epic cover f3e104e9-bc24-4c45-902f-175eb2c22cd7 ran at the same full S: full mode, exit 0, 4024 tests / 4016 pass / 0 fail / 8 platform or prerequisite skips / 0 cancelled / 0 todo. Host check and T1, T2, T3, T4 and Web commands completed successfully. T4 ran ten files in the base phase; additional load repetitions were skipped. This is separate from the 154 demo walkthrough/supporting tests, which had no skips. QA submitted no suite.
+
+Executor: two Linux x64 droplets, kernel 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, two workers, c-8 lon1. Shard 1 cland-v0-92fb4392: admission-to-remote-finish 1280.90 s, lifetime 1263 s, cost $0.0877, collection 21.74 s. Shard 2 cland-v0-57f8e24b: admission-to-remote-finish 1001.90 s, lifetime 982 s, cost $0.0682, collection 19.92 s. Overall admission-through-collection wall 1302.89 s; total suite cost $0.1559. Including the separate demo lease, total remote cost $0.1791626388888889. No sum of overlapping shard durations is presented as wall time.
+
+Lint, timing budgets and T3 ratchet were report-only. The receipt reports 132 lint findings in 59 files and projected T3/Web wall overruns; those projections are not measured wall failures. Legacy allowances belong to E-880. Detailed receipts and timing evidence are in E418D-COVER.txt.
+
+Merged log [A-10050](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10050-suite-f3e104e9-bc24-4c45-902f-175eb2c22cd7-all-at-adfc248.log); shard logs [A-10051](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10051-suite-f3e104e9-bc24-4c45-902f-175eb2c22cd7-shard-1-at-adfc248.log), [A-10052](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10052-suite-f3e104e9-bc24-4c45-902f-175eb2c22cd7-shard-2-at-adfc248.log).
+
+Final freshness: fetched origin, dev has no commits after S, and demo status returned {"current":true} immediately before evidence publication and verdict. Earlier pending artifact A-10046 remains historical evidence.
+
+
+Durable evidence: A-10054, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10054-e-418-epic-dod-at-adfc2480-20-pass-c1-c8-clear/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-23T13:49:26.835Z
+
+Closed on QA's clear Definition-of-done demo qa-dod-2026-10-23-1 at adfc2480 (A-10054): C1–C8 verified, 20/20 checks PASS, no findings. Epic cover f3e104e9 green (A-10050), 4016 passed, 0 failed. All three stages closed; children landed.
