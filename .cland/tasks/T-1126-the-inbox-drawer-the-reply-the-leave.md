@@ -3,7 +3,7 @@ id: T-1126
 kind: task
 title: The inbox drawer, the reply, the leave rule and the archive
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-417
 blocked_by:
   - T-1123
   - T-1124
-topic: null
-branch: null
+topic: topic-894
+branch: t/T-1126-the-inbox-drawer-the-reply-the-leave
 created: 2026-10-22T15:16:14.159Z
-updated: 2026-10-23T03:28:05.902Z
+updated: 2026-10-23T05:56:12.727Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ With an inbox row selected the drawer shows the thread of its topic (the thread 
 - [ ] C1. Selecting a row shows its topic's thread in the drawer scrolled to the row's message, and `r` sends a one-line reply the fake sender receives (Web test).
 - [ ] C2. An ask answered from the inbox stays folded with its outcome while the Inbox is shown, and after leaving and returning it is gone from its section (Web test).
 - [ ] C3. `A` lists the answered ask in the archive with why it left, and the archive line stays when every section is empty (Web test).
+
+## Comments
+
+### impl-1126 · 2026-10-23T05:56:12.727Z
+
+Baseline build passed on local Darwin arm64 at initial branch. Read E-417 decisions/spec/boards and Neovim leave_visit: leaving for a non-Inbox surface clears both completed rows and selection; moving among Inbox rows or its panel/full views retains them. Test seams are specified by the brief: sealed Web browser + fake-sender public frames, with physical-code key routing. Waiting for T-1125 landing before edits.

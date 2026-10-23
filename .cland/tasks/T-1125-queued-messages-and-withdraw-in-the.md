@@ -2,8 +2,8 @@
 id: T-1125
 kind: task
 title: Queued messages and Withdraw in the thread
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-893
 branch: t/T-1125-queued-messages-and-withdraw-in-the
 created: 2026-10-22T15:16:14.021Z
-updated: 2026-10-23T05:43:27.419Z
+updated: 2026-10-23T05:58:46.054Z
+closed: 2026-10-23T05:58:46.054Z
 ---
 
 ## Summary
@@ -35,10 +36,13 @@ The thread shows the human's message with its delivery stage from the hub. While
 
 - [x] C1. A message to a busy fake session shows as queued with Withdraw, and Withdraw marks it withdrawn and puts its text back into the composer (Web test).
   - done: impl-1125 · 2026-10-23T05:20:06.392Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1125-final · 2026-10-23T05:54:09.574Z · commit 6f4e9a4717d3db0ed6bcd15e3db697541ca3a1ff
 - [x] C2. When the fake session's turn takes the message, its stage moves to injected and Withdraw disappears (Web test).
   - done: impl-1125 · 2026-10-23T05:42:52.488Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1125-final · 2026-10-23T05:54:09.575Z · commit 6f4e9a4717d3db0ed6bcd15e3db697541ca3a1ff
 - [x] C3. A withdraw the hub refuses leaves the message as it was with the refusal shown (Web test).
   - done: impl-1125 · 2026-10-23T05:09:23.818Z
+  - verified: rev-23 [reviewer] · run rev-20261023-1125-final · 2026-10-23T05:54:09.575Z · commit 6f4e9a4717d3db0ed6bcd15e3db697541ca3a1ff
 
 ## Comments
 
@@ -156,3 +160,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, no findings. A-9862: two-file test/docs-only correction arms exact aggregate-queued eligibility observer before send, retains full event equality, rejects every premature non-queued stage, preserves TTL delivered/dropped receipts and expired-input non-delivery. Direct-core fixture true eligibility matches source. Production/wire audit A-9854/A-9858 unchanged. New correction unexecuted during quiet; A-9859 remains failed, T3 migrations deferred. C1–C3 runtime pending exact-head mode-free droplet verification; all done marks restored. Preserve raw receipts and future Web timing attribution; after-stage QA separate.
+
+### rev-23 · 2026-10-23T05:54:09.575Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261023-1125-final
+commit: 6f4e9a4717d3db0ed6bcd15e3db697541ca3a1ff
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1–C3, no findings. A-9867: exact-head A-9866/a0826355 passes2673 ordinary tests/398 files,0 fail/skip/cancel; Linux T1 + all-T2 fallback both packages + Web. All five withdrawal top-level cases/three subcases pass, max parent3.078612050s below4s trigger; no allowance. Ordering/refusal/reload and partial-injection/visibility exclusions plus migrated T1/T2 observers pass. Host check reused, generic budgets/lint/ratchet report-only, no load repetitions or T3/T4. Changed native/stdio T3 expectations remain explicitly unexecuted/deferred, not inferred from this pass. Prior failed A-9855/A-9859 stay failed; source audits stand. After-stage QA/live adoption separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1125 · 2026-10-23T05:54:45.937Z
+
+Ready at 6f4e9a4717d3db0ed6bcd15e3db697541ca3a1ff after Reviewer final clear and C1–C3 verified. Same-head mode-free droplet a0826355 green: 2673/2673 across T1/all-T2/Web; host check reused, generic budgets/lint report-only. A-9866 raw log; A-9867 final review. New Web parent max3.079s, no >=4s allowance needed. Fetched origin/dev0667d56c; merge-tree conflict check exit0/tree459b34fc, branch unchanged and clean. Reported ready to Coordinator; retaining claim for merge queue. T3 native/stdio migrations deferred/unexecuted; after-stage QA separate.
+
+### coord · 2026-10-23T05:58:46.054Z
+
+Merged a1a62e03c6a038802f182b71240743d0081506bb onto dev.
