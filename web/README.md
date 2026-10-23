@@ -136,7 +136,7 @@ typing in an answer field keeps native text input.
 Answers use the human `topic.answer` frame, whose durable hub record supplies the
 chosen text/reason, answerer and time. Both views fold to that outcome, including
 answers from another client. An Inbox fold stays until its mounted Inbox is left.
-Other Inbox kinds retain their stand-in rows until the full Inbox slice. Sending
+Other Inbox kinds retain stand-in rows; full Inbox sections are pending in T-1123. Sending
 disables the card until receipt, a refusal preserves its draft, and disconnected
 cards disable writes without replaying them. A refused race or a fresh snapshot
 that omits a previously open ask uses bounded `topic.history` reads for its durable
@@ -151,8 +151,9 @@ same ask within that destination pane.
 `MarkdownBody.tsx` renders the parser tokens as React elements, with external
 links underlined and opened using `_blank` and `noopener noreferrer`. Whole item
 tokens use the shared item navigation and never wrap at the hyphen; code stays
-literal. Every attached or posted artifact is a chip with its id, kind and title,
-including folder and HTML artifacts until the inline-artifact slice.
+literal. Attached or posted artifacts show their id, kind and title. HTML pages
+render inline in the sandboxed preview described above; files, folders and
+unavailable pages remain chips.
 
 All 23 normal foreground tokens, including every role, reach 4.5:1 on ground and
 selection. The two dark ink tokens are inverse badge text checked on their bright
@@ -205,13 +206,27 @@ enters the thread or unfolds a group, and `h` folds a group. In a thread,
 topic list. `⌘Enter` opens the thread alone in the other pane. Help and palette
 derive these actions from the same physical-code key map.
 
+| Physical keys | Context | Action |
+| --- | --- | --- |
+| `j`, `k`, `↓`, `↑` | Topics list | Move across topics and group headers |
+| `Enter`, `l` | Topics list | Enter thread or unfold group |
+| `h` | Topics list | Fold topic group |
+| `j`, `k`, `↓`, `↑` | Thread, including ask rows | Move across run anchors and visible messages |
+| `Enter`, `za` | Thread, on a run anchor or message in that run | Toggle agent run in place; Enter on native controls keeps their activation |
+| `h`, `Esc` | Thread | Return to topic list |
+| `1`–`9` | Human-directed ask card or its thread row, outside fields | Answer with the corresponding option immediately |
+| `i`, `r` | Human-directed ask card or its thread row, outside fields | Focus the free-answer field when available |
+| `d` | Human-directed ask card or its thread row, outside fields | Switch to decline mode with a required reason; in decline mode, restore answer mode |
+| `Esc` | Ask card | Never answer or decline; in a thread, return to topic list |
+
 `topic-threads.ts` owns each topic's cached messages and hub-built run facts.
 Threads open at their end with the latest 100 messages and request exclusive
 numeric `before` pages on upward scrolling. Identity merges keep live messages
 and newer delivery/ask facts when a page reply races them. Prepending keeps the
 reader's top message in place, including when a live message arrives during the
 fetch or an earlier-page error is retried. New messages follow the end only while the reader is already there.
-Messages are plain sender/time/text blocks with item links in this slice.
+Messages use the role-coloured blocks and Markdown described above, with verdict
+and criterion marks, inline HTML artifacts, folded agent runs and shared ask cards.
 
 The connection applies topic, message, delivery and ask frames directly; none
 triggers a topic-list or history reread. Reconnect sends its last completed
@@ -245,7 +260,9 @@ limits and profile; `AccountsStrip` shows its account meters in Sessions.
 `VerifyLine` owns the [verification summary and queue view](#verification-in-sessions).
 [Artifacts](#artifacts) owns its grouped tree and sandboxed page/drawer viewer.
 [Topics](#topics-and-threads) owns its grouped list and thread module.
-Inbox and Events keep their existing stand-ins. Items retains its
+Inbox renders shared ask cards in **Asks and approvals**; approvals and other
+Inbox kinds retain stand-in rows, with full sections pending in T-1123. Events
+remains a stand-in list; its full area is pending in E-417 stage 4. Items retains its
 [tree and card](#items-tree) and [views](#items-views).
 
 `ConnectionState` includes the state types from each area's `state.ts`:
@@ -534,7 +551,7 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 
 | Key | Shell | Palette |
 | --- | --- | --- |
-| `1`–`7` | Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts in the active pane | Type in the input |
+| `1`–`7` | Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts in the active pane; focused ask cards use option keys instead | Type in the input |
 | `⌘K`, `Space p` | Open palette (`Space p` outside fields) | `⌘K` keeps palette open |
 | `?` | Show current area’s keys, outside fields | Type in the input |
 | `⌘\` | Toggle split | — |
@@ -545,7 +562,7 @@ mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
 | `Esc` | Close help or drawer | Close without acting |
 
 `src/keymap.ts` partitions the physical-code table into shell, Items (including
-Plan), Topics, thread, inbox, events, composer, Sessions, Artifacts, Accounts and
+Plan), Topics, thread, ask, inbox, events, composer, Sessions, Artifacts, Accounts and
 modal contexts. The focused context resolves first, then the shell. Modifiers
 must match exactly. The shell asks `focusedKeyContext` for a nested
 `data-key-context` declaration, falling back to the active pane's area. A field
