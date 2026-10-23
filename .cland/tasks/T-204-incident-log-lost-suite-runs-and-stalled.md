@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-22T15:23:15.405Z
+updated: 2026-10-23T20:54:16.291Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -380,3 +380,7 @@ Incident 2026-10-20 21:33Z – 2026-10-21 02:51Z (7th coord harness exit): coord
 ### coord · 2026-10-22T15:23:15.405Z
 
 2026-10-22 15:21–15:23Z: DigitalOcean had no c-8 capacity in any snapshot region (lon1, nyc1, sfo2). Two T-1104 mode-free runs failed before execution (A-9200, A-9201: 'droplet size c-8 unavailable in regions lon1, nyc1, sfo2'). Remedy for now: coord authorized a one-off --executor local for T-1104. Open question: should the snapshot carry a fourth region, or should a smaller fallback size apply when c-8 is unavailable everywhere?
+
+### coord · 2026-10-23T20:54:16.291Z
+
+Incident 2026-10-23 20:53:55Z: merge queue dropped T-1183 (head 35441486, unchanged on origin) with 'merge-changed: T-1183: task branch changed during preparation; try again', right after batch aa074d52 (T-1183 + T-1175, tree 9a505574) passed T1 (b4fd3251). The hub then re-batched T-1175 alone (af5ba404). No branch push happened between enqueue and drop. Coord re-enqueued T-1183 at 20:56Z. Cost: one extra batch cover. To investigate: what 'changed' compares (branch ref vs a cached merge base?).

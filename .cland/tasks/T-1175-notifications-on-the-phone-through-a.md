@@ -2,8 +2,8 @@
 id: T-1175
 kind: task
 title: Notifications on the phone through a service worker
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-917
 branch: t/T-1175-notifications-on-the-phone-through-a
 created: 2026-10-23T07:00:04.656Z
-updated: 2026-10-23T20:51:08.601Z
+updated: 2026-10-23T20:56:32.531Z
+closed: 2026-10-23T20:56:32.531Z
 ---
 
 ## Summary
@@ -166,3 +167,7 @@ T3/T4 were not run on this task occasion; configured T3 is deferred to periodic/
 Durable final review: A-10232.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-23T20:56:32.531Z
+
+Merged 267dfd13923978a835bc4675d08e02477e4dc3f9 onto dev.

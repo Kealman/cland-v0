@@ -3,8 +3,9 @@ id: T-1176
 kind: task
 title: The tunnel guide in web/README.md
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-919
 branch: t/T-1176-the-tunnel-guide-in-web-readme-md
 created: 2026-10-23T07:00:04.893Z
-updated: 2026-10-23T20:52:20.296Z
+updated: 2026-10-23T20:59:09.986Z
 ---
 
 ## Summary
@@ -36,9 +37,12 @@ E-419 (§3.6 and §3.7 HTTPS through the human's tunnel; choice "The guide"; the
 
 ## Acceptance criteria
 
-- [ ] C1. `web/README.md` walks from Tailscale Serve with the hub on loopback, through `[web] origin` and `cland web --qr`, to installing the app and turning notifications on in More (docs).
-- [ ] C2. The guide states that plain HTTP on the LAN gives no install or notification, that iOS keeps the installed app's cookies apart, and that any HTTPS reverse proxy of the human's own works but never a cloud service (docs).
-- [ ] C3. A hub started with the guide's `[web]` snippet accepts that origin on Host and Origin, and `cland web --qr` prints a link on it (test).
+- [x] C1. `web/README.md` walks from Tailscale Serve with the hub on loopback, through `[web] origin` and `cland web --qr`, to installing the app and turning notifications on in More (docs).
+  - done: impl-1176 · 2026-10-23T20:58:54.760Z
+- [x] C2. The guide states that plain HTTP on the LAN gives no install or notification, that iOS keeps the installed app's cookies apart, and that any HTTPS reverse proxy of the human's own works but never a cloud service (docs).
+  - done: impl-1176 · 2026-10-23T20:58:55.217Z
+- [x] C3. A hub started with the guide's `[web]` snippet accepts that origin on Host and Origin, and `cland web --qr` prints a link on it (test).
+  - done: impl-1176 · 2026-10-23T20:58:55.505Z
 
 ## Comments
 

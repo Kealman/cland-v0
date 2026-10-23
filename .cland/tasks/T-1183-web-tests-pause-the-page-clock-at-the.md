@@ -2,8 +2,8 @@
 id: T-1183
 kind: task
 title: Web tests pause the page clock at the time it was installed, which fails under load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: review
 topic: topic-918
 branch: t/T-1183-web-tests-pause-the-page-clock-at-the
 created: 2026-10-23T20:30:13.366Z
-updated: 2026-10-23T20:48:54.664Z
+updated: 2026-10-23T20:59:14.720Z
+closed: 2026-10-23T20:59:14.720Z
 ---
 
 ## Summary
@@ -69,3 +70,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged35441486/tree8c3a44c9; C1/C2 verified, no findings. Source A-10225 carries forward. Independently parsed A-10230/runbe51261e: exit0,2772 ordinary passes/413 file passes, no fail/cancel/skip; allT1/fallbackT2hub+Neovim/actualWeb completed on Linuxx64 c-8lon1 Node24.21/Nvim0.12.5, workers2/Web4. All8 touched Web files pass; phone3 pass2.560/1.682/1.415s. Host check executes new parsed guard/controls(line73), typecheck/build/staticguards,0lintrefusals; hostgate1f9b044c is tree object, not repeated remotely. C2 A-10227 original command/stdout confirms two concurrent macOS file workers,10/10 child exit0,parent0,30/30 assertions in A-10222, two yes loaders and literal PID cleanup. Source-equivalent precommit provenance retained, not relabelled exact-head macOS or Linux stress proof. Generic budgets/lint/ratchet report-only; measuredWeb141.26s/shard141.16s exceeds40s report target. NoT3/T4/load-repetition/enforcing phase-budget/after-stageQA claim. NoReviewer runtime. A-10231: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10231-t-1183-final-evidence-at-35441486.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-23T20:59:14.720Z
+
+Merged d63d7e990df6caec9f8de5651eb2f9b429ffb6c4 onto dev.
