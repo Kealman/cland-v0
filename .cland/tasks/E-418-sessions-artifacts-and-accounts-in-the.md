@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-867
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-23T02:19:50.641Z
+updated: 2026-10-23T13:05:37.768Z
 ---
 
 ## Summary
@@ -261,3 +261,51 @@ Stage covers at d32c6a8ff74d2052596f68c77d38dccaad879163, verification tree f3ac
 - Original failed Linux 10fcb1d8 retained as A-9739, shard logs A-9740/A-9741. Exact failure: `AssertionError [ERR_ASSERTION]: first hub.status took 10424.6 ms; T-1081 budget 10000 ms` (startup-replies-scale.test.ts:81). Coordinator classified known flake T-1094 and authorized same-head retry. Original incomplete run is not counted as passing coverage: overall wall 996.20 s, total $0.1273. Original and retry Linux billed total $0.2679; summed observed run walls 2117.40 s, not an end-to-end elapsed-time claim.
 
 Durable evidence A-9767: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9767-e-418-stage-acting-queue-accounts-and-artifacts-26-pass-at-d32c6a8f-both-covers-/report.md
+
+### qa-676 · 2026-10-23T13:05:37.768Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s3-2026-10-23-1
+commit: d64dad5ad82fedb6773499ba38673c98a09f4c92
+stage: on E-417's thread, composer and notifications
+stage_hash: 205475cf595e2da6b40d02fd77703f57aceb9015f6b7bf38da25ecd069f5bea8
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Command and observation |
+| --- | --- | --- | --- |
+| E418S3-00 | hub-api | PASS | [QA shell] clean S=dev; plan4/4 merged; landing paths correct; sealed counts37/0; probe parses; system TMPDIR |
+| E418S3-01 | hub-api | PASS | [macOS] brief row01 at S; observed exact stated counts and exit0 where applicable |
+| E418S3-02 | hub-api | PASS | [macOS] brief row02 at S; observed exact stated counts and exit0 where applicable |
+| E418S3-03 | hub-api | PASS | [macOS] brief row03 at S; observed exact stated counts and exit0 where applicable |
+| E418S3-04 | hub-api | PASS | [docs] required strings/headings present,6 stale absent; full named sections match static/tests/probe; old h/Esc candidate fixed Return to list; no low contradictions |
+| E418S3-05 | hub-api | PASS | [macOS] brief row05 at S; observed exact stated counts and exit0 where applicable |
+| E418S3-06 | hub-api | PASS | [test macOS] session-drawer.test.ts 7/7 all required names, no skips/failures; 7 clean censuses |
+| E418S3-07 | hub-api | PASS | [test macOS] named file 23/23 pass, no failure/skip; required names and 23 clean censuses |
+| E418S3-08 | hub-api | PASS | [test macOS] named file 8/8 pass, no failure/skip; required names and 8 clean censuses |
+| E418S3-09 | hub-api | PASS | [test macOS] artifacts11/11 and thread-artifacts5/5, required names all pass;16 clean censuses |
+| E418S3-10 | hub-api | PASS | [test macOS] topics9/9 and five prescribed deterministic Retry repetitions each1/1, all first-attempt no skip/fail and14 clean censuses |
+| E418S3-11 | hub-api | PASS | [test macOS] 11 serial regression files71/71 pass no skips/failures; names match S,49 clean Web censuses,T1 no browser |
+| E418S3-12 | hub-api | PASS | [sealed macOS HeadlessShell] independent probe1/1; all10 fact groups exactly match including history32, fake approval/injections, isolation, attachment;0 step errors and1 clean census |
+| E418S3-13 | hub-api | PASS | [sealed macOS] full typecheck0 and4guards; tiers lint0 and four Web classifications |
+| E418S3-14 | hub-api | PASS | [cited Coordinator stage covers] S Linux400490b3 A10031/shardsA10032,A10033 and macOSffdf195d A10035 green T1-T4+Web; plan complete |
+| E418S3-15 | hub-api | PASS | [QA shell] 118 fixture censuses all after0; T1 no browser; scratch removed; detached HEAD and dev remain S and clean |
+
+No findings. All 16 scoped checks PASS at d64dad5ad82fedb6773499ba38673c98a09f4c92. Run qa-s3-2026-10-23-1; stage **on E-417's thread, composer and notifications**. Stage verdict carries no criterion marks.
+
+Four printed plan members T-1141, T-1142, T-1143, T-1160 all landed. The tested tree is clean and dev stayed at S. Node v24.21.0, macOS arm64; isolated Chrome Headless Shell, sealed HOME/XDG/Git and credential filter after overlays (37 inherited keys removed; credential-prefix count 0). System TMPDIR retained. No real browser, live sign-in, real harness, provider call, or OS-notification claim.
+
+139 named tests/repetitions plus the independent probe passed (140 total), zero failures/skips/cancellations. All 118 Web fixture censuses end after 0 with scratch hub stopped; T1 keymap has no browser. The five standalone Retry runs are prescribed deterministic checks, not retries of failures. The independent probe retained all ten fact groups: 32 ordered cross-topic messages, exact fake approval and injection receipts, focus, per-browser switches, Markdown source/rendering and attachment receipt. Scratch root removed. Setup/probe sources, full TAP logs, docs, case records and command outputs are retained.
+
+Docs: required strings/headings pass; six stale strings absent. Read full required sections and compared them with static and behavioral observations. The brief's old h/Esc candidate is dismissed: web/README.md:215 says Return to list at S. No contradictory prose found.
+
+Cited stage covers at the same full SHA (not rerun by QA):
+- Linux droplet 400490b3-bfbb-499e-b05a-20dac173d88a, merged A-10031, shard logs A-10032/A-10033; 4016 passed, 8 platform skips, 0 failed. Linux x64 6.8.0-142-generic; Node24.21.0/Neovim0.12.5. Host check plus T1,T2,T3,T4 and Web completed; every shard exit0. T4 base phase only; extra load repetitions skipped. Overall admission-through-collection wall1238.85s, cost$0.1494. Shard1 cland-v0-37dcbd14 duration1218.47s, lifetime1198s,$0.0832; collection19.52s. Shard2 cland-v0-829b3f9c duration970.47s,lifetime954s,$0.0663;collection67.11s. Rounded shard costs do not sum exactly to rounded group cost.
+- macOS local ffdf195d-cfab-4e48-ac6f-4a95e0c15972, A-10035; 4024/4024 passed, no skips/failures; darwin arm64 27.0.0 Node24.21.0/Neovim0.12.5. Host check plus T1,T2,T3,T4 and Web exit0, base-phase T4 only. Reported phase wall: T1 31.46s,T2 183.10s,T3 940.79s,T4 46.84s,Web89.50s. Overall execution wall is not separately reported; queued12:38:01.484Z to result13:00:06.478Z is1324.994s queue-to-report elapsed, not isolated execution wall. Droplet cost not applicable.
+- Budget, test-lint and ratchet observations are report-only, including132 lint findings/59files and projected T3/Web overages. Projections are not measured wall times. Plan explicitly reads stage cover complete (Linux droplet, macOS), tree bcde3ae36d1cd4aa057139fc73f5883e79fbd05e.
+
+Coordinator decision61439049 authorized running this stage during E-417's epic-cover wait, with E-417 local13 first after the Mac freed. Holds and evidence stayed separate. No source/brief correction or test rerun was needed. Rule proposal sent in topic-867: distinguish parameterized passing names and fixture census expectations from drafting-time TAP counts.
+
+Durable evidence: A-10037 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10037-e-418-stage-3-at-d64dad5a-16-pass-140-tests-and-probes-both-covers-green/report.md

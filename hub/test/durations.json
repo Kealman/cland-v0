@@ -38,9 +38,11 @@
       "A-9893",
       "A-9897",
       "A-10019",
-      "A-10017"
+      "A-10017",
+      "A-10031",
+      "A-10035"
     ],
-    "commit": "46d15efdb94b80e53281dda37bb0e6a76d25c7e3"
+    "commit": "d64dad5ad82fedb6773499ba38673c98a09f4c92"
   },
   "budget": {
     "testSeconds": 5,
@@ -2449,6 +2451,10 @@
     "web/test/notifications.test.ts": {
       "seconds": 9.848316,
       "tests": 8
+    },
+    "web/test/session-drawer.test.ts": {
+      "seconds": 8.532341,
+      "tests": 7
     }
   },
   "tests": {
@@ -6339,7 +6345,15 @@
     "web/test/notifications.test.ts::looking, disabled and watch-layer asks stay silent without later replay": 1.241416,
     "web/test/notifications.test.ts::one browser shares switch changes between its open tabs": 1.221303,
     "web/test/notifications.test.ts::profile switches persist Finished off across reload and request permission only on first enable": 1.339216,
-    "web/test/notifications.test.ts::revoked browser permission disables saved switches on reload and explains why": 0.898541
+    "web/test/notifications.test.ts::revoked browser permission disables saved switches on reload and explains why": 0.898541,
+    "web/test/inbox.test.ts::an Inbox approval recent thread routes physical message navigation and returns to its selected row": 0.892196,
+    "web/test/session-drawer.test.ts::a held older session page preserves live traffic, numeric boundaries and the reading anchor": 1.316568,
+    "web/test/session-drawer.test.ts::a session drawer keeps TUI-only approvals read-only and prefers a new pending card over a closed one": 0.886083,
+    "web/test/session-drawer.test.ts::desktop Enter and Open thread focus the selected session log with shared physical thread keys": 1.047846,
+    "web/test/session-drawer.test.ts::Retry after a failed session selection refresh reads recent traffic even when older history is complete": 1.010094,
+    "web/test/session-drawer.test.ts::the drawer composer delivers to the selected fake Codex session in its item topic or General": 1.382782,
+    "web/test/session-drawer.test.ts::the session drawer approves a fake Codex command and retains its folded outcome after Waiting": 1.51729,
+    "web/test/session-drawer.test.ts::the session drawer pages both directions of cross-topic traffic by number and follows live messages": 1.371678
   },
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
@@ -6351,7 +6365,7 @@
     },
     "web/test/accounts.test.ts::Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry": {
       "seconds": 6.8,
-      "owner": "E-418",
+      "owner": "E-880",
       "added": "2026-10-23",
       "expires": "2026-10-30",
       "reason": "T-1135: the sealed hub/Headless Shell profile case with public cookie-record readback, reload last-use and fixed expiry assertions measured 4.512101 s on local macOS arm64 at ff04573a in the targeted four-file run recorded by A-9650. The 6.8 s cap rounds up about 1.5x this worst observed sample, as the E-418 launch brief requires for any new Web identity reaching 4 s. Reconnect advances only 30 virtual seconds to stay below socket silence; all assertions and observed browser/hub teardown remain. Revisit after E-418 stage QA."
@@ -8710,14 +8724,14 @@
     },
     "web/test/verification.test.ts::Sessions verification queue shows hand runs, ages receipts and remembers its fold": {
       "seconds": 7,
-      "owner": "E-418",
+      "owner": "E-880",
       "added": "2026-10-22",
       "expires": "2026-10-29",
       "reason": "T-1133 queue view Web case covers hand holder/waiter rendering, native and queue Enter, receipt ageing, frame replacement, spend reads, fold reload persistence and observed fixture teardown. Linux c-8 lon1 A-9574 at ee0dce9b measured the assertion-green parent at 4.446933277 s; earlier A-9540 at 35a35f72 measured 3.986645884 s. Coordinator directed 7 s (about 1.5 times the worst original sample) for Linux Web timing variance; assertions and their bounds are unchanged."
     },
     "web/test/artifacts.test.ts::Artifacts groups human, Aide and crew records with remembered section folds": {
       "seconds": 6,
-      "owner": "E-418",
+      "owner": "E-880",
       "added": "2026-10-23",
       "expires": "2026-10-30",
       "reason": "T-1139 Artifacts sections Web case measured 4.02 s on Linux c-8 lon1 in A-9692 (T-1133 verify at 0a8ed77a, reported by impl-1133) against the 4 s Web gate; 2.09 s baseline elsewhere. Coordinator directed 6 s (about 1.5 times the worst sample) for Linux Web timing variance; assertions unchanged."

@@ -2,7 +2,8 @@
 id: E-417
 kind: epic
 title: Topics, threads and the inbox
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.2
@@ -15,7 +16,8 @@ blocked_by:
 topic: topic-866
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-23T12:24:01.509Z
+updated: 2026-10-23T13:22:34.703Z
+closed: 2026-10-23T13:22:34.703Z
 ---
 
 ## Summary
@@ -69,13 +71,21 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project with the fake harnesses, QA opens the web at 1440x900 in two browser contexts. The Topics area lists the waiting topics first, General and Agents apart, then the item topics and the closed ones folded. A thread shows Markdown, role colours, the human's band, a verdict with its criteria marks, and a folded run that opens in place with its anchor kept; scrolling to the end marks the topic read, and Neovim shows it read. A fake Implementer's ask appears as a card in the thread and as a row in the inbox; QA answers it with `2` in the first context, and the second context's card and row fold to the outcome. QA presses Escape on a second ask and reads it still open, then declines it with a reason on `d`; the fake receives `declined` with the reason, and the topic stays open. The inbox shows a plan approval, a request and a message in their sections with their ages; the answered ask stays folded until QA leaves the inbox, then shows in the archive. QA writes with each kind, sends with Enter and with ⌘Enter, breaks a line with Shift+Enter, queues a message to a busy fake session and withdraws it, and reloads with a draft that survives. A fake Codex approval is approved once from the inbox card, and a fake Claude Code approval shows marked "answer in Neovim" with no buttons. An HTML artifact renders inline at 240 px in an iframe whose `sandbox` is `allow-scripts` alone. The events view filters to warnings, groups by day, stops at 200 rows and sets the last look, which the headless Neovim workbench then reads. With the page hidden and `Notification` stubbed, a new ask raises one notification naming the session, the item and the question; with the page visible, none is raised.
 
 - [ ] C1. The Topics area lists the topics in their four groups with the standing ones apart, and a thread shows the message block of P12 with Markdown, role colours, the human's band, verdicts, artifact chips and history in pages.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 - [ ] C2. Folded runs show the hub's fold line and open in place with their anchor kept, never in the drawer; asks, verdicts, answers and messages to or from the human never fold.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 - [ ] C3. An ask is one record shown as an inbox row and a thread card with the same keys (1 to 9, a free answer, decline with a reason on its own key, never on Escape); an answered ask folds to one line with its outcome in both places, in the inbox until the human leaves it, and the first answer from any client wins.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 - [ ] C4. Approval cards answer relayed approvals with Approve once, Always for this command and Deny with a note, and approvals that stay in a harness's TUI are marked "answer in Neovim".
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 - [ ] C5. The composer offers Message, Decision and Question with the addressee chip; Enter, Shift+Enter and ⌘Enter behave as §3.4 says; queued messages show Withdraw; drafts survive a disconnection and a reload, and Send is disabled while disconnected.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 - [ ] C6. The inbox shows the four sections of v0.1.2 §3.7 with ages, the selected row unfolded, `r`, `d`, the archive and the drawer with the row's thread; the events view filters, groups by day, caps at 200 rows and sets the human's last look in the hub.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 - [ ] C7. HTML artifacts show inline at 240 px in a sandboxed iframe never given `allow-same-origin`, and files and folders are chips.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 - [ ] C8. Notifications fire with the page open only for now-layer items and never while the human looks at the page, with separate "needs you" and "finished" switches, naming the session, the item and what it waits on, and a click opens the inbox row.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-23-1 · 2026-10-23T13:22:13.796Z · commit d64dad5ad82fedb6773499ba38673c98a09f4c92
 
 ## Dogfooding
 
@@ -369,3 +379,74 @@ Historical evidence remains separate: A-9983/A-9987 cover the abandoned e2721ab5
 
 
 Durable evidence A-10025: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10025-e-417-events-notifications-and-approvals-15-pass-at-46d15efd/report.md
+
+### hub · 2026-10-23T12:41:00.341Z
+
+demo bbb52a1f-07f7-4c1c-8526-6172954c01c2 created: droplet cland-v0-bbb52a1f, commit d64dad5ad82fedb6773499ba38673c98a09f4c92, deadline 2026-10-23T13:54:39.871Z.
+
+### hub · 2026-10-23T12:47:18.965Z
+
+demo bbb52a1f-07f7-4c1c-8526-6172954c01c2 destroyed: lifetime 444108 ms; cost $0.0308.
+
+### qa-676 · 2026-10-23T13:22:13.796Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-dod-2026-10-23-1
+commit: d64dad5ad82fedb6773499ba38673c98a09f4c92
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Executor | Result | Evidence / observation |
+| --- | --- | --- | --- |
+| E417D-00 | local | PASS | [local macOS] gate00: clean HEAD S, committed brief, Node24.21, all18 landing trailers |
+| E417D-01 | local | PASS | [local macOS] task hold/view/list/plan: C1-C8,18 closed children,4 closed stages |
+| E417D-02 | droplet | PASS | [droplet] demo start completed exit0; active lease bbb52a1f at S deadline13:54:39Z |
+| E417D-03 | droplet | PASS | [droplet] HEAD=S, clean Linuxx64 Node24.21 fresh scratch;8 helper SHA256 sums identical and syntax checks clean |
+| E417D-04 | droplet | PASS | [droplet] s0 sealed environment prefixes0; pinned NVIM0.12.5, build0, HeadlessShell available, clean tree |
+| E417D-05 | droplet | PASS | [droplet] walk1 HeadlessShell/Neovim: all facts match, unread7 to0 in both,300 unique ordered messages,run anchor0px,1pass0steps clean census |
+| E417D-06 | droplet | PASS | [droplet] walk2 two isolated contexts: physical2 winner and bothfolds,Escape noanswer,decline reason relayed,4sections ages5/2/1m,drawer and archive/leave allmatch;1pass0steps clean |
+| E417D-07 | droplet | PASS | [droplet] walk3 kinds/physical keys,withdraw,draft offline/reload,once/always/deny and TUI0buttons,iframe240px allow-scripts SecurityErrors allmatch;1pass0steps clean |
+| E417D-08 | droplet | PASS | [droplet] walk4 Events200/warnings68 exacthub,sharedlastlookNeovimequal,marks1,2switches permission1,askoncefocused lookingquiet finishednamed;1pass0steps clean |
+| E417D-09 | droplet | PASS | [droplet] supporting Topics/messages/runs/Markdown26/26pass firstattempt0skip; allrequirednames,19clean censuses;Retrycase passed |
+| E417D-10 | droplet | PASS | [droplet] asks/Inbox/Events43/43 firstattempt nofail/noskip,43clean censuses; requirednames including crosscontext1s,approvalchoices and raceguard allpass;Inbox23 at S |
+| E417D-11 | droplet | PASS | [droplet] composer/withdraw/artifacts/topics/authority72/72 including3nestedsubtests,0fail/skip firstattempt;allrequirednames and18cleanWebcensuses |
+| E417D-12 | droplet | PASS | [droplet] notifications/purepolicy/keymap14/14 firstattempt0fail/skip,8clean censuses;allrequirednames present |
+| E417D-14 | local | PASS | [local macOS] 27required docs strings present,6obsolete absent; fullrequired paragraphs read and match all4walks at S; no contradictory prose found |
+| E417D-15 | local | PASS | [local macOS] qa lint E-417.md at S: passes exit0 |
+| E417D-16 | droplet | PASS | [droplet] pull31captures including15screenshots,allwalkfacts/logs andNeovimscreens;92censuses allclean;scratchremoved |
+| E417D-18 | local | PASS | [droplet] stop confirmed released and destroyed comment;leasebbb52a1f lifetime444108ms cost0.030840833USD;order change authorizede1c8de40 |
+| E417D-13 | local macOS | PASS | Full typecheck and all four guards passed; exact key/storage/sandbox/notification source boundaries; clean tree |
+| E417D-COVER | Linux droplet, cited epic suite | PASS | a8a0b2c9 at S; merged A-10039, shards A-10040/A-10041 all exit0; 4016 pass,8 platform skips,0 fail |
+| E417D-17 | local macOS | PASS | Fetched origin; demo status at S reports freshness.current true |
+
+E-417 DoD run qa-dod-2026-10-23-1 at d64dad5ad82fedb6773499ba38673c98a09f4c92. All 20 scoped checks PASS. QA clear; verified C1,C2,C3,C4,C5,C6,C7,C8.
+
+Linux x86_64 demo machine cland-v0-bbb52a1f, lease bbb52a1f-07f7-4c1c-8526-6172954c01c2, Node v24.21.0, Neovim v0.12.5, isolated Chrome Headless Shell. Four independent walks and 155 supporting tests pass at S with zero failures, skips or retries. All 92 fixture censuses clean. 31 captures retained, including all 15 screenshots (visually inspected), walkthrough facts and raw TAP logs, and Neovim before/after screens. Scratch removed and lease destruction confirmed: lifetime 444108 ms, cost $0.030840833333333335; deadline was 2026-10-23T13:54:39.871Z.
+
+No findings. All 27 required documentation markers present, six obsolete statements absent; full relevant paragraphs match observed behavior. Inbox test count is 23 at S, so row10 has43 tests, as expected after T-1141. Test names and counts were read at S.
+
+Scope limitations: fake in-process harnesses and spokes, stubbed Notification/visibility/focus, Headless Shell only; no real Chrome or OS-notification claim. Fake Implementer questions use both authorized real crew routes: Coordinator raises an options ask and relays the answer, or forwards unchanged and relays the decline.
+
+Order deviation authorized by Coordinator e1c8de40: remote cleanup16 and stop18 immediately after09–12, before local13 and epic cover; final17 remains immediately before verdict. Decision57d15a45 forbids QA submitting an epic cover to route around the Coordinator one-suite limit; Coordinator submitted a8a0b2c9 at S. Hold created only an uncommitted tracker edit; source S unchanged.
+
+Evidence contains commands, helpers, SHA256 comparison, named-test inventory, outputs and final cleanup/destruction records. No source or brief edits.
+
+Criterion mapping: C1:05/07/09; C2:05/09; C3:06/10; C4:07/11; C5:07/11; C6:06/08/10; C7:07/13/11; C8:08/12. All also require the common gates, including COVER and17, both now PASS.
+
+Final epic suite receipt: a8a0b2c9-bf46-4f7e-aa68-79c421cec6d5 at d64dad5ad82fedb6773499ba38673c98a09f4c92, full integrated dev, occasion epic, Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5. Merged A-10039 and shards A-10040/A-10041 exit0: 4024 total,4016 passed,8 platform skips,0 failures/cancellations/todo. Host gate and T1,T2,T3,T4,Web ran; Web32files/169top-level tests. T4 base phase only; repetitions explicitly skipped. Lint132findings/59files, budgets and ratchet are report-only; projected T3/Web overages are not measured wall times or enforced passes.
+
+- Shard1 cland-v0-506a8dc6, c-8 lon1: admission-to-remote-finish1290.58s,collection19.67s,lifetime1255s,cost$0.0871.
+- Shard2 cland-v0-19680cdc, c-8 lon1: admission-to-remote-finish1017.58s,collection24.80s,lifetime986s,cost$0.0685.
+- Overall suite wall1310.51s from admission through collection; total suite cost$0.1556. Together with the separate demo lease's $0.0308408333, accounted remote cost$0.1864408333. These were separate runs with different time intervals; lifetime and suite wall are not added into an end-to-end elapsed claim.
+
+Freshness.current=true immediately before verdict. The only deciding path in the epic cover was E-417's tracker hold; integrated dev still ran full at committed S under Coordinator's ruling. All local work completed at that same S. The suite-excerpt helper initially included the coverage-map JSON; its unfiltered output is retained compressed, then restricted to the three suite logs. This was evidence formatting only and repeated no product command.
+
+Durable evidence: A-10043, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10043-e-417-epic-dod-at-d64dad5a-20-pass-c1-c8-clear-epic-suite-green/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-23T13:22:34.703Z
+
+Closed on QA's clear Definition-of-done demo qa-dod-2026-10-23-1 at d64dad5a (A-10043): C1–C8 verified, 20/20 checks PASS. Epic cover a8a0b2c9 green (A-10039), 4016 passed, 0 failed. All four stages closed; 18 children landed.
