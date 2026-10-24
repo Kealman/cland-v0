@@ -121,9 +121,9 @@ test('soak deadline reports zero failures before its short in-flight test', asyn
     + row('start', 'in-flight', 'still running', { at: at + 299000 });
   f.clock.block(300000);
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Message[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: Message[] }).messages;
   const result = history.find(message => message.id === `suite:${job.id}`);
-  assert.ok(result, 'observe the completed soak report in General');
+  assert.ok(result, 'observe the completed soak report in its explicit topic');
   assert.match(result.text, /^suite result [^\n]+\nall exit 124[^\n]*\ntimeout: 1 tests completed, 0 failed\nin flight:.*still running/);
   assert.doesNotMatch(result.text, /hung:/);
 });

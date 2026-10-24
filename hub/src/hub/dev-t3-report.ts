@@ -1,5 +1,5 @@
 import type { HubCore } from './core.ts';
-import { GENERAL } from './core.ts';
+import { AGENTS } from './core.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import type { ProbeReceipt, SearchReport } from './dev-t3-search.ts';
 
@@ -49,6 +49,6 @@ export async function reportDevT3Search(core: HubCore, tracker: Tracker, report:
   }
   const diagnosis = input.budgetIdentities?.length ? `: budget only: ${input.budgetIdentities.join(', ')}` : files.length ? '' : ': inconclusive; no failing files identified';
   const text = `Periodic dev T3 search ${input.run}${diagnosis}\n${bugs.map(bug => `Bug ${bug.item}: merge ${bug.merge}`).join('\n')}\n${evidence}`;
-  core.noticeTo(GENERAL.id, { id: `dev-t3-search:${input.run}`, kind: 'report', to: ['coordinator', ...claimants], text: core.boundedText(text),
+  core.noticeTo(AGENTS.id, { id: `dev-t3-search:${input.run}`, kind: 'report', to: ['coordinator', ...claimants], text: core.boundedText(text),
     detail: { event: 'verification-dev-t3-search', ...report, bugs } });
 }

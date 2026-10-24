@@ -235,7 +235,7 @@ export class Dispatcher {
     options.tracker?.useMergeQueue(id => this.#mergeQueue?.position(id));
     this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env, options.territoryLock, this.#mergeQueue ?? undefined, undefined, undefined, options.git) : null;
     this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.env, (head, tree) => {
-      if (!releaseT3Cover(options.core.store, tree)) throw new ReleaseError('release-t3', `no green T3 covers release head ${head} (tree ${tree}); needs cland verify all --occasion release --report general on this dev tree (or a green dev-t3, soak or stage run)`);
+      if (!releaseT3Cover(options.core.store, tree)) throw new ReleaseError('release-t3', `no green T3 covers release head ${head} (tree ${tree}); needs cland verify all --occasion release --report agents on this dev tree (or a green dev-t3, soak or stage run)`);
     }, { ...(options.publishRelease ? { publish: options.publishRelease } : {}), ...(options.territoryLock ? { lock: options.territoryLock } : {}) }) : null;
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles, options.core.clock);
     this.#rolesSnapshot = options.core.roles?.get();
@@ -272,13 +272,13 @@ export class Dispatcher {
       }).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, Math.min(sweepMs, 60000)) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, taskLanding: item => options.tracker?.summary(item)?.state === 'closed' ? options.tracker.mergeReceipt(item) : null, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(GENERAL.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onRemoteReclaimed: job => options.core.noticeTo(job.topic, { id: `executor-reclaimed:${job.id}`, kind: 'report', to: job.to, text: `verify ${job.id}: remote capacity available; moving queued local fallback to droplet`, detail: { event: 'verification-executor-reclaimed', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, taskLanding: item => options.tracker?.summary(item)?.state === 'closed' ? options.tracker.mergeReceipt(item) : null, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(AGENTS.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onRemoteReclaimed: job => options.core.noticeTo(job.topic, { id: `executor-reclaimed:${job.id}`, kind: 'report', to: job.to, text: `verify ${job.id}: remote capacity available; moving queued local fallback to droplet`, detail: { event: 'verification-executor-reclaimed', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     const devT3Probes = root && this.#suites ? new DevT3Probes(options.core.store, this.#suites, root, options.env ?? process.env, options.devT3Repository) : null;
     this.#devT3Search = devT3Probes && options.tracker ? new DevT3Search(options.core.store, {
       log: this.#log,
       probe: (input, head, file, repetition) => devT3Probes.probe(input, head, file, repetition),
       report: report => reportDevT3Search(options.core, options.tracker!, report),
-      blocked: (input, reason) => { options.core.noticeTo(GENERAL.id, { id: `dev-t3-search-blocked:${input.run}`, kind: 'report', to: ['coordinator'], text: options.core.boundedText(`Periodic dev T3 search ${input.run} blocked: ${reason}`), detail: { event: 'verification-dev-t3-search-blocked', run: input.run, reason } }); },
+      blocked: (input, reason) => { options.core.noticeTo(AGENTS.id, { id: `dev-t3-search-blocked:${input.run}`, kind: 'report', to: ['coordinator'], text: options.core.boundedText(`Periodic dev T3 search ${input.run} blocked: ${reason}`), detail: { event: 'verification-dev-t3-search-blocked', run: input.run, reason } }); },
     }) : null;
     this.#devT3Search?.start(options.core.clock);
     this.#batches = root && this.#suites && this.#merges && this.#mergeQueue ? new MergeBatches(options.core.store, this.#suites, options.core.clock, {
@@ -312,7 +312,7 @@ export class Dispatcher {
         }
       },
       drop: (entry, reason) => this.#mergeQueue!.drop(entry, reason),
-      notice: notice => { if (!options.core.noticeTo(GENERAL.id, notice)) throw new Error('batch notice topic unavailable'); },
+      notice: notice => { if (!options.core.noticeTo(AGENTS.id, notice)) throw new Error('batch notice topic unavailable'); },
       report: (batch, text, reportPhase) => {
         const phase = reportPhase ?? (batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite');
         const selected = batch.diagnosis?.selected === undefined ? batch.candidate : batch.diagnosis.jobs[batch.diagnosis.selected]?.candidate;
@@ -848,7 +848,7 @@ export class Dispatcher {
     let artifactId = job.artifact ?? prior?.id ?? null;
     if (!job.artifact && prior) checkpointArtifact(prior.id);
     if (!artifactId) {
-      const create = () => job.batch || job.devT3Probe ? this.#batchArtifact(job, title) : this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work());
+      const create = () => job.batch || job.devT3Probe ? this.#batchArtifact(job, title) : this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work(), job.actor === null);
       const operation = this.#artifactQueue.then(create);
       this.#artifactQueue = operation.catch(() => {});
       const result = await operation as { id: string };
@@ -858,14 +858,14 @@ export class Dispatcher {
     for (const shard of job.shards ?? []) {
       const title = `Suite ${job.id} · ${shard.shardName} at ${job.head.slice(0, 7)}`;
       if (!core.store.artifacts(job.topic).some(a => a.title === title)) {
-        await this.#artifact({ type: 'artifact.create', id: shard.id, kind: 'file', title, topic: job.topic, path: shard.log }, callerNow, work => work());
+        await this.#artifact({ type: 'artifact.create', id: shard.id, kind: 'file', title, topic: job.topic, path: shard.log }, callerNow, work => work(), job.actor === null);
       }
     }
     if (job.integrated && job.selection?.recordCoverage && job.outcome?.code === 0 && !job.cached) {
       const title = `Coverage map ${job.id} at ${job.head}`;
       let coverage = core.store.artifacts(job.topic).find(a => a.title === title);
       if (!coverage) {
-        const create = () => this.#artifact({ type: 'artifact.create', id: `coverage:${job.id}`, kind: 'file', title, topic: job.topic, path: join(this.#options.control!.status().root!, '.cland/run/suites', job.id, 'coverage-map.json') }, callerNow, work => work());
+        const create = () => this.#artifact({ type: 'artifact.create', id: `coverage:${job.id}`, kind: 'file', title, topic: job.topic, path: join(this.#options.control!.status().root!, '.cland/run/suites', job.id, 'coverage-map.json') }, callerNow, work => work(), job.actor === null);
         const operation = this.#artifactQueue.then(create);
         this.#artifactQueue = operation.catch(() => {});
         const result = await operation as { id: string };
@@ -953,9 +953,15 @@ export class Dispatcher {
         return null;
       }
       if (job.occasion === 'soak' || periodic || job.devT3Probe) {
-        if (!core.noticeTo(GENERAL.id, { id: messageId, kind: 'report', to: ['coordinator'], text,
+        if (!core.noticeTo(job.topic, { id: messageId, kind: 'report', to: ['coordinator'], text,
           detail: periodic ?? { event: job.devT3Probe ? 'verification-dev-t3-probe-result' : 'verification-soak-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('nightly result topic unavailable');
         if (periodic) this.#devT3Search?.accept(periodic);
+        core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
+        return { message: core.store.message(messageId)! };
+      }
+      if (!caller && job.topic === AGENTS.id) {
+        if (!core.noticeTo(job.topic, { id: messageId, kind: 'report', to: job.to, text,
+          detail: { event: 'verification-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('suite result topic unavailable');
         core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
         return { message: core.store.message(messageId)! };
       }
@@ -980,7 +986,7 @@ export class Dispatcher {
     return { id: artifact.id, path: artifact.path };
   }
 
-  async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {
+  async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T, hubNotice = false): Promise<unknown> {
     const caller = callerNow();
     const core = this.#options.core;
     if (frame.type === 'artifact.list') {
@@ -1008,6 +1014,7 @@ export class Dispatcher {
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
       const current = callerNow();
       if (current) core.sendFromSession(current.name, [], text, undefined, topic.id, a, current);
+      else if (hubNotice && topic.id === AGENTS.id) core.noticeTo(topic.id, { kind: 'report', to: ['coordinator'], text, detail: { artifact: a.id } });
       else core.sendFromHuman(topic.id, text, undefined, undefined, undefined, a);
     }, resumed, authorize, this.#options.readArtifact ?? readFile, core.clock);
     return resumed(() => {
@@ -1896,9 +1903,10 @@ export class Dispatcher {
       if (!isClientRequest(input) || input.type !== 'suite.start') return peer.send(Dispatcher.#failure(String(frame.id), new Error(`invalid verify request: ${suiteStartIssues(input).join('; ')}`)));
       const request = input;
       if (!isAbsolute(request.cwd)) return peer.send(Dispatcher.#failure(request.id, new Error('suite cwd must be absolute')));
-      const topic = core.store.topic(request.report ?? '')?.id ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic ?? (request.dryRun ? GENERAL.id : undefined) : GENERAL.id);
+      const topic = request.report === undefined ? AGENTS.id : core.store.topic(request.report)?.id
+        ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic ?? (request.dryRun ? AGENTS.id : undefined) : AGENTS.id);
       if (!topic) return peer.send(Dispatcher.#failure(request.id, new Error('a session report needs your claimed item topic; use --report <topic>')));
-      const to = core.store.topic(request.report ?? '') ? request.to ?? [] : request.to ?? (request.report ? [request.report] : []);
+      const to = core.store.topic(request.report ?? '') ? request.to ?? [] : request.to ?? (request.report ? [request.report] : ['coordinator']);
       const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
       let reportAuthorized = false;
       const authorize = () => {
@@ -2074,10 +2082,10 @@ export class Dispatcher {
             }).then(value => ({ type: 'result' as const, id: frame.id, ok: true as const, value }), error => Dispatcher.#failure(frame.id, error)));
           }
           if (frame.type === 'executor.prepare') {
-            const topic = frame.report === undefined ? core.store.topic('general') : core.topics().find(topic => topic.id === frame.report || topic.title === frame.report);
+            const topic = frame.report === undefined ? core.store.topic(AGENTS.id) : core.topics().find(topic => topic.id === frame.report || topic.title === frame.report);
             if (!topic) return peer.send(Dispatcher.#failure(frame.id, new Error('unknown prepare report topic')));
             return later(frame.type, this.#dropletReady.then(() => {
-              const value = this.#droplets!.submitPrepare(text => core.noticeInTopic(topic.id, { kind: 'report', text }), authorize);
+              const value = this.#droplets!.submitPrepare(text => core.noticeTo(topic.id, { kind: 'report', to: ['coordinator'], text }), authorize);
               return { type: 'result' as const, id: frame.id, ok: true as const, value };
             }).catch(error => Dispatcher.#failure(frame.id, error)));
           }

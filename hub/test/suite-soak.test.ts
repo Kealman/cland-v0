@@ -41,7 +41,7 @@ test('nightly submits once after UTC time and skips an unchanged candidate acros
   assert.equal(job.occasion, 'soak');
   assert.equal(job.executor, 'droplet');
   assert.equal(job.integrated, true);
-  assert.equal(job.topic, 'general');
+  assert.equal(job.topic, 'agents');
   assert.deepEqual(job.to, ['coordinator']);
   assert.equal(job.selection?.soak, true);
   assert.equal(job.selection?.loadGate, true);
@@ -268,7 +268,9 @@ test('periodic T2/T3 failures reach Bug filing through the culprit search', asyn
   assert.equal(tracker.list().find(item => item.id === bugs[0]!.parent)!.title, 'Bugs');
   const bug = tracker.view(bugs[0]!.id);
   for (const value of [...files, first.head, second.head, first.id, second.id, '/durable/log', '/durable/probe']) assert.ok(bug.body.includes(value), value);
-  const report = core.topicHistory('general').messages.find(message => message.detail?.event === 'verification-dev-t3-search');
+  assert.deepEqual(core.topicHistory('general').messages, []);
+  assert.deepEqual(core.store.artifacts('general'), []);
+  const report = core.topicHistory('agents').messages.find(message => message.detail?.event === 'verification-dev-t3-search');
   assert.ok(report, 'same durable result interface reaches the existing search report');
   search.accept(result); await search.tick();
   assert.equal(tracker.list().filter(item => item.labels.includes(`dev-t3-${second.head}`)).length, 1);

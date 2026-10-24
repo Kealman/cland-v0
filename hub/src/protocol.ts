@@ -606,7 +606,7 @@ export function suiteStartIssues(f: Record<string, unknown>): string[] {
   if (typeof f.cwd !== 'string') issues.push('cwd must be an absolute directory; supply cwd when no item is claimed');
   if (!['auto', 'all', 'hub', 'nvim'].some(mode => mode === f.mode)) issues.push('mode must be auto, all, hub or nvim');
   if (f.executor !== undefined && !['local', 'droplet'].some(executor => executor === f.executor)) issues.push('executor must be local or droplet');
-  if (typeof f.report !== 'string' && !(f.report === undefined && f.dryRun === true)) issues.push('report must be a string (required unless dryRun is true)');
+  if (f.report !== undefined && typeof f.report !== 'string') issues.push('report must be a string');
   if (f.to !== undefined && !(Array.isArray(f.to) && f.to.every(value => typeof value === 'string'))) issues.push('to must be an array of strings');
   if (f.occasion !== undefined && !isVerifyOccasion(f.occasion)) issues.push(`occasion must be ${Object.values(VERIFY_OCCASIONS).join(', ')}`);
   for (const field of ['dryRun', 'fresh', 'diagnostics']) {

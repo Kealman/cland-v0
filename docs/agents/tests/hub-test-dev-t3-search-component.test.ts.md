@@ -5,7 +5,9 @@ The Web case supplies a runner capability, Web manifest and tier commands in eac
 detached candidate; observe the delivered `check`/`Web` command plan and the
 requested file's completion/failure receipt. A three-merge range proves that the
 search identifies the first red merge rather than the latest red head, files one
-Bug and reports to the Coordinator and live last claimant. Bound fixture setup
+Bug and reports in Agents to the Coordinator and live last claimant. Periodic
+results, probe results and every log chip are checked in Agents; General history
+and its artifact list stay empty after the completed search receipt. Bound fixture setup
 and executor/report I/O separately with `caseDeadlines`.
 
 The negative admission case uses `suiteUnit` and asserts the existing

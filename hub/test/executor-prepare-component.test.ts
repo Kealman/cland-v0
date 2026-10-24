@@ -59,6 +59,27 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
     reopen: async () => { const served = await projectHub(t, root, env, options); hubs.push(served); return served; },
   };
 }
+
+test('executor prepare defaults to Agents and honors an explicit report topic', async t => {
+  const f = await fixture(t);
+  for (const topic of ['agents', 'general']) {
+    f.moveBase();
+    const submitted = await f.ui.request({ type: 'executor.prepare', ...(topic === 'general' ? { report: topic } : {}) });
+    assert.equal(submitted.ok, true, submitted.error);
+    const messages = await sweep(f, 'prepare report published', async () => {
+      const history = await f.ui.request({ type: 'topic.history', topic });
+      const messages = (history.value as { messages: { text: string }[] }).messages;
+      return messages.some(message => message.text.includes('snapshot')) ? messages : undefined;
+    });
+    assert.ok(messages.length);
+    if (topic === 'agents') {
+      const general = await f.ui.request({ type: 'topic.history', topic: 'general' });
+      assert.deepEqual((general.value as { messages: unknown[] }).messages, []);
+      const artifacts = await f.ui.request({ type: 'artifact.list', topic: 'general' });
+      assert.deepEqual((artifacts.value as { artifacts: unknown[] }).artifacts, []);
+    }
+  }
+});
 async function sweep<T>(f: Awaited<ReturnType<typeof fixture>>, what: string, check: () => Promise<T | undefined> | T | undefined): Promise<T> {
   return eventually(what, async () => { await f.clock.advance(200); return drive(f, Promise.resolve().then(check)); });
 }
@@ -100,7 +121,7 @@ test('prepare keeps its snapshot when builder deletion is unconfirmed, then the 
   assert.equal(result.prepare!.result!.lifetimeMs, null);
   assert.equal(result.prepare!.result!.costUsd, null);
   assert.equal(result.leases[0]!.state, 'releasing');
-  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
+  const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string }[] };
   assert.match(history.messages.find(message => message.text.startsWith('snapshot prepared:'))!.text, /builder lifetime unconfirmedms; cost \$unconfirmed/);
   // The final bounded attempt can hit its deadline (status 0) after a 422.
   // Wait for this builder's provider rejection and unconfirmed release separately.

@@ -272,7 +272,7 @@ An explicit `--size` slug absent from the provider catalog instead refuses
 submission (exit 1, "unavailable", no job or droplet). Listed unavailable sizes
 and sizes not offered in configured regions retain the capacity outcome.
 
-Each periodic result goes to the Coordinator in General with head, previous green
+Each periodic result goes to the Coordinator in Agents with head, previous green
 periodic head, first-parent commits since that green, outcome and failing files.
 The `verification-dev-t3-result` message detail exposes `run`, `head`, `tree`,
 `previousGreenHead`, `previousGreenRun`, `merges: [{head, subject}]`, `result`,
@@ -313,7 +313,7 @@ including its own check and runner rules, still execute. Ordinary verification
 and batch diagnostics retain hosting admission lint. Search state and probe
 receipts survive restart, including the two boundary confirmation phases. The
 hub files one Bugs item per culprit merge, retaining both heads, files, run ids
-and artifact paths, and reports in General to the Coordinator and the merge's
+and artifact paths, and reports in Agents to the Coordinator and the merge's
 last claimant if live. Merges continue while the search runs. Filing errors
 report a blocked search to the Coordinator and retry without holding batches.
 
@@ -324,7 +324,7 @@ pinned release head's verification tree (excluding `.cland/tasks` and
 with the same build tree qualifies;
 T1-only batches, partial selections, cancelled or incomplete runs do not. The
 refusal names the head/tree and the needed `cland verify all --occasion release
---report general` run. Evidence has no age limit. Recovery of an already published
+--report agents` run. Evidence has no age limit. Recovery of an already published
 release finishes its original receipt even after dev moves.
 
 ### Nightly soak
@@ -346,10 +346,10 @@ a missing duration manifest or a base projection beyond that budget refuses admi
 with a reason before any machine is created. The plan and omitted counts stay in
 the selection/log. The executor reserves shared daily spend before creating the machine;
 a cap refusal skips the night with one notice naming `daily_spend_usd`'s cap.
-Results go to the Coordinator in General. Green coverage maps feed task selection.
+Results go to the Coordinator in Agents. Green coverage maps feed task selection.
 A red soak leaves queued merges intact and does not prevent another batch.
 
-Soak quarantine proposals are General reports, one per failing identity with an
+Soak quarantine proposals are Agents reports, one per failing identity with an
 observed last green and no executable-code change since it (unknown Git facts
 produce no proposal). A last green requires explicit completed-pass progress;
 timing-only, skipped, TODO, cancelled, unfinished, quarantined non-pass and mixed
@@ -1220,7 +1220,7 @@ belongs to the human and Coordinator.
 
 The worker survives the caller's shell exiting. The hub keeps its run record across restart; a killed worker produces a result naming the signal while the hub is live, or a missing-exit-receipt crash report after restart. A permission change can hold reporting: `cland hub status --history --json` exposes pending runs and their reporting error; restoring permission lets the hub retry without duplicating a committed result. A recipient hygiene refusal holds the whole result until every intended recipient is admissible, so a partially muted recipient cannot lose its report.
 
-Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. Linked worktrees share one in-flight dev fetch per canonical Git common directory, bounded to five seconds; each admission diffs against its captured commit. A failed fetch may use the last known `origin/dev` only if it has a merge base with the candidate, with an explicit warning. That ref does not count as fresh-fetch proof for an integrated occasion. Without a usable base, selection falls back to full. Fallback warnings retain sanitized Git stderr and appear in the first result lines, including capped and cached reports. `all` or `--all` forces full only for the Coordinator, the human shell or an authorized `--occasion` request. Other sessions receive `verify-all-reserved` with the automatic diff selection and no queue entry. A flaky-gate second receipt is another ordinary diff-selected verify, with no mode. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures without a usable base run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../../hub/README.md#tests). Each run first executes `npm run check` (typecheck and test lint) when the candidate declares it and `test:lint`, otherwise `npm run typecheck`, then the package test script from the calling worktree. For queue-enabled tiered task branches the task tier cap applies after package selection: all T1 and selected T2, plus changed T3/T4 files and mapped T4 guards once; remaining process smoke is deferred. `--report` names the result topic; repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
+Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. Linked worktrees share one in-flight dev fetch per canonical Git common directory, bounded to five seconds; each admission diffs against its captured commit. A failed fetch may use the last known `origin/dev` only if it has a merge base with the candidate, with an explicit warning. That ref does not count as fresh-fetch proof for an integrated occasion. Without a usable base, selection falls back to full. Fallback warnings retain sanitized Git stderr and appear in the first result lines, including capped and cached reports. `all` or `--all` forces full only for the Coordinator, the human shell or an authorized `--occasion` request. Other sessions receive `verify-all-reserved` with the automatic diff selection and no queue entry. A flaky-gate second receipt is another ordinary diff-selected verify, with no mode. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures without a usable base run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../../hub/README.md#tests). Each run first executes `npm run check` (typecheck and test lint) when the candidate declares it and `test:lint`, otherwise `npm run typecheck`, then the package test script from the calling worktree. For queue-enabled tiered task branches the task tier cap applies after package selection: all T1 and selected T2, plus changed T3/T4 files and mapped T4 guards once; remaining process smoke is deferred. `--report` names the result topic (default Agents, addressed to the Coordinator); repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Log and coverage artifact chips follow that topic. Automatic run reports, search/blocked/skip notices, merge-batch notices and quarantine proposals use Agents. General retains the Coordinator harness-exit and ten-minute vacancy/recovery notices because they need the human's action. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
 
 The hub persists the request, exact head, item, diff selection, enqueue time and priority in its database before acknowledging it. Admission gives the Coordinator's integrated dev requests first priority, then human `npm test` waiters in enqueue order, then the item rank captured at submission, then other requests in enqueue order. The local slot admits one run; `[verification].remote_budget` admits parallel
 droplet runs beside it (a positive integer, 4 by default; this project's D27 build value is 2). The scheduler walks the

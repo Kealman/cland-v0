@@ -7,6 +7,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-runner-contract.test.ts`](../../../hub/test/suite-runner-contract.test.ts) | [Notes](hub-test-suite-runner-contract.test.ts.md) |
 | [`hub/test/request-guard.test.ts`](../../../hub/test/request-guard.test.ts) | [Notes](hub-test-request-guard.test.ts.md) |
 | [`hub/test/adapter-native-boundary.test.ts`](../../../hub/test/adapter-native-boundary.test.ts) | [Notes](hub-test-adapter-native-boundary.test.ts.md) |
+| [`hub/test/suite-admission.test.ts`](../../../hub/test/suite-admission.test.ts) | [Notes](hub-test-suite-admission.test.ts.md) |
+| [`hub/test/executor-prepare-component.test.ts`](../../../hub/test/executor-prepare-component.test.ts) | [Notes](hub-test-executor-prepare-component.test.ts.md) |
 | [`hub/test/rule-sessions.test.ts`](../../../hub/test/rule-sessions.test.ts) | [Notes](hub-test-rule-sessions.test.ts.md) |
 | [`hub/test/session-native-lifecycle.test.ts`](../../../hub/test/session-native-lifecycle.test.ts) | [Notes](hub-test-session-native-lifecycle.test.ts.md) |
 | [`hub/test/codex-fake-envelope.test.ts`](../../../hub/test/codex-fake-envelope.test.ts) | [Notes](hub-test-codex-fake-envelope.test.ts.md) |

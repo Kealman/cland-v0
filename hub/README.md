@@ -773,6 +773,7 @@ A delivery row is `queued` until the spoke accepts it, then `delivered`, then `i
 A topic is a thread in the human's chat with agents (spec 4.5, decision #7): an id, a title, a status, a `standing` flag, at most one bound item, creation and activity times. Every message belongs to one, and the `deliver` frame carries it as `"topic":{"id":…,"title":…,"item":…}` (`item` only when bound; the spoke shows them as `topic`, `topic_title` and `topic_item` on the channel event).
 
 - **General** (`general`) and **Agents** (`agents`) are created at the project's first hub start and are standing: renaming, deleting or closing them is refused. The system creates no other topic.
+- **Automatic run reports.** Periodic dev T3, nightly soak, culprit probes/search summaries, skip/blocked notices, merge-batch notices and quarantine proposals go to Agents. Suite log and coverage chips follow the report topic. Verify and executor prepare default to Agents, addressed to the Coordinator; explicit `--report` chooses another topic. General retains human/Coordinator dialogue and the automatic Coordinator harness-exit and ten-minute vacancy/recovery notices: those rare notices require the human to restore a Coordinator.
 - **Creation.** The human creates a topic from the UI (`topic.create`) or shell (`cland topic create <title> [--item T-n]`), an agent with that CLI command or the `topic.create` tool (the Coordinator any topic, an Implementer only one bound to its own item: the permission table below); a title is required (at most 200 characters). The id is `topic-<n>`. `item` binds the topic to a unit of work: the item must exist and be open, and has one topic at most, so a second `topic.create` for it is refused with the topic it has (`T-1 already has a topic: "…" (topic-1); one topic per unit of work: write there`). The binding is written into the item's file (`topic: topic-1`) through the tracker. A hub with no project has no tracker and refuses a binding; a blank `item` is refused, not taken as none. `task.link --topic` (the CLI's `cland task link`, the `task.link` tool) and `task.create` with a `topic` bind through the same rule: the topic must exist and not be standing, an item already bound elsewhere is refused (`T-1 already has a topic: …`), and so is a topic bound to another item (`topic-2 is already bound to T-1; one item per topic`); the item's file and the topic's `item` change together, and `--topic ""` (null) unbinds both. At start the hub reconciles the bindings with the tracker: a bound item closed while no hub ran (a hand edit, a pull) closes its topic and cancels its asks. A topic with no message yet is listed last (a task's topic appears with its first message).
 - **Status** follows the direction of the messages (`src/hub/topics.ts`): a human Question makes the topic `waiting for agent`; Message and Decision start no wait; an agent's message to the human makes it `open` (a topic `waiting for human` stays so: an ask is answered by the human); a message from an agent the human's latest Question addressed, to other sessions in the topic, answers that wait too (`open`); any message reopens a `closed` topic to the status its direction implies. `resolve` clears a wait back to `open` and withdraws the topic's open asks: the `resolve` tool (the Coordinator's, by the permission table) and the UI's `topic.resolve`; a closed topic has nothing to clear and is refused. The human closes a topic (`topic.close`), and closing its bound item (`task.close`, `task.edit --state closed`, a hand edit to `state: closed`) closes it; a message reopens the topic, never the item. An `ask` (#33) makes it `waiting for human`, and while any ask in it is open it stays so whatever else is written (below); closing cancels its open asks. Agents keeps `open`.
 - **The warning.** While a message in a topic waits for a role nobody holds (a delivery queued under `@coordinator`), the topic carries `"warning":"no coordinator"` (`no reviewer`, … for another role). It clears when a session takes the role (its hello, or the human's `role.set`) and the queued delivery moves to it.
@@ -3238,8 +3239,8 @@ and account SSH keys. See the [DigitalOcean API reference](https://docs.digitalo
 
 `cland executor prepare [--report <topic>] [--json]` submits a hub-owned snapshot
 job and exits. Status shows its step and elapsed time; one hub notice in the
-chosen topic (General by default) reports the key, image, regions, duration,
-builder lifetime and cost. A second prepare while one runs is refused.
+chosen topic (Agents by default), addressed to the Coordinator, reports the key,
+image, regions, duration, builder lifetime and cost. A second prepare while one runs is refused.
 Preparation and the other executor controls belong to the human and Coordinator.
 
 The snapshot contains the base packages, the host's exact Node version, the
@@ -3639,8 +3640,15 @@ Implementers use `cland verify` for full runs and wait for its artifact-backed r
 see [the agent test workflow](../docs/agents/tests.md). The package commands below
 are also available for humans and isolated CI.
 
-`cland verify [all|hub|nvim] [--fresh] --report <topic|session> [--to <session>]…`
+`cland verify [all|hub|nvim] [--fresh] [--report <topic|session>] [--to <session>]…`
 runs the project's check and test detached and posts one artifact-backed result.
+Without `--report`, it uses Agents and addresses the Coordinator; explicit topics
+and recipient shorthand remain available. Item workers keep their permitted item
+topic and Reviewer/claimant recipients. CLI and new spokes materialize the default
+report/recipients for prior validators; report-free previews remain unchanged.
+The hosting hub must load this change to publish hub-owned reports in Agents.
+Already-admitted jobs retain their pinned topic on restart and reporting retries;
+completed messages and artifacts are not relocated.
 It persists requests in the hub database before admission. Waiting requests have no
 worker PID. The Coordinator's integrated dev runs go first, then human `npm test`
 waiters in enqueue order, then item rank at submission, then other runs in enqueue
@@ -4123,14 +4131,14 @@ dev-t3, soak, stage or release occasion covers the pinned release head's
 verification tree (excluding `.cland/tasks` and `.cland/RULES.md`). A different
 commit with the same build tree qualifies; T1-only batches, partial selections,
 cancelled or incomplete runs do not. The refusal names the needed
-`cland verify all --occasion release --report general` run.
+`cland verify all --occasion release --report agents` run.
 
 `[verification] soak = "03:00"` schedules this repository's nightly UTC T1–T4
 run on one droplet; the new-project default `""` disables it. The hub attempts
 once per day, including late startup, on clean dev at fetched origin/dev and
 skips an unchanged tree. It repeats identities absent from the last green soak,
 reserves daily spend before creation and reports a cap skip. Results and
-quarantine proposals go to the Coordinator in General; a red soak leaves the
+quarantine proposals go to the Coordinator in Agents; a red soak leaves the
 merge queue running. Proposals require the normal evidence before the
 Coordinator edits quarantine. See [Tiers and the merge queue](../docs/agents/tests.md#tiers-and-the-merge-queue)
 for isolation, budgets, run plans and bisection evidence.

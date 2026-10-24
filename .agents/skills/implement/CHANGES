@@ -92,3 +92,5 @@ T-1211: Point sharded not-run outcome changes to the sealed scheduler/public-not
 
 T-1204: Point copied-tracker work to the T0 literal-id guard, explicit seeded owners and measured byte-budget headroom.
 T-976 M1: document partial known-platform exclusions, retained reasons/platform and exact comparison controls.
+
+T-1257: Document Agents report defaults, explicit item-worker routing and General recovery notices.

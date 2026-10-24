@@ -52,7 +52,7 @@ export class DevT3Probes {
       }
       await this.repository.checkout(candidate);
       try {
-        const run = await this.suites.start({ mode: 'all', cwd: candidate.cwd, topic: 'general', to: ['coordinator'], actor: null,
+        const run = await this.suites.start({ mode: 'all', cwd: candidate.cwd, topic: 'agents', to: ['coordinator'], actor: null,
           devT3Probe: { key, files: [file] }, executor: 'droplet', priority: 10, fresh: true }, () => {});
         if (!('id' in run)) throw new Error('probe needs an admitted suite');
         job = this.suites.status().find(job => job.id === run.id)!;

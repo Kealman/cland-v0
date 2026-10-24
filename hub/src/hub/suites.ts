@@ -1013,7 +1013,7 @@ export class Suites {
       if (lastStarted?.tree === candidate.tree) return;
       // Persist before async admission, including spend refusal, to avoid retry storms.
       this.#store.setMeta('dev-t3-attempt', String(now));
-      await this.start({ mode: 'all', cwd: this.#root, topic: 'general', to: ['coordinator'], actor: null,
+      await this.start({ mode: 'all', cwd: this.#root, topic: 'agents', to: ['coordinator'], actor: null,
         occasion: 'dev-t3', integrated: true, executor: 'droplet', fresh: true, priority: Number.MAX_SAFE_INTEGER }, () => {});
     })().catch(error => {
       const text = `periodic dev T3 skipped: ${error instanceof Error ? error.message : String(error)}`;
@@ -1041,7 +1041,7 @@ export class Suites {
         && (!job.outcome || (job.lease as DropletLease | undefined)?.execution?.started));
       if (last?.tree === candidate.tree) return;
       // No session identity is borrowed; this job and its reports belong to the hub.
-      await this.start({ mode: 'all', cwd: this.#root, topic: 'general', to: ['coordinator'], actor: null,
+      await this.start({ mode: 'all', cwd: this.#root, topic: 'agents', to: ['coordinator'], actor: null,
         occasion: 'soak', integrated: true, executor: 'droplet', fresh: true, priority: Number.MAX_SAFE_INTEGER }, () => {});
     })().catch(error => {
       const text = `nightly soak ${day} skipped: ${error instanceof Error ? error.message : String(error)}`;

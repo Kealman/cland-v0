@@ -3,7 +3,7 @@ import type { Git } from '../tracker/verdict-git.ts';
 import { suiteProgress, type TestProgress } from '../suite-progress.ts';
 import { quarantineResults } from '../suite-quarantine.ts';
 import { failingTests } from './shared-defects.ts';
-import { GENERAL, type HubCore, type TopicNotice } from './core.ts';
+import { AGENTS, type HubCore, type TopicNotice } from './core.ts';
 import type { SuiteJob } from './suites.ts';
 
 type Green = { run: string; head: string; tree: string; log: { artifact: string; path: string } };
@@ -83,6 +83,6 @@ export async function reportSoakQuarantine(core: HubCore, job: Readonly<SuiteJob
     }
     if (!unchanged.get(lastGreen.head)) continue;
     const proposal = quarantineProposal({ identity, run: job.id, tree: job.tree, lastGreen, log: { artifact: artifact.id, path: artifact.path } });
-    if (!core.noticeTo(GENERAL.id, { ...proposal, text: core.boundedText(proposal.text) })) throw new Error('quarantine proposal topic unavailable');
+    if (!core.noticeTo(AGENTS.id, { ...proposal, text: core.boundedText(proposal.text) })) throw new Error('quarantine proposal topic unavailable');
   }
 }

@@ -63,11 +63,13 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
     return 0;
   }
   const requested = positionals[0] ?? 'auto';
-  if (positionals.length > 1 || !['auto', 'all', 'hub', 'nvim'].includes(requested) || (!values['dry-run'] && !values.report?.trim())) throw new Error(SUITE_USAGE.trim());
+  if (positionals.length > 1 || !['auto', 'all', 'hub', 'nvim'].includes(requested) || (values.report !== undefined && !values.report.trim())) throw new Error(SUITE_USAGE.trim());
   const mode = values.all ? 'all' : requested;
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-  const result = await ask(d, { type: 'suite.start', mode, cwd, dryRun: values['dry-run'] ?? false, ...(values.diagnostics ? { diagnostics: true } : {}), ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: values.report, ...(values.to ? { to: values.to } : {}) }, values.diagnostics ? 120_000 : 15_000).catch(error => {
+  // Materialize the default for running hubs whose prior validator requires report.
+  const defaultReport = values.report === undefined && !values['dry-run'];
+  const result = await ask(d, { type: 'suite.start', mode, cwd, dryRun: values['dry-run'] ?? false, ...(values.diagnostics ? { diagnostics: true } : {}), ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: defaultReport ? 'agents' : values.report, ...(values.to ? { to: values.to } : defaultReport ? { to: ['coordinator'] } : {}) }, values.diagnostics ? 120_000 : 15_000).catch(error => {
     if (!(error instanceof HubTimeout) || !error.requestSent || values['dry-run']) throw error;
     const err = options.err ?? ((text: string) => { process.stderr.write(text); });
     err(`cland: submission sent; no reply within ${error.timeoutMs / 1000} s; check \`cland verify queue\` before resubmitting\n`);

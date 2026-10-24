@@ -1,4 +1,4 @@
-// T2: automatic periodic reporting -> detached file probes -> Bug and General/claimant delivery.
+// T2: automatic periodic reporting -> detached file probes -> Bug and Agents/claimant delivery.
 // projectHub uses scripted executor/repository facts; no native Git or child processes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,7 +33,7 @@ test('budget-only periodic red names over-budget identities without starting cul
   assert.deepEqual((await jobs()).find(job => job.id === run.id)!.cover, { status: 'red', cause: 'budget',
     tests: ['hub/test/slow.test.ts::slow', 'hub/test/other.test.ts::other'] });
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string; detail?: { event?: string } }[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string; detail?: { event?: string } }[] }).messages;
   const report = history.find(message => message.detail?.event === 'verification-dev-t3-search');
   assert.ok(report, 'periodic culprit search publishes a diagnosis');
   assert.match(report.text, /budget only: hub\/test\/slow.test.ts::slow, hub\/test\/other.test.ts::other/);
@@ -155,10 +155,22 @@ for (const [scenario, description] of [
       const green = flips ? !initialGreen : initialGreen;
       await finish(probe, green ? 0 : 1, green ? passed : failed);
     } else { await f.clock.advance(1000); await drive(f, f.verificationSettled()); }
-    const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: SearchMessage[] }).messages;
+    const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: SearchMessage[] }).messages;
     search = history.find(message => (message.detail as unknown as { event?: string })?.event === 'verification-dev-t3-search');
   }
-  assert.ok(search, 'search completes with a General report');
+  assert.ok(search, 'search completes with an Agents report');
+  const general = await f.ui.request({ type: 'topic.history', topic: 'general' });
+  assert.deepEqual((general.value as { messages: unknown[] }).messages, [], 'periodic runs, probes and search summaries leave General empty, including chips');
+  const artifacts = await f.ui.request({ type: 'artifact.list', topic: 'general' });
+  assert.deepEqual((artifacts.value as { artifacts: unknown[] }).artifacts, []);
+  const agents = ((await f.ui.request({ type: 'topic.history', topic: 'agents', limit: 200 })).value as { messages: { id: string; text: string }[] }).messages;
+  const logs = ((await f.ui.request({ type: 'artifact.list', topic: 'agents' })).value as { artifacts: { id: string; title: string }[] }).artifacts;
+  for (const job of (await jobs()).filter(job => job.reported)) {
+    assert.ok(agents.some(message => message.id === `suite:${job.id}`), `Agents receives ${job.id}`);
+    const log = logs.find(artifact => artifact.title.startsWith(`Suite ${job.id} `));
+    assert.ok(log, `Agents retains the log for ${job.id}`);
+    assert.ok(agents.some(message => message.text.startsWith(`▣ ${log.id} `)), `Agents receives the log chip for ${job.id}`);
+  }
   assert.equal(search.detail.input.run, red.id); assert.equal(search.detail.input.head, redHead); assert.equal(search.detail.input.previousGreenHead, baseline);
   assert.deepEqual(search.detail.input.failingFiles, [file]); assert.equal(search.detail.input.budgetIdentities, undefined);
   assert.doesNotMatch(search.text, /budget only:/);

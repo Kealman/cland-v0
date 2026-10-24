@@ -145,7 +145,7 @@ test('red soak proposes each unchanged failing identity while a batch can still 
   await drive(f, f.machine.started(red.id));
   f.machine.finish(red.id, 1, '# tests 2\n# fail 2\nsuite test failures ' + JSON.stringify(names.map(name => ({ file: name === 'legacy parent' ? legacyFile : file, name }))) + '\n');
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { kind: string; text: string; detail?: { event: string; identity: string; tree: string; lastGreen: { run: string }; log: { artifact: string } } }[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { kind: string; text: string; detail?: { event: string; identity: string; tree: string; lastGreen: { run: string }; log: { artifact: string } } }[] }).messages;
   const proposals = history.filter(m => m.detail?.event === 'quarantine-proposal');
   assert.equal(proposals.length, 2);
   assert.deepEqual(proposals.map(m => m.detail!.identity).sort(), [`${file}::first`, `${file}::second`]);
@@ -184,10 +184,18 @@ test('green nightly publishes a coverage map that selects task tests', async t =
   await drive(f, f.machine.started(job.id));
   f.machine.finish(job.id);
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { id: string; fromKind: string; to: string[] }[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { id: string; fromKind: string; to: string[]; text: string }[] }).messages;
   const result = history.find(message => message.id === `suite:${job.id}`); assert.ok(result);
   assert.equal(result.fromKind, 'hub');
   assert.deepEqual(result.to, ['impl']);
+  const general = await f.ui.request({ type: 'topic.history', topic: 'general' });
+  assert.deepEqual((general.value as { messages: unknown[] }).messages, [], 'nightly result and chips leave General empty');
+  const generalArtifacts = await f.ui.request({ type: 'artifact.list', topic: 'general' });
+  assert.deepEqual((generalArtifacts.value as { artifacts: unknown[] }).artifacts, []);
+  const artifacts = ((await f.ui.request({ type: 'artifact.list', topic: 'agents' })).value as { artifacts: { id: string; title: string }[] }).artifacts;
+  const log = artifacts.find(artifact => artifact.title.startsWith(`Suite ${job.id} `));
+  assert.ok(log);
+  assert.ok(history.some(message => message.id !== result.id && message.text.startsWith(`▣ ${log.id} `)), 'nightly log chip follows its report');
   const maps = await coverageMaps(f.root);
   assert.equal(maps.length, 1);
   assert.equal(maps[0]!.pointer.head, f.candidate.head);
@@ -314,7 +322,7 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
     } }));
   f.machine.finish(job.id, 1, log);
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { fromKind: string; to: string[]; text: string; detail?: { event: string; head: string; previousGreenHead: string | null; result: string; failingFiles: string[] } }[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { fromKind: string; to: string[]; text: string; detail?: { event: string; head: string; previousGreenHead: string | null; result: string; failingFiles: string[] } }[] }).messages;
   const result = history.find(m => m.detail?.event === 'verification-dev-t3-result'); assert.ok(result);
   assert.equal(result.fromKind, 'hub');
   assert.deepEqual(result.to, ['impl']);
@@ -335,7 +343,7 @@ test('periodic delivery failure publishes infrastructure rather than a red headl
   t.mock.method(f.dependencies.run!, 'deliver', async () => { throw new Error('bundle: captured object missing'); });
   const tick = () => run.wait('periodic I/O settled', async () => { await f.clock.advance(1000); await drive(f, f.verificationSettled()); });
   await tick(); await tick(); await tick();
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
   const message = history.find(message => message.detail?.event === 'verification-dev-t3-result');
   assert.ok(message, 'durable periodic result published');
   assert.equal(message.detail!.result, 'not-run');
@@ -361,7 +369,7 @@ for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const) 
   const cause = capacity === 'regions' ? 'droplet size c-8 unavailable in regions lon1' : 'droplet size c-8 is unavailable';
   const tick = () => run.wait('periodic I/O settled', async () => { await f.clock.advance(1000); await drive(f, f.verificationSettled()); });
   await tick(); await tick(); await tick();
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
   const message = history.find(message => message.detail?.event === 'verification-dev-t3-result');
   assert.ok(message, 'durable periodic result published');
   assert.equal(message.detail!.result, 'not-run', message.text);
@@ -485,7 +493,7 @@ test('unavailable periodic merge range still publishes its result and permits th
     f.machine.finish(job.id, index === 1 ? 1 : 0, log);
     await f.clock.advance(1000); await drive(f, f.verificationSettled());
   }
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { detail?: { event: string; head: string; previousGreenHead: string; merges: unknown; result: string; failingFiles: string[]; artifact: string } }[] }).messages;
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { detail?: { event: string; head: string; previousGreenHead: string; merges: unknown; result: string; failingFiles: string[]; artifact: string } }[] }).messages;
   const results = history.filter(m => m.detail?.event === 'verification-dev-t3-result');
   assert.equal(results.length, 3);
   const red = results.find(m => m.detail!.head === 'b'.repeat(40))!.detail!;

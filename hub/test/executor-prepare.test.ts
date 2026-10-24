@@ -81,7 +81,7 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
       return value.prepare && value.prepare.state !== 'running' ? value : undefined;
     }));
     assert.equal(status.prepare!.state, 'done', status.prepare!.error);
-    const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
+    const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string }[] };
     assert.ok(history.messages.some(message => message.text.includes('prepare: not set')));
     assert.deepEqual(status.snapshot.key, key);
     assert.equal(status.snapshot.freshness, 'current');
@@ -301,7 +301,7 @@ test('hub stop cancels and drains preparation before closing its store and prese
   await eventually('hub drains its preparation and exits', () => !pidAlive(discovery.pid) ? true : undefined, 10000);
   const restarted = await startDaemon(t, root, env, { syntheticProvider: { token: 'cland-test-prepare', endpoint: api.url } });
   const next = await connectUi(t, restarted.discovery);
-  const history = (await next.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
+  const history = (await next.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string }[] };
   assert.equal(history.messages.filter(message => message.text.startsWith('snapshot prepare failed:')).length, 1);
   await eventually('restart confirms deferred builder release', async () => {
     const leases = await readLeases(root);

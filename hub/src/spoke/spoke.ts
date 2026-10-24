@@ -173,7 +173,9 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
           return text({ ok: true, ...value });
         }
         case 'verify': {
-          const value = await hub.request({ ...args, type: 'suite.start', mode: args.mode === undefined ? 'auto' : args.mode } as Omit<import('../protocol.ts').SuiteStart, 'id'>, args.diagnostics === true ? 120_000 : 15_000) as Record<string, unknown>;
+          // Keep the request valid for a prior hub requiring an explicit report.
+          const report = args.report === undefined && args.dryRun !== true ? { report: 'agents', to: args.to ?? ['coordinator'] } : {};
+          const value = await hub.request({ ...args, ...report, type: 'suite.start', mode: args.mode === undefined ? 'auto' : args.mode } as Omit<import('../protocol.ts').SuiteStart, 'id'>, args.diagnostics === true ? 120_000 : 15_000) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'merge.queue': {

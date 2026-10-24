@@ -122,11 +122,11 @@ In a normally launched session's shell, CLI calls use the inherited cland sessio
 
 | Command | What it does |
 | --- | --- |
-| `cland verify --report <topic>` | Run the project's checks and tests at the committed head through the hub's queue; post the result. `--executor local\|droplet`, `--to <session>`, `--dry-run`. |
+| `cland verify [--report <topic>]` | Run the project's checks and tests at the committed head through the hub's queue; post the result in Agents, addressed to the Coordinator by default. `--report` chooses another topic. `--executor local\|droplet`, `--to <session>`, `--dry-run`. |
 | `cland verify queue` | The running run, cloud runs, waiters and admission estimates. |
 | `cland verify cancel [<id>]` | Cancel your active run (**human**: any run). |
 | `cland executor status` | Token presence, live cloud machines, today's spend against the cap. **human** or Coordinator |
-| `cland executor prepare` | Build the snapshot cloud runs start from. **human** or Coordinator |
+| `cland executor prepare` | Build the snapshot cloud runs start from; report to the Coordinator in Agents by default (`--report <topic>` overrides). **human** or Coordinator |
 | `cland executor reap` | Delete orphaned and expired cland machines. **human** or Coordinator |
 | `cland merge <T-n>` | Queue a reviewed task when `[merge] queue = true`; otherwise land it as one squash commit on `dev`. `--override <reason>` (**human**, tracker and docs only). |
 | `cland push` | Fast-forward the territory's `dev` to the root's `dev`. **human**, Coordinator or Aide |

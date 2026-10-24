@@ -62,8 +62,7 @@ test('MCP verify defaults cwd to the claimed item worktree before admission', as
 test('MCP verify names missing or invalid fields before enqueue', async t => {
   const { root, spoke, ui } = await fixture(t);
   const cases: Array<{ args: Record<string, unknown>; fields: string[] }> = [
-    { args: {}, fields: ['cwd', 'report'] },
-    { args: { cwd: root }, fields: ['report'] },
+    { args: {}, fields: ['cwd'] },
     { args: { cwd: 'relative', dryRun: true }, fields: ['cwd'] },
     { args: { cwd: root, dryRun: true, diagnostics: true }, fields: [] },
     ...Object.entries({ cwd: 1, mode: null, executor: 'other', report: 1, to: 'impl', occasion: 'task',

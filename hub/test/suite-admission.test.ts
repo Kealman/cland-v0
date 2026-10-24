@@ -10,6 +10,85 @@ import { fixture } from './suite-component-fixture.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
 import { durationFixture, durationOwner } from './duration-fixture.ts';
+import { runSuiteCommand } from '../src/cli/suite.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { createServer, type Socket } from 'node:net';
+import { beforeDirectories } from './process-cleanup.ts';
+
+test('verify materializes Agents defaults for a prior hub wire contract and preserves previews and overrides', async t => {
+  const root = await tempProject(t, 'verify-prior-wire-');
+  await mkdir(join(root, '.cland'));
+  const socket = join(root, 'prior.sock');
+  await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'prior' }));
+  const peers = new Set<Socket>(), requests: Record<string, unknown>[] = [];
+  const server = createServer(peer => {
+    peers.add(peer); peer.on('close', () => peers.delete(peer));
+    peer.setEncoding('utf8');
+    let buffer = '';
+    peer.on('data', chunk => {
+      buffer += chunk;
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const frame = JSON.parse(buffer.slice(0, nl)); buffer = buffer.slice(nl + 1);
+        if (frame.type === 'hello') { peer.write(JSON.stringify({ type: 'welcome' }) + '\n'); continue; }
+        requests.push(frame);
+        // Frozen pre-T-1257 validation from 8fd6195f: do not import the current validator.
+        const refused = typeof frame.report !== 'string' && !(frame.report === undefined && frame.dryRun === true);
+        peer.write(JSON.stringify({ type: 'result', id: frame.id, ok: !refused,
+          ...(refused ? { error: 'report must be a string (required unless dryRun is true)' } : { value: frame.dryRun
+            ? { dryRun: true, head: 'prior', executor: 'local', workers: 1, lines: [] }
+            : { id: 'prior-run', pid: null, position: 1, topic: frame.report } }) }) + '\n');
+      }
+    });
+  });
+  beforeDirectories(t, async () => {
+    for (const peer of peers) peer.destroy();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  });
+  await new Promise<void>(resolve => server.listen(socket, resolve));
+  for (const args of [[], ['--to', 'reviewer'], ['--report', 'general'], ['--report', 'item-topic', '--to', 'reviewer'], ['--dry-run']]) {
+    assert.equal(await runSuiteCommand([...args, '--json'], root, { env: fixtureEnvironment(root, process.env), out: () => {} }), 0);
+  }
+  assert.deepEqual(requests.map(({ report, to, dryRun }) => ({ report, to, dryRun })), [
+    { report: 'agents', to: ['coordinator'], dryRun: false },
+    { report: 'agents', to: ['reviewer'], dryRun: false },
+    { report: 'general', to: undefined, dryRun: false },
+    { report: 'item-topic', to: ['reviewer'], dryRun: false },
+    { report: undefined, to: undefined, dryRun: true },
+  ]);
+});
+
+test('verify without --report sends its result and log chip to Agents; explicit topics still win', async t => {
+  const f = await fixture(t);
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  for (const [topic, raw] of [['agents', true], ['agents', false], [f.topic, false], ['general', false]] as const) {
+    const output: string[] = [];
+    const response = raw ? await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, fresh: true }) : null;
+    if (response) assert.equal(response.ok, true, response.error);
+    else assert.equal(await runSuiteCommand(['--fresh', '--json', ...(topic === 'agents' ? [] : ['--report', topic])], f.root,
+      { env: fixtureEnvironment(f.root, process.env), out: text => output.push(text) }), 0);
+    const job = (response?.value ?? JSON.parse(output[0]!)) as { id: string; topic: string };
+    assert.equal(job.topic, topic);
+    const history = await eventually('exact suite result published', async () => {
+      await f.settle();
+      const reply = await f.ui.request({ type: 'topic.history', topic });
+      const messages = (reply.value as { messages: { id: string; text: string; to: string[]; artifacts?: { id: string }[] }[] }).messages;
+      return messages.some(message => message.id === `suite:${job.id}`) ? messages : undefined;
+    });
+    const report = history.find(message => message.id === `suite:${job.id}`)!;
+    assert.deepEqual(report.to, ['impl'], 'the Coordinator receives the report');
+    const artifacts = await f.ui.request({ type: 'artifact.list', topic });
+    const log = (artifacts.value as { artifacts: { id: string; title: string }[] }).artifacts.find(artifact => artifact.title.startsWith(`Suite ${job.id} `));
+    assert.ok(log, 'log belongs to the report topic');
+    assert.ok(history.some(message => message.text.startsWith(`▣ ${log.id} `)), 'chip belongs to the report topic');
+    if (topic === 'agents') {
+      const general = await f.ui.request({ type: 'topic.history', topic: 'general' });
+      assert.deepEqual((general.value as { messages: unknown[] }).messages, []);
+      const generalArtifacts = await f.ui.request({ type: 'artifact.list', topic: 'general' });
+      assert.deepEqual((generalArtifacts.value as { artifacts: unknown[] }).artifacts, []);
+    }
+  }
+});
 
 test('item verification cards survive completion, cache reuse and store reopen', async t => {
   const f = await fixture(t);
