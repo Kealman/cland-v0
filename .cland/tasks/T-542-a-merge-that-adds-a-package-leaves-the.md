@@ -2,8 +2,8 @@
 id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-929
 branch: t/T-542-a-merge-that-adds-a-package-leaves-the
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-24T09:24:57.179Z
+updated: 2026-10-24T09:34:20.574Z
+closed: 2026-10-24T09:34:20.574Z
 ---
 
 ## Summary
@@ -24,17 +25,20 @@ T-427 merged at 21:28Z (bd2fdba4). It switched the typecheck script to `typescri
 
 ## Acceptance criteria
 - [x] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
-  - done: impl-542 · 2026-10-24T07:57:07.047Z
   - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
   - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final · 2026-10-24T08:27:34.999Z · commit 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
+  - done: impl-542 · 2026-10-24T09:28:09.352Z
+  - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final-2 · 2026-10-24T09:29:12.554Z · commit 9d789212f0b419f798bcccbbd4be62c37dd728e4
 - [x] C2. A host typecheck that fails with MODULE_NOT_FOUND for a dependency named in the lockfile reports "dependencies out of date: run npm install", not just exit 1.
-  - done: impl-542 · 2026-10-24T07:32:19.602Z
   - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
   - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final · 2026-10-24T08:27:34.999Z · commit 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
+  - done: impl-542 · 2026-10-24T09:28:09.564Z
+  - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final-2 · 2026-10-24T09:29:12.554Z · commit 9d789212f0b419f798bcccbbd4be62c37dd728e4
 - [x] C3. `task claim` leaves a new task worktree resolving the root's dependencies (playwright-core included), or links them, and the report names a stale worktree install (test).
-  - done: impl-542 · 2026-10-24T07:38:30.667Z
   - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
   - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final · 2026-10-24T08:27:34.999Z · commit 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
+  - done: impl-542 · 2026-10-24T09:28:09.868Z
+  - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final-2 · 2026-10-24T09:29:12.554Z · commit 9d789212f0b419f798bcccbbd4be62c37dd728e4
 
 ## Comments
 
@@ -347,3 +351,46 @@ A-10618 original local macOS resolved-precommit outputs: merge-batches46/46, doc
 Reviewer read-only source/Git/topic/artifact audit; no tests, browser, edits, installs, merge or delegation. Both axes completed personally.
 Standards:0findings. Spec:0findings.
 Durable audit A-10622: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10622-t-542-t-1018-merge-delta-at-9d789212.md
+
+### rev-32 · 2026-10-24T09:29:12.554Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-542-merge-final-2
+commit: 9d789212f0b419f798bcccbbd4be62c37dd728e4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-542 final T-1018 integration evidence — clear
+
+Exact head 9d789212f0b419f798bcccbbd4be62c37dd728e4; tree ab78443189ee1a2ca4785654886e6862ae349748. Accepted source/delta audit A-10622 (rev-20261024-542-merge-source-2) remains applicable. Fresh configured mode-free run 4c48e7b8-9fbe-4523-a91d-4556a43d1c4b, original log A-10650, overall exit 0; tracker and branch still identify this reviewed head.
+
+## Standards
+
+No findings. Independently audited structured receipts show 2887 ordinary test passes and 419 passing files, with no nonpassing outcome. Additional load-gate receipts comprise 45 top-level repetitions across nine identities (five each), plus 70 nested finishes: 115 test finishes and 45 passing files. These are additional repetition evidence, not ordinary test counts. Eight T-542 identities and the incoming documentation-index identity have explicit 5/5 receipts.
+
+All T1, fallback all T2 across hub/Neovim and Web completed on Linux x64 6.8.0-142-generic, c-8 lon1 droplet cland-v0-f7dbb78c, Node v24.21.0 / Neovim v0.12.5; hub/Neovim workers 2, Web workers 4. Host T0/check stdout is retained; remote typecheck reused host gate dbb1ba43a09e9fee2c445ba28f68dc5a3fd1a8b9, not repeated remotely. The candidate's T0 record preservation is exercised by the passing controller tests; this does not claim the hosting hub itself ran the newly changed record() implementation.
+
+merge-batches 46/46, merge-queue 13/13, merge-recovery 17/17, suite-queue-policy 6/6, task-worktrees 19/19, plan-gate 9/9, planned-stage 16/16, epic-close 15/15 and docs 3/3 pass. FIFO/dev/task movement, missing/conflicting recovered T0 proof, unique-omission and passing-repeat full-plan confirmation with exit 0/1, and combined-red T0 bisection cases all retain their final assertions and pass.
+
+## Spec
+
+C1 verified: package/lock/workspace changes require root npm install through queue/result/landing/comment/enqueuer paths, preserving the shared dependency tree. Source integration carried from A-10622; exact-head queue/landing/recovery and stage controls pass.
+C2 verified: locked ESM and absolute CJS missing-module cases produce the install-required hint; unknown import/type-error negative controls and no-machine assertion pass. The T-1018 T0 receipt/confirmation behavior coexists with this diagnosis.
+C3 verified: task claim resolves scratch playwright-core through the root link, preserves existing own/link installs, detects missing/older actual manifests despite matching hidden metadata, and accepts healthy optional omissions.
+
+All C1–C3 verified at this exact integration head. Earlier M1–M5 remain resolved; no new findings. QA policy none/after-stage.
+
+Generic lint/duration/ratchet diagnostics remain report-only: 133 findings in 60 files, two missing baselines and incomplete base timings. Existing shell/items/connection/item-summary warnings remain. Actual Web measured suite wall 144.27 s exceeds the report-only 40 s budget; projected 150.266 s at two workers is separate from actual four-worker execution. Command durations T1/T2/Web 58/336/149 s; measured suite walls 53.74/331.84/144.27 s. Droplet lifetime 635 s, cost $0.0441. No T3/T4, full-suite or QA pass claimed.
+
+Prior failed runs and prior-head greens retain their original provenance; none substitutes for A-10650. Reviewer performed read-only source/Git/log audit, no tests, probes, edits, merge, install, browser or delegation.
+Standards: zero findings. Spec: zero findings; C1–C3 verified.
+Durable audit A-10655: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10655-t-542-final-t-1018-integration-evidence-at-9d789212.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-24T09:34:20.574Z
+
+Merged 2415ad825e32ad0db449d8fba82dc0c4d2069835 onto dev.

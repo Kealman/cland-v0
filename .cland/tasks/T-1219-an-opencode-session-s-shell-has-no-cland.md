@@ -3,8 +3,9 @@ id: T-1219
 kind: task
 title: An OpenCode session's shell has no cland session identity, so its CLI calls run as the human
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - bug
   - ready-for-agent
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-951
 branch: t/T-1219-an-opencode-session-s-shell-has-no-cland
 created: 2026-10-24T09:26:22.640Z
-updated: 2026-10-24T09:27:11.422Z
+updated: 2026-10-24T09:34:19.453Z
 ---
 
 ## Summary
@@ -25,6 +26,15 @@ Seen: oc-1020's `cland verify --report topic-950 --to oc-1020` resolved as the h
 
 ## Acceptance criteria
 
-- [ ] C1. A command run from an OpenCode session's shell tool sees the same session identity variables a Codex shell sees, and `cland verify` from it is owned by that session, shown with fake OpenCode and a real project hub (test).
-- [ ] C2. Two OpenCode sessions submit verify runs at the same time and each is admitted under its own name (test).
-- [ ] C3. The ready report states how the hub authenticates a shell's claimed session identity (launch token or secret versus plain variables), and whether a shell can claim another session's identity; a gap found there is filed separately.
+- [x] C1. A command run from an OpenCode session's shell tool sees the same session identity variables a Codex shell sees, and `cland verify` from it is owned by that session, shown with fake OpenCode and a real project hub (test).
+  - done: impl-1219 · 2026-10-24T09:34:09.069Z
+- [x] C2. Two OpenCode sessions submit verify runs at the same time and each is admitted under its own name (test).
+  - done: impl-1219 · 2026-10-24T09:34:09.147Z
+- [x] C3. The ready report states how the hub authenticates a shell's claimed session identity (launch token or secret versus plain variables), and whether a shell can claim another session's identity; a gap found there is filed separately.
+  - done: impl-1219 · 2026-10-24T09:34:09.743Z
+
+## Comments
+
+### impl-1219 · 2026-10-24T09:30:55.242Z
+
+TDD red: targeted native shell inheritance test failed with all five CLAND identity values null, while its MCP config held the launched identity. Minimal fix overlays the five session variables onto the OpenCode server environment after account resolution; MCP config unchanged. Green targeted receipt on macOS arm64/local, working tree: 1/1 new test; two real CLI children from two fake OpenCode shell tools yield distinct hub queue IDs/owners. Suites intentionally remain queued behind injected occupied capacity (no verification execution claimed).

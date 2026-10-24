@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-948
 branch: t/T-1202-merge-batches-whose-candidate-touches
 created: 2026-10-24T06:46:04.922Z
-updated: 2026-10-24T09:22:15.153Z
+updated: 2026-10-24T09:34:23.600Z
 ---
 
 ## Summary
@@ -101,3 +101,31 @@ A-10638 retains23 original native process envelopes, commands/stdout/exits/chunk
 
 C1/C2 final runtime settlement awaits the fresh configured same-head receipt. Source clearance allows configured mode-free submission at exactly49b74365 unchanged. Live policy requires landing/restart under rule19, separate from these in-process proofs; QA none/after-stage. Reviewer performed static source/Git/artifact inspection only, no tests/probes/edits/GUI/merge/delegation. Standards zero remaining findings; Spec zero remaining findings.
 Durable review A-10643.
+
+### rev-23 · 2026-10-24T09:34:23.600Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1202-evidence1
+commit: 49b74365f88a472ea05cee2416b923f5b33e0445
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1202 same-head configured evidence audit — clear receipt, integration pending
+
+Head49b74365f88a472ea05cee2416b923f5b33e0445/treef3f012ad3e7068792ee38e5810c8703038893c9a. Source2 A-10643/M1 fix remains accepted. Run rev-20261024-1202-evidence1; scope evidence; findings []. This is receipt settlement at this head, not final readiness after the authorized integration below.
+
+Configured5bcc907b-2477-438c-801f-697770e6f9e3/A-10662 finishes exit0 at the reviewed head. Native ordinary records:2874 tests/419files all pass, no failure/cancellation/skip.50 additional actual load-gate tests/files pass: five repetitions of each of nine new Web-batch controller identities plus the inherited test-docs identity. T1, all fallback hub/Neovim T2 and complete Web44files/223tests completed exit0. No T3/T4 executed; queued batch/deferred notices are not task process receipts.
+
+Linux x64 6.8.0-142-generic droplet c-8lon1 cland-v0-db013ee0, Node24.21.0/Neovim0.12.5, workers2/Web4, lifetime580s/$0.0403. Host check stdout preserved, gatee8081fa482b4282f141ad1d3db7e600e28a90d25 independently tree object, reused not repeated remotely. Native suite walls54.77/295.53/128.13s; phase envelopes58/300/132s and projections differ. Web shard128.04s. Lint133/60files, two missing baselines, Web wall, unrelated duration and incomplete ratchet-base diagnostics are report-only. No affected merge-batches/verification-commands/web-phase/roles-clauses tier mismatch found.
+
+C1 runtime proof present: combined-Web-red case passes0.161319622s; missing/conflicting proof holds and both Web diagnosis/confirmation paths pass. M1 T1-before-Web unique omission and passing repeat cases pass0.142010982/0.210815644s plus5/5 each, retaining no premature landing and exact original full-plan confirmation. C2 proof present: combined-red regression retains report Web exit1/duration7s semantic fixture assertion; actual runner command/selection planning tests pass. This is in-process policy proof with semantic executor durations, not a live restarted batch running the new policy.
+
+New ordinary Web-batch T1 identities max0.231685984s; loaded samples are higher, maximum0.600898692s (Web passing repeat later-tier-exit1). Do not claim all passing samples below0.4s or an enforcing-tier-budget pass. Raw loaded timings remain report-mode evidence. No Web test identity was added by this item.
+
+Post-result read-only merge-tree against origin/dev0a57d8bf reports four conflicts in implement/QA skills, shared tests docs and roles-clauses test; head unchanged/clean, no Reviewer merge. Coordinator9f30c71e explicitly directs waiting for T-542/T-422 to land, merging once, preserving mapped-T4/T0/conditional-Web policies, fresh delta review and fresh mode-free verification before ready. Implementer23394baa is following that order. Therefore final criterion marks/readiness wait for the resulting head; this green receipt stays attributed to49b74365 and must not be reused as changed-head final evidence.
+
+QA none/after-stage; live policy needs landing/restart. Reviewer performed static source/Git/artifact reads only, no tests/probes/edits/GUI/merge/delegation. Standards/evidence clear; Spec/evidence clear at this head, final integration pending.
+Durable review A-10667.

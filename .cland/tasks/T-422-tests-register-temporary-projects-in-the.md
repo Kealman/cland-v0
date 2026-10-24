@@ -2,8 +2,8 @@
 id: T-422
 kind: task
 title: Tests register temporary projects in the real host executor ledger
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T09:12:41.762Z
+updated: 2026-10-24T09:34:36.235Z
+closed: 2026-10-24T09:34:36.235Z
 ---
 
 ## Summary
@@ -32,12 +33,15 @@ The host-wide executor ledger `~/.cland/executor/spend.json` lists 24 projects. 
 - [x] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
   - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
   - done: impl-422 · 2026-10-24T09:11:46.557Z
+  - verified: rev-26 [reviewer] · run rev-20261024-422-final-2 · 2026-10-24T09:29:50.156Z · commit a9e5003643b906968f51ddcc1e5c93aff053d75e
 - [x] C2. `rememberProject('/')` is refused, and the ledger never lists `/`.
   - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
   - done: impl-422 · 2026-10-24T09:11:47.003Z
+  - verified: rev-26 [reviewer] · run rev-20261024-422-final-2 · 2026-10-24T09:29:50.156Z · commit a9e5003643b906968f51ddcc1e5c93aff053d75e
 - [x] C3. A registered project whose directory is gone is pruned from `projects` by the sweep, with an event naming it.
   - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
   - done: impl-422 · 2026-10-24T09:11:47.443Z
+  - verified: rev-26 [reviewer] · run rev-20261024-422-final-2 · 2026-10-24T09:29:50.156Z · commit a9e5003643b906968f51ddcc1e5c93aff053d75e
 
 ## Comments
 
@@ -251,3 +255,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized integration delta clear, A-10621; no findings. Skill conflict keeps T422sealed-executor paragraph then devperiodic/capacity then mergeT0guidance; CHANGEShistories retained. spend.ts/eight isolation-lock-fixture source/testblobs unchanged from accepted5c0f0527; DropletExecutor auto-merge adds upstream typedcapacityclassification without altering abortable registry sweep. Prior source/finalA-10597 scopes carry, including Coordinator-owned literalrealHOMEfullstagecomparison; no new real-ledger claim. A-10620narrative reports mergedlocalcheck0+88/88targetedT1T2; preserve originalrawstdout/exits/native timings/sourceplatform durably without transcriptionreruns. ParentA-10593 provenanceonly. C1–C3 await freshsameheadmode-freeconfiguredreceipt; proceedunchangeda9e50036.
+
+### rev-26 · 2026-10-24T09:29:50.156Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-422-final-2
+commit: a9e5003643b906968f51ddcc1e5c93aff053d75e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear, A-10658; C1–C3verified,no findings. Freshb73a80c3/A-10654 native2876ordinary/419files+60actualloadpasses;11featureidentities5/5 plusupstreamdocsidentity. All88focusedexecutor/fixturetests pass, including priorcontention/sharedcap/cancelassertions. C1 acceptedunderstandingCoordinatorf248e85e scratch-ledger+configuredgate scope, literalrealHOMEfullstage comparisonstillCoordinator-owned; no realHOMEtestclaim. C2rootrefusal/canonicalregistration,C3durablegrace/reset/pruneevents/restorationretainaccountingpass. Linuxc8lon1T1/allfallbackT2bothpackages/Web; matchinghostchecktree reusednotremote,lint133/60/budgetsreportonly,noT3T4QAclaim. A-10625explicitlocalreceiptexcerpts/past1159macscope retained; leadownsfinalfreshdevconflictcheck.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-24T09:30:27.757Z
+
+Audit copy note (coord, for rev-26, whose non-verdict comment the hub refuses by role): A-10659 supersedes A-10658 as the review audit copy; it only removes a stray editing fragment. The final C1–C3 verdict and counts are unchanged.
+
+### coord · 2026-10-24T09:34:36.235Z
+
+Merged 94b632aab8413fd16da42831dcb37dd59c5ec625 onto dev.

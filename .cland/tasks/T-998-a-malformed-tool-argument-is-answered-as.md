@@ -3,7 +3,7 @@ id: T-998
 kind: task
 title: A malformed tool argument is answered as a permission refusal (forbidden)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-939
 branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T09:20:27.542Z
+updated: 2026-10-24T09:28:55.431Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
 
 - [x] C1. `task.criterion` with an unknown field or a missing `op` answers a non-`forbidden` validation code that names the field and the accepted values (test).
   - done: impl-998 · 2026-10-24T08:04:53.216Z
-- [ ] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
-  - failed: rev-26 [reviewer] · 2026-10-24T09:20:27.542Z · note Configured Web fails three notification compatibility cases whose ask fixture arguments omit required options; final whole-gate proof is not green.
+- [x] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
+  - done: impl-998 · 2026-10-24T09:27:32.469Z
 - [x] C3. A validation failure is not posted to the Agents topic as a refusal (test).
   - done: impl-998 · 2026-10-24T08:04:53.496Z
 - [x] C4. The MCP server instructions and `hub/README.md` say a validation error may be corrected and retried, unlike `forbidden`.
@@ -40,6 +40,7 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
   - verified: rev-23 [reviewer] · run rev-20261024-998-source3 · 2026-10-24T08:23:09.451Z · commit 47fd9660d25c9e530118f4001da1646b0cc49ded
   - verified: rev-23 [reviewer] · run rev-20261024-998-source4 · 2026-10-24T08:52:45.657Z · commit ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91
   - verified: rev-26 [reviewer] · run rev-20261024-998-source-5 · 2026-10-24T09:08:07.849Z · commit e4dc52f0109a2afd5ba9661eb8fe32470cf670a6
+  - verified: rev-26 [reviewer] · run rev-20261024-998-source-6 · 2026-10-24T09:28:55.431Z · commit 866eeac8237d4cebbc4273e935ffb3329ff4c01b
 
 ## Comments
 
@@ -295,3 +296,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence notclear, A-10639. Native2822ordinary2819pass/3fail;420files419pass/1fail;50actual loadreps allpass. T1/allfallbackT2hubNeovimexit0,Webactualexit1. M6Leadrootcompatibilitypass; M7completeobservedfailure set is phoneask missingoptions; actualfalse!==true at81/193 precedesnotificationwork. Preservefinalassertions, reproducevalidfixturecalls/options:[],correctedheadsourcebeforeverify. C4sourceverified,C1/C3runtimepending; no configuredgreen. Linuxc8lon1matchinghostcheckreused,reportlint/budgets/noT3T4QAclaims. NoReviewer runtime/edits.
 
 Criteria: C2 failed (Configured Web fails three notification compatibility cases whose ask fixture arguments omit required options; final whole-gate proof is not green.).
+
+### impl-998 · 2026-10-24T09:27:32.691Z
+
+M7 corrected per Coordinator decision e763142d at pushed 866eeac8237d4cebbc4273e935ffb3329ff4c01b (tree 60561f137dc3549188349374c40bda8c1196d1e8). Production omitted-options normalization and release guidance are preserved: MCP options optional/default[], concrete wire/AskManager string[] unchanged, phone callers/release skill unchanged. New spoke free-only ask receipt red→green; full Web phone-notifications red→green (6/6), T1 validation 9/9, spoke/docs guard 4/4. Final local macOS npm run check exit0, lint report-only132/59,0 refusals. Raw A-10653 retains failed TS check and original red. No configured green at replacement head yet; prior A-10634 remains failed evidence. Requesting fresh source review before verify; no dev merge since first review.
+
+### rev-26 · 2026-10-24T09:28:55.431Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-998-source-6
+commit: 866eeac8237d4cebbc4273e935ffb3329ff4c01b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+M7 delta source clear, A-10656; no findings. Coordinator e763142d supersedes earlierfixturemigrationremedy: productionfree-onlyMCPasks preserve optional/default[] via existing spoke normalization; rawwire stillrequiresconcretestring[] withnegativecontrol. NewT2MCPtest observes exact[]wireframe/success; originalphonecalls/allnotificationfocus/suppressionassertions retained, onlyerrordiagnosticsadded. C4docs/sourceverified, priorM1–M6carryunchanged. A-10653originallocalcorrectiontreephone6/6,table9/9,finalspoke/docs4/4/check0(reportlint132/59/0refusals),TSredretained; notexactcommitconfiguredpass. Proceedmodefreeunchanged866eeac8; C1–C3runtimepending,oldA-10634remainsfailed.
+
+Criteria: C4 verified.

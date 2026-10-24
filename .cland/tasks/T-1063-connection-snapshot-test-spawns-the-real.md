@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-949
 branch: t/T-1063-connection-snapshot-test-spawns-the-real
 created: 2026-10-21T14:26:07.116Z
-updated: 2026-10-24T09:13:15.858Z
+updated: 2026-10-24T09:29:43.480Z
 ---
 
 ## Summary
