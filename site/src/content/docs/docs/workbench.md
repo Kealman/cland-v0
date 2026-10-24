@@ -104,15 +104,15 @@ The **Accounts** block comes first, with each account's usage windows ([Accounts
 
 ### Inbox, `␣n`
 
-Only what needs you, in four sections: asks and approvals, plan approvals, requests to you, messages to you. Each row shows how long it has waited.
+Only what needs you, in four sections: asks and approvals, plan approvals, requests to you, messages to you. Each row shows how long it has waited. For relayed Codex/OpenCode approvals, `1` approves once, `2` selects the offered always choice, and `d` denies. TUI-only approvals require attaching to the harness.
 
 | Key | What it does |
 | --- | --- |
 | `1`–`9` | Answer the selected ask with that option. |
 | `i` | Give a free answer. |
-| `Enter` | Open the ask's topic, attach the session waiting on a command approval, or open a plan. |
+| `Enter` | Open the ask's topic, open approval details (or attach for TUI-only approvals), or open a plan. |
 | `r` | Reply to a request or message. |
-| `d` | Decline a request, or mark a message read. |
+| `d` | Decline a request, deny a relayed approval, or mark a message read. |
 | `A` | Show what left the inbox in the last seven days, and why. |
 
 With nothing waiting it says `✓ nothing needs you`. The line below the sections counts new events since your last look; `e` opens the events view.

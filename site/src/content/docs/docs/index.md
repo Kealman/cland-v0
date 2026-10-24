@@ -9,7 +9,7 @@ sidebar:
 
 cland runs Claude Code, Codex and OpenCode sessions as one team on your project. A strong model leads. Cheaper and open models do the legwork. You make the decisions.
 
-It is a local tool for one person and one project at a time. It runs on macOS and Linux, is licensed Apache-2.0 and sends no telemetry.
+It is a local tool for one person, with a separate hub and crew per project. It runs on macOS and Linux, is licensed Apache-2.0 and sends no telemetry.
 
 ## The problem
 
@@ -35,7 +35,7 @@ cland gives every agent session a **role** and puts them on one **crew**:
 
 A role does not depend on the harness or the model. Put the Coordinator on Claude Code with `opus`, Implementers on Codex, the Reviewer on another harness than the Implementer, and a bulk of small tasks on an open model through OpenCode. Change any of it in one file. See [Crew configuration](/docs/crew/).
 
-Every session runs under one of your own logins, through the official CLI. cland never reads your tokens and never switches accounts on its own. See [Accounts and limits](/docs/accounts/).
+Every session runs under one of your own logins, through the official CLI. cland never reads your tokens to call a model provider directly and never switches accounts on its own. See [Accounts and limits](/docs/accounts/).
 
 ## How it fits together
 
@@ -64,7 +64,7 @@ flowchart TB
 
 - **The hub** is a small local service, one per project. Sessions talk to each other and to you through it. It holds the shared state, enforces what each role may do, and knows each session's real state (busy, idle, waiting for you) from the harness itself, never from what the model says.
 - **The tracker** lives in your repository: one Markdown file per item under `.cland/tasks/`. Releases contain epics, epics contain tasks, and categories hold loose work. It is the crew's only source of work. See [Items and the tracker](/docs/items/).
-- **The territory** is a local bare Git repository that becomes `origin`. Agents branch, push and merge there. Your GitHub remote is renamed `github`, and only `cland release` pushes to it.
+- **The territory** is a local bare Git repository that becomes `origin`. Agents branch, push and merge there. Your GitHub remote is renamed `github`, with publication through `cland release` or approved marketing-only `cland publish`.
 - **The workbench** is where you watch and steer: a terminal UI in Neovim, and the same picture in the browser and on your phone. You talk to the Coordinator in [topics](/docs/topics/), answer its questions in the inbox and read every verdict. Any session's own harness is one key away: [attach to it](/docs/sessions/) and type.
 
 ## What a day looks like
@@ -72,7 +72,7 @@ flowchart TB
 1. You tell the Coordinator what to build, or accept the plan the Aide drafted with you.
 2. The Coordinator files tasks, plans the epic and launches Implementers, each in its own worktree.
 3. Each Implementer requests review. The Reviewer reads the change and posts a verdict on the item.
-4. When the verdicts the plan requires are clear and every acceptance criterion is verified, the hub marks the task `ready`. The Coordinator merges it onto `dev`.
+4. When the verdicts the plan requires are clear and every acceptance criterion is done and verified, the hub marks the task `ready`. The Coordinator merges it onto `dev`.
 5. When a decision is yours, it reaches your inbox as an ask with numbered options. You answer with one key, from the terminal or your phone.
 6. When the release is done, you approve the version and notes, and `cland release` publishes it.
 
@@ -80,7 +80,7 @@ You never type a command the crew could run for you. You are asked for decisions
 
 ## Where to go next
 
-- [Quickstart](/docs/quickstart/): from an empty folder to a running crew in fifteen minutes.
+- [Quickstart](/docs/quickstart/): from an empty folder to a running crew.
 - [Features](/docs/features/): everything cland does, one line each.
 - [Install](/docs/install/): the three install methods and what cland needs.
 - [Concepts](/docs/concepts/): the words cland uses and where its state lives.

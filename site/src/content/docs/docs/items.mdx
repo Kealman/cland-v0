@@ -5,6 +5,8 @@ description: The crew's tracker lives in your repository as Markdown files. Rele
 
 import Screenshot from '../../../components/Screenshot.astro';
 
+The examples on this page use illustrative ids such as `R-1`, `E-3` and `T-42`. Use ids from `cland task list` in your project; commands that reference an item require it to exist.
+
 The crew's work lives in a tracker inside your repository. Every **item** is one Markdown file under `.cland/tasks/`, committed with the code it describes. The plan, the history and the review trail travel with the branch. There is no tracker service to sign in to.
 
 The tracker is the crew's only source of work. The Coordinator files and plans items, Implementers claim them, Reviewers and QA record verdicts on them, and you see all of it in the explorer.
@@ -221,7 +223,7 @@ The **card** on the right follows the cursor:
 
 The agents' full text sits folded behind `zb`.
 
-The explorer changes nothing by hand, on purpose. To re-parent, reorder, plan or promote, select the items and press `m`: the Coordinator receives your words plus one line per item and acts through the tracker. `M` sends to the item's own topic instead, creating it if needed. See [The explorer](/docs/workbench/#the-explorer) for every key.
+The explorer routes structural changes through messages. On desktop web, you can also edit acceptance criteria directly in the card; the other item fields stay read-only. To re-parent, reorder, plan or promote, select the items and press `m`: the Coordinator receives your words plus one line per item and acts through the tracker. `M` sends to the item's own topic instead, creating it if needed. See [The explorer](/docs/workbench/#the-explorer) for every key.
 
 The same items have more views: the items panel (`␣i`) as a vertical board of the current release, the board (`␣b`), the task graph (`␣G`) and an epic's plan (`gp`). In the [web workbench](/docs/web-and-phone/), the **Items** area has the tree, Board, Graph and Plan, with the card in the drawer.
 
@@ -247,7 +249,7 @@ cland task import-github --all           # closed ones too
 cland task import-github --repo owner/name
 ```
 
-The import reads issues through `gh` with your own login, maps labels, parents and blocking relations, and keeps the comments. Each imported item records its issue in its frontmatter. Pull requests stay on GitHub. Running it again updates the imported items in place. During the onboarding, the Aide offers the import on an existing project.
+Without `--repo`, import tries the `github` remote first and then `origin`. The import reads issues through `gh` with your own login, maps labels, parents and blocking relations, and keeps the comments. Each imported item records its issue in its frontmatter. Pull requests stay on GitHub. Running it again updates the imported items in place. During the onboarding, the Aide offers the import on an existing project.
 
 :::caution
 There is no two-way sync. A re-run rewrites state, labels and edges from GitHub, so once the crew works the items in cland, stop importing: a refresh could close or reopen items to match the issues.

@@ -5,7 +5,7 @@ sidebar:
   order: 7
 ---
 
-Every session runs under one of your own harness logins. cland reads usage limits through the harness, shows them as meters, and refuses new launches on an account that hit its limit. It never moves your work to another account by itself.
+Every session uses the harness account selected for it (or an available free OpenCode model). cland shows the usage windows that Claude Code and Codex report and refuses new launches on an account marked limited. OpenCode supplies no limit meters. It never moves your work to another account by itself.
 
 ## How cland uses your plans
 
@@ -13,11 +13,11 @@ Be clear on what cland does and does not do:
 
 - **It runs the official CLIs.** Every session is the real `claude`, `codex` or `opencode` program, signed in with the harness's own login command, running under your account as if you had started it yourself.
 - **It never reads your tokens.** cland does not open credential files or keychains, does not call any provider's API with your credentials, and does not call usage endpoints. Limits are read from the running harness, or by asking the harness itself.
-- **It never rotates or switches accounts on its own.** No failover, no round-robin, no moving a running session. The providers' terms forbid rotating accounts or using several accounts to get past limits. Which account a role uses is always your decision.
+- **It never rotates or switches accounts on its own.** No failover, no round-robin, no moving a running session. Use each account only as its provider allows. Which account a role uses is always your decision.
 - **It stores no secrets.** The account registry holds names and paths only.
 
 :::caution
-OpenCode's free models may use the code they see for training. `cland doctor` warns for every role configured on OpenCode, and also notes that OpenCode runs commands without an OS sandbox. Use a paid provider, or keep OpenCode roles off code you cannot share.
+OpenCode's free models may use the code they see for training. `cland doctor` warns when a role selects no model or one that appears free, and also notes that OpenCode runs commands without an OS sandbox. Use a paid provider, or keep OpenCode roles off code you cannot share.
 :::
 
 ## Registering accounts

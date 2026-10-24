@@ -36,7 +36,7 @@ check = "npm run typecheck"   # fast static checks
 test = "npm test"             # the test suite
 ```
 
-Any commands work. Some starting points:
+Commands run through `/bin/sh -c`. They must be available on the executor. `prepare` must be idempotent and leave tracked files unchanged; it runs when building a cloud snapshot and before each cloud run, never for local verification. Install local dependencies yourself first. A fresh project has empty verification commands and refuses verification until `test` or tier commands are configured. Some starting points:
 
 | Stack | `prepare` | `check` | `test` |
 | --- | --- | --- | --- |
@@ -51,6 +51,8 @@ The onboarding Aide records them with your stack. To change one:
 cland config set verification.test "pytest -q"
 ```
 
+Projects can also configure `test_unit`, `test_component`, `test_integration` and `test_soak` for tiered verification. The hub selects a tier plan for the task or integrated occasion; `cland verify --dry-run` shows the exact selection before you queue it.
+
 ## Running a verification
 
 ```sh
@@ -62,8 +64,8 @@ cland verify --report general
 The hub owns the queue:
 
 - One local run at a time, so the crew never overloads your machine. Everyone waits in the same queue, your own runs included.
-- Results are cached by the tree they tested. A head whose tree already passed reuses that result instead of running again.
-- A session cannot run the suite around the queue.
+- Eligible green results are cached by candidate tree and verification selection, with a default maximum age of 24 hours (`cache_max_age_minutes = 1440`). A matching result may be reused; notices name its original head, occasion and executor.
+- Route suite runs through `cland verify`; this repository's test runner also participates in the queue. An arbitrary project's standalone `pytest` or `npm test` command is not automatically intercepted.
 
 ```sh
 cland verify queue     # who runs, for how long, who waits, the admission estimate
@@ -114,7 +116,7 @@ cland config set verification.executor droplet
 cland verify --executor local --report general
 ```
 
-Cloud runs let the crew verify several tasks in parallel without loading your machine. Pick local when there is no hurry, cloud when a release is urgent.
+Cloud runs let the crew verify several tasks in parallel while the fast `check` still runs on your machine before cloud admission. Pick local when there is no hurry, cloud when a release is urgent.
 
 ### Setting up cloud runs
 
@@ -133,7 +135,7 @@ Cloud runs let the crew verify several tasks in parallel without loading your ma
    cland executor prepare
    ```
 
-   It builds a machine image with your project checked out and your `prepare` command already run, so runs start ready. Prepare again after a release or a dependency change; `cland executor status` says when the snapshot is stale.
+   It builds a machine image with your project checked out and your `prepare` command already run, so runs start ready. Prepare again when the prepared image is stale, including after dependency or runtime pin changes; `cland executor status` reports its state. Each run still checks out the submitted commit and repeats its `prepare` command.
 
 ### Limits the hub enforces
 
@@ -153,7 +155,7 @@ regions = ["lon1", "nyc1", "sfo2"]
 
 - **The daily spend cap.** The hub reserves each run's maximum cost before creating a machine and refuses a run the cap cannot cover. The ledger is shared by all your projects.
 - **Lifetime and watchdog.** Every machine carries the `cland` tag and a deadline. A watchdog destroys it at the deadline, and the hub sweeps orphans.
-- **No silent fallback by surprise.** With `local_fallback = true`, a run that cannot get a cloud machine runs locally and says why. With `false`, it waits for cloud capacity.
+- **Local fallback.** With `local_fallback = true`, default cloud requests can use the local slot when remote admission is unavailable, and can reclaim a remote slot later. An explicit `--executor local` stays local. Provider capacity refusals report **unavailable** and do not fall back to another executor, region or size. Missing runtime evidence is not a passing run.
 - **Sessions never manage machines.** Only the hub creates and deletes them.
 
 ```sh
@@ -200,7 +202,7 @@ The Coordinator, or the epic's Lead, merges on `ready`; you rarely run it yourse
 - closes the task and its topic, releases the claim, and removes the worktree and branch;
 - stops the task's Implementer when the crew says `stop_after = "merge"`.
 
-Merges run one at a time. A refusal leaves every ref untouched and names what is missing.
+With `[merge] queue = true`, reviewed code heads enter a FIFO queue and land in verified batches; documentation changes land immediately. Otherwise merges run one at a time. `cland merge queue` lists waiting heads. Conflicts refuse without rewriting the task branch; the Implementer resolves them and requests fresh review. A later cleanup or synchronization failure can be reported after a landing has already succeeded.
 
 You can bypass the gate from your own shell for tracker and documentation changes only:
 
@@ -244,7 +246,7 @@ A release:
 3. Creates an annotated tag `v<version>` at `dev` and pushes `dev` as GitHub `main` and the tag in **one atomic push** to the `github` remote.
 4. Only after GitHub accepts it, moves your local `main` and the territory, comments the tag on the release item and closes it. The next open release becomes current.
 
-No GitHub API is called and no version file in your project is changed. `cland release` is the only command that pushes to GitHub.
+No GitHub API is called and no version file in your project is changed. Product publication uses `cland release`; approved marketing-only publication uses `cland publish`.
 
 ```mermaid
 %% How a release comes together: from an idea through the plan and the build to the push
@@ -257,7 +259,7 @@ flowchart TD
   PR --> S
   G --> S
   S --> R["Release item: its epics and tasks"]
-  R --> EA["Epic: a plan with stages and lanes, you approve it"]
+  R --> EA["Epic: stages and lanes, human approval when configured"]
   R --> EB["Another epic"]
   EA --> T1["Task in its own worktree"]
   EA --> T2["Task in a parallel lane"]
@@ -291,6 +293,10 @@ For a hotfix without planning, release by version alone:
 cland release v0.1.1 --dry-run
 cland release v0.1.1
 ```
+
+### Marketing publication
+
+The Coordinator or you can publish website and README commits outside a product release with `cland publish <branch> --item T-n`. Preview with `--dry-run` and approve the exact commits and resulting tips before publishing. Every changed path must match `[publish] allow_paths`; mixed product/marketing commits and merge commits are refused. The command cherry-picks branch-only marketing commits to GitHub's default branch and `site` atomically, then integrates the published tip into `dev`. It leaves the item open and unversioned.
 
 ### Collaborators' work
 

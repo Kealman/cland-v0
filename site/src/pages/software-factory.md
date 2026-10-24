@@ -3,12 +3,12 @@ layout: ../layouts/ArticleLayout.astro
 title: A software factory with the lights on
 metaTitle: Software factory for AI coding agents, with a human in charge · cland
 description: What a software factory and a dark factory are, and how cland runs Claude Code, Codex and OpenCode as a software factory where agents build and you still decide.
-lead: Agents plan, write, review and test the code. You approve the plan, answer the questions that need a person and accept the release. That is the factory cland runs, and the one we build cland with.
+lead: Agents plan, write, review and test the code. You can opt in to plan approval, answer the questions that need a person and accept the release. That is the factory cland runs, and the one we build cland with.
 eyebrow: SOFTWARE FACTORY · AI CODING AGENTS
 updated: 2026-10-18
 faq:
   - q: Is cland a dark factory?
-    a: No. Agents do the production work, but a person approves plans, answers the questions that need one and accepts releases. When you are away, your Aide answers for you, and the merge gate still holds.
+    a: No. Agents do the production work, but a person can require plan approval, answers the questions that need one and accepts releases. When you are away, your Aide answers for you, and the merge gate still holds.
   - q: Can the crew keep working overnight?
     a: Yes. Your Aide answers the crew's questions on your behalf while you are away. During the v0.1.2 build a stand-in answered 13 questions with a median wait of 1.9 minutes, and the crew never stopped overnight.
   - q: Which coding agents does cland run?
@@ -27,9 +27,9 @@ In January, Dan Shapiro described five levels of AI-assisted programming, from "
 
 cland is a software factory: agents do the planning, coding, reviewing and testing. The human stays in the building, at the points where a person changes the outcome.
 
-- **The plan.** Before an epic starts, the Coordinator splits it into tasks with stages, parallel lanes and a QA policy. You see the plan and say go.
+- **The plan.** Before an epic starts, the Coordinator splits it into tasks with stages, parallel lanes and a QA policy. By default it starts and tells you; you can opt in to approve each plan first.
 - **The questions.** When the crew needs a decision, the Coordinator brings it to you in a topic bound to the work, and the inbox lists everything waiting on you. When you are away, your Aide answers for you.
-- **The merge.** Every merge needs a review verdict and a QA verdict for the branch's exact head. A newer commit makes them stale. No fresh verdicts, no merge.
+- **The merge.** Every ordinary task merge needs a current clear review, QA when the plan requires it, and every criterion done and verified. A changed head needs fresh evidence.
 - **The release.** QA demos each epic, and you accept the release. Only then does cland tag it, write the notes and push.
 
 The lights are on in a plainer sense too. Every session is a real Claude Code, Codex or OpenCode session, and you can attach to any of them and type.

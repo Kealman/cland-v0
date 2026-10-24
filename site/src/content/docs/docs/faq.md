@@ -7,11 +7,11 @@ sidebar:
 
 ## Does running my subscriptions through cland break their terms?
 
-cland is built to stay inside them:
+cland runs the harnesses under their own authentication and limits. This is how it connects:
 
 - Every session is the provider's own CLI (`claude`, `codex` or `opencode`), signed in with that CLI's own login and running on your machine, exactly as if you had started it in a terminal.
 - cland never reads your tokens or credential files and never calls a provider's API with them. Usage limits are read from the running harness or by asking the harness itself.
-- cland never rotates accounts, never fails over to another account and never moves a session between accounts. Providers forbid rotating accounts or using several accounts to get past limits. When an account hits its limit, new launches on it stop and the Coordinator asks you what to do.
+- cland never rotates accounts, never fails over to another account and never moves a session between accounts. Use accounts within each provider's terms. When an account hits its limit, new launches on it stop and the Coordinator asks you what to do.
 
 You remain responsible for using each plan as its provider allows. Read [Accounts and limits](/docs/accounts/) for the details.
 
@@ -36,13 +36,13 @@ No. cland needs at least one. A crew on Claude Code alone, with `opus` leading a
 Only the way it already does:
 
 - **The harnesses** send code to their providers as part of their normal work, exactly as when you use them directly.
-- **The hub, the tracker and the territory** are local. The territory is a Git repository inside `.cland/`, and only `cland release` pushes to GitHub.
+- **The hub, the tracker and the territory** are local. The territory is a Git repository inside `.cland/`, with GitHub publication through `cland release` or approved marketing-only `cland publish`.
 - **The web workbench** is served by the hub on your machine, reachable on your network only when you allow it, and from elsewhere only through your own tunnel or VPN. There is no cland cloud.
 - **Cloud verification** is off by default. When you turn it on, your committed tree goes to a machine in your own DigitalOcean account and the machine is destroyed after the run.
 - **No telemetry.** cland reports nothing to anyone. (This website counts visits with GoatCounter, without cookies or personal data; that is the website, not the tool.)
 
 :::caution
-OpenCode's free models may train on the code they see. `cland doctor` warns for every role configured on OpenCode. Use a paid provider for code you cannot share.
+OpenCode's free models may train on the code they see. `cland doctor` warns for roles with no model or an apparently free model; that warning is not a provider policy lookup. Use a paid provider for code you cannot share.
 :::
 
 ## Do I need to know Neovim?
@@ -56,7 +56,7 @@ If you would rather not use a terminal UI at all, use the [web workbench](/docs/
 cland itself is free and open source under Apache-2.0. You pay for:
 
 - **Your AI plans**, as you do today. cland uses their limits; it does not add a fee.
-- **Cloud verification**, only if you turn it on: DigitalOcean bills your account per second for each machine. The hub enforces a daily spend cap you set, shared by all your projects. Local verification costs nothing.
+- **Cloud verification**, only if you turn it on: DigitalOcean bills your account for each machine; cland estimates the lifetime cost with a one-minute minimum. The hub enforces a daily spend cap you set, shared by all your projects. Local verification costs nothing.
 
 The crew spends your limits faster than one agent in one terminal, because several sessions work at once. Size the crew to your plans: the Accounts meters show each 5-hour and weekly window as it fills.
 
@@ -64,7 +64,7 @@ The crew spends your limits faster than one agent in one terminal, because sever
 
 tmux gives you several terminals. cland gives you a team:
 
-- **Roles with enforced permissions.** A Reviewer cannot edit, an Implementer cannot merge, only the Coordinator asks you. The hub checks every call.
+- **Roles with enforced hub permissions.** An Implementer cannot merge through the hub, and only the Coordinator sends you decision asks. Reviewer editing is restricted by its instructions and configured harness sandbox; hub permissions govern hub tools, not arbitrary shell commands.
 - **Real state.** cland knows whether each session is busy, idle or waiting for you from the harness itself, not from what the model says.
 - **The harness is still there.** Every session is the real CLI in its own interface. [Attach to it](/docs/sessions/) and type, whenever you want.
 - **Messages without you in the middle.** Sessions talk through the hub, in [topics](/docs/topics/) you can read. You are not the copy-paste bus.
@@ -77,10 +77,10 @@ tmux gives you several terminals. cland gives you a team:
 cland's [tracker](/docs/items/) is the crew's only source of work: one Markdown file per item, committed with your code. You can import your GitHub issues into it:
 
 ```sh
-cland task import-github
+cland task import-github --repo owner/name
 ```
 
-It reads open issues through `gh` with your own login (`--all` adds closed ones), maps labels, parents and blocking relations, and keeps comments. Pull requests stay on GitHub. Re-running it updates the imported items in place. During onboarding the Aide offers the import on an existing project.
+Replace `owner/name` with your GitHub repository. Without `--repo`, import tries `github` first, then `origin`. It reads open issues through `gh` with your own login (`--all` adds closed ones), maps labels, parents and blocking relations, and keeps comments. Pull requests stay on GitHub. Re-running it updates the imported items in place. During onboarding the Aide offers the import on an existing project.
 
 There is no two-way sync with GitHub or other trackers.
 

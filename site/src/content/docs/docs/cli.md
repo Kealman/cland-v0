@@ -5,12 +5,12 @@ sidebar:
   order: 10
 ---
 
-Run `cland --help` for the full usage and `cland <command> --help` for one command. Most commands take `--json` for machine-readable output.
+Run `cland --help` for the command reference. `web`, `verify`, `merge`, `push`, `publish`, `release` and `sync` also accept `--help` without a running hub; other commands do not consistently support it. Many commands take `--json` for machine-readable output.
 
 Commands that talk to the hub find it through the project around the current directory, from any folder inside it, including task worktrees.
 
 :::note
-Inside a session launched by cland, every command acts as that session and is checked against its role. Commands marked **human** are refused there. A session cannot borrow your authority by calling the CLI.
+In a normally launched session's shell, CLI calls use the inherited cland session identity and are checked against its role. Commands marked **human** require your own shell.
 :::
 
 ## Project
@@ -23,7 +23,7 @@ Inside a session launched by cland, every command acts as that session and is ch
 | `cland setup` | Ready the project: harnesses, logins, accounts, favourite harness, trust, the hub, then the Aide in the workbench. Flags: `--yes`, `--install <harness>`, `--harness <h>`, `--no-accounts`, `--no-aide`, `--attach`, `--json`. |
 | `cland open [dir]` | Start the hub if needed, then the Neovim workbench. |
 | `cland update [dir]` | Bring the project's skills and managed files to the installed version; keeps what you edited. |
-| `cland doctor [dir]` | Check harnesses, logins, `gh`, Neovim, the hub and the project. One line per check with its fix. `--fix` ends orphaned servers cland owns. |
+| `cland doctor [dir]` | Check harnesses, logins, `gh`, Neovim, the hub and the project. One line per check with its fix. `--fix` ends owned orphan servers, deleted-project hubs and fixtures. |
 | `cland config set <section.key> <value>` | Validate and save one `config.toml` value; says whether it applies now or at the next hub start. |
 | `cland --version` | Print the version. |
 
@@ -31,8 +31,10 @@ Inside a session launched by cland, every command acts as that session and is ch
 
 | Command | What it does |
 | --- | --- |
-| `cland web` | Print a one-time sign-in link to the web workbench and open it in the browser. |
-| `cland web --qr` | Print the link as a QR code, for a phone. |
+| `cland web` | Print a one-time sign-in link to the web workbench and open it in the browser. `--no-open` only prints it. **human** |
+| `cland web --qr` | Print a reachable link as a QR code, for a phone; requires a LAN bind or HTTPS origin. **human** |
+
+`cland web --sessions` lists browser sign-ins; `cland web --revoke <id>` revokes one and closes its sockets. Both are **human** commands.
 
 ## Hub
 
@@ -95,7 +97,7 @@ Inside a session launched by cland, every command acts as that session and is ch
 | `cland task criterion <id> <op>` | `add <text>`, or `done`, `verify`, `fail`, `edit`, `remove` with a criterion id. |
 | `cland task rank <id>` | Move among siblings: `--top`, `--before <id>`, `--after <id>`. |
 | `cland task plan <set\|show\|approve> <epic>` | Set an epic's plan from `--file plan.yaml` (with `--reason`), show it, or approve it. Approve is **human** or Aide. |
-| `cland task import-github` | Import GitHub issues as items through `gh`. `--repo owner/name`, `--all` for closed ones too. Re-runs update in place. |
+| `cland task import-github` | Import GitHub issues as items through `gh`. `--repo owner/name`, otherwise the `github` remote, then `origin`; `--all` for closed ones too. Re-runs update in place. |
 
 ## Topics, inbox, rules, artifacts
 
@@ -126,10 +128,11 @@ Inside a session launched by cland, every command acts as that session and is ch
 | `cland executor status` | Token presence, live cloud machines, today's spend against the cap. **human** or Coordinator |
 | `cland executor prepare` | Build the snapshot cloud runs start from. **human** or Coordinator |
 | `cland executor reap` | Delete orphaned and expired cland machines. **human** or Coordinator |
-| `cland merge <T-n>` | Land a ready task as one squash commit on `dev`. `--override <reason>` (**human**, tracker and docs only). |
-| `cland push` | Fast-forward the territory's `dev` to the root's `dev`. **human** or Coordinator |
+| `cland merge <T-n>` | Queue a reviewed task when `[merge] queue = true`; otherwise land it as one squash commit on `dev`. `--override <reason>` (**human**, tracker and docs only). |
+| `cland push` | Fast-forward the territory's `dev` to the root's `dev`. **human**, Coordinator or Aide |
 | `cland release --item <R-n> [vX.Y.Z]` | Publish a release item: tag, notes, one atomic push to GitHub, close the item. `--dry-run`. **human** or Coordinator |
 | `cland release <vX.Y.Z>` | Publish `dev` with a version, without a release item. `--dry-run`. |
+| `cland publish <branch> --item T-n` | Publish approved marketing commits matching `[publish] allow_paths` to GitHub main and site, then integrate dev. `--dry-run`. **human** or Coordinator |
 | `cland sync` | Bring GitHub `main` back and replay unreleased `dev` work on it. Never pushes to GitHub. |
 | `cland worktree list` | Task worktrees with their items, branches and the sessions inside. |
 | `cland worktree prune` | Remove worktrees of closed items, after a `y` (`--yes` for all). **human** |

@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: Install cland, initialise a project, run setup and get your first crew working in about fifteen minutes.
+description: Install cland, initialise a project, run setup and get your first crew working.
 sidebar:
   order: 2
 ---
@@ -18,6 +18,8 @@ brew install cland
 # Linux
 curl -fsSL https://cland.app/install.sh | sh
 ```
+
+The install script requires Node >=24.13.0 <25 and npm on your PATH. See [Install](/docs/install/) for the other prerequisites and custom prefixes.
 
 Check it:
 
@@ -64,10 +66,10 @@ Setup checks eight things in order. Each step prints one line: `ok`, `done`, `sk
 
 1. **The project.** `.cland/` exists, or setup stops and tells you to run `cland init`.
 2. **The harnesses.** It looks for Claude Code, Codex and OpenCode. For a missing one it shows the official installer and runs it on your yes. cland needs at least one.
-3. **The logins.** For each harness a role uses, it runs the harness's own login in this terminal: `claude auth login`, `codex login` or `opencode auth login --standalone`. OpenCode's login is optional: its free model needs none.
+3. **The logins.** For each installed harness a role uses that still needs a login, it offers to run the harness's own login in this terminal: `claude auth login`, `codex login` or `opencode auth login --standalone`. OpenCode's login is optional: its free model needs none.
 4. **The accounts.** It lists the profiles you are signed in to and offers to name them in `~/.config/cland/accounts.toml`. The default answer is no. Say yes when you have several accounts on one harness. See [Accounts and limits](/docs/accounts/).
 5. **Your favourite harness.** The one you want to talk to. Your Aide runs on it.
-6. **Trust.** It marks the project folder as trusted for every installed harness, so no session stops at a trust prompt.
+6. **Trust.** It grants project trust for installed Claude Code and Codex profiles, including profiles selected by roles; OpenCode has no trust gate.
 7. **The hub.** It starts the project's hub, which keeps running after setup ends.
 8. **The Aide.** It launches `aide-1` on your favourite harness and opens the workbench with the Aide's terminal in the centre.
 
@@ -96,7 +98,7 @@ After that, the Aide offers a tour of cland in eight short stages tied to what i
 
 ## 5. Watch the crew
 
-Within a minute the Coordinator plans the first task and launches an Implementer. In the workbench:
+The Coordinator plans the first work and launches an Implementer once the plan and staffing allow it. In the workbench:
 
 - **The centre** shows the explorer: the release, its epics and tasks, with the card of the row under the cursor.
 - **`␣s`** (Space, then `s`) opens the sessions panel: each session with its role, harness, model, state and the item it works on.
@@ -113,11 +115,11 @@ When the Coordinator needs a decision, it sends an **ask**: a question with numb
 - Open the inbox with `␣n`.
 - Press `1` to `9` to pick an option, or `i` to type a free answer and press Enter.
 
-The row leaves the inbox and the count drops. From a shell you can do the same:
+The row leaves the inbox and the count drops. From a shell, set `ASK_ID` to the ask id printed by `cland inbox`, then answer it:
 
 ```sh
 cland inbox                       # what needs you, with ask ids
-cland topic answer <ask id> 2     # pick option 2
+cland topic answer "$ASK_ID" 2     # pick option 2
 ```
 
 That is the whole loop: the crew works, you decide.

@@ -48,11 +48,11 @@ A **session** is one running instance of a harness, with its own history and wor
 
 After `cland setup`, the workbench opens with your Aide's terminal already in the centre: your first conversation with cland is a conversation with your own harness.
 
-### Approvals stay in the harness
+### Approvals
 
-When a harness stops to ask for a command approval in its own interface, it is answered there. The session shows in the inbox and in the sessions panel as waiting, with the command it waits on; `Enter` on that row attaches you to it.
+When a harness stops for an approval, the session shows in the inbox and sessions panel as waiting. Codex and OpenCode approvals with a relay can be answered directly in Neovim's inbox: `1` approves once, `2` selects the offered always choice, and `d` denies with an optional note. `Enter` opens the approval details. Rows marked **answer in Neovim** attach to the harness instead.
 
-In the [web workbench](/docs/web-and-phone/), Codex and OpenCode approvals can also be answered from the page. Claude Code's are marked **answer in Neovim**: attach to the session to answer.
+In the [web workbench](/docs/web-and-phone/), Codex and OpenCode approvals with a relay can also be answered from the page; unavailable relays stay in the harness. Claude Code's are marked **answer in Neovim**: attach to the session to answer.
 
 ### From any terminal
 
@@ -91,4 +91,4 @@ cland session launch rev-deep --role reviewer --harness claude-code --model opus
 
 ### Your Aide
 
-An **Aide** is a session that works for you alone. It holds no crew duty, is addressed by name only and speaks for you, decisions included: it can create and change items, write to any session, and launch, stop or resume sessions on your word. It never merges, releases or asks you anything. Launch one with `a` in the sessions panel or `␣A` from anywhere; there is no limit on how many you run.
+An **Aide** is a session that works for you alone. It holds no crew duty, is addressed by name only and speaks for you, decisions included: it can create and change items, write to any session, and launch, stop or resume sessions on your word. It never merges, releases or sends decision asks; you can talk directly in its harness, including during onboarding. Launch one with `a` in the sessions panel or `␣A` from anywhere; the default Aide staffing policy has no size cap.

@@ -22,7 +22,7 @@ The raw stream is still there when you want it: every session's own harness is [
 
 ## Topics
 
-A **topic** is a thread in your chat with the crew. It has a title, a status and at most one bound unit of work: a task or an epic.
+A **topic** is a thread in your chat with the crew. It has a title, a status and at most one bound unit of work: an item.
 
 | Status | Means |
 | --- | --- |
@@ -32,7 +32,7 @@ A **topic** is a thread in your chat with the crew. It has a title, a status and
 | `closed` | Done. Closing the bound item closes its topic. |
 
 - **Messages go to the Coordinator** unless you mention someone: `@reviewer`, `@qa` or a session name such as `@impl-42`. A mentioned session may answer you in that topic.
-- **A task or an epic can have its own topic.** The crew opens them, and `M` on an item in the explorer opens one for you. The item's review requests, verdicts and reports land there, next to your words about it.
+- **An item can have its own topic.** The crew opens them, and `M` on an item in the explorer opens one for you. The item's review requests, verdicts and reports land there, next to your words about it.
 - **Artifacts** a session shows you, a report, a diagram, a page, appear as chips in the topic they belong to. See [Artifacts](/docs/concepts/#artifacts).
 
 In the terminal workbench, `␣t` opens the topics panel, grouped as **needs you**, **open** and **closed**, with unread badges; `␣T` docks it above the inbox. In the panel, `n` creates a topic, `c` closes one and `r` resolves its wait. The composer sits under the thread: `Enter` sends, `Shift+Enter` adds a line, `␣P` opens a full buffer for a long prompt.
@@ -73,12 +73,12 @@ flowchart TB
 - **Answer with one key.** `1` to `9` picks an option; `i` types a free answer. The same ask shows in the inbox and in its topic, in Neovim, the browser and the phone; the first answer from any of them wins.
 - **Declining is an answer too.** In the browser and on the phone, decline with a reason: the asker receives it and may ask again later.
 
-From a shell:
+From a shell, set `ASK_ID` to an open ask id printed by `cland inbox`:
 
 ```sh
 cland inbox                      # what needs you, with ask ids
-cland topic answer <ask id> 2    # pick option 2
-cland topic answer <ask id> --text "Ship it without the export"
+cland topic answer "$ASK_ID" 2    # pick option 2
+cland topic answer "$ASK_ID" --text "Ship it without the export"
 ```
 
 ## Requests
@@ -100,9 +100,9 @@ Each section shows its newest five and folds the rest into an "N more" line; eve
 | --- | --- |
 | `␣n`, `␣N` | Open the inbox, or open it full width. |
 | `1`–`9`, `i` | Answer the selected ask with an option, or a free answer. |
-| `Enter` | Open the ask's topic, attach to the session waiting on a command approval, or open a plan. |
+| `Enter` | Open the ask's topic, approval details (or attach for TUI-only approvals), or a plan. |
 | `r` | Reply to a request or a message. |
-| `d` | Decline a request, or mark a message read. |
+| `d` | Decline a request, deny a relayed approval, or mark a message read. |
 | `A` | What left the inbox in the last seven days, and why. |
 
 With nothing waiting it says `✓ nothing needs you`. On the phone the inbox is home, and an ask opens as a bottom sheet over the keyboard.
@@ -113,7 +113,7 @@ With nothing waiting it says `✓ nothing needs you`. On the phone the inbox is 
 
 Everything else, launches, merges, verdicts, verification results, usage warnings, goes to the **events view**, newest first, grouped by day. `␣E` opens it; the line under the inbox counts what is new since your last look.
 
-- `1` to `8` filter by kind (session, task, verdict, suite, release, artifact, usage, topic), `0` shows all, `w` only warnings.
+- In Neovim, `1` to `9` filter session, task, verdict, suite, release, artifact, usage, topic and heartbeat events; rule events have a palette action. The browser has `1` to `8` for the first eight kinds. `0` shows all and `w` toggles warnings.
 - `Enter` opens the subject: a card, a session, a topic, an artifact.
 - `gM` mutes the subject's events.
 

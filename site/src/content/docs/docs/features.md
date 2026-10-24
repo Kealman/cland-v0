@@ -25,14 +25,14 @@ Everything cland does, one line each. Each line links to the page that explains 
 
 - **[Sessions and direct harness access](/docs/sessions/).** Every session is a real Claude Code, Codex or OpenCode session; attach to it and type into it at any time.
 - **[Roles and crew configuration](/docs/crew/).** Choose the harness, model, effort, account and permissions of every role, and how many sessions of each run.
-- **[Accounts and limits](/docs/accounts/).** The 5-hour and weekly windows of every login in one place; a limited account stops new launches, and you choose what happens next.
+- **[Accounts and limits](/docs/accounts/).** The usage windows Claude Code and Codex report in one place (OpenCode has no limit data); a limited account stops new launches, and you choose what happens next.
 - **[Your Aide and the onboarding](/docs/quickstart/#4-the-onboarding).** Your own session studies the project, proposes the crew and drafts the first plan with you.
 - **[The rulebook](/docs/concepts/#rulebook).** The project's own rules for how work is done, delivered into every role's instructions.
 
 ## Landing the work
 
 - **[The merge gate](/docs/verification-and-release/#the-merge-gate).** A task lands on `dev` only with current clear verdicts from other sessions and every criterion done and verified.
-- **[Verification for any stack](/docs/verification-and-release/#verification-for-any-stack).** Your own prepare, check and test commands, through one queue that never overloads your machine.
+- **[Verification for any stack](/docs/verification-and-release/#verification-for-any-stack).** Your own check and test commands through one queue, with an idempotent prepare command for cloud images and runs.
 - **[Cloud runners](/docs/verification-and-release/#local-and-cloud-runners).** Run verification on fresh DigitalOcean machines in parallel, under a daily spend cap the hub enforces.
 - **[Releases from the item](/docs/verification-and-release/#releases).** `cland release` tags the release, writes its notes and pushes to GitHub in one atomic push.
 

@@ -125,7 +125,7 @@ const slides = [
   {
     id: 'accounts',
     h: "Every plan's limits in view",
-    p: 'The 5-hour and weekly window of every login, account by account. A limited account stops new launches, and you choose where the work goes next.',
+    p: 'The usage windows Claude Code and Codex report, account by account. OpenCode has no limit meters. A limited account stops new launches, and you choose where the work goes next.',
     href: '/docs/accounts/',
     shot: 2,
   },
@@ -190,9 +190,9 @@ const faqs = [
   { q: "Is this allowed by my subscription's terms?", a: 'cland runs the official claude, codex and opencode CLIs under your own logins, exactly as you would by hand. It never reads your tokens to call a provider\'s API, and it never rotates accounts.', open: true },
   { q: 'Which subscriptions work?', a: 'Whatever the harnesses sign in with: Claude plans for Claude Code, ChatGPT plans for Codex, and every provider OpenCode supports, free and open models included.' },
   { q: 'Do I need all three harnesses?', a: 'No. With one, the whole crew runs on it. Each one you add widens the team and spreads the load.' },
-  { q: 'Does my code leave my machine?', a: 'Only to the model providers you choose, through their own CLIs. cland has no telemetry. Some free models may train on what they see; cland doctor tells you which.' },
+  { q: 'Does my code leave my machine?', a: 'To the model providers you choose through their CLIs, and to your DigitalOcean account if you enable cloud verification. cland has no telemetry. Its free-model warnings are a prompt to check your provider\'s data policy.' },
   { q: 'Neovim or the browser?', a: 'Both, on the same hub. The terminal workbench needs no Neovim experience: cland brings its own, with every key in a palette.' },
-  { q: 'What does it cost?', a: 'Nothing. cland is open source under Apache-2.0. You pay only for the plans you already have.' },
+  { q: 'What does it cost?', a: 'cland is free and open source under Apache-2.0. You pay for your AI plans and any cloud verification machines you enable.' },
 ];
 
 const crewRows = [
@@ -290,7 +290,7 @@ const crewRows = [
               <div class="card role-card you-card">
                 <div class="role-name you-name">You</div>
                 <div class="role-runs you-runs">with your Aide</div>
-                <p class="role-does you-does">Approve the plan, answer the asks, accept the release. Your Aide speaks for you when you are away.</p>
+                <p class="role-does you-does">Approve plans when you opt in, answer the asks, accept the release. Your Aide speaks for you when you are away.</p>
               </div>
               <div class="card role-card own-card">
                 <div class="role-name">+ your own role</div>
@@ -307,7 +307,7 @@ const crewRows = [
     <div class="wrap split">
       <div class="split-copy">
         <h2 id="plans-h">Get more from every plan you pay for</h2>
-        <p class="lead">See the 5-hour and weekly window of every subscription in one place. Pick the account each role runs on. When a plan runs low, the work moves to the next one: you choose where, in one answer.</p>
+        <p class="lead">See the usage windows Claude Code and Codex report in one place; OpenCode has no limit data. Pick the account each role runs on. When a plan runs low, the work moves to the next one: you choose where, in one answer.</p>
         <ul class="checks">
           <li><span class="check" aria-hidden="true">✓</span><span>Frontier models only where judgement matters</span></li>
           <li><span class="check" aria-hidden="true">✓</span><span>Open and free models for the legwork</span></li>

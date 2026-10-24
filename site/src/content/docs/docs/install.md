@@ -51,7 +51,7 @@ replace a command or directory it does not manage.
 
 ### From source
 
-Requires Node >=24.13.0 <25.
+Requires Node **24.13 or newer within Node 24** (`>=24.13.0 <25`).
 
 ```sh
 git clone https://github.com/Kealman/cland-v0 cland
@@ -77,19 +77,19 @@ cland doctor
 | --- | --- |
 | macOS or Linux | Everything. |
 | Git | Every project. cland keeps the crew's work in a local Git territory. |
-| At least one harness | Claude Code (`claude`), Codex (`codex`) or OpenCode (`opencode`). Each one a role uses must be installed and signed in. |
-| `gh`, signed in | Only when the project has a GitHub remote, and for importing GitHub issues. |
+| At least one harness | Claude Code (`claude`), Codex (`codex`) or OpenCode (`opencode`). Each one a role uses must be installed, with any login required by its selected provider/model. |
+| `gh`, signed in | Importing GitHub issues and the GitHub checks in doctor. Git publication itself uses Git authentication. |
 | A terminal | The Neovim workbench and the harness logins. Any modern terminal works; Ghostty, kitty, WezTerm, iTerm2 and tmux are fine. |
 | Node >=24.13.0 <25 | The install script and source install. |
 
-You do not need Neovim installed or configured. cland downloads its own pinned Neovim release on first use, checks it against a pinned SHA-256 digest and starts it with a clean configuration, so your own Neovim setup is never loaded and never changed.
+You do not need Neovim installed or configured. cland downloads its own pinned Neovim release on first use, checks it against a pinned SHA-256 digest and starts it with a clean configuration, so your own Neovim setup is never loaded and never changed. The download cache is `.cache/nvim/<tag>/` under the cland installation (the source clone for a source install).
 
 ## Harnesses and logins
 
 `cland setup` handles this for you. For each harness it:
 
 1. Looks for the binary, also in the official installers' folders, and prints its version.
-2. If the harness is missing, shows its official user-level installer and runs it in your terminal when you say yes. A declined install is remembered and not offered again until you ask with `cland setup --install <harness>`.
+2. If the harness is missing, shows its official user-level installer and runs it in your terminal when you say yes. A declined install is remembered and not offered again until you ask with `cland setup --install <harness>`. That flag runs the installer directly, without another confirmation, including outside a terminal.
 3. Runs the harness's own login in your terminal, in the same environment the hub launches sessions with:
 
    | Harness | Login |
@@ -100,13 +100,13 @@ You do not need Neovim installed or configured. cland downloads its own pinned N
 
 cland keeps OpenCode sessions in a database of its own, separate from OpenCode's background service, so that service can never pick up a cland session. That is why the OpenCode login goes through setup: it signs in to cland's database. `cland doctor` prints the exact login line for it.
 
-Without a terminal, setup changes nothing: it prints each open step with its exact command and exits 1.
+Without a terminal, ordinary setup reports unresolved steps and exits 1. `--yes` can choose harmless defaults, grant project trust and start the hub; `--harness` can choose the favourite harness; `--install <harness>` explicitly runs an installer. Interactive logins and launching the Aide still need a terminal.
 
 ```sh
 cland setup --json            # the steps as JSON
-cland setup --install codex   # offer the Codex installer again
+cland setup --install codex   # run the Codex installer without another prompt
 cland setup --no-accounts     # skip the accounts step
-cland setup --no-aide         # do not launch the Aide
+cland setup --no-aide         # skip hub start and the Aide; cland starts the hub later
 ```
 
 Harnesses update themselves. cland does not pin their versions; `cland doctor` prints each version for information.
@@ -149,7 +149,7 @@ cland update
 - A skill new to the set is added, unless the project already has a folder of that name.
 - A skill dropped from the set is removed if untouched, and left to the project if edited.
 
-It never rewrites `roles.toml` or `crew.toml`: those are yours. A file or hook without cland's `managed by cland` mark is never written. Commit what `cland update` changed.
+`cland update` preserves existing `roles.toml` and `crew.toml`. Setup may rebuild an untouched generated roles template for the installed harnesses; hub startup also performs narrow compatibility migrations, reporting any changes. A file or hook without cland's `managed by cland` mark is never written. Commit what `cland update` changed.
 
 ## Uninstalling
 
@@ -184,7 +184,7 @@ cland init --undo      # restores the remotes: github becomes origin again
 
 `cland init --undo` undoes only the territory step. It refuses when work would become unreachable and names the refs; keep that work under a surviving branch, or pass `--force` to discard it. Then delete `.cland/`, `.agents/skills/`, the `.claude/skills` link, the cland block in `AGENTS.md` and the cland hooks in `.claude/settings.json` if you no longer want them.
 
-User-level state lives in:
+The source-install Neovim cache disappears with the clone. User-level state lives in:
 
 | Path | What it holds |
 | --- | --- |
@@ -193,5 +193,5 @@ User-level state lives in:
 | `~/.local/share/cland/opencode/` | cland's own OpenCode database. |
 
 :::caution
-Delete these only after uninstalling. The spend ledger is what keeps cloud runs under your daily cap across projects.
+These paths follow `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` when set. Delete them only after uninstalling. The spend ledger is what keeps cloud runs under your daily cap across projects.
 :::

@@ -7,7 +7,7 @@ sidebar:
 
 import Screenshot from '../../../components/Screenshot.astro';
 
-The hub serves a web workbench: everything the terminal workbench shows, in a browser. It is a second client of the same hub, not a separate service. Open it beside Neovim, in several browsers, and on your phone at once: every client sees the same state, live.
+The hub serves a web workbench: the crew's items, topics, sessions, inbox, artifacts, events and accounts in a browser. It is a second client of the same hub, not a separate service. Open it beside Neovim, in several browsers, and on your phone at once: every client sees the same state, live.
 
 There is no cloud service. The hub serves the page from your machine. It is reachable on your machine by default, on your local network when you allow it, and anywhere else only through your own tunnel or VPN.
 
@@ -17,9 +17,11 @@ There is no cloud service. The hub serves the page from your machine. It is reac
 cland web
 ```
 
-`cland web` prints a one-time sign-in link and opens it in your browser. The browser trades the link's token for a cookie that lasts 30 days, so you sign in once per browser. Run `cland web` again for a new link.
+`cland web` prints a one-time sign-in link and opens it in your browser. The link expires after five minutes and can be used once. The browser trades its token for a cookie that lasts 30 days from creation, so you sign in once per browser. Run `cland web` again for a new link.
 
-The cookie is `HttpOnly` and `SameSite=Strict`. Every connection checks its `Host` and `Origin`, and the page can only connect as you, never as a session.
+These commands run from your own shell; launched agent sessions cannot mint or manage browser sign-ins. Use `cland web --no-open` to print a link without opening a browser, `cland web --sessions` to list sign-ins, and `cland web --revoke <id>` to revoke one.
+
+The cookie is `HttpOnly` and `SameSite=Strict`, with `Secure` when using the configured HTTPS origin. Every connection checks its `Host` and `Origin`, and the page can only connect as you, never as a session.
 
 ## The layout
 
@@ -70,19 +72,21 @@ cland web --qr
 
 prints the sign-in link as a QR code in your terminal. Scan it with the phone's camera.
 
-The link points at your tunnel's address when you have configured one, and at your machine's local network address otherwise. Your phone must be able to reach it: on the same network, or through your tunnel or VPN. The local network needs to be allowed explicitly in `.cland/config.toml`:
+The link points at your tunnel's address when you have configured one, and at your machine's local network address otherwise. A loopback-only bind without an HTTPS origin is refused. Your phone must be able to reach it: on the same network, or through your tunnel or VPN. The local network needs to be allowed explicitly in `.cland/config.toml`:
 
 ```toml
 [web]
 # Listen beyond this machine, on your local network.
 bind = "0.0.0.0"
 # Your own tunnel's HTTPS address, used in sign-in links.
-url = "https://cland.my-tunnel.example"
+origin = "https://cland.my-tunnel.example"
 ```
+
+Restart the hub after changing these settings. `web.origin` must be an HTTPS origin without a path, query or fragment; configure your tunnel to forward to the hub's web address shown by `cland hub status`. `web.port = 0` (the default) keeps the first free port; set a port explicitly if your tunnel needs a stable target. Plain HTTP on a LAN exposes the sign-in cookie on that network.
 
 ### Install it as an app
 
-The web workbench is a PWA. In the phone's browser, use **Add to Home Screen** (Safari) or **Install app** (Chrome). It then opens full screen like an app.
+Use HTTPS through your tunnel for phone installation and notifications. The web workbench is a PWA. In the phone's browser, use **Add to Home Screen** (Safari) or **Install app** (Chrome). It then opens full screen like an app.
 
 :::note
 On iOS an installed app keeps its cookies apart from Safari. Open the sign-in link in the installed app, or scan the QR code again from it.
@@ -111,7 +115,7 @@ When the connection drops, a strip says since when and when the next retry runs.
 - Two switches: **needs you** and **finished**. They sit beside your profile in **Accounts** on the desktop, and under **More** on the phone.
 - Notifications never fire while you are looking at the page.
 
-On a phone, notifications need HTTPS through your own tunnel. iOS also requires you to tap the subscribe button in **More** once.
+On a phone, notifications need HTTPS through your own tunnel. On iOS, install the app and tap the subscribe button in **More** once. These notifications depend on the page receiving live hub updates; closing or suspending it does not provide background push delivery.
 
 ## What stays in the terminal
 
@@ -119,7 +123,7 @@ The web workbench watches, plans and steers through messages. A few things stay 
 
 | What | Where |
 | --- | --- |
-| **Claude Code's command approvals.** Claude Code asks in its own TUI. The web shows these rows marked **answer in Neovim** and notifies you; attach to the session to answer. Codex and OpenCode approvals are answered from the web. | Neovim, attached to the session |
+| **Claude Code's command approvals.** Claude Code asks in its own TUI. The web shows these rows marked **answer in Neovim** and notifies you; attach to the session to answer. Codex and OpenCode approvals with a relay are answered from the web or Neovim; rows without a relay stay in the harness. | Neovim, attached to the session |
 | **The harness terminal.** In the browser a session is its thread: what the hub knows. To watch or type into the harness itself, [attach to it](/docs/sessions/#attach-to-a-session) from Neovim. | Neovim, or `cland session attach` |
 | **Plan approval on a phone.** Approving needs the plan view. The phone shows a waiting plan as a row and notifies you. | The web on a desktop, or Neovim |
 | **Stopping or restarting the hub, releasing, and creating artifacts from arbitrary files on your machine.** These keep the CLI's authority. | The CLI or Neovim |

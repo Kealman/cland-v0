@@ -43,7 +43,7 @@ A **role** is what a session does in the project. Roles are hub state: the hub d
 
 A role can move to another session mid-project. The holder writes a **handover note** (goals now, work in flight, open decisions, what is waited on) and the next holder receives the clause with that note. The transcript never moves.
 
-The **Aide** is your own session. It can create and change items, write to any session, and launch, stop or resume sessions when you tell it to. It never merges, releases or asks you questions: it is you.
+The **Aide** is your own session. It can create and change items, write to any session, and launch, stop or resume sessions when you tell it to. It never merges, releases or sends decision asks: it speaks for you. During onboarding it talks with you directly in its harness.
 
 ## Crew
 
@@ -59,7 +59,7 @@ The tracker is the crew's only source of work. See [Items and the tracker](/docs
 
 ## Topics, asks and the inbox
 
-A **topic** is a thread in your chat with the crew, with a status (`open`, `waiting for human`, `waiting for agent`, `closed`) and at most one bound task or epic. **General** is the standing topic for free conversation with the Coordinator; the **Agents topic** is the read-only record of agent-to-agent messages and session lifecycle events. Your messages go to the Coordinator unless you mention a role or a session.
+A **topic** is a thread in your chat with the crew, with a status (`open`, `waiting for human`, `waiting for agent`, `closed`) and at most one bound item. **General** is the standing topic for free conversation with the Coordinator; the **Agents topic** is the read-only record of agent-to-agent messages and session lifecycle events. Your messages go to the Coordinator unless you mention a role or a session.
 
 An **ask** is a decision question with numbered options. Asks travel up the chain of leads, and only the Coordinator asks you. A **request** asks you for an act: a review, a QA run or taking over a role. The **inbox** holds only what needs you now; everything else goes to the **events view**. Every message, session, item and artifact sits in a **layer**: now, watch, background or archive.
 
@@ -83,7 +83,7 @@ stages:
 ```
 
 - `scope` is `none`, `affected` or `full`.
-- `when` is `per-item` (each task needs a QA verdict before merging) or `after-stage` (tasks merge on review, then one QA run closes the stage).
+- With non-`none` scope, `when` is `per-item` (each task needs a QA verdict before merging) or `after-stage` (tasks merge on review, then one QA run closes the stage). With `scope = "none"`, neither requires QA.
 - Review is always required.
 
 The Coordinator or the epic's Lead writes the plan into the epic's file. By default the plan needs no approval and you are notified. With `[plan] approval = "human"`, no Implementer starts on the epic until you approve the plan in the plan view (`gp`, then `a`). See [Crew configuration](/docs/crew/#plan-approval).
@@ -103,7 +103,7 @@ When all of this holds, the hub sets the task to `ready` and tells the lead. The
 
 ## Territory, branches and worktrees
 
-The **territory** is a local bare Git repository at `.cland/territory.git`, set as the project's `origin`. Agents branch, push and merge there, out of sight of GitHub. Your GitHub remote is renamed `github`; only `cland release` pushes to it.
+The **territory** is a local bare Git repository at `.cland/territory.git`, set as the project's `origin`. Agents branch, push and merge there, out of sight of GitHub. Your GitHub remote is renamed `github`; product releases use `cland release`, and approved marketing publication uses `cland publish`.
 
 - `main` mirrors GitHub. `dev` integrates the crew's work. Your root checkout lives on `dev`.
 - Each task gets a **task branch** `t/T-42-<slug>` from `dev`, in its own **worktree** at `.cland/worktrees/T-42/`, made when the task is claimed. The Implementer works there; parallel tasks never share a checkout.
@@ -164,3 +164,5 @@ For your user, shared by all projects:
 | `~/.config/cland/accounts.toml` | Your account registry: names, harnesses, paths. Never a secret. |
 | `~/.local/state/cland/` | The spend ledger of cloud verification runs. |
 | `~/.local/share/cland/opencode/` | cland's own OpenCode database. |
+
+The account, spend and OpenCode paths follow `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` when set. Neovim's pinned download is cached under the cland installation's `.cache/nvim/<tag>/`.
