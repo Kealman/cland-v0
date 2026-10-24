@@ -21,3 +21,13 @@ jobs and their named owners through hub status and queue replies. This proves
 admission and attribution only; it runs no package checks or suites. Compare
 the shell identity with the unchanged MCP environment and independently assert
 the launch's name, id, role, discovery path and nonempty launch token.
+
+The port-retry contract (T-1092) keeps the collision fixture's chosen port open
+until the adapter's readiness request against it has been answered, recording
+`collided-served` before the fake exits. The test asserts that receipt next to
+two distinct chosen ports: the planted EADDRINUSE collision still drives the
+retry on a second port, while no undici request is left in flight against a
+socket whose process has closed it. A focused failure-path case proves the
+fixture's own bound: with no probe it drains its listener and sockets, then
+exits with EADDRINUSE inside `FAKE_OPENCODE_COLLIDE_SETTLE_MS`; a taken
+competitor bind exits instead of hanging.

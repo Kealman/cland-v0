@@ -38,8 +38,9 @@
 // servers/<pid>.json (the live servers, for the tests' cleanup), prompts/<ses>.log (each prompt and its delivery).
 // Recovery probes: hold-session publishes session-running and waits for release-session;
 // fail-session refuses creation without ending the server.
-// Readiness probes: QUIET omits the listening line, COLLIDE_ONCE occupies the chosen port before bind,
-// and UNREADY accepts sockets without answering HTTP, with a diagnostic in the serve log.
+// Readiness probes: QUIET omits the listening line, COLLIDE_ONCE occupies the chosen port before bind
+// (and releases it only once the probe against it settles; FAKE_OPENCODE_COLLIDE_SETTLE_MS bounds that
+// wait, default 5000), and UNREADY accepts sockets without answering HTTP, with a diagnostic in the serve log.
 // A rejected permission reproduces upstream #54180: an interrupted execution with reason shutdown.
 // Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
 // Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
@@ -48,7 +49,7 @@ import { execFile, spawn } from 'node:child_process';
 import { fixtureEnvironment } from '../../../../test-support/fixture-environment.ts';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer as createPortServer } from 'node:net';
+import { createServer as createPortServer, type Socket } from 'node:net';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -128,10 +129,58 @@ async function serve(args: string[]): Promise<number> {
   const hostname = flag(args, '--hostname') ?? '127.0.0.1';
   const port = Number(flag(args, '--port') ?? 0);
   appendFileSync(join(HOME, 'serve-ports.jsonl'), `${port}\n`);
+  // The collision port stays open until the adapter's readiness request against it has settled (T-1092).
+  // Closing it with the crashing process instead leaves an in-flight undici request whose writeH1 calls
+  // setTypeOfService on a freed socket handle, which throws EINVAL out of the test's event loop.
+  let collision: Promise<boolean> | null = null;
   if (process.env.FAKE_OPENCODE_COLLIDE_ONCE === '1' && !existsSync(join(HOME, 'collided'))) {
-    const competitor = createPortServer();
-    await new Promise<void>(resolve => competitor.listen(port, hostname, resolve));
+    const sockets = new Set<Socket>();
+    let settle: (value: boolean) => void = () => {};
+    const settled = new Promise<boolean>(resolve => (settle = resolve));
+    // The owner always settles and drains itself: after the probe's response socket closed, or after this
+    // bound destroys its sockets and closes its listener. A fallback that merely returned would leave the
+    // listener referenced, keep the process alive and hide the child exit the adapter retries on.
+    const settleMs = Number(process.env.FAKE_OPENCODE_COLLIDE_SETTLE_MS ?? 5_000);
+    let released = false;
+    let bound: NodeJS.Timeout | undefined;
+    const release = (answered: boolean) => {
+      if (released) return;
+      released = true;
+      if (bound) clearTimeout(bound);
+      for (const socket of sockets) socket.destroy();
+      competitor.close(() => settle(answered));
+    };
+    const competitor = createPortServer(socket => {
+      sockets.add(socket);
+      socket.on('close', () => sockets.delete(socket));
+      socket.on('error', () => {});
+      socket.resume();
+      socket.once('data', () => {
+        // Answer, then close only once the client has its response: the probe settles before the port goes.
+        socket.end('HTTP/1.1 503 Service Unavailable\r\ncontent-length: 0\r\nconnection: close\r\n\r\n');
+        socket.once('close', () => release(true));
+      });
+    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onError = (error: Error) => reject(error);
+        competitor.once('error', onError);
+        competitor.listen(port, hostname, () => {
+          competitor.off('error', onError);
+          resolve();
+        });
+      });
+    } catch (error) {
+      if (bound) clearTimeout(bound);
+      const err = error as NodeJS.ErrnoException;
+      process.stderr.write(`Error: collision listener ${err.code ?? ''}${err.code ? ': ' : ''}${err.message}\n`);
+      return 1;
+    }
+    // Start the bound only once the port is really held, so a slow bind cannot race its own fallback.
+    bound = setTimeout(() => release(false), settleMs);
+    bound.unref();
     writeFileSync(join(HOME, 'collided'), String(port));
+    collision = settled;
   }
   const password = process.env.OPENCODE_PASSWORD ?? '';
   const config = process.env.OPENCODE_CONFIG ? readJson<{ mcp?: { servers?: Record<string, McpServer> } }>(process.env.OPENCODE_CONFIG) : null;
@@ -478,7 +527,24 @@ async function serve(args: string[]): Promise<number> {
     }
   });
 
-  await new Promise<void>((resolve) => server.listen(port, hostname, resolve));
+  const bindError = await new Promise<NodeJS.ErrnoException | null>((resolve) => {
+    const onError = (error: NodeJS.ErrnoException) => resolve(error);
+    server.once('error', onError);
+    server.listen(port, hostname, () => {
+      server.off('error', onError);
+      resolve(null);
+    });
+  });
+  if (bindError) {
+    if (collision && bindError.code === 'EADDRINUSE') {
+      // The collision owner settles its own lifetime: true once the probe's response socket closed, false
+      // after its bound drained the listener and sockets. Waiting on it cannot outlive that bound.
+      if (await collision) writeFileSync(join(HOME, 'collided-served'), String(port));
+      process.stderr.write(`Error: listen EADDRINUSE: address already in use ${hostname}:${port}\n`);
+      return 1;
+    }
+    throw bindError;
+  }
   const address = server.address();
   const url = `http://${hostname}:${typeof address === 'object' && address ? address.port : port}`;
   // cland-allow-child-env: native fake harness signal-resistant descendant has no account or Git operation and inherits its sealed launcher

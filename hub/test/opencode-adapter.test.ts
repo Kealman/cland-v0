@@ -16,6 +16,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readdir, readFile, realpath, stat, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -217,6 +218,63 @@ test('OpenCode launches on the port cland chose without a listening log line', a
   assert.doesNotMatch(await readFile(join(root, '.cland/opencode/impl/serve.log'), 'utf8'), /listening on/);
 });
 
+test('the collision fixture settles a failed bind and drains its bounded no-probe fallback', async (t) => {
+  const freshHome = async () => {
+    const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
+    t.after(ownDirectory(undefined, home));
+    return home;
+  };
+  const freePort = () => new Promise<number>((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address() as { port: number };
+      probe.close((error) => error ? reject(error) : resolve(address.port));
+    });
+  });
+  const fakeServe = (home: string, port: number, extra: Record<string, string>) => new Promise<{ code: number | null; stderr: string; timedOut: boolean }>((resolve) => {
+    execFile(process.execPath, [join(FAKE_OPENCODE_DIR, 'fake-opencode.ts'), 'serve', '--hostname', '127.0.0.1', '--port', String(port)], {
+      env: fixtureEnvironment(home, process.env, { FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_COLLIDE_ONCE: '1', ...extra }),
+      timeout: 5_000,
+    }, (error, _stdout, stderr) => resolve({
+      code: !error ? 0 : typeof error.code === 'number' ? error.code : null,
+      stderr,
+      timedOut: Boolean(error && (error as { killed?: boolean }).killed),
+    }));
+  });
+
+  // No probe ever arrives: the fixture's own bound drains the listener and sockets, so the child exits with
+  // EADDRINUSE (the retry receipt) instead of holding the launch open, and the taken port is free again.
+  const idleHome = await freshHome();
+  const idlePort = await freePort();
+  const idle = await fakeServe(idleHome, idlePort, { FAKE_OPENCODE_COLLIDE_SETTLE_MS: '150' });
+  assert.equal(idle.timedOut, false, 'the no-probe fallback exits inside its own bound');
+  assert.equal(idle.code, 1);
+  assert.match(idle.stderr, /Error: listen EADDRINUSE/);
+  assert.doesNotMatch(idle.stderr, /collision listener/);
+  await assert.rejects(readFile(join(idleHome, 'collided-served'), 'utf8'));
+  await new Promise<void>((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', reject);
+    probe.listen(idlePort, '127.0.0.1', () => probe.close((error) => error ? reject(error) : resolve()));
+  });
+
+  // A fresh home enters the competitor path again. Its own bind is taken, so it reports the failed competitor
+  // listen (not the ordinary HTTP server bind) and exits rather than waiting forever.
+  const takenHome = await freshHome();
+  const takenPort = await freePort();
+  const occupying = createServer();
+  await new Promise<void>((resolve, reject) => {
+    occupying.once('error', reject);
+    occupying.listen(takenPort, '127.0.0.1', resolve);
+  });
+  t.after(() => occupying.close());
+  const failed = await fakeServe(takenHome, takenPort, { FAKE_OPENCODE_COLLIDE_SETTLE_MS: '5000' });
+  assert.equal(failed.timedOut, false, 'a failed competitor bind exits instead of hanging');
+  assert.equal(failed.code, 1);
+  assert.match(failed.stderr, /Error: collision listener EADDRINUSE/);
+});
+
 test('OpenCode retries a port taken between choice and bind on a different port', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
@@ -225,6 +283,10 @@ test('OpenCode retries a port taken between choice and bind on a different port'
   const ui = await connectUi(t, discovery);
   const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
   const ports = (await readFile(join(fake.home, 'serve-ports.jsonl'), 'utf8')).trim().split('\n').map(Number);
+  // The collision port closes only after the adapter's readiness request against it settled, so no
+  // in-flight request meets a socket whose process has already gone (T-1092).
+  const served = (await readFile(join(fake.home, 'collided-served'), 'utf8')).trim();
+  assert.equal(served, String(ports[0]));
   assert.equal(ports.length, 2);
   assert.ok(ports.every(port => port > 0));
   assert.notEqual(ports[0], ports[1]);
