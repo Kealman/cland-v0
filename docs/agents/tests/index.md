@@ -4,6 +4,10 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/suite-protocol.test.ts`](../../../hub/test/suite-protocol.test.ts) | [Notes](hub-test-suite-protocol.test.ts.md) |
+| [`hub/test/suite-cancel.test.ts`](../../../hub/test/suite-cancel.test.ts) | [Notes](hub-test-suite-cancel.test.ts.md) |
+| [`hub/test/suite-recovery.test.ts`](../../../hub/test/suite-recovery.test.ts) | [Notes](hub-test-suite-recovery.test.ts.md) |
+| [`hub/test/suite-admission-responsive.test.ts`](../../../hub/test/suite-admission-responsive.test.ts) | [Notes](hub-test-suite-admission-responsive.test.ts.md) |
 | [`hub/test/dev-t3-search.test.ts`](../../../hub/test/dev-t3-search.test.ts) | [Notes](hub-test-dev-t3-search.test.ts.md) |
 | [`hub/test/suite-scheduling.test.ts`](../../../hub/test/suite-scheduling.test.ts) | [Notes](hub-test-suite-scheduling.test.ts.md) |
 | [`hub/test/account-fixture-env.test.ts`](../../../hub/test/account-fixture-env.test.ts) | [Notes](hub-test-account-fixture-env.test.ts.md) |

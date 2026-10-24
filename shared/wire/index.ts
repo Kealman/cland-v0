@@ -337,6 +337,8 @@ export type HubEvent =
 // hub/src/protocol.ts
 export type VerificationQueue = {
   batch?: MergeBatchStatus | null;
+  /** Failed local compatibility inspection or release recovery, until its successful retry. */
+  localBlocked?: { reason: string };
   version: 1; at: string; holder: VerificationHolder | null; remote?: VerificationHolder[]; remoteBudget?: number; localFallback?: boolean; waiters: VerificationWaiter[];
   metrics: { window: number; count: number; wait: DurationStats; run: DurationStats; queueWait?: QueueWaitMetrics };
 };

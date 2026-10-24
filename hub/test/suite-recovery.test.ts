@@ -2,13 +2,15 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, realpath, stat, rm, readdir, utimes } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { ownProcess } from './process-cleanup.ts';
+import { beforeDirectories, captureProcess, cleanupProcesses, ownDirectory, ownProcess } from './process-cleanup.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
@@ -17,6 +19,170 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
+
+test('admission preserves recreated-root evidence and locks when a detached candidate has ambiguous ownership', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const token = randomUUID();
+  const root = join(await realpath('/tmp'), `cland-suite-${token}`);
+  await mkdir(root, { mode: 0o700 });
+  ownDirectory(t, root);
+  await writeFile(join(root, 'preserved'), 'ambiguous evidence');
+  const marker = join(f.root, 'ambiguous-child');
+  const child = spawn(process.execPath, ['-e', `require('fs').writeFileSync(${JSON.stringify(marker)}, 'ready');setInterval(() => {}, 1000)`, root], {
+    cwd: f.root, env: fixtureEnvironment(f.root, process.env, { TEST_SUITE_RUN_ID: token }), detached: true, stdio: 'ignore',
+  });
+  ownProcess(t, child.pid);
+  await eventually('ambiguous candidate is running outside the root', async () => readFile(marker, 'utf8').then(() => true, () => undefined));
+  const holder = { pid: 2147483647, started: null, since: 'unknown', token, root, device: 0, inode: 0, runner: { pid: 2147483647, started: 'unknown', group: 2147483647 } };
+  const locks = [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')];
+  for (const lock of locks) {
+    await mkdir(lock);
+    await writeFile(`${lock}.owner`, JSON.stringify(holder));
+    await writeFile(join(lock, 'holder.json'), JSON.stringify(holder));
+    await utimes(`${lock}.owner`, new Date(0), new Date(0));
+  }
+  await f.launch();
+  await eventually('ambiguous writer keeps admission blocked', async () => {
+    const q = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+    return q.localBlocked?.reason.includes('ambiguous writer ownership') ? true : undefined;
+  });
+  assert.equal(pidAlive(child.pid!), true, 'argv/environment hints alone do not authorize signalling');
+  assert.equal(await readFile(join(root, 'preserved'), 'utf8'), 'ambiguous evidence');
+  for (const lock of locks) assert.deepEqual(JSON.parse(await readFile(`${lock}.owner`, 'utf8')), holder);
+  assert.deepEqual(await f.results(), []);
+});
+
+test('admission reaps a detached writer after its parent died before quarantining the recreated root', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const token = randomUUID();
+  const root = join(await realpath('/tmp'), `cland-suite-${token}`);
+  let stopParent = async () => {};
+  let stopChild = async () => {};
+  let quarantine: string | undefined;
+  // Register before mkdir/spawn/await: a missing setup receipt still leaves its
+  // writer discoverable by the exact fixture-owned cwd, including after reparenting.
+  beforeDirectories(t, async () => {
+    await stopParent();
+    await stopChild();
+    const paths = [root, `${root}.original`, ...(quarantine ? [quarantine] : [])];
+    for (const path of paths) {
+      if (await stat(path).then(() => true, () => false)) await cleanupProcesses(path, [], undefined, token, [], { discover: true });
+    }
+    for (const path of paths) await rm(path, { recursive: true, force: true });
+  });
+  await mkdir(root, { mode: 0o700 });
+  const before = await stat(root);
+  const marker = join(f.root, 'detached-writer');
+  const environment = fileURLToPath(new URL('./fixture-environment.ts', import.meta.url));
+  await writeFile(join(f.root, 'dead-parent.mjs'), `import { spawn } from 'node:child_process';
+import { existsSync, renameSync, mkdirSync } from 'node:fs';
+import { fixtureEnvironment } from ${JSON.stringify(environment)};
+renameSync(${JSON.stringify(root)}, ${JSON.stringify(`${root}.original`)});
+mkdirSync(${JSON.stringify(root)}, { mode: 0o700 });
+const child = spawn(process.execPath, [${JSON.stringify(join(f.root, 'writer.mjs'))}], {
+  cwd: ${JSON.stringify(root)}, env: fixtureEnvironment(${JSON.stringify(f.root)}, process.env), detached: true, stdio: 'ignore'
+});
+child.unref();
+const poll = setInterval(() => { if (existsSync(${JSON.stringify(marker)})) clearInterval(poll); }, 10);`);
+  await writeFile(join(f.root, 'writer.mjs'), `import { writeFileSync } from 'node:fs';
+writeFileSync('preserved', 'orphan evidence');
+writeFileSync(${JSON.stringify(marker)}, String(process.pid));
+setInterval(() => writeFileSync('heartbeat', 'still writing'), 25);`);
+  const parent = spawn(process.execPath, [join(f.root, 'dead-parent.mjs')], { cwd: f.root, env: fixtureEnvironment(f.root, process.env), detached: true, stdio: 'ignore' });
+  stopParent = ownProcess(t, parent.pid);
+  const identity = captureProcess(parent.pid);
+  assert.ok(identity);
+  const exited = new Promise<void>((resolve, reject) => { parent.once('close', () => resolve()); parent.once('error', reject); });
+  const child = await eventually('detached writer has its own receipt', async () => readFile(marker, 'utf8').then(Number, () => undefined));
+  stopChild = ownProcess(t, child);
+  const after = await stat(root);
+  quarantine = `${root}.quarantine-${after.dev}-${after.ino}`;
+  await exited;
+  assert.equal(pidAlive(parent.pid!), false, 'parent is already gone before recovery admission');
+  const holder = { pid: parent.pid, started: identity.started, since: 'unknown', token, root, device: before.dev, inode: before.ino, runner: identity };
+  for (const lock of [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')]) {
+    await mkdir(lock);
+    await writeFile(`${lock}.owner`, JSON.stringify(holder));
+    await writeFile(join(lock, 'holder.json'), JSON.stringify(holder));
+    await utimes(`${lock}.owner`, new Date(0), new Date(0));
+  }
+  const job = await f.launch();
+  await eventually('successor admitted after orphan cleanup', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
+  assert.equal(pidAlive(child), false, 'independently owned detached writer is gone before successor admission');
+  assert.equal(await readFile(`${root}.quarantine-${after.dev}-${after.ino}/preserved`, 'utf8'), 'orphan evidence');
+});
+
+test('admission preserves a recreated root and both locks when stale metadata has no runner group', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const token = randomUUID();
+  const root = join(await realpath('/tmp'), `cland-suite-${token}`);
+  await mkdir(root, { mode: 0o700 });
+  ownDirectory(t, root);
+  await writeFile(join(root, 'preserved'), 'unknown descendants');
+  const holder = { pid: 2147483647, started: null, since: 'unknown', token, root, device: 0, inode: 0 };
+  const locks = [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')];
+  for (const lock of locks) {
+    await mkdir(lock);
+    await writeFile(`${lock}.owner`, JSON.stringify(holder));
+    await writeFile(join(lock, 'holder.json'), JSON.stringify(holder));
+    await utimes(`${lock}.owner`, new Date(0), new Date(0));
+  }
+  const job = await f.launch();
+  const queue = await eventually('unknown group blocks admission with a reason', async () => {
+    const q = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+    return q.localBlocked?.reason.includes('runner group unknown') ? q : undefined;
+  });
+  assert.equal(queue.waiters[0]!.id, job.id);
+  assert.equal(await readFile(join(root, 'preserved'), 'utf8'), 'unknown descendants');
+  for (const lock of locks) {
+    assert.equal((await stat(lock)).isDirectory(), true);
+    assert.deepEqual(JSON.parse(await readFile(`${lock}.owner`, 'utf8')), holder);
+  }
+  assert.deepEqual(await f.results(), [], 'no worker runs or reports success');
+});
+
+test('admission quarantines a dead run’s recreated root and releases both compatibility locks', async t => {
+  const f = await fixture(t, 'node recreated.mjs');
+  const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+  const locks = [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')];
+  const marker = join(f.root, 'recreated.json');
+  await writeFile(join(f.root, 'recreated.mjs'), `import { runSuite } from ${JSON.stringify(runner)};
+process.exitCode = await runSuite([['--test', 'replace.mjs']], ${JSON.stringify({ cwd: f.root, lockDirs: locks })});`);
+  await writeFile(join(f.root, 'replace.mjs'), `import test from 'node:test';
+import { readFile, rename, mkdir, writeFile, stat } from 'node:fs/promises';
+test('recreated phase root after runner death', async () => {
+  const root = process.env.TMPDIR;
+  const owner = JSON.parse(await readFile(${JSON.stringify(`${locks[0]}.owner`)}, 'utf8'));
+  await rename(root, root + '.original');
+  process.kill(process.ppid, 'SIGKILL');
+  await mkdir(root, { mode: 0o700 });
+  await writeFile(root + '/preserved', 'recreated by fake child');
+  const info = await stat(root);
+  await writeFile(${JSON.stringify(marker)}, JSON.stringify({ root, before: { device: owner.device, inode: owner.inode }, after: { device: info.dev, inode: info.ino } }));
+});`);
+  const job = await f.launch();
+  const recreated = await eventually('fake child recreated root after runner kill', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined));
+  // These are exact fixture-owned paths, retained until all package writers stop.
+  t.after(async () => {
+    await rm(`${recreated.root}.original`, { recursive: true, force: true });
+    await rm(recreated.root, { recursive: true, force: true });
+    await rm(`${recreated.root}.quarantine-${recreated.after.device}-${recreated.after.inode}`, { recursive: true, force: true });
+  });
+  await eventually('first run reports after package crash', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
+  await writeFile(join(f.root, 'recreated.mjs'), 'console.log("next local run admitted");');
+  const next = await f.launch('auto', '--fresh');
+  const result = await eventually('next local run admitted after quarantine', async () => (await f.results()).find(m => m.id === `suite:${next.id}`), 7000);
+  assert.match(result.text, /auto exit 0/);
+  await f.ui.request({ type: 'hub.status', flushLogs: true });
+  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const event = journal.find(entry => entry.event === 'suite-recovery-quarantined');
+  assert.ok(event, 'quarantine has a durable journal receipt');
+  assert.deepEqual(event.before, recreated.before);
+  assert.deepEqual(event.after, recreated.after);
+  assert.equal(await readFile(join(event.quarantine, 'preserved'), 'utf8'), 'recreated by fake child');
+  await assert.rejects(stat(recreated.root), { code: 'ENOENT' });
+  for (const lock of locks) await assert.rejects(stat(lock), { code: 'ENOENT' });
+});
 
 
 test('worker cleanup removes a borrowed root when its package runner dies during mkdir', async t => {

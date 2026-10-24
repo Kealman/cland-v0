@@ -27,9 +27,11 @@ export class LocalExecutor implements Executor {
   readonly #admit: (run: string) => void;
   readonly #env: NodeJS.ProcessEnv;
   readonly #compatibility: LocalCompatibility;
-  constructor(locks: string[], checkpoint: (lease: Lease, worker: LocalWorker) => void, admit: (run: string) => void, env: NodeJS.ProcessEnv = process.env, compatibility?: LocalCompatibility) {
+  readonly #recover: (settled: { pid: number; started: string }) => Promise<boolean>;
+  constructor(locks: string[], checkpoint: (lease: Lease, worker: LocalWorker) => void, admit: (run: string) => void, env: NodeJS.ProcessEnv = process.env, compatibility?: LocalCompatibility, log?: (entry: Record<string, unknown>) => void) {
     this.#env = env;
-    this.#compatibility = compatibility ?? { holder: () => compatibilityHolder(locks, env), occupied: () => compatibilityOccupied(locks, env) };
+    this.#compatibility = compatibility ?? { holder: () => compatibilityHolder(locks, env), occupied: () => compatibilityOccupied(locks, env, log) };
+    this.#recover = settled => compatibilityOccupied(locks, env, log, settled);
     this.#checkpoint = checkpoint; this.#admit = admit;
   }
   holder(): ReturnType<typeof compatibilityHolder> { return this.#compatibility.holder(); }
@@ -119,13 +121,13 @@ export class LocalExecutor implements Executor {
       return { text: bytes.subarray(0, bytesRead).toString('utf8'), next: offset + bytesRead };
     } finally { await fd.close(); }
   }
-  async cancel(lease: Lease, signal: string): Promise<void> {
+  async cancel(lease: Lease, _signal: string): Promise<void> {
     const resource = lease.resource as Resource;
     resource.cancelled = true;
     if (!resource.pid || !resource.started || !pidAlive(resource.pid)) return;
-    if (await processStartedAsync(resource.pid, undefined, undefined, undefined, this.#env) !== resource.started) return;
-    // Identity verification precedes the worker's existing group interrupt protocol.
-    try { process.kill(-resource.pid, signal as NodeJS.Signals); } catch {}
+    // Capture the complete ancestry before the worker forwards its interrupt.
+    // Group signalling first loses detached fake harnesses as their parents exit.
+    if (!await endProcess({ pid: resource.pid, pidStarted: resource.started }, () => {}, 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite cancellation could not verify the worker tree');
   }
   async release(lease: Lease): Promise<Released> {
     const resource = lease.resource as Resource;
@@ -145,6 +147,9 @@ export class LocalExecutor implements Executor {
           if (!await endProcess({ pid: row.pid, pidStarted: row.started }, () => {}, 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite crash cleanup could not verify a surviving process');
         }
       }
+      // Interrupted workers leave their lease/root intact for this termination
+      // owner. Recovery starts only after the captured tree has been reaped.
+      await this.#recover({ pid, started });
     }
     if (this.#reserved === lease.run) this.#reserved = null;
     return { lifetimeMs: null, costUsd: null };

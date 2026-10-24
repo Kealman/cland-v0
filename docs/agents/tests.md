@@ -1333,6 +1333,22 @@ Both locks use the same PID/start-time ownership, stale-holder recovery and inte
 
 New lease records retain the legacy local `started` field and add `startedUtc`, probed with `TZ=UTC` and `LC_ALL=C`. Recovery and display compare the UTC identity, including recovery guards and phase cleanup anchors. An older record has no timezone basis: a live PID whose start differs by at most 26 hours remains held, since UTC-12 through UTC+14 can explain that difference. Scratch daemons started by the test harness use fixture-local compatibility paths, including projects with no verification override.
 
+Local cancellation captures the full worker tree before signalling and defers
+borrowed root cleanup until those identities are gone. For a recreated inode,
+recovery preserves the contents by renaming the canonical token/phase path owned
+by the same OS user, once the holder and known recorded runner group are dead
+and independently owned writers have been reaped. Unknown runner metadata or
+ambiguous writer ownership preserves the root and locks. The
+`suite-recovery-quarantined` journal receipt names both device/inode pairs and the
+quarantine path. Uncertain ownership stays held; `verify queue` exposes its latest
+admission or local release-recovery error through additive `localBlocked.reason`
+and an unknown local ETA until the corresponding recovery succeeds.
+Use fixture-local locks and sealed descendants for these scenarios; see the
+[cancellation](tests/hub-test-suite-cancel.test.ts.md),
+[recovery](tests/hub-test-suite-recovery.test.ts.md) and
+[queue](tests/hub-test-suite-admission-responsive.test.ts.md) seams. Never repair
+the live machine's suite locks from a test or probe.
+
 An ownerless manual lock stays held. The wait message names the lock's `rmdir` command; use it only after verifying that no suite using that lock is running. `CLAND_TEST_SKIP_LOCK=1` is for isolated CI jobs.
 
 `hub/test/quarantine.json` quarantines an exact top-level `file::test` identity

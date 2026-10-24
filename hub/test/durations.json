@@ -6682,6 +6682,27 @@
     "web/test/session-launch.test.ts::a custom role is selectable with its own defaults and appears in the crew after launch": 1.52439
   },
   "allow": {
+    "hub/test/suite-recovery.test.ts::admission quarantines a dead run’s recreated root and releases both compatibility locks": {
+      "seconds": 9.339,
+      "owner": "E-1194",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "T-511 requires a real package-runner crash, fake-child root recreation, independently owned writer cleanup, preserved quarantine bytes with a durable old/new-inode journal receipt, release of both compatibility locks and successful successor verification. Retained final-implementation macOS/local A-10945 measured 6.225784709 s; Linux c-8 lon1 droplet A-11170 at e8089022 measured 5.148276204 s (A-11061 also passed this identity). The 9.339 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence."
+    },
+    "hub/test/suite-cancel.test.ts::verify cancel reaps a detached fake child before removing the phase root, then admits the next run": {
+      "seconds": 7.744,
+      "owner": "E-1194",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "T-511 requires a real local worker, borrowed package runner and detached fake harness, receipt-backed tree death before root removal, and a successful successor verification. Final-source macOS/local A-10945 observed 4.175276375 s; Linux c-8 lon1 droplet A-11004 at f7b3279d observed 5.162017751 s. The 7.744 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Native assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence."
+    },
+    "hub/test/suite-cancel.test.ts::verify cancel reaps a detached fake child that recreates the root after runner death, then admits the next run": {
+      "seconds": 7.987,
+      "owner": "E-1194",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "T-511 requires a real local worker, borrowed package runner and detached fake harness, root recreation after runner death, verified descendant teardown, quarantine recovery and a successful successor verification. Final-source macOS/local A-10945 observed 5.209689916 s; Linux c-8 lon1 droplet A-11004 at f7b3279d observed 5.324462362 s. The 7.987 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Native assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence."
+    },
     "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a copied live durable fixture": {
       "seconds": 28.298,
       "owner": "E-1196",

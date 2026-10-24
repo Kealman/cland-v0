@@ -106,8 +106,12 @@ export async function suiteWorker(input: string): Promise<void> {
   } catch (error) { code = 1; cause = error instanceof Error ? error.message : String(error); }
   finally {
     try {
-      if (leases.length) await sweepLease(dirs, token);
-      for (const lease of leases.reverse()) await lease.release();
+      // The hub captures descendants before interrupting us. Preserve ownership
+      // until it confirms their death; a detached child may still write the root.
+      if (!signal) {
+        if (leases.length) await sweepLease(dirs, token);
+        for (const lease of leases.reverse()) await lease.release();
+      }
     } catch (error) { code = 1; cause = compatibilityCleanupCause(cause, error); }
   }
   if (signal) { code = signal === 'SIGINT' ? 130 : 143; cause = `worker interrupted by ${signal}`; }

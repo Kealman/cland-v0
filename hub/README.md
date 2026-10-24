@@ -673,6 +673,9 @@ their stable identities. A `task` with `item: null` removes that item.
 The verification queue is pushed when its holder, remote holders, waiters or
 other queue facts change, never for elapsed run/wait time or a decreasing ETA.
 `suite.queue` reads still return current timing.
+An optional `localBlocked: { reason }` exposes failed local compatibility
+inspection or release recovery until its successful retry. The CLI shows `local: blocked · <reason>`;
+local waiter ETAs are unknown. Existing holder and waiter fields stay present.
 
 With `slim-frames`, `task` carries the changed item and a `layers` map containing
 only entries that changed since the preceding model state. Changes in the active
@@ -4351,6 +4354,22 @@ directory is removed before the replacement suite starts. The short, unique
 run-root path is recorded before directory creation, so interrupted setup is
 recoverable too. A live older-version holder with an unreadable start time is
 preserved until its PID exits; the waiter identifies it as an older version.
+
+Local cancellation captures the worker's descendant identities before signalling,
+including detached harness children. Interrupted workers and borrowed package
+runners preserve their root and compatibility ownership for the hub's termination
+owner. The hub confirms the captured tree is gone before recovering its leases
+and reporting cancellation; this exact-worker recovery needs no stale-age grace.
+If a child recreated the root, recovery requires the exact canonical token/phase
+path, the same OS owner, a dead holder and a dead recorded runner group. Quarantine
+follows independent cwd/ancestry discovery that reaps detached writers; an
+ambiguous candidate preserves ownership. Missing runner metadata stays blocked.
+It renames that directory to `<root>.quarantine-<device>-<inode>`, preserving its contents,
+and journals `suite-recovery-quarantined` with `before` and `after` device/inode
+pairs, token, holder PID, root and quarantine path before releasing both locks.
+Symlinks, a different path/owner, live or unknown runner groups, and raced roots
+retain ownership and a blocked reason. Quarantined roots remain diagnostic files;
+there is no automatic deletion policy.
 
 An empty lock from the manual `mkdir` convention has no recorded owner and is
 never reclaimed by age. Once a minute the waiter prints its age and recovery

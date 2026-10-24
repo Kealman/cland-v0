@@ -230,6 +230,7 @@ export class Suites {
   readonly #launchWork = new Set<Promise<void>>();
   readonly #reaping: Promise<void>;
   #compatibility: Awaited<ReturnType<LocalExecutor['holder']>> = null;
+  #localBlocked: { reason: string } | undefined;
   // Durable leases hold remote slots even while no suite job owns one: a
   // preparation or an unconfirmed cleanup. The published ETA reads this sweep;
   // a scheduler tick refreshes it off the admission path.
@@ -263,7 +264,7 @@ export class Suites {
       job.lease = lease; job.pid = worker.pid; job.started = worker.started;
       job.outcome ??= worker.outcome;
       this.#save(job);
-    }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); }, options.env, options.compatibility);
+    }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); }, options.env, options.compatibility, options.log);
     this.#droplet = new DropletExecutor(root, store, options.log, options.env, options.projectConfig, { ...options.dropletServices, clock: this.#clock });
     for (const [index, job] of this.#jobs.entries()) {
       job.sequence ??= index;
@@ -1134,7 +1135,13 @@ export class Suites {
       }
       if (job?.requireRemote) continue;
       if (localActive >= this.#budget) continue;
-      localOccupied ??= await this.#local.occupied();
+      if (localOccupied === undefined) {
+        try { localOccupied = await this.#local.occupied(); this.#localBlocked = undefined; }
+        catch (error) {
+          this.#localBlocked = { reason: error instanceof Error ? error.message : String(error) };
+          throw error;
+        }
+      }
       if (localOccupied) continue;
       if (this.#closed || job && (job.state !== 'queued' || job.outcome || job.executor !== chosenExecutor)) continue;
       if (!job && ('actor' in next || next.left || next.admittedAt || ![...this.#humans.values()].includes(next))) continue;
@@ -1526,6 +1533,9 @@ export class Suites {
     const estimate = (mode: string | null, executor: ExecutorKind) => durations(recent.filter(j => j.executor === executor && !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;
     const occupying = this.#jobs.filter(j => j.state !== 'queued' && !j.cleaned && !j.reported);
     const active = occupying.find(j => j.executor === 'local');
+    // A failed release still owns the local budget, so admission never reaches
+    // occupied(). Surface that cleanup failure until this job is actually clean.
+    const localBlocked = active?.outcome && active.error ? { reason: active.error } : this.#localBlocked;
     const human = [...this.#humans.values()].find(s => !s.left && s.admittedAt && (!shim || shim.holder?.token === s.token));
     const describe = (job: SuiteJob): VerificationHolder => {
       const lease = job.executor === 'droplet' ? job.lease as DropletLease | undefined : undefined;
@@ -1548,13 +1558,13 @@ export class Suites {
       const expected = estimate(holder.mode, 'local');
       holder.etaMs = expected === null || holder.runMs === null || !shim?.holder ? null : Math.max(0, expected - holder.runMs);
     }
-    let localEta = holder ? holder.etaMs : 0;
+    let localEta = localBlocked ? null : holder ? holder.etaMs : 0;
     const leaseSlots: Array<number | null> = [...remote.map(row => row.etaMs), ...durableOnly.map(() => null)];
     const remoteEtas: Array<number | null> = [...leaseSlots, ...Array.from({ length: Math.max(0, this.#remoteBudget - leaseSlots.length) }, () => 0)];
     const queued = this.#ordered();
     // A racing hand run can own the shim while the admitted worker waits for it.
     if (active && holder?.kind === 'hand run') queued.unshift(active);
-    return { version: 1, at: new Date(now).toISOString(), holder, remote, remoteBudget: this.#remoteBudget, localFallback: this.#options.projectConfig?.().verification.localFallback ?? this.#options.localFallback ?? true,
+    return { version: 1, at: new Date(now).toISOString(), holder, ...(localBlocked ? { localBlocked } : {}), remote, remoteBudget: this.#remoteBudget, localFallback: this.#options.projectConfig?.().verification.localFallback ?? this.#options.localFallback ?? true,
       waiters: queued.map((j, i) => {
         const job = 'actor' in j ? j : null;
         const mode = job?.selection?.mode ?? j.mode;

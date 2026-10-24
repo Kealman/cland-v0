@@ -9,7 +9,7 @@ import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, te
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { ownProcess } from './process-cleanup.ts';
+import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
@@ -18,6 +18,80 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
+
+for (const recreate of [true, false]) test(`verify cancel reaps a detached fake child ${recreate ? 'that recreates the root after runner death' : 'before removing the phase root'}, then admits the next run`, async t => {
+  const f = await fixture(t, 'node detached.mjs');
+  const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+  const environment = fileURLToPath(new URL('./fixture-environment.ts', import.meta.url));
+  const locks = [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')];
+  const marker = join(f.root, 'fake-child.json');
+  const recreated = join(f.root, 'fake-recreated.json');
+  const earlyRemoval = join(f.root, 'removed-with-live-child');
+  await writeFile(join(f.root, 'detached.mjs'), `import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+const remove = fs.rm;
+fs.rm = async (path, options) => {
+  const fake = await fs.readFile(${JSON.stringify(marker)}, 'utf8').then(JSON.parse, () => null);
+  if (fake && path === fake.root) {
+    try { process.kill(fake.pid, 0); await fs.writeFile(${JSON.stringify(earlyRemoval)}, 'root removal while descendant is alive'); }
+    catch (error) { if (error.code !== 'ESRCH') throw error; }
+  }
+  return remove(path, options);
+};
+syncBuiltinESMExports();
+const { runSuite } = await import(${JSON.stringify(runner)});
+process.exitCode = await runSuite([['--test', 'detached.test.mjs']], ${JSON.stringify({ cwd: f.root, lockDirs: locks })});`);
+  await writeFile(join(f.root, 'detached.test.mjs'), `import test from 'node:test';
+import { spawn } from 'node:child_process';
+import { fixtureEnvironment } from ${JSON.stringify(environment)};
+test('detached fake harness', async () => {
+  const child = spawn(process.execPath, ['fake.mjs', String(process.ppid), process.env.TMPDIR], {
+    cwd: ${JSON.stringify(f.root)}, env: fixtureEnvironment(process.env.TMPDIR, process.env), detached: true, stdio: 'ignore'
+  });
+  child.unref();
+  await new Promise(resolve => setTimeout(resolve, 30000)); // Artificial hold, ended by cancellation.
+});`);
+  await writeFile(join(f.root, 'fake.mjs'), `import { existsSync, readFileSync, renameSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
+const parent = Number(process.argv[2]), root = process.argv[3];
+const owner = JSON.parse(readFileSync(${JSON.stringify(`${locks[0]}.owner`)}, 'utf8'));
+process.on('SIGTERM', () => {});
+writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, root, device: owner.device, inode: owner.inode }));
+const poll = setInterval(() => {
+  try { process.kill(parent, 0); return; } catch (error) { if (error.code !== 'ESRCH') throw error; }
+  clearInterval(poll);
+  if (!${recreate}) { setInterval(() => {}, 1000); return; }
+  if (existsSync(root)) renameSync(root, root + '.original');
+  mkdirSync(root, { mode: 0o700 });
+  writeFileSync(root + '/preserved', 'fake recreated after kill');
+  const info = statSync(root);
+  writeFileSync(${JSON.stringify(recreated)}, JSON.stringify({ device: info.dev, inode: info.ino }));
+  setInterval(() => {}, 1000); // Cancellation must reap this detached survivor.
+}, 10);`);
+  const job = await f.launch();
+  const fake = await eventually('detached fake child ready', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined));
+  const stopFake = ownProcess(t, fake.pid);
+  onCleanup(t, async () => {
+    await stopFake();
+    await rm(fake.root, { recursive: true, force: true });
+    await rm(`${fake.root}.original`, { recursive: true, force: true });
+    const after = await readFile(recreated, 'utf8').then(JSON.parse, () => null);
+    if (after) await rm(`${fake.root}.quarantine-${after.device}-${after.inode}`, { recursive: true, force: true });
+  });
+  const cancelled = await clandWithEnv(f.root, f.env, 'verify', 'cancel', job.id);
+  assert.equal(cancelled.code, 0, cancelled.stderr);
+  await eventually('cancelled result after complete tree cleanup', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
+  assert.equal(pidAlive(fake.pid), false, 'detached descendant is reaped before cancellation is reported');
+  await assert.rejects(stat(earlyRemoval), { code: 'ENOENT' }, 'suite root is never removed with a live detached descendant');
+  if (recreate) {
+    const after = JSON.parse(await readFile(recreated, 'utf8'));
+    assert.notEqual(after.inode, fake.inode, 'fake recreated the root after the runner died');
+  }
+  await writeFile(join(f.root, 'detached.mjs'), 'console.log("next run admitted");');
+  const next = await f.launch('auto', '--fresh');
+  const result = await eventually('next local run after cancelled recreated root', async () => (await f.results()).find(m => m.id === `suite:${next.id}`), 7000);
+  assert.match(result.text, /auto exit 0/);
+  for (const lock of locks) await assert.rejects(stat(lock), { code: 'ENOENT' });
+});
 
 
 test('suite cancel defaults to the caller’s active run, stops its child and posts one cancelled result', async t => {

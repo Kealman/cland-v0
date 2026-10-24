@@ -328,7 +328,9 @@ process.chdir(cwd);`);
         durationCheckWallMs += Date.now() - phaseStarted - machineWait;
         for (const file of checkedFiles) durationCheckFiles.add(file);
       }
-      await sweep(holder);
+      // A borrowed interrupted run leaves root cleanup to its worker's hub-side
+      // termination owner, which still holds the full descendant identities.
+      if (!interruption.signal || holder.pid === process.pid) await sweep(holder);
       // Sweep surviving owned writers before waiting for inherited pipes: an
       // exited coordinator can leave a descendant holding stdout/stderr open.
       await closed;
@@ -366,7 +368,7 @@ process.chdir(cwd);`);
     clearInterval(sample);
     try {
       if (loadRunners.size) await cleanupOwnedProcesses([...loadRunners]);
-      if (root) await sweep(holder);
+      if (root && (!interruption.signal || holder.pid === process.pid)) await sweep(holder);
       for (const lease of machine.reverse()) await lease.release();
       for (const lease of leases.reverse()) await lease.release();
     } finally {

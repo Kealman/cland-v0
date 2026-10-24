@@ -42,6 +42,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'executor-release-retry',
   'executor-reconcile-failed',
   'verification-timing',
+  'suite-recovery-quarantined',
   'verification-wait',
   'verification-cover-classified',
   'verification-admitted',

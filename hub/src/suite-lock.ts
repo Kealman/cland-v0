@@ -1,6 +1,6 @@
 // Shared compatibility lease for hand runners and hub-admitted verification workers.
 import { type Stats, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { link, mkdir, readFile, realpath, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdir, readFile, realpath, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { acquireLockAsync, processStartedAsync, sameProcess, HubLocked, type LockProcessTable } from './hub/lock.ts';
 import { pidAlive } from './project.ts';
@@ -63,17 +63,48 @@ async function publish(path: string, holder: Holder, exclusive = false): Promise
 export async function sweep(holder: Holder): Promise<void> {
   // Worker-local process discovery; the daemon runs this in a bounded subprocess.
   const { cleanupProcesses } = await import('../test/process-cleanup.ts');
+  let quarantined = false;
   const ownedRoot = async () => {
     if (!holder.root) return undefined;
-    const info = await stat(holder.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+    const info = await lstat(holder.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
     const plannedRoot = join(await realpath('/tmp'), `cland-suite-${holder.token}${holder.phase === undefined ? '' : `-${holder.phase}`}`);
     const identityMatches = holder.device === undefined && holder.inode === undefined ? holder.root === plannedRoot : info?.dev === holder.device && info?.ino === holder.inode;
-    if (info && !identityMatches) throw new Error('suite root identity changed; refusing cleanup');
+    if (info && (!info.isDirectory() || info.isSymbolicLink())) throw new Error('suite root is not a directory; ownership preserved');
+    if (info && !identityMatches) {
+      // A descendant can recreate the unique run path after its runner dies.
+      // Its contents are evidence, not permission to recursively delete a new inode.
+      if (!/^[A-Za-z0-9_-]+$/.test(holder.token) || holder.root !== plannedRoot || info.uid !== process.getuid?.()) throw new Error('suite root identity changed; token or owner differs; ownership preserved');
+      if (await liveHolder(holder) || holder.runner && pidAlive(holder.runner.pid)) throw new Error('suite root identity changed; holder or runner is live; ownership preserved');
+      const group = holder.runner?.group;
+      if (!Number.isSafeInteger(group) || group! <= 1) throw new Error('suite root identity changed; runner group unknown; ownership preserved');
+      const members = await run('pgrep', ['-g', String(group)], process.env, 1000);
+      if (members.error || members.code !== 1 || members.stdout.trim()) throw new Error('suite root identity changed; runner group live or unknown; ownership preserved');
+      // A dead recorded group does not rule out detached, reparented writers.
+      // Token/path/uid authorize cwd discovery, never deletion of these bytes.
+      let ambiguous = false;
+      const anchors = holder.runner ? [holder.runner] : [];
+      await cleanupProcesses(holder.root, anchors, line => {
+        process.stderr.write(`${line}\n`);
+        if (line.startsWith('preserved pid ')) ambiguous = true;
+      }, holder.token, anchors, { discover: true });
+      if (ambiguous) throw new Error('suite root identity changed; ambiguous writer ownership; ownership preserved');
+      const quarantine = `${holder.root}.quarantine-${info.dev}-${info.ino}`;
+      // Do not replace an earlier diagnostic directory, or move a raced inode.
+      if (await lstat(quarantine).catch(error => { if (error.code === 'ENOENT') return null; throw error; })) throw new Error('suite quarantine already exists; ownership preserved');
+      const current = await lstat(holder.root);
+      if (current.dev !== info.dev || current.ino !== info.ino) throw new Error('suite root changed during recovery; ownership preserved');
+      await rename(holder.root, quarantine);
+      quarantined = true;
+      process.stdout.write(`suite recovery ${JSON.stringify({ event: 'suite-recovery-quarantined', token: holder.token, pid: holder.pid, root: holder.root, quarantine, before: { device: holder.device, inode: holder.inode }, after: { device: info.dev, inode: info.ino } })}\n`);
+      return undefined;
+    }
     return info ? holder.root : undefined;
   };
   // One discovery sweep per completed phase (also used for crashed-holder recovery).
   const anchors = holder.runner ? [holder.runner] : [];
-  await cleanupProcesses(await ownedRoot(), anchors, line => process.stderr.write(`${line}\n`), holder.token, anchors, { discover: true });
+  const initialRoot = await ownedRoot();
+  if (quarantined) return;
+  await cleanupProcesses(initialRoot, anchors, line => process.stderr.write(`${line}\n`), holder.token, anchors, { discover: true });
   const root = await ownedRoot();
   if (root) await rm(root, { recursive: true, force: true });
 }
@@ -107,14 +138,14 @@ async function recoveryHolder(holder: Holder, dirs: string[]): Promise<Holder> {
 }
 
 // Call only while holding every recovery guard. A blocked lock remains owned through cleanup.
-async function inspectLocks(dirs: string[], deadline?: number, recover = sweep): Promise<{ previous: Holder | null; info: Stats | null; blockedDir: string | null }> {
+async function inspectLocks(dirs: string[], deadline?: number, recover = sweep, settled?: Pick<Holder, 'pid' | 'started'>): Promise<{ previous: Holder | null; info: Stats | null; blockedDir: string | null }> {
   for (const dir of dirs) {
     const ownerPath = `${dir}.owner`;
     const info = await stat(dir).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
     const holder = await holderAt(ownerPath) ?? await holderAt(join(dir, 'holder.json'));
     if (holder && !await liveHolder(holder, deadline)) {
       const owner = await stat(ownerPath).catch(() => null);
-      if (Date.now() - (owner?.mtimeMs ?? info?.mtimeMs ?? 0) >= RECOVERY_GRACE_MS) {
+      if (settled?.pid === holder.pid && settled.started === holder.started || Date.now() - (owner?.mtimeMs ?? info?.mtimeMs ?? 0) >= RECOVERY_GRACE_MS) {
         await recover(await recoveryHolder(holder, dirs));
         // Records belong to the compatibility fence, not the phase root.
         if (holder.records === `${dirs[0]}.runs`) await rm(join(holder.records, `${holder.token}.json`), { force: true });
@@ -125,7 +156,10 @@ async function inspectLocks(dirs: string[], deadline?: number, recover = sweep):
         continue;
       }
     }
-    if (info || holder) return { previous: holder, info, blockedDir: dir };
+    if (info || holder) {
+      if (holder && settled?.pid === holder.pid && settled.started === holder.started) throw new Error('compatibility cleanup waiting for a confirmed dead worker; ownership preserved');
+      return { previous: holder, info, blockedDir: dir };
+    }
   }
   return { previous: null, info: null, blockedDir: null };
 }
@@ -237,21 +271,25 @@ export async function acquire(dirs: string[], interrupted: () => boolean, holder
 
 
 /** Inspect under the same guards used by hand runners; stale owners are swept before admission. */
-export async function compatibilityOccupied(dirs: string[], base: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+export async function compatibilityOccupied(dirs: string[], base: NodeJS.ProcessEnv = process.env, log?: (entry: Record<string, unknown>) => void, settled?: Pick<Holder, 'pid' | 'started'>): Promise<boolean> {
   const deadline = Date.now() + 5000;
   const recover = async (holder: Holder) => {
     const env = { ...base };
     delete env.NODE_TEST_CONTEXT;
     const result = await run(process.execPath, [fileURLToPath(new URL('./suite-recovery.ts', import.meta.url)), JSON.stringify(holder)], env, Math.max(1, deadline - Date.now()));
+    for (const line of result.stdout.split('\n')) if (line.startsWith('suite recovery ')) log?.(JSON.parse(line.slice('suite recovery '.length)));
     if (result.code !== 0 || result.error) throw new Error(`compatibility recovery failed; ownership preserved: ${result.error ?? result.stderr.trim()}`);
   };
   const guards: Awaited<ReturnType<typeof acquireLockAsync>>[] = [];
   try {
     for (const dir of dirs) guards.push(await acquireLockAsync(`${dir}.reaper`, work => work(), deadline, 'UTC'));
-    if ((await inspectLocks(dirs, deadline, recover)).blockedDir !== null) return true;
+    if ((await inspectLocks(dirs, deadline, recover, settled)).blockedDir !== null) return true;
     const queue = `${dirs[0]}.queue`;
     return existsSync(queue) && (await liveTickets(queue, deadline)).length > 0;
-  } catch (error) { if (error instanceof HubLocked) return true; throw error; }
+  } catch (error) {
+    if (error instanceof HubLocked && !settled) return true;
+    throw error;
+  }
   finally { for (const guard of guards.reverse()) await guard.release(); }
 }
 

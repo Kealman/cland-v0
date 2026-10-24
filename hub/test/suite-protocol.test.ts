@@ -4,10 +4,12 @@ import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import { verificationFixture } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
-import { compatibilityHolder } from '../src/suite-lock.ts';
+import { compatibilityHolder, sweep } from '../src/suite-lock.ts';
+import { ownDirectory } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
@@ -16,6 +18,33 @@ import { FakeClock } from './fake-clock.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { testLintReport, type TestLintFile } from '../src/test-lint.ts';
 import { tierReport, type TierPlan, type SuiteDryRun } from '../src/suite-tier-report.ts';
+
+test('root recovery preserves a changed path outside the run token and never follows a symlink', async t => {
+  const root = await tempProject(t);
+  const target = join(root, 'evidence');
+  await mkdir(target);
+  await writeFile(join(target, 'preserved'), 'unrelated evidence');
+  const holder = { pid: 2147483647, started: null, since: 'unknown', token: 'fixture', device: 0, inode: 0 };
+  await assert.rejects(sweep({ ...holder, root: target }), /token or owner differs/);
+  const alias = join(root, 'alias');
+  await symlink(target, alias);
+  await assert.rejects(sweep({ ...holder, root: alias }), /not a directory/);
+  assert.equal((await lstat(alias)).isSymbolicLink(), true);
+  assert.equal(await readFile(join(target, 'preserved'), 'utf8'), 'unrelated evidence');
+});
+
+test('root recovery preserves a recreated token path while its holder lives or runner group is unknown', async t => {
+  const token = randomUUID();
+  const root = join(await realpath('/tmp'), `cland-suite-${token}`);
+  await mkdir(root, { mode: 0o700 });
+  ownDirectory(t, root);
+  await writeFile(join(root, 'preserved'), 'still owned');
+  const holder = { pid: process.pid, started: null, since: 'unknown', token, root, device: 0, inode: 0 };
+  await assert.rejects(sweep(holder), /holder or runner is live/);
+  await assert.rejects(sweep({ ...holder, pid: 2147483647 }), /runner group unknown/);
+  await assert.rejects(sweep({ ...holder, pid: 2147483647, runner: { pid: 2147483646, started: 'unknown' } }), /runner group unknown/);
+  assert.equal(await readFile(join(root, 'preserved'), 'utf8'), 'still owned');
+});
 
 async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n', previewSelection?: SuiteSelection) {
   const root = await tempProject(t); const clock = new FakeClock();
