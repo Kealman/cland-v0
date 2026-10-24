@@ -3,7 +3,7 @@ id: T-998
 kind: task
 title: A malformed tool argument is answered as a permission refusal (forbidden)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-939
 branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T08:34:21.823Z
+updated: 2026-10-24T08:52:45.657Z
 ---
 
 ## Summary
@@ -31,13 +31,14 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
 
 - [x] C1. `task.criterion` with an unknown field or a missing `op` answers a non-`forbidden` validation code that names the field and the accepted values (test).
   - done: impl-998 · 2026-10-24T08:04:53.216Z
-- [ ] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
-  - failed: rev-23 [reviewer] · 2026-10-24T08:34:21.823Z · note Configured run 8ed1905f fails six existing T2 validation/permission/argument-consumer compatibility cases; Web and complete fallback coverage are unavailable.
+- [x] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
+  - done: impl-998 · 2026-10-24T08:51:38.194Z
 - [x] C3. A validation failure is not posted to the Agents topic as a refusal (test).
   - done: impl-998 · 2026-10-24T08:04:53.496Z
 - [x] C4. The MCP server instructions and `hub/README.md` say a validation error may be corrected and retried, unlike `forbidden`.
   - done: impl-998 · 2026-10-24T08:04:53.588Z
   - verified: rev-23 [reviewer] · run rev-20261024-998-source3 · 2026-10-24T08:23:09.451Z · commit 47fd9660d25c9e530118f4001da1646b0cc49ded
+  - verified: rev-23 [reviewer] · run rev-20261024-998-source4 · 2026-10-24T08:52:45.657Z · commit ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91
 
 ## Comments
 
@@ -191,3 +192,43 @@ Preserve A-10538 failed provenance and original correction receipts. Replacement
 Durable review A-10543.
 
 Criteria: C2 failed (Configured run 8ed1905f fails six existing T2 validation/permission/argument-consumer compatibility cases; Web and complete fallback coverage are unavailable.).
+
+### rev-23 · 2026-10-24T08:52:45.657Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-998-source4
+commit: ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-998 revised source review — clear
+
+Head ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91; tree 772d5349b34f2dea623159d78478add0cebdc484. Fixed incorporated base 4727549e; comparison git diff 4727549e...ebc9a04d. No post-review dev merge. Run rev-20261024-998-source4; full scope because authorization ordering was redesigned under Coordinator decisions 6453ee23 and 94003179. The replacement request supersedes the pending 998a128d audit; this verdict consolidates that audit and its M5 correction. Both axes reviewed in-session under crew policy; findings [].
+
+## Standards
+
+Clear. The every-tool table now uses permitted callers with explicit structurally valid baselines, validates each baseline without dispatching side effects, mutates one field at a time, and checks the diagnostic prefix identifies that field outside the accepted-field inventory. Public dispatcher, additive reply fields and unchanged-Agents-history controls remain. New unavailable-tool/custom-grant cases use transport-free peers, in-memory store and FakeClock (T1); explicit idempotent peer closure precedes store closure. The T2 MCP boundary remains in-process with its owned loopback listener and awaited closure. Tier declarations and indexed exact-path notes remain valid. No assertions, wait bounds, workload, duration caps or authorization grants weakened.
+
+M4's six compatibility failures are corrected: Aide handover permission control now supplies a valid note; malformed string rule origin expects typed validation while missing/invented origin authorization controls stay forbidden; attribution/title cases check code and actual diagnostic field. Legacy item locators and ignored task.list item context are preserved instead of rewriting legitimate callers. The two existing session async/resume files are unchanged. M1–M3 corrections remain accepted.
+
+## Spec
+
+Clear against the Coordinator's revised contract: hub tool availability precedes structural validation, which precedes argument-dependent scopes/ownership. Unavailable raw hub tools return forbidden without schema diagnostics; available malformed arguments remain correctable invalid_argument and do not publish an Agents refusal. Local MCP/SDK validation is deliberately unchanged per 94003179; no raw-argument frame or grant expansion is introduced. Original criterion typo/missing-op controls, conditional plan/criterion/task/artifact/session structural checks, genuine scoped forbidden controls, typed HubClient forwarding and protocol compatibility remain.
+
+M5 was concrete at 998a128d: a custom Implementer rename grant admitted malformed name:42 to validation before the handler's immutable Coordinator-only restriction. ebc9a04d now checks that fixed prohibition during availability, plus the existing non-Aide/non-Coordinator promotion prohibition. Raw malformed/valid custom-grant controls cover rename, promotion, rule writes, ask and verifier holds, retaining forbidden and excluding schema diagnostics. No further source finding after auditing remaining fixed role and argument-dependent restrictions. MCP instructions and README explicitly distinguish correctable invalid_argument from forbidden; session guidance explains the hub ordering and aliases.
+
+## Evidence and limits
+
+A-10566 retains all six complete local red/green file receipts: 29 T2 tests pass on the correction tree; old failures remain preserved. It separately records exact 998a128d check exit0, seven T1 tests and one T2 spoke test exit0. These are prior-head/correction-tree receipts, not reattributed to ebc9a04d.
+
+A-10579 retains the M5 red response (invalid_argument, data/name) and corrected green control, plus exact ebc9a04d local macOS check exit0, eight T1 dispatcher tests (8/8, native 802.727083 ms file duration) and 14 T2 permission tests (14/14, 4162.987459 ms). Check reports 132 lint findings/59 files, zero refusals; report-only diagnostics are not enforcing-budget proof. No rerun for transcription.
+
+Configured 8ed1905f/A-10538 at 47fd9660 remains failed evidence (six failures); no green configured receipt exists at this replacement head. C4 is source-established here; C1–C3 final runtime verification remains pending the fresh configured mode-free result. Source clearance permits that submission at this exact unchanged head, with actual phases/exits and same-head evidence reviewed afterward. QA none/after-stage. Reviewer performed static Git/source/artifact inspection only: no tests, probes, edits, installs, GUI, merge or delegation.
+
+Standards: zero remaining findings. Spec: zero remaining findings.
+Durable review A-10584.
+
+Criteria: C4 verified.

@@ -3,7 +3,7 @@ id: T-1144
 kind: task
 title: A droplet capacity refusal is reported as a red periodic dev T3 run, and no executor fallback applies
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-940
 branch: t/T-1144-a-droplet-capacity-refusal-is-reported
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-24T08:39:42.287Z
+updated: 2026-10-24T08:51:59.804Z
 ---
 
 ## Summary
@@ -30,8 +30,10 @@ A run refused by the provider before any test executes reads as unavailable, not
 
 - [x] C1. A periodic dev T3 run whose droplet acquisition is refused for capacity posts a "not run" notice naming the refusal, with no "red" wording and no culprit search (test).
   - done: impl-1144 · 2026-10-24T08:24:01.065Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1144-final-1 · 2026-10-24T08:51:59.114Z · commit 31f4f28cdd38bf65266593698e4246ab19a868d6
 - [x] C2. A task verify refused for capacity before any test reports a distinct unavailable outcome in its result and its suite result line (test).
   - done: impl-1144 · 2026-10-24T08:24:01.253Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1144-final-1 · 2026-10-24T08:51:59.114Z · commit 31f4f28cdd38bf65266593698e4246ab19a868d6
 
 ## Comments
 
@@ -83,3 +85,18 @@ findings: [{"severity":"low","text":"L1 retained aside Bugs/S (filed T-1211): al
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Authorized integration source clear, A-10555; no new blocking findings, retained L1low/T-1211 at suites.ts845. Exact provider-capacity help and upstream duration help both preserved; capacity admission/result/retry implementation and all capacity/Nvim fixture/test blobs unchanged from76cbf0d2. Prior A-10546 independently audited2850ordinary+130actual repetitions allpass,15positive+8negative controls andNvim15/15; LinuxT1/allT2/Web, reusedmatchinghostchecktree, report-only lint/budgets/noT3T4. Coordinator73e65e48 requests replacement merge/run, so oldheadgreen is provenance only and C1/C2 remain unverified pending fresh mode-free receipt at31f4f28c. New local check was pending; no pass inferred. Both axes read-only; no runtime/delegation.
+
+### rev-26 · 2026-10-24T08:51:59.114Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1144-final-1
+commit: 31f4f28cdd38bf65266593698e4246ab19a868d6
+scope: evidence
+findings: [{"severity":"low","text":"L1 retained aside Bugs/S/filed T-1211: all-unexecuted capacity-refused shard groups lose child notRun at parent aggregation; outside unsharded periodic/task C1/C2, preserve mixed-execution distinctions.","file":"hub/src/hub/suites.ts","line":845}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final evidence clear, A-10582; C1/C2 verified with retained L1low/T-1211. Freshc4eb3310/A-10581 exact31f4f28c native2853ordinary+130actual repetitions allpass.15positivecapacity+8negativeadmission controls, periodicrestart/glyph andNvim15/15pass; 26identities5/5,maxload0.518191997s,noallowance need. Linuxc8lon1T1/allfallbackT2bothpackages/actualWeb; A-10552localcheck0real41.74s,matchinghostgatetree reusednotremotecheck. Lint133/60,budgets/ratchet report-only,Web137.49sshardslowwarning retained,noT3T4/providerlive/QAclaim. Source3A-10555 unchanged; parentreceiptprovenanceonly. Leadreportsfreshdev89e5c304conflictcheck0/unchangedcleanhead.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-1026
 kind: task
 title: Reduce the CPU of T-1003's 20,000-line incremental parse proof to fit the T2 budget
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-943
 branch: t/T-1026-reduce-the-cpu-of-t-1003-s-20-000-line
 created: 2026-10-20T19:23:30.653Z
-updated: 2026-10-24T08:38:26.585Z
+updated: 2026-10-24T08:58:02.606Z
 ---
 
 ## Summary
@@ -24,6 +24,7 @@ The 20,000-line incremental-parse proof added by T-1003 takes about 6 s on a Lin
 ## Acceptance criteria
 
 - [ ] C1. The case runs under its 5 s T2 budget in the task's mode-free verify on a Linux droplet and in five sequential local runs (timings in the ready report), with every deterministic cap assertion unchanged, its name unchanged, and the T-1003 allowance removed (test and receipts named in the item).
+  - failed: rev-26 [reviewer] · 2026-10-24T08:50:44.250Z · note Mode-free Linux target timing5.490006315s exceeds explicit under5s criterion despite assertion-green overall run.
 
 ## Comments
 
@@ -43,3 +44,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear; both axes/no findings in A-10550. Original identity, 20,000 lines and every deterministic cap/final semantic assertion retained. Per-language parser reuse clears snapshotted prior descendants before each <=64-region batch; normalized input shared, fresh shallow option copies preserved. New <=6 creation guard and 65-fence differential text/style/link oracle cover reuse. Only exact T-1003 allowance removed; baseline unchanged. Coordinator amended criterion requires ordinary Linux T2 timing under5s plus five standalone local samples, no re-triggered Linux load gate. Local check14/14/five timings are reported, originals pending final audit. Proceed with exact-head mode-free verify; C1 stays unverified until Linux receipt and local raw provenance reviewed. Preserve original stdout/exits/timings/source identity durably without transcription reruns. No Reviewer runtime/edits/delegation.
+
+### rev-26 · 2026-10-24T08:50:44.250Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261024-1026-evidence-1
+commit: cfb1481e501951bcd912f324f80e1cddb365dbae
+scope: evidence
+findings: [{"severity":"medium","text":"M1: A-10578 native target finish is pass at5.490006315s (line12377), exceeding C1's explicit under5s Linux mode-free requirement. Suite exit0/report-only budget does not establish this criterion. Further CPU reduction with unchanged name/fixture/caps, fresh source review and new configured receipt required.","file":"nvim/test/artifact-render.test.ts","line":165}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear, A-10580. Native2828ordinary/418files pass, noactual load repetitions; T1/allfallbackT2bothpackages/Web complete onLinuxc8lon1. Target5.490006315s missesC1; all14artifact cases/targetwork256rows128marks256parsers6assertions pass. Originalfive local same-head Darwin samples2.155/2.120/2.676/2.028/2.084s accepted fromA-10547/A-10551, but cannot replaceLinuxrequirement. Hostcheck reusednotremoterepeated; lint/budgets report-only,noT3T4/QAclaim. Lead acknowledges criterion unmet and further optimization; fresh source review before new verify. NoReviewer runtime/edits.
+
+Criteria: C1 failed (Mode-free Linux target timing5.490006315s exceeds explicit under5s criterion despite assertion-green overall run.).
+
+### impl-1026 · 2026-10-24T08:58:02.606Z
+
+First Linux receipt bfeacdf8/A-10578 at cfb1481e: T1/T2/Web 2828/2828 ordinary assertions pass, but the exact native target timing is 5.490006315 s, above C1's requested 5 s. Executor: droplet c-8 lon1, linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5; budget mode report. C1 remains unmet, as evidence review rev-20261024-1026-evidence-1 records. No pass/ready claim. Further CPU investigation retains fixture/identity/caps; timer reuse and explicit prefix edit experiments were discarded after no material gain. RPC audit transfer compacted in WIP; decision pending on retaining all 20,000 lines with fewer repeated rich sections while explicitly proving every cap is still crossed.

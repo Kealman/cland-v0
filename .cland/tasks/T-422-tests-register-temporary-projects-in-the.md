@@ -3,7 +3,7 @@ id: T-422
 kind: task
 title: Tests register temporary projects in the real host executor ledger
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T08:40:25.036Z
+updated: 2026-10-24T08:47:45.033Z
 ---
 
 ## Summary
@@ -29,8 +29,8 @@ The host-wide executor ledger `~/.cland/executor/spend.json` lists 24 projects. 
 
 ## Acceptance criteria
 
-- [ ] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
-  - failed: rev-32 [reviewer] · 2026-10-24T08:40:25.036Z · note New held-ledger proof cleanup is outside resource-before-directory ownership, allowing live sweep writers during fixture removal on failure.
+- [x] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
+  - done: impl-422 · 2026-10-24T08:46:38.455Z
 - [x] C2. `rememberProject('/')` is refused, and the ledger never lists `/`.
   - done: impl-422 · 2026-10-24T07:53:42.861Z
 - [x] C3. A registered project whose directory is gone is pruned from `projects` by the sweep, with an event naming it.
@@ -168,3 +168,32 @@ Standards:one medium finding. Spec:C1 blocked by M3; C2/C3 execution pending.
 Durable audit A-10556: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10556-t-422-m2-correction-review-at-0a403c82.md
 
 Criteria: C1 failed (New held-ledger proof cleanup is outside resource-before-directory ownership, allowing live sweep writers during fixture removal on failure.).
+
+### rev-32 · 2026-10-24T08:47:45.033Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-422-source-4
+commit: 5c0f0527aebf63314ad35ff9ea743e1d077feee1
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-422 M3 corrected full source review — clear
+Head5c0f0527aebf63314ad35ff9ea743e1d077feee1; tree99ebc4f62f722717e67b9b6fe83ce5a93058dc8b. Corrections ff7802fd and5c0f0527 since source-reviewed0a403c82; no dev merge, no production delta. Carry A-10464/A-10466/A-10556 accepted source scope.
+
+## Standards
+No findings. M3 resolved: the three held-registry controls now register onCleanup resources before assigning/starting their sweep promises. Holder release, fake-clock retry progression, sweep drainage and executor closure therefore precede scratchMachine's owned directory removal, including failure/cancellation. The normal completion/registration/unchanged-holder-ledger and deferred-sweep assertions remain.
+The controls moved intact into existing T2 executor-admission-lock.test.ts because process-cleanup's ownership helper belongs at that admitted component seam. No tier guard exemption or new process is introduced. T1 spend validation/grace/accounting tests retain their classification and assertions. Matching notes move with the tests; their heading/index links remain correct.
+M2's injected abortable timing and durable startup sweep receipt are unchanged. M1's final XDG ownership seal remains. No validation, accounting, grace, reservation, cancellation or cleanup assertions were weakened. No independent smell finding.
+
+## Spec
+No outstanding source findings. C1–C3 are implementation-done but all verification remains pending a fresh configured mode-free receipt at this exact head. Existing A-10520 remains failed/partial and is not replaced by local targeted checks. Coordinator f248e85e's real-ledger/full local stage before-after comparison remains separate landing evidence, not pre-merge C1.
+Coordinator03b17a54's1159-project lock timing request is addressed in A-10565/A-10560: sealed scratch-ledger program/source reviewed, source0a403c82 with identical production at5c0f0527, local macOSarm64 Node24.21.0, one measurement on1,159registrations (1,156missing,2valid,1invalid root), primary/legacy write-through. Reported registry wall139.989333ms; maxcontinuous primary84.647209ms, totalprimary120.626043ms over two acquisition intervals. This is instrumentation from successful lock-file link to completed removal, not whole-hub startup, concurrent-hub guarantee, Linux timing or suite evidence. Permission to infer spare acquisition headroom does not create a measured startup result.
+
+Local request evidence: admission7/7, spend20/20 and npm run check pass (test lint report-only132/59/0refusals). Earlier safety12/12 and suite-close9/9 retain M2 production-tree attribution. The rejected intermediate T1 ownership import was corrected by moving controls to T2; no guard bypass. Preserve original raw output/exit/timing/source attribution without transcription reruns.
+No configured verification yet at5c0f0527. qaPolicy none/after-stage, no brief.
+Reviewer performed read-only source/Git/docs/artifact checks, no tests, probes, installs, browser, live-ledger mutations or delegation; both axes completed personally.
+Standards:0 findings. Spec:0 findings.
+Durable audit A-10571: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10571-t-422-m3-corrected-source-review-at-5c0f0527.md

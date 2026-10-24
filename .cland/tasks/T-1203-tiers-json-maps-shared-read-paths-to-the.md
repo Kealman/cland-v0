@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-944
 branch: t/T-1203-tiers-json-maps-shared-read-paths-to-the
 created: 2026-10-24T06:46:05.046Z
-updated: 2026-10-24T08:42:08.214Z
+updated: 2026-10-24T08:48:50.276Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ Changes to shared read paths (T-1147) were selected without the T4 load files th
 - [x] C2. The T-1147 read path is mapped, and the mapping is documented in docs/agents/tests.md (docs).
   - done: impl-1203 · 2026-10-24T08:39:31.096Z
   - verified: rev-23 [reviewer] · run rev-20261024-1203-source · 2026-10-24T08:42:08.214Z · commit 53f6a4a5dcba687268311e1986e14d6c21bcaafa
+  - verified: rev-31 [reviewer] · run rev-20261024-1203-source2 · 2026-10-24T08:48:50.276Z · commit f62bba8581ef5b6dbef86ee95a2c7df13825e270
 
 ## Comments
 
@@ -70,5 +71,24 @@ The running hub still pins task tiers until the Coordinator restarts onto T-1198
 
 QA policy none/after-stage, no QA criteria. Reviewer performed source/Git/artifact inspection only: no tests/probes, edits, native Git mutation, browser, merge or delegation. Standards zero findings; Spec zero findings.
 Durable review A-10559.
+
+Criteria: C2 verified.
+
+### impl-1203 · 2026-10-24T08:47:26.416Z
+
+Mode-free ae63e32f at source-clear 53f6a4a5 failed on Linux c-8 lon1: roles-clauses defaults/project implementer `The input did not match the regular expression /Changed T3\/T4 files run once; remaining T3 smoke runs in batches and integrated runs/`. T1 failed; T2/Web not run; no T4 execution. A-10567 holds full receipt. Coordinator disposition 9748c33c: plain dev 89e5c304 3/3, this is own expectation drift, not shared defect. Corrected the pinned shared sentence and per-test guidance in f62bba85; no dev merge or source/runtime change. Local Darwin arm64 targeted red 0/2 before correction, green 39/39 after, native exit0 including byte/growth-reserve checks. Fresh delta source review requested before new verify. Coordinator decision 099ed493 accepts keeping core.ts mapped because it holds sessionRows/presence/pending read; historical Linux guard runtime 1.197s at 733a709e (A-10290) and 1.409s at d9ffa830 (A-10401), not incremental per-verify wall. 1/15 landed task commits since Belgrade midnight through dev 89e5c304 touches core.ts (~6.7%); 0/9 current active committed task diffs. Coordinator will record live per-verify cost after restart. Shared procedure wording changed in docs/agents/tests.md; ready report must name its reach to Implementers after restart.
+
+### rev-31 · 2026-10-24T08:48:50.276Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1203-source2
+commit: f62bba8581ef5b6dbef86ee95a2c7df13825e270
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear at f62bba85/tree7ddf733f; no findings. A-10573 carries rev-23 full audit A-10559 and prior exact-head local A-10553/A-10554/A-10562. Exactly one shared regex and its guide now include mapped T4 guards; defaults/project assertions and byte/growth reserves retained, production/mapping/tests unchanged, no dev merge. Coordinator9748c33c directs migration/review/verify;099ed493 accepts core.ts mapping and historical cost with live cost after restart. A-10570 local39/39 native exit0 has precommit source-equivalence attribution; old failed Linux A-10567 remains failed. C2 mapping/docs re-established; C1 final settlement awaits fresh configured mode-free result, actual selected phases distinct from post-restart T4 execution. Reviewer ran no tests or enqueue.
 
 Criteria: C2 verified.

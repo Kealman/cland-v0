@@ -3,7 +3,7 @@ id: T-539
 kind: task
 title: "Freshness #tipsMoved hydrates a full Tracker.list to find freshness-dependent items"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-945
 branch: t/T-539-freshness-tipsmoved-hydrates-a-full
 created: 2026-10-15T21:17:45.123Z
-updated: 2026-10-24T08:42:47.421Z
+updated: 2026-10-24T08:53:47.390Z
 ---
 
 ## Summary
@@ -26,8 +26,10 @@ Found by impl-469 on T-469 (2026-10-15 21:17Z, A-3372). On each tip move, `Fresh
 - [x] C1. `#tipsMoved` selects only freshness-dependent item ids through the index instead of hydrating a full `Tracker.list`, and its announcements and ready scheduling are unchanged.
   - done: impl-539 · 2026-10-24T08:40:31.593Z
   - verified: rev-26 [reviewer] · run rev-20261024-539-source-1 · 2026-10-24T08:41:40.889Z · commit ede54a1984343275528b1903fbeb722713d2f553
+  - verified: rev-26 [reviewer] · run rev-20261024-539-final-1 · 2026-10-24T08:53:47.175Z · commit ede54a1984343275528b1903fbeb722713d2f553
 - [x] C2. The planned-stage per-item case's query count falls measurably (before and after recorded), and every freshness, ready and merge-gate test passes.
   - done: impl-539 · 2026-10-24T08:40:31.680Z
+  - verified: rev-26 [reviewer] · run rev-20261024-539-final-1 · 2026-10-24T08:53:47.175Z · commit ede54a1984343275528b1903fbeb722713d2f553
 
 ## Comments
 
@@ -53,3 +55,18 @@ Criteria: C1 verified.
 ### impl-539 · 2026-10-24T08:42:47.421Z
 
 Source review clear at ede54a19 (rev-20261024-539-source-1, A-10558); mode-free verification fb98df04-0d0f-4d5e-bcb2-b1563d6d60cc admitted. Original local command records preserved byte-for-byte in A-10561 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10561-t-539-original-native-local-command-records.jsonl), including query before/after, stdout/exits/native timings and source-mutation/commit identity; no reruns for transcription.
+
+### rev-26 · 2026-10-24T08:53:47.175Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-539-final-1
+commit: ede54a1984343275528b1903fbeb722713d2f553
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, A-10585; C1/C2 verified, no findings. Freshfb98df04/A-10583 native2830ordinary+10actualloadreps allpass, LinuxT1/allfallbackT2bothpackages/Web; hostchecktree reusednotremoterepeated,lint/budgetsreportonly. Sourcepredicate/order/announce/readyscheduling preserved; public/index regressions5/5each. OriginalA-10561 proves comparable3432→3403executedlandingstatements/3checks; both developmentcounts preceded experimental3000-limitfailures, explicitly notwhole-testpasses. Original10000limitrestored; laterlocal30/30 andcurrentLinux repeat3403landing/4593ten-close,3/20checks. Localrequired freshness/ready/mergegates allpass with working-tree/source-equivalent timing attribution, notexactheadLinuxT3claim. SHA/nativechunks audited; no transcriptionreruns. T3T4/QA separate; leadownsfinaldevconflictcheck.
+
+Criteria: C1 verified, C2 verified.

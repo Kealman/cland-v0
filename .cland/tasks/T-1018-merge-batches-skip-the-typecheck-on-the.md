@@ -3,7 +3,7 @@ id: T-1018
 kind: task
 title: Merge batches skip the typecheck on the combined tree, so two green tasks broke dev
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-928
 branch: t/T-1018-merge-batches-skip-the-typecheck-on-the
 created: 2026-10-20T17:30:31.804Z
-updated: 2026-10-24T08:35:10.061Z
+updated: 2026-10-24T08:55:55.112Z
 ---
 
 ## Summary
@@ -30,9 +30,11 @@ Every merge batch runs the T0 checks (at least `npm run typecheck` and the stati
 - [x] C1. A batch whose candidate tree fails `npm run typecheck` is red and its members are bisected, even when its T1 tests pass (test with two members that typecheck alone but not together).
   - verified: rev-23 [reviewer] · run rev-20261024-1018-final · 2026-10-24T08:27:06.399Z · commit c28fc37e222fabbcd8a0a815a569074610ed57e6
   - done: impl-1018 · 2026-10-24T08:34:44.238Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1018-final-2 · 2026-10-24T08:49:19.718Z · commit 2efcb83310e33db1f802a9746c537e6fc0282435
 - [x] C2. The batch result names the T0 step with its duration, and `docs/agents/tests.md` documents it.
   - verified: rev-23 [reviewer] · run rev-20261024-1018-final · 2026-10-24T08:27:06.399Z · commit c28fc37e222fabbcd8a0a815a569074610ed57e6
   - done: impl-1018 · 2026-10-24T08:34:44.410Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1018-final-2 · 2026-10-24T08:49:19.718Z · commit 2efcb83310e33db1f802a9746c537e6fc0282435
 
 ## Comments
 
@@ -239,3 +241,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear; A-10544 records both axes, no findings. Coordinator-authorized T-1198 integration preserves T-1018 batch T0/receipt/confirmation implementation and regression blobs unchanged from accepted c28fc37e. Sole manual role-clause test-note resolution keeps both policies; corrected index is the exact parent union, 99 unique rows. A-10542 original local macOS receipts: integration code/test-equivalent parent check0, batches46/46, commands15/15, Webplan8/8, roles39/39; exact corrected head docs2/2. Parent attribution, native timings and report-only lint133/60/0refusals retained. C1/C2 remain unverified at this changed head pending fresh mode-free configured result. Per Coordinator bd71808f, current non-restarted host T0–T2+Web is the gate; no live changed-T3/T4 duration measurement condition or claim. Old green A-10522 is provenance only. No Reviewer runtime/edits/delegation.
+
+### rev-26 · 2026-10-24T08:49:19.718Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1018-final-2
+commit: 2efcb83310e33db1f802a9746c537e6fc0282435
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, A-10575; C1/C2 verified, no findings. Fresh8478329f/A-10572 native2834ordinary+40actual load repetitions allpass. Combined redT0/bisection, four full pinned-plan green/red confirmation paths, recovered missing/conflictingT0 holds and timed hostcheck each ordinary+5/5 pass; maxnewT1sample0.366810923s<0.4s trigger. Batch46/commands15/Webplan8/docs2pass. Linuxc8lon1 Node24.21/Nvim0.12.5 T1/allfallbackT2bothpackages/actualWeb; matchinghostchecktree reusednotremoterepeated. Lint133/60,budgets/ratchet report-only; Web167.35sshardslowwarningsretained. Coordinatorbd71808f current-hostgate applies; no changedT3/T4measurement/T3T4/QA claim. Source5A-10544 carries, parentreceiptsremainprovenance. Lead owns final freshdevconflictcheck; changedhead requires newreview/run.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1018 · 2026-10-24T08:50:41.180Z
+
+Final review clear rev-20261024-1018-final-2 verifies C1/C2 at exact2efcb83310e33db1f802a9746c537e6fc0282435; hub status ready. Fresh current-host run8478329f/A-10572 passed2834ordinary +40actual load repetitions separately, T0–T2+Web, Linux c-8 lon1, lifetime724s/$0.0502, lint/duration budgets report-only; no T3/T4 duration-check claim per Coordinatorbd71808f. Ready reported to Coordinator with final dev89e5c304 caveat: local merge-tree sees docs-index-only conflict because this checkout lacks T-1210's union attribute (current dev has it). Head/index/worktree unchanged; Coordinator owns gate/landing and any next direction. Final verdict artifact A-10575, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10575-t-1018-final-evidence-at-2efcb833.md.
+
+### impl-1018 · 2026-10-24T08:55:55.112Z
+
+Singleton batchc55e2582 at candidate73670b0e failed805/806 Linux T1 because the union-composed index retained identical merge-batches and merge-checkout rows; assertion 'each per-test document must be indexed exactly once'. A-10587 retains native batch failure. Coordinator930307a3 diagnoses shared index-guard behavior and will post shared dev fix/re-enqueue unchanged2efcb833; existing source review and task verification remain standing per that decision. No task head edit, merge, new verification or diagnosis beyond retained evidence; claim held until landing.
