@@ -2,8 +2,8 @@
 id: T-1211
 kind: task
 title: A sharded cover whose shards were all refused before running reads as red
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-974
 branch: t/T-1211-a-sharded-cover-whose-shards-were-all
 created: 2026-10-24T08:21:28.177Z
-updated: 2026-10-24T12:28:08.911Z
+updated: 2026-10-24T12:47:32.483Z
+closed: 2026-10-24T12:47:32.483Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ Found aside by impl-1144 during T-1144 review (2026-10-24 08:21Z). The shard agg
 
 - [x] C1. A sharded cover whose shards were all refused before execution reports a not-run outcome naming each shard's cause, with no red wording and no culprit search (test).
   - done: impl-1211 · 2026-10-24T12:21:51.305Z
+  - verified: rev-32 [reviewer] · run rev-20261024-1211-final · 2026-10-24T12:41:39.594Z · commit 29fbf377fcea752059a0c4605e815455f9fd9ee6
 - [x] C2. A cover where some shards ran and others were refused reports the executed results and names the unexecuted shards; it is never green (test).
   - done: impl-1211 · 2026-10-24T12:00:50.554Z
+  - verified: rev-32 [reviewer] · run rev-20261024-1211-final · 2026-10-24T12:41:39.594Z · commit 29fbf377fcea752059a0c4605e815455f9fd9ee6
 
 ## Comments
 
@@ -148,3 +151,43 @@ Durable review A-10974.
 ### impl-1211 · 2026-10-24T12:28:08.911Z
 
 Full source review clear at unchanged 29fbf377 (rev-20261024-1211-source3, A-10974). Submitted ordinary configured mode-free verify run 1029ca9e-4579-4e5c-bb32-b08a07393a07; initial position 2, PID null. Requested evidence review for that exact head; awaiting durable hub result, no source changes.
+
+### rev-32 · 2026-10-24T12:41:39.594Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-1211-final
+commit: 29fbf377fcea752059a0c4605e815455f9fd9ee6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1211 final same-head evidence review — clear
+
+Head 29fbf377fcea752059a0c4605e815455f9fd9ee6; tree 3a4f140f94aa6031398662d8dd73414462e58922. Origin matches and task tree remains clean. Current full source3/A-10974 is unchanged. Independently audited configured run 1029ca9e-4579-4e5c-bb32-b08a07393a07 / A-11021; task.view confirms finished/passed at this exact head. Findings [].
+
+## Standards
+
+Actual task execution: host T0 exits 0 (34.109 s), all T1 and fallback all hub/Neovim T2 plus Web exit 0. No T3/T4 execution claimed; remaining T3 is periodic/integrated, absent configured batch tiers. Raw progress records establish 2965 ordinary passing tests across 423 passing file records, zero fail/cancelled/skip. Fourteen new identities each additionally pass 5/5 load repetitions (70 tests/70 file records), counted separately from ordinary outcomes.
+
+Linux x64 6.8.0-142-generic, c-8 lon1 droplet cland-v0-780140c6, Node v24.21.0, Neovim v0.12.5, workers 2 (Web 4). Host gate marker f11e8f0605a4f5cb2394ef0b4cc66374eb47bd54 is reused remotely, not repeated. T1/T2/Web phase envelopes 62/313/137 s differ from runner suite walls 58.21/309.85/134.07 s. Lifetime 612 s and cost $0.0425 are droplet accounting.
+
+Generic budget/lint/ratchet diagnostics remain report-only: lint 133 findings/60 files, zero static refusals, existing shell/connection/scale would-fails and Web over-budget retained; T3 ratchet 2195.304 versus base 2195.304. Tier exits and new-identity checks are distinct from report-only diagnostics. The capacity case passes ordinary 0.367391622 s and five repetitions (peak 0.345579733 s), below the reviewed 1.5 s dated E-1194 allowance. Other new T1 repetition peaks remain below 0.460 s; new T2 peaks below 0.983 s. No further duration edit required.
+
+## Spec
+
+C1 verified. T1 suite-cover passes 21/21, including capacity, delivery, mixed causes, generic acquisition and mixed acquisition refusals; parent/first-child/second-child bundle admission; and recovered submitted-worker/lost-start-ack controls. The assertions retain durable per-shard causes, JSON/reopened state, unavailable/not-run wording, zero inappropriate starts, no cover and no culprit search. Every new identity passes all five additional repetitions. Public T2 suite-close passes 11/11, including both generic-acquisition unavailable notices and existing reservation-release/unique-notice controls. New public cases pass ordinary 0.177906890/0.197356578 s and 5/5 each.
+
+C2 verified. Both partial-execution cases (executed exit 0 and exit 1 with an unexecuted shard) pass ordinary and five repetitions each. They preserve executed counts/failure identity, ordinary and compact not-run causes, durable nonzero result, red cover and no green stage evidence. Recovery and ambiguous-start failures remain uncertain/red rather than fabricated non-execution.
+
+A-10957/A-10921 local red/green evidence retains the already-audited dirty-source and missing historical excerpt limits; it is not relabelled as this Linux receipt. This is configured T0–T2/Web evidence, not an all-T3/T4 or actual provider-refusal stress proof. The suite's scripted scheduler/executor seams establish the specified outcome contract.
+
+Final evidence clear; C1/C2 verified across source3 and this exact-head result. QA none/after-stage. No new source finding, edit, test execution, Git mutation, browser or delegation by reviewer. Standards 0 findings; Spec 0 findings.
+Durable audit A-11023.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T12:47:32.483Z
+
+Merged 011db12c72f5d7d5ee8ca2eed68c637c0e6586a8 onto dev.

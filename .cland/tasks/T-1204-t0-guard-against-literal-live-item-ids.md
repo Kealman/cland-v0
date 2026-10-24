@@ -3,17 +3,17 @@ id: T-1204
 kind: task
 title: T0 guard against literal live item ids in copied-tracker tests; byte budgets also run on the copy
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1196
 blocked_by: []
-topic: null
-branch: null
+topic: topic-986
+branch: t/T-1204-t0-guard-against-literal-live-item-ids
 created: 2026-10-24T06:46:05.203Z
-updated: 2026-10-24T11:48:15.076Z
+updated: 2026-10-24T13:03:35.932Z
 ---
 
 ## Summary

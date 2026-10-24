@@ -3,8 +3,9 @@ id: T-976
 kind: task
 title: "The periodic dev T3 culprit search goes inconclusive on old trees: it applies the live hub's lints to pre-change manifests and can't place files new in the range"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 3
 labels:
   - bug
   - hub
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-1194
 blocked_by: []
-topic: null
-branch: null
+topic: topic-984
+branch: t/T-976-the-periodic-dev-t3-culprit-search-goes
 created: 2026-10-20T15:39:04.758Z
-updated: 2026-10-24T11:48:13.687Z
+updated: 2026-10-24T12:56:39.129Z
 ---
 
 ## Summary
@@ -33,12 +34,19 @@ On 2026-10-20 two culprit searches lost files to the search mechanics rather tha
 
 ## Acceptance criteria
 
-- [ ] C1. A T2 test with a fake history shows a stale duration key at an older head no longer makes a probe inconclusive.
-- [ ] C2. A file introduced inside the range is placed at its introducing commit.
-- [ ] C3. A boundary that flips on repetition is reported as inconclusive (flaky), not filed against a culprit.
+- [x] C1. A T2 test with a fake history shows a stale duration key at an older head no longer makes a probe inconclusive.
+  - done: impl-976 · 2026-10-24T12:56:38.504Z
+- [x] C2. A file introduced inside the range is placed at its introducing commit.
+  - done: impl-976 · 2026-10-24T12:56:38.701Z
+- [x] C3. A boundary that flips on repetition is reported as inconclusive (flaky), not filed against a culprit.
+  - done: impl-976 · 2026-10-24T12:56:39.013Z
 
 ## Comments
 
 ### coord · 2026-10-20T19:51:17.588Z
 
 Another data point, 2026-10-20 19:51Z (search for periodic run 8777e86b): the last-green rerun 5cc2e460 at 9ae9a20b passed 20/20 but had 3 platform skips (needs macOS sandbox-exec on Linux), and the search classified it 'inconclusive (file has nonpassing execution receipts)'. A known platform skip that is identical at both ends should not make a passing receipt nonpassing; otherwise every nvim/test/qa.test.ts culprit search on Linux ends inconclusive. The actual culprits here were T-999 and T-1007, fixed by T-1027.
+
+### impl-976 · 2026-10-24T12:50:02.360Z
+
+Test-first progress: C1 T2 reproduced `duration key has no matching test identity: hub/test/example.test.ts::removed old test`, then passed after probe-only hosting lint/tier-projection bypass (candidate commands retained and logged). C2 T2 fake three-merge history now passes with explicit pinned-tree absence receipts and no executor acquisition on absent commits. C3 boundary-pair repetition next; no real droplets or native Git in these fixture histories. Read A-10828 and reruns A-10833/10840/10843/10846 read-only: merge-policy red at 2306692 and 8644953, green receipts at 89e5c30/69b3dc7; no claim about an unobserved culprit.

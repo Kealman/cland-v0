@@ -3,7 +3,7 @@ id: T-1214
 kind: task
 title: Parallel CLI changes conflict on the single usage text in hub/src/cli/usage.ts
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-975
 branch: t/T-1214-parallel-cli-changes-conflict-on-the
 created: 2026-10-24T09:01:40.293Z
-updated: 2026-10-24T12:25:15.207Z
+updated: 2026-10-24T12:52:12.617Z
 ---
 
 ## Summary
@@ -24,11 +24,13 @@ On 2026-10-24 five branches added help lines to `hub/src/cli/usage.ts` (T-1188, 
 ## Acceptance criteria
 
 - [x] C1. Each command's usage lines live in their own entry (one module or one table row per command), so two branches that change the help of different commands merge without a conflict, shown with a scratch Git repository (test).
-  - done: impl-1214 · 2026-10-24T12:05:00.577Z
   - verified: rev-26 [reviewer] · run rev-20261024-1214-final-1 · 2026-10-24T12:25:15.100Z · commit e03a3a3f340f621580982e909b51da163f0a933e
+  - verified: rev-32 [reviewer] · run rev-20261024-1214-final-2 · 2026-10-24T12:51:15.673Z · commit 9eb0c63e88e66b68d9239821e34c43a402340ba2
+  - done: impl-1214 · 2026-10-24T12:52:12.408Z
 - [x] C2. `cland --help` output and every existing help/usage test are unchanged byte for byte by the refactor (test).
-  - done: impl-1214 · 2026-10-24T11:57:09.948Z
   - verified: rev-26 [reviewer] · run rev-20261024-1214-final-1 · 2026-10-24T12:25:15.100Z · commit e03a3a3f340f621580982e909b51da163f0a933e
+  - verified: rev-32 [reviewer] · run rev-20261024-1214-final-2 · 2026-10-24T12:51:15.674Z · commit 9eb0c63e88e66b68d9239821e34c43a402340ba2
+  - done: impl-1214 · 2026-10-24T12:52:12.518Z
 
 ## Comments
 
@@ -134,5 +136,79 @@ Duration/lint/ratchet remain report-only: 133 lint findings across 60 files, thr
 
 Final evidence clear, findings []; C1/C2 all verified across current source and exact-head runtime receipt. QA none/after-stage needs no per-item run. Coordinator owns landing; retain the normal read-only current-dev conflict check and unchanged reviewed head. Standards 0 findings; Spec 0 findings.
 Durable review: A-10966.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1214 · 2026-10-24T12:32:35.586Z
+
+Coordinator-authorized one-time dev integration after T-1086: fetched d76d69fb, merged once, resolving only usage.ts. New upstream help retained: merge queue automatic retry explanation; demo status now includes state and provisioning/active explanation. Re-froze expected bytes independently from original dev module. Test-first integration receipt: compatibility test failed on exactly those missing DEMO_USAGE/MERGE_USAGE lines with old production text; source rows updated, then exported-byte check, real --help check and both native source+golden merge/merge-tree tests passed locally on macOS. No new dependencies or test changes; delta review will precede a new configured verification.
+
+### rev-32 · 2026-10-24T12:37:38.782Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-1214-delta
+commit: 9eb0c63e88e66b68d9239821e34c43a402340ba2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1214 authorized integration delta source review — clear
+
+Head 9eb0c63e88e66b68d9239821e34c43a402340ba2; tree ed12e6489910d6d0f5bf2d693081b34efd21e03c. Parents e03a3a3f340f621580982e909b51da163f0a933e and d76d69fb79ccb2ede084dd04f75a3854a1a66df1. Origin agrees, task worktree clean, dev-to-task whitespace check passes. Carry rev-26's accepted source2/A-10916 and old-head final1/A-10966. Direct/hub-routed delta request assigned rev-32; free hold taken and prior reviewer informed.
+
+## Standards
+
+Coordinator c7927d60 independently read in topic-975 explicitly directs one dev merge after T-1213/T-1083/T-1108/T-1086 land, preserving new help, re-freezing from merged dev, delta review then fresh verification. The merge's actual second parent is that d76d69fb dev head.
+
+Relative to the previous reviewed task source, only MERGE_USAGE and DEMO_USAGE command strings change: merge queue recoverable-block automatic retry guidance, and demo status state/provisioning/active guidance. Matching independent frozen command entries change in the same two places. The original export-composition and help-order fixtures, test implementations and fixture loader are byte-identical to e03a3a3f. No dependency or test-tier change in this resolution. Existing source/frozen command separation and blank separators remain intact, including init/update, publish/release/sync and subscribe/unsubscribe/subscriptions.
+
+No new standards findings. Existing canonical guide/index and sealed scratch/native Git ownership/bounds remain as accepted in A-10916. No merge driver or authority behavior added. Runtime usage consumers in cli.ts are unchanged from incorporated dev.
+
+## Spec
+
+Independent read-only parsing reconstructs all 29 exported values from d76d69fb's original module: 28 template literals (including IMPORT_USAGE substitution) and the single-quoted PUSH_USAGE. Every value equals the integrated frozen export composition. Separately, all 34 production command rows (including IMPORT_USAGE) reconstruct the same frozen exports. Thus the refreshed expectations preserve incorporated dev's bytes, rather than merely agreeing with an accidentally changed implementation. Only the two expected command keys differ from old task frozen data; all legacy export names/composition and full-help ordering remain unchanged.
+
+C1's command ownership and formerly shared init/update regression remain unchanged. C2 now targets the authorized incorporated-dev help bytes, preserving all new landed text; old-head Linux verification is historical and cannot verify this changed head.
+
+Evidence A-10997 preserves the original integration red against old production bytes and corrected macOS local green tool records. The first red is explicitly truncated (original token count 12385); no complete-original-red claim. Green T1 export comparison 1/1 (1.322416 ms test, runner 72.389042 ms); actual CLI help 1/1 (66.34125 ms test, runner 155.733875 ms); native merge/merge-tree 2/2 (242.142542/226.013958 ms, runner 549.606209 ms); hub typecheck completion exit 0. Source is labelled integration working tree later committed here, not exact-head configured reruns. Per-call wait/poll wall intervals are not whole command duration.
+
+Clear delta source, findings []. Both C1/C2 remain run-dependent/unverified until a fresh ordinary configured mode-free run at this exact unchanged head, including the changed T3 Git regression and actual compatibility/help receipts. Prior 46ae7f1b/A-10963 remains old-head evidence. QA none/after-stage; no new suite/landing pass claimed. No further dev merge without the required authorization. Standards 0 findings; Spec 0 findings. Reviewer used read-only source/Git/artifact inspection and data parsing only; no tests, browser, edits, merge or delegation.
+Durable audit A-11009.
+
+### rev-32 · 2026-10-24T12:51:15.674Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-1214-final-2
+commit: 9eb0c63e88e66b68d9239821e34c43a402340ba2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1214 final integrated-head evidence review — clear
+
+Head 9eb0c63e88e66b68d9239821e34c43a402340ba2; tree ed12e6489910d6d0f5bf2d693081b34efd21e03c. Origin matches, task tree clean. Carry current integration delta/A-11009 and accepted full source2/A-10916. Independently read configured run 278005d9-e1ff-4ae0-9218-c6eeddb5d11d / A-11040; task.view confirms finished/passed at this exact head. No findings.
+
+## Standards
+
+Actual configured phases: host T0 check exits 0 (34.196 s), all T1, fallback all hub/Neovim T2, changed T3 once and Web each exit 0. Raw progress records establish 2966 ordinary passes across 427 passing file records, no failures/cancellations/skips. Two new compatibility identities additionally pass 5/5 load repetitions each (10 test/file records), counted separately from ordinary outcomes. No remaining general T3 or T4 execution claimed.
+
+Linux x64 6.8.0-142-generic, c-8 lon1 droplet cland-v0-5315dbf4, Node v24.21.0, Neovim v0.12.5, workers 2 (Web 4). Matching host gate 07c9927747cf56a37194d7a18a3b71494bb32214 is reused remotely, not repeated. T1/T2/T3/Web phase envelopes 62/346/5/146 s differ from suite walls 58.15/341.63/0.47/142.03 s. Lifetime 650 s and cost $0.0451 are machine accounting.
+
+Generic lint/duration/ratchet remain report-only: 133 lint findings/60 files, zero static refusals, four missing baselines, existing shell/items/connection/hub-scale/Neovim-artifact would-fail lines and Web over-budget retained. Ratchet 2195.429 versus 2195.304 s would refuse growth in enforce mode; it is not an enforce-mode growth pass. The changed native file's two identity times are far below its 8 s allowance-print threshold (80% of 10 s); runner reports no stanza. No duration allowance edit required.
+
+## Spec
+
+C1 verified: the source audit establishes separate command-owned source/frozen rows behind legacy exports. Changed T3 native Git cases both pass once, preserving edits in production and frozen data through ordinary merge and merge-tree: SUITE_USAGE/EXECUTOR_USAGE 0.066553037 s; formerly shared INIT_USAGE/UPDATE_USAGE 0.058869353 s. The selected-phase added wall is 0.414 s excluding machine wait, one execution/no repetitions. No conflict/assertion relaxation.
+
+C2 verified: all 29 legacy export bytes match the independent incorporated-dev fixtures (ordinary 0.002040827 s, five repetitions peak 0.003061504 s). Actual cland --help bytes pass at 0.104289663 s, five repetitions peak 0.147277278 s. Current source remains independently equivalent to incorporated d76d69fb's original module per A-11009, preserving new merge/demo help. Existing cli-usage 1/1, cli 9/9, qa-lint-cli 2/2 and docs guard 3/3 pass. Unselected unchanged T3 import lifecycle tests are not claimed executed.
+
+A-10997 integration-local records retain their working-tree attribution and truncated original-red limit. Old e03a3a3f/A-10963 green remains historical; this is the fresh receipt for the authorized integrated head.
+
+Final clear, C1/C2 verified across current source and same-head runtime. QA none/after-stage. No full-T3/T4 cover, landing or reviewer execution claim. Read-only inspection only; no source edits, tests, browser, Git mutation or delegation. Standards 0 findings; Spec 0 findings.
+Durable audit A-11043.
 
 Criteria: C1 verified, C2 verified.

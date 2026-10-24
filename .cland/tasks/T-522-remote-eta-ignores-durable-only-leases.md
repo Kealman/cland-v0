@@ -2,8 +2,8 @@
 id: T-522
 kind: task
 title: Remote ETA ignores durable-only leases, so a blocked explicit droplet waiter shows ETA 0
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-965
 branch: t/T-522-remote-eta-ignores-durable-only-leases
 created: 2026-10-15T18:16:12.637Z
-updated: 2026-10-24T12:18:52.104Z
+updated: 2026-10-24T12:47:13.172Z
+closed: 2026-10-24T12:47:13.172Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ The remote ETA estimate in hub/src/hub/suites.ts (around line 698) ignores durab
 
 - [x] C1. Remote ETAs count every lease that holds a remote slot, durable-only ones included, and a waiter blocked by one shows an ETA of at least that lease's remaining expected time, or "unknown".
   - done: oc-522 · 2026-10-24T11:07:14.629Z
+  - verified: rev-23 [reviewer] · run rev-20261024-522-final · 2026-10-24T12:41:22.500Z · commit a7d7e9e52aca602933c1380937ec63d1eb19b0b3
 - [x] C2. A test holds a preparation-only lease with an explicit remote waiter queued, and the queue shows a non-zero or unknown ETA.
   - done: oc-522 · 2026-10-24T12:18:52.104Z
+  - verified: rev-23 [reviewer] · run rev-20261024-522-final · 2026-10-24T12:41:22.500Z · commit a7d7e9e52aca602933c1380937ec63d1eb19b0b3
 
 ## Comments
 
@@ -147,3 +150,40 @@ Disclosed verification-workers local assertion0!=1 reportedly matches base and c
 
 Source clearance permits fresh mode-free configured verification at exact unchangeda7d7e9e5, results to Reviewer/lead; no unchanged retry was requested. C1/C2 remain runtime pending, with C2 done mark to be restored after the recorded failed verdict. No QA brief/policy, no whole-tier pass claim. Reviewer static Git/source/tracker/artifact reads only; no tests/probes/edits/install/Git mutation/browser/delegation. Standards0 remaining findings; Spec0 findings.
 Durable audit A-10944.
+
+### rev-23 · 2026-10-24T12:41:22.500Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-522-final
+commit: a7d7e9e52aca602933c1380937ec63d1eb19b0b3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-522 final same-head evidence review — clear
+
+Head a7d7e9e52aca602933c1380937ec63d1eb19b0b3/tree c7a7006300337d62af363b54bbb0f6d50e7b7673. Full source verdict rev-20261024-522-source3/A-10944 stands unchanged; fixed base ab77eae3, correction parent 3fb01872. Scope evidence, run rev-20261024-522-final; findings []; C1/C2 verified. Reviewer static Git/tracker/artifact/log reads only; no tests/probes/edits/Git mutation/browser/delegation.
+
+Configured mode-free run 9fb039fe-754a-4897-bd42-d0df8eef5d86 / original A-11006 finishes exit0; task.view independently agrees on passed exact head. Native finish records contain 2932 ordinary passing tests/422 passing files plus15 load-gate passing test/file records, three new identities each5/5. No failure/cancellation/skip. Host T0 and all T1 (137 files/839 top-level identities), fallback all hub+Neovim T2 (241/1759) and full Web (44/224) completed. No T3/T4 command; remaining T3 deferred to configured periodic/integrated occasions. Not an all-tier/stage/QA clearance.
+
+C1/C2: durable preparation lease + active running job in a two-slot budget produces the running job's remaining release ETA rather than zero; a lone preparation-only lease blocking an explicit remote waiter produces unknown/null rather than zero, and cannot acquire another provider slot. Published snapshot updates after the settled scheduler tick without an explicit queue read. Source deduplicates known active rows/durable leases and counts unmatched nonreleased leases as occupied unknown-release capacity. Ordinary durations respectively0.088307387/0.024191310/0.024288737s; corresponding5/5 repetition maxima0.177959341/0.072998817/0.056649213s, all below0.5s T1. These are semantic suiteUnit/fake provider/FakeClock/durable lease metadata assertions, not production provider ETA accuracy guarantees.
+
+M2 regression settlement: executor-run-rules10/10 and merge-batches55/55 ordinary cases pass. Four original red stall/poll cases pass0.067295033/0.034771058/0.053785876/0.048930015s; checkpoint/replay cases also pass. Merge-batches entire file5.427483917s, six prior120000ms diagnostic cancellations no longer recur. Source correction removes fresh lease I/O from coalesced #check publication, refreshes detached with one owner, and preserves newer explicit-read cache precedence; existing assertions/timeouts remain intact. Earlier3ce5c77d/A-10835 remains failed prior-head evidence, not a passing retry or erased receipt.
+
+Host T0 npm run check24.802s exits0. Marker c3652220380fb42b53eda2c255d682d4d672b601 is independently a Git tree; retained host check, not repeated remotely. T1/T2/Web envelopes67/363/159s differ from actual suite62.59/358.23/154.81s and shard62.57/263.91hub+94.27Neovim/154.70Web. Final Web projected150.266s at2workers is not measured wall at4workers. Linux x64 6.8.0-142-generic, c-8 lon1 cland-v0-00db4e01, Node24.21.0/Neovim0.12.5, configured2workers/Web4, lifetime690s/$0.0479. Disk fsync5.27ms/SQLite11.32ms; tmpfs0.09/0.54ms, iowait/steal0.01% each.
+
+Report-only test lint133/60, budget warnings/missing5baselines and unchanged T3 ratchet2182.786s remain visible. Web actual wall154.81>40s; items49.397s/inbox41.874s and shell/connection/Mermaid/scale/render overages are retained. No enforcing-budget or clean-lint claim.
+
+A-10946 honestly preserves filtered local macOS arm64/Node24.21 excerpts with no captured exit statuses or full logs. Base suites.ts substitution, diagnostic sweep-removal probe and debug prints were uncommitted controls; final a7d7e9e5 records include remote-budget17/17, combined82/82, batch55/55, targeted122/122 and check tailzero lintrefusals. No reruns for transcription or invented check wall. Local verification-workers0!=1 classification remains an implementer claim with incomplete surrounding output, not an accepted exemption. That T3 file has no native record in this configured selection, so no new passing assertion is assigned to it. Its absence does not widen this task's configured T0/T1/T2/Web evidence.
+
+Done marks C1/C2 current at task.view before verdict. No item QA required (none/after-stage); no merge performed by reviewer. Final current-dev conflict check remains lead's next read-only report; no head change is authorized by this verdict. Standards0 findings; Spec0 findings.
+
+A-11020 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11020-t-522-final-same-head-evidence-at-a7d7e9e5.md
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T12:47:13.172Z
+
+Merged 785d0bbc04bd13989edfb2f33524854696819078 onto dev.

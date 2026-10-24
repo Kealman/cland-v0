@@ -3,7 +3,7 @@ id: T-1220
 kind: task
 title: A session's shell identity is not bound to a per-session credential
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T12:29:59.536Z
+updated: 2026-10-24T13:00:16.804Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Trust model today: every session runs as the same OS user on one machine. This g
   - done: impl-1220 · 2026-10-24T10:13:17.395Z
 - [x] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
   - done: impl-1220 · 2026-10-24T10:13:17.528Z
-- [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
-  - failed: rev-26 [reviewer] · 2026-10-24T12:29:59.536Z · note Configured integration receipt is red on the known merge-override dev defect; Web and mapped T4 did not execute.
+- [x] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
+  - done: impl-1220 · 2026-10-24T13:00:16.613Z
 
 ## Comments
 
@@ -363,3 +363,97 @@ Disposition: evidence not clear; C3 end-to-end configured integration remains fa
 Durable review: A-10980.
 
 Criteria: C3 failed (Configured integration receipt is red on the known merge-override dev defect; Web and mapped T4 did not execute.).
+
+### impl-1220 · 2026-10-24T12:31:50.443Z
+
+Per Coordinator decisionbb5deb75, cherry-picked sharedT-1226 dev65c47f8c cleanly onto518114d1 as80d870e517ea3d2608fc4c322bb2ef3f01f34f20; pushed. No manual conflict resolution, no dev merge, no permission-test change. A-10989 preserves exact-head local Darwin arm64 native merge-policy targeted1/1, tool-arguments10/10, spoke2/2 and check0 (lint report133/60, zero refusals). Sole prior T3 failure was the known T-998 regression, not a credential regression; A-10976 stays failed. Delta source review requested before new mode-free verification.
+
+### rev-32 · 2026-10-24T12:33:33.002Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-1220-delta
+commit: 80d870e517ea3d2608fc4c322bb2ef3f01f34f20
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1220 authorized shared-fix delta source review — clear
+
+Head 80d870e517ea3d2608fc4c322bb2ef3f01f34f20; tree d64671a4f1ce480b9b4a156a541ed91adfd03bd4; sole parent 518114d1f97b71d84a80782000d52d7cc8ab27e5. Origin matches, task tree clean, parent-to-head whitespace check clean. Scope delta, carrying rev-26's full source5/A-10903 and failed evidence3/A-10980. Direct claimant request 840a0374 addressed rev-32; free hold taken and prior reviewer informed.
+
+## Standards
+
+Coordinator decisions bb5deb75 and bb672747 read independently in topic-952 explicitly classify the old override failure as the known T-998 dev defect and authorize cherry-picking T-1226/65c47f8c, followed by delta review and fresh mode-free verification. The complete nine-file zero-context patch, with index/hunk coordinates removed, exactly matches that posted commit. Full diff differs only in surrounding inherited source context. No dev merge or branch-local repair; no T-1220 credential implementation, test assertion, tier or duration-policy change.
+
+The shared MCP schema declares optional override:string; the spoke forwards it without inventing or dropping it. It still submits through the existing credential-bound hub connection. The unchanged dispatcher merge handler at hub/src/hub/dispatch.ts:1284 refuses every session override before merge work with “only the human may override verdicts”. Known-field recognition grants no human authority. Tool availability and actor verification remain earlier boundaries; unknown overide stays invalid_argument.
+
+T1 controls retain FakeClock/in-memory dispatcher peers, no Git/process. They distinguish typed forbidden and its refusal notice from invalid_argument without a notice. The spoke stub observes the exact outgoing override, preserves typed hub refusal and proves malformed unknown fields send no additional request. Existing cleanup/receipt boundaries and free-only ask test remain. Matching session-permissions, hub README, canonical test notes and project-owned merge skill describe known fields versus authority. No new standards findings.
+
+## Spec
+
+The authorized shared fix resolves M8's concrete wrong diagnostic without changing the accepted C1–C3 security model. Carry A-10903's accepted per-session credential attribution, private shell delivery/rotation, async persistence/revalidation/rollback/drain, fixture migration, archive eligibility and corrected exact role-input setup. Identity-free shell behavior remains the explicit human decision, not OS isolation. These unchanged implementation areas are carried from the prior full audit, not claimed as newly repeated full review.
+
+A-10989 independently inspected original exact-head local Darwin arm64 receipts: unchanged native permission/override test 1/1 (4.948610125 s test, native runner 5.4103245 s; collector wall 5454 ms); tool-arguments 10/10 (661.075334 ms native runner); spoke 2/2 (741.893625 ms native runner). All exits 0/no skips. npm run check exit 0, collector wall 29670 ms; generic lint report-only 133 findings/60 files, zero refusals. Raw command/stdout/stderr and exit records retained; these are local targeted/T0 results, not configured Linux passes.
+
+Previous 4d9ac23a/A-10976 at 518114d1 remains failed historical evidence: T0–T2 passed, changed T3 183 passing identities/one override failure, Web and mapped T4 incomplete. Its 90 load repetitions and all five duration recommendations retain A-10980's attribution; no allowance installed by this cherry-pick. Earlier failed credential/progress receipts are not relabelled.
+
+Clear delta source, findings []. C1–C3 remain runtime-unverified pending fresh ordinary configured mode-free verification at this exact unchanged head, including actual changed-T3, Web and mapped-T4 outcomes and timing/gate limits. No source change/dev merge before review if head changes; no claim of full suite, native-harness/OS isolation or stage closure. Standards 0 findings; Spec 0 findings. Reviewer used read-only source/Git/artifact inspection only, no execution, mutation, browser or delegation.
+Durable audit A-10995.
+
+### rev-32 · 2026-10-24T12:54:10.160Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261024-1220-evidence-4
+commit: 80d870e517ea3d2608fc4c322bb2ef3f01f34f20
+scope: evidence
+findings: [{"severity":"medium","text":"M9: artifact fixture sends artifact.create as artifact-coord without its credential; configured Web setup fails with explicit missing/invalid credential before browser assertions. Migrate owned fixture actor authentication, retain security/UI assertions.","file":"web/test/artifacts.test.ts","line":250},{"severity":"medium","text":"M10: drawer fixture's task.claim sends only item-worker as.name and returns false at225. Use the already owned authenticated session boundary, preserving human/browser routing and claim/delivery assertions; fresh source review and complete configured receipt required.","file":"web/test/session-drawer.test.ts","line":225}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+# T-1220 replacement configured evidence — not clear
+
+Exact head 80d870e517ea3d2608fc4c322bb2ef3f01f34f20; tree d64671a4f1ce480b9b4a156a541ed91adfd03bd4. Origin matches, task worktree clean. Source delta/A-10995 remains the accepted basis. Independently audited run ae8f4f61-3920-43ff-8ef8-cda878fca104 / A-11047 and the two failing setup sites. Scope evidence.
+
+## Spec / blocking evidence
+
+M9 medium — web/test/artifacts.test.ts:250–251. The local fixture creates an artifact as artifact-coord with only as.name, after role.set. The original runtime failure is explicit: “session \"artifact-coord\" credential is missing or invalid; reconnect this session's own MCP spoke to provision its shell credential, or resume with --relaunch”, followed by false !== true at line251. This occurs before the browser assertions. Complete the fixture's owned actor authentication rather than relaxing the credential requirement.
+
+M10 medium — web/test/session-drawer.test.ts:225. The fixture's manual task.claim as item-worker returns false; original output is “AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: false !== true” at line225. Source shows a launched session and connected own spoke, but this separate UI call supplies only as.name. The missing-credential diagnosis is supported by that source and claimant 09e1e7d0; this reviewer performed no reproduction. Route setup through that owned authenticated session boundary, preserving actual browser/human behavior, claim authority and final UI delivery assertions. Audit remaining manual fixture actors for the same migration omission; introduce no blanket bypass.
+
+These are assertion failures, not report-only duration warnings. C3's end-to-end configured integration remains incomplete; no overall pass/ready.
+
+## Standards
+
+No additional production finding. Both failures precede their browser behavior. The shared override correction is now proven by the formerly failing native merge-policy case passing at 1.040278624 s; do not revert its schema or human-only gate. New fixes require a fresh committed source review before another configured run; no unchanged-head retry or unauthorized dev merge.
+
+## Actual configured execution
+
+Linux x64 6.8.0-142-generic, c-8 lon1 droplet cland-v0-429076a6, Node v24.21.0, Neovim v0.12.5, workers 2 (Web 4). Host T0 exits0 (24.909 s), all T1 and fallback all hub/Neovim T2 exit0, changed T3 exits0 and mapped T4 exits0; Web exits1. Overall exit1 with an interruption footer. No passing Web receipt.
+
+Raw progress records: 3127 ordinary outcomes, 3125 pass/2 fail, 447 passing file records/2 failing file records, zero skips/cancellations. Ninety additional load test/file records pass (18 identities ×5). The footer's3217 completed/3215 pass includes these repetitions and is not a count of independent ordinary tests.
+
+Changed T3 executes24 files with184 passing identities once, selected-phase added wall216.707 s excluding wait. Mapped T4 inbox-verifier-load executes1 identity once (1.182219947 s), added wall2.086 s; T4 repetitions skipped as configured. Remaining general T3/T4 is not claimed covered.
+
+Positive regressions retained: raw credential CLI9/9 plus45 actual repetitions; async credential IO7/7 plus35; progress9/9; one archive eligibility identity5/5 plus the Claude credential-environment identity5/5. Every18 repeated identity passes5/5. The old wrong-override failure is resolved, but these positives do not make the two new Web failures green.
+
+Host gate marker4ca573b64009303a9c3c5b8a08a84990c2f725fe is reused remotely, not repeated. T1/T2/T3/T4/Web phase envelopes58/352/221/6/149 s differ from suite walls54.71/347.94/216.78/2.13/144.35 s. Droplet lifetime878 s/cost$0.0610 are machine accounting.
+
+Generic duration/lint/ratchet remain report-only, static lint zero refusals. A-11047 retains the complete generated allowance JSON (owner E-1197, added2026-10-24, expires2026-10-31, 1.5x measured headroom):
+- cli-identity unresponsive-hub stop: peak10.779 s, suggested16.168 s.
+- Lead live-subtree launch/stop: peak9.089 s, suggested13.634 s.
+- session-events process rows: peak9.387 s, suggested14.082 s.
+- suite-remote-process slots after settlement failure: peak11.135 s, suggested16.702 s.
+- tracker-ready-native restart/queued cleanup: peak8.960 s, suggested13.441 s.
+These are measured recommendations for passing known identities, not installed allowances or the cause of exit1. Existing Web/scale/artifact would-fails and missing baselines remain retained. Prior run4d9ac23a/A-10976 remains historical failed evidence.
+
+Disposition: not clear; C3 failed pending local fixture authority migration and a complete fresh exact-head receipt. C1/C2 retain their focused positive receipts but are not newly marked verified by this failed integration verdict. Claimant already plans the two fixture corrections, preserving UI assertions. No independent production diagnosis, tests, browser, Git mutation, edits or delegation by Reviewer. Standards0 additional findings; Spec/evidence2 medium blockers.
+Durable audit A-11052.
+
+Criteria: C3 failed (Configured integration still fails two Web fixture actor-authentication setup cases before browser assertions; complete migration and obtain fresh reviewed-head receipt.).
+
+### impl-1220 · 2026-10-24T13:00:16.726Z
+
+Pushed eb1fbfaf Web local-client auth fixture migrations (browser/UI assertions unchanged), then Coordinator-authorized rule11 dev merge e7ca9436f75624947ef8ed75d9b4013945482d18, parents eb1fbfaf +699a44dd. Both conflicts combined: credential directory join + custom-role dynamic names; authenticated item-lead root + Coordinator/closed-item controls. Incoming custom routing manual claim fixture migrated after original7/8 red. A-11064 retains all raw local receipts/provenance: Web12/12+7/7 before merge; integration custom8,item-lead12,credentials9,I/O7,archive14,progress9,verdict4,native-boundary29,docs3 pass; check0 (Darwin arm64, lint report133/60, zero refusals). Request delta source review. Coordinator8fa92a1e explicitly holds configured verification until T-1214 lands, a second authorized merge/help move and small delta review; no run submitted now.

@@ -2,8 +2,8 @@
 id: T-1222
 kind: task
 title: cland init writes a Codex sandbox for Implementer and Aide that differs from the built-in defaults
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-960
 branch: t/T-1222-cland-init-writes-a-codex-sandbox-for
 created: 2026-10-24T09:42:30.046Z
-updated: 2026-10-24T12:31:17.013Z
+updated: 2026-10-24T12:38:47.209Z
+closed: 2026-10-24T12:38:47.209Z
 ---
 
 ## Summary
@@ -328,3 +329,11 @@ This corrected audit supersedes A-10986 solely to clarify that the macOS 26/26 t
 Durable final audit A-10988.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1222 · 2026-10-24T12:32:44.153Z
+
+Final evidence clear A-10988 verifies C1–C3 at c69d15d9; hub ready. Refreshed ready handoff A-10992 sent to Coordinator with configured green A-10979 and same-head original local A-10882. Latest devd76d69fb conflict check exited0 using fetch --no-auto-maintenance and merge-tree; reviewed head and clean worktree unchanged. No merge/enqueue by Implementer; claim retained. E-778 native Codex scratch commit/push remains agreed landing evidence.
+
+### coord · 2026-10-24T12:38:47.209Z
+
+Merged d4d596db5a17729539508950510262dc00550240 onto dev.

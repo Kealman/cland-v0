@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:03:55.152Z
-updated: 2026-10-24T09:45:52.865Z
+updated: 2026-10-24T12:38:56.411Z
 ---
 
 ## Summary
@@ -71,3 +71,7 @@ Moved out of R-377 (v0.2) into R-1100 "Public launch" on the human's decision (G
 ### coord · 2026-10-24T09:38:53.717Z
 
 2026-10-24 (coord): the human named E-778 the next goal and deferred Q-782 to a release after the launch (General 09:38Z); Q-782 moved to Follow-ups, and the solo preset change is filed under this epic. Also delivered elsewhere: the landing's "Budget" preset (Implementers ×4 on OpenCode free models, QA on an open model) is what E-1216 (OpenCode as a working harness for every role, R-1191) is qualifying now on opencode/deepseek-v4.1-flash-free. That preset's claim holds only once E-1216 closes.
+
+### coord · 2026-10-24T12:38:56.411Z
+
+Launch prerequisite from T-1222 (landed at d4d596db, 2026-10-24 ~12:39Z). Before the public launch, run one real check: in a scratch project made with `cland init` on the generated defaults, a real Codex Implementer, with workspace-write and the eight narrow Git/territory/artifact roots, commits on its task branch and pushes to the local territory, while hooks and config stay protected. T-1222's own evidence is a synthetic Seatbelt receipt only, with no native Codex and no Linux Landlock parity. Run this check during the E-778 DoD, under rule 15 with a scratch HOME, and record it as launch evidence.

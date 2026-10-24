@@ -3,7 +3,7 @@ id: T-1207
 kind: task
 title: Merge queue warns when a candidate touches files of an epic under demo
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-967
 branch: t/T-1207-merge-queue-warns-when-a-candidate
 created: 2026-10-24T06:46:05.607Z
-updated: 2026-10-24T12:28:24.347Z
+updated: 2026-10-24T13:02:00.297Z
 ---
 
 ## Summary
@@ -23,8 +23,8 @@ Landing a file an epic's demo covers makes the demo stale (demo freshness); the 
 
 ## Acceptance criteria
 
-- [ ] C1. Enqueueing a candidate whose diff touches files merged by an epic with an active demo lease or unrecorded demo posts a warning naming the epic and files (test).
-  - failed: rev-32 [reviewer] · 2026-10-24T12:28:24.346Z · note Required same-head configured receipt failed the Web reconnect assertion; await Coordinator shared-defect disposition and usable replacement evidence.
+- [x] C1. Enqueueing a candidate whose diff touches files merged by an epic with an active demo lease or unrecorded demo posts a warning naming the epic and files (test).
+  - done: impl-1207 · 2026-10-24T13:02:00.201Z
 
 ## Comments
 
