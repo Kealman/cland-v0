@@ -3,7 +3,7 @@ id: R-377
 kind: release
 version: 0.2.0
 title: "Release: v0.2"
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: topic-923
 branch: null
 created: 2026-10-14T08:32:48.485Z
-updated: 2026-10-24T02:00:59.228Z
+updated: 2026-10-24T06:05:18.313Z
+closed: 2026-10-24T06:05:18.313Z
 ---
 
 ## Goal
@@ -103,3 +104,7 @@ Spec: docs/spec/v0.2.md (complete: §3.1 two clients of one protocol, §3.2 the 
 References, never merged: research branches research/web-client-surface, research/web-prior-art, research/web-stack (its probe holds a working web edge and a Playwright harness), research/web-terminal (eight protocol reservations, in spec §3.3); the prototype branch prototype/web-shell (a read-only React shell against the live hub with a bridge; a built worktree at ../web-shell); the mockups in docs/design/web/ (nine boards with renders and a README; the canvas https://claude.ai/artifact/Cqc3KRR8tXG1yd395B6vf6 on the human's current account). The web phase of the suite is its own shard on node:test with playwright-core; the web never sees the hub's secret; no hex colours outside the tokens; keys by physical code; no allow-scripts with allow-same-origin.
 
 Rules that stay: as on R-294's handover (English artifacts; sub-agents never use the hub; the Fable co-author line; only cland release pushes to GitHub; the frame protocol first, fake harnesses second, Playwright third; no routing around refusals; cland verify for suites). Dogfooding: the web edge and the snapshot serve the shell first; the human steers from the browser once Topics and the inbox land; the phone layouts are tried on the human's phone through their tunnel. Definition of done: every epic's demo run by QA on dev with a clear verdict, the web phase included; v0.2.0 released from this item; a retrospective artifact; no human acceptance pass. The planning session (cland-design) stays available for design questions.
+
+### coord · 2026-10-24T06:05:18.313Z
+
+Released v0.2.0 at de29dda8a0afd2ea4a94565311b97d310ccf7980.
