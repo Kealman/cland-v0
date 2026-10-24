@@ -27,6 +27,10 @@ projection, source-line cursor mapping across a stacked table and deferred table
 completion, rendered-on-restart snapshot/restore, and a recorded move into a folder
 followed by a save on the rebound raw path. These assert grids, exact source lines,
 buffer identity/options and final decoration receipts; they add no timing targets.
+The live artifact case arms an exact id/path event observer before publishing,
+waits separately for client delivery and the restored projection's exact settled
+buffer lines, then redraws and asserts the final grid. Raw-save checks use the
+same projection receipt; a stub control acknowledgement alone is insufficient.
 The shared projector returns a one-based `source_line` on each metadata row,
 including table rows and their generated separators. Artifact refreshes consume
 this mapping without changing mode; unchanged versions keep their cursor row.

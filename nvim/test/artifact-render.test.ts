@@ -444,16 +444,41 @@ test('artifact events refresh an open projection and raw saves replace its cache
   await c.waitScreen(s => s.includes('Original live note') && !s.includes('# Original'), 'initial projection');
   // Load the raw buffer too: an event must refresh both versions without a reopen.
   await c.input('<Space>v<Space>v');
+  await eventually('raw buffer cached and projection restored', async () => await c.lua("return require('cland.artifacts').bufs['A-live'] ~= nil and vim.b.cland_rendered == true") || undefined);
   await c.waitScreen(s => s.includes('Original live note') && !s.includes('# Original'), 'cached projection');
+  const projection = await c.lua<number>('return vim.api.nvim_get_current_buf()');
+  const waitProjection = async (lines: string[]) => {
+    await eventually('live artifact projection refreshed to ' + lines[0], async () => await c.lua(`
+      local b, lines = ...
+      return vim.api.nvim_get_current_buf() == b and vim.b[b].cland_render_pending == false
+        and vim.deep_equal(vim.api.nvim_buf_get_lines(b,0,-1,false),lines)
+    `, projection, lines) || undefined);
+    // Read the grid only after the exact projection version has landed.
+    await c.lua("vim.cmd('redraw!')");
+    return (await c.screen()).join('\n');
+  };
+  // Arm the exact event observer before publishing; a control reply is only
+  // the stub's write receipt, not the client's artifact-delivery receipt.
+  await c.lua(`
+    local id, path = ...
+    _G.live_artifact_delivered = false
+    require('cland').client:on('artifact', function(e)
+      if e.artifact.id == id and e.artifact.path == path then _G.live_artifact_delivered = true end
+    end)
+  `, artifact.id, path);
   await writeFile(path, '# Updated by agent\nUse **new** text.');
   await scene.emit([{ type: 'artifact', artifact }]);
-  let screen = await c.waitScreen(s => s.includes('Updated by agent') && s.includes('Use new text.'), 'artifact event reaches the rendered grid');
+  await eventually('A-live artifact delivered to the client', async () => await c.lua('return _G.live_artifact_delivered') || undefined);
+  let screen = await waitProjection(['# Updated by agent', 'Use **new** text.']);
+  assert.ok(screen.includes('Updated by agent') && screen.includes('Use new text.'), screen);
   assert.ok(!screen.includes('Original live note') && !screen.includes('# Updated'), screen);
   await c.input('<Space>v');
+  await eventually('updated raw buffer opened', async () => await c.lua("return vim.api.nvim_get_current_buf() == require('cland.artifacts').bufs['A-live']") || undefined);
   assert.deepEqual(await c.lua('return vim.api.nvim_buf_get_lines(0,0,-1,false)'), ['# Updated by agent', 'Use **new** text.']);
   await c.lua("vim.api.nvim_buf_set_lines(0,0,1,false,{'# Saved by human'}); vim.cmd('write')");
   await c.input('<Space>v');
-  screen = await c.waitScreen(s => s.includes('Saved by human') && !s.includes('# Saved'), 'saved raw version reaches the grid');
+  screen = await waitProjection(['# Saved by human', 'Use **new** text.']);
+  assert.ok(screen.includes('Saved by human') && !screen.includes('# Saved'), screen);
   assert.ok(!screen.includes('Updated by agent'), screen);
 });
 
