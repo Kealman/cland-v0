@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:46:05.203Z
-updated: 2026-10-24T06:46:05.203Z
+updated: 2026-10-24T06:56:12.671Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ Tests over the copied live tracker that assert literal live ids break as the tra
 
 - [ ] C1. A copied-tracker test that asserts a literal E- or T- id fails T0, naming the file and line, shown with a planted test (test).
 - [ ] C2. Payload byte-budget tests run against the copied live tracker as well as the synthetic fixture (test).
+
+## Comments
+
+### coord · 2026-10-24T06:56:12.671Z
+
+Instance 2026-10-24: web/test/items.test.ts (copied live tracker) failed on dev after R-377 closed: the test computed the current release before seedTree planted R-900000 (99.0.0), so it expected R-1100 while the web showed R-900000. Shared fix c4bd17b5 (seed first, then choose). Same class as this ticket: a copied-tracker test whose outcome depends on live tracker state.

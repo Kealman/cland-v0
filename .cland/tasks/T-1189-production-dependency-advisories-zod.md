@@ -3,7 +3,7 @@ id: T-1189
 kind: task
 title: "Production dependency advisories: zod below 4.6.6 (high) and ip-address 10.7.3 (moderate)"
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-924
 branch: t/T-1189-production-dependency-advisories-zod
 created: 2026-10-23T21:49:58.684Z
-updated: 2026-10-24T06:55:48.032Z
+updated: 2026-10-24T06:56:16.749Z
 ---
 
 ## Summary
@@ -34,8 +34,8 @@ With the human's approval:
 
 ## Acceptance criteria
 
-- [x] C1. `npm audit --omit=dev` reports no high or moderate advisory, and the full suite stays green (test).
-  - done: impl-1189 · 2026-10-24T06:36:08.465Z
+- [ ] C1. `npm audit --omit=dev` reports no high or moderate advisory, and the full suite stays green (test).
+  - failed: rev-23 [reviewer] · 2026-10-24T06:56:16.749Z · note Configured run f4ace04e/A-10329 exits 1: Web Items copied-tracker test times out on R-1100 at items.test.ts:44; T1/T2 pass but no green full configured receipt.
 
 ## Comments
 
@@ -101,3 +101,24 @@ Boundary follow-up filed by Coordinator as T-1208 (Tech debt, S): align the loca
 ### impl-1189 · 2026-10-24T06:54:23.015Z
 
 Mode-free Linux droplet verify f4ace04e at 9778912a failed: 2780 pass / 1 fail; T1/T2 exit 0, Web exit 1, budgets report-only. A-10329 records `locator.waitFor: Timeout 3000ms exceeded` for R-1100 at web/test/items.test.ts:44. Exact local isolated test reproduces (A-10330). Minimized fixture mismatch: liveRelease is computed before seedTree adds versioned open R-900000 (99.0.0), displacing expected unversioned R-1100 after previous versioned releases closed. Pure currentRelease probe confirms before R-1100 / after R-900000. Reported to Coordinator and Reviewer; awaiting Coordinator-posted shared fix, no source edits or retry.
+
+### rev-23 · 2026-10-24T06:56:16.749Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261024-1189-evidence1
+commit: 9778912a2c5cc3c8b79f59610edb1abaa0bb4f11
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Evidence review at 9778912a2c5cc3c8b79f59610edb1abaa0bb4f11. A-10329 / f4ace04e-a195-4062-a3fc-f741614dbc2d exited 1: 2,780 passed, one failed, zero skipped/cancelled. T1 and fallback all T2 (hub and Neovim) passed; Web failed waiting 3,000 ms for Items tree row R-1100 at web/test/items.test.ts:44. The raw stack confirms an assertion timeout, not a duration-budget refusal. Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5; host check gate reused, not repeated remotely; no T3/T4 evidence. Duration/lint diagnostics remain report-only.
+
+Standards: source clearance A-10326 remains attributed to this head; no new source finding.
+Spec: C1 requires the full configured run to stay green, which this receipt does not establish. C1 fails evidence settlement pending the Coordinator's disposition/shared fixture fix and a newly reviewed head if changed. The implementer's A-10330 reports a matching local failure and a copied-release/seed selection mismatch; this is not independently executed by Reviewer and does not authorize retry or mutation.
+
+Do not report ready on this receipt.
+Review artifact A-10331.
+
+Criteria: C1 failed (Configured run f4ace04e/A-10329 exits 1: Web Items copied-tracker test times out on R-1100 at items.test.ts:44; T1/T2 pass but no green full configured receipt.).
