@@ -2,8 +2,8 @@
 id: T-1092
 kind: task
 title: OpenCode port-retry test fails under load on macOS with setTypeOfService EINVAL from undici
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-966
 branch: t/T-1092-opencode-port-retry-test-fails-under
 created: 2026-10-22T03:17:55.717Z
-updated: 2026-10-24T11:54:07.190Z
+updated: 2026-10-24T12:16:50.211Z
+closed: 2026-10-24T12:16:50.211Z
 ---
 
 ## Summary
@@ -26,8 +27,10 @@ The macOS stage cover 017af6bd (A-8877, dev 4912d98d, local darwin arm64, 2 work
 
 - [x] C1. The test no longer fails when undici's socket option call meets a closed socket: the fixture closes the taken port only after the client request settles, or the adapter's poll treats this error as a retryable connection failure; the planted race is still exercised (test).
   - done: oc-1092 · 2026-10-24T11:52:21.542Z
+  - verified: rev-32 [reviewer] · run rev-20261024-1092-final · 2026-10-24T12:11:00.297Z · commit f4cfb37189e9113bf954ba5f11549f982cb07d03
 - [x] C2. The test passes 20/20 under `--test-concurrency 4` with a parallel CPU load on macOS, run in a disposable root under rule 15 (test).
   - done: oc-1092 · 2026-10-24T11:52:21.631Z
+  - verified: rev-32 [reviewer] · run rev-20261024-1092-final · 2026-10-24T12:11:00.297Z · commit f4cfb37189e9113bf954ba5f11549f982cb07d03
 
 ## Comments
 
@@ -150,3 +153,42 @@ No source findings remain. Both C1/C2 are done and the retained targeted evidenc
 Both axes personally completed with read-only Git/source/docs/topic/artifact inspection; no tests, probe, edits, GUI or delegation. Standards0 findings; Spec0 findings.
 
 Audit A-10872.
+
+### rev-32 · 2026-10-24T12:11:00.297Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-1092-final
+commit: f4cfb37189e9113bf954ba5f11549f982cb07d03
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1092 final same-head evidence review — clear
+
+Headf4cfb37189e9113bf954ba5f11549f982cb07d03; tree6940474ad8dfd0dca405502bd096927671d788c5. Task/origin refs, task.view and original A-10918 agree. Source3 rev-20261024-1092-source-3/A-10872 remains unchanged. Scope evidence; findings[]; C1/C2 verified.
+
+## Standards
+
+Run2ecd0d22-ad29-4323-9428-71b5b5038650 ends exit0. Parsed2945 ordinary test passes and423 file completions, zero failure/cancel/skip, no load-gate repetition finish records. Actual phases: hostT0 npm check62.364s; allT1; fallback allT2 across hub/Neovim; changedT3 whole opencode-adapter.test.ts16/16 once; Web. T4 and remaining unchangedT3 were not run. “mode full” is selection fallback, not a full T1–T4/stage cover.
+
+Configured runtime Linuxx64 6.8.0-142-generic c-8lon1 cland-v0-a77b594f, Node24.21.0/Nvim0.12.5, workers2/Web4; lifetime676s/$0.0470. Remote typecheck marker d55219e8f8b85f82fcc1368d4a7dc89e84778699 reuses host gate, not another droplet check. Command envelopes T1/T2/T3/Web59/333/39/149s; measured suite walls54.78/329.18/35.49/145.19s. Changed-T3 added wall35.438s excludes machine wait; observed file completion35.288340s and test sum34.521s are different measures. Final projected Web150.266s at2workers is not measured Web wall145.19s at4workers.
+
+Generic budgets/lint/ratchet remain report-only:133findings60files, five missing baselines; existing unrelated items42.503s, shell10.266s, connection6.085s, scale2.498s and render2.084s warnings. Web wall exceeds40s. T3 ratchet2183.488 versus2182.786 would refuse growth, with incomplete base timings; not an enforcing-ratchet pass. No allowance/source edit occurred. The new failure-path identity0.701631s is below both relevant new-identity/T3 thresholds; no stanza needed. Static checks and independent refusal policies remain effective; “report-only” is not a claim that every guard is unenforced.
+
+## Spec
+
+C1 verified: native file16/16 includes original actual collision retry0.750285s and bounded failed-bind/no-probe regression0.701631s. Exact two distinct ports/served-first-port/launch-second-port, separate fresh-home failure paths, no timeout/port-rebind and shutdown assertions remain as source-cleared. The real socket/process boundary is exercised by the fake native OpenCode contract, without production exception swallowing.
+
+C2 verified using the separately audited same-head macOS proof A-10863/A-10864:20/20 targeted --test-concurrency4 runs, four concurrent workers plus one CPU burner, disposable sealed root, Coordinatorf3ef7f6c's explicit window answering ask7d8dada0. Recorded22s11:50:30–11:50:52 and precheck local:none/no waiter satisfy that specific grant; loop cleanup leaves no owned process. Other targeted merge-batches process was disclosed, so no otherwise-idle/quiet-latency claim. Native test durations2.789649–4.634993s. A-10865 supplies separately attributed same-head local16/16 and npm check exit0. Linux does not stand in for the macOS criterion; prior non-lease loops remain supplemental only.
+
+All criteria are done and now verified. QA none/after-stage; no QA, stage closure, full-suite or publication claim. This verdict establishes readiness; normal lead/Coordinator queue policy applies. Reviewer performed read-only source/ref/tracker/log/artifact audit, no tests, probes, edits, browser or delegation. Standards0 findings; Spec0 findings.
+
+Durable audit A-10920.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T12:16:50.211Z
+
+Merged 1039defcfa6c68d941707d6ae0e6a72b74102ff4 onto dev.

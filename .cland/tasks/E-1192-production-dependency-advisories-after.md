@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:30:56.698Z
-updated: 2026-10-24T06:31:01.789Z
+updated: 2026-10-24T12:17:11.204Z
 ---
 
 ## Summary
@@ -35,4 +35,10 @@ stages:
       when: after-stage
     lanes:
       - - T-1189
+  - name: site advisory
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1238
 ```

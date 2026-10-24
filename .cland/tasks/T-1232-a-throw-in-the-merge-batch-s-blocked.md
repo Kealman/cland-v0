@@ -3,7 +3,7 @@ id: T-1232
 kind: task
 title: A throw in the merge batch's blocked-report path crashes the hub
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - bug
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1193
 blocked_by: []
-topic: null
-branch: null
+topic: topic-978
+branch: t/T-1232-a-throw-in-the-merge-batch-s-blocked
 created: 2026-10-24T10:52:41.334Z
-updated: 2026-10-24T11:48:15.565Z
+updated: 2026-10-24T12:30:08.840Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ A failure inside the batch's blocked-report path is logged and retained on the b
 
 - [ ] C1. A batch whose blocked report throws keeps the hub serving, logs the report failure and keeps the batch blocked with its reason (test).
 - [ ] C2. The hub's interval/tick loops catch report errors; an audit lists them in the ready report (test where reachable).
+
+## Comments
+
+### impl-1232 · 2026-10-24T12:30:08.840Z
+
+Red→green: injected batch blocked report produced `Got unwanted rejection. Actual message: "report boundary failed"`; injected T3-search blocked report produced `Actual message: "blocked notice failed"`; nightly/periodic skip callbacks produced `Error: skip notice failed`. All now contained. Local macOS arm64 targeted files passed individually: merge-batches (63 tests), dev-t3-search (5), suite-scheduling (7); hub typecheck passed. Implemented additive retained batch.reportError plus logging and terminal guards. Audit in progress; full verification waits for source review.

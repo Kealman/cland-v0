@@ -3,7 +3,7 @@ id: T-522
 kind: task
 title: Remote ETA ignores durable-only leases, so a blocked explicit droplet waiter shows ETA 0
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-965
 branch: t/T-522-remote-eta-ignores-durable-only-leases
 created: 2026-10-15T18:16:12.637Z
-updated: 2026-10-24T11:32:39.503Z
+updated: 2026-10-24T12:18:52.104Z
 ---
 
 ## Summary
@@ -25,8 +25,8 @@ The remote ETA estimate in hub/src/hub/suites.ts (around line 698) ignores durab
 
 - [x] C1. Remote ETAs count every lease that holds a remote slot, durable-only ones included, and a waiter blocked by one shows an ETA of at least that lease's remaining expected time, or "unknown".
   - done: oc-522 · 2026-10-24T11:07:14.629Z
-- [ ] C2. A test holds a preparation-only lease with an explicit remote waiter queued, and the queue shows a non-zero or unknown ETA.
-  - failed: rev-23 [reviewer] · 2026-10-24T11:32:39.503Z · note Configured run failed four assertions and six native120s timeouts; only partial T1 evidence, no T2/Web.
+- [x] C2. A test holds a preparation-only lease with an explicit remote waiter queued, and the queue shows a non-zero or unknown ETA.
+  - done: oc-522 · 2026-10-24T12:18:52.104Z
 
 ## Comments
 
@@ -119,3 +119,31 @@ C1/C2 remain unverified; C2 failed for incomplete passing regression coverage ac
 Durable disposition A-10838.
 
 Criteria: C2 failed (Configured run failed four assertions and six native120s timeouts; only partial T1 evidence, no T2/Web.).
+
+### rev-23 · 2026-10-24T12:17:42.669Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-522-source3
+commit: a7d7e9e52aca602933c1380937ec63d1eb19b0b3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-522 scheduler correction full source review — clear
+
+Heada7d7e9e52aca602933c1380937ec63d1eb19b0b3/treec7a7006300337d62af363b54bbb0f6d50e7b7673, parent3fb01872, fixed baseab77eae3. Origin task ref independently matches; whitespace clean. Scope full, run rev-20261024-522-source3; both axes in-session, findings []. Prior full functional audit A-10807/A-10813 carried forward and complete scheduler correction3fb01872..a7d7e9e5 inspected. No dev merge.
+
+Standards: M2 corrected in source. Constructor no longer adds a lease sweep to #reaping; #check publication no longer awaits queue()→fresh lease read. It returns to the base holder+cached-snapshot shape through #schedulerSnapshot. Tick starts a detached refresh, at most one refresh promise in flight; explicit queue/admission reads still inspect actual durable slots as before. settled/close await the admitted refresh, so writers do not outlive their owner. Monotonic sweep/applied counters prevent an earlier-started refresh completing after a newer explicit read from overwriting the newer cache. No timeout, polling assertion, test cap, workload or old final assertion changed.
+
+Existing durable lease/active-row deduplication and capacity-aware release ordering remain unchanged and source-sound. The corrected T1 guide now documents all three cases, coalescing and completion semantics. New third case uses existing fake-clock/semantic suiteUnit seam with no process/socket/wall wait; after settled tick it checks cached snapshot ownership/unknown ETA/no acquisition without an explicit queue read. This asserts the scheduler metadata path, not an extra wire transport proof. Prior M1 guide/index remains resolved. No baseline smell finding.
+
+Spec: C1/C2 source intent remains sound. Durable-only nonreleased leases count as occupied unknown-release slots; known job release can provide the next available slot estimate, while a waiter that must outlast preparation-only capacity stays unknown. Explicit remote admission remains blocked. Async cache refresh no longer lengthens the publish check that coalesces interval ticks. All source dispatch/deadline semantics outside this correction remain preserved. Shared docs explain the scheduler coalescing pitfall without claiming a new FakeClock completion contract.
+
+A-10928 reports a causally specific local diagnosis: original executor-run-rules four assertion reds and merge-batch waits reproduced; base suites.ts control passed; removing only publish's fresh sweep restored the stall assertion. Debug advance trace shows one inspection at3s followed by due3–5s checks coalesced while publication awaited I/O. Correction reports82/82 three-file targets,55/55merge-batches,17/17remote-budget,122/122fifteen-file targets and check green. It also reports new cached-snapshot red against base. These are local macOSarm64/Node24.21 summary/excerpt claims; original complete call/result/exit receipts have not been independently audited. Requested retained originals with source attribution, no reruns for transcription, no inferred overall check wall. Current local policy is one file at a time unless Coordinator grants a window; no new multi-file/load reruns requested by this review.
+
+Disclosed verification-workers local assertion0!=1 reportedly matches base and candidate and passed in prior droplet. That is not an independently accepted shared-defect classification or exemption: retain original evidence and let fresh configured verification determine status. A-10835 remains a failed prior-head receipt under A-10838, not erased by targeted green results.
+
+Source clearance permits fresh mode-free configured verification at exact unchangeda7d7e9e5, results to Reviewer/lead; no unchanged retry was requested. C1/C2 remain runtime pending, with C2 done mark to be restored after the recorded failed verdict. No QA brief/policy, no whole-tier pass claim. Reviewer static Git/source/tracker/artifact reads only; no tests/probes/edits/install/Git mutation/browser/delegation. Standards0 remaining findings; Spec0 findings.
+Durable audit A-10944.

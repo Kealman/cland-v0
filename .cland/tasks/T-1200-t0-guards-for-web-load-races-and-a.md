@@ -3,17 +3,17 @@ id: T-1200
 kind: task
 title: T0 guards for Web load races and a repetition gate for new Web files
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1196
 blocked_by: []
-topic: null
-branch: null
+topic: topic-980
+branch: t/T-1200-t0-guards-for-web-load-races-and-a
 created: 2026-10-24T06:46:04.641Z
-updated: 2026-10-24T11:48:14.390Z
+updated: 2026-10-24T12:27:17.162Z
 ---
 
 ## Summary

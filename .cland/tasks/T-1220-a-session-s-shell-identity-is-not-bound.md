@@ -3,7 +3,7 @@ id: T-1220
 kind: task
 title: A session's shell identity is not bound to a per-session credential
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T11:52:58.045Z
+updated: 2026-10-24T12:29:59.536Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Trust model today: every session runs as the same OS user on one machine. This g
   - done: impl-1220 · 2026-10-24T10:13:17.395Z
 - [x] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
   - done: impl-1220 · 2026-10-24T10:13:17.528Z
-- [x] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
-  - done: impl-1220 · 2026-10-24T11:42:16.976Z
+- [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
+  - failed: rev-26 [reviewer] · 2026-10-24T12:29:59.536Z · note Configured integration receipt is red on the known merge-override dev defect; Web and mapped T4 did not execute.
 
 ## Comments
 
@@ -251,3 +251,115 @@ Prior configured66921553/A-10836 at923b2388 remains failed:2313 ordinary tests22
 Disposition
 Clear source at26b52798, findings[]. All C1–C3 remain pending configured exact-head runtime settlement. Restore/retain claimant done marks, submit ordinary configured mode-free verification at this unchanged clean head, route result here. Droplet runs are unaffected by current local cover quiet; do not start local targeted tests until cover release. No unchanged-head retry of the historical failure, unauthorized dev merge or enqueue. Reviewer performed read-only source/Git/artifact inspection only.
 Durable source review A-10855.
+
+### rev-31 · 2026-10-24T11:54:20.930Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-evidence2
+commit: 26b52798324645e764efc8e46f871330b94a4616
+scope: evidence
+findings: [{"severity":"medium","text":"M7 remains: both new setup observers time out at15000ms. roleInputInjected searches agents topic history, but #recordClause's hub notice has no topic. Observe its exact recipient/delivery at the actual public seam, preserving original digest/no-extra-input/retry assertions.","file":"hub/test/progress.test.ts","line":13}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-1220 replacement configured evidence — not clear
+
+Head26b52798324645e764efc8e46f871330b94a4616/tree732c3f1079f61d4ca15b069cb044e10abced475f, source clearance A-10855. task.view confirms failed finished configured mode-free run2eebda38-6164-4d0d-8968-959112e8094c/A-10866.
+
+Remaining M7 (medium), hub/test/progress.test.ts:13–19,75,161:
+Both progress cases now fail the new setup observer: "Error: initial role input injected before digest measurement: not within 15000 ms". Case durations15.134129429s and15.104221117s. The observer queries topic.history for agents, then requires a hub initial role notice there. HubCore.#recordClause constructs that notice with from:'hub'/to:[recipient] but no topic, so the observer cannot find its required message in agents history. My source4 review accepted the setup ordering but missed this topic/notice mismatch; the configured result establishes that it is not a usable receipt. Implementer291ec336 independently confirms the same source diagnosis. Observe the exact recipient's notice/delivery identity at its actual public seam; arm before the idle/input trigger and retain all original zero-extra-input/digest/uncertain-retry assertions. Do not increase timeout or add a duration allowance to mask this setup failure.
+
+Resolved integration evidence:
+M5's files now pass ordinary execution: artifact-delete4/4, demo-cap2/2, epic-close15/15, onboarding13/13, verdict-criteria4/4. This includes all12 prior credential refusals. Raw credential admission9/9 plus45 load passes; I/O7/7 plus35 load passes. Archive14/14 plus5 load passes, including reopened-item eligibility ordinary.345959134s. One-lookup archive workload ordinary.364281442s passed. M5/M6 corrected; no remaining failure classification against those changes. Other than M7, no new source finding inferred.
+
+Run accounting:
+Structured ordinary finish records2315tests:2313pass/2fail, no skips.90 actual load-gate passes separate. Completed-before-interruption2405/2403pass/2fail includes those90 repetitions. HostT0 exit0,envelope37.964s; T1 exit0,envelope59s/actual55.09s; all-T2 fallback selected, T2 exit1,envelope279s/actual274.95s. ChangedT3/T4 and mapped T4guard were selected but unexecuted; Web unexecuted. Planned file counts/projections/zero observed tests do not establish passes. Host typecheck tree marker8b0917bb17ccdff2c4b034e004117fe93c32cda8 was not repeated remotely.
+
+Linux x64 6.8.0-142-generic, c-8 lon1 cland-v0-960286bb, Node24.21.0/Neovim0.12.5, workers2, lifetime431s,cost$0.0299. fsync8.6ms/SQLite10.04ms/iowait.01%/steal.02%. Budget/lint reporting remains report-only133/60; the two actual setup timeout errors caused this failure. No capacity, shared-defect, native-harness, QA or all-T3/T4 classification.
+
+Disposition:
+C3 failed for remaining progress setup failure; C1/C2 remain pending final configured settlement. No unchanged-head retry. Correct, preserve exact failing/passing command receipts/source state, restore claimant mark and request fresh source review before configured verify. Coordinator7933c000 lifted local cover quiet: targeted local runs are now free one file at a time; load loops still require its rule3 window. Reviewer performed only read-only source/log/Git inspection and no execution.
+Durable disposition A-10874.
+
+Criteria: C3 failed (Configured replacement run fails both progress setup observers; T3/T4/Web remain unexecuted.).
+
+### impl-1220 · 2026-10-24T11:58:47.435Z
+
+Pushed518114d1f97b71d84a80782000d52d7cc8ab27e5, only progress test/guide delta from source-cleared26b52798. Topicless role notices are now observed at the fake adapter's accepted exact-session native input receipt, armed before idle, with own-ready round trip retained. All original digest assertions retained. After cover release: baseline focused red15000ms reproduced; corrected full progress9/9, docs guard3/3, check exit0 on Darwin arm64 (lint report133/60, zero refusals). Original native provenance and check logs A-10890. Previous configured2eebda38 remains red with only progress2; M5/M6 cases passed there, later phases incomplete. Fresh source review requested before next configured verify; no dev merge.
+
+### rev-26 · 2026-10-24T12:03:46.920Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1220-source-5
+commit: 518114d1f97b71d84a80782000d52d7cc8ab27e5
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1220 consolidated corrected-source review — clear
+Head518114d1f97b71d84a80782000d52d7cc8ab27e5; tree25367f2770ddf0c2f165344d4a1316e8d752e7a4; task/origin refs agree. Scope full as requested; run rev-20261024-1220-source-5; findings[]. Named claimant requestcbc84f79 delivered to rev-26; empty hold acquired, prior reviewer rev-31 informed. No dev merge.
+
+## Standards
+M7 resolved in the inspected two-file correction from accepted26b52798. The setup helper observes a FakeHarness record with exact stable sessionId, message.kind=role and outcome=accept, armed before idle. In these cases no delayed role script is installed: FakeHarness.inject records and resolves the default accept synchronously. This is the native-input receipt the tests count, not topic presence, elapsed time or the topicless notice. Own receiver credential-ready who round trip remains before this observer. Digest injection mark/script setup follows the accepted role input.
+All original no-extra-input, ordered digest membership, uncertain membership/retry and final injected-stage assertions remain unchanged across three fake flavours. Final guide describes the exact receipt and topicless limitation. No production/authentication/permission/lifecycle/tier/budget change in replacement delta. Whitespace check clean.
+
+Prior full security/lifecycle review A-10826 and corrected source A-10855 by rev-31 explicitly carried forward: M1 indexed-heading contract; M2 async per-session credential I/O and drained disposal; M3 dynamic authorization after held persistence and before native entry; M4 rollback/reservation/role ownership settlement. M5 owned-credential fixture migration/raw fallback tests and M6 event-refreshed archive eligibility/one-indexed-lookup work remain unchanged from accepted26b52798. This review independently inspects the replacement delta and its fake/public seams; it does not claim to have rerun the prior independent review or its tests.
+
+## Spec
+C1–C3 implementation basis remains the prior accepted per-session attribution/own shell delivery/rotation/private fallback/migration and human-approved identity-free behavior; only M7 test setup changes. Role-free shell continues human behavior under the explicit human decision, not an OS isolation guarantee. No authentication expansion or blanket fixture bypass introduced.
+M7's actual failed configured baseline A-10866 remains failed: both setup observers 'not within15000ms', T0/T1 pass, T2 fails and later phases absent. The new observer no longer asks Agents topic history to contain topicless role input. Original semantic assertions remain the acceptance proof after setup.
+All criteria done but remain runtime-dependent and unverified until a fresh exact-head configured result.
+
+A-10890 retained green command output inspected: progress9/9 exit0, no skip/cancel, runner2355.139708ms; affected cases688.531208/344.574458ms. Test SHA256a7d68679161f3670b16b129ec4faad64236481f6e83036cf33a72bc327c1e609 independently matches committed518114d1. These are local Darwinarm64 Node24.21 working-tree receipts subsequently committed unchanged, not exact-commit reruns. Original check receipt exit0/wall103384ms, report lint133/60/zero refusals; docs guard3/3 retained. Exporter's earlier focused red is described in README; configured A-10866 remains durable direct red evidence. Original truncations/history are not reconstructed. No full-suite/Linux pass at this head yet.
+
+Proceed with ordinary configured mode-free verify at518114d1, Reviewer/item-lead routing. Preserve previous failed66921553/A-10836 and2eebda38/A-10866 as historical; neither becomes current green. A changed head needs fresh source review before verification. QA none/after-stage; no native-harness/device/OS isolation or stage closure qualification.
+Both axes reviewed in-session under role restrictions: read-only Git/source/artifact inspection and stdlib parsing only, no tests, probes, browser, edits, installs, merge or delegation. Standards0 findings; Spec0 findings.
+Durable source review A-10903.
+
+### rev-26 · 2026-10-24T12:29:59.536Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261024-1220-evidence-3
+commit: 518114d1f97b71d84a80782000d52d7cc8ab27e5
+scope: evidence
+findings: [{"severity":"medium","text":"M8: configured run fails on override validation/refusal wording. Coordinator bb672747 classifies known T-998 defect fixed by T-1226/65c47f8c, not T-1220 regression. Authorized shared-fix cherry-pick, fresh delta source review and fresh configured receipt required; Web and mapped T4 did not run.","file":"hub/test/merge-policy.test.ts","line":140}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-1220 same-head evidence review — not clear
+
+Head 518114d1f97b71d84a80782000d52d7cc8ab27e5; tree 25367f2770ddf0c2f165344d4a1316e8d752e7a4. Source5 clearance A-10903 remains the reviewed source basis. Audited original configured run 4d9ac23a-e888-4ad8-bcc7-ac708c31caa2 / A-10976. task.view confirms exact-head failed result.
+
+## Standards
+No new T-1220 standards finding established. Source tests are not relaxed. This review used read-only Git/source/log parsing without runtime execution. Original local A-10890 green and earlier failed receipts retain their actual source/platform attribution.
+
+## Spec / blocking evidence
+M8 medium — configured receipt is red. hub/test/merge-policy.test.ts:140 expects /only the human may override/, but receives "unknown field override; accepted fields: item, cancel". Native case failed in 0.265442312 s. The frame validator uses the MCP merge schema, which advertises item/cancel; the permission handler has a later explicit session-override refusal. Test body is unchanged by T-1220; only its dispatcherUi import adopts the credential fixture, whose wrapper adds actor credentials and preserves arguments.
+
+Coordinator decision bb672747-7a3c-41d8-a4b5-008652bed914 classifies this as the known T-998 dev defect fixed by T-1226 at 65c47f8c, not a T-1220 regression, and authorizes claimant cherry-picking that shared fix under rule11. The branch's actual merge-base with dev is 63e0e0b0, predating 65c47f8c. My earlier 512c4960 comparison was a current-dev comparison reference, not proof that this branch had integrated that head; this corrects that baseline description. Shared strict-validation files have no T-1220 delta in that comparison. No independent base reproduction was executed by Reviewer.
+
+## What passed and what did not run
+Native progress records deduplicated by id: 2844 ordinary test passes, one ordinary failure, 403 file passes and one file failure; 90 additional load-gate tests and 90 load file records pass, counted separately. The interruption summary's 2935 = 2845 ordinary outcomes +90 load repetitions, not 2935 independent ordinary tests.
+
+T0 and T1/all fallback hub+Neovim T2 pass. Progress M7 correction now passes 9/9 including both original failed cases. Raw cli-session-credential tests pass 9/9 +45 actual repetitions; credential IO 7/7 +35; session archive 14/14 +5; Claude environment contributes one 5/5 identity. All 18 repeated identities pass 5/5. These positive receipts establish substantial corrected behavior but do not turn the overall red result green.
+
+Changed T3 phase exits1: 24 selected T3/T4 files, 183 passing identities/one failure, one base execution/no repetitions, selected added wall 204.660 s excluding machine wait. Web and mapped T4 inbox-verifier-load have zero executed tests; neither is passing evidence. Remaining general T3 is deferred.
+
+Linux x64 6.8.0-142-generic droplet c-8 lon1 cland-v0-cee83cb8, Node v24.21.0, Neovim v0.12.5, configured workers2; lifetime690 s, cost $0.0479. Host check exit0,29.721 s; remote log says host gate8843fe2d649ef5f8e40d8cd32b39b5f5e2ce4233 not repeated. No remote repeated-typecheck claim.
+
+Budgets/lint/ratchet remain report-only, including T3 over-budget native identities. A-10976 preserves the complete generated allowance stanza with owner E-1197, added2026-10-24, expires2026-10-31, 1.5x measured headroom:
+- cli-identity stopped-unresponsive-hub identity: peak10.878 s, proposed16.317 s.
+- Lead launches/stops live subtree: peak8.728 s, proposed13.093 s.
+- session-events process rows: peak9.271 s, proposed13.907 s.
+- finished remote runs free slots after settlement failure: peak10.825 s, proposed16.239 s.
+- restart reconciles stop before queued hold cleanup: peak8.478 s, proposed12.717 s.
+These are retained measured recommendations, not installed allowances or enforced-budget passes. Do not edit duration policy merely to replace this failed receipt.
+
+Disposition: evidence not clear; C3 end-to-end configured integration remains failed/incomplete, C1/C2 remain unverified in this verdict despite their passing focused receipts. Source5 is historical after any cherry-pick. Apply only Coordinator-authorized shared fix65c47f8c, commit/push and request delta source review before a fresh mode-free run, then exact-head evidence review. No unchanged-head retry, permission relaxation, ready/landing or item-QA claim. Standards0 new findings; Spec/evidence1 medium blocker classified shared dev defect.
+Durable review: A-10980.
+
+Criteria: C3 failed (Configured integration receipt is red on the known merge-override dev defect; Web and mapped T4 did not execute.).

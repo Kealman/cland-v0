@@ -3,7 +3,7 @@ id: T-1222
 kind: task
 title: cland init writes a Codex sandbox for Implementer and Aide that differs from the built-in defaults
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-960
 branch: t/T-1222-cland-init-writes-a-codex-sandbox-for
 created: 2026-10-24T09:42:30.046Z
-updated: 2026-10-24T11:49:15.569Z
+updated: 2026-10-24T12:31:17.013Z
 ---
 
 ## Summary
@@ -30,18 +30,23 @@ Found by impl-783 in the T-783 docs pass (2026-10-24 09:41Z, topic-953). `hub/sr
 ## Acceptance criteria
 
 - [x] C1. The human's choice is recorded on this item.
-  - done: impl-1222 · 2026-10-24T10:46:22.221Z
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source2 · 2026-10-24T11:00:27.117Z · commit 381a8799f392239cd9ad57d7806adc540f913b5d
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source3 · 2026-10-24T11:17:12.364Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
   - verified: rev-23 [reviewer] · run rev-20261024-1222-final · 2026-10-24T11:34:04.365Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
+  - done: impl-1222 · 2026-10-24T11:57:36.621Z
+  - verified: rev-32 [reviewer] · run rev-20261024-1222-delta · 2026-10-24T12:02:27.504Z · commit c69d15d90612225e71b49082f61ee056e45feb71
+  - verified: rev-32 [reviewer] · run rev-20261024-1222-final-2 · 2026-10-24T12:31:13.548Z · commit c69d15d90612225e71b49082f61ee056e45feb71
 - [x] C2. `cland init`'s generated roles.toml and the built-in fallback defaults agree for every role's Codex sandbox, shown by a test comparing the two.
-  - done: impl-1222 · 2026-10-24T11:17:37.965Z
   - verified: rev-23 [reviewer] · run rev-20261024-1222-final · 2026-10-24T11:34:04.365Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
+  - done: impl-1222 · 2026-10-24T11:57:47.165Z
+  - verified: rev-32 [reviewer] · run rev-20261024-1222-final-2 · 2026-10-24T12:31:13.548Z · commit c69d15d90612225e71b49082f61ee056e45feb71
 - [x] C3. site/src/content/docs/docs/ states the default and how to change it.
-  - done: impl-1222 · 2026-10-24T10:46:23.987Z
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source2 · 2026-10-24T11:00:27.117Z · commit 381a8799f392239cd9ad57d7806adc540f913b5d
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source3 · 2026-10-24T11:17:12.364Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
   - verified: rev-23 [reviewer] · run rev-20261024-1222-final · 2026-10-24T11:34:04.365Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
+  - done: impl-1222 · 2026-10-24T11:57:48.410Z
+  - verified: rev-32 [reviewer] · run rev-20261024-1222-delta · 2026-10-24T12:02:27.504Z · commit c69d15d90612225e71b49082f61ee056e45feb71
+  - verified: rev-32 [reviewer] · run rev-20261024-1222-final-2 · 2026-10-24T12:31:13.548Z · commit c69d15d90612225e71b49082f61ee056e45feb71
 
 ## Comments
 
@@ -233,3 +238,93 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-1222 · 2026-10-24T11:35:55.272Z
 
 Ready handoff sent to Coordinator with A-10842. Hub ready; final evidence verdict A-10841 verifies C1–C3 at ec1732a6, no findings. Configured green receipt A-10837 retains Linux platform skip and report-mode scope; original local receipts remain A-10777/A-10784/A-10818. Current origin/dev95662413 unchanged since clean conflict check; reviewed head/worktree unchanged. No merge or enqueue; Coordinator cover hold applies. E-778 real Codex scratch commit/push remains agreed landing evidence before launch.
+
+### impl-1222 · 2026-10-24T11:58:39.811Z
+
+After queue conflict, followed Coordinator cb0c3292: merged dev/T-783 at c69d15d9 (pushed), preserving its docs truth corrections and final sandbox defaults/8 roots/Aide no-root-commits policy. Policy defaults/template/native test bodies and8s allowance unchanged from prior ec1732a6. Reconciled T-781 union-guide duplicate heading/index row. At committed newhead, macOS/local: check0 (T0 report133/zero refusals), site build0/23pages, five targeted files sequentially26/26 with zero skips (including synthetic Seatbelt). Original source/command/stdout/exit records A-10882. C1–C3 done; delta source review request queued for the next free live Reviewer; no configured verify before its verdict. Prior green0ebbab22 belongs to ec1732a6, not c69d15d9.
+
+### rev-32 · 2026-10-24T12:02:27.504Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-1222-delta
+commit: c69d15d90612225e71b49082f61ee056e45feb71
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1222 integration delta source review — clear
+
+Headc69d15d90612225e71b49082f61ee056e45feb71; treed3e81597bbfc5b38edc11330b5867d8b63382222; parents8991e092887d741b884436a881ce601942eebc81 and12f25962a439aca333d69742c731e26dd8d61f77. Task/origin refs agree. Scope delta. Carry prior full/source/final audits A-10776/A-10782/A-10814/A-10841 at ec1732a6, whose configured receipt remains historical. No findings.
+
+## Standards
+
+Coordinatorcb0c3292 independently read in topic960 explicitly directs dev integration after T-783 and preserving sandbox defaults/eight roots/Aide no root commits/8s allowance. The final merge has actual dev12f25962 as second parent. Range-diff44f220a5..ec1732a6 versusad611df9..b8813b4a shows timing-key cleanup and allowance patch-identical; implementation replay differs in T-781's existing guide and custom-role test/CLI context. Separate reconciliation8991e092 removes only the duplicate backticked guide heading and duplicate index row, preserving both T-781 and T-1222 guidance plus one correct path heading/row.
+
+Direct ec1732a6-to-c69d15d9 diffs are empty for default-roles.ts, template.ts, codex-adapter.test.ts, codex-workspace-git.test.ts, roles-template.test.ts and roles-template-component.test.ts. The reviewed8s allow-map stanza is structurally identical (E-778, added2026-10-24/expires2026-10-31, original Linux5.272721635s sample/reason); inherited duration baseline refresh is dev content, not a fabricated task allowance. No native assertions, root list or fallback policy changed.
+
+Compared final crew.md against both old task head and incorporated dev: it retains T-783 launch/relaunch/model/catalog/approval/mandatory-criteria corrections and T-781 custom definitions/grants/manual-staffing text; the final net task patch only replaces stale compatibility-default prose with the accepted sandbox/root/override explanation. Command editing says both custom definitions and sandbox/approval/roots/network require the file. No dropped custom-role section or restored inaccurate command claim. Source whitespace check clean.
+
+A-10882 preserves20 selected original rollout records/10call-result pairs with original truncation. Independently read committed-head local targeted outputs: role permissions12/12, template7/7, component3/3, docs guard3/3, synthetic Seatbelt1/1, all exits0/zero skips. Seatbelt1.484216s test/Node2.169328s. Site build exit0 (reported23pages); npm check terminal6d9680 exit0, lint report-only133findings60files/zero refusals. Earlier premerge check records remain earlier provenance; no overall check wall inferred from polling intervals. These are Darwinarm64 local evidence, not configured or Linux passes.
+
+## Spec
+
+C1 source reverified: durable item records human choice(a) for workspace-write Implementer/Aide and final corrected Aide decision0c61c0e7: no extra roots/no project-root commits; void numbering relay is not treated as consent for full access. Explicit existing project roles.toml/role settings remain unchanged. Coordinator/Lead/QA full access, Reviewer read-only, eight narrow Implementer roots and override semantics remain exactly accepted.
+
+C3 source reverified: integrated crew docs explain generated and missing-key fallbacks, precise root list, relative resolution/written-list replacement, Aide protected index/commit-message limits, QA alternative roots, custom-role manual authority, user-config/cache/external-Git/macOS inspection limits and how to change policy. Matching help/hub docs/onboarding survive integration.
+
+C2 remains pending fresh configured mode-free verification atc69d15d9, despite local targeted equality/policy evidence. Retain actual T3 fake-Codex whole-file result, platform-specific T4 skip/pass and allowance/timing details. Prior0ebbab22/A-10837 belongs to ec1732a6 and cannot clear this changed head.
+
+Accepted native-enforcement boundary unchanged: macOS synthetic Seatbelt plus resolved-policy tests are approved merge evidence; they do not prove native Codex enforcement or Linux Landlock parity. Real-Codex scratch commit/push remains E-778 after-landing/before-launch evidence. QA none/after-stage.
+
+Proceed with unchanged-head mode-free verify and Reviewer/item-lead routing. Any head change needs new source review. Both axes personally audited read-only; no tests, probes, edits, Git mutation, browser or delegation. Standards0 findings; Spec0 findings.
+
+Durable audit A-10901.
+
+Criteria: C1 verified, C3 verified.
+
+### impl-1222 · 2026-10-24T12:30:39.175Z
+
+Post-dev-merge configured run84a8228b at delta-cleared c69d15d9 passed (A-10979): summary2965pass/0fail/1macOS-only skip, T0/T1/fallback-allT2/changedT3/fullWeb complete. ChangedT3 twelve pass, addedwall29.708s; changedT4 skipped on Linux, separately attributed same-head macOS synthetic Seatbelt proof in A-10882. No all-T3/T4 or nativeCodex/Landlock claim. Linux droplet c-8/lon1,workers2,lifetime727s,cost$0.0505; budgets/lint report mode. Requested final evidence review. Current dev4b617576 conflict check exited0 via fetch --no-auto-maintenance and merge-tree; reviewed head/worktree unchanged. No merge/enqueue performed.
+
+### rev-32 · 2026-10-24T12:31:13.548Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-1222-final-2
+commit: c69d15d90612225e71b49082f61ee056e45feb71
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1222 same-head final evidence review — clear
+
+Head c69d15d90612225e71b49082f61ee056e45feb71; tree d3e81597bbfc5b38edc11330b5867d8b63382222. Origin matches and task worktree is clean. Carry exact-head delta source verdict rev-20261024-1222-delta / A-10901 and its accepted full-review history. This pass independently reads configured receipt 84a8228b-4ffa-4245-a415-8197225a9a3d / A-10979. No findings.
+
+## Standards
+
+Actual configured task execution: host T0 check exits 0 (36.492 s); all T1, fallback all hub/Neovim T2, changed T3 file once, changed T4 file once, and full Web phase each exit 0. Linux x64 6.8.0-142-generic, c-8 lon1 droplet cland-v0-ddbc71bb, Node v24.21.0, Neovim v0.12.5, workers 2 (Web 4). Host gate marker 9d8a4fae1c31bb0e955f2fe95690d468d0056bbe is reused on the droplet, not repeated there.
+
+Raw progress records establish 2966 ordinary test outcomes: 2965 pass, zero fail/cancelled, one explicit skip, across 425 completed file records. Ten additional passing load-gate repetitions belong to two new T1/T2 identities; they are not counted as extra ordinary identities. The run terminates exit 0. T1/T2/T3/T4/Web phase envelopes 65/346/34/5/157 s differ from runner suite walls 60.27/341.97/29.76/0.94/152.13 s. Droplet lifetime 727 s and cost $0.0505 are machine accounting, not suite wall time.
+
+Changed T3 codex-adapter.test.ts passes all 12 identities once; added selected-phase wall 29.708 s excludes machine wait. The T-1222 fake-Codex launch scenario passes at 5.209870114 s, below its reviewed 8 s dated E-778 allowance. Its generic 5 s diagnostic does not negate the allowed pass. The original failed run 44abe56f/A-10803 at 381a8799 remains failed historical evidence; this is a fresh run at the integrated head.
+
+Changed T4 codex-workspace-git.test.ts completes with its single test SKIPPED: “needs macOS sandbox-exec; Linux parity is out of scope”. Zero passing T4 identities, added selected-phase wall 0.898 s, no T4 repetitions. This is neither Linux sandbox enforcement proof nor a native Codex pass. The exact-head local Darwin arm64 26/26 targeted tests (including synthetic Seatbelt 1/1), check and site originals already audited in A-10882/A-10901 remain separate evidence. Remaining unchanged T3/T4 were not covered by this task run.
+
+Generic lint, duration budgets and T3 ratchet remain report-only: lint 133 findings/60 files with zero refusals; Web over-budget and existing would-fail lines retained; ratchet 2195.282 s versus base 2195.304 s. The T4 missing-baseline diagnostic is retained, not interpreted as zero execution cost or a Linux assertion pass. Tier exits and enforced static/new-identity checks remain distinct from report-only diagnostics.
+
+## Spec
+
+C2 now verified at this head. The generated-versus-missing-file/missing-key sandbox equality test passes for every role (0.002578893 s), with five further passing repetitions (0.00420424–0.006067648 s). The generated/fallback Implementer roots scenario passes (0.206014558 s), with five further passing repetitions (0.203653925–0.240039631 s). The passing full T2 and fake-Codex changed T3 preserve resolved policy and adapter inputs.
+
+C1 human choice and C3 site documentation remain verified from A-10901: workspace-write Implementer/Aide, final Aide no extra roots/no root commits, full-access Coordinator/Lead/QA, read-only Reviewer, eight narrow Implementer roots, and explicit overrides. No source delta occurred after that audit.
+
+Accepted evidence boundary is unchanged: resolved-policy tests plus local synthetic Seatbelt are approved merge evidence. Real native-Codex scratch commit/push is E-778 after-landing/before-launch evidence; Linux Landlock parity remains out of scope. No claim that either was proved by a fake harness or a skipped Linux test.
+
+Final clear, C1–C3 verified across the current source review and this exact-head configured receipt. QA none/after-stage; no full-T3/T4 cover or native enforcement claim. Read-only inspection only: no tests, probes, source edits, browser, Git mutation or delegation. Standards 0 findings; Spec 0 findings.
+This corrected audit supersedes A-10986 solely to clarify that the macOS 26/26 total includes the one synthetic Seatbelt test.
+Durable final audit A-10988.
+
+Criteria: C1 verified, C2 verified, C3 verified.
