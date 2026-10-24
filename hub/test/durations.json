@@ -6485,79 +6485,79 @@
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
       "seconds": 22,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "Coordinator raised 12.2 s to 22 s at the E-414 stage-3 close: Linux measured 14.83 s (A-9826, verify all 19691290) and 13.27 s (A-9849 stage cover), about 1.5 times the worst. T-1113: C3-C5 require three live fake harnesses and two actual scratch hub-process restarts, preserving pending native/fallback ids, delivering a replayed Codex answer, observing native TUI answers while the hub is down, and retaining the archived winner after restart. Local Darwin arm64 targeted working-tree run observed 6.075773 s with no skipped assertions; 12.2 s rounds up 2x for native process startup and cleanup under load. All waits are bounded native/frame/filesystem/PID receipts; no sleep is added. Revisit after E-414 stage QA."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Coordinator raised 12.2 s to 22 s at the E-414 stage-3 close: Linux measured 14.83 s (A-9826, verify all 19691290) and 13.27 s (A-9849 stage cover), about 1.5 times the worst. T-1113: C3-C5 require three live fake harnesses and two actual scratch hub-process restarts, preserving pending native/fallback ids, delivering a replayed Codex answer, observing native TUI answers while the hub is down, and retaining the archived winner after restart. Local Darwin arm64 targeted working-tree run observed 6.075773 s with no skipped assertions; 12.2 s rounds up 2x for native process startup and cleanup under load. All waits are bounded native/frame/filesystem/PID receipts; no sleep is added. Revisit after E-414 stage QA. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/accounts.test.ts::Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry": {
       "seconds": 6.8,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1135: the sealed hub/Headless Shell profile case with public cookie-record readback, reload last-use and fixed expiry assertions measured 4.512101 s on local macOS arm64 at ff04573a in the targeted four-file run recorded by A-9650. The 6.8 s cap rounds up about 1.5x this worst observed sample, as the E-418 launch brief requires for any new Web identity reaching 4 s. Reconnect advances only 30 virtual seconds to stay below socket silence; all assertions and observed browser/hub teardown remain. Revisit after E-418 stage QA."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1135: the sealed hub/Headless Shell profile case with public cookie-record readback, reload last-use and fixed expiry assertions measured 4.512101 s on local macOS arm64 at ff04573a in the targeted four-file run recorded by A-9650. The 6.8 s cap rounds up about 1.5x this worst observed sample, as the E-418 launch brief requires for any new Web identity reaching 4 s. Reconnect advances only 30 virtual seconds to stay below socket silence; all assertions and observed browser/hub teardown remain. Revisit after E-418 stage QA. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/plan.test.ts::the Plan view in Items": {
       "seconds": 8.2,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1077 retains three real hub/Headless Shell criterion cases, CLI human approval receipt, Plan-first closed-member and selected-task closure facts, shared mark/watch paints, live resize guards and observed browser/hub teardown. Linux x64 c-8 lon1 run 3f8c3d6c at 44e72f4d (A-9103) measured 5.44853763 s for the parent identity; assertions passed and the enforced new-identity duration gate alone failed. Temporary 8.2 s cap rounds up about 1.5x that measured sample while E-880 restores Web tier budgets."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1077 retains three real hub/Headless Shell criterion cases, CLI human approval receipt, Plan-first closed-member and selected-task closure facts, shared mark/watch paints, live resize guards and observed browser/hub teardown. Linux x64 c-8 lon1 run 3f8c3d6c at 44e72f4d (A-9103) measured 5.44853763 s for the parent identity; assertions passed and the enforced new-identity duration gate alone failed. Temporary 8.2 s cap rounds up about 1.5x that measured sample while E-880 restores Web tier budgets. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/item-criteria.test.ts::criteria edits on the card": {
       "seconds": 17.3,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1078: three Web criterion cases share one sealed scratch hub and Headless Shell, with CLI readback for stable-id add/edit/remove/non-reuse, mixed legacy/explicit and retained high-water identity preservation, human done attribution and other-field read-only checks. Linux x64 c-8 lon1 run 943b7716 at abaf4ae5 (A-9102) observed assertion-green parent 11.507 s, with 2439 recorded tests passing and only this enforced new-identity duration gate red. Temporary cap is about 1.5x that Linux sample; no waits, assertions or fixture teardown are changed. E-880 owns reducing Web fixture cost; the separate 4 s Web budget remains report-only."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1078: three Web criterion cases share one sealed scratch hub and Headless Shell, with CLI readback for stable-id add/edit/remove/non-reuse, mixed legacy/explicit and retained high-water identity preservation, human done attribution and other-field read-only checks. Linux x64 c-8 lon1 run 943b7716 at abaf4ae5 (A-9102) observed assertion-green parent 11.507 s, with 2439 recorded tests passing and only this enforced new-identity duration gate red. Temporary cap is about 1.5x that Linux sample; no waits, assertions or fixture teardown are changed. E-880 owns reducing Web fixture cost; the separate 4 s Web budget remains report-only. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/palette.test.ts::Items help contains all 33 rows within small viewports during complete keyboard scrolls": {
       "seconds": 7.5,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1097 complete keyboard-scroll regression measured 4.451092109 s in Linux x64 c-8 lon1 run 146b8efc at 1a508be8 (A-9032) and 4.979509666 s in run 994a565b at 9782fdbd (A-9040). Native PageDown/End/Home completion, both small viewports, exact all-32-row visibility and browser/hub teardown are retained. Temporary cap rounds up about 1.5x the worst measured Linux sample while E-880 restores Web tier budgets. T-1078 adds the criteria shortcut: the identity migrates from all 32 to all 33 rows, retaining exact every-row visibility in both viewports."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1097 complete keyboard-scroll regression measured 4.451092109 s in Linux x64 c-8 lon1 run 146b8efc at 1a508be8 (A-9032) and 4.979509666 s in run 994a565b at 9782fdbd (A-9040). Native PageDown/End/Home completion, both small viewports, exact all-32-row visibility and browser/hub teardown are retained. Temporary cap rounds up about 1.5x the worst measured Linux sample while E-880 restores Web tier budgets. T-1078 adds the criteria shortcut: the identity migrates from all 32 to all 33 rows, retaining exact every-row visibility in both viewports. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/board.test.ts::the Board view and Items view switcher": {
       "seconds": 9.7,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "Three real hub/Headless Shell criterion cases share one fixture and observe browser/hub teardown; Linux c-8 nyc1 run a25ed72e (A-8928) observed 6.456065132 s. Temporary 1.5x headroom while E-880 restores tier budgets; assertions and fixture boundaries retained."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Three real hub/Headless Shell criterion cases share one fixture and observe browser/hub teardown; Linux c-8 nyc1 run a25ed72e (A-8928) observed 6.456065132 s. Temporary 1.5x headroom while E-880 restores tier budgets; assertions and fixture boundaries retained. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/area-slots.test.ts::area modules keep their slots and live hub state across a restart": {
       "seconds": 9,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1130 Web identity measured 2.80 s on local macOS (A-9330) and 6.017 s on a Linux c-8 lon1 droplet (run a5f7f2e3, A-9355) against the 5 s new-identity gate; about 1.5x the Linux sample until E-880 restores Web tier budgets."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1130 Web identity measured 2.80 s on local macOS (A-9330) and 6.017 s on a Linux c-8 lon1 droplet (run a5f7f2e3, A-9355) against the 5 s new-identity gate; about 1.5x the Linux sample until E-880 restores Web tier budgets. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/graph.test.ts::the Graph view in Items": {
       "seconds": 8,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1076 Graph parent measured 3.99 to 5.008 s on Linux c-8 droplets (runs 8af5955a, 033cceae, eb22dbbc, stage cover 171199e4 at 37499fe3, A-8960) against the 5 s new-identity gate; headroom about 1.5x the worst sample until E-880 restores Web tier budgets"
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1076 Graph parent measured 3.99 to 5.008 s on Linux c-8 droplets (runs 8af5955a, 033cceae, eb22dbbc, stage cover 171199e4 at 37499fe3, A-8960) against the 5 s new-identity gate; headroom about 1.5x the worst sample until E-880 restores Web tier budgets Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "nvim/test/closed-pages.test.ts::copied tracker explorer, board and card render closed children from parent pages": {
       "seconds": 22,
       "owner": "E-880",
-      "added": "2026-10-21",
-      "expires": "2026-10-28",
-      "reason": "T-1081 C4 requires all copied live tracker bodies plus 105 closed children through bounded parent pages in the real headless explorer, board and card, including a reopened child. Linux x64 c-8 lon1 full run 3f3ef7d9 at 7abc0af7 (A-8792) passed this identity in 14.616116916 s; the full receipt exited 1 solely on its missing new-identity allowance. The 22 s cap rounds up about 1.5 times that measured Linux time. Retains page/count/render assertions, bounded observers and teardown; E-880 owns copied-fixture setup cost."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1081 C4 requires all copied live tracker bodies plus 105 closed children through bounded parent pages in the real headless explorer, board and card, including a reopened child. Linux x64 c-8 lon1 full run 3f3ef7d9 at 7abc0af7 (A-8792) passed this identity in 14.616116916 s; the full receipt exited 1 solely on its missing new-identity allowance. The 22 s cap rounds up about 1.5 times that measured Linux time. Retains page/count/render assertions, bounded observers and teardown; E-880 owns copied-fixture setup cost. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/item-summary-lua.test.ts::snapshot summaries and roll-ups equal Lua on every copied live tracker body": {
       "seconds": 20,
       "owner": "E-880",
-      "added": "2026-10-21",
-      "expires": "2026-11-04",
-      "reason": "T-1052 runs the independent headless Lua oracle over all 1051 copied tracker bodies and roll-ups through real frame reads. Local Darwin arm64 targeted run measured 7.489 s including disposable hub setup, bounded by-id pages and Lua; T3 allowance retains the all-body parity guard under loaded Linux."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1052 runs the independent headless Lua oracle over all 1051 copied tracker bodies and roll-ups through real frame reads. Local Darwin arm64 targeted run measured 7.489 s including disposable hub setup, bounded by-id pages and Lua; T3 allowance retains the all-body parity guard under loaded Linux. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/connection-resync.test.ts::a paused real socket reader receives resync, drains and resumes its model": {
       "seconds": 9,
       "owner": "E-880",
-      "added": "2026-10-21",
-      "expires": "2026-10-28",
-      "reason": "Streams more than 4 MiB of model deltas into a paused real socket until the hub sends resync, then drains and resumes (T-986 C5); Linux stage 693096b3 at e6c401b1 measured 7.162 s (A-8376), macOS stage 32bfe28d 3.278 s (A-8379)."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Streams more than 4 MiB of model deltas into a paused real socket until the hub sends resync, then drains and resumes (T-986 C5); Linux stage 693096b3 at e6c401b1 measured 7.162 s (A-8376), macOS stage 32bfe28d 3.278 s (A-8379). Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
       "seconds": 9.859054,
@@ -8619,9 +8619,9 @@
     "hub/test/tracker-summary.test.ts::summary projection bounds the first open payload in a thousand-item tracker and preserves default lists": {
       "seconds": 4,
       "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-10-27",
-      "reason": "T-1007 C1 requires 1,000 real item files, 100 open, with long bodies and verdict history indexed in SQLite; preserves the 60 KB first-payload assertion, default compatibility and blocker events. At bb35e1b0, Linux x64 c-8 droplet A-7831 measured 3.021263533 s ordinary and 5/5 passing repetitions at 2.741-2.948 s (macOS A-7790: 0.7530175 s); 4 s bounds observed platform/filesystem setup variance while E-880 owns duration-budget follow-up. No child process or wall-clock wait."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1007 C1 requires 1,000 real item files, 100 open, with long bodies and verdict history indexed in SQLite; preserves the 60 KB first-payload assertion, default compatibility and blocker events. At bb35e1b0, Linux x64 c-8 droplet A-7831 measured 3.021263533 s ordinary and 5/5 passing repetitions at 2.741-2.948 s (macOS A-7790: 0.7530175 s); 4 s bounds observed platform/filesystem setup variance while E-880 owns duration-budget follow-up. No child process or wall-clock wait. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/typecheck.test.ts::typecheck resolves pinned compilers in roots and linked worktrees": {
       "seconds": 5.710086,
@@ -8675,9 +8675,9 @@
     "nvim/test/artifact-render.test.ts::a 20,000-line artifact yields to keys, bounds render work and caches the settled projection": {
       "seconds": 8,
       "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-10-27",
-      "reason": "T-1003 C1-C4 require a 20,000-line recorded-client T2 proof of rendered first paint, key handling before completion, deterministic parse/projection/decoration slice caps, settled start/middle/end grids and zero-parse reopen. Linux x64 c-8 run 9f5479ed at 6b5612d4 (A-7986) measured 6.116386405 s ordinary and 5/5 passing load repetitions at 5.733759028-6.318479964 s. An 8 s cap gives 25% headroom over the observed peak while E-880 owns duration-budget follow-up. The per-slice work caps, gross guards and separate 16 ms quiet-Mac median are unchanged; no assertion or load repetition is skipped."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1003 C1-C4 require a 20,000-line recorded-client T2 proof of rendered first paint, key handling before completion, deterministic parse/projection/decoration slice caps, settled start/middle/end grids and zero-parse reopen. Linux x64 c-8 run 9f5479ed at 6b5612d4 (A-7986) measured 6.116386405 s ordinary and 5/5 passing load repetitions at 5.733759028-6.318479964 s. An 8 s cap gives 25% headroom over the observed peak while E-880 owns duration-budget follow-up. The per-slice work caps, gross guards and separate 16 ms quiet-Mac median are unchanged; no assertion or load repetition is skipped. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "nvim/test/client.test.ts::the client follows its hub through a restart and keeps the thread": {
       "seconds": 9.160867,
@@ -8760,30 +8760,30 @@
     "nvim/test/startup-budget.test.ts::a slowed task.list trips the rendered startup time budget": {
       "seconds": 9.286204391,
       "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-10-27",
-      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with an intentional slow task.list to prove the 3 s startup guard rejects it, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 9.286204391 s (A-8003)."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with an intentional slow task.list to prove the 3 s startup guard rejects it, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 9.286204391 s (A-8003). Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "nvim/test/startup-budget.test.ts::an oversized non-item startup reply trips the per-reply byte budget": {
       "seconds": 6.4,
       "owner": "E-880",
-      "added": "2026-10-21",
-      "expires": "2026-10-27",
-      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with an oversized non-item reply to prove the per-reply byte guard rejects it, then confirms client teardown (T-1038 C3); Linux stage 15d2ecff at 0404908b measured 5.329 s (A-8202), macOS stage de444828 1.80 s (A-8205)."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with an oversized non-item reply to prove the per-reply byte guard rejects it, then confirms client teardown (T-1038 C3); Linux stage 15d2ecff at 0404908b measured 5.329 s (A-8202), macOS stage de444828 1.80 s (A-8205). Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "nvim/test/startup-budget.test.ts::bodies added to the first task.list trip the payload byte budget": {
       "seconds": 5.791998113,
       "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-10-27",
-      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with body inflation to prove the first-payload guard rejects it, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 5.791998113 s (A-8003)."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with body inflation to prove the first-payload guard rejects it, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 5.791998113 s (A-8003). Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "nvim/test/startup-budget.test.ts::thousand-item workbench startup fits the time and first-payload budgets": {
       "seconds": 5.550433302,
       "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-10-27",
-      "reason": "Builds 1000 tracker items and drives real Neovim socket startup through the rendered welcome, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 5.550433302 s (A-8003)."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup through the rendered welcome, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 5.550433302 s (A-8003). Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "nvim/test/thread.test.ts::200 message rewrites and steady-state appends retain cached parsing and incremental cost": {
       "seconds": 2.128674,
@@ -8802,9 +8802,9 @@
     "web/test/folds.test.ts::browser folds and the prose guard": {
       "seconds": 9,
       "owner": "E-880",
-      "added": "2026-10-21",
-      "expires": "2026-10-28",
-      "reason": "T-997: one isolated Headless Shell and scratch hub serve five sequential browser cases proving fold persistence, no outgoing frames, pane/client isolation, storage failures and positive/negative prose fixtures. Linux c-8 task run 6d7447cc at 1c0ecf2a (A-8473) observed parent 5.772334855 s. Coordinator directed a 9 s cap after shared Linux Web timings varied by about 40% across runs; the observed folds peak is one sample. Assertions and fixture teardown remain unchanged; Web's separate 4 s budget stays report-only."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-997: one isolated Headless Shell and scratch hub serve five sequential browser cases proving fold persistence, no outgoing frames, pane/client isolation, storage failures and positive/negative prose fixtures. Linux c-8 task run 6d7447cc at 1c0ecf2a (A-8473) observed parent 5.772334855 s. Coordinator directed a 9 s cap after shared Linux Web timings varied by about 40% across runs; the observed folds peak is one sample. Assertions and fixture teardown remain unchanged; Web's separate 4 s budget stays report-only. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "T3": {
       "seconds": 2115,
@@ -8816,93 +8816,93 @@
     "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": {
       "seconds": 47,
       "owner": "E-880",
-      "added": "2026-10-21",
-      "expires": "2026-10-28",
-      "reason": "T-1071: required copied-live-tracker snapshot tree, CLI status/cursor/roll-up, live claims/holds and per-client category/fold/filter checks share one scratch hub and Headless Shell. Linux x64 c-8 lon1 run 1b509837 at ebe7a407 (A-8676), Web workers 4, observed assertion-green parent 22.196711522 s; all 37 Web assertions passed, while the overall receipt remained red solely on this new-identity duration gate. The 34 s cap rounds up about 1.5 times that representative Linux time. Earlier A-8664 parent 31.839846683 s included a task.rank request timeout and is excluded as a green baseline. Ordering now has its own seven-item real-hub fixture (2.835574221 s in A-8676); request/DOM bounds, copied-tracker coverage and teardown remain unchanged. Raised to 47 s on 2026-10-22: Linux runs at dev since then measured up to 30.9 s (A-8913, A-8917, A-8928), within 10% of 34 s. Reduce copied-tracker fixture cost under E-880; the separate 4 s Web report budget and 15 ms model rebuild assertion are unchanged."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1071: required copied-live-tracker snapshot tree, CLI status/cursor/roll-up, live claims/holds and per-client category/fold/filter checks share one scratch hub and Headless Shell. Linux x64 c-8 lon1 run 1b509837 at ebe7a407 (A-8676), Web workers 4, observed assertion-green parent 22.196711522 s; all 37 Web assertions passed, while the overall receipt remained red solely on this new-identity duration gate. The 34 s cap rounds up about 1.5 times that representative Linux time. Earlier A-8664 parent 31.839846683 s included a task.rank request timeout and is excluded as a green baseline. Ordering now has its own seven-item real-hub fixture (2.835574221 s in A-8676); request/DOM bounds, copied-tracker coverage and teardown remain unchanged. Raised to 47 s on 2026-10-22: Linux runs at dev since then measured up to 30.9 s (A-8913, A-8917, A-8928), within 10% of 34 s. Reduce copied-tracker fixture cost under E-880; the separate 4 s Web report budget and 15 ms model rebuild assertion are unchanged. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/palette.test.ts::the palette and area keys help": {
       "seconds": 12,
       "owner": "E-880",
-      "added": "2026-10-21",
-      "expires": "2026-10-28",
-      "reason": "T-996 palette test measured 5.98 to 8.285 s on Linux c-8 droplets (runs 8c9946b8, 57da3ffe, 9e25e121) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web shell and palette tests under budget"
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-996 palette test measured 5.98 to 8.285 s on Linux c-8 droplets (runs 8c9946b8, 57da3ffe, 9e25e121) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web shell and palette tests under budget Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/item-card.test.ts::drawer cards use summary facts across ten rows without task.view": {
       "seconds": 8,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1073 drawer card test measured 3.49 to 5.073 s on Linux c-8 droplets (runs 1a5b7020, d313ff6a, 5fdaa16a) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web tests under budget"
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1073 drawer card test measured 3.49 to 5.073 s on Linux c-8 droplets (runs 1a5b7020, d313ff6a, 5fdaa16a) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web tests under budget Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/item-summary-scale.test.ts::a thousand-item planned startup batches explorer recomputation": {
       "seconds": 11,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1104 startup identity measured 2.4 to 2.7 s on local macOS (A-9251) and 7.025 s on a Linux c-8 blr1 droplet (run 814f79d4, A-9316) against the 5 s new-identity gate; it starts a real hub on a thousand-item fixture. Headroom about 1.5x the worst sample until E-880 restores tier budgets."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1104 startup identity measured 2.4 to 2.7 s on local macOS (A-9251) and 7.025 s on a Linux c-8 blr1 droplet (run 814f79d4, A-9316) against the 5 s new-identity gate; it starts a real hub on a thousand-item fixture. Headroom about 1.5x the worst sample until E-880 restores tier budgets. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/item-summary-scale.test.ts::a thousand-item planned hub serves within two seconds of listening before maintenance": {
       "seconds": 11,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1104 startup identity measured 2.2 to 2.7 s on local macOS (A-9251) and 7.413 s on a Linux c-8 blr1 droplet (run 814f79d4, A-9316) against the 5 s new-identity gate; its 2 s listening-to-serving assertion is unchanged. Headroom about 1.5x the worst sample until E-880 restores tier budgets."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1104 startup identity measured 2.2 to 2.7 s on local macOS (A-9251) and 7.413 s on a Linux c-8 blr1 droplet (run 814f79d4, A-9316) against the 5 s new-identity gate; its 2 s listening-to-serving assertion is unchanged. Headroom about 1.5x the worst sample until E-880 restores tier budgets. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/verification.test.ts::Sessions verification queue shows hand runs, ages receipts and remembers its fold": {
       "seconds": 7,
       "owner": "E-880",
-      "added": "2026-10-22",
-      "expires": "2026-10-29",
-      "reason": "T-1133 queue view Web case covers hand holder/waiter rendering, native and queue Enter, receipt ageing, frame replacement, spend reads, fold reload persistence and observed fixture teardown. Linux c-8 lon1 A-9574 at ee0dce9b measured the assertion-green parent at 4.446933277 s; earlier A-9540 at 35a35f72 measured 3.986645884 s. Coordinator directed 7 s (about 1.5 times the worst original sample) for Linux Web timing variance; assertions and their bounds are unchanged."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1133 queue view Web case covers hand holder/waiter rendering, native and queue Enter, receipt ageing, frame replacement, spend reads, fold reload persistence and observed fixture teardown. Linux c-8 lon1 A-9574 at ee0dce9b measured the assertion-green parent at 4.446933277 s; earlier A-9540 at 35a35f72 measured 3.986645884 s. Coordinator directed 7 s (about 1.5 times the worst original sample) for Linux Web timing variance; assertions and their bounds are unchanged. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/artifacts.test.ts::Artifacts groups human, Aide and crew records with remembered section folds": {
       "seconds": 6,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1139 Artifacts sections Web case measured 4.02 s on Linux c-8 lon1 in A-9692 (T-1133 verify at 0a8ed77a, reported by impl-1133) against the 4 s Web gate; 2.09 s baseline elsewhere. Coordinator directed 6 s (about 1.5 times the worst sample) for Linux Web timing variance; assertions unchanged."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1139 Artifacts sections Web case measured 4.02 s on Linux c-8 lon1 in A-9692 (T-1133 verify at 0a8ed77a, reported by impl-1133) against the 4 s Web gate; 2.09 s baseline elsewhere. Coordinator directed 6 s (about 1.5 times the worst sample) for Linux Web timing variance; assertions unchanged. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/events.test.ts::physical s selects an Events subject in the palette and Enter opens topic, session and artifact subjects": {
       "seconds": 6.8,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1127 uses a sealed hub and Headless Shell to select a subject through the palette, then navigate topic, session and an artifact older than the newest 100 inventory rows. Independent artifact setup is already batched in groups of 20. Linux x64 c-8 lon1 run 692b1a23 at 24c8d5ee (A-9910) observed this assertion-green identity at 4.528953661 s; all ten Events identities passed, while the overall run was red on separate rail routing regressions. Launch instructions require an E-417 allowance for every passing Web sample reaching 4 s. The 6.8 s cap is about 1.5 times that worst measured sample; no request/DOM bound, assertion or teardown is relaxed."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1127 uses a sealed hub and Headless Shell to select a subject through the palette, then navigate topic, session and an artifact older than the newest 100 inventory rows. Independent artifact setup is already batched in groups of 20. Linux x64 c-8 lon1 run 692b1a23 at 24c8d5ee (A-9910) observed this assertion-green identity at 4.528953661 s; all ten Events identities passed, while the overall run was red on separate rail routing regressions. Launch instructions require an E-417 allowance for every passing Web sample reaching 4 s. The 6.8 s cap is about 1.5 times that worst measured sample; no request/DOM bound, assertion or teardown is relaxed. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/inbox.test.ts::Enter opens an Inbox message at its anchored thread row and a waiting plan in Plan": {
       "seconds": 9.6,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1123 uses a sealed hub and Headless Shell to create 105 later agent messages, page back to the exact Inbox message, assert focus, then open the pending epic's Plan stage. Linux x64 c-8 lon1 run 1a38504f at 5cd0852b (A-9816) observed this assertion-green test at 6.336998379 s; Web assertions passed 164/164 and the overall run was red on this new-identity gate. The launch brief requires a dated E-417 allowance when any passing Web sample reaches 4 s. The 9.6 s cap is about 1.5 times the worst measured sample; request/DOM bounds, assertions and fixture teardown are unchanged. After this receipt, independent setup sends were batched within the same rate-limit windows to remove serial socket round trips; this remains the worst measured Linux sample."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1123 uses a sealed hub and Headless Shell to create 105 later agent messages, page back to the exact Inbox message, assert focus, then open the pending epic's Plan stage. Linux x64 c-8 lon1 run 1a38504f at 5cd0852b (A-9816) observed this assertion-green test at 6.336998379 s; Web assertions passed 164/164 and the overall run was red on this new-identity gate. The launch brief requires a dated E-417 allowance when any passing Web sample reaches 4 s. The 9.6 s cap is about 1.5 times the worst measured sample; request/DOM bounds, assertions and fixture teardown are unchanged. After this receipt, independent setup sends were batched within the same rate-limit windows to remove serial socket round trips; this remains the worst measured Linux sample. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/cover-quiet.test.ts::remote fixture owner admits its cover lease before starting its fixture": {
       "seconds": 11,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1179 (E-417 stage 4) added this held-slot regression: a scratch project hub holds an integrated cover, and a sealed remote fixture owner launched under runnerFixtureEnvironment must admit its cover lease and start its fixture hub. It spawns a real hub, the owner process and its fixture, so it is process-bound. Linux x64 c-8 lon1 stage cover c110635c at 1f199894 (A-10010, shard-2) observed this assertion-green identity at 7.234 s; that cover was red only on this new-identity budget. The 11 s cap is about 1.5 times that worst measured sample; no wait bound, assertion or teardown is relaxed. Owned by E-880 (test-speed allowances) so the E-417 demo carries no epic-owned allowance."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1179 (E-417 stage 4) added this held-slot regression: a scratch project hub holds an integrated cover, and a sealed remote fixture owner launched under runnerFixtureEnvironment must admit its cover lease and start its fixture hub. It spawns a real hub, the owner process and its fixture, so it is process-bound. Linux x64 c-8 lon1 stage cover c110635c at 1f199894 (A-10010, shard-2) observed this assertion-green identity at 7.234 s; that cover was red only on this new-identity budget. The 11 s cap is about 1.5 times that worst measured sample; no wait bound, assertion or teardown is relaxed. Owned by E-880 (test-speed allowances) so the E-417 demo carries no epic-owned allowance. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/phone.test.ts::the phone frame replaces the rail without losing desktop state": {
       "seconds": 8.7,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1165 shares one sealed hub and Headless Shell across four sequential phone-frame cases covering area taps, More dismissal and touch controls, the 640/639 transition, and saved desktop split restoration after a phone reload. Linux x64 c-8 lon1 run 2abdc836-d810-479b-846a-db54d6206af0 at 0da86127 (A-10055) observed the assertion-green parent at 5.760834262 s with workers 2; all 2727 reported tests passed, but configured evidence failed this new-identity gate. The launch brief requires a dated E-880 allowance for any new passing Web sample reaching 4 s. The 8.7 s cap is about 1.5 times the worst passing sample; no child identity, assertion, request/DOM wait bound or teardown is relaxed."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1165 shares one sealed hub and Headless Shell across four sequential phone-frame cases covering area taps, More dismissal and touch controls, the 640/639 transition, and saved desktop split restoration after a phone reload. Linux x64 c-8 lon1 run 2abdc836-d810-479b-846a-db54d6206af0 at 0da86127 (A-10055) observed the assertion-green parent at 5.760834262 s with workers 2; all 2727 reported tests passed, but configured evidence failed this new-identity gate. The launch brief requires a dated E-880 allowance for any new passing Web sample reaching 4 s. The 8.7 s cap is about 1.5 times the worst passing sample; no child identity, assertion, request/DOM wait bound or teardown is relaxed. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "web/test/readme.test.ts::the README fresh clone builds, starts its own hub and signs a Headless Shell context in": {
       "seconds": 11.8,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1186 C1 follows the literal README through an independent local source clone, the root dependency symlink in place of npm install, a real bundle build, detached hub startup and CLI-minted Headless Shell sign-in. Initial local macOS arm64 targeted run A-10261 on the worktree based on 9ef54e9f passed at 3.579514583 s and established the original 5.4 s allowance. Linux x64 c-8 lon1 mode-free run cafaab89-60d9-4b38-8508-5dc1efe05f22 at b3a6658a (A-10276), with four Web workers, passed this identity at 7.858444498 s; all 2784 ordinary assertions and T1 guard load 15/15 passed, with duration budgets in report mode. The refreshed 11.8 s cap rounds up about 1.5 times that worst passing sample, as the launch requires above 80% of the 4 s Web budget. Owned process-group/PID cleanup, external-network refusal and all request/DOM bounds remain intact. E-880 owns reducing fixture cost."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1186 C1 follows the literal README through an independent local source clone, the root dependency symlink in place of npm install, a real bundle build, detached hub startup and CLI-minted Headless Shell sign-in. Initial local macOS arm64 targeted run A-10261 on the worktree based on 9ef54e9f passed at 3.579514583 s and established the original 5.4 s allowance. Linux x64 c-8 lon1 mode-free run cafaab89-60d9-4b38-8508-5dc1efe05f22 at b3a6658a (A-10276), with four Web workers, passed this identity at 7.858444498 s; all 2784 ordinary assertions and T1 guard load 15/15 passed, with duration budgets in report mode. The refreshed 11.8 s cap rounds up about 1.5 times that worst passing sample, as the launch requires above 80% of the 4 s Web budget. Owned process-group/PID cleanup, external-network refusal and all request/DOM bounds remain intact. E-880 owns reducing fixture cost. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/cover-quiet.test.ts::fixture lifecycle worker admits its cover lease before starting its detached hub": {
       "seconds": 7,
       "owner": "E-880",
-      "added": "2026-10-23",
-      "expires": "2026-10-30",
-      "reason": "T-1179 (E-417 stage 4) added this held-slot regression: a scratch project hub holds an integrated cover, and the sealed fixture-worker child launched under runnerFixtureEnvironment must admit its cover lease and start its detached fixture hub. It spawns a real hub and a node:test worker, so it is process-bound. Linux x64 c-8 lon1 stage cover c110635c at 1f199894 (A-10010, shard-1) observed this assertion-green identity at 4.67 s, under the 5 s T3 bound but within its noise. The 7 s cap is about 1.5 times that sample, sized for headroom; no wait bound, assertion or teardown is relaxed. Owned by E-880."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-1179 (E-417 stage 4) added this held-slot regression: a scratch project hub holds an integrated cover, and the sealed fixture-worker child launched under runnerFixtureEnvironment must admit its cover lease and start its detached fixture hub. It spawns a real hub and a node:test worker, so it is process-bound. Linux x64 c-8 lon1 stage cover c110635c at 1f199894 (A-10010, shard-1) observed this assertion-green identity at 4.67 s, under the 5 s T3 bound but within its noise. The 7 s cap is about 1.5 times that sample, sized for headroom; no wait bound, assertion or teardown is relaxed. Owned by E-880. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     }
   }
 }
