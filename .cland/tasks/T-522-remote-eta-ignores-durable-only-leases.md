@@ -3,17 +3,17 @@ id: T-522
 kind: task
 title: Remote ETA ignores durable-only leases, so a blocked explicit droplet waiter shows ETA 0
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-1216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T18:16:12.637Z
-updated: 2026-10-15T18:16:12.637Z
+updated: 2026-10-24T09:08:57.568Z
 ---
 
 ## Summary

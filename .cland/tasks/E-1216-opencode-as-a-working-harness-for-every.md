@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T09:04:26.967Z
-updated: 2026-10-24T09:04:26.967Z
+updated: 2026-10-24T09:26:33.217Z
 ---
 
 ## Goal
@@ -30,3 +30,27 @@ Today: the OpenCode adapter exists (hub/src/adapters/opencode.ts; E-424 closed),
 - [ ] C1. An OpenCode Implementer takes three consecutive XS/S tasks from claim to merge with no Coordinator intervention beyond ordinary briefs and answers, recorded per run in a qualification artifact.
 - [ ] C2. An OpenCode Reviewer and an OpenCode QA session each complete a real request with a verdict the hub accepts, recorded in the same artifact.
 - [ ] C3. Each run's token use and cost are visible in cland's usage view for the OpenCode session.
+
+## Plan
+
+```yaml
+stages:
+  - name: qualification on OpenCode
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1020
+        - T-1209
+        - T-522
+      - - T-1063
+        - T-1105
+        - T-1092
+      - - T-1219
+  - name: fixes from the qualification
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-619
+```

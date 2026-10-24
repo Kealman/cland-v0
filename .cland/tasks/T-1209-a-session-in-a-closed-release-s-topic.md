@@ -3,18 +3,18 @@ id: T-1209
 kind: task
 title: A session in a closed release's topic cannot send to coordinator
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - qa-found
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:59:07.947Z
-updated: 2026-10-24T06:59:07.947Z
+updated: 2026-10-24T09:08:57.204Z
 ---
 
 ## Summary

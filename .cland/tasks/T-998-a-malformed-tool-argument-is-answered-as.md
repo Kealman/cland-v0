@@ -3,7 +3,7 @@ id: T-998
 kind: task
 title: A malformed tool argument is answered as a permission refusal (forbidden)
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-939
 branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T09:08:07.849Z
+updated: 2026-10-24T09:20:27.542Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
 
 - [x] C1. `task.criterion` with an unknown field or a missing `op` answers a non-`forbidden` validation code that names the field and the accepted values (test).
   - done: impl-998 · 2026-10-24T08:04:53.216Z
-- [x] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
-  - done: impl-998 · 2026-10-24T09:07:07.821Z
+- [ ] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
+  - failed: rev-26 [reviewer] · 2026-10-24T09:20:27.542Z · note Configured Web fails three notification compatibility cases whose ask fixture arguments omit required options; final whole-gate proof is not green.
 - [x] C3. A validation failure is not posted to the Agents topic as a refusal (test).
   - done: impl-998 · 2026-10-24T08:04:53.496Z
 - [x] C4. The MCP server instructions and `hub/README.md` say a validation error may be corrected and retried, unlike `forbidden`.
@@ -280,3 +280,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 M6 source delta clear, A-10616; no findings. Exact existing seven Lead root-only operations shared by early availability and retained scope guard; fixed root-level denial/reason precedes genericgrant/schema checks, including customgrants. OriginalLeadT2fileunchanged; newT1raw-hubvalid/malformed default/custom controls retain exactforbiddenpermission/reason. PriorfullA-10584/M1–M5 acceptedcontract carries; C4docsunchanged/sourceverified. A-10614raw localredreproduced; corrected4/4T2+9/9T1 at512dsourceequivalent, finale4dc onlyerasedtypeannotation afterTS7022; exactfinalcheck0/reportlint132/59/0refusals. No new exactheadconfiguredpass; oldA-10591 remainsfailedpartialT2/Webabsent. Proceedmode-freeunchangede4dc; C1–C3runtimepending.
 
 Criteria: C4 verified.
+
+### rev-26 · 2026-10-24T09:20:27.542Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261024-998-evidence-3
+commit: e4dc52f0109a2afd5ba9661eb8fe32470cf670a6
+scope: evidence
+findings: [{"severity":"medium","text":"M7: Three Web assertions fail at ask.ok (81/193); both ask calls80/192 omit required options:string[]. Shared protocol/TOOLS require options; migrate free-answer fixtures with options:[] and retain all worker/focus/held-registration/suppression final assertions. Task-owned validation compatibility migration, not timing/shared-dev failure.","file":"web/test/phone-notifications.test.ts","line":80}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence notclear, A-10639. Native2822ordinary2819pass/3fail;420files419pass/1fail;50actual loadreps allpass. T1/allfallbackT2hubNeovimexit0,Webactualexit1. M6Leadrootcompatibilitypass; M7completeobservedfailure set is phoneask missingoptions; actualfalse!==true at81/193 precedesnotificationwork. Preservefinalassertions, reproducevalidfixturecalls/options:[],correctedheadsourcebeforeverify. C4sourceverified,C1/C3runtimepending; no configuredgreen. Linuxc8lon1matchinghostcheckreused,reportlint/budgets/noT3T4QAclaims. NoReviewer runtime/edits.
+
+Criteria: C2 failed (Configured Web fails three notification compatibility cases whose ask fixture arguments omit required options; final whole-gate proof is not green.).

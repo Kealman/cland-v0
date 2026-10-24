@@ -3,7 +3,7 @@ id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-929
 branch: t/T-542-a-merge-that-adds-a-package-leaves-the
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-24T08:28:09.229Z
+updated: 2026-10-24T09:24:57.179Z
 ---
 
 ## Summary
@@ -317,3 +317,33 @@ Standards:0findings. Spec:0findings; allC1–C3verified.
 Durable audit A-10532: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10532-t-542-merged-head-final-evidence-at-9c368b0a.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-32 · 2026-10-24T09:13:05.161Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-542-merge-source-2
+commit: 9d789212f0b419f798bcccbbd4be62c37dd728e4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-542 T-1018 integration delta source review — clear
+Head9d789212f0b419f798bcccbbd4be62c37dd728e4; treeab78443189ee1a2ca4785654886e6862ae349748. Parents6c6b42d1beeeb48cc3bf50873d97307bec85114e and incomingdeva9a76af40386e214cdcc30efb7b7109cc5ba6b01; mergebasefd959ce729d8913f57535e0b60e73470a6793275.
+First parent differs from source/final-reviewed9c368b0a only in11tracker files; no nontracker change. Coordinator eec4614b explicitly ordered merging after T-1018 landing, preserving both features and obtaining a delta review/fresh run.
+
+## Standards
+No findings. Three-way blob audit:17task-only paths exactly preserve the task parent,96incoming-only paths exactly preserve dev, and no extra mutation outside either parent's changes. Reviewed all14shared nontracker paths against both parents.
+suites.ts combines the T-1018 record() callback (save host receipt, append T0 exit/duration, preserve signal-derived exit status) with T-542 #hostCheckFailure on nonzero. The injected and native host-gate branches both await record(), so T0 proof is retained before the unchanged missing-locked-package diagnostic is appended/thrown. No machine is created by that failure path.
+usage.ts retains both required root-install reporting and T0/bisection help. protocol.ts/shared-wire retain optional DependencyInstall/queue metadata and upstream diagnostic.steps fields. Dispatcher keeps dependency landing notices with the upstream T0/controller path. T-539's shared PlanGit/history/query seams retain T-542's injected native boundary and no-commit-id formatting.
+FIFO/dev/task movement and T0/bisection cases remain; T-542 adds only its existing diff-tree fixture fact/diagnostic messages relative to incoming merge-batches. Both planned-stage/merge-batch note bodies retained. Index is exactly the union of both parents' row sets with no missing/extra rows and no duplicate physical rows (109including headers).
+README/skills/CHANGES retain install warnings alongside incoming verification procedures. No assertion, test identity or timing relaxation and no new subprocess/native-provider seam introduced by this resolution. No independent smell finding.
+
+## Spec
+No findings. Carry A-10503 source and A-10532 final behavior assessment at9c368b0a, including earlier accepted M1–M5 corrections. C1required-install reporting, C2host missing-dependency diagnosis and C3root links/stale actual artifacts/optional omissions survive. All prior verified marks are stale at this new head and require fresh configured evidence. No criteria verified in this source pass; qaPolicy none/after-stage.
+
+A-10618 original local macOS resolved-precommit outputs: merge-batches46/46, docs3/3, npm run check0 (report-only lint133/60/zero refusals); suite-queue-policy6/6 is explicitly a separately retained tool receipt whose stdout is not in that file. Native target durations6.130043833s/0.174952750s are those files, not a configured/Linux wall time. Prior5c646f62/A-10528 green remains historical at9c368b0a, not this head. No new-head configured green yet.
+Reviewer read-only source/Git/topic/artifact audit; no tests, browser, edits, installs, merge or delegation. Both axes completed personally.
+Standards:0findings. Spec:0findings.
+Durable audit A-10622: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10622-t-542-t-1018-merge-delta-at-9d789212.md

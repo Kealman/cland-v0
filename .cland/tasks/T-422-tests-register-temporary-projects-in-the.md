@@ -3,7 +3,7 @@ id: T-422
 kind: task
 title: Tests register temporary projects in the real host executor ledger
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T09:02:10.049Z
+updated: 2026-10-24T09:12:41.762Z
 ---
 
 ## Summary
@@ -30,14 +30,14 @@ The host-wide executor ledger `~/.cland/executor/spend.json` lists 24 projects. 
 ## Acceptance criteria
 
 - [x] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
-  - done: impl-422 · 2026-10-24T08:46:38.455Z
   - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
+  - done: impl-422 · 2026-10-24T09:11:46.557Z
 - [x] C2. `rememberProject('/')` is refused, and the ledger never lists `/`.
-  - done: impl-422 · 2026-10-24T07:53:42.861Z
   - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
+  - done: impl-422 · 2026-10-24T09:11:47.003Z
 - [x] C3. A registered project whose directory is gone is pruned from `projects` by the sweep, with an event naming it.
-  - done: impl-422 · 2026-10-24T07:53:42.964Z
   - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
+  - done: impl-422 · 2026-10-24T09:11:47.443Z
 
 ## Comments
 
@@ -238,3 +238,16 @@ Standards:0findings. Spec:0findings; allC1–C3verified for merge under the Coor
 Durable audit A-10597: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10597-t-422-final-same-head-evidence-at-5c0f0527.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-26 · 2026-10-24T09:12:41.762Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-422-source-5
+commit: a9e5003643b906968f51ddcc1e5c93aff053d75e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized integration delta clear, A-10621; no findings. Skill conflict keeps T422sealed-executor paragraph then devperiodic/capacity then mergeT0guidance; CHANGEShistories retained. spend.ts/eight isolation-lock-fixture source/testblobs unchanged from accepted5c0f0527; DropletExecutor auto-merge adds upstream typedcapacityclassification without altering abortable registry sweep. Prior source/finalA-10597 scopes carry, including Coordinator-owned literalrealHOMEfullstagecomparison; no new real-ledger claim. A-10620narrative reports mergedlocalcheck0+88/88targetedT1T2; preserve originalrawstdout/exits/native timings/sourceplatform durably without transcriptionreruns. ParentA-10593 provenanceonly. C1–C3 await freshsameheadmode-freeconfiguredreceipt; proceedunchangeda9e50036.

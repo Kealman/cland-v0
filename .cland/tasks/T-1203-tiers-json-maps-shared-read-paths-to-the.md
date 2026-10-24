@@ -2,8 +2,8 @@
 id: T-1203
 kind: task
 title: tiers.json maps shared read paths to the T4 load files that guard them, and verify selection adds them
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-944
 branch: t/T-1203-tiers-json-maps-shared-read-paths-to-the
 created: 2026-10-24T06:46:05.046Z
-updated: 2026-10-24T09:07:44.805Z
+updated: 2026-10-24T09:27:05.483Z
+closed: 2026-10-24T09:27:05.483Z
 ---
 
 ## Summary
@@ -26,12 +27,14 @@ Changes to shared read paths (T-1147) were selected without the T4 load files th
 - [x] C1. A change to a mapped read path adds its T4 load files to the task's selection, and the report names why (test).
   - done: impl-1203 · 2026-10-24T08:39:30.709Z
   - verified: rev-31 [reviewer] · run rev-20261024-1203-final · 2026-10-24T09:01:11.152Z · commit f62bba8581ef5b6dbef86ee95a2c7df13825e270
+  - verified: rev-31 [reviewer] · run rev-20261024-1203-final2 · 2026-10-24T09:21:44.937Z · commit f56f5de3c49d693ec4ca9408abf69a90367f6394
 - [x] C2. The T-1147 read path is mapped, and the mapping is documented in docs/agents/tests.md (docs).
   - done: impl-1203 · 2026-10-24T08:39:31.096Z
   - verified: rev-23 [reviewer] · run rev-20261024-1203-source · 2026-10-24T08:42:08.214Z · commit 53f6a4a5dcba687268311e1986e14d6c21bcaafa
   - verified: rev-31 [reviewer] · run rev-20261024-1203-source2 · 2026-10-24T08:48:50.276Z · commit f62bba8581ef5b6dbef86ee95a2c7df13825e270
   - verified: rev-31 [reviewer] · run rev-20261024-1203-final · 2026-10-24T09:01:11.152Z · commit f62bba8581ef5b6dbef86ee95a2c7df13825e270
   - verified: rev-31 [reviewer] · run rev-20261024-1203-delta · 2026-10-24T09:07:44.805Z · commit f56f5de3c49d693ec4ca9408abf69a90367f6394
+  - verified: rev-31 [reviewer] · run rev-20261024-1203-final2 · 2026-10-24T09:21:44.938Z · commit f56f5de3c49d693ec4ca9408abf69a90367f6394
 
 ## Comments
 
@@ -125,3 +128,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear at f56f5de3/tree 3591c0ce; no findings. A-10615 carries A-10559/A-10573 source and A-10594 prior-head evidence. Coordinator b013cc54 authorized dev merge after T-1144. Manual usage resolution retains capacity-refusal and mapped T4 guard guidance; mapping/selector/shards/tests unchanged. Incoming runner/capacity/wire changes preserve selection and incomplete/unavailable evidence authority. A-10604 check exit 0; A-10605 local Darwin arm64 165/165 targeted contracts exit 0. C2 mapping/docs verified; C1 final settlement pending fresh configured mode-free verification at this head. Prior f62 runtime remains prior-head only. Coordinator-accepted historical cost/post-restart live T4 distinction retained in A-10599. No Reviewer execution or enqueue.
 
 Criteria: C2 verified.
+
+### rev-31 · 2026-10-24T09:21:44.938Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1203-final2
+commit: f56f5de3c49d693ec4ca9408abf69a90367f6394
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at f56f5de3/tree 3591c0ce. A-10642 audits 82aa68ba/A-10632 exit 0, 2856/2856 on Linux c-8 lon1, T1/all fallback hub+Neovim T2/Web. Independently checked mapped selector/reason and manifest guard ordinary passes, five distinct passing repetition IDs each and explicit 5/5 receipts; corrected wording contracts pass. Carries full/corrected source A-10559/A-10573 and authorized delta A-10615 plus native selector/admission A-10605. Host T0 not repeated remotely; report-only budget/lint warnings retained, zero refusals. Coordinator-accepted selection-test proof, historical cost limits and separately owned post-restart live T4 execution/cost remain explicit in A-10599/A-10640. No T3/T4 workload, integrated/stage QA or Reviewer execution/enqueue claimed. No findings.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T09:27:05.483Z
+
+Merged 3c3cf5cc3472e79f26c82422053bfd104e7b5dc4 onto dev.

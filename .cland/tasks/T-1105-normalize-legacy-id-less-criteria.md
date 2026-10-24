@@ -3,17 +3,17 @@ id: T-1105
 kind: task
 title: Normalize legacy id-less criteria through task.criterion
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-326
+parent: E-1216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T10:36:44.495Z
-updated: 2026-10-22T10:36:44.495Z
+updated: 2026-10-24T09:08:58.068Z
 ---
 
 ## Summary
