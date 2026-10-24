@@ -2,8 +2,8 @@
 id: T-780
 kind: task
 title: The install script at cland.app/install.sh
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-954
 branch: t/T-780-the-install-script-at-cland-app-install
 created: 2026-10-18T06:04:23.227Z
-updated: 2026-10-24T10:17:41.923Z
+updated: 2026-10-24T11:04:22.565Z
+closed: 2026-10-24T11:04:22.565Z
 ---
 
 ## Summary
@@ -34,14 +35,18 @@ The landing, the README and the install docs tell Linux users to run `curl -fsSL
 
 - [x] C1. Against a local fake release (file:// tarball or local HTTP, sealed scratch HOME and prefix), the script installs a working `cland` from the tag source, including the built web client, without sudo, and prints where it put the command (test).
   - done: impl-780 · 2026-10-24T10:17:12.523Z
+  - verified: rev-32 [reviewer] · run rev-20261024-780-final · 2026-10-24T10:30:32.931Z · commit 194873735e27ff64bd78f7e0468193f0976361dd
 - [x] C2. Running the script again against a newer fake release updates the install in place (test).
   - done: impl-780 · 2026-10-24T10:04:02.131Z
+  - verified: rev-32 [reviewer] · run rev-20261024-780-final · 2026-10-24T10:30:32.931Z · commit 194873735e27ff64bd78f7e0468193f0976361dd
 - [x] C3. With Node missing or outside `>=24.13 <25`, the script stops before changing anything and says how to get Node 24 (test).
   - done: impl-780 · 2026-10-24T09:53:42.922Z
+  - verified: rev-32 [reviewer] · run rev-20261024-780-final · 2026-10-24T10:30:32.931Z · commit 194873735e27ff64bd78f7e0468193f0976361dd
 - [x] C4. docs/install.md describes the paths the script uses and how to remove them (docs).
   - done: impl-780 · 2026-10-24T09:53:43.126Z
   - verified: rev-32 [reviewer] · run rev-20261024-780-source-2 · 2026-10-24T10:05:55.944Z · commit 50ecd66047613b8de9b1b19393c9a6b90646cf9f
   - verified: rev-32 [reviewer] · run rev-20261024-780-source-3 · 2026-10-24T10:17:41.922Z · commit 194873735e27ff64bd78f7e0468193f0976361dd
+  - verified: rev-32 [reviewer] · run rev-20261024-780-final · 2026-10-24T10:30:32.931Z · commit 194873735e27ff64bd78f7e0468193f0976361dd
 
 Landing evidence, not a merge condition: the one-line command on a clean Ubuntu LTS and a clean Fedora droplet, recorded under E-778 C2.
 
@@ -205,3 +210,60 @@ Standards:zero findings. Spec:zero findings.
 Audit A-10734: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10734-t-780-heading-correction-source-review-at-19487373.md
 
 Criteria: C4 verified.
+
+### rev-32 · 2026-10-24T10:30:32.931Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-780-final
+commit: 194873735e27ff64bd78f7e0468193f0976361dd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-780 final same-head evidence — clear
+
+Head194873735e27ff64bd78f7e0468193f0976361dd; tree468c3914e36e48dc70315c790d3b74526906e897. Source A-10713/A-10734 remains applicable. Fresh mode-free run933e84aa-ae1d-4380-aa20-66ae73cd2fbd, original A-10747, overall exit0. Tracker receipt and current task branch confirm the same reviewed head.
+
+## Standards
+
+No findings. Independent structured-log audit counts2918 ordinary test passes and423 passing files, with no nonpass and no additional load-gate repetition receipts. Configured T0, all T1, fallback all T2 across hub/Neovim, selected changed T3 installer file and Web all exit0. The previously failed docs guard passes at this head; M1/M2/M3 remain resolved.
+
+Linuxx64 6.8.0-142-generic, c-8lon1 dropletcland-v0-53159832, Nodev24.21.0/Nvimv0.12.5; hub/Neovim workers2, Web4. Host T0 check23.676s, with its stdout retained in the original log. Remote typecheck reused host gate99adf020afc77e57c0d449f6c556ffd29c1d28c5, not repeated on the droplet. Command T1/T2/T3/Web53/308/11/132s; measured suite walls49.35/304.18/6.77/128.76s. Droplet lifetime589s/$0.0409.
+
+Installer T3 explicitly executed once,5/5:
+- missing/unsupported Node before prefix writes:0.057944876s;
+- tagged release, built web output, reported command and newer-tag update:1.975110951s;
+- build failure preserves old command:1.294170480s;
+- interruption at old-install move restores working command:1.548874083s;
+- failed rollback preserves/reports runnable old backup:1.595768169s.
+These are actual Linux test samples. Test-seconds sum6.472, file completion6.585452240s, Node runner6.658109852s; they are distinct from selected-phase added wall6.715s (excluding machine wait). The result explicitly says one changed T3/T4 file,5 passing identities, one base execution/no repetitions/no stanza. No passing identity reaches80% of the10s per-test T3 budget.
+
+Generic lint/duration/ratchet remain report-only:133findings/60files,6missingbaselines/incompletebase. Retain the actual T3 ratchet warning2189.258s vs2182.786s, would refuse growth, plus existing shell/connection/item-summary overages and actual Web128.76s>40s report wall. This is not an enforced budget pass. Source checkMergeBudgets returns without enforcement when budget.mode is report; no per-identity allowance recommendation was printed and no baseline/allowance was changed. T3 coverage is this installer file only; remaining T3/T4/full suite not run.
+
+## Spec
+
+C1 verified: sealed local fake released-tag sources install a command that executes, include built web output, suppress prepare/lifecycle scripts, prune the build-only dependency, preserve build lockfile mtime and print the actual prefix command path. Git/curl fixtures reject network and no sudo is invoked.
+C2 verified: second stable fake tag updates the installed command/version; broken build, exact interrupted-publication and failed-restore controls preserve the runnable previous version at live/reported backup paths.
+C3 verified: missing Node plus22/24.12/25 refusals retain Node24 download guidance and no prefix writes; accepted24.13 proceeds through successful install.
+C4 verified: source-established install/custom-prefix/PATH/update/removal/cache/recovery docs retained unchanged from A-10734.
+
+All C1–C4 verified at this exact head. QA policy none/after-stage.
+
+A-10716 is supplemental prior-head50ecd660 local macOS summary, not a Linux installer/cold-OS receipt: check/site/shellcheck/5targeted tests and sealed copied-source webBundleState=current; logical installed bytes90,165,360, build1.346s/prune+restore0.631s exclude download/npmci/copy. The source script did not change at19487373, but those measurements keep their original attribution. A-10705's ENOTCACHED failure and A-10730's partial Linux docs failure remain failed historical evidence. Clean Ubuntu/Fedora full installer commands, actual downloads/cold npmci/doctor and launch promotion remain Coordinator-owned E-778 C2 landing evidence, not a pre-merge condition.
+
+Reviewer read source/Git/structured logs/tracker only; no test/probe/installer/browser, file edits, merge or delegation.
+Standards:zero findings. Spec:zero findings; C1–C4 verified.
+
+Audit A-10749: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10749-t-780-final-linux-installer-evidence-at-19487373.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-780 · 2026-10-24T10:32:01.853Z
+
+Ready at194873735e27ff64bd78f7e0468193f0976361dd. Final Reviewer rev-20261024-780-final verifies C1–C4. Mode-free933e84aa passed2918/2918 on Linux droplet (T0/T1/fallbackT2/changed installerT3/Web, budgets/lint report-only), A-10747. Ready report A-10751; no conflicts with origin/dev44f220a5 via read-only merge-tree; head unchanged. Stable-tag source recipe requires no release asset change. Cold Ubuntu/Fedora proof remains post-landing E-778C2; no site publication or merge performed.
+
+### coord · 2026-10-24T11:04:22.565Z
+
+Merged ec08f3031e9fd33d6a96306a9e1c9549820366ee onto dev.

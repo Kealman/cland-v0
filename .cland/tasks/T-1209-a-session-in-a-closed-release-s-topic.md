@@ -2,8 +2,8 @@
 id: T-1209
 kind: task
 title: A session in a closed release's topic cannot send to coordinator
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-958
 branch: t/T-1209-a-session-in-a-closed-release-s-topic
 created: 2026-10-24T06:59:07.947Z
-updated: 2026-10-24T10:11:21.837Z
+updated: 2026-10-24T10:50:16.312Z
+closed: 2026-10-24T10:48:44.493Z
 ---
 
 ## Summary
@@ -26,8 +27,10 @@ After R-377 closed, qa-676 could not send its post-release report from topic-923
 
 - [x] C1. A send addressed to `coordinator` (role or literal name) from the topic of a closed item is delivered, shown by a hub test that closes a release and then sends from its topic (test).
   - done: oc-1209 · 2026-10-24T10:11:21.837Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1209-final · 2026-10-24T10:25:30.063Z · commit 5b041a25e5933deb415fbc457117b75bd0908243
 - [x] C2. A send addressed to `lead T-n` for a closed item still falls back to the Coordinator instead of being refused, matching the documented `lead` resolution (test).
   - done: oc-1209 · 2026-10-24T10:05:13.744Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1209-final · 2026-10-24T10:25:30.063Z · commit 5b041a25e5933deb415fbc457117b75bd0908243
 
 ## Comments
 
@@ -58,3 +61,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at 5b041a25/tree5f52e32d; no findings. A-10723 carries A-10719 full audit. Only correction is the required exact index row; no production/test changes or dev merge. A-10721 local macOS arm64 direct docs guard3/3 exit0 and item-lead12/12 exit0 support correction, with summary/excerpt packaging limitations explicit. Closed-item Coordinator fallback and unknown/ordinary permission restrictions unchanged from audit. C1/C2 runtime settlement pending ordinary configured mode-free same-head result; restore C1 claimant done mark cleared by prior finding before submission. No Reviewer execution/enqueue.
+
+### rev-31 · 2026-10-24T10:25:30.063Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1209-final
+commit: 5b041a25e5933deb415fbc457117b75bd0908243
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at 5b041a25/tree5f52e32d; no findings. A-10743 audits A-10739/19570675 exit0, independently counts 2926 ordinary passes/no fail/cancel/skip. Host T0 plus Linux c-8 lon1 T1/all fallback hub+Neovim T2/Web completed; each new closed-item routing identity has ordinary pass plus five distinct passing repetition IDs and explicit5/5. Migrated human/unknown and deferred-close cases pass; M1 docs guard passes. Mapped core.ts T4 guard executes once, actual test1.160418748s, selected added wall2.063s excluding machine wait; no T4 repeats, whole-tier or occasion claim. Carries A-10719/A-10723 source audits. Budgets/lint/ratchet report-only, zero refusals; host gate not repeated remotely. No Reviewer execution/enqueue or stageQA claim.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T10:48:44.493Z
+
+Merged 230669296771cf8f282ab2d050fc48603ce0de39 onto dev.

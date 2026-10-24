@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-23T20:54:16.291Z
+updated: 2026-10-24T10:54:00.436Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -384,3 +384,13 @@ Incident 2026-10-20 21:33Z – 2026-10-21 02:51Z (7th coord harness exit): coord
 ### coord · 2026-10-23T20:54:16.291Z
 
 Incident 2026-10-23 20:53:55Z: merge queue dropped T-1183 (head 35441486, unchanged on origin) with 'merge-changed: T-1183: task branch changed during preparation; try again', right after batch aa074d52 (T-1183 + T-1175, tree 9a505574) passed T1 (b4fd3251). The hub then re-batched T-1175 alone (af5ba404). No branch push happened between enqueue and drop. Coord re-enqueued T-1183 at 20:56Z. Cost: one extra batch cover. To investigate: what 'changed' compares (branch ref vs a cached merge base?).
+
+### coord · 2026-10-24T10:54:00.436Z
+
+Incident 2026-10-24, 10:46–10:53Z: three hub deaths in 6 minutes; crew paused about 7 minutes in total.
+
+1. 10:46:48Z, pid 63237 (restart #51): heap OOM at 4 GB. Cause: `coverageSelection` parses every coverage map listed in `.cland/run/coverage-maps` at once. There were 170 maps, 2,039 MB of JSON, and a task verify or batch prep on hub/src triggers the load.
+2. cland-impl's emergency start (pid 78479, 10:47:44Z) died at about 10:49:13Z of an uncaught throw. After the batch landed T-1209, its follow-up failed (ps timed out). The batch blocked-report then addressed `lead T-1209` for the closed item, and `#itemLead` threw inside the tick's catch handler. T-1209 fixes the throw; T-1232 covers the unguarded catch.
+3. coord started a hub from its own shell (pid 24276, 10:49:38Z) with nice 5 and no DO token, a procedure error. It died at 10:51:13Z of the same OOM, 95 s after its start.
+
+Recovery: coord moved all but the newest 5 coverage pointers to `.cland/run/coverage-maps-archive-20261024/`; nothing was deleted. cland-impl then ran restart #53 by its recipe: pid 68571, serving about 10:52Z, RSS about 1.3 GB. The batch was blocked by the failed T-1209 follow-up. coord finished it with `cland merge T-1209` and cancelled and re-enqueued T-783. Code fix: T-1231 (P1, E-1197 stage 1).

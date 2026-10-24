@@ -27,7 +27,7 @@ blocked_by:
 topic: topic-953
 branch: t/T-783-docs-pass-check-the-site-against-the
 created: 2026-10-18T06:04:23.644Z
-updated: 2026-10-24T10:07:10.819Z
+updated: 2026-10-24T11:03:21.208Z
 ---
 
 ## Summary
@@ -51,11 +51,16 @@ Every command, flag, key and default the pages name. These were guessed and need
 - [x] C1. Every docs page is read against the shipped release and every wrong statement is corrected
   - done: impl-783 · 2026-10-24T10:06:21.307Z
   - verified: rev-26 [reviewer] · run rev-20261024-783-source-2 · 2026-10-24T10:07:10.819Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
+  - verified: rev-26 [reviewer] · run rev-20261024-783-final-1 · 2026-10-24T10:26:28.365Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
+  - verified: rev-26 [reviewer] · run rev-20261024-783-source-3 · 2026-10-24T11:03:21.208Z · commit 16c622dcd859d9c33dfad6f2536b0393171d5485
 - [x] C2. Each command shown in a code block runs as shown on a fresh project
   - done: impl-783 · 2026-10-24T10:00:17.716Z
+  - verified: rev-26 [reviewer] · run rev-20261024-783-final-1 · 2026-10-24T10:26:28.365Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
 - [x] C3. The landing's claims (crew section, features, FAQ) are checked the same way
   - done: impl-783 · 2026-10-24T10:06:21.413Z
   - verified: rev-26 [reviewer] · run rev-20261024-783-source-2 · 2026-10-24T10:07:10.819Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
+  - verified: rev-26 [reviewer] · run rev-20261024-783-final-1 · 2026-10-24T10:26:28.365Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
+  - verified: rev-26 [reviewer] · run rev-20261024-783-source-3 · 2026-10-24T11:03:21.208Z · commit 16c622dcd859d9c33dfad6f2536b0393171d5485
 
 ## Comments
 
@@ -133,5 +138,77 @@ Source clearance permits the normal mode-free configured run only after the Coor
 
 Reviewer performed read-only source/Git/artifact inspection only: no tests, probes, edits, GUI, installs, merge or delegation. Standards 0 findings; Spec 0 findings.
 Durable source review A-10717.
+
+Criteria: C1 verified, C3 verified.
+
+### rev-26 · 2026-10-24T10:26:28.365Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-783-final-1
+commit: 5e16ec8450df9065e1da1e89790825f1a776c854
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-783 final evidence settlement
+Head 5e16ec8450df9065e1da1e89790825f1a776c854; tree fb5101e5ba45436c0bb022c1f2c954a37cfb9c06. Scope evidence; run rev-20261024-783-final-1; findings []. Source-2 A-10717 remains clear with M1–M3 resolved.
+
+## Standards
+Mode-free configured run f50c5c21-5afd-4686-87df-a188da7ec92b / original A-10738 finishes exit 0 at the reviewed head. Deduplicated native records: 2922 ordinary test passes / 422 file passes, no failure, skip or cancellation; no actual load repetitions. T0 host check, T1, fallback all hub/Neovim T2 and actual Web completed. Three test-docs guard cases pass, including exact-path/index and historical-anchor validation.
+
+Linux x64 6.8.0-142-generic droplet c-8 lon1, cland-v0-1db2dcfc; Node24.21.0, Neovim0.12.5; two machine workers, T1 serial/Web four; lifetime600s/$0.0417. T0 host check41.7s and captured output report zero lint refusals. Host gate ae004964b6d0cf72d9fc47b5cbc92f7b9344c09f is a Git tree and was reused remotely, not rerun on Linux. Native suite walls51.82/313.65/133.38s differ from command envelopes/projections; Web shard133.28s. Lint133 findings/60files, duration/tier warnings, five missing baselines and incomplete ratchet-base diagnostics are report-only. No enforcing-budget pass, T3/T4 execution or live GUI evidence claimed.
+
+## Spec
+C1/C3 carried forward from the accepted full-page/landing source audit and replacement source review. C2 now settled under Coordinator ae3f5d65's expressly accepted boundary: source/syntax contracts plus isolated command receipts, not a claim that every external command was executed. A-10714 retains the corrected 173-row audit, all60 shell-block syntaxExit0 records, replacement working-tree site build23pages, and original isolated init/update/undo plus44 hub-backed commands (43 successful, one expected unsupported-help refusal). Illustrative IDs/accounts require the objects described on the page.
+
+Original ad-hoc command evidence remains local macOS arm64 at its manifest-named source baselines: help/init c6abaeb1, hub-command/undo3830f7fc; root check precommit d843b1d8 documentation tree based on86449530. The replacement site build and syntax checks were on the correction tree committed as5e16ec84. Product runtime source is unchanged by these docs corrections. The fresh configured result is exact-head Linux evidence; it does not reattribute the older probes or prove provider/network/device operations.
+
+The accepted live launch exceptions remain explicitly pending with E-778: provider authentication, package/public installs (T-779/T-780), GUI/phone/PWA behavior, cloud provisioning and GitHub publication. Known custom-role/solo/sandbox/help/OpenCode qualification owners remain named in the audit. This task's final clear does not settle those owners' launch criteria.
+
+All C1–C3 verified within that accepted scope. No new source findings. Normal post-receipt current-dev conflict check remains the lead's responsibility; prior reported check was clean against63e0e0b0 without merging. Coordinator9f095867 holds merges during the stage covers; this verdict does not lift that hold. QA policy none; no QA or publication requested.
+
+Reviewer used read-only source/Git/artifact inspection and stdlib log parsing only; no tests, probes, edits, installs, browser, merge or delegation. Standards0 findings; Spec0 findings.
+Durable final review: A-10741.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-783 · 2026-10-24T10:26:52.581Z
+
+Ready at 5e16ec8450df9065e1da1e89790825f1a776c854 after final evidence verdict rev-20261024-783-final-1 (A-10741); C1–C3 current verified. Mode-free f50c5c21 passed T0/T1/T2/Web on Linux x64 droplet c-8/lon1, 2922 ordinary tests/0 failures; lint and duration gates report-only, no T3/T4 pass claimed. A-10738 log, A-10714 check table/isolated receipts/site build. Conflict check against current origin/dev 44f220a5 is clean (merge-tree 12bfc89a), branch/worktree unchanged and pushed. Ready report sent to Coordinator; awaiting its enqueue after stage-cover merge hold. No merge/publication.
+
+### impl-783 · 2026-10-24T11:02:40.847Z
+
+Gate merge-conflict recovery, authorized by Coordinator 91cdc03f in topic-953: current dev ab77eae3 integrated, both docs commits replayed patch-identically to avoid branch-only merge commits in later marketing publication. New head 16c622dcd859d9c33dfad6f2536b0393171d5485 pushed with guarded force-with-lease; clean worktree. T-1221 Smallest crew retained and audit row marked resolved; T-780 not yet in fetched dev. Site rebuild passes 23 pages on macOS arm64 local. A-10785 replacement table/build receipt; delta source review requested, then fresh mode-free verification and evidence review. Prior 5e16ec84 receipts remain historical, not new-head passes.
+
+### rev-26 · 2026-10-24T11:03:21.208Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-783-source-3
+commit: 16c622dcd859d9c33dfad6f2536b0393171d5485
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-783 integration delta source review — clear
+Head16c622dcd859d9c33dfad6f2536b0393171d5485; treef7f4ae7d1f0eb78d3d95ed8f74e1328b5ce9e35e. Task/origin refs agree. Scope delta; run rev-20261024-783-source-3; findings[].
+
+## Standards
+Coordinator91cdc03f authorized current-dev integration after merge gate8e3cb122 refused old5e16ec84 for conflict. History is now ab77eae3 → a65b8dcd →3ea6fdff →16c622dc; read-only range-diff independently confirms both old docs commits patch-identical to the replayed pair. Current-dev is retained beneath the docs commits, with no branch-only merge commit. Final commit changes only the audit recovery note and T-1221 row. Compared with previously reviewed docs, the only other public-page delta is inherited T-1221 Smallest crew copy.
+Whitespace check clean; no test/product/skill/role-clause implementation added by this task. Both axes reviewed in-session under role restrictions.
+
+A-10785 retains integration identity and original replacement-tree local macOS arm64 site-build stdout:23pages, native build1.67s; existing i18n/404 warnings remain. This is site-build evidence, not full suite/runtime or remote evidence. Prior A-10714 command/syntax receipts remain at their original manifest-named baselines, and A-10738 stays historical configured evidence at5e16ec84. None is reattributed to this changed head.
+
+## Spec
+Original M1–M3 fixes survive unchanged: curated/provisioning directories, normal CLI identity wording without an authentication guarantee, and conditional human plan approval across README/landing/release diagram/software-factory copy. All15 accepted docs pages remain unchanged from source2; complete prior source audit carries forward.
+Inherited landing minimum crew now names one Coordinator and one Implementer, with decisions through the Coordinator, preserving independent verification; the updated audit row accurately records T-1221 as resolved. Both dev and task content retained. Normalization help addition inherited from T-1105 introduces no contradiction in these pages.
+C1/C3 source verified at16c622dc. C2 pending fresh same-head configured result under Coordinatorae3f5d65's accepted source/syntax plus isolated-command evidence boundary. Live provider/public-install/GUI/device/cloud/publication launch exceptions remain separately owned; no qualification or stage closure inferred. Known T-781/T-1222/T-1223/E-1216 audit gaps retain their baseline attribution and owners.
+
+No new findings. Proceed with one normal mode-free configured verification at this exact head, result routing to Reviewer and item lead. A changed head needs fresh source review. Coordinator69b4632d has reopened merges/local capacity; lead still follows ordinary ready and current-dev conflict-check procedure. QA policy none/after-stage.
+Reviewer used read-only source/Git/artifact inspection only; no edits, tests, probes, browser, installs, merge or delegation. Standards0 findings; Spec0 findings.
+Durable delta review A-10786.
 
 Criteria: C1 verified, C3 verified.

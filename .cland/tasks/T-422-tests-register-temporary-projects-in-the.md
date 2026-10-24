@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T09:34:36.235Z
+updated: 2026-10-24T10:41:05.081Z
 closed: 2026-10-24T09:34:36.235Z
 ---
 
@@ -278,3 +278,11 @@ Audit copy note (coord, for rev-26, whose non-verdict comment the hub refuses by
 ### coord · 2026-10-24T09:34:36.235Z
 
 Merged 94b632aab8413fd16da42831dcb37dd59c5ec625 onto dev.
+
+### coord · 2026-10-24T10:19:17.531Z
+
+Landing evidence (coord, read-only, project counts only): before hub restart #51 (10:0xZ, 2026-10-24), ~/.local/state/cland/spend.json and ~/.cland/executor/spend.json each listed 1,159 projects including "/". At 10:19:03Z, after the restart onto T-422 (63e0e0b0 → 44f220a5), both list 1,158 with no "/": the first sweep pruned the invalid root, as C2/C3 describe. The 1,156 vanished temporary roots remain in their 24 h observed-missing grace. The C1 full-suite real-HOME before/after comparison is this macOS stage cover 91eb2773 at 44f220a5; counts after it follow.
+
+### coord · 2026-10-24T10:41:05.081Z
+
+C1 landing evidence, partial (coord, read-only counts): the local macOS stage cover 91eb2773 at 44f220a5 ran under the real HOME. T0, T1 (836 tests) and T2 (1,754) completed green, and 927 T3 tests ran before I cancelled it at about 10:39Z (A-10758). Ledger projects before it (10:19:03Z): 1,158 in both files; after it (10:41:01Z): 1,158 in both. Unchanged, so no test registered a temporary project in the real ledger. Not a complete full-suite run: T3 was partial, and T4 and Web did not run. The next full macOS stage cover will complete it.

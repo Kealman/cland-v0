@@ -3,7 +3,7 @@ id: T-1092
 kind: task
 title: OpenCode port-retry test fails under load on macOS with setTypeOfService EINVAL from undici
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - needs-triage
@@ -12,9 +12,9 @@ assignee: null
 parent: E-1216
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1092-opencode-port-retry-test-fails-under
 created: 2026-10-22T03:17:55.717Z
-updated: 2026-10-24T09:08:58.425Z
+updated: 2026-10-24T11:00:49.691Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-1105
 kind: task
 title: Normalize legacy id-less criteria through task.criterion
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-957
 branch: t/T-1105-normalize-legacy-id-less-criteria
 created: 2026-10-22T10:36:44.495Z
-updated: 2026-10-24T10:15:33.489Z
+updated: 2026-10-24T11:00:06.724Z
+closed: 2026-10-24T11:00:06.724Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ Items created before criterion ids existed show their criteria with `id: null` i
 
 - [x] C1. `task.criterion` (and the `cland task criterion` CLI) offers a normalize operation that assigns ids to every id-less criterion of an item in order, above `criterion_seq`, keeps text and marks unchanged, and is a no-op on an item whose criteria all have ids (test).
   - done: oc-1105 · 2026-10-24T10:15:33.489Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1105-final-1 · 2026-10-24T10:29:18.717Z · commit efe438159a40e0dc4bf85000e7ad16ed47275a26
 - [x] C2. After normalization the web card's criteria become editable without an add (Web test), and hub/README.md and the CLI help describe the operation (doc).
   - done: oc-1105 · 2026-10-24T10:03:06.444Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1105-final-1 · 2026-10-24T10:29:18.717Z · commit efe438159a40e0dc4bf85000e7ad16ed47275a26
 
 ## Comments
 
@@ -97,3 +100,39 @@ C1/C2 remain unverified pending same-head configured receipt and final evidence 
 
 Reviewer used read-only source/Git/artifact inspection only; no tests, probes, edits, installs, GUI, merge or delegation. Standards 0 findings; Spec 0 findings.
 Durable source review A-10727.
+
+### rev-26 · 2026-10-24T10:29:18.717Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1105-final-1
+commit: efe438159a40e0dc4bf85000e7ad16ed47275a26
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1105 final same-head evidence — clear
+Head efe438159a40e0dc4bf85000e7ad16ed47275a26; tree688209ce4c3c7efa5bf5486139bd3cd40d6a52bb. Local task/origin refs agree. Scope evidence, run rev-20261024-1105-final-1, findings[]; source-2 A-10727 carries forward.
+
+## Standards
+Mode-free configured run dcb7fa46-7d6c-4ace-86e6-d60e4e607208 / A-10745 exits0 at this head. Deduplicated native finish records contain2926 ordinary test passes /422 file passes, plus15 actual load test passes /15 load file passes: three normalization identities each five repetitions. No fail, skip or cancellation. T0 host check24.13s, T1, all fallback hub+Neovim T2 and actual Web pass. No T3/T4 execution claimed.
+
+Linux x64 6.8.0-142-generic c-8 lon1 cland-v0-a9bc4b18; Node24.21.0/Neovim0.12.5; workers2, T1serial/Web4; lifetime655s/$0.0455. Host gate b5c9721da42794a62d5b7532ef92059787be45b9 independently resolves to a Git tree; reused remotely, not Linux typecheck repetition. Native suite walls55.03/333.75/142.47s, Web shard142.38s; projections and command envelopes are separate. Lint133/60, duration/tier overages, five missing baselines and incomplete ratchet-base diagnostics report-only. No enforcing-budget pass.
+
+New normalization tests ordinary0.321776696/0.105226811/0.107981885s; all15 actual repetition samples pass, maximum0.449207475s. New browser normalization case2.090635530s, below4s; no new allowance trigger. Existing add/edit/remove case7.095091344s and parent/file aggregate are not relabelled as new-case timings.
+
+## Spec
+C1 verified: ordinary and5/5 load receipts prove ordered C13/C14 allocation above seq12 while retaining C3 text/checked state/existing marks, CLI second-normalize no write/timestamp change, identified-item no-op and noncanonical hand-written bytes preserved. Public role-operation checks and malformed/concurrent-write negative controls also pass; no permission expansion inferred.
+C2 verified: browser legacy criteria become editable after Assign IDs, preserving stable identities/marks and editing the newly assigned criterion without adding one. The accepted source review covers bounded pre-armed receipt observers and unchanged final exact-ID assertions. Matching README/CLI/per-test guidance remains source-clear, and docs guards pass.
+
+A-10726 retains local macOS27.0.1/Darwinarm64 Node24.21 original check at d21cfd19 separately from fix-head40/40 hub cases (native runner8121.628875ms),5/5 Web (runner7027.640208ms; browser census after0/scratch hub stopped), and fix-head check0/report lint zero refusals. Original missing earlier targeted stdout stays explicitly absent, not reconstructed or reattributed. Fresh configured evidence is exact-head Linux. Reviewer's source inspection/log parsing did not run tests, probes, browser, edits, install, merge or delegation.
+
+No new findings. C1/C2 current verified. Normal final current-dev read-only conflict check and ready report remain the lead's responsibility; any head change requires fresh source review and configured verification. Coordinator9f095867 stage-cover local quiet and merge hold remain; this clear does not lift either. QA policy none.
+Durable final review A-10748.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T11:00:06.724Z
+
+Merged ab77eae3fc7a9834390a8ca3b0a656a2e932fe31 onto dev.

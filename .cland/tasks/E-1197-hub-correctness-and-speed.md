@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:45:44.119Z
-updated: 2026-10-24T09:35:35.657Z
+updated: 2026-10-24T10:52:52.407Z
 ---
 
 ## Summary
@@ -47,6 +47,8 @@ stages:
         - T-538
         - T-539
       - - T-1220
+      - - T-1226
+      - - T-1231
   - name: init hooks, reload and artifacts
     qa:
       scope: none

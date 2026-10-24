@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:45:43.538Z
-updated: 2026-10-24T08:21:50.444Z
+updated: 2026-10-24T10:42:27.510Z
 ---
 
 ## Summary
@@ -44,6 +44,8 @@ stages:
       - - T-422
       - - T-1148
         - T-444
+      - - T-1227
+      - - T-1228
   - name: culprit search, demo states and local admission
     qa:
       scope: none
