@@ -8,6 +8,7 @@ export type DevT3Result = {
   previousGreenHead: string | null; previousGreenRun: string | null;
   merges: Array<{ head: string; subject: string }> | null;
   result: 'green' | 'red'; failingFiles: string[]; budgetIdentities?: string[]; artifact: string; path: string;
+  durationWarnings?: string[];
 };
 
 /** Stable diagnosis input for the periodic-run culprit search (T-887).

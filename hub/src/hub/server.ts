@@ -12,6 +12,7 @@ import { HubCore, type CoreOptions } from './core.ts';
 import { Dispatcher, secretMatches, type Control, type DispatcherOptions } from './dispatch.ts';
 import { trackerItems } from './topics.ts';
 import type { Tracker } from '../tracker/tracker.ts';
+import { readDurationAllowanceWarnings } from '../suite-durations.ts';
 import { KEEPALIVE_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 
 /** What the hub is without any listener: the core, the dispatcher every edge opens conversations on, the prune. */
@@ -86,6 +87,7 @@ const bearerMatches = (header: string | undefined, secret: string): boolean => {
 export function createHubBase(options: HubBaseOptions): HubBase {
   const tracker = options.tracker;
   const core = new HubCore({ ...options, ...(tracker ? {
+    durationWarnings: options.durationWarnings ?? (now => readDurationAllowanceWarnings(tracker.root, now)),
     items: trackerItems(tracker),
     ladder: tracker.ladder,
     sessionHolds: sessionId => tracker.sessionHolds(sessionId),

@@ -4,11 +4,33 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { hubShards, lintHubShards, packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
+import { hubShards, lintHubShards, packageShards, serializeTierManifest, ShardManifestError, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection, suiteTestEnv } from '../src/verification-occasion.ts';
 import { planTierReport } from '../src/suite-tier-report.ts';
 import { selectionTransport, selectionFromEnv, chooseSuiteMode } from '../src/suite-selection.ts';
 import { skipT4LoadRepetitions, loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
+
+test('shard planning refuses with every expired duration allowance key', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-expired-plan-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  t.mock.method(Date, 'now', () => Date.parse('2026-10-24T00:00:00Z'));
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {},
+    allow: {
+      'hub/test/one.test.ts::first': { seconds: 6, reason: 'First fixture.', owner: 'E-1', added: '2026-10-17', expires: '2026-10-23' },
+      'hub/test/two.test.ts::second': { seconds: 6, reason: 'Second fixture.', owner: 'E-2', added: '2026-10-18', expires: '2026-10-24' },
+      'hub/test/three.test.ts::future': { seconds: 6, reason: 'Future fixture.', owner: 'E-3', added: '2026-10-23', expires: '2026-10-25' },
+    } }));
+  await assert.rejects(packageShards(root, 'full'), (error: unknown) => {
+    assert.ok(error instanceof ShardManifestError);
+    assert.match(error.message, /expired duration allowance/);
+    assert.match(error.message, /hub\/test\/one.test.ts::first/);
+    assert.match(error.message, /hub\/test\/two.test.ts::second/);
+    assert.doesNotMatch(error.message, /hub\/test\/three.test.ts::future/);
+    return true;
+  });
+});
 
 test('large stage identity baselines reach the runner through a file instead of an environment value', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-selection-file-'));

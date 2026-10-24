@@ -3952,6 +3952,22 @@ This refusal happens during shard planning before a test receipt exists, so a
 merge batch holds as inconclusive rather than bisecting a failing test. The
 Coordinator diagnoses the named manifest key and recovers the batch after cleanup.
 
+The hub reads the current project's `hub/test/durations.json` for the periodic
+dev T3 result report and each Coordinator heartbeat. Both name every dated
+allowance expiring within 48 hours, its exact test/file key, owner and UTC expiry
+date; already expired entries remain visible as expired. The 48-hour boundary
+is inclusive and samples the hub clock after the manifest read completes.
+Admission uses the same midnight-UTC date
+interpretation and still refuses expired allowances, listing all expired keys
+in one refusal. Legacy allowances without dates expire on owner closure and do
+not receive calendar warnings. A missing manifest produces no warnings; an
+unreadable or malformed one produces an explicit warning instead of preventing
+the report or heartbeat.
+
+Renewals remain reviewed edits to `added` and `expires`: their span is at most
+31 days for `budget.legacyOwner` (default `E-677`), seven days for other owners.
+Keep the existing `seconds` and `reason` unchanged. There is no renewal command.
+
 At each stage close the Coordinator refreshes on `dev` from the latest green
 integrated full-run log artifact:
 

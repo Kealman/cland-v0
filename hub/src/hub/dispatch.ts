@@ -8,6 +8,7 @@ import { DevT3Search } from './dev-t3-search.ts';
 import { DevT3Probes } from './dev-t3-probe.ts';
 import { reportDevT3Search } from './dev-t3-report.ts';
 import { devT3Result } from './dev-t3-result.ts';
+import { readDurationAllowanceWarnings } from '../suite-durations.ts';
 import { reportSoakQuarantine } from './soak-quarantine.ts';
 import { suiteStartIssues } from '../protocol.ts';
 import { taskWorktreePath } from '../territory.ts';
@@ -886,8 +887,10 @@ export class Dispatcher {
     const periodic = job.occasion === 'dev-t3' ? await devT3Result(job, log, artifact, this.#options.git ?? gitIn(job.cwd, this.#options.env)) : null;
     let text = resultText(artifact);
     if (periodic) {
+      const root = this.#options.tracker?.root ?? this.#options.control?.status().root;
+      periodic.durationWarnings = root ? await readDurationAllowanceWarnings(root, () => core.clock.now().getTime()) : [];
       const merges = periodic.merges?.slice(0, 10).map(merge => `${merge.head} ${merge.subject}`).join(', ') ?? 'unavailable';
-      text = core.boundedText(`Periodic dev T3 ${periodic.result} · head ${periodic.head}\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}\nFailing files ${periodic.failingFiles.slice(0, 20).join(', ') || 'none identified'}\nMerges ${periodic.merges?.length ?? 'unknown'}: ${merges}\nComplete range and failing files in message detail\n${text}`);
+      text = core.boundedText(`Periodic dev T3 ${periodic.result} · head ${periodic.head}\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}\n${periodic.durationWarnings.length ? periodic.durationWarnings.join('\n') + '\n' : ''}Failing files ${periodic.failingFiles.slice(0, 20).join(', ') || 'none identified'}\nMerges ${periodic.merges?.length ?? 'unknown'}: ${merges}\nComplete range and failing files in message detail\n${text}`);
     }
     const result = core.store.transaction(() => {
       if (job.batch) {

@@ -27,6 +27,29 @@ export const timingKey = (test: TestTiming): string => `${test.file}::${test.nam
 export type DurationRegression = { key: string; before: number; now: number; budget?: number };
 export type DurationOwner = { state: string; kind: string; parent?: string | null };
 const seconds = (value: number) => Number(value.toFixed(3)).toString();
+const durationDate = (value: unknown): number => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? Date.parse(value) : NaN;
+
+/** Dated allowances expire at midnight UTC; legacy allowances expire on owner closure. */
+export function durationAllowanceExpiries(manifest: DurationManifest) {
+  return Object.entries(manifest.allow).flatMap(([key, entry]) => {
+    const at = durationDate(entry.expires);
+    return entry.legacy || !Number.isFinite(at) ? [] : [{ key, owner: entry.owner, expires: entry.expires!, at }];
+  });
+}
+
+export function durationAllowanceWarnings(manifest: DurationManifest, now = Date.now()): string[] {
+  return durationAllowanceExpiries(manifest).filter(entry => entry.at <= now + 48 * 60 * 60 * 1000)
+    .sort((a, b) => a.at - b.at || a.key.localeCompare(b.key))
+    .map(entry => `duration allowance ${entry.at <= now ? 'expired' : 'expiring within 48h'}: ${entry.key} · owner ${entry.owner ?? 'missing'} · expires ${entry.expires} (00:00 UTC)`);
+}
+
+/** Reporting survives admission refusal; sample the clock after manifest I/O. */
+export async function readDurationAllowanceWarnings(cwd: string, now: number | (() => number) = Date.now): Promise<string[]> {
+  try {
+    const manifest = await readDurationManifest(cwd);
+    return manifest ? durationAllowanceWarnings(manifest, typeof now === 'function' ? now() : now) : [];
+  } catch (error) { return [`duration allowance warnings unavailable: ${error instanceof Error ? error.message : String(error)}`]; }
+}
 
 export function checkDurations(tests: TestTiming[], manifest: DurationManifest, tiers: Record<string, Tier> = {}): { failures: string[]; regressions: DurationRegression[] } {
   const failures: string[] = [];
@@ -89,7 +112,6 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
   }
   if (manifest.budget.T4 !== undefined && manifest.budget.T4 !== null) throw new Error('invalid duration tier budget: T4');
   const now = options.now ?? Date.now();
-  const date = (value: unknown): number => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? Date.parse(value) : NaN;
   for (const [key, entry] of Object.entries(manifest.allow)) {
     if (!object(entry) || !time(entry.seconds) || (key.includes('::') || key === 'T3' ? entry.file !== undefined : entry.file !== true)) throw new Error(`invalid duration allowance: ${key}`);
     if (typeof entry.reason !== 'string' || !entry.reason.trim() || /\bTODO\b/i.test(entry.reason)) throw new Error(`duration allowance needs a non-TODO reason: ${key}`);
@@ -117,13 +139,14 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
       if (options.legacyKeys && !options.legacyKeys.has(key)) throw new Error(`new duration allowance cannot be legacy: ${key}`);
       if (entry.owner !== legacyOwner || entry.added !== undefined || entry.expires !== undefined) throw new Error(`legacy duration allowance needs owner ${legacyOwner} and expires on owner closure: ${key}`);
     } else {
-      const added = date(entry.added), expires = date(entry.expires);
+      const added = durationDate(entry.added), expires = durationDate(entry.expires);
       // D72 gives the legacy migration owner a bounded month; other owners retain seven days.
       const maxDays = entry.owner === legacyOwner ? 31 : 7;
       if (!Number.isFinite(added) || !Number.isFinite(expires) || added > now || expires <= added || expires - added > maxDays * 86_400_000) throw new Error(`duration allowance needs valid dates at most ${maxDays === 7 ? 'seven' : '31'} days apart: ${key}`);
-      if (now >= expires) throw new Error(`expired duration allowance: ${key}`);
     }
   }
+  const expired = durationAllowanceExpiries(manifest).filter(entry => now >= entry.at);
+  if (expired.length) throw new Error(`expired duration allowance: ${expired.map(entry => entry.key).join(', ')}; renew added/expires in ${DURATION_MANIFEST} within the owner's span limit`);
   for (const [key, value] of Object.entries(manifest.tests)) if (!time(value)) throw new Error(`invalid duration baseline: ${key}`);
   for (const [key, value] of Object.entries(manifest.files)) if (!object(value) || !time(value.seconds) || !Number.isInteger(value.tests) || value.tests < 0) throw new Error(`invalid duration file baseline: ${key}`);
 }

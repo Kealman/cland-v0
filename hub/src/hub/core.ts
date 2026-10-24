@@ -150,6 +150,8 @@ export type CoreOptions = ClockOptions & {
   env?: NodeJS.ProcessEnv;
   heartbeatMs?: number;
   heartbeatRunTimeoutMs?: number;
+  /** Read project allowance warnings only when a Coordinator heartbeat is due. */
+  durationWarnings?: (now: () => number) => Promise<string[]>;
   /** Extra reserved names beyond the built-ins. */
   reservedNames?: Iterable<string>;
   /** The hub's memory; `:memory:` when absent. */
@@ -354,32 +356,50 @@ export class HubCore {
   readonly #idleNotifyMs: number;
   readonly #heartbeatProcesses = new Map<string, HarnessProcessView>();
   readonly #heartbeatStarts = new Map<string, number>();
+  readonly #durationWarnings: CoreOptions['durationWarnings'];
+  #heartbeatWork: Promise<void> | null = null;
 
-  #heartbeatTick(): void {
+  #dueHeartbeat(id: string, now: number) {
+    const process = this.#heartbeatProcesses.get(id);
+    if (process && process.status !== 'running') return null;
+    const name = this.#store.nameOfSession(id);
+    const session = name ? { name, role: this.#store.roleOf(name) } : process;
+    if (!session?.role) return null;
+    const setting = (this.crew?.get() ?? defaultCrew()).crew[session.role]?.heartbeat;
+    if (!setting || setting === 'off') return null;
+    const interval = this.#heartbeatMs ?? durationMs(setting);
+    const start = this.#heartbeatStarts.get(id) ?? now;
+    this.#heartbeatStarts.set(id, start);
+    const schedule = this.#store.heartbeatSchedule(id, session.role, interval, start);
+    return schedule.next <= now ? { ...session, interval, schedule } : null;
+  }
+
+  async #heartbeatTick(): Promise<void> {
     const now = this.#now().getTime();
-    const crew = this.crew?.get() ?? defaultCrew();
-    const sessions = new Map(this.#store.knownSessions().flatMap(session => {
+    const sessions = new Set(this.#store.knownSessions().flatMap(session => {
       const id = this.#store.sessionIdOf(session.name);
-      return id ? [[id, { name: session.name, role: session.role }] as const] : [];
+      return id ? [id] : [];
     }));
-    for (const [id, process] of this.#heartbeatProcesses) if (!sessions.has(id)) sessions.set(id, process);
-    for (const [id, session] of sessions) {
-      const process = this.#heartbeatProcesses.get(id);
-      if (process && process.status !== 'running') continue;
-      const setting = session.role ? crew.crew[session.role]?.heartbeat : undefined;
-      if (!setting || setting === 'off') continue;
-      const interval = this.#heartbeatMs ?? durationMs(setting);
-      const start = this.#heartbeatStarts.get(id) ?? now;
-      this.#heartbeatStarts.set(id, start);
-      const schedule = this.#store.heartbeatSchedule(id, session.role!, interval, start);
-      if (schedule.next > now) continue;
+    for (const id of this.#heartbeatProcesses.keys()) sessions.add(id);
+    for (const id of sessions) {
+      const due = this.#dueHeartbeat(id, now);
+      if (!due) continue;
+      const warnings = due.role === COORDINATOR ? await this.#durationWarnings?.(() => this.#now().getTime()) ?? [] : [];
+      if (this.#closed) return;
+      // Reads can outlive rename, role/crew changes, process termination or
+      // pruning. Resolve by stable identity again before touching the schedule.
+      const firing = this.#now().getTime();
+      const session = this.#dueHeartbeat(id, firing);
+      if (!session || session.role !== due.role || session.interval !== due.interval) continue;
+      const { interval, schedule } = session;
       this.#store.transaction(() => {
-        const digest = heartbeatDigest(this.#store, [...this.#itemSnapshots.values()], interval, now, this.#idleNotifyMs, this.#heartbeatRunTimeoutMs, this.#verificationQueue);
+        const digest = heartbeatDigest(this.#store, [...this.#itemSnapshots.values()], interval, firing, this.#idleNotifyMs, this.#heartbeatRunTimeoutMs, this.#verificationQueue);
         this.#store.replaceHeartbeat(session.name);
-        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to: [session.name], text: `heartbeat · ${session.name} · ${digest.text}`, detail: { event: 'heartbeat', subject: { session: session.name }, digest: this.sessionState(id) === 'idle' ? 'now' : 'turn', inFlight: digest.inFlight, stale: digest.stale } }, new Set([session.name]));
-        this.#store.firedHeartbeat(schedule, now);
+        const text = `${digest.text}${warnings.length ? `\n\nDuration allowances (${warnings.length})\n${warnings.map(row => `- ${row}`).join('\n')}` : ''}`;
+        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to: [session.name], text: `heartbeat · ${session.name} · ${text}`, detail: { event: 'heartbeat', subject: { session: session.name }, digest: this.sessionState(id) === 'idle' ? 'now' : 'turn', inFlight: digest.inFlight, stale: digest.stale } }, new Set([session.name]));
+        this.#store.firedHeartbeat(schedule, firing);
         if (message) this.#afterCommit(() => this.#publishNotice(message));
-        this.#afterCommit(() => this.#log({ event: 'event-announced', kind: 'heartbeat', subject: { session: session.name }, session: session.name, text: `${session.name} · in flight ${digest.inFlight} · stale ${digest.stale}`, firing: now }));
+        this.#afterCommit(() => this.#log({ event: 'event-announced', kind: 'heartbeat', subject: { session: session.name }, session: session.name, text: `${session.name} · in flight ${digest.inFlight} · stale ${digest.stale}`, firing }));
       });
     }
   }
@@ -466,8 +486,12 @@ export class HubCore {
     this.#rulebookUiUnsubscribe = this.rules?.subscribe(rules => this.#emit({ type: 'rules.changed', rules }));
     this.#heartbeatMs = options.heartbeatMs;
     this.#heartbeatRunTimeoutMs = options.heartbeatRunTimeoutMs ?? 4500000;
+    this.#durationWarnings = options.durationWarnings;
     this.#idleNotifyMs = options.idleNotifyMs ?? IDLE_NOTIFY_MS;
-    this.#heartbeatTimer = this.clock.setInterval(() => this.#heartbeatTick(), Math.min(1000, Math.max(10, (options.heartbeatMs ?? 4000) / 4)));
+    this.#heartbeatTimer = this.clock.setInterval(() => {
+      if (this.#heartbeatWork || this.#closed) return;
+      this.#heartbeatWork = this.#heartbeatTick().catch(error => this.#log({ event: 'heartbeat-failed', error: String(error) })).finally(() => { this.#heartbeatWork = null; });
+    }, Math.min(1000, Math.max(10, (options.heartbeatMs ?? 4000) / 4)));
     this.#heartbeatTimer.unref();
     this.#items = options.items ?? null;
     this.#store.setItemResolver(id => this.#items?.resolveId?.(id) ?? null);

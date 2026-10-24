@@ -1,7 +1,7 @@
 // T2 component: FakeClock drives hub rules; only the project fixtures retain real socket edges.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, dispatcherUi, frameClient, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { createHubBase, type HubBase } from '../src/hub/server.ts';
@@ -15,9 +15,50 @@ import type { Dispatcher } from '../src/hub/dispatch.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import type { Message } from '../src/protocol.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import type { CoreOptions } from '../src/hub/core.ts';
+import { readDurationAllowanceWarnings } from '../src/suite-durations.ts';
 
 const heartbeat = (frame: Record<string, unknown>) => frame.type === 'message' && (frame.message as Message).detail?.event === 'heartbeat';
 const notes = async (ui: FrameClient) => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.detail?.event === 'heartbeat');
+
+async function nextHeartbeat(clock: FakeClock, ui: FrameClient, ms: number, matches: (message: Message) => boolean = () => true): Promise<Message> {
+  const cursor = ui.frames.length;
+  const receipt = ui.waitFor(frame => ui.frames.indexOf(frame) >= cursor && heartbeat(frame) && matches(frame.message as Message));
+  // One due firing at the requested fake time; completion is the message receipt,
+  // not the fake clock's I/O yield or the number of timer callbacks.
+  clock.block(ms);
+  await clock.advance(0);
+  return (await receipt).message as Message;
+}
+
+test('Coordinator heartbeat delivers every allowance entering the 48-hour UTC expiry window', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock(Date.parse('2026-10-17T00:00:00Z') - 600);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  const allow = Object.fromEntries(Array.from({ length: 12 }, (_, n) => [`hub/test/expiry.test.ts::case ${n}`, {
+    seconds: 6, reason: 'Expiry fixture.', owner: `E-${n + 1}`, added: '2026-10-16', expires: '2026-10-19',
+  }]));
+  const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow };
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(manifest));
+  const { discovery, dispatcher, fakes } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '200' }, { clock, harnesses: 'fake' });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'claude-code' });
+  assert.equal(launched.ok, true, launched.error);
+  const p = (launched.value as { process: { sessionId: string } }).process;
+  await protocolPeer(t, dispatcher, root, 'coord', p.sessionId, fakes['claude-code']!.spawns[0]!.launchToken);
+  fakes['claude-code']!.idle('coord');
+  const early = ui.waitFor(heartbeat);
+  await clock.advance(400);
+  assert.doesNotMatch(((await early).message as Message).text, /expiry.test.ts/);
+  const warning = ui.waitFor(f => heartbeat(f) && (f.message as Message).text.includes('expiry.test.ts'));
+  await clock.advance(200);
+  const message = (await warning).message as Message;
+  for (let n = 0; n < 12; n++) assert.ok(message.text.includes(`hub/test/expiry.test.ts::case ${n} · owner E-${n + 1} · expires 2026-10-19`), message.text);
+  await ui.waitFor(f => f.type === 'delivery' && f.message === message.id && f.stage === 'injected');
+  assert.ok(fakes['claude-code']!.injections.some(i => i.message.id === message.id));
+});
 
 // A protocol peer is enough for heartbeat routing; the MCP/spoke contract is tested elsewhere.
 async function session(t: TestContext, hub: HubBase, root: string, ui: FrameClient, name: string, role: string, sessionId: string) {
@@ -43,14 +84,14 @@ async function protocolPeer(t: TestContext, dispatcher: Pick<Dispatcher, 'open'>
   return peer;
 }
 
-async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeoutMs?: number } = {}) {
+async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeoutMs?: number; durationWarnings?: CoreOptions['durationWarnings']; sentinel?: boolean; clock?: FakeClock } = {}) {
   const root = await tempProject(t);
-  const clock = new FakeClock();
+  const clock = options.clock ?? new FakeClock();
   const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, 'tracker.db'), now: () => clock.now() });
   tracker.start();
   const crew = new CrewFile(join(root, '.cland/crew.toml'), () => {}, () => {}, tracker);
   await crew.start();
-  const hub = createHubBase({ hasTerritory: async () => false, secret: 'heartbeat', clock, store: new Store(), tracker, crew, roles: fixedRoles(), heartbeatMs, ...(options.runTimeoutMs !== undefined ? { heartbeatRunTimeoutMs: options.runTimeoutMs } : {}) });
+  const hub = createHubBase({ hasTerritory: async () => false, secret: 'heartbeat', clock, store: new Store(), tracker, crew, roles: fixedRoles(), heartbeatMs, ...(options.durationWarnings ? { durationWarnings: options.durationWarnings } : {}), ...(options.runTimeoutMs !== undefined ? { heartbeatRunTimeoutMs: options.runTimeoutMs } : {}) });
   beforeDirectories(t, async () => {
     try { await hub.close(); }
     finally { try { await crew.stop(); } finally { await tracker.stop(); } }
@@ -58,10 +99,81 @@ async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeou
   const ui = await dispatcherUi(t, hub.dispatcher, root);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await session(t, hub, root, ui, 'coord', 'coordinator', 'stable-coord');
+  if (options.sentinel) {
+    assert.equal((await ui.request({ type: 'crew.set', key: 'qa.heartbeat', value: '1m' })).ok, true);
+    await session(t, hub, root, ui, 'quality', 'qa', 'stable-quality');
+  }
   // The first scheduler tick observes a connected session and establishes its schedule.
   await clock.advance(heartbeatMs / 4);
   return { root, clock, tracker, crew, hub, ui, coord };
 }
+
+test('a held manifest read uses the heartbeat firing clock at the 48-hour boundary', async t => {
+  const run = caseDeadlines(t);
+  const clock = new FakeClock(Date.parse('2026-10-17T00:00:00Z') - 500);
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  let root = '';
+  const f = await fixture(t, 100, { clock, sentinel: true, durationWarnings: async now => {
+    entered.resolve();
+    await release.promise;
+    return readDurationAllowanceWarnings(root, now);
+  } });
+  root = f.root;
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
+      'hub/test/expiry.test.ts::held': { seconds: 6, reason: 'Held fixture.', owner: 'E-1', added: '2026-10-16', expires: '2026-10-19' },
+    } }));
+  await clock.advance(100);
+  await run.wait('manifest read entered before warning window', () => entered.promise);
+  clock.block(375); // Cross into the window while the manifest read is held.
+  const completed = f.ui.waitFor(frame => heartbeat(frame) && (frame.message as Message).to.includes('quality'));
+  release.resolve();
+  await completed;
+  const message = (await notes(f.ui)).find(m => m.to.includes('coord'))!;
+  assert.equal(message.ts, '2026-10-17T00:00:00.000Z');
+  assert.match(message.text, /duration allowance expiring within 48h: hub\/test\/expiry.test.ts::held · owner E-1/);
+});
+
+for (const change of ['rename', 'role', 'stop', 'prune', 'disable'] as const) test(`held heartbeat warning read rechecks ${change} before publishing`, async t => {
+  const run = caseDeadlines(t);
+  const entered = Promise.withResolvers<void>();
+  const warnings = Promise.withResolvers<string[]>();
+  const f = await fixture(t, 100, { sentinel: true, durationWarnings: () => { entered.resolve(); return warnings.promise; } });
+  const process = { name: 'coord', sessionId: 'stable-coord', role: 'coordinator', harness: 'fake', model: null, cwd: f.root,
+    item: null, pid: null, harnessId: null, harnessSessionId: null, startedAt: f.clock.now().toISOString(), status: 'running' as const,
+    state: 'idle' as const, attach: null };
+  f.hub.core.publishProcess(process);
+  // Both role schedules were established before the read is held. The QA
+  // heartbeat is a public receipt that this tick has passed the Coordinator.
+  await f.clock.advance(100);
+  await run.wait('duration warning read entered', () => entered.promise);
+  if (change === 'rename') assert.equal((await f.coord.request({ type: 'rename', name: 'coord-new' })).ok, true);
+  if (change === 'role') assert.equal((await f.ui.request({ type: 'role.clear', session: 'coord' })).ok, true);
+  if (change === 'stop') f.hub.core.publishProcess({ ...process, status: 'stopped' });
+  if (change === 'prune') f.hub.core.pruneProcess(process);
+  if (change === 'disable') assert.equal((await f.ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' })).ok, true);
+  const completed = f.ui.waitFor(frame => heartbeat(frame) && (frame.message as Message).to.includes('quality'));
+  warnings.resolve(['held warning']);
+  await completed;
+  const messages = await notes(f.ui);
+  assert.equal(messages.filter(m => m.to.includes('coord')).length, 0, 'no stale heartbeat is recorded or delivered');
+  if (change === 'rename') {
+    const renamed = messages.filter(m => m.to.includes('coord-new'));
+    assert.equal(renamed.length, 1);
+    assert.match(renamed[0]!.text, /^heartbeat · coord-new ·/);
+    assert.match(renamed[0]!.text, /held warning/);
+  }
+  if (change === 'role' || change === 'stop') {
+    if (change === 'role') assert.equal((await f.ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+    else f.hub.core.publishProcess(process);
+    const overdue = f.ui.waitFor(frame => heartbeat(frame) && (frame.message as Message).to.includes('coord'));
+    await f.clock.advance(25);
+    await overdue;
+    assert.equal((await notes(f.ui)).filter(m => m.to.includes('coord')).length, 1, 'discarded publication did not advance the due schedule');
+  }
+});
 
 // Digest tests consume the scheduler's durable facts, not executor process lifecycles.
 function job(clock: FakeClock, root: string, id: string, fields: Partial<SuiteJob> = {}): SuiteJob {
@@ -117,7 +229,7 @@ test('busy and approval-waiting Coordinators coalesce heartbeats into the next t
   assert.equal((busyHeartbeat.message as Message).detail?.digest, 'turn');
   fake.waitingForApproval('coord');
   await ui.waitFor(f => f.type === 'session.state' && f.state === 'waiting for approval');
-  await clock.advance(300);
+  for (let n = 0; n < 3; n++) await nextHeartbeat(clock, ui, 100);
   assert.ok(ui.frames.filter(heartbeat).length >= 3);
   await ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'a steered report' });
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
@@ -200,19 +312,19 @@ test('the digest includes running and queued runs and ages timeouts and ended ru
   const { clock, root, hub, ui } = await fixture(t, 100, { runTimeoutMs: 100 });
   const first = job(clock, root, 'running');
   hub.core.store.setMeta('suite-jobs', JSON.stringify([first]));
-  await clock.advance(200);
+  await nextHeartbeat(clock, ui, 200, m => /run running running · impl[\s\S]*run running past its timeout · age/.test(m.text));
   const running = (await notes(ui)).find(m => /run running running · impl[\s\S]*run running past its timeout · age/.test(m.text));
   assert.ok(running, 'timeout and running facts occur together');
   assert.match(running.text, /run running running · impl/);
   const second = job(clock, root, 'queued', { state: 'queued', actor: null, started: null });
   hub.core.store.setMeta('suite-jobs', JSON.stringify([first, second]));
-  await clock.advance(100);
+  await nextHeartbeat(clock, ui, 100, m => /run queued queued · human/.test(m.text));
   assert.ok((await notes(ui)).some(m => /run queued queued · human/.test(m.text)));
   // Completion and withheld publication are independent durable facts. No worker is needed.
   first.outcome = { code: 0, cause: 'exit' };
   first.finished = clock.now().toISOString();
   hub.core.store.setMeta('suite-jobs', JSON.stringify([first, second]));
-  await clock.advance(100);
+  await nextHeartbeat(clock, ui, 100, m => /run running ended without a posted result · age/.test(m.text));
   assert.ok((await notes(ui)).some(m => /run running ended without a posted result · age/.test(m.text)));
 });
 
@@ -224,7 +336,7 @@ test('open asks show their age while a queued review request suppresses the miss
   await ui.request({ type: 'task.edit', item: id, status: 'review' });
   await coord.request({ type: 'send', to: ['reviewer'], text: `review request ${id}\nBranch and source to review` });
   await coord.request({ type: 'ask', topic: 'general', question: 'A decision is still needed', options: ['yes', 'no'] });
-  await clock.advance(300);
+  await nextHeartbeat(clock, ui, 300, m => /ask .* unanswered · age/.test(m.text));
   const aged = (await notes(ui)).find(m => /ask .* unanswered · age/.test(m.text))!;
   assert.match(aged.text, /A decision is still needed/);
   assert.doesNotMatch(aged.text, new RegExp(`${id} review without`));
@@ -238,7 +350,7 @@ test('live remote leases appear in the heartbeat beside their verification run',
   const remote = job(clock, root, 'remote', { executor: 'droplet', lease });
   hub.core.store.setMeta('suite-jobs', JSON.stringify([remote]));
   hub.core.store.setMeta('executor-leases', JSON.stringify([lease]));
-  await clock.advance(100);
+  await nextHeartbeat(clock, ui, 100, m => /lease cland-.* · (creating|active) · expires/.test(m.text));
   const digest = (await notes(ui)).find(m => /lease cland-.* · (creating|active) · expires/.test(m.text))!;
   assert.ok(digest);
   assert.match(digest.text, new RegExp(`run ${remote.id}`));
@@ -248,11 +360,12 @@ test('roles have independent heartbeat schedules, renaming retains identity, and
   const { clock, root, hub, ui, coord } = await fixture(t, 150);
   hub.core.setSessionState('stable-coord', 'coord', 'idle', 'test adapter');
   await ui.request({ type: 'crew.set', key: 'qa.heartbeat', value: '1m' });
-  await clock.advance(200);
+  await nextHeartbeat(clock, ui, 200, m => m.text.startsWith('heartbeat · coord ·'));
   assert.equal((await coord.request({ type: 'rename', name: 'coord-renamed' })).ok, true);
   await session(t, hub, root, ui, 'quality', 'qa', 'qa-stable');
   hub.core.setSessionState('qa-stable', 'quality', 'idle', 'test adapter');
-  await clock.advance(300);
+  await nextHeartbeat(clock, ui, 300, m => m.text.startsWith('heartbeat · coord-renamed'));
+  await nextHeartbeat(clock, ui, 150, m => m.text.startsWith('heartbeat · quality'));
   const both = await notes(ui);
   assert.ok(both.some(m => m.text.startsWith('heartbeat · coord-renamed')));
   assert.ok(both.some(m => m.text.startsWith('heartbeat · quality')));
@@ -262,7 +375,7 @@ test('roles have independent heartbeat schedules, renaming retains identity, and
   await ui.request({ type: 'role.clear', session: 'coord-renamed' });
   const afterClear = (await notes(ui)).filter(m => m.text.startsWith('heartbeat · coord-renamed')).length;
   const qaCount = (await notes(ui)).filter(m => m.text.startsWith('heartbeat · quality')).length;
-  await clock.advance(300);
+  for (let n = 0; n < 2; n++) await nextHeartbeat(clock, ui, 150, m => m.text.startsWith('heartbeat · quality'));
   assert.ok((await notes(ui)).filter(m => m.text.startsWith('heartbeat · quality')).length >= qaCount + 2);
   assert.equal((await notes(ui)).filter(m => m.text.startsWith('heartbeat · coord-renamed')).length, afterClear);
 });

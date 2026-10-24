@@ -250,6 +250,15 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
   const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; occasion: string }[] }).suites;
   const job = jobs.find(job => job.occasion === 'dev-t3'); assert.ok(job);
   await drive(f, f.machine.started(job.id));
+  // The hub reports the current project manifest, including a renewal made while
+  // the detached periodic candidate was running. No worker checkout is required.
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
+      'hub/test/example.test.ts::expiring': { seconds: 6, reason: 'Expiry fixture.', owner: 'E-41', added: '2026-10-16', expires: '2026-10-18' },
+      'hub/test/example.test.ts::later': { seconds: 6, reason: 'Later fixture.', owner: 'E-42', added: '2026-10-16', expires: '2026-10-19' },
+      'hub/test/example.test.ts::legacy': { seconds: 6, reason: 'Legacy fixture.', owner: 'E-677', legacy: true },
+    } }));
   f.machine.finish(job.id, 1, log);
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
   const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { fromKind: string; to: string[]; text: string; detail?: { event: string; head: string; previousGreenHead: string | null; result: string; failingFiles: string[] } }[] }).messages;
@@ -261,6 +270,8 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
   assert.equal(result.detail!.result, 'red');
   assert.deepEqual(result.detail!.failingFiles, ['hub/test/example.test.ts']);
   assert.match(result.text, /Periodic dev T3 red/);
+  assert.match(result.text, /duration allowance expiring within 48h: hub\/test\/example.test.ts::expiring · owner E-41 · expires 2026-10-18/);
+  assert.doesNotMatch(result.text, /owner E-42|::legacy/);
 });
 
 test('periodic T3 obeys the shared daily cap without changing the merge queue', async t => {
