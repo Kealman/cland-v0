@@ -254,7 +254,22 @@ An empty tap skips this step. If it fails, keep `release.tmp` and retry the same
 item/version to finish the already published release. Only the human creates the
 tap repository.
 
-No GitHub API is called and no version file in your project is changed. Product publication uses `cland release`; approved marketing-only publication uses `cland publish`.
+For cland itself, `[release] web_bundle = true` adds the prebuilt Web archive
+and SHA-256 file as GitHub Release assets after the product push. It defaults to
+false in generated and older configs. The release machine needs installed,
+already-authenticated `gh`, Node/npm and tar, with network access for locked
+dependencies and release uploads. Dry-run checks gh first and builds the pinned
+commit; its preview names the repo, tag, filenames, sizes and exact SHA-256 for
+the human’s release approval. The cached bytes are reused on release and retry.
+No token is passed in argv and no login is started. New releases remain drafts
+until both assets are uploaded and read back. Existing assets are compared, never
+replaced. On a `web-bundle` follow-up failure, keep `release.tmp` and the ignored
+`.cland/release-web/` cache and retry the same item/version. Closure waits for the
+assets and any Homebrew follow-up. The installer verifies the bundle and falls
+back to a source build on missing or invalid assets.
+
+The Git refs transaction makes no GitHub API calls; Web assets use gh’s GitHub
+Release API. No version file in your project is changed. Product publication uses `cland release`; approved marketing-only publication uses `cland publish`.
 
 ```mermaid
 %% How a release comes together: from an idea through the plan and the build to the push

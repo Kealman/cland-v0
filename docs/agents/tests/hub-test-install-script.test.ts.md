@@ -33,3 +33,11 @@ legacy locked build/prune path. Their regression keeps install and update versio
 receipts, built Web output, prune and lockfile-mtime checks, and the previous
 command after a failed update. The old-install-moved interruption case also uses
 old-layout archives and retains its rollback receipt and working-command check.
+
+T-1234 adds tag-specific prebuilt archive/checksum mappings. A valid checksum and
+source stamp install the known Web payload even with a deliberately failing
+source-build command; runtime-only npm omits the build dependency. Missing or bad
+checksums and a validly checksummed bundle for different sources each fall back
+to the locked source build, retaining prune and lockfile-mtime assertions.
+All downloads remain local mappings; custom source URLs require an explicit asset
+directory and never implicitly contact GitHub. No browser is involved.

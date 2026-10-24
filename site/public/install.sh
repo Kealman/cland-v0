@@ -12,6 +12,10 @@ npm, curl, tar and Git (for latest-tag discovery). Never runs sudo.
 PREFIX: installation prefix (default: $HOME/.local).
 CLAND_VERSION: install a specific released tag, e.g. v0.2.0.
 CLAND_RELEASE_URL: use an HTTPS or file:// source tarball instead of tag discovery.
+CLAND_WEB_RELEASE_URL: optional HTTPS or file:// directory of matching Web assets.
+Tagged installs prefer the SHA-256-verified prebuilt Web bundle; missing or invalid
+assets fall back to the locked source build. Custom source URLs build from source
+unless CLAND_WEB_RELEASE_URL is set.
 Paths: PREFIX/bin/cland -> PREFIX/lib/cland/hub/bin/cland.ts.
 Rerun to update; a download or build failure keeps the current installation.
 HELP
@@ -68,7 +72,7 @@ cleanup() {
             # its directory; the next install uses an independent staging path.
             printf 'Interrupted install; staging retained at: %s\n' "$stage" >&2
         else
-            (cd "$stage" && rm -rf source archive.tar.gz tags.txt build-package-lock.json previous) || true
+            (cd "$stage" && rm -rf source archive.tar.gz tags.txt build-package-lock.json previous cland-web.tar.gz cland-web.tar.gz.sha256) || true
             rmdir "$stage" 2>/dev/null || true
         fi
     fi
@@ -107,18 +111,56 @@ mkdir source
 tar -xzf archive.tar.gz -C source --strip-components=1
 cd source
 [ -f package-lock.json ] && [ -f hub/bin/cland.ts ] || fail 'Release archive is missing cland sources or its lockfile.'
-printf 'Building cland from locked dependencies...\n'
-if [ -f packaging/build-install.sh ]; then
-    sh packaging/build-install.sh
-else
-    # Published tags predating the shared helper keep their original build path.
-    # In particular, CLAND_VERSION=v0.2.0 remains installable by this script.
-    printf 'Using the legacy source-release build...\n'
-    npm ci --include=dev --ignore-scripts --no-audit --no-fund
+web_url=${CLAND_WEB_RELEASE_URL:-}
+if [ -z "$web_url" ] && [ -z "${CLAND_RELEASE_URL:-}" ]; then
+    web_url="https://github.com/Kealman/cland-v0/releases/download/$version"
+fi
+use_prebuilt() {
+    case "$web_url" in https://*|file://*) ;; *) return 1 ;; esac
+    curl -q -fsSL --proto '=https,file' --proto-redir '=https' "${web_url%/}/cland-web.tar.gz" -o ../cland-web.tar.gz 2>/dev/null || return 1
+    curl -q -fsSL --proto '=https,file' --proto-redir '=https' "${web_url%/}/cland-web.tar.gz.sha256" -o ../cland-web.tar.gz.sha256 2>/dev/null || return 1
+    # Check bytes and confine entries before tar writes anything. Only ordinary
+    # files/directories belong in a web bundle; links and traversal are rejected.
+    node --input-type=module - <<'VERIFY' || return 1
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+const archive = '../cland-web.tar.gz';
+const digest = createHash('sha256').update(readFileSync(archive)).digest('hex');
+if (readFileSync(`${archive}.sha256`, 'utf8') !== `${digest}  cland-web.tar.gz\n`) process.exit(1);
+const options = { encoding: 'utf8', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 };
+const names = execFileSync('tar', ['-tzf', archive], options).trim().split('\n');
+if (!names.length || names.some(name => !/^web\/dist(?:\/[A-Za-z0-9_.@/-]*)?$/.test(name) || name.split('/').some(part => part === '..' || part === '.'))) process.exit(1);
+const types = execFileSync('tar', ['-tvzf', archive], options).trim().split('\n');
+if (types.some(line => !/^[-d]/.test(line))) process.exit(1);
+VERIFY
+    tar -xzf ../cland-web.tar.gz || { rm -rf web/dist; return 1; }
+    node --input-type=module - <<'STAMP' || { rm -rf web/dist; return 1; }
+const { webBundleState } = await import('./hub/src/web-bundle.ts');
+if ((await webBundleState(process.cwd())).state !== 'current') process.exit(1);
+STAMP
+    return 0
+}
+if [ -n "$web_url" ] && use_prebuilt; then
+    printf 'Using verified prebuilt Web bundle; installing runtime dependencies...\n'
     cp -p package-lock.json ../build-package-lock.json
-    npm run build
-    npm prune --omit=dev --ignore-scripts --no-audit --no-fund
+    npm ci --omit=dev --ignore-scripts --no-audit --no-fund
     cp -p ../build-package-lock.json package-lock.json
+else
+    [ -z "$web_url" ] || printf 'Prebuilt Web bundle unavailable or invalid; falling back to source build.\n'
+    printf 'Building cland from locked dependencies...\n'
+    if [ -f packaging/build-install.sh ]; then
+        sh packaging/build-install.sh
+    else
+        # Published tags predating the shared helper keep their original build path.
+        # In particular, CLAND_VERSION=v0.2.0 remains installable by this script.
+        printf 'Using the legacy source-release build...\n'
+        npm ci --include=dev --ignore-scripts --no-audit --no-fund
+        cp -p package-lock.json ../build-package-lock.json
+        npm run build
+        npm prune --omit=dev --ignore-scripts --no-audit --no-fund
+        cp -p ../build-package-lock.json package-lock.json
+    fi
 fi
 : > .cland-installer
 version=$(node -p 'require("./package.json").version')

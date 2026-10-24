@@ -11,9 +11,13 @@ curl -fsSL https://cland.app/install.sh | sh
 
 The POSIX installer in `site/public/install.sh` discovers stable tags with
 `git ls-remote --tags --refs`, downloads a tag's source from codeload, and works
-in a staging directory. It runs `npm ci --include=dev --ignore-scripts`,
-`npm run build`, then `npm prune --omit=dev --ignore-scripts`; it does not install
-the test browser. The build-time lockfile and its mtime are restored after prune
+in a staging directory. It prefers the tag’s `cland-web.tar.gz` and `.sha256`
+GitHub Release assets, verifies SHA-256 before extraction and checks the bundle’s
+source stamp. With a valid bundle it runs only
+`npm ci --omit=dev --ignore-scripts`. Missing, invalid or mismatched assets fall
+back to `npm ci --include=dev --ignore-scripts`, `npm run build`, then
+`npm prune --omit=dev --ignore-scripts`; no path installs the test browser.
+The lockfile and its mtime are restored after dependency installation/prune
 so doctor keeps accepting the web build receipt. The resulting source, runtime
 dependencies and `web/dist` live
 in `~/.local/lib/cland`, with `~/.local/bin/cland` linked to the CLI. Rerun to
@@ -24,11 +28,11 @@ may still be unwinding.
 
 `PREFIX` chooses another writable absolute prefix; `CLAND_VERSION=vX.Y.Z` pins a
 released tag and skips discovery. `CLAND_RELEASE_URL` accepts an HTTPS or file URL
-to an equivalent source tarball (used by sealed offline tests). `sh install.sh
---help` lists these inputs. See the [install docs](../site/src/content/docs/docs/install.md)
-for PATH and removal instructions. `cland release` needs no asset-upload change:
-it must continue publishing stable `vX.Y.Z` tags containing the lockfile, build
-sources and executable `hub/bin/cland.ts`.
+to an equivalent source tarball (used by sealed offline tests). A custom source
+URL builds from source unless `CLAND_WEB_RELEASE_URL` names the HTTPS or file
+directory of matching assets. `sh install.sh --help` lists these inputs. See the [install docs](../site/src/content/docs/docs/install.md)
+for PATH and removal instructions. Stable tags retain their lockfile, build
+sources and executable `hub/bin/cland.ts` for the source-build fallback.
 
 In your project folder, initialise cland:
 
@@ -2070,9 +2074,12 @@ Release and sync use the default branch (`main` unless the territory records ano
 
 Both release forms, including dry-run, read the root `package.json` at the selected `dev` commit. When it declares a `version`, a mismatch with the release's version refuses with `release-version`, naming both versions. Commit the bump through an ordinary reviewed item and merge it onto `dev` before previewing; an uncommitted bump does not pass, and release never writes it. A project without `package.json` or its `version` key releases as before. Whether other project version files should be checked remains open. Recovery of an already published receipt finishes its pinned build even if later `dev` work has another version.
 
-The notes list one `T-12 <tracker title>` line per `Item:` trailer in the range from the default branch to `dev`, in commit order, followed by non-item commit subjects. If an item was removed, its commit subject supplies the title. Git creates an annotated tag object at the pinned dev commit, then one atomic push sends that commit as GitHub's default branch and the tag object as `refs/tags/<version>`. No GitHub API is called and no project version file is changed. Only after that push succeeds does cland advance the local default branch, install the local tag and publish that branch and tag to the territory. A GitHub hook rejection reports Git's message and leaves all local and remote refs unchanged.
+The notes list one `T-12 <tracker title>` line per `Item:` trailer in the range from the default branch to `dev`, in commit order, followed by non-item commit subjects. If an item was removed, its commit subject supplies the title. Git creates an annotated tag object at the pinned dev commit, then one atomic push sends that commit as GitHub's default branch and the tag object as `refs/tags/<version>`. The Git refs transaction uses no GitHub API and changes no project version file.
+Opt-in Web assets use the GitHub Release API through existing gh authentication
+after that push, as described below. Only after that push succeeds does cland advance the local default branch, install the local tag and publish that branch and tag to the territory. A GitHub hook rejection reports Git's message and leaves all local and remote refs unchanged.
 
-The result is `{version, commit, notes, refs, dryRun, homebrew}` (`homebrew` is additive; older consumers keep their existing fields). A failure after GitHub accepts the push returns `followUp: {step, error}` saying `released; follow-up failed`. Preserve `.cland/release.tmp`, repair the named obstruction and retry the same version and, for an item release, the same item. The receipt, written before pushing, pins the annotated tag object, dev commit, notes and optional item id. A retry with a different item or a version-only command cannot consume an item release receipt. A retry checks that exact tag on GitHub and finishes the local refs and territory even after a hub restart or a lost push reply, without publishing later dev work. The receipt is removed after the item closure and other follow-up complete; retrying an already written closure adds no duplicate release comment.
+The result keeps `{version, commit, notes, refs, dryRun, homebrew}` and adds optional
+`webBundle` for opted-in releases; older consumers keep their existing fields. A failure after GitHub accepts the push returns `followUp: {step, error}` saying `released; follow-up failed`. Preserve `.cland/release.tmp`, repair the named obstruction and retry the same version and, for an item release, the same item. The receipt, written before pushing, pins the annotated tag object, dev commit, notes and optional item id. A retry with a different item or a version-only command cannot consume an item release receipt. A retry checks that exact tag on GitHub and finishes the local refs and territory even after a hub restart or a lost push reply, without publishing later dev work. The receipt is removed after the item closure and other follow-up complete; retrying an already written closure adds no duplicate release comment.
 
 #### Homebrew formula publication
 
@@ -2104,7 +2111,7 @@ to recognize an accepted push whose reply was lost. Item closure waits for this
 follow-up. Legacy receipts without a tap retain their original scope.
 
 The formula uses `node@24` for both build and command execution, with a minimum
-24.13 check. It and `site/public/install.sh` call `packaging/build-install.sh`:
+24.13 check. It and the curl installer’s source fallback call `packaging/build-install.sh`:
 locked dependencies with lifecycle scripts disabled, Web build, then dev-dependency
 pruning while preserving the lockfile's build mtime. The curl installer retains
 the equivalent legacy build steps for published archives without that helper,
@@ -2119,6 +2126,40 @@ and [formula cookbook](https://docs.brew.sh/Formula-Cookbook).
 `cland sync [--json]` sends a `sync` frame. The human or the Coordinator's shell with the `sync` grant may call it; it has no spoke tool. It refuses while a merge still needs checkout, item, claim or topic completion, preserving that landing's recovery identity. From a clean root on dev it fetches GitHub, requires GitHub's default branch to fast-forward the local default branch, and prepares a replay of the range from the default branch to `dev` on the fetched commit in an isolated checkout. Replay retains merge structure. A dirty root refuses; a conflict aborts preparation, names the files in the error and `files` result field, and leaves every integration ref and the root tree untouched. On success it installs the replay in the root, atomically updates the local default branch and dev, and publishes those refs only to the territory. It never pushes to GitHub.
 
 Sync returns `{main, dev}`; the compatibility field `main` holds the default branch tip. Release and sync recovery receipts keep their existing field names, so receipts from before recorded defaults still resume. A territory failure after the local refs move returns `followUp` saying `synced locally; follow-up failed`. Preserve `.cland/sync.tmp`, repair the obstruction and retry sync to publish the same replay. A changed root or ref during recovery is refused for manual reconciliation. Finish pending sync before merge or release, and finish a GitHub-accepted release before sync. Previews, releases, syncs and their refusals are recorded in the hub log and journal.
+
+## Prebuilt Web release assets
+
+For cland itself, `[release] web_bundle = true` in the committed dev config
+opts into publishing `cland-web.tar.gz` and `cland-web.tar.gz.sha256`. Generated
+and older configs default to false, so ordinary projects gain no build or gh
+requirement. The release machine needs Node/npm, Git, tar, network access for
+locked dependencies, and an installed `gh` already authenticated to github.com
+with release-write access. No login is started, no credential is put in argv,
+and gh’s authentication output is not copied to hub logs.
+
+Dry-run checks gh authentication before approval, archives the pinned Git commit
+into an isolated build directory, installs locked dev dependencies with lifecycle
+scripts disabled, builds and checks the source stamp. It caches the archive by
+commit in ignored `.cland/release-web/`, retaining the build root so no native
+writer loses its directory during cleanup. The plain/JSON preview names the repo,
+tag, both filenames, byte sizes and archive SHA-256; the checksum file contains
+that digest and archive name. Include these exact facts in the single release
+approval. Dry-run makes no GitHub writes; it may install build dependencies and
+write the ignored cache. The release CLI allows 30 minutes for the reply.
+
+After the atomic product push, release creates a draft GitHub Release when
+needed, uploads missing assets, downloads both to compare the exact approved
+bytes, and publishes the draft. Existing assets are never clobbered. The optional
+`webBundle` reply and item comment report the final facts; older replies without
+it remain supported. Asset publication is a separate transaction. On a
+`web-bundle` follow-up failure, preserve `release.tmp` and its cached assets;
+retry the same item/version. The receipt pins repo, commit and checksum despite
+later dev/config changes, and remote readback recovers lost upload replies.
+Conflicting remote bytes refuse replacement. Item closure waits for the assets
+and any Homebrew follow-up; old receipts without Web assets keep their scope.
+The installer accepts verified, source-matching assets and otherwise builds
+from source, including tags that predate these assets. Homebrew keeps building
+from source.
 
 ## cland doctor
 

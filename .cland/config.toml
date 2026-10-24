@@ -4,6 +4,10 @@
 [project]
 name = "v0"
 
+[release]
+# Publish the product Web bundle and SHA-256 as GitHub Release assets.
+web_bundle = true
+
 [release.homebrew]
 # Optional existing GitHub tap; empty disables formula publication.
 tap = "Kealman/homebrew-tap"

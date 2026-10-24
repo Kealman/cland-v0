@@ -179,3 +179,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/init.test.ts`](../../../hub/test/init.test.ts) | [Notes](hub-test-init.test.ts.md) |
 | [`hub/test/init-process.test.ts`](../../../hub/test/init-process.test.ts) | [Notes](hub-test-init-process.test.ts.md) |
 | [`hub/test/screenshot-capture.test.ts`](../../../hub/test/screenshot-capture.test.ts) | [Notes](hub-test-screenshot-capture.test.ts.md) |
+
+| [`hub/test/web-release-publication.test.ts`](../../../hub/test/web-release-publication.test.ts) | [Notes](hub-test-web-release-publication.test.ts.md) |

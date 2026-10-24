@@ -36,6 +36,7 @@ log/
 run/
 artifacts/
 worktrees/
+release-web/
 territory.git/
 territory.lock*
 scratch/

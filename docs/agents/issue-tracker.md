@@ -248,3 +248,15 @@ then recorded before the tap push. On a `homebrew` follow-up failure, keep
 `release.tmp` and retry the same item/version; the product may already be public.
 The human creates the tap. Real clean-macOS Homebrew evidence follows creation;
 sealed source-build and pure render tests supply pre-merge evidence.
+
+
+## Prebuilt Web release follow-up
+
+For cland’s opt-in committed `[release] web_bundle = true`, see
+[prebuilt Web release assets](../../hub/README.md#prebuilt-web-release-assets).
+The release machine needs an installed, already-authenticated gh. Dry-run checks
+it before approval and builds/caches the pinned archive; include repo, tag, both
+filenames, byte sizes and SHA-256 in the single release ask. On `web-bundle`
+follow-up failure, keep `release.tmp` and `.cland/release-web/` and retry the same
+item/version. Never replace conflicting remote assets. Defaults and legacy
+receipts keep generic projects and old releases on their prior path.

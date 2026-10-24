@@ -1,5 +1,7 @@
 // T3: runs the POSIX installer and its native npm/build commands in a sealed scratch prefix.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { webSources } from '../src/web-bundle.ts';
 import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { access, chmod, copyFile, mkdir, mkdtemp, readFile, realpath, stat, writeFile } from 'node:fs/promises';
@@ -25,6 +27,8 @@ async function run(t: test.TestContext, file: string, args: string[], options: {
         FAKE_RELEASE_MAP: options.env.FAKE_RELEASE_MAP, FAKE_PUBLISH_INTERRUPT: options.env.FAKE_PUBLISH_INTERRUPT,
         FAKE_RESTORE_FAIL: options.env.FAKE_RESTORE_FAIL,
         CLAND_RELEASE_URL: options.env.CLAND_RELEASE_URL,
+        CLAND_VERSION: options.env.CLAND_VERSION,
+        CLAND_WEB_RELEASE_URL: options.env.CLAND_WEB_RELEASE_URL,
       }),
     });
     let stdout = '', stderr = '';
@@ -40,8 +44,8 @@ async function run(t: test.TestContext, file: string, args: string[], options: {
     child.stdout.setEncoding('utf8').on('data', chunk => append('stdout', chunk));
     child.stderr.setEncoding('utf8').on('data', chunk => append('stderr', chunk));
     child.once('error', error => { failure = error; });
-    child.once('close', code => {
-      if (failure || code !== 0 || expired) reject(Object.assign(failure ?? new Error(expired ? 'native command deadline exceeded' : 'Command failed'), { stdout, stderr }));
+    child.once('close', (code, signal) => {
+      if (failure || code !== 0 || expired) reject(Object.assign(failure ?? new Error(`${expired ? 'native command deadline exceeded' : 'Command failed'} (exit ${code}; signal ${signal})`), { stdout, stderr, code, signal }));
       else resolve({ stdout, stderr });
     });
     const owned = ownProcess(t, child.pid);
@@ -112,7 +116,7 @@ test('installer rejects absent or unsupported Node before fetching or changing t
   await assert.rejects(access(env.PREFIX!));
 });
 
-async function release(t: test.TestContext, root: string, version: string, broken = false, legacy = false) {
+async function release(t: test.TestContext, root: string, version: string, broken = false, legacy = false, stamped = false) {
   const source = join(root, version, 'cland-tag');
   await mkdir(join(source, 'hub/bin'), { recursive: true });
   await mkdir(join(source, 'web'), { recursive: true });
@@ -135,6 +139,11 @@ async function release(t: test.TestContext, root: string, version: string, broke
   await writeFile(join(source, 'package-lock.json'), JSON.stringify({ name: pkg.name, version, lockfileVersion: 3, packages: { '': { name: pkg.name, version, devDependencies: pkg.devDependencies }, 'node_modules/build-helper': { version: '1.0.0', resolved: 'file:build-helper.tar.gz', dev: true } } }));
   await writeFile(join(source, 'hub/bin/cland.ts'), `#!/usr/bin/env node\nconsole.log('${version}: ' + process.argv.slice(2).join(' '));`);
   await chmod(join(source, 'hub/bin/cland.ts'), 0o755);
+  if (stamped) {
+    for (const directory of ['hub/src', 'web/src', 'web/public', 'shared/wire']) await mkdir(join(source, directory), { recursive: true });
+    await copyFile(new URL('../src/web-bundle.ts', import.meta.url), join(source, 'hub/src/web-bundle.ts'));
+    for (const file of ['shared/protocol-frame.ts', 'web/package.json', 'web/index.html', 'web/tsconfig.json', 'web/vite.config.ts', 'web/build.ts', 'web/check-assets.ts']) await writeFile(join(source, file), '');
+  }
   const archive = join(root, `${version}.tar.gz`);
   await run(t, 'tar', ['-czf', archive, '-C', join(root, version), 'cland-tag'], {
     cwd: root, env: fixtureEnvironment(root, process.env), timeout: 15_000,
@@ -263,4 +272,62 @@ test('a failed rollback preserves and reports the previous release for recovery'
     cwd: root, env: fixtureEnvironment(root, process.env), timeout: 15_000,
   });
   assert.equal(command.stdout.trim(), '0.1.0: --version');
+});
+
+
+test('installer verifies the tag Web asset and installs runtime dependencies without the build toolchain', async t => {
+  const { root, env } = await fixture(t);
+  const version = '0.4.0';
+  const url = await release(t, root, version, true, false, true); // source build deliberately fails
+  const source = join(root, version, 'cland-tag');
+  const payload = join(root, 'prebuilt');
+  await mkdir(join(payload, 'web/dist'), { recursive: true });
+  await writeFile(join(payload, 'web/dist/index.html'), 'prebuilt release');
+  await writeFile(join(payload, 'web/dist/build-stamp.json'), JSON.stringify({ version: 1, sources: (await webSources(source)).digest, builtAt: Date.now() + 60_000 }));
+  const asset = join(root, 'cland-web.tar.gz');
+  await run(t, 'tar', ['-czf', asset, '-C', payload, 'web/dist'], { cwd: root, env: fixtureEnvironment(root, env), timeout: 15_000 });
+  const sha = createHash('sha256').update(await readFile(asset)).digest('hex');
+  await writeFile(`${asset}.sha256`, `${sha}  cland-web.tar.gz\n`);
+  const base = `https://github.com/Kealman/cland-v0/releases/download/v${version}`;
+  await writeFile(env.FAKE_RELEASE_MAP!, JSON.stringify({
+    [`https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/v${version}`]: fileURLToPath(url),
+    [`${base}/cland-web.tar.gz`]: asset,
+    [`${base}/cland-web.tar.gz.sha256`]: `${asset}.sha256`,
+  }));
+  const result = await run(t, '/bin/sh', ['install.sh'], { cwd: root, env: fixtureEnvironment(root, env, {
+    PATH: env.PATH, REAL_NODE: process.execPath, FAKE_NODE_VERSION: 'v24.13.0', FAKE_RELEASE_MAP: env.FAKE_RELEASE_MAP, CLAND_VERSION: `v${version}`,
+  }), timeout: 30_000 });
+  assert.match(result.stdout, /verified prebuilt Web bundle/);
+  assert.equal(await readFile(join(env.PREFIX!, 'lib/cland/web/dist/index.html'), 'utf8'), 'prebuilt release');
+  await assert.rejects(access(join(env.PREFIX!, 'lib/cland/node_modules/build-helper')));
+  const command = await run(t, join(env.PREFIX!, 'bin/cland'), ['--version'], { cwd: root, env: fixtureEnvironment(root, env), timeout: 15_000 });
+  assert.equal(command.stdout.trim(), `${version}: --version`);
+});
+
+
+for (const defect of ['missing-checksum', 'bad-checksum', 'wrong-sources'] as const) test(`installer falls back to the locked source build for ${defect} Web assets`, async t => {
+  const { root, env } = await fixture(t);
+  const version = '0.5.0';
+  const url = await release(t, root, version, false, false, true);
+  const payload = join(root, 'prebuilt');
+  await mkdir(join(payload, 'web/dist'), { recursive: true });
+  await writeFile(join(payload, 'web/dist/index.html'), 'untrusted prebuilt');
+  await writeFile(join(payload, 'web/dist/build-stamp.json'), JSON.stringify({ version: 1, sources: 'wrong source digest', builtAt: Date.now() + 60_000 }));
+  const asset = join(root, 'cland-web.tar.gz');
+  await run(t, 'tar', ['-czf', asset, '-C', payload, 'web/dist'], { cwd: root, env: fixtureEnvironment(root, env), timeout: 15_000 });
+  const sha = defect === 'bad-checksum' ? '0'.repeat(64) : createHash('sha256').update(await readFile(asset)).digest('hex');
+  await writeFile(`${asset}.sha256`, `${sha}  cland-web.tar.gz\n`);
+  const base = 'https://fixture.invalid/assets';
+  await writeFile(env.FAKE_RELEASE_MAP!, JSON.stringify({
+    [`${base}/cland-web.tar.gz`]: asset,
+    ...(defect !== 'missing-checksum' ? { [`${base}/cland-web.tar.gz.sha256`]: `${asset}.sha256` } : {}),
+  }));
+  const result = await run(t, '/bin/sh', ['install.sh'], { cwd: root, env: fixtureEnvironment(root, env, {
+    PATH: env.PATH, REAL_NODE: process.execPath, FAKE_NODE_VERSION: 'v24.13.0', FAKE_RELEASE_MAP: env.FAKE_RELEASE_MAP,
+    CLAND_RELEASE_URL: url, CLAND_WEB_RELEASE_URL: base,
+  }), timeout: 30_000 });
+  assert.match(result.stdout, /falling back to source build/);
+  assert.equal(await readFile(join(env.PREFIX!, 'lib/cland/web/dist/index.html'), 'utf8'), 'built');
+  await assert.rejects(access(join(env.PREFIX!, 'lib/cland/node_modules/build-helper')));
+  assert.equal((await stat(join(env.PREFIX!, 'lib/cland/package-lock.json'))).mtimeMs, Number(await readFile(join(env.PREFIX!, 'lib/cland/web/dist/lock-mtime'), 'utf8')));
 });

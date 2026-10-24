@@ -35,8 +35,11 @@ install Node 24 LTS from [nodejs.org](https://nodejs.org/en/download), put `node
 and `npm` on your PATH, and run the command again.
 
 It fetches the newest stable `vX.Y.Z` tag from the public repository, downloads
-that tag's source tarball, installs its locked build dependencies with lifecycle
-scripts disabled, builds the web workbench, and removes development dependencies.
+that tag’s source tarball and looks for its prebuilt Web release assets. It
+verifies the archive’s SHA-256 and source stamp, then installs only locked runtime
+dependencies with lifecycle scripts disabled. If the assets are absent, invalid
+or for different sources, it installs locked build dependencies, builds the web
+workbench, and removes development dependencies.
 Older tags without the shared build helper use the equivalent legacy build steps,
 so the pinned-version command below also works for those archives.
 It prints each step and never uses `sudo`. Download or build failures leave the
@@ -59,6 +62,10 @@ curl -fsSL https://cland.app/install.sh | CLAND_VERSION=v0.2.0 sh
 With a custom prefix, the paths become `<prefix>/bin/cland` and
 `<prefix>/lib/cland/`. Reuse that prefix when updating. The script refuses to
 replace a command or directory it does not manage.
+
+For an offline mirror, `CLAND_RELEASE_URL` accepts an HTTPS or `file://` source
+tarball. It builds from source unless `CLAND_WEB_RELEASE_URL` names the directory
+containing the matching `cland-web.tar.gz` and `cland-web.tar.gz.sha256` assets.
 
 ### From source
 

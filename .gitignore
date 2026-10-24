@@ -24,3 +24,6 @@ node_modules/
 # generated browser bundle
 web/dist/
 web/test-results/
+
+# Pinned prebuilt release assets, reused after approval and on retries
+.cland/release-web/
