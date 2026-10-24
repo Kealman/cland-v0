@@ -7,6 +7,10 @@ import { MergeError } from '../merge.ts';
 import type { Store } from './store.ts';
 import type { Clock } from './clock.ts';
 import type { Resumed } from './worktrees.ts';
+import { readLeases } from '../executor/droplet/lease.ts';
+import { epicMergeFiles } from '../tracker/epic-surfaces.ts';
+
+export type DemoWarning = { epic: string; state: 'running' | 'due'; files: string[] } | { unavailable: string };
 
 export class MergeQueue {
   readonly git: Git;
@@ -17,8 +21,10 @@ export class MergeQueue {
   readonly #unwatch: Array<() => void>;
   #stopped = false;
   readonly dropped: (entry: MergeQueueEntry, reason: string) => void;
-  constructor(store: Store, tracker: Tracker, clock: Clock, enabled: () => boolean, git?: Git, env?: NodeJS.ProcessEnv, dropped: (entry: MergeQueueEntry, reason: string) => void = () => {}) {
+  readonly warn: (view: ItemView, warnings: DemoWarning[]) => void;
+  constructor(store: Store, tracker: Tracker, clock: Clock, enabled: () => boolean, git?: Git, env?: NodeJS.ProcessEnv, dropped: (entry: MergeQueueEntry, reason: string) => void = () => {}, warn: (view: ItemView, warnings: DemoWarning[]) => void = () => {}) {
     this.dropped = dropped;
+    this.warn = warn;
     this.store = store; this.tracker = tracker; this.clock = clock; this.enabled = enabled;
     this.git = git ?? gitIn(tracker.root, env);
     this.#unwatch = [tracker.onChange(() => this.reconcile()), tracker.onTipsChanged(() => {
@@ -108,10 +114,37 @@ export class MergeQueue {
     });
   }
 
-  enqueue(view: ItemView, head: string, base: string, actor: Actor, files: readonly string[] = []): { item: string; queued: number } {
+  async demoWarnings(files: readonly string[], dev: string, resumed: Resumed): Promise<DemoWarning[]> {
+    // These are diagnostic reads only. Keep tracker/guard and admission failures
+    // outside their catches so a warning cannot bypass a real merge refusal.
+    const leases = await readLeases(this.tracker.root).catch(() => null);
+    const epics = resumed(() => this.tracker.list({ state: 'open' }).filter(item => this.tracker.isPlanContainer(item.kind)));
+    const warnings: DemoWarning[] = leases === null ? [{ unavailable: 'demo leases unavailable' }] : [];
+    for (const epic of epics) {
+      const view = await this.tracker.viewAsync(epic.id, resumed);
+      const state = resumed(() => {
+        if (view.state !== 'open') return null;
+        if (leases?.some(lease => lease.demo?.epic === epic.id && lease.state === 'active' && Date.parse(lease.deadline) > this.clock.now().getTime())) return 'running' as const;
+        const recorded = view.verdicts.some(v => v.verdict === 'qa' && v.stage === undefined && v.source === 'hub' && v.writer?.role === 'qa');
+        return !recorded && this.tracker.followStatus(epic.id).met ? 'due' as const : null;
+      });
+      if (!state) continue;
+      const tasks = resumed(() => this.tracker.list({ under: epic.id, kind: 'task' }).map(task => task.id));
+      const surfaces = await epicMergeFiles(this.tracker.root, tasks, dev, undefined, this.git).catch(() => null);
+      resumed(() => {
+        if (surfaces === null) { warnings.push({ unavailable: `${epic.id} landed files unavailable` }); return; }
+        const overlap = [...new Set(files.filter(file => surfaces.includes(file)))].sort();
+        if (overlap.length) warnings.push({ epic: epic.id, state, files: overlap });
+      });
+    }
+    return warnings;
+  }
+
+  enqueue(view: ItemView, head: string, base: string, actor: Actor, files: readonly string[] = [], warnings: DemoWarning[] = []): { item: string; queued: number } {
     this.reconcile();
     const dependencies = dependencyInstall(this.tracker.root, files);
     const queued = this.store.enqueueMerge({ ...(dependencies ? { dependencies } : {}), item: view.id, branch: view.branch!, head, verdictBase: base, enqueued: this.clock.now().toISOString(), by: actor });
+    if (warnings.length) this.warn(view, warnings);
     return { item: view.id, queued };
   }
 }

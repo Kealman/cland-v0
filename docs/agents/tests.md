@@ -377,6 +377,16 @@ request through the same role/subtree permission check as merge. Cancellation
 waits for any active worker to finish before the candidate checkout is replaced.
 A changed or deleted head, a closed item or a not-clear verdict drops its entry.
 
+Enqueue's advisory `merge-demo-warning` names open epics with running or due
+demos and the overlapping landed files; it goes to the candidate's topic and
+Coordinator/item lead without blocking enqueue. Due means all task children
+closed, last ticket landed on dev and no hub QA demo verdict (stage QA excluded).
+Use the sealed public merge/topic-history seam in `hub/test/merge-queue.test.ts`;
+inject Git history and seed lease/landing receipts in the disposable root.
+Damaged lease/history evidence must keep enqueue successful and post
+`merge-demo-warning-unavailable`; scope read-error handling to diagnostic reads,
+preserving authorization, lane and freshness refusals.
+
 With `[merge] queue = true`, reviewed code heads wait in a durable FIFO. The hub
 starts the oldest `batch` entries (default 3) when full, or after `batch_wait`
 (default `"10m"`) from the oldest request. It prepares squash objects in order,

@@ -181,6 +181,7 @@ export class TaskMerges {
             const candidate = await this.queue.candidate(checked, resumed);
             if (refusedOverridePaths(candidate.files).length) {
               const validateLane = await this.#laneHold(checked, candidate.files, candidate.baseTip, resumed);
+              const warnings = await this.queue.demoWarnings(candidate.files, candidate.baseTip, resumed);
               await this.tracker.refreshFreshness(resumed);
               const finalView = await this.#view(id, resumed);
               resumed(() => {
@@ -189,7 +190,7 @@ export class TaskMerges {
                 this.#message(finalView);
                 if (!this.queue?.enabled()) throw new MergeError('merge-changed', 'merge queue setting changed during enqueue; try again');
                 if (finalView.branch !== checked.branch || this.tracker.freshnessTip(finalView.branch) !== candidate.head || this.tracker.freshnessTip(candidate.base) !== candidate.baseTip || finalView.verdictBase !== candidate.base) throw new MergeError('merge-changed', `${id}: task branch changed during enqueue; try again`);
-                queued = this.queue!.enqueue(finalView, candidate.head, candidate.base, actor, candidate.files);
+                queued = this.queue!.enqueue(finalView, candidate.head, candidate.base, actor, candidate.files, warnings);
               });
               return;
             }

@@ -3951,6 +3951,20 @@ and final review/QA verdicts. `queued <n>` is a FIFO position, not a landing.
 Changes wholly in the documentation/tracker allowlist still land immediately;
 skills and role configuration go through the queue.
 
+Enqueue posts an advisory `merge-demo-warning` to the candidate's item topic
+(Agents when it has none), addressed to the Coordinator and candidate's item
+lead. It names each overlapping open epic and the exact files from its landed
+task commits on dev. An epic is under demo when it has an active, unexpired
+demo lease, or when all task children are closed, the last ticket landed on dev,
+and no hub QA demo verdict has been recorded. Stage QA does not count as a demo
+verdict. Closed epics are excluded; a recorded demo without an active lease is
+excluded. The warning applies across epics regardless of `follows` and enqueue
+still succeeds. The existing `follows` overlap hold remains a refusal.
+Unreadable lease evidence or unavailable/malformed landed-file history instead
+posts `merge-demo-warning-unavailable`, identifying the missing diagnostic while
+enqueue succeeds. Authorization, lane holds and freshness checks still refuse
+under their existing rules.
+
 The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait`
 (default `"10m"`). It runs the resolved `check` (T0) on the immutable merged
 candidate before its runtime tiers, on one slot using

@@ -222,6 +222,14 @@ export class Dispatcher {
       options.core.noticeTo(item?.topic ?? AGENTS.id, { kind: 'merge-queue-dropped', to: [...new Set([requester, lead])], text: `merge-queue-dropped ${entry.item}: ${reason}`, detail: { event: 'merge-queue-dropped', item: entry.item, head: entry.head, reason } });
       this.#guard.changed();
       this.#log({ event: 'merge-queue-dropped', item: entry.item, head: entry.head, reason });
+    }, (view, warnings) => {
+      for (const warning of warnings) options.core.noticeTo(view.topic ?? AGENTS.id, {
+        kind: 'report', to: ['coordinator', `lead ${view.id}`],
+        text: 'unavailable' in warning
+          ? `merge-demo-warning-unavailable ${view.id}: ${warning.unavailable}. Enqueue succeeded.`
+          : `merge-demo-warning ${view.id}: ${warning.epic} demo ${warning.state}; overlapping files: ${warning.files.join(', ')}. Landing may make the demo stale.`,
+        detail: { event: 'unavailable' in warning ? 'merge-demo-warning-unavailable' : 'merge-demo-warning', item: view.id, ...warning },
+      });
     }) : null;
     this.#mergeQueueReady = this.#mergeQueue?.refresh().catch(error => this.#log({ event: 'merge-queue-reconcile-failed', error: String(error) })) ?? Promise.resolve();
     options.tracker?.useMergeQueue(id => this.#mergeQueue?.position(id));

@@ -14,9 +14,12 @@ import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import type { VerificationQueue, MergeBatchStatus } from '../src/protocol.ts';
 import { parseConfig } from '../src/init/config.ts';
-import type { ItemView } from '../src/tracker/tracker.ts';
+import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
+import type { Git } from '../src/tracker/verdict-git.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { batchRebuildReason } from '../src/hub/merge-batch-territory.ts';
 import { verificationFixture } from './verification-fixture.ts';
+import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { HubCore } from '../src/hub/core.ts';
 
 async function checkoutClandFixture(cwd: string) {
@@ -25,7 +28,7 @@ async function checkoutClandFixture(cwd: string) {
   await verificationFixture(cwd);
 }
 
-async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = ['hub/src/parser.ts']) {
+async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>) {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   const repository = parseConfig(await readFile(new URL('../../.cland/config.toml', import.meta.url), 'utf8'), 'repository', {});
@@ -33,23 +36,119 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
   const clock = new FakeClock();
   const tips = manualTips();
   const heads = new Map([['dev', 'a'.repeat(40)], ['t/parser', 'b'.repeat(40)]]);
-  const { discovery, dispatcher, stop } = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git: async (args, input) => {
+  const surfaces = new Map<string, string[]>();
+  const history = { read: undefined as (() => string | null) | undefined };
+  const git: Git = async (args, input) => {
     if (args[0] === 'for-each-ref') return [...heads].map(([branch, head]) => `${head} refs/heads/${branch}`).join('\n');
     if (args[0] === 'show-ref' && args.includes('--exclude-existing=refs/heads/')) return input!.trim().split('\n').filter(ref => !heads.has(ref.slice('refs/heads/'.length))).join('\n');
-    if (args[0] === 'rev-parse') return heads.get(args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '')) ?? null;
+    if (args[0] === 'rev-parse') {
+      const ref = args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '');
+      return heads.get(ref) ?? ([...heads.values()].includes(ref) ? ref : null);
+    }
     if (args[0] === 'merge-base') return 'a'.repeat(40);
     if (args[0] === 'diff') return args.includes('--name-only') ? files.join('\0') + '\0' : 'parser patch';
     if (args[0] === 'patch-id') return 'stable-patch';
+    if (args[0] === 'log') return args.includes('--raw') && history.read ? history.read() : [...surfaces].map(([item, paths]) => `${'c'.repeat(40)}\0${item}\0\0${paths.map(path => `\n:100644 100644 ${'a'.repeat(40)} ${'b'.repeat(40)} M\0${path}\0`).join('')}`).join('\0');
     return null;
-  }, ...options });
+  };
+  if (seed) {
+    // Seed durable landed history through the tracker before the serving hub opens it.
+    const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, git, readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) });
+    try { await seed(tracker); } finally { await tracker.stop(); }
+  }
+  const { discovery, dispatcher, stop } = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
   await tips.refresh();
   const ui = await connectUi(t, discovery);
   const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'review-id', role: 'reviewer' });
   const { item } = await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Parser', size: 'M', branch: 't/parser' });
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'review-1' })).ok, true);
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
-  return { root, ui, dispatcher, item, clock, heads, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
+  return { root, ui, dispatcher, item, clock, heads, surfaces, history, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
 }
+
+function demoLease(clock: FakeClock, epic: string): DropletLease {
+  return {
+    kind: 'droplet', provider: 'digitalocean', lease: 'demo-fixture', name: 'demo-fixture', tags: ['cland'],
+    run: 'demo-fixture', created: clock.now().toISOString(), deadline: new Date(clock.now().getTime() + 60_000).toISOString(),
+    state: 'active', resource: 1, keyId: null, keyName: 'fixture', size: 'fixture', region: 'fixture', priceHourly: 0,
+    demo: { epic, commit: 'a'.repeat(40), ready: true },
+  };
+}
+
+test('enqueue warns about exact landed files of an epic with an active demo without blocking', async t => {
+  const { root, ui, item, clock, surfaces } = await fixture(t, {}, ['hub/src/parser.ts', 'hub/src/other.ts']);
+  await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
+  await value(ui, { type: 'task.edit', item: item.id, assignee: 'impl' });
+  const claim = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: item.id });
+  assert.equal(claim.ok, true, claim.error);
+  const epic = (await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Demo epic', kind: 'epic' })).item;
+  const child = (await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Demo surface', size: 'S', parent: epic.id })).item;
+  surfaces.set(child.id, ['hub/src/parser.ts', 'hub/src/demo-only.ts']);
+  const { topic } = await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Candidate', item: item.id });
+  await writeLease(root, demoLease(clock, epic.id));
+  assert.deepEqual(await value(ui, { type: 'merge', item: item.id }), { item: item.id, queued: 1 });
+  const history = await value<{ messages: Array<{ text: string; to: string[] }> }>(ui, { type: 'topic.history', topic: topic.id, limit: 100 });
+  const warning = history.messages.find(message => message.text.startsWith('merge-demo-warning'));
+  assert.equal(warning?.text, `merge-demo-warning ${item.id}: ${epic.id} demo running; overlapping files: hub/src/parser.ts. Landing may make the demo stale.`);
+  assert.ok(warning.to.includes('coord'));
+  assert.ok(warning.to.includes('impl'));
+  assert.equal((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries.length, 1);
+});
+
+for (const mode of ['due', 'stage-only', 'building', 'recorded', 'recorded-active', 'expired', 'released', 'closed', 'unlanded', 'unrelated'] as const) test(`enqueue demo warning: ${mode}`, async t => {
+  let epic!: ItemView, child!: ItemView;
+  const human = { id: 'human', name: 'human', role: null, human: true };
+  const { root, ui, item, clock, surfaces } = await fixture(t, {}, ['hub/src/parser.ts'], async tracker => {
+    epic = await tracker.create(human, { title: 'Pending demo', kind: 'epic' });
+    child = await tracker.create(human, { title: 'Landed surface', size: 'S', parent: epic.id });
+    await tracker.close(human, child.id);
+    if (mode !== 'unlanded') tracker.recordMerge(child.id, { commit: 'c'.repeat(40), base: 'dev', branch: 't/demo', tip: 'd'.repeat(40) });
+    if (mode === 'building') await tracker.create(human, { title: 'Still building', size: 'S', parent: epic.id });
+    if (mode === 'stage-only') {
+      await tracker.setPlan(human, epic.id, JSON.stringify({ stages: [{ name: 'Done stage', qa: { scope: 'affected', when: 'after-stage' }, lanes: [[child.id]] }] }));
+      await tracker.comment({ id: 'qa', name: 'qa', role: 'qa' }, epic.id, 'Stage complete', { verdict: 'qa', result: 'clear', run: 'stage-recorded', stage: 'Done stage', commit: 'a'.repeat(40) });
+    }
+    if (['recorded', 'recorded-active', 'expired', 'released'].includes(mode)) await tracker.comment({ id: 'qa', name: 'qa', role: 'qa' }, epic.id, 'Demo complete', { verdict: 'qa', result: 'clear', run: 'demo-recorded', commit: 'a'.repeat(40) });
+    if (mode === 'closed') await tracker.close(human, epic.id, 'Closed demo', undefined, undefined, 'fixture closure');
+  });
+  surfaces.set(child.id, [mode === 'unrelated' ? 'hub/src/demo-only.ts' : 'hub/src/parser.ts']);
+  if (['recorded-active', 'expired', 'released'].includes(mode)) {
+    // A new demo starts after the already-recorded verdict, avoiding its automatic lease cleanup.
+    await clock.advance(1);
+    await writeLease(root, { ...demoLease(clock, epic.id), ...(mode === 'expired' ? { deadline: clock.now().toISOString() } : {}), state: mode === 'released' ? 'released' : 'active' });
+  }
+  const { topic } = await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Candidate', item: item.id });
+  assert.deepEqual(await value(ui, { type: 'merge', item: item.id }), { item: item.id, queued: 1 });
+  const history = await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: topic.id, limit: 100 });
+  assert.deepEqual(history.messages.filter(message => message.text.startsWith('merge-demo-warning')).map(message => message.text), ['due', 'stage-only', 'recorded-active'].includes(mode) ? [
+    `merge-demo-warning ${item.id}: ${epic.id} demo ${mode === 'recorded-active' ? 'running' : 'due'}; overlapping files: hub/src/parser.ts. Landing may make the demo stale.`,
+  ] : []);
+});
+
+for (const fault of ['lease', 'history-unavailable', 'history-malformed', 'history-throw'] as const) test(`enqueue survives unavailable demo diagnostics: ${fault}`, async t => {
+  let epic!: ItemView;
+  const human = { id: 'human', name: 'human', role: null, human: true };
+  const { root, ui, item, history } = await fixture(t, {}, ['hub/src/parser.ts'], async tracker => {
+    epic = await tracker.create(human, { title: 'Demo due', kind: 'epic' });
+    const child = await tracker.create(human, { title: 'Landed task', size: 'S', parent: epic.id });
+    await tracker.close(human, child.id);
+    tracker.recordMerge(child.id, { commit: 'c'.repeat(40), base: 'dev', branch: 't/demo', tip: 'd'.repeat(40) });
+  });
+  if (fault === 'lease') {
+    const damaged = join(root, '.cland/run/executor/leases/damaged');
+    await mkdir(damaged, { recursive: true });
+    await writeFile(join(damaged, 'lease.json'), '{}');
+  } else history.read = () => {
+    if (fault === 'history-throw') throw new Error('fixture Git read failed');
+    return fault === 'history-unavailable' ? null : 'malformed history';
+  };
+  const { topic } = await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Candidate', item: item.id });
+  assert.deepEqual(await value(ui, { type: 'merge', item: item.id }), { item: item.id, queued: 1 });
+  assert.equal((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries.length, 1);
+  const messages = (await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: topic.id, limit: 100 })).messages;
+  assert.ok(messages.some(message => message.text === `merge-demo-warning-unavailable ${item.id}: ${fault === 'lease' ? 'demo leases unavailable' : `${epic.id} landed files unavailable`}. Enqueue succeeded.`));
+});
 
 test('hub serves queue and status frames after its batch blocked notice throws', async t => {
   const logs: Record<string, unknown>[] = [];
