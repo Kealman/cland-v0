@@ -29,6 +29,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/permissions.test.ts`](../../../hub/test/permissions.test.ts) | [Notes](hub-test-permissions.test.ts.md) |
 | [`hub/test/planned-stage.test.ts`](../../../hub/test/planned-stage.test.ts) | [Notes](hub-test-planned-stage.test.ts.md) |
 | [`hub/test/project-probes.test.ts`](../../../hub/test/project-probes.test.ts) | [Notes](hub-test-project-probes.test.ts.md) |
+| [`hub/test/quarantine-runner.test.ts`](../../../hub/test/quarantine-runner.test.ts) | [Notes](hub-test-quarantine-runner.test.ts.md) |
 | [`hub/test/merge-batches.test.ts`](../../../hub/test/merge-batches.test.ts) | [Notes](hub-test-merge-batches.test.ts.md) |
 | [`hub/test/merge-checkout.test.ts`](../../../hub/test/merge-checkout.test.ts) | [Notes](hub-test-merge-checkout.test.ts.md) |
 | [`hub/test/session-archive.test.ts`](../../../hub/test/session-archive.test.ts) | [Notes](hub-test-session-archive.test.ts.md) |

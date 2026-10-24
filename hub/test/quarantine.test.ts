@@ -1,6 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { lintQuarantineManifest, recordQuarantineResults, type QuarantineHistory, type QuarantineResult } from '../src/suite-quarantine.ts';
+import { Readable } from 'node:stream';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import Reporter from './quarantine-reporter.ts';
+
+test('receipt publication preserves the previous file when staging fails and publishes complete JSON on flush', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-receipt-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, 'receipt.json');
+  await writeFile(path, 'previous receipt');
+  await mkdir(`${path}.tmp`);
+  const publish = async () => {
+    const reporter = Readable.from([{ type: 'test:summary', data: { counts: { cancelled: 0 } } }]).pipe(new Reporter(path));
+    let output = '';
+    for await (const chunk of reporter) output += chunk;
+    return output;
+  };
+  await assert.rejects(publish(), { code: 'EISDIR' });
+  assert.equal(await readFile(path, 'utf8'), 'previous receipt');
+  // No reporter writer remains after the rejected stream.
+  await rm(`${path}.tmp`, { recursive: true });
+  assert.equal(await publish(), '', 'the atomic file replaces streamed JSON');
+  assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), { complete: true, cancelled: 0, failures: [], results: [], excused: 0 });
+  await assert.rejects(readFile(`${path}.tmp`), { code: 'ENOENT' });
+});
 
 test('quarantine requires an owner, a reason and at most seven days, and expiry names the test', () => {
   const identity = 'hub/test/example.test.ts::known flake';

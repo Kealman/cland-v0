@@ -26,9 +26,11 @@ import { durationBudgetReport } from '../src/suite-duration-budget.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
 import { assertTestAdmission } from '../src/test-admission.ts';
-import { readQuarantineManifest, type QuarantineReceipt } from '../src/suite-quarantine.ts';
+import { readQuarantineManifest, readQuarantineReceipt } from '../src/suite-quarantine.ts';
 import { AdmissionTimeout } from '../src/test-admission-outcome.ts';
 import { suiteTestEnv } from '../src/verification-occasion.ts';
+import { suiteProgress, type TestProgress } from '../src/suite-progress.ts';
+import { StringDecoder } from 'node:string_decoder';
 
 import { webPhaseAvailable, type WebPrerequisite } from '../src/web-phase.ts';
 
@@ -165,6 +167,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       delete env.CLAND_COVERAGE_OUTPUT;
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_TEST_QUARANTINE;
+      delete env.CLAND_TEST_QUARANTINE_RECEIPT;
       delete env.CLAND_TEST_TIER_ASSIGNMENTS;
       delete env.CLAND_TEST_TIER_REPORT;
       // Timing accounting exists only when this phase has a duration manifest.
@@ -214,12 +217,35 @@ process.chdir(cwd);`);
       const checkQuarantine = args.includes('--test');
       if (checkQuarantine) {
         env.CLAND_TEST_QUARANTINE = JSON.stringify(quarantine ?? { version: 1, tests: {} });
-        reporters.push(`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`);
+        env.CLAND_TEST_QUARANTINE_RECEIPT = quarantinePath;
+        reporters.push(`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout');
       }
       await prepareRunnerFixture(root);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-      active = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env: runnerFixtureEnvironment(root, env), detached: true, stdio: 'inherit' });
+      active = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env: runnerFixtureEnvironment(root, env), detached: true, stdio: ['inherit', 'pipe', 'pipe'] });
+      const unfinished = new Map<string, TestProgress>();
+      const progressDecoder = new StringDecoder('utf8');
+      let pendingProgress = '';
+      let stderrTail = Buffer.alloc(0);
+      active.stdout!.on('data', (chunk: Buffer) => {
+        process.stdout.write(chunk);
+        pendingProgress += progressDecoder.write(chunk);
+        const lines = pendingProgress.split('\n'); pendingProgress = lines.pop()!;
+        for (const line of lines) {
+          if (!line.startsWith('suite progress ')) continue;
+          try {
+            const row = JSON.parse(line.slice('suite progress '.length)) as TestProgress;
+            if (row.event === 'start') unfinished.set(row.id, row);
+            else if (row.event === 'finish' && row.outcome !== 'cancelled') unfinished.delete(row.id);
+          } catch { /* A torn progress line cannot erase observed starts. */ }
+        }
+      });
+      active.stderr!.on('data', (chunk: Buffer) => {
+        process.stderr.write(chunk);
+        stderrTail = Buffer.concat([stderrTail, chunk]).subarray(-65_536);
+      });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
+      const closed = new Promise<void>(resolve => active!.once('close', () => resolve()));
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
@@ -258,12 +284,19 @@ process.chdir(cwd);`);
         const key = row ? JSON.stringify([row.file, row.name, row.resource]) : line;
         if (!reportedTrips.has(key)) { reportedTrips.add(key); process.stdout.write(line + '\n'); }
       }
+      let incomplete = false;
       if (checkQuarantine) {
-        const receipt = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
-        for (const result of receipt.results) process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
-        process.stdout.write(`suite test failures ${JSON.stringify(receipt.failures)}\n`);
-        if (receipt.admissionTimeouts?.length) process.stdout.write(`suite admission timeouts ${JSON.stringify(receipt.admissionTimeouts)}\n`);
-        if (code === 1 && receipt.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && !receipt.admissionTimeouts?.length && receipt.excused > 0) code = 0;
+        const receipt = await readQuarantineReceipt(quarantinePath);
+        if (!receipt?.complete) {
+          incomplete = true;
+          code ||= 1;
+        }
+        if (receipt) {
+          for (const result of receipt.results) process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
+          process.stdout.write(`suite test failures ${JSON.stringify(receipt.failures)}\n`);
+          if (receipt.admissionTimeouts?.length) process.stdout.write(`suite admission timeouts ${JSON.stringify(receipt.admissionTimeouts)}\n`);
+          if (code === 1 && receipt.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && !receipt.admissionTimeouts?.length && receipt.excused > 0) code = 0;
+        }
       }
       // Resource policy is independent of assertion quarantine or caught errors.
       if (tierFailed) code = 1;
@@ -274,7 +307,7 @@ process.chdir(cwd);`);
         process.stdout.write(`budget${durationManifest?.budget.mode === 'enforce' ? '' : ' (report only)'}: Web phase wall ${seconds.toFixed(3)} s; budget ${limit} s${seconds > limit ? '; over budget' : ''}\n`);
         budgetFailed = seconds > limit && durationManifest?.budget.mode === 'enforce';
       }
-      if (durationManifest && args.includes('--test')) {
+      if (durationManifest && args.includes('--test') && !incomplete) {
         const budgetStarted = performance.now();
         try {
           const records = (await readFile(timingsPath, 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as TestTiming | { overheadMs: number });
@@ -295,6 +328,15 @@ process.chdir(cwd);`);
         for (const file of checkedFiles) durationCheckFiles.add(file);
       }
       await sweep(holder);
+      // Sweep surviving owned writers before waiting for inherited pipes: an
+      // exited coordinator can leave a descendant holding stdout/stderr open.
+      await closed;
+      if (incomplete) {
+        const progress = suiteProgress([...unfinished.values()].map(row => `suite progress ${JSON.stringify(row)}`).join('\n'), Date.now());
+        const identities = progress?.unfinished.map(row => `${row.file} :: ${row.name}`) ?? [];
+        for (const identity of identities.length ? identities : ['in-flight test unavailable (no start receipt)']) process.stderr.write(`incomplete: receipt missing; ${identity}\n`);
+        process.stderr.write(`test process exit ${active.exitCode}; signal ${active.signalCode ?? 'none'}\nstderr tail:\n${stderrTail.toString() || '(empty)\n'}`);
+      }
       root = undefined;
       active = undefined; activeIdentity = null;
       for (const lease of machine.reverse()) await lease.release();

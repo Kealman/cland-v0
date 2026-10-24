@@ -13,25 +13,102 @@ import { ownDirectory, ownProcess } from './process-cleanup.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { failingTests } from '../src/hub/shared-defects.ts';
 import { lintHubShards, lintHubShardTree } from '../src/suite-shards.ts';
+import { ensureAccountFixture } from './account-fixture-env.ts';
 
 const exec = promisify(execFile);
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
-async function fixture(t: TestContext, source: string, loadGate = false) {
+type ReceiptFault = 'empty' | 'truncated' | 'missing';
+async function fixture(t: TestContext, source: string, loadGate = false, fault?: ReceiptFault | `repetition-${ReceiptFault}` | 'split-unicode') {
+  await ensureAccountFixture();
   const cwd = await mkdtemp(join(tmpdir(), 'cland-quarantine-'));
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   await writeFile(join(cwd, 'hub/test/fixture.test.ts'), source);
+  await writeFile(join(cwd, 'native-reporter.mjs'), `export default async function* (source) { process.stderr.write('native phase stderr tail\\n'); for await (const event of source) {} }`);
   const added = new Date().toISOString().slice(0, 10);
   const expires = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   await writeFile(join(cwd, 'hub/test/quarantine.json'), JSON.stringify({ version: 1, tests: {
     'hub/test/fixture.test.ts::known flake': { owner: 'T-657', reason: 'Planted regression fixture.', added, expires },
   } }));
   if (loadGate) await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, budget: { testSeconds: 5, fileSeconds: 60 }, tests: {}, files: {}, allow: {} }));
-  const code = `import { runSuite } from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', 'hub/test/fixture.test.ts']], ${JSON.stringify({ cwd, force: true, selection: { mode: 'hub-only', files: [], reason: 'fixture', loadGate } })});`;
-  const child = exec(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(cwd, process.env), cwd });
+  // Stop the real phase only after its execution-order start receipt. Fault the
+  // receipt read at the filesystem edge, after the writer has stopped.
+  const inject = fault ? `import cp from 'node:child_process'; import fs from 'node:fs/promises'; import {syncBuiltinESMExports} from 'node:module';
+const spawn = cp.spawn; const readFile = fs.readFile;
+cp.spawn = (exe, args, options) => {
+  const child = spawn(exe, ['--test-reporter=${join(cwd, 'native-reporter.mjs')}', '--test-reporter-destination=stdout', ...args], {...options, stdio: ['ignore', 'pipe', 'pipe']});
+  ${fault === 'split-unicode' ? `const emit = child.stdout.emit.bind(child.stdout);
+  child.stdout.emit = (event, chunk, ...rest) => {
+    if (event === 'data' && Buffer.isBuffer(chunk)) {
+      let start = 0; let at = chunk.indexOf(Buffer.from('🦊'));
+      while (at >= 0) {
+        emit(event, chunk.subarray(start, at + 1), ...rest); start = at + 1;
+        at = chunk.indexOf(Buffer.from('🦊'), start);
+      }
+      if (start) return emit(event, chunk.subarray(start), ...rest);
+    }
+    return emit(event, chunk, ...rest);
+  };` : ''}
+  let pending = '';
+  child.stdout.on('data', chunk => {
+    if (options.stdio === 'inherit' || options.stdio[1] === 'inherit') process.stdout.write(chunk); pending += chunk;
+    const lines = pending.split('\\n'); pending = lines.pop();
+    for (const line of lines) if (line.startsWith('suite progress ')) {
+      const row = JSON.parse(line.slice('suite progress '.length));
+      if (row.event === 'start' && row.name.startsWith('held test')) process.kill(-child.pid, 'SIGKILL');
+    }
+  });
+  child.stderr.on('data', chunk => { if (options.stdio === 'inherit' || options.stdio[2] === 'inherit') process.stderr.write(chunk); });
+  return child;
+};
+fs.readFile = async (path, ...args) => {
+  if (${fault?.startsWith('repetition-') ? '/load-\\d+\\.jsonl\\.quarantine$/' : '/quarantine-0\\.json$/'}.test(String(path))) {
+    ${fault?.endsWith('missing') ? "throw Object.assign(new Error('missing fixture receipt'), {code: 'ENOENT'});" : `return ${JSON.stringify(fault?.endsWith('empty') ? '' : '{"complete":')};`}
+  }
+  return readFile(path, ...args);
+};
+syncBuiltinESMExports();` : '';
+  const code = `${inject} const { runSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await runSuite([['--test', 'hub/test/fixture.test.ts']], ${JSON.stringify({ cwd, force: true, selection: { mode: 'hub-only', files: [], reason: 'fixture', loadGate } })});`;
+  const child = exec(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(cwd, process.env), cwd, timeout: 10_000 });
   ownProcess(t, child.child.pid);
   return child.then(r => ({ code: 0, output: r.stdout + r.stderr }), (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, output: e.stdout + e.stderr }));
 }
+
+for (const fault of ['empty', 'truncated', 'missing'] as const) test(`${fault} receipt after phase death preserves the in-flight test and native diagnostics`, async t => {
+  // Keep the test alive until the observed start triggers process-group death;
+  // no elapsed-time assertion or cancellation race supplies the boundary.
+  const result = await fixture(t, `import test from 'node:test'; test('held test', async () => { setInterval(() => {}, 1000); await new Promise(() => {}); });`, false, fault);
+  assert.equal(result.code, 143, result.output);
+  assert.match(result.output, /incomplete: receipt missing.*hub\/test\/fixture.test.ts.*held test/);
+  assert.match(result.output, /test process exit null; signal SIGKILL/);
+  assert.match(result.output, /stderr tail:\n[\s\S]*native phase stderr tail/);
+  assert.doesNotMatch(result.output, /SyntaxError/);
+});
+
+test('a missing receipt cannot turn a successful native exit into a green phase', async t => {
+  const result = await fixture(t, `import test from 'node:test'; test('completed test', () => {});`, false, 'missing');
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /incomplete: receipt missing/);
+  assert.match(result.output, /test process exit 0; signal none/);
+  assert.match(result.output, /stderr tail:\n[\s\S]*native phase stderr tail/);
+  assert.doesNotMatch(result.output, /SyntaxError/);
+});
+
+for (const fault of ['empty', 'truncated', 'missing'] as const) test(`${fault} quarantined repetition receipt retains its native diagnostics without an excuse`, async t => {
+  const result = await fixture(t, `import test from 'node:test'; test('known flake', () => { throw Error('planted repetition failure'); });`, true, `repetition-${fault}`);
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /incomplete: receipt missing.*hub\/test\/fixture.test.ts.*known flake/);
+  assert.match(result.output, /test process exit 1; signal none/);
+  assert.match(result.output, /stderr tail:\n[\s\S]*native phase stderr tail/);
+  assert.match(result.output, /known flake 0\/5 passed/);
+  assert.doesNotMatch(result.output, /SyntaxError|5\/5 quarantined failures/);
+});
+
+test('an interrupted phase retains a Unicode in-flight identity across a UTF-8 chunk boundary', async t => {
+  const result = await fixture(t, `import test from 'node:test'; test('held test 🦊', async () => { setInterval(() => {}, 1000); await new Promise(() => {}); });`, false, 'split-unicode');
+  assert.equal(result.code, 143, result.output);
+  assert.match(result.output, /incomplete: receipt missing.*hub\/test\/fixture.test.ts.*held test 🦊/);
+});
 
 test('a quarantined failure still runs, reports separately and leaves the run green', async t => {
   const result = await fixture(t, `import test from 'node:test'; test('known flake', () => { throw new Error('planted failure'); });`);

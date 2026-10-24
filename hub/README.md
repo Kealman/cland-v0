@@ -3956,6 +3956,14 @@ and absent tests add no pass. Streaks persist across restart and update atomical
 with publication. Renewing an entry resets its streak. The Coordinator removes
 cleared entries from the committed manifest; the hub never rewrites it.
 
+Phase and quarantined repetition receipts publish through a staging file and
+rename. A missing, empty or truncated phase receipt produces
+`incomplete: receipt missing` with the execution-order in-flight test identities
+(or an explicit unavailable identity), the native process exit/signal and up to
+64 KiB of its stderr tail. The runner preserves a non-zero native status and
+turns a zero status into failure; unusable receipts never excuse quarantine or
+supply duration-budget evidence.
+
 `hub/test/durations.json` records each hub and Neovim test's median time and each
 file's summed top-level test-time, and declares tier budgets in `budget.T1`
 through `budget.T4`. `budget.mode` selects `report` or `enforce`; omission keeps

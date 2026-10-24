@@ -5,14 +5,19 @@ import { relative } from 'node:path';
 import { Transform, type TransformCallback } from 'node:stream';
 import type { QuarantineManifest, QuarantineReceipt } from '../src/suite-quarantine.ts';
 import { admissionTimeoutMessage } from '../src/test-admission-outcome.ts';
+import { rename, writeFile } from 'node:fs/promises';
 
 export default class QuarantineReporter extends Transform {
   #manifest: QuarantineManifest = JSON.parse(process.env.CLAND_TEST_QUARANTINE ?? '{"version":1,"tests":{}}');
   #receipt: QuarantineReceipt = { complete: false, cancelled: 0, failures: [], results: [], excused: 0 };
   #children = new Map<string, Array<{ file: string; name: string; safe: boolean }>>();
   #admissions = new Map<string, string>();
-  constructor() {
+  readonly #receiptPath: string | undefined;
+  // Unit consumers inside a test worker retain the stream contract and cannot
+  // overwrite their containing coordinator's phase receipt.
+  constructor(receiptPath = process.env.NODE_TEST_CONTEXT ? undefined : process.env.CLAND_TEST_QUARANTINE_RECEIPT) {
     super({ writableObjectMode: true });
+    this.#receiptPath = receiptPath;
     this.on('pipe', source => { if (source.getMaxListeners() > 0) source.setMaxListeners(Math.max(source.getMaxListeners(), 20)); });
   }
   override _transform(event: TestEvent, _encoding: BufferEncoding, callback: TransformCallback): void {
@@ -55,6 +60,11 @@ export default class QuarantineReporter extends Transform {
   override _flush(callback: TransformCallback): void {
     if (this.#admissions.size) this.#receipt.admissionTimeouts = [...this.#admissions].map(([file, message]) => ({ file, message }));
     for (const pending of this.#children.values()) this.#receipt.failures.push(...pending.map(({ file, name }) => ({ file, name })));
-    callback(null, JSON.stringify(this.#receipt));
+    const text = JSON.stringify(this.#receipt);
+    if (!this.#receiptPath) { callback(null, text); return; }
+    // A killed coordinator may leave staging bytes, never a published partial
+    // receipt. Each phase/repetition owns a distinct path in its sealed root.
+    const path = this.#receiptPath;
+    void writeFile(`${path}.tmp`, text, { mode: 0o600 }).then(() => rename(`${path}.tmp`, path)).then(() => callback(), error => callback(error));
   }
 }

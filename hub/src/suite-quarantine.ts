@@ -9,6 +9,16 @@ export type QuarantineResult = { file: string; name: string; outcome: 'pass' | '
 export type TestFailure = { file: string; name: string };
 export type QuarantineReceipt = { complete: boolean; cancelled: number; failures: TestFailure[]; results: QuarantineResult[]; excused: number; admissionTimeouts?: AdmissionTimeoutReceipt[] };
 
+/** An interrupted publisher supplies no quarantine authority. Keep I/O failures
+ * other than absence visible; parsing a torn receipt must not hide native exit. */
+export async function readQuarantineReceipt(path: string): Promise<QuarantineReceipt | null> {
+  try { return JSON.parse(await readFile(path, 'utf8')) as QuarantineReceipt; }
+  catch (error) {
+    if (error instanceof SyntaxError || (error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 /** Structured runner records take precedence over Node's raw diagnostic rendering. */
 export function suiteTestFailures(log: string): TestFailure[] | null {
   const lines = log.split('\n').filter(line => line.startsWith('suite test failures '));

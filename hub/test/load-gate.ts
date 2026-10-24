@@ -11,7 +11,7 @@ import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } fr
 import type { LoadGateEvent } from './load-gate-reporter.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
-import type { QuarantineManifest, QuarantineReceipt } from '../src/suite-quarantine.ts';
+import { readQuarantineReceipt, type QuarantineManifest } from '../src/suite-quarantine.ts';
 import { admissionTimeoutMessage } from '../src/test-admission-outcome.ts';
 
 export const loadGateReporter = fileURLToPath(new URL('./load-gate-reporter.ts', import.meta.url));
@@ -78,6 +78,9 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       const quarantinePath = `${receipt}.quarantine`;
       const gate = `${receipt}.start`;
       const env: NodeJS.ProcessEnv = { ...options.env, CLAND_LOAD_GATE_START: gate, CLAND_TEST_TIMING_RECEIPTS: '0' };
+      // A repetition must never publish into its ordinary phase's receipt.
+      delete env.CLAND_TEST_QUARANTINE_RECEIPT;
+      if (quarantine) env.CLAND_TEST_QUARANTINE_RECEIPT = quarantinePath;
       const tierReceipt = `${receipt}.tiers`;
       if (env.CLAND_TEST_TIER_ASSIGNMENTS) env.CLAND_TEST_TIER_REPORT = tierReceipt;
       delete env.NODE_V8_COVERAGE;
@@ -86,10 +89,16 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       // Repetitions share execution receipts with the ordinary phase, but their
       // fresh reporter identities and disabled timings keep accounting separate.
       const progress = [`--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout'];
-      const reporters = quarantine ? [`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`] : [];
+      const reporters = quarantine ? [`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout'] : [];
       await prepareRunnerFixture(options.root);
       if (options.interrupted()) break;
-      const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, ...progress, resolve(options.cwd, event.file)], { cwd: options.root, env: runnerFixtureEnvironment(options.root, env), detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
+      const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, ...progress, resolve(options.cwd, event.file)], { cwd: options.root, env: runnerFixtureEnvironment(options.root, env), detached: true, stdio: ['ignore', 'inherit', 'pipe'] });
+      let stderrTail = Buffer.alloc(0);
+      child.stderr!.on('data', (chunk: Buffer) => {
+        process.stderr.write(chunk);
+        stderrTail = Buffer.concat([stderrTail, chunk]).subarray(-65_536);
+      });
+      const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
       const done = new Promise<number>((resolve, reject) => {
         child.once('error', reject);
         child.once('exit', (code) => resolve(code ?? 1));
@@ -104,6 +113,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       options.active.add(identity);
       let timer: NodeJS.Timeout | undefined;
       let timedOut = false;
+      let incomplete = false;
       try {
         if (options.interrupted()) await cleanupOwnedProcesses([identity]);
         else await writeFile(gate, 'ready');
@@ -139,8 +149,9 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         }
         let quarantined = false;
         if (!admission && !tierFailed && !timedOut && code === 1 && quarantine && results.length === 1) {
-          const checked = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
-          if (checked.complete && checked.cancelled === 0 && !checked.failures.length && checked.excused > 0) {
+          const checked = await readQuarantineReceipt(quarantinePath);
+          incomplete = !checked?.complete;
+          if (checked?.complete && checked.cancelled === 0 && !checked.failures.length && checked.excused > 0) {
             excused++;
             quarantined = true;
             for (const result of checked.results) if (result.outcome === 'fail') process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
@@ -159,6 +170,8 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       } finally {
         clearTimeout(timer);
         await cleanupOwnedProcesses([identity]);
+        await closed;
+        if (incomplete) process.stderr.write(`incomplete: receipt missing; ${event.file} :: ${event.name}; repetition ${repetition + 1}\ntest process exit ${child.exitCode}; signal ${child.signalCode ?? 'none'}\nstderr tail:\n${stderrTail.toString() || '(empty)\n'}`);
         options.active.delete(identity);
       }
     }
