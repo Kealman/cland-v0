@@ -69,7 +69,7 @@ test('a forced human package runner starts beside a holder and journals the exac
 
 test('session-shell and inherited-worker package runners never request a human slot', async t => {
   const f = await humanRunnerFixture(t);
-  const session = f.start([], { CLAND_SESSION_NAME: 'isolated-session' });
+  const session = f.start([], f.env);
   assert.equal(await session.done, 0, session.output());
   assert.doesNotMatch(session.output(), /suite queue|no hub queue/);
   // The real worker acquires and exports its verified lease to this package runner.

@@ -3,7 +3,8 @@
 // Hub process starts: 0; fixture reseeds cover between sequential projectHub instances, then reopens once. Only one hub is live at a time.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, clandWithEnv, connectUi, eventually, nativeProjectHub as projectHub, spawnSpoke } from '../harness.ts';
+import { sessionClandWithEnv as clandWithEnv } from '../session-credential-fixture.ts';
+import { cland, connectUi, eventually, nativeProjectHub as projectHub, spawnSpoke } from '../harness.ts';
 import type { ItemView } from '../../src/tracker/tracker.ts';
 import { git, fixture } from '../stage-qa-support.ts';
 

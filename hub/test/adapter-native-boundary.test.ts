@@ -16,6 +16,7 @@ import type { AdapterHost } from '../src/adapters/contract.ts';
 import { ToolForbidden } from '../src/roles/permissions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { eventually, tempProject } from './harness.ts';
+import { sessionRunDirectory, writeSessionCredential } from '../../shared/session-credential.ts';
 
 async function guarded(work: () => Promise<void>): Promise<void> {
   const savedFs = Object.fromEntries(Object.entries(fs).filter(([key, value]) => key.endsWith('Sync') && typeof value === 'function'));
@@ -334,6 +335,43 @@ for (const Adapter of adapters) {
     assert.ok(f.children.every(p => p.exitCode !== null || p.signalCode !== null), 'owned child has exited before rollback returns');
   });
 }
+
+for (const existing of [false, true]) test(`ClaudeCodeAdapter: partial private settings failure ${existing ? 'restores previous files' : 'removes new files'} while preserving credentials and peers`, async t => {
+  const f = await fixture(t, ClaudeCodeAdapter);
+  const sessionId = 'owned-private-settings';
+  const clandDir = join(f.root, '.cland');
+  await writeSessionCredential(clandDir, sessionId, 'synthetic-owned-credential');
+  await writeSessionCredential(clandDir, 'peer-session', 'synthetic-peer-credential');
+  const directory = sessionRunDirectory(clandDir, sessionId);
+  const peer = sessionRunDirectory(clandDir, 'peer-session');
+  const credential = await fsp.readFile(join(directory, 'credential.json'));
+  const peerCredential = await fsp.readFile(join(peer, 'credential.json'));
+  const files = ['mcp.json', 'settings.json'].map(file => join(directory, file));
+  if (existing) for (const file of files) await fsp.writeFile(file, 'previous private settings', { mode: 0o600 });
+  const before = existing ? await Promise.all(files.map(async file => ({ content: await fsp.readFile(file), mode: (await fsp.stat(file)).mode }))) : [];
+  const native = fsp.writeFile;
+  let fired = false;
+  t.mock.method(fsp, 'writeFile', async (...args: unknown[]) => {
+    if (!fired && String(args[0]) === files[1]) {
+      fired = true;
+      await Reflect.apply(native, fsp, [args[0], 'partial settings', ...args.slice(2)]);
+      throw new Error('planted partial private settings failure');
+    }
+    return Reflect.apply(native, fsp, args);
+  });
+  syncBuiltinESMExports();
+  await guarded(async () => { await assert.rejects(f.adapter.spawn({ ...f.request, sessionId }), /planted partial private settings failure/); });
+  assert.equal(fired, true);
+  assert.equal(f.children.length, 0, 'private staging fails before the native launch');
+  assert.deepEqual(await fsp.readFile(join(directory, 'credential.json')), credential);
+  assert.deepEqual(await fsp.readFile(join(peer, 'credential.json')), peerCredential);
+  if (existing) {
+    for (const [i, file] of files.entries()) {
+      assert.deepEqual(await fsp.readFile(file), before[i]!.content);
+      assert.equal((await fsp.stat(file)).mode, before[i]!.mode);
+    }
+  } else assert.deepEqual(await fsp.readdir(directory), ['credential.json']);
+});
 
 for (const Adapter of adapters) test(`${Adapter.name}: result conversion and logging share one resumed scope`, async t => {
   const f = await fixture(t, Adapter);

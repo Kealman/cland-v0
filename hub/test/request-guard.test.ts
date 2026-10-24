@@ -103,7 +103,7 @@ for (const aggregate of [false, true]) for (const operation of ['launch', 'item-
       interpret: () => ({}),
       stop: async () => { await wait(); },
       resume: async (p) => {
-        // A relaunch reaches this synchronous prefix immediately after publishing its stopped row.
+        // Other lifecycle paths can continue directly after publishing their process row.
         if (nextPart) { nextPart = false; block(200); }
         await wait();
         return { found: true, process: { ...p, status: 'running' }, state: 'idle' };
@@ -126,6 +126,10 @@ for (const aggregate of [false, true]) for (const operation of ['launch', 'item-
     onCleanup(t, unsubscribeState);
     const unsubscribe = hub.core.subscribe((event) => {
       if (event.type !== 'session.process') return;
+      // T-1220 awaits credential provisioning after the stopped relaunch row.
+      // Plant both aggregate blocks in the post-provisioning running-row scope:
+      // publication here, then the state observer in that same continuation.
+      if (aggregate && operation === 'relaunch' && event.process.status !== 'running') return;
       publications++;
       if (publications !== 1) return;
       block(aggregate ? 200 : 400);

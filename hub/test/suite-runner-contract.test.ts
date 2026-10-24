@@ -90,6 +90,9 @@ test('pre-V1 package runners acquire their own compatibility locks without a sel
 // A live package runner retains its PID identity across legacy/UTC observer timezones.
 for (const legacy of [false, true]) test(`verify queue preserves a live ${legacy ? 'legacy' : 'UTC'} package holder across observer timezones`, async t => {
   const f = await fixture(t, 'node -e "process.exit(0)"', undefined, '', { TZ: 'Pacific/Honolulu' });
+  // Arm the buffering observer before starting the holder: unchanged queue
+  // snapshots are not rebroadcast for a subscriber that arrives afterwards.
+  assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
   const lock = join(f.root, 'suite.lock');
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const marker = join(f.root, 'hand-started');
@@ -114,7 +117,6 @@ for (const legacy of [false, true]) test(`verify queue preserves a live ${legacy
   }
   const owner = JSON.parse(await readFile(`${lock}.owner`, 'utf8')) as { pid: number; since: string; token: string };
   assert.equal(owner.pid, child.pid);
-  assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
   const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   assert.equal(queue.holder?.kind, 'hand run', output);
   assert.equal(queue.holder?.pid, child.pid);

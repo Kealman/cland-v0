@@ -2332,6 +2332,13 @@ See [Accounts and limits](#accounts-and-limits) for the registry, process enviro
 
 On every launch and relaunch, the adapter reads `.claude/settings.json` and `.claude/settings.local.json` in the session's working directory (the project root or the item's task worktree). Only when neither file sets `worktree.bgIsolation` does `--settings` supply `{"worktree":{"bgIsolation":"none"}}`. Unreadable or malformed files count as not setting the key. Inline settings outrank every settings file, so passing this fallback unconditionally would defeat a human's local override. Neither file is written.
 
+The adapter stages its private MCP and settings files with launch-owned rollback.
+A failed launch removes new files and empty directories it created, or restores
+the previous private file bytes and modes on relaunch. Existing shell credentials
+and peer-session files remain owned by their sessions. A started background
+harness must stop successfully before rollback; a stop failure keeps its files
+with the watched process.
+
 | | Surface (Claude Code 2.1.294) |
 | --- | --- |
 | spawn | Uses the saved account’s `CLAUDE_CONFIG_DIR`; named accounts remove `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN`. `claude --bg --session-id <uuid> --name <name> [--model m] [--effort e] --mcp-config <private-file> --settings <private-file> --plugin-dir hub/mod/cland`, in the session's cwd. The MCP config starts `bin/cland-spoke.ts` with `CLAND_HUB_FILE`, `CLAND_SESSION_ID`, `CLAND_SESSION_NAME`, `CLAND_ROLE`, `CLAND_DELIVERY=adapter`. The settings add the hooks below (all `async`; with a task worktree also the synchronous `WorktreeCreate` refusal, Task branches and worktrees) and an `env` the mod reads (`CLAND_SESSION_NAME`, `CLAND_SESSION_ID`, `CLAND_LAUNCH_TOKEN`, `CLAND_HUB_FILE`, `CLAND_NODE`, `CLAND_CLI`). No secret goes on a command line: everything finds the hub through `hub.json`. `--bg` takes `--session-id` but picks its own id (its prefix is the background id); the hub records it as `harnessSessionId`. The workspace must be trusted once (`claude` in it, accept the prompt), or `--bg` refuses. |

@@ -7,8 +7,8 @@ import { processAlive } from './processes.ts';
 //
 //   spawn    `claude --bg --session-id <uuid> --name <name> [--model m] [--effort e] --mcp-config <json> --settings <json>
 //            --plugin-dir <cland mod>` in the session's cwd. The MCP config starts the spoke with the session's
-//            identity; the settings add the cland hooks and the variables the mod reads. Both are passed inline:
-//            nothing is written into the project. The hub's secret is never on the command line — the spoke,
+//            identity; the settings add the cland hooks and the variables the mod reads. Both use private files
+//            whose paths are passed to the CLI. The hub's secret is never on the command line — the spoke,
 //            the hooks and the mod read the project's `hub.json`.
 //            Settings also supply worktree.bgIsolation = "none" only when neither .claude/settings.json nor
 //            .claude/settings.local.json in the session's cwd sets it. Each launch/relaunch reads both files:
@@ -32,10 +32,11 @@ import { processAlive } from './processes.ts';
 // Not used: the session's inbox socket (its message format is undocumented) and channels (a research preview).
 import { sessionRunDirectory } from '../../../shared/session-credential.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
+import { LaunchFiles } from './launch-files.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -382,7 +383,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. `worktree`:
    *  the session's own task worktree, where the harness's own worktrees are refused. */
-  async #sessionFlags(name: string, role: string | null, sessionId: string, cwd: string, worktree: string | null, launchToken?: string): Promise<string[]> {
+  async #sessionFlags(name: string, role: string | null, sessionId: string, cwd: string, worktree: string | null, files: LaunchFiles, launchToken?: string): Promise<string[]> {
     const spokeEnv: Record<string, string> = {
       CLAND_HUB_FILE: this.#host.discoveryFile,
       CLAND_SESSION_ID: sessionId,
@@ -417,10 +418,12 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     // --bg does not retain the launcher's environment. Private settings survive native re-exec;
     // the command line carries only paths, never the session credential.
     const directory = sessionRunDirectory(dirname(this.#host.discoveryFile), sessionId);
-    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await files.directory(directory, 0o700);
     const mcpFile = join(directory, 'mcp.json');
     const settingsFile = join(directory, 'settings.json');
+    await files.file(mcpFile);
     await writeFile(mcpFile, JSON.stringify(mcp), { mode: 0o600 });
+    await files.file(settingsFile);
     await writeFile(settingsFile, JSON.stringify(settings), { mode: 0o600 });
     return ['--mcp-config', mcpFile, '--settings', settingsFile, '--plugin-dir', MOD_DIR];
   }
@@ -432,32 +435,36 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, permissions: Permissions | null = null): Promise<HarnessProcess> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
-      const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
-      // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
-      // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
-      const args = [
-        '--bg',
-        ...(resume ? ['--resume', p.harnessSessionId ?? p.sessionId] : ['--session-id', p.sessionId]),
-        '--name',
-        p.name,
-        ...(p.model ? ['--model', p.model] : []),
-        ...(effort ? ['--effort', effort] : []),
-        // roles.toml `permissions = "skip"`: the session never stops at a permission prompt or an auto-mode classifier
-        ...(permissions === 'skip' ? ['--dangerously-skip-permissions'] : []),
-        ...(permissions === 'auto' ? ['--permission-mode', 'auto'] : []),
-        ...yield* wait(this.#sessionFlags(p.name, p.role, p.sessionId, p.cwd, worktree, launchToken)),
-      ];
-      authorize();
-      const d = this.#directory(p);
-      const warning = d.signedOut ? `Claude config directory ${d.configDir} is latched signed out; this explicit launch is a recovery attempt.` : undefined;
-      const prefix = this.#dirPrefix(p);
-      const remedy = p.account ? `\nAccount ${p.account}, directory ${d.configDir}: sign in with ${prefix}claude auth login, or trust the project once with ${prefix}claude in ${p.cwd}.` : '';
-      const r = yield* wait(this.#run(args, p.cwd, p, undefined, resumed, launchToken).catch(error => {
-        throw new Error(`${error instanceof Error ? error.message : String(error)}${remedy}`);
-      }));
-      const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
-      const launched: HarnessProcess = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running', ...(warning ? { warning } : {}) };
+      const files = new LaunchFiles(resumed);
+      let launched: HarnessProcess | undefined;
+      let backgroundStarted = false;
       try {
+        const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
+        // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
+        // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
+        const args = [
+          '--bg',
+          ...(resume ? ['--resume', p.harnessSessionId ?? p.sessionId] : ['--session-id', p.sessionId]),
+          '--name',
+          p.name,
+          ...(p.model ? ['--model', p.model] : []),
+          ...(effort ? ['--effort', effort] : []),
+          // roles.toml `permissions = "skip"`: the session never stops at a permission prompt or an auto-mode classifier
+          ...(permissions === 'skip' ? ['--dangerously-skip-permissions'] : []),
+          ...(permissions === 'auto' ? ['--permission-mode', 'auto'] : []),
+          ...yield* wait(this.#sessionFlags(p.name, p.role, p.sessionId, p.cwd, worktree, files, launchToken)),
+        ];
+        authorize();
+        const d = this.#directory(p);
+        const warning = d.signedOut ? `Claude config directory ${d.configDir} is latched signed out; this explicit launch is a recovery attempt.` : undefined;
+        const prefix = this.#dirPrefix(p);
+        const remedy = p.account ? `\nAccount ${p.account}, directory ${d.configDir}: sign in with ${prefix}claude auth login, or trust the project once with ${prefix}claude in ${p.cwd}.` : '';
+        const r = yield* wait(this.#run(args, p.cwd, p, undefined, resumed, launchToken).catch(error => {
+          throw new Error(`${error instanceof Error ? error.message : String(error)}${remedy}`);
+        }));
+        const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
+        backgroundStarted = r.code === 0;
+        launched = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running', ...(warning ? { warning } : {}) };
         if (r.code !== 0 && /(?:token|oauth|authentication).*(?:expired|expiry)|(?:expired|expiry).*(?:token|oauth|authentication)/i.test(r.stderr + r.stdout)) this.#markSignedOut(launched);
         if (r.code !== 0) throw new Error(`${warning ? `warning: ${warning}\n` : ''}claude --bg failed (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(0, 500)}${remedy}`);
         this.#recovered(d);
@@ -473,9 +480,13 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
           launched.pidStarted = yield* wait(this.#processStarted(found.pid, resumed));
         }
         if (launched.pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
+        files.commit();
         return launched;
       } catch (err) {
-        if (launched.harnessId || launched.pid !== null) yield* wait(this.stop(launched, resumed));
+        // A successful --bg can own a child even when its output has no parsed id.
+        // A failed stop leaves its private files intact with the watched process.
+        if (launched && (backgroundStarted || launched.harnessId || launched.pid !== null)) yield* wait(this.stop(launched, resumed));
+        yield* wait(files.rollback());
         throw err;
       }
     }).call(this), resumed);
