@@ -6,7 +6,7 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
-import { readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { readLeases, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -15,6 +15,9 @@ async function running(f: Fixture, id: string) {
   await f.suites.settled();
 }
 const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+// A lease persisted by preparation or an unconfirmed cleanup owns a remote slot
+// without any suite job behind it.
+const leasedOnly = (f: Fixture, lease = 'preparation-only'): DropletLease => ({ kind: 'droplet', provider: 'digitalocean', run: 'preparation', lease, name: `cland-${lease}`, tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 0.25, keyName: lease, created: f.clock.now().toISOString(), deadline: new Date(f.clock.now().getTime() + 6600000).toISOString(), state: 'creating', resource: 777, keyId: null });
 
 for (const alreadyAnnounced of [false, true]) test(`fallback notice and log occur once across 20 ticks and restart (already announced: ${alreadyAnnounced})`, async t => {
   let inspections = 0;
@@ -67,6 +70,46 @@ for (const remoteOnly of ['explicit droplet', 'local_fallback=false'] as const) 
   const c = await f.launch({ executor: 'local' }); assert.equal(f.suites.snapshot().holder?.id, c.id); assert.equal(f.api.droplets.length, 1);
   await f.finish(a.id); await running(f, b.id); assert.equal(f.suites.snapshot().holder?.id, c.id);
   await f.finish(b.id); assert.equal(f.status(b.id).executor, 'droplet'); await f.finish(c.id); assert.deepEqual(f.api.droplets, []);
+});
+
+test('a durable preparation lease holds its remote slot in a waiter ETA', async t => {
+  const f = await suiteUnit(t, { remoteBudget: 2 });
+  const history = await remote(f); await running(f, history.id); await f.tick(5000); await f.finish(history.id);
+  assert.equal(f.status(history.id).runMs, 5000, '5s execution seeds the droplet estimate');
+  const runningJob = await remote(f); await running(f, runningJob.id); await f.tick(1000);
+  await writeLease(f.root, leasedOnly(f));
+  const waiting = await remote(f);
+  const q = await f.suites.queue();
+  assert.equal(f.status(waiting.id).state, 'queued');
+  assert.deepEqual(q.waiters.map(w => [w.id, w.waitingFor]), [[waiting.id, 'remote']]);
+  assert.equal(q.remote!.length, 1, 'a durable-only lease has no suite row');
+  assert.equal(q.remote![0]!.etaMs, 4000);
+  assert.equal(q.waiters[0]!.etaMs, 4000, 'the durable lease fills the second slot, so only the running job frees capacity');
+  await f.finish(runningJob.id);
+});
+
+test('an explicit remote waiter behind only a durable preparation lease reports an unknown ETA', async t => {
+  const f = await suiteUnit(t, { remoteBudget: 1 });
+  await writeLease(f.root, leasedOnly(f));
+  const waiting = await remote(f);
+  const q = await f.suites.queue();
+  assert.equal(f.status(waiting.id).state, 'queued', 'durable capacity keeps the explicit waiter queued');
+  assert.equal(q.remote!.length, 0);
+  assert.deepEqual(q.waiters.map(w => [w.id, w.waitingFor, w.etaMs]), [[waiting.id, 'remote', null]]);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0, 'no droplet is acquired behind the durable lease');
+});
+
+test('the published queue counts a durable preparation lease without an explicit read', async t => {
+  const f = await suiteUnit(t, { remoteBudget: 1 });
+  await writeLease(f.root, leasedOnly(f));
+  const waiting = await remote(f);
+  // The scheduler publishes after its own sweep; no explicit queue read here.
+  await f.tick(); await f.suites.settled();
+  const published = f.suites.snapshot();
+  assert.equal(f.status(waiting.id).state, 'queued');
+  assert.equal(published.remote!.length, 0);
+  assert.deepEqual(published.waiters.map(w => [w.id, w.waitingFor, w.etaMs]), [[waiting.id, 'remote', null]]);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
 });
 
 test('local_fallback defaults to true, validates booleans and survives rendering', () => {

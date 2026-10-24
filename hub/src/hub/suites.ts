@@ -229,6 +229,13 @@ export class Suites {
   readonly #launchWork = new Set<Promise<void>>();
   readonly #reaping: Promise<void>;
   #compatibility: Awaited<ReturnType<LocalExecutor['holder']>> = null;
+  // Durable leases hold remote slots even while no suite job owns one: a
+  // preparation or an unconfirmed cleanup. The published ETA reads this sweep;
+  // a scheduler tick refreshes it off the admission path.
+  #remoteLeases: DropletLease[] = [];
+  #leaseSweep = 0;
+  #leaseApplied = 0;
+  #leaseRefreshing: Promise<void> | null = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
     this.#clock = options.clock ?? realClock;
@@ -282,6 +289,9 @@ export class Suites {
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
     this.#reaping = this.#local.reap().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
+    // Seed durable slots for a queue read that precedes the first tick. This never
+    // gates a tick: an extra await here would delay inspection on a fake clock.
+    this.#refreshLeases();
     // Scheduling and metrics share hub time; local workers retain OS deadlines.
     this.#waitTimer = (options.waitClock ?? this.#clock).setInterval(() => this.#waitMetrics.record(), 1000);
     this.#waitTimer.unref();
@@ -610,6 +620,21 @@ export class Suites {
     this.#options.log?.({ event: 'verification-forced', session: 'human', cwd: input.cwd, worktree: input.cwd, head: input.head, mode: input.mode, pid: input.pid, holder: queue.holder });
   }
   #locks(): string[] { return this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock']; }
+  /** Every durable lease that still holds a remote slot, whether or not a job owns it. */
+  async #liveLeases(): Promise<DropletLease[]> {
+    const sweep = ++this.#leaseSweep;
+    const leases = (await readLeases(this.#root)).filter(lease => lease.state !== 'released');
+    // A later explicit sweep owns the published snapshot even when an earlier
+    // tick sweep resolves after it.
+    if (sweep > this.#leaseApplied) { this.#leaseApplied = sweep; this.#remoteLeases = leases; }
+    return leases;
+  }
+  /** Refresh durable slots for the next snapshot without delaying a tick or a publish. */
+  #refreshLeases(): void {
+    this.#leaseRefreshing ??= this.#liveLeases().then(() => {}, error => {
+      this.#options.log?.({ event: 'verification-lease-read-failed', error: String(error) });
+    }).finally(() => { this.#leaseRefreshing = null; });
+  }
   // Integrated dev precedes human waiters, then item rank; each group retains enqueue order.
   #ordered(): Array<SuiteJob | HumanSlot> {
     return [...this.#queue(), ...[...this.#humans.values()].filter(s => !s.left && !s.admittedAt)].sort((a, b) => {
@@ -997,7 +1022,7 @@ export class Suites {
     if (this.#closed) return Promise.resolve();
     this.#checking = this.#tick().catch(error => { this.#options.log?.({ event: 'verification-admission-blocked', error: String(error) }); }).then(async () => {
       if (this.#closed || !this.#options.onQueue) return;
-      const queue = await this.queue();
+      const queue = await this.#schedulerSnapshot();
       if (this.#closed) return;
       const holder = (value: import('../protocol.ts').VerificationHolder) => {
         const { runMs: _run, etaMs: _eta, ...facts } = value;
@@ -1012,6 +1037,8 @@ export class Suites {
     return this.#checking;
   }
   async #tick(): Promise<void> {
+    // Durable slots feed the next published ETA; the sweep must not extend a tick.
+    this.#refreshLeases();
     await this.#reaping;
     await Promise.all(this.#jobs.filter(job => job.reported && job.accountingPending).map(job => this.#confirmAccounting(job).catch(error => {
       job.error = `accounting confirmation: ${String(error)}`; this.#save(job);
@@ -1046,7 +1073,7 @@ export class Suites {
       // A budget fallback is provisional until local admission. Preparation or
       // cleanup leases can fill capacity outside this scheduler's active jobs.
       if (job?.executor === 'local' && job.requestedExecutor === 'droplet' && job.fallback === 'remote budget full'
-        && remoteActive < this.#remoteBudget && (await readLeases(this.#root)).filter(lease => lease.state !== 'released').length < this.#remoteBudget) {
+        && remoteActive < this.#remoteBudget && (await this.#liveLeases()).length < this.#remoteBudget) {
         if (this.#closed || job.state !== 'queued' || job.outcome) continue;
         job.executor = 'droplet';
         job.workers = job.workersOverride ?? job.workerPolicy?.droplet ?? job.workers ?? 4;
@@ -1060,7 +1087,7 @@ export class Suites {
       const chosenExecutor = job?.executor;
       // Preparation and unconfirmed cleanup can occupy durable slots without a
       // running suite. Remote-only requests wait for those releases too.
-      if (job?.requireRemote && (await readLeases(this.#root)).filter(lease => lease.state !== 'released').length >= this.#remoteBudget) continue;
+      if (job?.requireRemote && (await this.#liveLeases()).length >= this.#remoteBudget) continue;
       if (job && (job.state !== 'queued' || job.outcome)) continue;
       if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget) {
         this.#captureConfig(job);
@@ -1442,6 +1469,15 @@ export class Suites {
   }
   async queue(): Promise<VerificationQueue> {
     this.#compatibility = await this.#local.holder();
+    // An explicit read costs one lease sweep so its ETA never reports a slot
+    // that preparation or an unconfirmed cleanup still holds.
+    await this.#liveLeases();
+    return this.snapshot();
+  }
+  /** The scheduler publishes from the sweep it already refreshed; only an explicit
+   * queue read pays for a fresh lease scan. */
+  async #schedulerSnapshot(): Promise<VerificationQueue> {
+    this.#compatibility = await this.#local.holder();
     return this.snapshot();
   }
   /** Project metadata reads never wait for compatibility OS probes. The scheduler
@@ -1463,6 +1499,11 @@ export class Suites {
       return { ...(job.occasion ? { occasion: job.occasion } : {}), ...(job.shardName ? { shard: job.shardName } : {}), kind: 'run', executor: job.executor, id: job.id, session: job.actor?.name ?? 'human', item: job.item ?? null, mode: job.selection?.mode ?? job.mode, pid: job.pid, worktree: job.cwd, since: job.admittedAt ?? null, runMs, etaMs: expected === null || runMs === null ? null : Math.max(0, expected - runMs), ...(lease ? { machine: { name: lease.name, size: lease.size, region: lease.region } } : {}) };
     };
     const remote = occupying.filter(j => j.executor === 'droplet').flatMap(job => job.shards ? job.shards.filter(shard => !shard.cleaned).map(describe) : [describe(job)]);
+    // A durable lease for an active remote row is already in `remote`. Every other
+    // readable lease (preparation, unconfirmed cleanup) still holds one slot but
+    // carries no observed duration, so it contributes an unknown remaining time.
+    const remoteIds = new Set(remote.map(row => row.id));
+    const durableOnly = this.#remoteLeases.filter(lease => !remoteIds.has(lease.run));
     let holder: VerificationHolder | null = null;
     if (shim && (!active || shim.holder?.pid !== active.pid)) {
       holder = { kind: 'hand run', executor: 'local', id: human?.id ?? null, session: human ? 'human' : null, item: null, mode: human?.mode ?? null, pid: shim.holder?.pid ?? null, worktree: shim.holder?.worktree ?? null, since: shim.since, runMs: elapsed(shim.since, now), etaMs: null };
@@ -1474,7 +1515,8 @@ export class Suites {
       holder.etaMs = expected === null || holder.runMs === null || !shim?.holder ? null : Math.max(0, expected - holder.runMs);
     }
     let localEta = holder ? holder.etaMs : 0;
-    const remoteEtas: Array<number | null> = [...remote.map(r => r.etaMs), ...Array.from({ length: Math.max(0, this.#remoteBudget - remote.length) }, () => 0)];
+    const leaseSlots: Array<number | null> = [...remote.map(row => row.etaMs), ...durableOnly.map(() => null)];
+    const remoteEtas: Array<number | null> = [...leaseSlots, ...Array.from({ length: Math.max(0, this.#remoteBudget - leaseSlots.length) }, () => 0)];
     const queued = this.#ordered();
     // A racing hand run can own the shim while the admitted worker waits for it.
     if (active && holder?.kind === 'hand run') queued.unshift(active);
@@ -1484,14 +1526,18 @@ export class Suites {
         const mode = job?.selection?.mode ?? j.mode;
         const executor = job?.requestedExecutor ?? job?.executor ?? 'local';
         const effective = job?.executor ?? 'local';
-        const remoteIndex = remoteEtas.reduce<number>((best, eta, index) => best < 0 || eta !== null && (remoteEtas[best] === null || eta < remoteEtas[best]!) ? index : best, -1);
-        const remoteEta = remoteEtas[remoteIndex] ?? null;
+        // A waiter is admitted once enough leases release to leave one free slot.
+        // Unknown durations sort after known ones: a waiter that must outlast a
+        // durable-only lease gets an unknown ETA rather than a false free slot.
+        const releasing = Math.max(1, leaseSlots.length - this.#remoteBudget + 1);
+        const chosen = remoteEtas.flatMap((eta, index) => eta === null ? [] : [{ eta, index }]).sort((a, b) => a.eta - b.eta)[releasing - 1];
+        const remoteEta = chosen?.eta ?? null;
         const useRemote = effective === 'droplet' && (job?.requireRemote || localEta === null || remoteEta !== null && remoteEta <= localEta);
         const etaMs = useRemote ? remoteEta : localEta;
         const expectedRunMs = estimate(mode, useRemote ? 'droplet' : 'local');
         const waiter = { ...(job?.requireRemote ? { waitingFor: 'remote' as const } : {}), ...(job?.occasion ? { occasion: job.occasion } : {}), kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
         const nextEta = etaMs === null || expectedRunMs === null ? null : etaMs + expectedRunMs;
-        if (useRemote) remoteEtas[remoteIndex] = nextEta;
+        if (useRemote) { if (chosen) remoteEtas[chosen.index] = nextEta; }
         else localEta = nextEta;
         return waiter;
       }), metrics };
@@ -1503,7 +1549,8 @@ export class Suites {
     await this.#checking;
     await Promise.allSettled(this.#launchWork);
     await Promise.allSettled(this.#inspecting.values());
+    await this.#leaseRefreshing;
   }
 
-  async close(): Promise<void> { this.#closed = true; const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); await closingDroplet; }
+  async close(): Promise<void> { this.#closed = true; const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet; }
 }

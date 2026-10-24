@@ -947,6 +947,13 @@ wait under test and native I/O receipts from every participant sharing the clock
 `FakeClock.advance` is not a completion barrier; repeated advances must not stand
 in for those receipts.
 
+`Suites.#check` coalesces: a due interval during an in-flight check returns that
+check instead of queueing another tick. A check extended by avoidable I/O can
+therefore swallow the rest of an advance window, and a stall, timeout or admission
+assertion then misses the tick it expected. Keep new awaits off the check and
+queue-publish path; refresh caches between ticks and let explicit reads pay for
+themselves.
+
 Do not mock global timers in a `projectHub` scheduling test: sockets, journal
 flush and I/O retries, native transport/reconnect and kill deadlines, AccountPoller child-process deadlines and suite
 execution keep real time. AccountPoller eligibility and Claude directory schedules
@@ -1204,6 +1211,8 @@ The text queue also prints `local fallback: true|false`. The sessions panel foll
 20 completions. Cache hits record zero timing; executed-run estimates use recent
 successful durations for the effective mode and executor. Remote durations
 include acquire time; remote holders do not delay local waiter estimates. Unknown history gives a null ETA.
+A remote slot held only by a durable preparation or unconfirmed-cleanup lease gives
+a waiter that must outlast it a null ETA too, never a false free slot.
 
 A green run may be reused for the identical committed candidate tree and effective
 mode. The candidate excludes only `.cland/tasks` and `.cland/RULES.md`, so tracker-only

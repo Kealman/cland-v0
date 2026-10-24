@@ -3775,6 +3775,9 @@ one-based positions. `holder.etaMs` estimates remaining execution;
 successful executions of the same mode and executor; remote duration includes
 acquire time. Remote holders do not add delay to local waiter estimates. A cache hit completes
 without entering this queue even when a hand run occupies the compatibility slot.
+A remote slot held only by a durable lease (preparation or an unconfirmed cleanup)
+has no observed duration, so a waiter that must outlast it shows an unknown ETA
+(`null` in JSON), never a free slot.
 
 Each run's status includes `admittedAt`, `completedAt`, `waitMs` and `runMs`.
 Admission starts executor acquisition; `runMs` spans admission through the durable
@@ -3859,8 +3862,9 @@ classification also shows its derived cause and note.
 completed requests, including hits and failures, with counts of available values.
 ETAs use successful executed runs in that window matching the effective mode,
 subtract the holder's elapsed run time, then accumulate preceding waiters' durations.
-Hand runs use the window's successful execution median across modes. Missing history
-or an ownerless manual lock yields an unknown ETA. These are estimates, not reservations.
+Hand runs use the window's successful execution median across modes. Missing history,
+an ownerless manual lock, or a remote slot held only by a durable preparation or
+unconfirmed-cleanup lease yields an unknown ETA. These are estimates, not reservations.
 
 `cland verify cancel [<suite id>]` requests cancellation through the hub and exits.
 Without an id it selects the caller's latest active run. A session can cancel only
