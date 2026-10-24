@@ -3,7 +3,7 @@ id: T-1146
 kind: task
 title: Restrict the CHANGES and union-attribute wording to kept upstream skills
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T16:21:58.628Z
-updated: 2026-10-24T06:46:26.517Z
+updated: 2026-10-24T20:48:43.911Z
 ---
 
 ## Summary

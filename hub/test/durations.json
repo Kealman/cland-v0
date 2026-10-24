@@ -51,9 +51,10 @@
       "A-10252",
       "A-10290",
       "A-10294",
-      "A-10848"
+      "A-10848",
+      "A-11401"
     ],
-    "commit": "956624130bbc3ba3ab80ade149a40c0b2c481cab"
+    "commit": "fdcea0b958178e2b34c69b5f19fc22dbe8da1626"
   },
   "budget": {
     "testSeconds": 5,
@@ -2554,6 +2555,54 @@
     "hub/test/tool-arguments.test.ts": {
       "seconds": 0.427007,
       "tests": 10
+    },
+    "hub/test/cli-command-help.test.ts": {
+      "seconds": 0.012379,
+      "tests": 1
+    },
+    "hub/test/cli-help.test.ts": {
+      "seconds": 0.419551,
+      "tests": 3
+    },
+    "hub/test/cli-session-credential.test.ts": {
+      "seconds": 6.426699,
+      "tests": 9
+    },
+    "hub/test/cli-usage-compatibility.test.ts": {
+      "seconds": 0.002554,
+      "tests": 1
+    },
+    "hub/test/cli-usage-merge.test.ts": {
+      "seconds": 0.136621,
+      "tests": 2
+    },
+    "hub/test/codex-fake-envelope.test.ts": {
+      "seconds": 0.002422,
+      "tests": 4
+    },
+    "hub/test/codex-workspace-git.test.ts": {
+      "seconds": 0.001145,
+      "tests": 1
+    },
+    "hub/test/demo-provisioning.test.ts": {
+      "seconds": 0.773813,
+      "tests": 2
+    },
+    "hub/test/homebrew-download.test.ts": {
+      "seconds": 0.030066,
+      "tests": 1
+    },
+    "hub/test/homebrew-publication.test.ts": {
+      "seconds": 1.697801,
+      "tests": 2
+    },
+    "hub/test/homebrew.test.ts": {
+      "seconds": 0.024886,
+      "tests": 2
+    },
+    "hub/test/session-credential-io.test.ts": {
+      "seconds": 0.355901,
+      "tests": 7
     }
   },
   "tests": {
@@ -6679,29 +6728,168 @@
     "nvim/test/launcher-component.test.ts::a custom role fills launcher defaults and its named session appears in the crew": 0.335874,
     "web/test/artifacts.test.ts::diagram HTML, SVG and Mermaid use the sandboxed viewer with source one physical key away": 3.274427,
     "web/test/artifacts.test.ts::Mermaid strict mode blocks source scripts and callbacks, and a parse failure retains its message and exact source": 3.737662,
-    "web/test/session-launch.test.ts::a custom role is selectable with its own defaults and appears in the crew after launch": 1.52439
+    "web/test/session-launch.test.ts::a custom role is selectable with its own defaults and appears in the crew after launch": 1.52439,
+    "hub/test/adapter-native-boundary.test.ts::ClaudeCodeAdapter: partial private settings failure removes new files while preserving credentials and peers": 0.00692,
+    "hub/test/adapter-native-boundary.test.ts::ClaudeCodeAdapter: partial private settings failure restores previous files while preserving credentials and peers": 0.005794,
+    "hub/test/claude-code-environment.test.ts::Claude background settings carry only their own shell credential through launch and relaunch": 0.0129,
+    "hub/test/cli-command-help.test.ts::every command listed by cland --help answers both help flags without a hub or project changes": 0.012379,
+    "hub/test/cli-help.test.ts::cland --help retains its pre-refactor output byte for byte": 0.146991,
+    "hub/test/cli-help.test.ts::cland hub --help exits 0 without a hub or project changes": 0.121336,
+    "hub/test/cli-help.test.ts::cland session -h exits 0 without a hub or project changes": 0.151224,
+    "hub/test/cli-session-credential.test.ts::a fresh onboarding Aide runs its first CLI with its launch credential and then uses its ready fallback file": 1.003621,
+    "hub/test/cli-session-credential.test.ts::a tokenless Coordinator shell survives an upgrade restart after its own spoke reconnects without relaunch": 1.097478,
+    "hub/test/cli-session-credential.test.ts::archiving a stopped session removes its private run directory and relaunch restores a rotated fallback": 0.325027,
+    "hub/test/cli-session-credential.test.ts::fallback files are bound to their session id and explicit invalid environment credentials stay refused": 0.553409,
+    "hub/test/cli-session-credential.test.ts::identity-free shells stay human and the own MCP spoke keeps its permissions": 0.462637,
+    "hub/test/cli-session-credential.test.ts::own spoke reconnect provisions a private fallback credential for a running legacy shell": 0.533406,
+    "hub/test/cli-session-credential.test.ts::session credentials survive hub restart, native resume and relaunch": 0.740011,
+    "hub/test/cli-session-credential.test.ts::shell attribution requires the credential belonging to the claimed session": 1.28569,
+    "hub/test/cli-session-credential.test.ts::upgrade reconnect retains an existing environment credential when the old store has no credential table": 0.42542,
+    "hub/test/cli-usage-compatibility.test.ts::all command usage exports retain their pre-refactor bytes": 0.002554,
+    "hub/test/cli-usage-merge.test.ts::INIT_USAGE/UPDATE_USAGE help edits survive native Git merge and merge-tree": 0.064341,
+    "hub/test/cli-usage-merge.test.ts::SUITE_USAGE/EXECUTOR_USAGE help edits survive native Git merge and merge-tree": 0.07228,
+    "hub/test/codex-adapter.test.ts::Codex launches Implementer with narrow workspace roots, QA full access, Reviewer read-only, and the configured T-48 profile (T-1222)": 8.127905,
+    "hub/test/codex-adapter.test.ts::the Codex fake answers the last delivery in a digest after a hub event": 2.261565,
+    "hub/test/codex-fake-envelope.test.ts::a digest answers the last human or agent envelope and skips hub events": 0.00034,
+    "hub/test/codex-fake-envelope.test.ts::a rule-refresh digest answers the following human message in its own topic": 0.000176,
+    "hub/test/codex-fake-envelope.test.ts::only the initial introduction makes its first hub report answerable": 0.000334,
+    "hub/test/codex-fake-envelope.test.ts::the first native input answers its hub launch brief after the role clause": 0.001572,
+    "hub/test/codex-workspace-git.test.ts::synthetic Seatbelt permits task commit fetch push with exact Implementer roots and protects Git hooks/config (T-1222)": 0.001145,
+    "hub/test/demo-provisioning.test.ts::demo exec names its provisioning lease during provider creation and delivery": 0.285592,
+    "hub/test/demo-provisioning.test.ts::demo status stays provisioning until delivery makes exec usable": 0.488221,
+    "hub/test/dev-t3-search-component.test.ts::diagnostic files outside allowed test roots or with parent traversal are refused": 0.04219,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run places an absent file at its introducing merge without running it on old heads": 0.79629,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run refuses a changed platform exclusion set": 0.695507,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run refuses missing platform exclusions": 0.66887,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run refuses platform exclusions that change during confirmation": 0.890367,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run refuses unexplained platform exclusions": 0.625181,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run reports green boundary flips as inconclusive without filing": 0.990357,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run reports red boundary flips as inconclusive without filing": 1.368943,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run runs Web probes and names the first red merge": 1.357695,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run searches old manifests without applying the hosting hub lint": 0.895531,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run searches the executed subset beside identical known platform exclusions": 0.871272,
+    "hub/test/dev-t3-search.test.ts::probe proof keeps known Linux exclusions partial and rejects missing or unexplained skip evidence": 0.002015,
+    "hub/test/dev-t3-search.test.ts::search contains a throwing blocked notice and retries its report on the next timer tick": 0.045474,
+    "hub/test/dev-t3-search.test.ts::search refuses identical exclusions observed on different executor architectures": 0.016563,
+    "hub/test/executor-prepare-component.test.ts::executor prepare defaults to Agents and honors an explicit report topic": 0.632532,
+    "hub/test/homebrew-download.test.ts::archive checksum hashes the completed response and rejects failed or empty downloads": 0.030066,
+    "hub/test/homebrew-publication.test.ts::formula publication preserves tap files and refuses a concurrent branch change": 0.238022,
+    "hub/test/homebrew-publication.test.ts::release preview, download failure and lost tap reply recover the pinned formula once": 1.459779,
+    "hub/test/homebrew.test.ts::formula pins tag bytes, Node 24, shared build and runtime wrapper": 0.011953,
+    "hub/test/homebrew.test.ts::Homebrew is opt-in and survives managed config rendering": 0.012933,
+    "hub/test/init-config.test.ts::coverage pointer retention defaults to ten and round-trips a positive configured count": 0.002531,
+    "hub/test/install-script.test.ts::old-layout archives install, update and preserve the current command after a failed update": 3.229697,
+    "hub/test/merge-batches.test.ts::a dirty root blocks then automatically lands the same green batch once clean": 0.234891,
+    "hub/test/merge-batches.test.ts::a throwing blocked report resolves the background tick and retains both failures across reopen": 0.022739,
+    "hub/test/merge-batches.test.ts::an untyped landing failure stays blocked across reopen and requests human or Coordinator action": 0.028835,
+    "hub/test/merge-batches.test.ts::merge-checkout retries after reopen without repeating completed members or the green suite": 0.044329,
+    "hub/test/merge-batches.test.ts::merge-dirty retries after reopen without repeating completed members or the green suite": 0.035951,
+    "hub/test/merge-batches.test.ts::merge-git retries after reopen without repeating completed members or the green suite": 0.02971,
+    "hub/test/merge-batches.test.ts::merge-recovery retries after reopen without repeating completed members or the green suite": 0.030479,
+    "hub/test/merge-batches.test.ts::merge-unpublished retries after reopen without repeating completed members or the green suite": 0.032906,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: building": 0.170418,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: closed": 0.171507,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: due": 0.212206,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: expired": 0.210302,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: recorded": 0.204169,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: recorded-active": 0.193676,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: released": 0.221411,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: stage-only": 0.267958,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: unlanded": 0.17488,
+    "hub/test/merge-queue.test.ts::enqueue demo warning: unrelated": 0.208152,
+    "hub/test/merge-queue.test.ts::enqueue survives unavailable demo diagnostics: history-malformed": 0.18042,
+    "hub/test/merge-queue.test.ts::enqueue survives unavailable demo diagnostics: history-throw": 0.161035,
+    "hub/test/merge-queue.test.ts::enqueue survives unavailable demo diagnostics: history-unavailable": 0.184716,
+    "hub/test/merge-queue.test.ts::enqueue survives unavailable demo diagnostics: lease": 0.192075,
+    "hub/test/merge-queue.test.ts::enqueue warns about exact landed files of an epic with an active demo without blocking": 0.622042,
+    "hub/test/merge-queue.test.ts::hub serves queue and status frames after its batch blocked notice throws": 0.843324,
+    "hub/test/nvim-fixture-boundary.test.ts::recordings match both macOS temp aliases for root and parent paths": 0.000651,
+    "hub/test/opencode-adapter.test.ts::the collision fixture settles a failed bind and drains its bounded no-probe fallback": 0.888924,
+    "hub/test/roles-template-component.test.ts::generated and fallback Implementer policy resolves narrow task-worktree Git and artifact roots (T-1222)": 0.266928,
+    "hub/test/roles-template.test.ts::generated Codex sandboxes match missing-file and missing-key fallbacks for every role (T-1222)": 0.011623,
+    "hub/test/session-archive.test.ts::reopening an item during owned archive removal refreshes eligibility before publication": 0.448011,
+    "hub/test/session-credential-io.test.ts::archive drains an owned credential writer after stop and publishes only after async removal": 0.04499,
+    "hub/test/session-credential-io.test.ts::credential persistence keeps welcome behind its async receipt while the hub continues serving": 0.099635,
+    "hub/test/session-credential-io.test.ts::failed credential persistence rolls back relaunch ownership and permits subsequent admission": 0.044026,
+    "hub/test/session-credential-io.test.ts::project disposal drains an outstanding credential writer before closing its session table": 0.037533,
+    "hub/test/session-credential-io.test.ts::relaunch rechecks the calling session after held credential persistence": 0.059494,
+    "hub/test/session-credential-io.test.ts::relaunch waits for async credential rotation before entering the native adapter": 0.034531,
+    "hub/test/session-credential-io.test.ts::shutdown during credential preparation settles the relaunch reservation before storage closes": 0.035692,
+    "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a copied live durable fixture": 14.682499,
+    "hub/test/suite-admission-responsive.test.ts::verify queue exposes a failed local admission and its reason through CLI and subscription": 0.326868,
+    "hub/test/suite-admission-responsive.test.ts::verify queue retains a local release recovery failure until cleanup succeeds, with the next run waiting": 0.746939,
+    "hub/test/suite-admission.test.ts::verify materializes Agents defaults for a prior hub wire contract and preserves previews and overrides": 0.032899,
+    "hub/test/suite-admission.test.ts::verify without --report sends its result and log chip to Agents; explicit topics still win": 0.563837,
+    "hub/test/suite-cancel.test.ts::verify cancel reaps a detached fake child before removing the phase root, then admits the next run": 6.232071,
+    "hub/test/suite-cancel.test.ts::verify cancel reaps a detached fake child that recreates the root after runner death, then admits the next run": 6.466414,
+    "hub/test/suite-close-component.test.ts::generic pre-execution shard acquisition publishes unavailable infrastructure (mixed capacity: false)": 0.266857,
+    "hub/test/suite-close-component.test.ts::generic pre-execution shard acquisition publishes unavailable infrastructure (mixed capacity: true)": 0.299152,
+    "hub/test/suite-cover.test.ts::a recovered group with submitted workers keeps failure when its candidate changes": 0.085837,
+    "hub/test/suite-cover.test.ts::all acquisition-refused shards preserve a not-run cover receipt and never start culprit search": 0.093645,
+    "hub/test/suite-cover.test.ts::all capacity-refused shards preserve a not-run cover receipt and never start culprit search": 0.47872,
+    "hub/test/suite-cover.test.ts::all delivery-refused shards preserve a not-run cover receipt and never start culprit search": 0.107869,
+    "hub/test/suite-cover.test.ts::all mixed acquisition-refused shards preserve a not-run cover receipt and never start culprit search": 0.079925,
+    "hub/test/suite-cover.test.ts::all mixed causes-refused shards preserve a not-run cover receipt and never start culprit search": 0.091778,
+    "hub/test/suite-cover.test.ts::ambiguous shard start errors remain executed-or-unknown failures rather than not-run": 0.107396,
+    "hub/test/suite-cover.test.ts::partly executed shards retain exit 0 results and name unexecuted shards without passing": 0.111282,
+    "hub/test/suite-cover.test.ts::partly executed shards retain exit 1 results and name unexecuted shards without passing": 0.063691,
+    "hub/test/suite-cover.test.ts::tree changes at child bundle admission refuse unstarted shards without red cover or search": 0.068267,
+    "hub/test/suite-cover.test.ts::tree changes at child bundle recheck refuse unstarted shards without red cover or search": 0.081033,
+    "hub/test/suite-cover.test.ts::tree changes at parent validation refuse unstarted shards without red cover or search": 0.065575,
+    "hub/test/suite-coverage-selection.test.ts::legacy coverage replay receives one loaded candidate and keeps ancestor and nearest behaviour": 0.007608,
+    "hub/test/suite-coverage-selection.test.ts::pointer metadata orders maps newest first with legacy mtime fallback": 0.009833,
+    "hub/test/suite-coverage-selection.test.ts::registration keeps the newest configured pointers and preserves all artifact copies": 0.016927,
+    "hub/test/suite-coverage-selection.test.ts::selection of 50 large maps stops at the newest ancestor and retains one parsed map": 0.156022,
+    "hub/test/suite-coverage-selection.test.ts::shard merging reads and releases one map at a time and preserves attribution": 0.005179,
+    "hub/test/suite-protocol.test.ts::root recovery preserves a changed path outside the run token and never follows a symlink": 0.021448,
+    "hub/test/suite-protocol.test.ts::root recovery preserves a recreated token path while its holder lives or runner group is unknown": 0.005268,
+    "hub/test/suite-recovery.test.ts::admission preserves a recreated root and both locks when stale metadata has no runner group": 1.39153,
+    "hub/test/suite-recovery.test.ts::admission preserves recreated-root evidence and locks when a detached candidate has ambiguous ownership": 2.122951,
+    "hub/test/suite-recovery.test.ts::admission quarantines a dead run’s recreated root and releases both compatibility locks": 5.214594,
+    "hub/test/suite-recovery.test.ts::admission reaps a detached writer after its parent died before quarantining the recreated root": 3.34121,
+    "hub/test/suite-remote-budget.test.ts::a durable preparation lease holds its remote slot in a waiter ETA": 0.063556,
+    "hub/test/suite-remote-budget.test.ts::an explicit remote waiter behind only a durable preparation lease reports an unknown ETA": 0.03389,
+    "hub/test/suite-remote-budget.test.ts::the published queue counts a durable preparation lease without an explicit read": 0.033573,
+    "hub/test/suite-runner.test.ts::Web repetition children publish ten completed summaries under CPU load and are reaped": 2.064002,
+    "hub/test/suite-scheduling.test.ts::dev-t3 timer contains a throwing skipped notice and keeps serving suite reads": 0.026017,
+    "hub/test/suite-scheduling.test.ts::soak timer contains a throwing skipped notice and keeps serving suite reads": 0.043059,
+    "hub/test/verifier-routing.test.ts::closing an item clears every pending qa and assigns the oldest queued request": 0.316899,
+    "hub/test/verifier-routing.test.ts::closing an item clears every pending review and assigns the oldest queued request": 0.413834,
+    "hub/test/verifier-routing.test.ts::landing finalization clears a disconnected verifier reservation durably before an item is reopened": 0.32275,
+    "hub/test/verifier-routing.test.ts::legacy closed-item pending after restart cannot block the oldest queued review": 0.218719,
+    "hub/test/verifier-routing.test.ts::legacy closed-item pending after restart is absent from who and session rows": 0.257395,
+    "hub/test/web-phase.test.ts::host pins new and renamed Web files against the merge base, not a newer fetched dev tip": 0.003066,
+    "hub/test/web-phase.test.ts::only one complete, typed terminal summary supplies file repetition evidence": 0.000383,
+    "hub/test/web-phase.test.ts::only Web files absent from the dev baseline receive ten whole-file repetitions on two workers": 0.002904,
+    "hub/test/web-phase.test.ts::runner distinguishes an admitted list, a checked empty list and missing host proof": 0.000449,
+    "hub/test/web-phase.test.ts::selection transport and cache preserve checked-empty versus absent Web proof": 0.000797,
+    "hub/test/web-phase.test.ts::Web repetition reports incomplete, skipped, failing and unloaded runs without claiming proof": 0.002086,
+    "nvim/test/client-component.test.ts::explicit client inputs reach the launcher without restoring ambient accounts or Git overrides": 0.273198,
+    "nvim/test/client-component.test.ts::the default client environment seals poisoned parent homes, accounts, credentials and Git settings": 0.101051,
+    "nvim/test/qa.test.ts::the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the Coordinator's defaults including its danger-full-access sandbox": 1.483936,
+    "nvim/test/qa.test.ts::the QA fixture seals its CLI environment before the product starts": 0.795894
   },
   "allow": {
     "hub/test/suite-recovery.test.ts::admission quarantines a dead run’s recreated root and releases both compatibility locks": {
       "seconds": 9.339,
-      "owner": "E-1194",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "T-511 requires a real package-runner crash, fake-child root recreation, independently owned writer cleanup, preserved quarantine bytes with a durable old/new-inode journal receipt, release of both compatibility locks and successful successor verification. Retained final-implementation macOS/local A-10945 measured 6.225784709 s; Linux c-8 lon1 droplet A-11170 at e8089022 measured 5.148276204 s (A-11061 also passed this identity). The 9.339 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence."
+      "reason": "T-511 requires a real package-runner crash, fake-child root recreation, independently owned writer cleanup, preserved quarantine bytes with a durable old/new-inode journal receipt, release of both compatibility locks and successful successor verification. Retained final-implementation macOS/local A-10945 measured 6.225784709 s; Linux c-8 lon1 droplet A-11170 at e8089022 measured 5.148276204 s (A-11061 also passed this identity). The 9.339 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence. Re-owned from E-1194 to E-880 on 2026-10-24 before E-1194 closes (D72 legacy owner)."
     },
     "hub/test/suite-cancel.test.ts::verify cancel reaps a detached fake child before removing the phase root, then admits the next run": {
       "seconds": 7.744,
-      "owner": "E-1194",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "T-511 requires a real local worker, borrowed package runner and detached fake harness, receipt-backed tree death before root removal, and a successful successor verification. Final-source macOS/local A-10945 observed 4.175276375 s; Linux c-8 lon1 droplet A-11004 at f7b3279d observed 5.162017751 s. The 7.744 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Native assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence."
+      "reason": "T-511 requires a real local worker, borrowed package runner and detached fake harness, receipt-backed tree death before root removal, and a successful successor verification. Final-source macOS/local A-10945 observed 4.175276375 s; Linux c-8 lon1 droplet A-11004 at f7b3279d observed 5.162017751 s. The 7.744 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Native assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence. Re-owned from E-1194 to E-880 on 2026-10-24 before E-1194 closes (D72 legacy owner)."
     },
     "hub/test/suite-cancel.test.ts::verify cancel reaps a detached fake child that recreates the root after runner death, then admits the next run": {
       "seconds": 7.987,
-      "owner": "E-1194",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "T-511 requires a real local worker, borrowed package runner and detached fake harness, root recreation after runner death, verified descendant teardown, quarantine recovery and a successful successor verification. Final-source macOS/local A-10945 observed 5.209689916 s; Linux c-8 lon1 droplet A-11004 at f7b3279d observed 5.324462362 s. The 7.987 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Native assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence."
+      "reason": "T-511 requires a real local worker, borrowed package runner and detached fake harness, root recreation after runner death, verified descendant teardown, quarantine recovery and a successful successor verification. Final-source macOS/local A-10945 observed 5.209689916 s; Linux c-8 lon1 droplet A-11004 at f7b3279d observed 5.324462362 s. The 7.987 s cap rounds 1.5x the worst of these multiple passing samples upward to milliseconds. Native assertions and bounded waits are unchanged. Revisit after E-1194 stage evidence. Re-owned from E-1194 to E-880 on 2026-10-24 before E-1194 closes (D72 legacy owner)."
     },
     "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a copied live durable fixture": {
       "seconds": 28.298,
@@ -6712,10 +6900,10 @@
     },
     "hub/test/suite-cover.test.ts::all capacity-refused shards preserve a not-run cover receipt and never start culprit search": {
       "seconds": 1.5,
-      "owner": "E-1194",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "T-1211 retains sealed scheduler setup, two refused shard receipts, durable parent result, no-cover/no-search assertions and scheduler reopen. Targeted local Darwin arm64 working-tree samples measured 0.518, 0.508, 0.228, 0.317, 0.952 and 0.355 s; 1.5 s rounds up about 1.5x the worst observed sample. These are targeted assertion runs, not full-suite or load-gate receipts; the cold fixture setup accounts for the spread. No sleep or weakened assertion is added."
+      "reason": "T-1211 retains sealed scheduler setup, two refused shard receipts, durable parent result, no-cover/no-search assertions and scheduler reopen. Targeted local Darwin arm64 working-tree samples measured 0.518, 0.508, 0.228, 0.317, 0.952 and 0.355 s; 1.5 s rounds up about 1.5x the worst observed sample. These are targeted assertion runs, not full-suite or load-gate receipts; the cold fixture setup accounts for the spread. No sleep or weakened assertion is added. Re-owned from E-1194 to E-880 on 2026-10-24 before E-1194 closes (D72 legacy owner)."
     },
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
       "seconds": 22,
@@ -6992,10 +7180,10 @@
     },
     "hub/test/dev-t3-search-component.test.ts::red periodic run runs Web probes and names the first red merge": {
       "seconds": 3.4,
-      "owner": "E-1194",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "Four detached scripted Web probes plus periodic reporting and Bug filing prove first-red-merge attribution. Local macOS samples 1.524 s and 2.263 s; 3.4 s is about 1.5x the worst sample (T-1098)."
+      "reason": "Four detached scripted Web probes plus periodic reporting and Bug filing prove first-red-merge attribution. Local macOS samples 1.524 s and 2.263 s; 3.4 s is about 1.5x the worst sample (T-1098). Re-owned from E-1194 to E-880 on 2026-10-24 before E-1194 closes (D72 legacy owner)."
     },
     "hub/test/dev-t3-search-component.test.ts::red periodic run files one Bug with live last-claimant delivery": {
       "seconds": 2.797752,

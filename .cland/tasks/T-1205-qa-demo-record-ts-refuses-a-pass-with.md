@@ -3,7 +3,7 @@ id: T-1205
 kind: task
 title: qa-demo-record.ts refuses a PASS with missing fact keys or step errors and scans for secrets before publishing
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:46:05.322Z
-updated: 2026-10-24T06:46:05.322Z
+updated: 2026-10-24T20:48:42.945Z
 ---
 
 ## Summary

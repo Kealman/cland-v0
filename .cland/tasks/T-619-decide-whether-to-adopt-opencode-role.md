@@ -3,7 +3,7 @@ id: T-619
 kind: task
 title: Decide whether to adopt OpenCode role instructions, after T-536's forced-compaction comparison
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-994
 branch: t/T-619-decide-whether-to-adopt-opencode-role
 created: 2026-10-16T15:53:55.297Z
-updated: 2026-10-24T19:56:59.838Z
+updated: 2026-10-24T20:16:54.765Z
 ---
 
 ## Summary
@@ -27,8 +27,10 @@ T-536 adds the OpenCode role-instructions option, default off, and measures it i
 - [x] C1. The human's decision on the OpenCode role-instructions option is recorded, citing T-536's comparison artifact, and the default is set to match.
   - done: coord · 2026-10-24T18:44:49.282Z
   - verified: rev-32 [reviewer] · run rev-20261024-619-source4 · 2026-10-24T19:56:59.838Z · commit c3cfec72ff2f29b3df5b8dba64f3373a2c8e3d34
+  - verified: rev-32 [reviewer] · run rev-20261024-619-final · 2026-10-24T20:16:54.664Z · commit c3cfec72ff2f29b3df5b8dba64f3373a2c8e3d34
 - [x] C2. The OpenCode adapter sends the role clause as an instruction entry by default, CLAND_OPENCODE_ROLE_INSTRUCTIONS=0 (or roleInstructions: false) opts out, the message fallback on a failed instruction route stays, and docs, doctor text and tests say the new default (test).
   - done: impl-619b · 2026-10-24T19:55:26.547Z
+  - verified: rev-32 [reviewer] · run rev-20261024-619-final · 2026-10-24T20:16:54.664Z · commit c3cfec72ff2f29b3df5b8dba64f3373a2c8e3d34
 
 ## Comments
 
@@ -166,3 +168,27 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-11375 carries the full Standards/Spec review and prior M1/M2/M3 resolutions. No remaining source findings. Non-404 failed PUT now marks possible entry state before cleanup, so persisted/lost-response writes cannot take the known-fresh/never-written cleanup404 exception. Existing uncertainty survives subsequent PUT404; strict DELETE remains; fresh old-endpoint fallback is preserved. Added native control persists before withholding reply and requires exact same-id injected receipt after recovery, alongside no fallback/retained-entry assertions. Default/env0/explicitfalse, pool durable instruction receipt, inventory and docs remain correct. C1 verified from recorded human decision/A4114 and matching defaults; C2 runtime-dependent unverified. Static-only pass per Coordinator during stage slot: changed adapter/lifecycle targeted tests not yet run, typecheck/lint reported separately; no runtime/full-T3/T4/QA claim. After local capacity release run targeted files sequentially, preserve original raw evidence, then one unchanged-head ordinary mode-free verify. Any changed head needs fresh source review.
 
 Criteria: C1 verified.
+
+### impl-619b · 2026-10-24T20:01:45.721Z
+
+Targeted runtime evidence at c3cfec72 (unchanged reviewed head; macOS Darwin arm64, local, targeted single-file runs one at a time, no suite, no cache).
+
+1) `node --test hub/test/opencode-adapter.test.ts` — exit 0. tests 20, pass 20, fail 0, skipped 0; duration_ms 39568.398709. Includes the new controls: `... keep the message path (old endpoint)` 1900.331417 ms; `a saved cland-role entry is not treated as removed when the instruction route disappears` 2001.402625 ms; `a lost instruction write is not treated as absent when cleanup sees no route` 2316.942583 ms. The existing default/opted-out/fallback identities ran at 2170.079458 / 2197.915541 / 2117.048917 ms.
+2) `node --test hub/test/session-native-lifecycle.test.ts` — exit 0. tests 9, pass 9, fail 0, skipped 0; duration_ms 41151.9605. The OpenCode pool rows: keep_context=true 4580.687458 ms, keep_context=false 5982.92325 ms; other harness rows claude-code 4901.103959/3304.547667 ms, codex 2976.105708/2629.211583 ms; remaining three tests 4320.350416 / 4651.425541 / 7465.832667 ms.
+
+These are targeted single-file runs, not a suite pass; T0/T1/T2/Web and the remaining T3/T4 files were not run here. The tree was clean and HEAD was c3cfec72ff2f29b3df5b8dba64f3373a2c8e3d34 before each run. Next: one ordinary mode-free verify at this unchanged head.
+
+### rev-32 · 2026-10-24T20:16:54.664Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-619-final
+commit: c3cfec72ff2f29b3df5b8dba64f3373a2c8e3d34
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-11384 audits original same-head 02931624/A11383 and carries source4/A11375. Parsed3090 ordinary test/435file passes, no fail/cancel/skip or separate load finishes. Host T0(check38.405s, gate05163885 reused/not remote repeat), Linux c8lon1 T1/allfallback hub+NeovimT2/3changedT3files30casesonce/Web complete; remaining T3/T4 absent. Actual prepared Headless Shell156.0.8078.4/v1248, source launches prerequisite.executablePath headlessly. Adapter20/20 includes default/optout/fallback/oldendpoint2.416/2.347/2.418/2.538s, retainedentry2.371s/lostwrite2.804s with exact retry receipt; nativeT2 30/30 preserves refusal cleanup/retry; pool9/9 includes OpenCode true3.987s/false3.672s; crew1/1 9.041s. Crew already has15.136129s legacy E880 allowance; runner's suggested13.562 stanza is not an installed edit. Generic budgets/lint/Webwall/ratchet report-only,9missing; ratchet2205.585vs2195.304 growth/incomplete retained. ChangedT3 addedwall52.096exwait distinct from97.304summedtests; dropletlife732s/$0.0508 not suitewall. Local macOS targeted20/9 comments supplemental; original Linux durable receipts independently establish runtime. Claimant conflictcheck devfdcea0b9 clean, no merge/headchange. C1/C2allverified, no findings. No fullT3/T4, peritemQA, native-provider compaction or landing claim.
+
+Criteria: C1 verified, C2 verified.

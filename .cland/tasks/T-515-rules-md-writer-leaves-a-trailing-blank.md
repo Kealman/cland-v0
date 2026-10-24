@@ -3,7 +3,7 @@ id: T-515
 kind: task
 title: RULES.md writer leaves a trailing blank line that trips git diff --check
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-455
 topic: null
 branch: null
 created: 2026-10-15T16:44:45.990Z
-updated: 2026-10-24T06:46:27.260Z
+updated: 2026-10-24T20:48:44.217Z
 ---
 
 ## Summary
