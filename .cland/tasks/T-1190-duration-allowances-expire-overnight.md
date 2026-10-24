@@ -3,17 +3,18 @@ id: T-1190
 kind: task
 title: Duration allowances expire overnight with no warning and fail every shard plan
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1195
 blocked_by: []
-topic: null
-branch: null
+topic: topic-925
+branch: t/T-1190-duration-allowances-expire-overnight
 created: 2026-10-24T00:03:56.390Z
-updated: 2026-10-24T06:46:52.049Z
+updated: 2026-10-24T06:52:21.474Z
 ---
 
 ## Summary
@@ -30,5 +31,13 @@ Planning still refuses an expired entry, but the refusal names every expired key
 
 ## Acceptance criteria
 
-- [ ] C1. An allowance expiring within 48 hours appears in the periodic dev run report and the Coordinator's heartbeat, naming the test and owner (test).
-- [ ] C2. A shard-planning refusal for expired allowances lists every expired key, not only the first (test).
+- [x] C1. An allowance expiring within 48 hours appears in the periodic dev run report and the Coordinator's heartbeat, naming the test and owner (test).
+  - done: impl-1190 · 2026-10-24T06:52:04.562Z
+- [x] C2. A shard-planning refusal for expired allowances lists every expired key, not only the first (test).
+  - done: impl-1190 · 2026-10-24T06:52:05.168Z
+
+## Comments
+
+### impl-1190 · 2026-10-24T06:50:56.795Z
+
+Implementation uses one reusable midnight-UTC expiry listing in suite-durations.ts. Shard planning aggregates expired keys. The hub reads the current project manifest at Coordinator heartbeat and periodic dev-T3 report time, warning for every allowance at <=48h and already expired entries. Added failing-then-green tests at packageShards, native heartbeat injection with FakeClock, and published periodic result. Optional renew CLI omitted; seconds/reasons and durations.json unchanged. hub/README.md documents flow; docs/agents/tests.md left untouched for T-1199.

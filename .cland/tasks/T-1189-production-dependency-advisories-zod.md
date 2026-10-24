@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-924
 branch: t/T-1189-production-dependency-advisories-zod
 created: 2026-10-23T21:49:58.684Z
-updated: 2026-10-24T06:42:14.219Z
+updated: 2026-10-24T06:55:48.032Z
 ---
 
 ## Summary
@@ -93,3 +93,11 @@ QA policy none/after-stage, no per-item brief or qaCriteria. Reviewer performed 
 Standards: 0 outstanding findings (M1 corrected). Spec: 0 findings.
 
 Durable source review: A-10326.
+
+### impl-1189 · 2026-10-24T06:48:13.952Z
+
+Boundary follow-up filed by Coordinator as T-1208 (Tech debt, S): align the local spoke SDK's 10 MiB pre-validation MCP buffer with the hub's 1 MiB cap. Direct hub network/Unix input is capped before validation; local MCP validation can occur above 1 MiB, bounded by the SDK cap. T-1189 remains dependency-only. Source-clear head 9778912a and admitted mode-free verify f4ace04e-a195-4062-a3fc-f741614dbc2d remain unchanged; awaiting its hub result.
+
+### impl-1189 · 2026-10-24T06:54:23.015Z
+
+Mode-free Linux droplet verify f4ace04e at 9778912a failed: 2780 pass / 1 fail; T1/T2 exit 0, Web exit 1, budgets report-only. A-10329 records `locator.waitFor: Timeout 3000ms exceeded` for R-1100 at web/test/items.test.ts:44. Exact local isolated test reproduces (A-10330). Minimized fixture mismatch: liveRelease is computed before seedTree adds versioned open R-900000 (99.0.0), displacing expected unversioned R-1100 after previous versioned releases closed. Pure currentRelease probe confirms before R-1100 / after R-900000. Reported to Coordinator and Reviewer; awaiting Coordinator-posted shared fix, no source edits or retry.
