@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { assertTestDocIndex } from './test-docs-index.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
@@ -16,8 +17,7 @@ test('the per-test index links every document to its existing test file', () => 
   const index = read(`${folder}/index.md`);
   assert.match(guide, /\]\(tests\/index\.md\)/);
   const documents = readdirSync(resolve(root, folder)).filter(name => name !== 'index.md').sort();
-  const listed = [...index.matchAll(/\[Notes\]\(([^)]+)\)/g)].map(match => match[1]!).sort();
-  assert.deepEqual(listed, documents);
+  assertTestDocIndex(index, documents);
   for (const document of documents) {
     const content = read(`${folder}/${document}`);
     const path = /^# (.+\.test\.ts)$/m.exec(content)?.[1];
@@ -62,4 +62,14 @@ test('historical tests.md anchors and references from skills, briefs, READMEs an
       assert.ok(available.has(match[1]!), `${path}: ${match[0]}`);
     }
   }
+});
+
+test('index membership rejects missing, duplicate and dangling entries but accepts either order', () => {
+  const row = (name: string) => `[Notes](${name})`;
+  const documents = ['first.md', 'second.md'];
+  assert.doesNotThrow(() => assertTestDocIndex(documents.map(row).join('\n'), documents));
+  assert.doesNotThrow(() => assertTestDocIndex([...documents].reverse().map(row).join('\n'), documents));
+  assert.throws(() => assertTestDocIndex(row('first.md'), documents));
+  assert.throws(() => assertTestDocIndex(['first.md', 'second.md', 'first.md'].map(row).join('\n'), documents));
+  assert.throws(() => assertTestDocIndex(['first.md', 'absent.md'].map(row).join('\n'), documents));
 });

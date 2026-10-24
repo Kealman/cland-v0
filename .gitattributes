@@ -1,0 +1,2 @@
+# Per-test guidance consists of independent paragraphs and index rows.
+/docs/agents/tests/*.md merge=union

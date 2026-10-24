@@ -2,6 +2,8 @@
 
 Per-test guidance lives in the [test-file index](tests/index.md). Add test-specific paragraphs to the file named after the repository test path (slashes become hyphens, followed by `.md`). Keep shared tiers, budgets, cover-quiet and conventions here.
 
+The tracked `.gitattributes` uses Git’s built-in `union` merge driver for the index and per-test documents. Independent index rows and guidance paragraphs survive parallel additions, including two branches creating the same document, through ordinary merges, rebases and cland’s object-based merge queue. List each document exactly once in the index; entry order has no meaning and is not checked. The test-docs guard rejects missing, duplicated and dangling entries. Keep paragraphs independent and review the combined guidance when branches edit the same advice: union retains both sides of overlapping edits.
+
 The root `npm run typecheck` uses native TypeScript 7.0.2 for the hub's bin, src
 and test files, Neovim's bin and test files, and the web workspace, through their respective
 `tsconfig.json` files. It also checks `shared/wire/tsconfig.json` with DOM libraries
