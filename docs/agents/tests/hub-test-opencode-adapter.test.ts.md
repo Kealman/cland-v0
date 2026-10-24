@@ -1,5 +1,24 @@
 # hub/test/opencode-adapter.test.ts
 
+Role clauses arrive in the default `cland-role` instruction entry (T-619). The
+message-path contracts that assert a first-prompt clause and its turn accounting
+opt out with `CLAND_OPENCODE_ROLE_INSTRUCTIONS=0` through the `messagePath` helper.
+The default/opt-out/fallback test asserts the entry appears by default and is
+replaced on role change and revocation, the launch brief remains a prompt, an
+explicit opt-out leaves no entry, and a failed instruction route confirms
+deletion before the prompt fallback. Its `old endpoint` mode models a server
+that predates the experimental route for a session this hub created and never
+wrote an entry to: both PUT and DELETE answer 404, and the test asserts the
+prompt fallback and its log. The separate retained-entry test installs an entry,
+then removes the route: both writes answer 404 while the saved entry remains,
+and the test asserts `inject-unconfirmed`, the retained entry, no prompt
+fallback and a later replacement once the route returns. A third case loses the
+reply to a first write that still persisted, then 404s the cleanup: it asserts
+`inject-unconfirmed`, the saved entry, no prompt fallback, and acknowledgement
+only after the retried write. Keep all three: a route-level 404 is not proof
+that a saved entry is gone, and a lost reply is not proof that no write
+happened.
+
 The sender-specific native admission paths stay covered in `opencode-adapter.test.ts`
 (T3 HTTP/SSE contract) and `codex-native.test.ts` (T2 scripted RPC): a human
 message sent in state `busy` waits, an agent report steers the running turn,

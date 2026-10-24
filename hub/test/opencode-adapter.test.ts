@@ -1,7 +1,8 @@
 // T3 OpenCode real-binary contract: the fake HTTP/SSE server starts the production spoke.
 // Checklist, one native proof per family (titles below):
 // - launch/attach: "a launched OpenCode session" (config, private password, TUI cwd);
-// - first role clause: "the first OpenCode native prompt" (one input, clause before brief);
+// - first role clause: the default "cland-role" instruction entry, or with CLAND_OPENCODE_ROLE_INSTRUCTIONS=0,
+//   "the first OpenCode native prompt" (one input, clause before brief);
 // - injected/reply correlation: "a launched OpenCode session" (queue, stages, replyTo);
 // - sender delivery: "a busy OpenCode turn" (human queues, agent steers through native HTTP/SSE);
 // - signals/model/usage: "a launched OpenCode session", "a pending permission" and "a failed OpenCode turn";
@@ -112,10 +113,10 @@ execFile(process.execPath, [cli, 'verify', '--report', topic, '--to', recipient,
   assert.equal(shell.data.code, 0, shell.data.stderr);
 });
 
-test('the first OpenCode native prompt carries the role clause before the launch brief', async (t) => {
+test('with role instructions opted out, the first OpenCode native prompt carries the role clause before the launch brief', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, messagePath(fake));
   // Claude's permission mode does not change OpenCode's native launch settings.
   const rolesFile = join(root, '.cland/roles.toml');
   await writeFile(rolesFile, (await readFile(rolesFile, 'utf8')).replace('[implementer.launch]', '[implementer.launch]\npermissions = "auto"'));
@@ -167,6 +168,9 @@ async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTi
   });
   return { env, home, servers, prompts: (session) => readFile(join(home, 'prompts', `${session}.log`), 'utf8').catch(() => '') };
 }
+
+/** The message-path contract: role clauses arrive as prompts instead of the default cland-role entry. */
+const messagePath = (fake: FakeOpenCode) => ({ ...fake.env, CLAND_OPENCODE_ROLE_INSTRUCTIONS: '0' });
 
 async function status(ui: FrameClient): Promise<Status> {
   const r = await ui.request({ type: 'hub.status', history: true });
@@ -322,7 +326,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   const root = await tempProject(t);
   // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, messagePath(fake));
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
@@ -419,7 +423,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
 test('a launch without a model prefers big-pickle over a listed but deprecated free model', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_OPENCODE_DEPRECATED_FIRST: '1' });
+  const { discovery } = await projectHub(t, root, { ...messagePath(fake), FAKE_OPENCODE_DEPRECATED_FIRST: '1' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -433,7 +437,7 @@ test('a launch without a model prefers big-pickle over a listed but deprecated f
 test('a failed OpenCode turn is recorded in Agents and the events view and reported to the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, messagePath(fake));
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -460,7 +464,7 @@ test('a busy OpenCode turn queues the human’s message while an agent’s repor
   const root = await tempProject(t);
   // Observe turn boundaries from SSE rather than polling.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, messagePath(fake));
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
@@ -512,7 +516,7 @@ test('a pending permission is waiting for approval within one event, and the rep
   const root = await tempProject(t);
   // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, messagePath(fake));
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -662,24 +666,22 @@ test('a stopped OpenCode session whose native conversation disappeared offers fr
   await eventually('fresh first input carries OpenCode brief', async () => (await fake.prompts(after.harnessSessionId!)).includes('OpenCode brief') || undefined);
 });
 
-for (const fallback of [false, true]) test(`OpenCode role instructions are opt-in and replace the entry on role changes (${fallback ? 'message fallback' : 'instructions'})`, async t => {
+for (const mode of ['default', 'opted out', 'fallback', 'old endpoint'] as const) test(`OpenCode role instructions replace the cland-role entry by default; an opt-out and a failed instruction route keep the message path (${mode})`, async t => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  if (fallback) await writeFile(join(fake.home, 'fail-instructions'), 'unsupported');
-  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_OPENCODE_ROLE_INSTRUCTIONS: '1' });
+  if (mode === 'fallback') await writeFile(join(fake.home, 'fail-instructions'), 'unsupported');
+  // An older server has no experimental route at all: PUT and DELETE both answer 404.
+  if (mode === 'old endpoint') await writeFile(join(fake.home, 'absent-instructions'), 'unsupported');
+  const { discovery } = await projectHub(t, root, mode === 'opted out' ? messagePath(fake) : fake.env);
   const ui = await connectUi(t, discovery);
   const h = await launch(ui, 'impl-instructions', { role: 'implementer', brief: 'Build the synthetic brief.' });
   await eventually('brief still arrives as a prompt', async () => (await fake.prompts(h.harnessSessionId!)).includes('Build the synthetic brief.') || undefined);
   const path = `/api/experimental/session/${h.harnessSessionId}/instructions/entries`;
   const entries = async () => (await api(h, root, 'GET', path) as { data: Array<{ key: string; value: string }> }).data;
-  if (fallback) {
-    assert.match(await fake.prompts(h.harnessSessionId!), /you hold the role Implementer/);
-    assert.deepEqual(await entries(), []);
-    assert.match(await hubLog(root, ui), /opencode-instructions-fallback/);
-  } else {
+  if (mode === 'default') {
+    await eventually('role clause installed as the cland-role instruction entry', async () => (await entries()).find(entry => entry.key === 'cland-role')?.value.includes('you hold the role Implementer') || undefined);
     assert.doesNotMatch(await fake.prompts(h.harnessSessionId!), /you hold the role Implementer/);
     assert.equal((await entries()).length, 1);
-    assert.equal((await entries())[0]?.key, 'cland-role');
     assert.match((await entries())[0]!.value, /you hold the role Implementer/);
     assert.equal((await ui.request({ type: 'role.set', session: h.name, role: 'reviewer' })).ok, true);
     await eventually('role instruction replaced', async () => (await entries())[0]?.value.includes('you hold the role Reviewer') || undefined);
@@ -687,5 +689,62 @@ for (const fallback of [false, true]) test(`OpenCode role instructions are opt-i
     assert.equal((await ui.request({ type: 'role.clear', session: h.name })).ok, true);
     await eventually('revocation replaces the old instruction', async () => (await entries())[0]?.value.includes('no longer holds') || undefined);
     assert.equal((await entries()).length, 1);
+  } else {
+    assert.match(await fake.prompts(h.harnessSessionId!), /you hold the role Implementer/);
+    if (mode === 'old endpoint') {
+      // The route cannot be queried at all; the prompt and the fallback log are the delivery receipt.
+      assert.match(await hubLog(root, ui), /opencode-instructions-fallback/);
+    } else {
+      assert.deepEqual(await entries(), []);
+      if (mode === 'fallback') assert.match(await hubLog(root, ui), /opencode-instructions-fallback/);
+      else assert.doesNotMatch(await hubLog(root, ui), /opencode-instructions-fallback/);
+    }
   }
+});
+
+test('a saved cland-role entry is not treated as removed when the instruction route disappears', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const h = await launch(ui, 'impl-retained', { role: 'implementer' });
+  const sessionFile = join(fake.home, 'sessions', `${h.harnessSessionId}.json`);
+  const entry = async () => (JSON.parse(await readFile(sessionFile, 'utf8')) as { instructions?: Record<string, string> }).instructions?.['cland-role'];
+  await eventually('initial role installed', async () => (await entry())?.includes('you hold the role Implementer') || undefined);
+  // The saved entry stays in the session record while the experimental route is gone.
+  await writeFile(join(fake.home, 'absent-instructions'), 'unsupported');
+  assert.equal((await ui.request({ type: 'role.set', session: h.name, role: 'reviewer' })).ok, true);
+  await eventually('route loss leaves the new clause unconfirmed', async () => /"event":"inject-unconfirmed"/.test(await hubLog(root, ui)) || undefined);
+  assert.match((await entry())!, /you hold the role Implementer/, 'the saved entry is still installed');
+  assert.doesNotMatch(await fake.prompts(h.harnessSessionId!), /you hold the role Reviewer/, 'no prompt fallback while the old entry remains');
+  assert.doesNotMatch(await hubLog(root, ui), /opencode-instructions-fallback/);
+  // Restoring the route lets the retried delivery replace the entry; nothing is acknowledged before then.
+  await rm(join(fake.home, 'absent-instructions'));
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [h.name], text: 'a turn that retries the held delivery' });
+  assert.equal(sent.ok, true, sent.error);
+  await eventually('retried instruction replaces the saved entry', async () => (await entry())?.includes('you hold the role Reviewer') || undefined);
+});
+
+test('a lost instruction write is not treated as absent when cleanup sees no route', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t, { injectTimeoutMs: 400 });
+  // The first clause write persists in the session record, but its reply never arrives.
+  await writeFile(join(fake.home, 'lose-instructions-response'), 'lost');
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const h = await launch(ui, 'impl-lost', { role: 'implementer' });
+  const sessionFile = join(fake.home, 'sessions', `${h.harnessSessionId}.json`);
+  const entry = async () => (JSON.parse(await readFile(sessionFile, 'utf8')) as { instructions?: Record<string, string> }).instructions?.['cland-role'];
+  const records = async () => (await hubLog(root, ui)).split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line) as { event?: string; id?: string });
+  const unconfirmed = await eventually('lost write reported unconfirmed', async () => (await records()).find(row => row.event === 'inject-unconfirmed'));
+  assert.match((await entry())!, /you hold the role Implementer/, 'the server saved the entry before the reply was lost');
+  assert.ok(unconfirmed.id);
+  assert.doesNotMatch(await hubLog(root, ui), /opencode-instructions-fallback/);
+  assert.doesNotMatch(await fake.prompts(h.harnessSessionId!), /you hold the role Implementer/, 'no prompt fallback while the saved write may exist');
+  // Once the route answers again, the retried write is acknowledged and the entry is confirmed.
+  await rm(join(fake.home, 'lose-instructions-response'));
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [h.name], text: 'a turn that retries the lost write' });
+  assert.equal(sent.ok, true, sent.error);
+  await eventually('retried write acknowledged', async () => (await records()).some(row => row.event === 'injected' && row.id === unconfirmed.id) || undefined);
+  assert.match((await entry())!, /you hold the role Implementer/);
 });

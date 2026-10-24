@@ -29,11 +29,23 @@ test('Coordinator launches the three harnesses with clauses and a correlated nat
     const launch = await launcher.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.launch', { name: 'native', harness, role: 'implementer' });
     assert.equal(launch.ok, true, launch.error);
     const process = await withDiscoveredPid(ui, launch.process);
-    await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === process.sessionId);
-    const log = () => harness === 'claude-code' ? claude.log(process.harnessId!) : harness === 'codex' ? codex.log(process.pid!) : readFile(join(opencode, 'prompts', `${process.harnessSessionId}.log`), 'utf8');
-    const first = await eventually('native role clause recorded', async () => { const text = await log(); return text.includes('you hold the role Implementer') ? text : undefined; });
-    assert.match(first, /you hold the role Implementer/);
-    assert.match(first, /Sub-agent delegation is disabled/);
+    if (harness === 'opencode') {
+      // The default instruction route: the clause is the durable cland-role entry, not a prompt, so no clause turn runs.
+      const sessionFile = join(opencode, 'sessions', `${process.harnessSessionId}.json`);
+      const clause = await eventually('native role instruction recorded', async () => {
+        const session = JSON.parse(await readFile(sessionFile, 'utf8').catch(() => '{}')) as { instructions?: Record<string, string> };
+        const value = session.instructions?.['cland-role'];
+        return value?.includes('you hold the role Implementer') ? value : undefined;
+      });
+      assert.match(clause, /you hold the role Implementer/);
+      assert.match(clause, /Sub-agent delegation is disabled/);
+    } else {
+      await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === process.sessionId);
+      const log = () => harness === 'claude-code' ? claude.log(process.harnessId!) : codex.log(process.pid!);
+      const first = await eventually('native role clause recorded', async () => { const text = await log(); return text.includes('you hold the role Implementer') ? text : undefined; });
+      assert.match(first, /you hold the role Implementer/);
+      assert.match(first, /Sub-agent delegation is disabled/);
+    }
     const sent = await ui.request({ type: 'topic.send', topic: 'general', to: ['native'], text: '@native Reply with the single word pong' });
     assert.equal(sent.ok, true, sent.error);
     const id = (sent.value as { message: { id: string } }).message.id;

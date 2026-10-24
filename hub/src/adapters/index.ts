@@ -82,7 +82,7 @@ export function projectSessions(options: { openDatabase?: (path: string) => Data
       env,
     })));
     register(replacements.get('opencode') ?? own(new OpenCodeAdapter(host, {
-      roleInstructions: env.CLAND_OPENCODE_ROLE_INSTRUCTIONS === '1',
+      roleInstructions: env.CLAND_OPENCODE_ROLE_INSTRUCTIONS !== '0',
       ...(stopGraceMs ? { stopGraceMs } : {}),
       ...(env.CLAND_OPENCODE_BIN ? { bin: env.CLAND_OPENCODE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),

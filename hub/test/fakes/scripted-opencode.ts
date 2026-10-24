@@ -135,7 +135,7 @@ export class ScriptedOpenCode {
   }
 }
 
-export async function scriptedOpenCode(t: TestContext, roleInstructions = false, withItem = false) {
+export async function scriptedOpenCode(t: TestContext, roleInstructions?: boolean, withItem = false) {
   const root = await tempProject(t);
   const clock = new FakeClock();
   const native = new ScriptedOpenCode();
@@ -147,7 +147,7 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false,
   const factory = (host: AdapterHost) => {
     const lifecycle = fakeHarness('opencode', { host, clock });
     if (process) lifecycle.scriptResume(process.name, 'found');
-    adapter = new OpenCodeAdapter({ ...host, reconnected: id => { native.reconnected++; host.reconnected?.(id); } }, { clock, roleInstructions });
+    adapter = new OpenCodeAdapter({ ...host, reconnected: id => { native.reconnected++; host.reconnected?.(id); } }, { clock, ...(roleInstructions === undefined ? {} : { roleInstructions }) });
     const spawn = lifecycle.spawn.bind(lifecycle);
     lifecycle.spawn = async (...args) => {
       launchToken = args[0].launchToken; process = await spawn(...args);

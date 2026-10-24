@@ -435,6 +435,19 @@ async function serve(args: string[]): Promise<number> {
       if (parts[0] === 'api' && parts[1] === 'experimental' && parts[2] === 'session' && parts[3] && parts[4] === 'instructions' && parts[5] === 'entries') {
         const session = getSession(parts[3]);
         if (!session) return notFound(res, parts[3]);
+        // A write saved, but its reply lost: the PUT persists the entry and then never answers; the
+        // cleanup DELETE finds no route. Models a connection dropped after the server wrote.
+        if (existsSync(join(HOME, 'lose-instructions-response'))) {
+          if (method === 'PUT' && parts[6]) {
+            session.instructions = { ...session.instructions, [parts[6]]: (await readBody(req)).value };
+            writeFileSync(sessionFile(session.id), JSON.stringify(session));
+            return new Promise(() => {});
+          }
+          return send(res, 404, { message: 'not found' });
+        }
+        // A server older than the experimental instruction route: every method answers 404, as it would
+        // when the path is absent rather than when the key is missing.
+        if (existsSync(join(HOME, 'absent-instructions'))) return send(res, 404, { message: 'not found' });
         if (method === 'GET') return send(res, 200, { data: Object.entries(session.instructions ?? {}).map(([key, value]) => ({ key, value })) });
         if (method === 'DELETE' && parts[6]) {
           if (existsSync(join(HOME, 'fail-instructions-delete'))) return send(res, 500, { message: 'instruction deletion failed' });

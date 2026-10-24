@@ -69,7 +69,7 @@ export const OPENCODE_CAPABILITIES: Capabilities = {
 export type OpenCodeOptions = {
   /** Watch scheduling; native HTTP and process-lifecycle deadlines remain real. */
   clock?: Clock;
-  /** Experiment: deliver hub role clauses as a replaceable instruction entry. Default false. */
+  /** Deliver hub role clauses as a replaceable instruction entry. Default true; false keeps the prompt path. */
   roleInstructions?: boolean;
   /** Grace before a verified process tree is killed. */
   stopGraceMs?: number;
@@ -115,6 +115,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #stopGraceMs: number;
   readonly #injectTimeoutMs: number;
   readonly #roleInstructions: boolean;
+  /** Native sessions this adapter created: no entry can predate their first failed instruction write. */
+  readonly #freshSessions = new Set<string>();
+  /** Native sessions that may carry a saved entry (a resumed one, or one that accepted a write). */
+  readonly #roleEntries = new Set<string>();
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
   readonly #processEnv: NodeJS.ProcessEnv;
@@ -129,7 +133,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
     this.#clock = options.clock ?? realClock;
-    this.#roleInstructions = options.roleInstructions ?? false;
+    this.#roleInstructions = options.roleInstructions ?? true;
     this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
     this.#bin = options.bin ?? harnessBinary('opencode', this.#processEnv);
@@ -216,7 +220,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
           }
           authorize();
           session = yield* wait(client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd, permissions: policy.rules }));
+          this.#freshSessions.add(session.id);
         } else {
+          // An existing native conversation may already carry an entry from an earlier hub process.
+          this.#roleEntries.add(session.id);
           policy.rules = session.permissions ?? [];
           policy.warnings.push('Existing conversation retains its native permission rules and model variant');
         }
@@ -306,12 +313,26 @@ export class OpenCodeAdapter implements HarnessAdapter {
           // A stable key replaces assignment, handover and revocation alike; retries cannot append stale roles.
           const latest = clauses.at(-1)!;
           await client.roleInstruction(p.harnessSessionId, envelope({ ...latest, digest: [] }, null), this.#injectTimeoutMs);
+          this.#roleEntries.add(p.harnessSessionId);
           if (isClause(message)) return;
           message = { ...message, digest: (message.digest ?? []).filter(m => !isClause(m)) };
-        } catch {
+        } catch (err) {
+          // An ambiguous PUT may have installed the entry even though no reply arrived. A 404 is the
+          // server's proof that the route refused the write; any other failure may have written it.
+          if (!(err instanceof HttpError && err.status === 404)) this.#roleEntries.add(p.harnessSessionId);
           // A failed PUT may leave an earlier role (or an unacknowledged new write) installed.
           // Only confirmed deletion permits message fallback; cleanup failure leaves delivery unconfirmed.
-          await client.clearRoleInstruction(p.harnessSessionId, this.#injectTimeoutMs);
+          try {
+            await client.clearRoleInstruction(p.harnessSessionId, this.#injectTimeoutMs);
+            this.#roleEntries.delete(p.harnessSessionId);
+          } catch (err) {
+            // A missing experimental route cannot show what the server still holds. Only a session this
+            // adapter created and never wrote an entry to can have none; a resumed or previously written
+            // session keeps delivery unconfirmed.
+            const absent = err instanceof HttpError && err.status === 404
+              && this.#freshSessions.has(p.harnessSessionId) && !this.#roleEntries.has(p.harnessSessionId);
+            if (!absent) throw err;
+          }
           this.#host.log({ event: 'opencode-instructions-fallback', session: p.name, id: message.id });
         }
       }

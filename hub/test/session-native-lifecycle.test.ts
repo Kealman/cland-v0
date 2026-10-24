@@ -127,13 +127,19 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   git(one.worktree.path, 'add', 'README.md'); git(one.worktree.path, 'commit', '-qm', 'Ship first');
   const merged = await ui.request({ type: 'merge', item: first, override: 'Exercise pooled handoff' }, 30_000);
   assert.equal(merged.ok, true, merged.error);
-  await eventually('pool member finished its first turn and released its claim after merge', async () => {
+  // OpenCode can report idle before its spoke connects and installs the role clause.
+  // The durable instruction entry distinguishes that startup snapshot from a reusable member.
+  const roleInstruction = async () => {
+    try {
+      const session = JSON.parse(await readFile(join(fake.home, 'sessions', `${one.process.harnessSessionId}.json`), 'utf8')) as { instructions?: Record<string, string> };
+      return session.instructions?.['cland-role'];
+    } catch { return undefined; }
+  };
+  await eventually('pool member installed its role and released its claim after merge', async () => {
     const rows = ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
     const row = rows.find(p => p.sessionId === one.process.sessionId);
-    // OpenCode can report idle before its spoke connects and injects the role clause.
-    // First-turn usage distinguishes that startup snapshot from a reusable member.
-    return row?.state === 'idle' && row.holds?.length === 0
-      && (harness !== 'opencode' || (row.usage?.total?.totalTokens ?? 0) > 0)
+    const roleReady = harness !== 'opencode' || (await roleInstruction())?.includes('you hold the role Implementer');
+    return row?.state === 'idle' && row.holds?.length === 0 && roleReady
       && (harness !== 'claude-code' || (await fake.log(one.process)).includes('hooks Stop done')) ? true : undefined;
   });
   assert.equal(git(one.worktree.path, 'status', '--porcelain'), '');
