@@ -18,8 +18,8 @@ import { setConfigValue } from '../init/config-set.ts';
 import { setRoleLaunch, type LaunchFields, type RoleLaunchResult } from '../roles/launch.ts';
 import { migrateAideTools, writeRolesFile } from '../roles/editor.ts';
 
-// These owners establish timers, storage or compatibility machinery at startup.
-const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'artifacts', 'hygiene'] as const;
+// These owners establish listeners, timers, storage or compatibility machinery at startup.
+const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'artifacts', 'hygiene', 'web'] as const;
 const STARTUP_VERIFICATION_FIELDS = [['lockPath', 'lock_path'], ['workers', 'workers'], ['testTimeoutMs', 'test_timeout'], ['stallTimeoutMs', 'stall_timeout'], ['coverageMaxAgeMs', 'coverage_max_age']] as const;
 export type ConfigSetResult = { key: string; value: unknown; applies: string };
 

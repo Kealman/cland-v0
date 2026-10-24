@@ -36,6 +36,12 @@ For browser tests, follow `docs/agents/tests.md#web-phase` and `web/README.md#br
 
 For network bind, tunnel and QR tests, follow `docs/agents/tests.md#browser-sign-in-fixtures`: bind only disposable loopback aliases or use scratch config; observe web and spoke addresses independently.
 
+`[web]` settings are startup-only: reload and role auto-refresh refuse a changed
+parsed web table and retain the loaded config/roles pair; `config set web.*`
+saves for the next hub start. Apply with `cland hub stop` then `cland hub start`.
+Use the sealed CLI/projectHub regression described in
+`docs/agents/tests/hub-test-config-reload-component.test.ts.md`.
+
 For Web load-race checks, use `resizePage` and the positive receipt guidance in
 `docs/agents/tests.md#web-load-race-guards`. New Web files have a separate
 report-only ten-file-repetition check with two workers and owned CPU load after

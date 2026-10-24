@@ -44,6 +44,55 @@ test('hub reload applies changed verification commands without a restart', async
   for (const key of ['prepare', 'check', 'test']) assert.ok(result.stdout.includes(`verification.${key}`), result.stdout);
 });
 
+for (const [key, value] of [
+  ['origin', 'https://phone.example'], ['bind', '127.0.0.2'], ['port', 43123], ['dist', 'other-bundle'],
+] as const) {
+  test(`hub reload refuses changed web.${key} with restart guidance and retains the config/roles pair`, async t => {
+    const root = await tempProject(t);
+    const files = layout(root);
+    await mkdir(files.dir, { recursive: true });
+    await writeFile(files.config, config(root, 2));
+    await writeFile(files.roles, roles('before'));
+    const daemon = await projectHub(t, root);
+    const ui = await connectUi(t, daemon.discovery);
+    const initial = (await ui.request({ type: 'hub.status' })).value as import('../src/protocol.ts').HubStatus;
+    await writeFile(files.config, config(root, 3) + `[web]\n${key}=${JSON.stringify(value)}\n`);
+    await writeFile(files.roles, roles('after'));
+
+    const result = await cland(root, 'hub', 'reload');
+    assert.equal(result.code, 1, result.stdout);
+    assert.match(result.stderr, /web changed: restart required/);
+    const retained = (await ui.request({ type: 'hub.status' })).value as import('../src/protocol.ts').HubStatus;
+    assert.equal(retained.verification?.remoteBudget, 2);
+    assert.deepEqual(retained.config, initial.config);
+    assert.deepEqual(retained.web, initial.web);
+    const listed = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
+    assert.equal(listed.roles.find(r => r.role === 'implementer')?.launch.model, 'before');
+  });
+}
+
+test('hub reload accepts equivalent parsed web settings and refuses removing a configured origin', async t => {
+  const root = await tempProject(t);
+  const files = layout(root);
+  await mkdir(files.dir, { recursive: true });
+  await writeFile(files.config, config(root, 2) + '[web]\norigin="https://phone.example/"\n');
+  const daemon = await projectHub(t, root);
+  const ui = await connectUi(t, daemon.discovery);
+  await writeFile(files.config, config(root, 3) + '[web]\nbind="127.0.0.1"\nport=0\ndist=""\norigin="https://phone.example"\n');
+  const loaded = await cland(root, 'hub', 'reload');
+  assert.equal(loaded.code, 0, loaded.stderr);
+  const before = (await ui.request({ type: 'hub.status' })).value as import('../src/protocol.ts').HubStatus;
+  assert.equal(before.verification?.remoteBudget, 3);
+
+  await writeFile(files.config, config(root, 4));
+  const refused = await cland(root, 'hub', 'reload');
+  assert.equal(refused.code, 1, refused.stdout);
+  assert.match(refused.stderr, /web changed: restart required/);
+  const retained = (await ui.request({ type: 'hub.status' })).value as import('../src/protocol.ts').HubStatus;
+  assert.equal(retained.verification?.remoteBudget, 3);
+  assert.deepEqual(retained.config, before.config);
+});
+
 test('hub reload publishes config and roles together and retains both after either file fails', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });

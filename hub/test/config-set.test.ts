@@ -102,6 +102,19 @@ test('config set parses numbers and lists, applies reloadable values now and rep
   assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout).verification.remoteBudget, 3);
 });
 
+test('config set saves web settings for the next hub start and keeps pending edits out of the loaded config', async t => {
+  const { root, path } = await fixture(t);
+  const before = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout);
+  const saved = await cland(root, 'config', 'set', 'web.origin', 'https://phone.example', '--json');
+  assert.equal(saved.code, 0, saved.stderr);
+  assert.deepEqual(JSON.parse(saved.stdout), { key: 'web.origin', value: 'https://phone.example', applies: 'restart' });
+  assert.equal(parseConfig(await readFile(path, 'utf8'), root).web.origin, 'https://phone.example');
+  const pending = await cland(root, 'config', 'set', 'verification.remote_budget', '5', '--json');
+  assert.equal(pending.code, 0, pending.stderr);
+  assert.match(JSON.parse(pending.stdout).applies, /saved; not applied:.*web changed: restart required/);
+  assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout).verification.remoteBudget, before.verification.remoteBudget);
+});
+
 test('config set refuses unknown keys, invalid parser values and silently ignored values without changing bytes', async t => {
   const { root, path, discovery } = await fixture(t);
   const ui = await connectUi(t, discovery);

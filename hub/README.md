@@ -258,7 +258,9 @@ All four keys are optional in `.cland/config.toml`:
 For development, `[web] dist = "path/to/bundle"` serves another bundle; relative
 paths resolve from the project root, absolute paths are accepted, and the empty
 default uses the installed bundle. Apply `[web]` changes with `cland hub stop`
-followed by `cland hub start`; reload does not recreate the listener. The defaults are:
+followed by `cland hub start`; reload refuses changes to the parsed `web` table
+with `web changed: restart required` and keeps the loaded config and roles.
+Equivalent parsed values still permit a reload. The defaults are:
 
 ```toml
 [web]
@@ -1090,9 +1092,9 @@ edit or explicit reload succeeds. Running role clauses are delivered on the next
 assignment or reconnect as before.
 
 Startup settings require a restart: `project.name`, `tracker.levels`,
-`tracker.fatal_stall`, `inbox.idle_minutes`, `plan`, `sessions`, `artifacts`, `hygiene`, `visibility`, and
+`tracker.fatal_stall`, `inbox.idle_minutes`, `plan.qa_default`, `sessions`, `artifacts`, `hygiene`, `visibility`, `web` (`bind`, `origin`, `port`, `dist`), and
 `verification.lock_path`, `workers`, `test_timeout`, `stall_timeout`,
-`coverage_max_age`. Their owners establish storage, policies, timers, compatibility
+`coverage_max_age`. Their owners establish listeners, storage, policies, timers, compatibility
 locks or candidate-runner settings at startup. Changing any of these refuses the
 whole pair with a restart-required error naming the field. Candidate worktrees
 retain their own worker and test limits, captured at suite submission.
