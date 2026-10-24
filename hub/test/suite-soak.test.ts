@@ -9,6 +9,8 @@ import { DevT3Search } from '../src/hub/dev-t3-search.ts';
 import { reportDevT3Search } from '../src/hub/dev-t3-report.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { readFile, writeFile } from 'node:fs/promises';
 
 test('nightly submits once after UTC time and skips an unchanged candidate across restart', async t => {
   const f = await suiteUnit(t, { machineReceiptsOnly: true }, 'soak="12:01"');
@@ -106,6 +108,99 @@ test('periodic T3 configuration round-trips duration and disable settings', () =
     assert.equal(c.verification.devT3EveryMs, interval === '' ? 0 : interval === '2h' ? 7_200_000 : 1_800_000);
   }
   for (const value of ['0', '"0h"', '"soon"']) assert.throws(() => parseConfig(`[verification]\ndev_t3_every=${value}`, 'test'), /dev_t3_every/);
+});
+
+test('periodic bundle failure is infrastructure without changing green or red evidence and retries after restart', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'dev_t3_every="1s"'));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  const tick = () => run.wait('periodic I/O settled', async () => { await f.tick(); await f.suites.settled(); });
+  await tick(); await tick();
+  const green = (await f.jobs())[0]!;
+  await run.wait('green started', () => f.machine.waits.run(f.machine.started(green.id)));
+  await run.wait('green completion', () => f.finish(green.id));
+  f.candidate.head = 'b'.repeat(40); f.candidate.tree = 'e'.repeat(40); f.candidate.selection.fetchedDev = f.candidate.head;
+  await tick();
+  const red = (await f.jobs())[1]!;
+  await run.wait('red started', () => f.machine.waits.run(f.machine.started(red.id)));
+  await run.wait('red completion', () => f.finish(red.id, 1, '# tests 1\n# fail 1\n'));
+  const covers = f.suites.covers();
+  const delivery = t.mock.method(f.machine.dependencies.run, 'deliver', async () => { throw new Error('bundle: object unavailable'); });
+  f.candidate.head = 'c'.repeat(40); f.candidate.tree = 'f'.repeat(40); f.candidate.selection.fetchedDev = f.candidate.head;
+  await tick(); await tick();
+  const failed = (await f.jobs()).find(job => job.head === f.candidate.head)!;
+  await run.wait('infrastructure report', () => f.machine.waits.run(f.result(failed.id)));
+  const receipt = await f.suites.receipt(failed.id);
+  const result = await devT3Result(receipt.job, receipt.log, { id: 'A-1', path: '/durable/log' }, async () => `${failed.head}\0Latest tip`);
+  assert.equal(result.result, 'not-run', receipt.job.outcome?.cause);
+  assert.equal(result.notRun, 'infrastructure');
+  assert.equal(result.cause, 'bundle: object unavailable');
+  assert.deepEqual(result.failingFiles, []);
+  assert.equal(result.previousGreenHead, green.head);
+  assert.equal(result.previousGreenRun, green.id);
+  assert.equal(receipt.job.outcome?.notRun, 'infrastructure');
+  assert.equal(JSON.parse(await readFile(receipt.job.result, 'utf8')).notRun, 'infrastructure');
+  assert.equal(f.machine.calls.some(call => call.run === failed.id && call.step === 'start'), false);
+  assert.equal(releaseT3Cover(f.store, failed.tree!), null);
+  assert.deepEqual(f.suites.covers(), covers, 'last executed green/red markers do not move');
+  const search = new DevT3Search(f.store, { probe: async () => assert.fail('infrastructure must not start culprit probes'), report: async () => assert.fail('infrastructure must not start a culprit search') });
+  search.accept(result); await search.tick();
+  assert.equal(f.store.meta('dev-t3-searches'), null);
+  // Simulate a crash after result.json but before the job completion checkpoint.
+  await f.reopen((await f.jobs()).map(job => {
+    if (job.id !== failed.id) return job;
+    const pending = { ...job, outcome: null, reported: false, artifact: null };
+    delete pending.finished; pending.state = 'launching';
+    return pending;
+  }));
+  await tick();
+  await run.wait('recovered infrastructure report', () => f.machine.waits.run(f.result(failed.id)));
+  assert.equal((await f.suites.receipt(failed.id)).job.outcome?.notRun, 'infrastructure');
+  assert.deepEqual(f.suites.covers(), covers);
+  delivery.mock.restore();
+  await tick();
+  const retry = (await f.jobs()).find(job => job.head === failed.head && job.id !== failed.id)!;
+  assert.ok(retry, 'the next interval retries an eligible tip that never executed');
+  assert.equal(retry.head, failed.head);
+  assert.deepEqual(retry.devT3, { previousGreenHead: green.head, previousGreenRun: green.id });
+  await run.wait('retry started', () => f.machine.waits.run(f.machine.started(retry.id)));
+  await run.wait('retry completion', () => f.finish(retry.id));
+  assert.equal(f.status(retry.id).outcome?.code, 0);
+});
+
+test('restart from the first terminal-status receipt preserves the saved infrastructure outcome and cause', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'dev_t3_every="1s"'));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  t.mock.method(f.machine.dependencies.run, 'deliver', async () => { throw new Error('bundle: object unavailable'); });
+  const tick = () => run.wait('periodic I/O settled', async () => { await f.tick(); await f.suites.settled(); });
+  await tick(); await tick(); await tick();
+  const failed = (await f.jobs())[0]!;
+  await run.wait('infrastructure report', () => f.machine.waits.run(f.result(failed.id)));
+  const original = (await f.suites.receipt(failed.id)).job;
+  assert.equal(original.outcome?.notRun, 'infrastructure');
+  // This is the collector's first terminal-status checkpoint before the later
+  // full-outcome write. The saved job already owns the delivery failure.
+  await writeFile(original.result, JSON.stringify({ code: 1, cause: 'remote machine lost', finished: f.clock.now().toISOString() }));
+  const pending = { ...original, reported: false, artifact: null };
+  delete pending.finished; delete pending.completedAt; pending.state = 'launching';
+  await f.reopen([pending]);
+  await tick();
+  await run.wait('recovered infrastructure report', () => f.machine.waits.run(f.result(failed.id)));
+  const receipt = await f.suites.receipt(failed.id);
+  assert.deepEqual(receipt.job.outcome, { code: 1, cause: 'bundle: object unavailable', notRun: 'infrastructure' });
+  const durable = JSON.parse(await readFile(receipt.job.result, 'utf8'));
+  assert.equal(durable.notRun, 'infrastructure');
+  assert.equal(durable.cause, 'bundle: object unavailable');
+  const result = await devT3Result(receipt.job, receipt.log, { id: 'A-1', path: '/durable/log' }, async () => null);
+  assert.equal(result.result, 'not-run');
+  assert.equal(result.cause, 'bundle: object unavailable');
+  assert.deepEqual(f.suites.covers(), []);
+  const search = new DevT3Search(f.store, { probe: async () => assert.fail('infrastructure must not start culprit probes'), report: async () => assert.fail('infrastructure must not start a culprit search') });
+  search.accept(result); await search.tick();
+  assert.equal(f.store.meta('dev-t3-searches'), null);
 });
 
 test('periodic T2/T3 failures reach Bug filing through the culprit search', async t => {

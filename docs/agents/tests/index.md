@@ -34,6 +34,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/spoke-artifact-budget.test.ts`](../../../hub/test/spoke-artifact-budget.test.ts) | [Notes](hub-test-spoke-artifact-budget.test.ts.md) |
 | [`hub/test/startup-ready-component.test.ts`](../../../hub/test/startup-ready-component.test.ts) | [Notes](hub-test-startup-ready-component.test.ts.md) |
 | [`hub/test/startup-replies-scale.test.ts`](../../../hub/test/startup-replies-scale.test.ts) | [Notes](hub-test-startup-replies-scale.test.ts.md) |
+| [`hub/test/suite-soak-component.test.ts`](../../../hub/test/suite-soak-component.test.ts) | [Notes](hub-test-suite-soak-component.test.ts.md) |
+| [`hub/test/suite-soak.test.ts`](../../../hub/test/suite-soak.test.ts) | [Notes](hub-test-suite-soak.test.ts.md) |
 | [`hub/test/test-docs-merge.test.ts`](../../../hub/test/test-docs-merge.test.ts) | [Notes](hub-test-test-docs-merge.test.ts.md) |
 | [`hub/test/test-docs.test.ts`](../../../hub/test/test-docs.test.ts) | [Notes](hub-test-test-docs.test.ts.md) |
 | [`hub/test/thread-runs.test.ts`](../../../hub/test/thread-runs.test.ts) | [Notes](hub-test-thread-runs.test.ts.md) |

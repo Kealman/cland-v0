@@ -3169,7 +3169,11 @@ between submission and bundling. Every bundle contains the committed head's trac
 state; this applies to each shard of an occasion run too. Other dirty files still
 refuse delivery, with their paths in the error. Integrated dev runs permit a changed
 head only when the canonical candidate tree is unchanged; delivery still bundles
-the submitted head. Task runs require their exact submitted head.
+the submitted head. Task runs require their exact submitted head. Periodic
+`dev-t3` runs bundle the admitted commit directly from Git objects, independent
+of later source or administrative commits and dirty files in root dev. They
+skip the live-root host gate and run the recorded check remotely at the detached
+submitted head.
 
 The host computes the suite selection while `origin/dev` is available. The uploaded
 `env` carries the selection (inline JSON or a delivered selection file), worker
@@ -3809,6 +3813,16 @@ exclusions in `hub/src/verification-tree.ts` make tracker-only commits ineligibl
 The cursor survives restart, and a queued, running or unreported
 periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
+
+After admission, periodic delivery uses the captured commit's objects, so later
+root dev commits cannot invalidate bundling. A bundling or delivery failure before
+worker execution publishes **not run · infrastructure**, with its cause. The
+durable outcome keeps `code`/`cause` and adds `notRun: "infrastructure"`;
+`verification-dev-t3-result` uses `result: "not-run"` with the same `notRun` and
+`cause`. It supplies no cover, release proof or culprit search, and changes
+neither the last executed green nor red evidence. The attempt cursor still
+throttles retries for one interval; the next eligible tip is retried, including
+the same candidate tree if it has never started. These outcomes survive restart.
 
 Release occasions run T1–T4, including T3. `cland release`, including
 `--dry-run`, refuses with `release-t3` unless a completed, reported green

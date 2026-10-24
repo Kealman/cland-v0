@@ -16,7 +16,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh
                   occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
                   release cache: same effective executor/OS and full coverage; cache notices name original occasion/executor
                   Web: task and integrated/periodic/occasion runs, excluded from merge batches; web/** selects web-only; missing browser/libs: Web not run (reason retained)
-                  periodic dev T3 is hub-owned and runs only when the verification candidate tree changed
+                  periodic dev T3 is hub-owned: bundles its captured commit; delivery failures are infrastructure, retried next interval
   suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result
   verify cancel [<suite id>] [--json]
                   cancel your active suite (human: any explicit id); post its cancelled result

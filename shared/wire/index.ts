@@ -1011,7 +1011,7 @@ export type SuiteStatus = {
   executor: ExecutorKind;
   platform?: Platform;
   id: string; pid: number | null; topic: string; reported: boolean;
-  outcome: { code: number; cause: string } | null; error: string | null;
+  outcome: { code: number; cause: string; notRun?: 'infrastructure' } | null; error: string | null;
   state?: 'queued' | 'launching' | 'running' | 'finished'; queued?: string | null;
   priority?: number | null; item?: string | null; head?: string; branch?: string; integrated?: boolean;
   selection?: SuiteSelection;

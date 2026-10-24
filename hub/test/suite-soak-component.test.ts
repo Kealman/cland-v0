@@ -10,6 +10,56 @@ import { drive } from './remote-clock.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 import { caseDeadlines } from './case-deadlines.ts';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { runBundle } from '../src/executor/droplet/run.ts';
+import { committedTree } from '../src/verification-tree.ts';
+
+test('periodic dev T3 bundles its captured commit when root dev moves during delivery', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'dev_t3_every="1s"'));
+  const env = fixtureEnvironment(f.root, process.env);
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: f.root, env: fixtureEnvironment(f.root, process.env), timeout: 10000 })).stdout.trim();
+  await git('init', '-q', '-b', 'dev');
+  await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\nhub.db*\n');
+  await writeFile(join(f.root, 'source'), 'captured source\n');
+  await git('add', '.'); await git('commit', '-qm', 'Captured candidate');
+  const head = await git('rev-parse', 'HEAD');
+  f.candidate.head = head; f.candidate.tree = await committedTree(f.root, head, env); f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: head };
+  const transport = f.machine.dependencies.run;
+  const deliver = transport.deliver.bind(transport);
+  const bundled = Promise.withResolvers<string>();
+  t.mock.method(transport, 'deliver', async (...args: Parameters<typeof transport.deliver>) => {
+    const [lease, ref, committedOnly] = args;
+    await writeFile(join(f.root, 'source'), 'later source\n');
+    await git('add', 'source'); await git('commit', '-qm', 'Root dev advanced during bundling');
+    f.candidate.head = await git('rev-parse', 'HEAD');
+    f.candidate.tree = await committedTree(f.root, f.candidate.head, env);
+    await writeFile(join(f.root, 'source'), 'uncommitted later source\n');
+    const bundle = join(f.root, '.cland', 'captured.bundle');
+    await runBundle(ref, bundle, undefined, committedOnly ?? false, env);
+    bundled.resolve(bundle);
+    await deliver(lease, ref, committedOnly);
+  });
+  await f.tick(); await f.suites.settled();
+  await f.tick(); await f.suites.settled();
+  const job = (await f.jobs())[0]!;
+  assert.ok(job);
+  assert.equal(job.outcome, null, job.outcome?.cause);
+  const bundle = await run.wait('captured bundle receipt', () => bundled.promise);
+  assert.equal(await git('bundle', 'list-heads', bundle), `${head} refs/cland/suites/${job.id}`);
+  await git('init', '--bare', '-q', join(f.root, '.cland', 'receiver.git'));
+  await git('--git-dir=.cland/receiver.git', 'fetch', bundle, head);
+  assert.equal(await git('--git-dir=.cland/receiver.git', 'show', `${head}:source`), 'captured source');
+  assert.notEqual(await git('rev-parse', 'HEAD'), head);
+  await run.wait('execution receipt', () => f.machine.waits.run(f.machine.started(job.id)));
+  await run.wait('completion receipt', () => f.finish(job.id));
+  assert.equal(f.status(job.id).outcome?.code, 0);
+  assert.equal(f.status(job.id).head, head);
+});
 
 test('occasions keep T4 load tests in the base phase without parallel repetitions', async t => {
   const f = await suiteUnit(t, { executor: 'droplet' }, 'shards=1\nworkers=1\nlifetime="15m"\nrun_timeout="5m"');
@@ -272,6 +322,29 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
   assert.match(result.text, /Periodic dev T3 red/);
   assert.match(result.text, /duration allowance expiring within 48h: hub\/test\/example.test.ts::expiring · owner E-41 · expires 2026-10-18/);
   assert.doesNotMatch(result.text, /owner E-42|::legacy/);
+});
+
+test('periodic delivery failure publishes infrastructure rather than a red headline or culprit search', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'dev_t3_every="1s"' }));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  t.mock.method(f.dependencies.run!, 'deliver', async () => { throw new Error('bundle: captured object missing'); });
+  const tick = () => run.wait('periodic I/O settled', async () => { await f.clock.advance(1000); await drive(f, f.verificationSettled()); });
+  await tick(); await tick(); await tick();
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
+  const message = history.find(message => message.detail?.event === 'verification-dev-t3-result');
+  assert.ok(message, 'durable periodic result published');
+  assert.equal(message.detail!.result, 'not-run');
+  assert.equal(message.detail!.notRun, 'infrastructure');
+  assert.equal(message.detail!.cause, 'bundle: captured object missing');
+  assert.match(message.text, /Periodic dev T3 not run · infrastructure/);
+  assert.doesNotMatch(message.text, /Periodic dev T3 red/);
+  assert.equal(history.some(message => message.detail?.event === 'verification-dev-t3-search'), false);
+  assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; outcome: { notRun?: string } }[]; covers: { id: string }[] };
+  assert.equal(status.suites.find(job => job.id === message.detail!.run)!.outcome.notRun, 'infrastructure');
+  assert.equal(status.covers.some(cover => cover.id === message.detail!.run), false);
 });
 
 test('periodic T3 obeys the shared daily cap without changing the merge queue', async t => {

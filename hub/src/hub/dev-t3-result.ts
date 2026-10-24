@@ -7,7 +7,8 @@ export type DevT3Result = {
   event: 'verification-dev-t3-result'; run: string; head: string; tree: string | null;
   previousGreenHead: string | null; previousGreenRun: string | null;
   merges: Array<{ head: string; subject: string }> | null;
-  result: 'green' | 'red'; failingFiles: string[]; budgetIdentities?: string[]; artifact: string; path: string;
+  result: 'green' | 'red' | 'not-run'; notRun?: 'infrastructure'; cause?: string;
+  failingFiles: string[]; budgetIdentities?: string[]; artifact: string; path: string;
   durationWarnings?: string[];
 };
 
@@ -24,8 +25,9 @@ export async function devT3Result(job: Readonly<SuiteJob>, log: string, artifact
   });
   return { event: 'verification-dev-t3-result', run: job.id, head: job.head, tree: job.tree ?? null,
     previousGreenHead, previousGreenRun: job.devT3?.previousGreenRun ?? null, merges,
-    result: job.outcome?.code === 0 && !job.cancelled && !job.requesterDied ? 'green' : 'red',
-    failingFiles: [...new Set(failingTests(log).map(identity => identity.split('::')[0]!))].sort(),
+    result: job.outcome?.notRun ? 'not-run' : job.outcome?.code === 0 && !job.cancelled && !job.requesterDied ? 'green' : 'red',
+    ...(job.outcome?.notRun ? { notRun: job.outcome.notRun, cause: job.outcome.cause } : {}),
+    failingFiles: job.outcome?.notRun ? [] : [...new Set(failingTests(log).map(identity => identity.split('::')[0]!))].sort(),
     ...(cover?.cause === 'budget' ? { budgetIdentities: cover.tests } : {}),
     artifact: artifact.id, path: artifact.path };
 }

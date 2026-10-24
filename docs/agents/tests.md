@@ -237,6 +237,16 @@ droplet under the ordinary shared remote budget and daily spend cap, selects T2
 and T3 without load repetitions, and never holds or rebuilds a merge batch.
 Nightly soak still runs T1–T4 independently.
 
+Once admitted, periodic dev bundles the captured commit from Git objects. Later
+root dev source or administrative commits and dirty files cannot change those
+bytes. Its recorded check runs remotely on the detached commit, without a
+live-root host gate. A bundle/delivery failure before execution is **not run ·
+infrastructure**: durable `outcome.notRun: "infrastructure"` retains the cause
+alongside the existing exit code. It supplies no cover or release evidence,
+does not advance the last executed green/red markers, and starts no culprit
+search. After the attempt interval the hub retries the next eligible tip; an
+eligible tree that never started remains retryable across restart.
+
 Each periodic result goes to the Coordinator in General with head, previous green
 periodic head, first-parent commits since that green, outcome and failing files.
 The `verification-dev-t3-result` message detail exposes `run`, `head`, `tree`,
@@ -244,7 +254,9 @@ The `verification-dev-t3-result` message detail exposes `run`, `head`, `tree`,
 `failingFiles`, `artifact` and `path` for T-887. Missing baseline or unavailable
 Git range is explicit (`null`), including timeout or I/O rejection; it cannot
 block publication or the next periodic run. The previous
-green is pinned at admission and retained with the durable job.
+green is pinned at admission and retained with the durable job. Infrastructure
+results use `result: "not-run"`, `notRun: "infrastructure"`, `cause` and an empty
+`failingFiles` list; the existing fields remain present.
 
 A red periodic result starts a separate durable culprit search for T2 and T3
 failures alike, retaining the `DevT3Result` interface above. Each failing file

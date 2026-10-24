@@ -66,7 +66,7 @@ export type SuiteJob = {
   submissionKey?: string;
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
-  pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
+  pid: number | null; started: string | null; outcome: { code: number; cause: string; notRun?: 'infrastructure' } | null;
   reportFailedPermanently?: boolean;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   accountingWaitStarted?: string; accountingPending?: boolean;
@@ -668,6 +668,9 @@ export class Suites {
       // Pending delivery/start receipts can re-enter launch with that boundary set.
       if (job.remoteLogStart === undefined) await appendFile(job.log, `Workers ${job.workers} · source ${job.workersOverride !== undefined ? 'explicit --workers' : 'hub config'} · admitted\n`);
       const run = runRef(job);
+      // Periodic dev owns the admitted commit's objects, independent of later
+      // root commits. Its check runs remotely against that detached commit.
+      const committedOnly = job.occasion === 'dev-t3';
       if (job.executor === 'droplet') {
         // lease.json owns delivery/admission facts; hub.db may predate the SSH reply.
         if (job.lease) job.lease = await readLease(leaseDir(this.#root, job.lease as DropletLease));
@@ -677,12 +680,12 @@ export class Suites {
         }
         if (job.lease && Date.parse(job.lease.deadline) <= this.#clock.now().getTime()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
-          if (!job.lease && (!job.tree || await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+          if (!job.lease && !committedOnly && (!job.tree || await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
-            if (!job.parentRun) await this.#hostGate(job);
+            if (!job.parentRun && !committedOnly) await this.#hostGate(job);
             if (job.hostGate) run.hostGate = job.hostGate;
             if (job.cancelled) throw new Error('cancelled');
-            if (await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+            if (!committedOnly && await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
             try { job.lease = await this.#droplet.acquire(run, new Date(this.#clock.now().getTime() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config); }
@@ -700,7 +703,11 @@ export class Suites {
           }
           job.remoteLogStart ??= (await stat(job.log)).size;
           this.#save(job);
-          await this.#droplet.deliver(job.lease as DropletLease, run);
+          try { await this.#droplet.deliver(job.lease as DropletLease, run, committedOnly); }
+          catch (error) {
+            if (committedOnly) job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
+            throw error;
+          }
         }
         const lease = job.lease as DropletLease;
         job.remoteLogStart ??= (await stat(job.log)).size;
@@ -1077,11 +1084,17 @@ export class Suites {
       throw error;
     });
     if (text === null) return false;
-    const result = JSON.parse(text) as { code: number; cause?: string; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
+    const result = JSON.parse(text) as { code: number; cause?: string; notRun?: 'infrastructure'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
     if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
     // The receipt survives deletion of the machine and can predate the last job
     // checkpoint. Reconcile it before polling or relaunching a persisted holder.
-    if (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut) job.outcome = { code: result.code, cause: result.cause ?? '' };
+    if (job.outcome?.notRun && (result.notRun !== job.outcome.notRun || result.code !== job.outcome.code || result.cause !== job.outcome.cause)) {
+      // An older collector could persist bare terminal transport status between
+      // the delivery failure checkpoint and its full-outcome rewrite.
+      await writeFile(`${job.result}.restore.tmp`, JSON.stringify({ ...result, ...job.outcome }), { mode: 0o600 });
+      await rename(`${job.result}.restore.tmp`, job.result);
+    }
+    if (!job.outcome?.notRun && (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut)) job.outcome = { code: result.code, cause: result.cause ?? '', ...(result.notRun ? { notRun: result.notRun } : {}) };
     job.finished = result.finished;
     if (result.platform) job.platform = result.platform;
     if (result.health) job.health = result.health;
@@ -1130,11 +1143,11 @@ export class Suites {
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { logError = error; }
-        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ code: receipt.code ?? 1, cause: receipt.cause ?? '', finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : { code: receipt.code ?? 1, cause: receipt.cause ?? '' }), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
-      if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied && !job.timedOut) {
+      if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.outcome?.notRun && !job.cancelled && !job.requesterDied && !job.timedOut) {
         job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
       // Status replies prove transport liveness, not test progress. Only new

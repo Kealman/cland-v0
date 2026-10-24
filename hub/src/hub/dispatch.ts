@@ -890,6 +890,7 @@ export class Dispatcher {
       periodic.durationWarnings = root ? await readDurationAllowanceWarnings(root, () => core.clock.now().getTime()) : [];
       const merges = periodic.merges?.slice(0, 10).map(merge => `${merge.head} ${merge.subject}`).join(', ') ?? 'unavailable';
       text = core.boundedText(`Periodic dev T3 ${periodic.result} · head ${periodic.head}\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}\n${periodic.durationWarnings.length ? periodic.durationWarnings.join('\n') + '\n' : ''}Failing files ${periodic.failingFiles.slice(0, 20).join(', ') || 'none identified'}\nMerges ${periodic.merges?.length ?? 'unknown'}: ${merges}\nComplete range and failing files in message detail\n${text}`);
+      if (periodic.notRun) text = core.boundedText(`Periodic dev T3 not run · ${periodic.notRun} · head ${periodic.head}\n${periodic.cause}\nNo tests executed; retry at the next eligible tip after the interval.\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}`);
     }
     const result = core.store.transaction(() => {
       if (job.batch) {

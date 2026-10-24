@@ -4,7 +4,7 @@ import { failingTests } from './shared-defects.ts';
 
 /** Outcome-derived incident data; separate from the executor's process receipt. */
 export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord | undefined {
-  if (!job.integrated || job.parentRun || !job.outcome) return undefined;
+  if (!job.integrated || job.parentRun || !job.outcome || job.outcome.notRun) return undefined;
   // Close-run collection labels receipts after their reporter terminator.
   const text = log.replace(/\x1b\[[0-9;]*m/g, '').replace(/ \[shard-\d+\]$/gm, '');
   const failed = failingTests(text);
