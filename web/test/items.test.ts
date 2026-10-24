@@ -30,11 +30,12 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     });
     // Plant the live regression even when this checkout predates Public launch.
     await seedItem(root, 'R-1100', 'release', 'Public launch');
-    // A planned open epic under the live release: live epics close, so the stage facts come from a seeded one.
+    // Choose after seeding the fixture tree: its versioned release outranks unversioned live ones, as in the web.
+    await seedTree(root);
+    // A planned open epic under the current release: live epics close, so the stage facts come from a seeded one.
     live = await liveRelease(root);
     await seedItem(root, 'E-900400', 'epic', 'Live release planned epic', { parent: live.id }, '## Plan\n\n```yaml\nstages:\n  - name: Live fixture stage\n    qa: { scope: none, when: after-stage }\n    lanes:\n      - [T-900401]\n```\n');
     await seedItem(root, 'T-900401', 'task', 'Live release planned task', { parent: 'E-900400', status: 'planned' });
-    await seedTree(root);
   } });
   await fixture.pageCase(t, async page => {
     await page.keyboard.press('2');
