@@ -104,7 +104,7 @@ test('snapshot contains each workbench domain, compact verdict rounds and recent
   store.createTopic('boundary-closed', 'Boundary closed', null, '2026-10-09T12:00:00.000Z');
   store.setTopicStatus('boundary-closed', 'closed', '2026-10-09T12:00:00.000Z');
   store.close();
-  const { discovery, fakes } = await projectHub(t, root, { XDG_CONFIG_HOME: join(root, 'config') }, { clock: new FakeClock() });
+  const { discovery, fakes } = await projectHub(t, root, { XDG_CONFIG_HOME: join(root, 'config') }, { clock: new FakeClock(), accountReader: async () => [] });
   const legacy = await client(t, discovery);
   const launched = await legacy.request({ type: 'session.launch', name: 'coord', harness: 'claude-code', role: 'coordinator' });
   assert.equal(launched.ok, true, launched.error);

@@ -11,8 +11,10 @@ counts, snapshot membership and startup observers remain unchanged.
 `hub/test/connection-snapshot.test.ts` uses a disposable `projectHub` at T2 for
 feature negotiation, the seven domain frames and end marker, legacy compatibility,
 UTF-8 overflow fallback, and a model change raced against the first snapshot
-frame. The observer is armed before the hello/change, and final assertions retain
-the complete contiguous transaction and the later change receipt.
+frame. The named `fixture` account injects the existing `accountReader` port, so
+the T2 worker never starts the real harness poller process. The observer is armed
+before the hello/change, and final assertions retain the complete contiguous
+transaction and the later change receipt.
 The same file proves numbered model continuity across tracker, topic, session and
 inbox changes, slim task layers (including other items affected by a release
 change), pin/mute row re-projection, and one serialization per feature set with
