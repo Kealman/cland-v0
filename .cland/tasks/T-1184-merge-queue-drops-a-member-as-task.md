@@ -2,8 +2,8 @@
 id: T-1184
 kind: task
 title: Merge queue drops a member as 'task branch changed during preparation' though its head did not move
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-931
 branch: t/T-1184-merge-queue-drops-a-member-as-task
 created: 2026-10-23T20:54:32.079Z
-updated: 2026-10-24T07:36:31.954Z
+updated: 2026-10-24T07:56:38.318Z
+closed: 2026-10-24T07:56:38.318Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Find what the landing step compares when it reports "task branch changed": the t
 
 - [x] C1. A batch whose members' branch heads are unchanged lands every member after a green cover. A hub test reproduces today's drop and shows it fixed (test).
   - done: impl-1184 · 2026-10-24T07:31:33.463Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1184-final · 2026-10-24T07:51:15.932Z · commit 8c70afcbd5804f17d3d3df5c495881aaf01cbc25
 - [x] C2. A real branch move during preparation still drops that member, and the notice names the prepared head and the current head (test).
   - done: impl-1184 · 2026-10-24T07:31:33.632Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1184-final · 2026-10-24T07:51:15.932Z · commit 8c70afcbd5804f17d3d3df5c495881aaf01cbc25
 
 ## Comments
 
@@ -58,3 +61,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at 8c70afcbd5804f17d3d3df5c495881aaf01cbc25 (tree dfe5dfb8d13d6b485aa5332bf25434629b6dbfe9), reviewed against d9ffa830. A-10390 records Standards/Spec audit and evidence limits. Integration-base-only races retain membership through BatchRebuild and current-candidate revalidation; real task-head changes retain member-specific refusal and prepared/current diagnostics. Native final-ref safety, code-change rerun policy, sealed fixture lifetimes and matching docs remain covered. No findings. C1/C2 final runtime evidence remains pending configured mode-free exact-head verification; targeted local receipts are supporting evidence only. Reviewer executed no tests; no stage QA/T3 full-suite/Linux pass claimed.
+
+### impl-1184 · 2026-10-24T07:50:17.370Z
+
+Mode-free verification 92f54deb-1c46-4b53-900c-0f0838a46635 passed at reviewed head 8c70afcbd5804f17d3d3df5c495881aaf01cbc25; log A-10422. Droplet Linux x64 6.8.0-142-generic, c-8 lon1, Node v24.21.0, Neovim v0.12.5, workers 2: 2789 passed, 0 failed/cancelled/skipped/todo. Completed task T0/check, all T1 and fallback all T2 across both packages plus Web (coverage unsupported per-test doc path); T3/T4 not included. Lint/duration budgets report-only; report includes Web/T2 over-budget observations, not enforced failures. Droplet lifetime 724s, cost $0.0503 (not suite wall time). Fetched origin/dev at c880aedd6a3719e1b845affd5f41e6a517749ffe; native merge-tree conflict check exited 0 (candidate tree bff8aeed9faf1799de41f86d237c4db341b89915). Reviewed branch remains unchanged and clean at 8c70afcb; no merge with dev after review. Awaiting Reviewer final same-head runtime settlement; Coordinator owns enqueue.
+
+### rev-31 · 2026-10-24T07:51:15.932Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1184-final
+commit: 8c70afcbd5804f17d3d3df5c495881aaf01cbc25
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear: C1/C2 verified at unchanged reviewed 8c70afcb. A-10430 audits source A-10390, original red/green and committed-head local T3 receipts A-10397, and configured exact-head 92f54deb/A-10422: exit 0, 2789/2789, Linux c-8 lon1, T1/all fallback hub+Neovim T2/Web complete. Independently verified ordinary plus five distinct passing load-gate events and explicit 5/5 for all three new T1 identities; public changed/deleted-ref notice controls pass. Host T0 retained, not repeated remotely. Duration/test lint/ratchet remain report-only, zero lint refusals; no budget-clear or task T3/T4/stage-QA claim. No findings; Reviewer ran no tests and did not enqueue.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T07:56:38.317Z
+
+Merged 87aeedbfcee7efb92beb4ee5b6095903b06985ad onto dev.

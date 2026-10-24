@@ -2,8 +2,8 @@
 id: T-339
 kind: task
 title: cland task view (text) crashes on a hub frame without T-330's criteria counts (CLI and hub version skew)
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-932
 branch: t/T-339-cland-task-view-text-crashes-on-a-hub
 created: 2026-10-13T17:31:48.747Z
-updated: 2026-10-24T07:41:16.247Z
+updated: 2026-10-24T07:47:07.678Z
+closed: 2026-10-24T07:47:07.678Z
 ---
 
 ## Summary
@@ -32,8 +33,10 @@ updated: 2026-10-24T07:41:16.247Z
 
 - [x] C1. `cland task view` in text mode never crashes on a `task.view` frame missing the card fields, and shows the rest of the item.
   - done: impl-339 · 2026-10-24T07:25:16.864Z
+  - verified: rev-23 [reviewer] · run rev-20261024-339-final · 2026-10-24T07:41:59.547Z · commit 244fc357a102279cf93363eaf2658dbba308f812
 - [x] C2. A test covers the old-hub frame shape.
   - done: impl-339 · 2026-10-24T07:28:30.092Z
+  - verified: rev-23 [reviewer] · run rev-20261024-339-final · 2026-10-24T07:41:59.547Z · commit 244fc357a102279cf93363eaf2658dbba308f812
 
 ## Comments
 
@@ -126,3 +129,49 @@ Current task worktree remains tracked-clean at reviewed head. Both criteria's im
 
 Standards: zero outstanding findings, M1 resolved. Spec: zero findings.
 Durable review A-10375.
+
+### rev-23 · 2026-10-24T07:41:59.547Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-339-final
+commit: 244fc357a102279cf93363eaf2658dbba308f812
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-339 final evidence review — clear
+
+Exact reviewed head 244fc357a102279cf93363eaf2658dbba308f812, tree c6d4c22e6b1516733ac49468bcc7e857c5b51590. Source clearance A-10375 carries forward with M1 resolved. Configured run 9e92da7b-d334-4705-bf47-91fce3307be3 / raw A-10400 exits 0. Run rev-20261024-339-final; findings []; C1 and C2 verified.
+
+## Standards
+
+No outstanding findings. Independent raw suite-progress parsing confirms 2,787 ordinary tests / 418 files passed, plus five actual load-gate test/file completions for the new compatibility identity. There are zero failed/skipped/cancelled ordinary or load tests. The 2,787 ordinary total does not include those five repetitions; no repetition claim comes from the generic header.
+
+Compatibility identity ordinary duration is 0.569686495 s; all five load repetitions pass, maximum 0.693850498 s. No new allowance is needed. No tier-mismatch records name cli.test.ts. Existing executable CLI checks, including ancestry/version rendering, also pass. The reviewed beforeDirectories resource-before-directory disposal remains unchanged; successful worker completion includes the awaited cleanup lifecycle. No independent OS cleanup probe is claimed.
+
+## Spec / criteria
+
+C1 verified through the production presence guard and exact-head executable regression: a literal old-hub reply omits criteriaCounts/closed/verify for task view and task comment, each exits successfully while preserving heading/facts/body/comments and omitting absent card rows/undefined text. Current populated counts/closed/verify/cached rendering remains checked.
+
+C2 verified through that literal wire-shape test at the public executable CLI seam and its five passing load repetitions. This does not claim arbitrary malformed-object compatibility; required old-frame collections remain in the supported literal shape.
+
+A-10373 preserves the original verified-property red and pre-M1 green with corrected cleanup limits. A-10374 preserves revised local Darwin arm64 7/7 targeted and complete check exit 0, not relabelled Linux/configured evidence. Earlier cover-quiet refusal remains pre-admission history, not a red assertion or bypass. The new configured receipt provides missing final runtime proof.
+
+## Provenance and limits
+
+Linux x64 6.8.0-142-generic, c-8 lon1 droplet cland-v0-f4204e0f, Node 24.21.0 / Neovim 0.12.5; workers 2 and Web runner 4, lifetime 612 s / $0.0425. Actual T1 completed (134 files), all fallback T2 across hub and Neovim (240 files), Web completed (44 files). Actual suite wall durations 50.33 / 318.09 / 141.13 s; Web shard 141.02 s. Projections are not wall measurements.
+
+Complete host check output is retained with zero refusals and 132 existing report-only lint findings in 59 files. Host gate d425ed21801353fd43862b1e3ac7a67c052e255b is independently confirmed as a Git tree object; matching host check was reused, not repeated on the droplet. Generic duration/lint/ratchet/projected Web wall diagnostics remain report-only, including one missing baseline/incomplete-base-timing notice. No failed gate is hidden by passing assertions. T3 is deferred to periodic/integrated policy, T4 absent; no integrated or after-stage QA proof.
+
+Tracked task worktree remains clean at reviewed head. The lead reports a post-result fetch of dev 26dfd3a2 and conflict-free merge-tree exit 0 without merge/head mutation. QA policy none/after-stage with no per-item brief/criteria; after-stage QA remains separate. Reviewer performed source/Git/raw artifact inspection only, without tests/probes, browser, edits, fetch/merge or delegation.
+
+Standards: zero findings. Spec: zero findings; C1/C2 verified at this head.
+Durable review A-10406.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T07:47:07.678Z
+
+Merged c880aedd6a3719e1b845affd5f41e6a517749ffe onto dev.

@@ -3,17 +3,17 @@ id: T-998
 kind: task
 title: A malformed tool argument is answered as a permission refusal (forbidden)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1197
 blocked_by: []
-topic: null
-branch: null
+topic: topic-939
+branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T06:46:54.990Z
+updated: 2026-10-24T07:53:40.807Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
 - [ ] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
 - [ ] C3. A validation failure is not posted to the Agents topic as a refusal (test).
 - [ ] C4. The MCP server instructions and `hub/README.md` say a validation error may be corrected and retried, unlike `forbidden`.
+
+## Comments
+
+### impl-998 · 2026-10-24T07:53:40.807Z
+
+TDD slice 1: added in-memory public-dispatch criterion regression. Saw forbidden for action:done before the change; targeted tool-arguments.test.ts now passes on this working tree, local macOS, T1 only (no suite gate run). Continuing table/MCP coverage.

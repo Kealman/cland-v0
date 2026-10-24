@@ -3,7 +3,7 @@ id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -16,15 +16,15 @@ blocked_by: []
 topic: topic-929
 branch: t/T-542-a-merge-that-adds-a-package-leaves-the
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-24T07:38:30.667Z
+updated: 2026-10-24T07:56:12.752Z
 ---
 
 ## Summary
 T-427 merged at 21:28Z (bd2fdba4). It switched the typecheck script to `typescript7@npm:typescript@7.0.2`. `cland merge` doesn't install dependencies, so the root checkout's `node_modules` had no `typescript7`. The next root run, E-387's stage close 02c7cfc7 at 21:40Z, failed in 9 s with "host typecheck failed (exit 1); no droplet created", and a `MODULE_NOT_FOUND` showed in the log. Task worktrees resolve `node_modules` from the root, so every implementer's typecheck after rebasing on dev would fail the same way. The Coordinator recovered with `npm install` in the root, which left the lockfile unchanged.
 
 ## Acceptance criteria
-- [x] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
-  - done: impl-542 · 2026-10-24T07:32:19.510Z
+- [ ] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
+  - failed: rev-26 [reviewer] · 2026-10-24T07:56:12.752Z · note The M4 correction adds an indexed helper note that cannot satisfy the existing .test.ts heading guard, blocking configured verification.
 - [x] C2. A host typecheck that fails with MODULE_NOT_FOUND for a dependency named in the lockfile reports "dependencies out of date: run npm install", not just exit 1.
   - done: impl-542 · 2026-10-24T07:32:19.602Z
 - [x] C3. `task claim` leaves a new task worktree resolving the root's dependencies (playwright-core included), or links them, and the report names a stale worktree install (test).
@@ -116,3 +116,104 @@ Evidence: A-10391 explicitly attributes corrected task-worktrees 19/19 and npm r
 Reviewer performed source/Git/document/artifact reads only; no tests, probes, edits, installs, browser actions or merge.
 Standards: 0 outstanding findings. Spec: 0 outstanding findings.
 Durable audit A-10396: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10396-t-542-corrected-source-review-at-dcb96064.md
+
+### rev-32 · 2026-10-24T07:42:28.979Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261024-542-evidence-1
+commit: dcb96064ac74df66473b0e2b8f50e8d325a1ca1e
+scope: evidence
+findings: [{"severity":"medium","text":"M3: real TaskMerges batch composition lacks the new landed-commit diff-tree Git fact; FIFO landing assertion fails actual [] vs T-1/T-2/T-3. Supply the immutable fact at the injected seam, retaining all landing/receipt assertions.","file":"hub/test/merge-batches.test.ts","line":448}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-542 final evidence review — not clear
+Reviewed head dcb96064ac74df66473b0e2b8f50e8d325a1ca1e; tree 49fd1e84fe8f59567972c7a6cd0273c8d720b9e8.
+Run 273963b9-f207-4bb5-927f-3ba774da5c4b, original log A-10405.
+
+Actual failure, before classification: hub/test/merge-batches.test.ts:491 reports “AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal”; actual [] versus expected ['T-1', 'T-2', 'T-3'], in “three queued heads run once on a single candidate before landing FIFO” (log lines 4443–4463).
+
+## Standards
+M3 (medium), hub/test/merge-batches.test.ts:448: the immutable Git facts used by the real TaskMerges composition have not been extended for this item's new landed-commit diff-tree read. The fixture returns null for diff-tree and its native-boundary wrapper asserts that every Git fact is supplied (lines 470–474). TaskMerges now catches that missing fact as an incomplete dependency report (hub/src/hub/merge.ts:250–254), so the test's landing boundary cannot complete. This source trace explains the observed empty FIFO landing list; this is a fixture-composition regression, not evidence that native Git itself fails. Add the exact immutable landed-commit path fact at the existing injected seam, retaining the no-before-green, FIFO, receipt and closed-item assertions. No production fallback that hides Git errors or relaxed assertions is warranted.
+
+## Spec
+C1 cannot clear: the required dependency-report path breaks the existing real merge/finishMerge batch proof. It must coexist with successful queued landing. C1 failed pending correction and fresh source review/verification. C2 and C3 remain unverified: their T2 files did not execute in this run. Earlier M1/M2 remain source-resolved; no new evidence contradicts their corrections.
+
+Evidence limits: Linux x64 6.8.0-142-generic, c-8 lon1 droplet cland-v0-29dfefc3, Node v24.21.0 / Neovim v0.12.5, workers 2. Overall exit 1. T1 exited 1: 775 reported tests, 774 passes/1 failure, zero skipped/cancelled/todo. The file-plan aggregate (773) is separate from executor counts. T1 command duration 50s, measured shard duration 46.43s. T2/Web did not run; T3/T4 absent/deferred, not passes. Typecheck reused host gate 6841495b0cb4028a000d8647430808cb5b5c9bd3, not repeated on droplet. Generic lint/duration/ratchet policy report-only; one missing baseline. Projected later phase timings are not observed runtime. No passing overall or load-gate claim.
+Fix at the existing seam, commit/push, and request fresh source review before another mode-free run. Reviewer performed read-only source/log audit, no tests, edits, browser, installs or delegation.
+Standards: one medium finding. Spec: C1 blocked by that integration regression; C2/C3 unverified.
+Durable audit A-10407: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10407-t-542-failed-same-head-evidence-at-dcb96064.md
+
+Criteria: C1 failed (Same-head T1 batch landing regression fails FIFO actual [] vs T-1/T-2/T-3; new dependency-report diff-tree read lacks an injected Git fact.).
+
+### rev-32 · 2026-10-24T07:45:00.521Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-542-source-3
+commit: 2b17007cfe8eb4b50822cb40c2e94819c4a2ed46
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-542 corrected source review — clear
+Head 2b17007cfe8eb4b50822cb40c2e94819c4a2ed46; tree df81c470a59cb1f4550434162ab513e46312b331; sole parent dcb96064ac74df66473b0e2b8f50e8d325a1ca1e. Three-file correction, no dev merge. Carries accepted source from A-10387/A-10396.
+
+## Standards
+No findings. M3 resolved at hub/test/merge-batches.test.ts:446: injected Git now supplies the immutable landed parser path for diff-tree. The real TaskMerges composition retains its failure behavior for other absent Git facts. Both modified assertions add diagnostic messages only; no-before-green, FIFO order, one-suite, receipt SHA, closed-item, report and controller-cleanup assertions remain unchanged. No timing, process, installer or production code changes. The new per-file documentation and index describe the precise fixture seam and retained assertions.
+
+## Spec
+No outstanding findings. C1's landing proof can now consume the new dependency-report read without suppressing native errors. C1/C2/C3 product behavior is unchanged from the source reviewed at dcb96064; M1/M2 stay resolved. All three claimant done marks are current. All execution-dependent criterion verification remains pending a fresh post-source mode-free receipt at this exact new head; no criterion verified by this pass.
+
+A-10410 distinguishes the earlier failed Linux run 273963b9/A-10405 from new local macOS correction checks: single test, 36/36 full merge-batches file and npm run check passed on the precommit tree; report-only test lint/zero refusals. This is summarized supplemental evidence, not a green configured/Linux receipt. Failed historical evidence remains failed/partial. Preserve original tool output provenance, without reruns for transcription.
+Reviewer read source/Git/docs/artifact only, with no tests, edits, installs, browser or delegation. Both review axes completed in-session. QA scope none/after-stage.
+Standards: 0 outstanding findings. Spec: 0 outstanding findings.
+Durable audit A-10412: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10412-t-542-m3-corrected-source-review-at-2b17007c.md
+
+### rev-32 · 2026-10-24T07:53:57.723Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261024-542-evidence-2
+commit: 2b17007cfe8eb4b50822cb40c2e94819c4a2ed46
+scope: evidence
+findings: [{"severity":"medium","text":"M4: shared T2 TaskMerges fixture leaves native Git uninjected; new diff-tree read invokes real Git against scratch nonrepository and fails nine plan/stage landing assertions. Inject immutable landed paths at that boundary and retain all final assertions.","file":"hub/test/plan-stage-fixture.ts","line":165}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-542 final evidence review — not clear
+Exact source-reviewed head 2b17007cfe8eb4b50822cb40c2e94819c4a2ed46; tree df81c470a59cb1f4550434162ab513e46312b331. Run f4a5bb3a-c6f8-46ee-a57c-a76293c25eaa, raw log A-10437.
+
+Actual failure before classification (A-10437:12616): “merged, follow-up failed: dependency report: git diff-tree --no-commit-id --name-only --no-renames -r -z 0000000000000000000000000000000000000002 --: fatal: not a git repository”; assertion false !== true at plan-gate.test.ts:62. The same dependency-report failure appears in planned-stage.test.ts:150 and :269. Nine failures total across the two files (including the plan override/QA test at plan-gate:104).
+
+## Standards
+M4 (medium), hub/test/plan-stage-fixture.ts:165: the shared T2 fixture injects verdict Git but leaves the TaskMerges native Git argument undefined. This item's new landed-commit diff-tree read therefore invokes real Git against the scratch nonrepository. The log's report-only tier mismatch confirms child_process.execFile from merge.ts:250 through this helper. This is another fixture composition missed when adding the read, not an external platform failure.
+Wire the existing immutable PlanGit model through the native Git boundary as well, respecting the requested no-commit-id/NUL path format and failing unexpected facts. Preserve every ready-vs-merge, QA gate, stage advancement, persisted receipt, close-frame and fixed-query-budget assertion. Do not run native Git or weaken production reporting to accommodate the fixture.
+Read-only census found only three TaskMerges constructor sites in hub/test: this helper, corrected merge-batches and merge-component-support. The last already injects facts. The Implementer independently reports the same local reproduction and census; these remain supplemental local evidence, not a replacement configured pass.
+
+## Spec
+C1 fails again because the dependency report prevents the existing stage/plan landing proofs from completing. M1/M2 remain source-resolved and M3 now passed in T1; M4 is the remaining observed blocker. C2/C3 receive no verification mark from this failed/partial overall run. Fresh source review is required after the fixture change, before another mode-free run.
+
+Evidence: Linux x64 6.8.0-142-generic c-8 lon1 droplet cland-v0-74f5a2b0, Node v24.21.0/Neovim v0.12.5, workers2; overall exit1. T1 exit0 (56s command, 51.99s shard); hub T2 exit1 (235s command, 231.93s shard). Neovim/Web did not execute; T3/T4 deferred/unrun. Completed counts including load repetitions: 2293, 2284 pass/9 fail; ordinary printed aggregate: 2183, 2174 pass/9 fail. They are different aggregates, not two successful receipts. No skip/todo, base cancelled0. Typecheck host gate 22c780a2cacc31ad90fd491b4b4c12c7d1e86f04 was reused, not remotely repeated. Generic timing/lint/ratchet/tier diagnostics report-only; one missing baseline. Later phase projections are not runtime. No suite pass claimed.
+Reviewer read source/logs only; no tests, edits, installs, browser, merge or delegation. qaPolicy none/after-stage.
+Standards: one medium finding. Spec: C1 blocked by this integration regression; no final criterion verification.
+Durable audit A-10446: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10446-t-542-stage-fixture-failure-at-2b17007c.md
+
+Criteria: C1 failed (Same-head T2 plan/stage landing fails nine assertions: dependency-report diff-tree escapes uninjected native Git boundary and reports not a git repository.).
+
+### rev-26 · 2026-10-24T07:56:12.752Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261024-542-source-4
+commit: dd8ddb167e44c6683c385dc83912886dbb468ce1
+scope: delta
+findings: [{"severity":"medium","text":"M5: New indexed helper note heading is '# hub/test/plan-stage-fixture.ts', but test-docs.test.ts requires every indexed heading to match a .test.ts path and corresponding document/index row. This new entry deterministically fails the T1 guard. Move guidance into a consumer .test.ts note/index (e.g. planned-stage), retaining the guard.","file":"docs/agents/tests/hub-test-plan-stage-fixture.ts.md","line":1}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Complete delta audit atdd8ddb16/tree6e986e69 from2b17007c: M4PlanGit/nativeGit injection resolved; --no-commit-id respects raw path format and older commit-prefix consumers remain. No existing assertion/timing/product changes, no devmerge. Carry accepted source A-10387/A-10396/A-10412; M1/M2/M3 remain resolved. Only new findingM5medium docs helper-index contract; C1failed,C2/C3runtimepending. A-10453 preserves failedLinuxA-10437 and separately summarizes precommitlocal9+12+15/check0, notraw/exact-headconfiguredproof. Preserve original stdout/exits/native timing/source limits without transcriptionreruns. A-10457: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10457-t-542-m4-correction-review-at-dd8ddb16.md. Correctdoc/index, re-markC1done, freshsource beforemode-freeverify; noprerun atthishead. Nootherdeltafindings.
+
+Criteria: C1 failed (The M4 correction adds an indexed helper note that cannot satisfy the existing .test.ts heading guard, blocking configured verification.).

@@ -3,8 +3,9 @@ id: T-1148
 kind: task
 title: run-suite crashes on an empty quarantine receipt and hides the Web phase's real failure
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - bug
   - ready-for-agent
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-937
 branch: t/T-1148-run-suite-crashes-on-an-empty-quarantine
 created: 2026-10-22T17:21:01.416Z
-updated: 2026-10-24T07:38:07.235Z
+updated: 2026-10-24T07:54:33.497Z
 ---
 
 ## Summary
@@ -27,11 +28,63 @@ When the quarantine receipt is missing, empty or torn, the runner reports the ph
 
 ## Acceptance criteria
 
-- [ ] C1. An empty or truncated quarantine receipt yields a non-zero phase with an "incomplete: receipt missing" line naming the in-flight test, and no SyntaxError (test).
-- [ ] C2. The phase output keeps the test process's exit status and stderr tail when the receipt is unusable (test).
+- [x] C1. An empty or truncated quarantine receipt yields a non-zero phase with an "incomplete: receipt missing" line naming the in-flight test, and no SyntaxError (test).
+  - done: impl-1148 · 2026-10-24T07:54:07.970Z
+- [x] C2. The phase output keeps the test process's exit status and stderr tail when the receipt is unusable (test).
+  - done: impl-1148 · 2026-10-24T07:54:08.070Z
 
 ## Comments
 
 ### coord · 2026-10-22T18:43:47.091Z
 
 Root cause of both empty-receipt crashes (T-1118 A-9371, T-1150 A-9419): the Web phase's 60 s gross hang guard in hub/test/run-suite.ts killed the Web test process on Linux c-8 droplets once the grown phase passed 60 s of wall ('Web phase exceeded 60 s gross hang guard'). The guard is now 180 s on dev (4e6193f2). T-1148 still stands: a killed phase must report incomplete, naming the in-flight test, not crash on JSON.parse.
+
+### impl-1148 · 2026-10-24T07:44:59.765Z
+
+TDD: confirmed public runSuite/process and reporter-stream seams with Coordinator. Reproduced empty receipt as `SyntaxError: Unexpected end of JSON input`; regression now retains in-flight identity, raw child exit/signal and stderr tail. Implemented atomic reporter staging+rename with repetition-local paths. Local macOS targeted quarantine/reporter/admission checks passed (19 tests) before the latest pipe-drain lifecycle adjustment; npm run check passed (T0 lint report-only, 0 refusals). Final targeted/lifecycle checks and docs in progress.
+
+### rev-23 · 2026-10-24T07:50:27.062Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261024-1148-source
+commit: d3ab834a3d55ebb26770e93b796131ae4eaa7ae9
+scope: full
+findings: [{"severity":"medium","text":"M1: use the repository test path heading required by test-docs.test.ts; the new indexed document currently fails that existing T1 guard.","file":"docs/agents/tests/hub-test-quarantine-runner.test.ts.md","line":1},{"severity":"medium","text":"M2: missing/empty/torn quarantined-repetition receipts still pass through unguarded read/JSON.parse and reject the phase before incomplete/native diagnostics. Handle this consumer and add a faulted repetition regression.","file":"hub/test/load-gate.ts","line":145},{"severity":"medium","text":"M3: use a streaming UTF-8 decoder for stdout progress capture; independent Buffer.toString calls corrupt Unicode identity bytes split across chunks. Cover the split-byte boundary.","file":"hub/test/run-suite.ts","line":228}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+T-1148 full source review — not clear
+
+Head d3ab834a3d55ebb26770e93b796131ae4eaa7ae9; tree 09fc60ba0b83cbc830aed5d5c54c27156a048d2d. Fixed parent 12817c759ab1aefad45add6cc26d26c5c862045e. Comparison git diff 12817c75...d3ab834a3d55ebb26770e93b796131ae4eaa7ae9: eight files, 173 additions / 14 removals. Run rev-20261024-1148-source.
+
+## Standards
+
+M1 (medium), docs/agents/tests/hub-test-quarantine-runner.test.ts.md:1. The new indexed note begins “# Quarantine runner receipts”; the shipped T1 test-docs guard requires the exact repository test path heading to validate its filename/source/index mapping. This document will fail that existing guard. Change it to “# hub/test/quarantine-runner.test.ts” and include the existing docs guard in necessary correction checks. Implementer accepted M1.
+
+M3 (medium), hub/test/run-suite.ts:226–229. The new raw stdout pipe observer decodes every Buffer independently with chunk.toString(). Node pipe chunks can split a multibyte UTF-8 test name; the reconstructed JSON may still parse but contain replacement characters, corrupting the in-flight identity this feature promises. Use streaming UTF-8 decoding (the existing load-discovery reader already does) and a split-byte Unicode identity regression at the smallest suitable seam.
+
+The rest of the reviewed design retains appropriate boundaries: the atomic reporter uses same-directory staging/rename and awaits publication before flush completion; test-worker unit consumers retain the streamed JSON contract; ordinary/repetition receipt paths are separated. The phase stderr tail is byte-bounded. The real-process regression is justified at existing T3, with sealed scratch env, owned child and ten-second outer deadline. It observes an execution-order start before group termination and faults the read after writer exit. The stream-publication test is file-only T1 and awaits its writer before cleanup. No browser or hub daemon is added.
+
+## Spec
+
+M2 (medium), hub/test/load-gate.ts:144–145 and run-suite.ts phase/gate rejection handling. The changed repetition path still reads its quarantine receipt through unguarded JSON.parse(await readFile()). With a failed quarantined repetition and one result, a missing/empty/torn receipt rejects runLoadGate; runSuite then throws that gate rejection before its new ordinary-phase incomplete/native-diagnostic handling. A parse/ENOENT error can still replace the producer's real failure. Apply the incomplete contract to this consumer too, naming the repetition identity/native status and diagnostic tail, refusing quarantine excuse, and retaining a faulted repetition regression. The existing successful quarantined-repetition regression does not exercise missing publication.
+
+The ordinary phase path addresses the original failure: ENOENT/SyntaxError become explicit incomplete status; native nonzero is retained and zero is changed to failure. It tracks execution-order unfinished starts, keeps cancelled identities, skips incomplete duration-budget evidence, sweeps owned descendants before awaiting pipe closure, then reports native exit/signal and the captured stderr tail. Shared suiteProgress filters file envelopes when a test identity exists. However, M2/M3 leave the overall promised reporting incomplete; C1/C2 are not clear.
+
+Coordinator 8a3f587a explicitly confirms public runSuite/process faults and pure reporter stream tests, without browser scope. Missing/empty/truncated process cases and zero-native-exit case match that seam; their bounds/assertions must remain. The fixture's native reporter stderr marker and child process close are relevant evidence rather than an unrelated timeout. No duration allowances or gross Web hang guard changes are included.
+
+## Evidence and limits
+
+A-10417 summarizes local macOS working-tree checks: quarantine/reporter/admission 19/19, runner lifecycle 45/45, npm run check passed with report-only lint/zero refusals. It states these preceded commit of the final tree. No configured/Linux run exists. Original raw stdout/exits/timings/source/platform/cleanup attribution have been requested for durable preservation without rerunning for transcription. No Reviewer runtime reproduction has been performed.
+
+Current task worktree is tracked-clean at reviewed head; diff whitespace check passes. Complete finding set is M1–M3 only. Correct those, preserve existing receipts, commit/push and request fresh source review before mode-free verification. QA policy none/after-stage, no per-item brief/criteria. Reviewer performed source/Git/artifact inspection only, no tests/probes, browser, edits, merge or delegation. Both axes completed in-session.
+
+Standards: two medium findings (M1/M3). Spec: one medium finding (M2).
+Durable review A-10424.
+
+Criteria: C1 failed (An indexed doc fails the source-heading guard; repetition receipt parsing can still throw instead of reporting incomplete, and split UTF-8 progress chunks can corrupt the in-flight identity.), C2 failed (The unguarded load-repetition quarantine reader can reject the gate before native exit/stderr diagnostics are reported for an unusable receipt.).
+
+### impl-1148 · 2026-10-24T07:54:08.172Z
+
+Corrected review M1–M3 at 970cb402aa954b18ba2986b26000ddd6c674c234. M1 heading assertion reproduced then docs guard passed. M2 faulted quarantined repetition reproduced `SyntaxError: Unexpected end of JSON input`; shared guarded reader now retains repetition native diagnostics without an excuse for missing/empty/truncated receipts. M3 split UTF-8 reproduced `held test ����`; streaming decoder now preserves `held test 🦊`. Local macOS at correction tree: 25/25 targeted T1/T3/docs tests passed, npm run check exit 0 (T0 lint report-only, 132 findings/0 refusals). Raw correction outputs A-10447/A-10448. Original d3ab834a check/19+45 raw receipts preserved from harness records in A-10438, not replaced by reruns. No full verification yet.

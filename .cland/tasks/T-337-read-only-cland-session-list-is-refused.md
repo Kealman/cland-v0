@@ -2,8 +2,8 @@
 id: T-337
 kind: task
 title: Read-only cland session list is refused for Implementers as session.launch
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-930
 branch: t/T-337-read-only-cland-session-list-is-refused
 created: 2026-10-13T14:43:31.707Z
-updated: 2026-10-24T07:32:21.746Z
+updated: 2026-10-24T07:50:34.246Z
+closed: 2026-10-24T07:50:34.246Z
 ---
 
 ## Summary
@@ -31,8 +32,10 @@ An Implementer's read-only `cland session list --json` from its own session shel
 
 - [x] C1. `cland session list` and `--json` succeed from an Implementer's shell, and `cland session launch` from the same shell is still refused.
   - done: impl-337 · 2026-10-24T07:26:57.198Z
+  - verified: rev-26 [reviewer] · run rev-20261024-337-final-1 · 2026-10-24T07:44:18.811Z · commit 86a327c773519f09380a046741b26f121352fddc
 - [x] C2. The permission table names the read separately, with a test.
   - done: impl-337 · 2026-10-24T07:31:46.337Z
+  - verified: rev-26 [reviewer] · run rev-20261024-337-final-1 · 2026-10-24T07:44:18.811Z · commit 86a327c773519f09380a046741b26f121352fddc
 
 ## Comments
 
@@ -67,3 +70,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at86a327c7/treed61749ab. M1resolved: six shipped/six project clauses explicitly name independent session.list read/no mutation grant via compacted existing queue/status lines. New T1 clause-rendering coverage preserves unchanged512-byte reserve/15%headroom assertions. L1resolved: dispatch shell-authority comment corrected. Full runtime boundary review A-10372 carries forward; no other runtime/grant/duration delta or dev merge. A-10379 original local Darwinarm64 exec/write_stdin outputs inspected: check exit0/0lintrefusals,71/71 across5targetedfiles (T1/T2/existingT3), native16289.179958ms; per-tool waits not totalwall, artifact-level source attribution retained. Earlier32-test A-10370 remains narrative-only. C1/C2 await same-head configured verification; noQA requirement, noReviewer runtime. A-10381: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10381-t-337-corrected-source-at-86a327c7.md.
+
+### rev-26 · 2026-10-24T07:44:18.811Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-337-final-1
+commit: 86a327c773519f09380a046741b26f121352fddc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at86a327c7/treed61749ab; C1/C2verified, no findings. Source A-10372/A-10381 carries forward. A-10408/runee9e19b8 exit0 independently parsed2800 ordinary passes/418filepasses plus70actual load-test/70load-filepasses, nofail/cancel/skip. T1/allfallbackT2hub+Neovim/actualWeb Linuxx64 c-8lon1 Node24.21/Nvim0.12.5 workers2/Web4; hostcheckpasses0refusals, gate8a455bd4 notrepeatedremotely. C1same-shellCLI read+five mutationrefusals/audit/spawn test1.3017s,5/5loadmax1.4894; revocation.7484s. C2table/read/12clause regressions eachpass+5/5actualreps, byte guards unchanged. Local original A-10379 separately supplies existing T3 lifecycle pass within71/71 targeted; provenance retained, configuredT3/T4absent. Generic budgets/lint/ratchet reportonly,1missingbaseline; measuredWeb140.14s/shard140.04s exceeds40s reporttarget. NoQA required orReviewer runtime. A-10409: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10409-t-337-final-evidence-at-86a327c7.md.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T07:50:34.246Z
+
+Merged 77a306bfbabdd509fd6836301dfe5aa8ca93ec4f onto dev.
