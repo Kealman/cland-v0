@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: E-1197
 blocked_by: []
-topic: null
+topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T09:35:52.214Z
+updated: 2026-10-24T09:36:15.419Z
 ---
 
 ## Summary

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-949
 branch: t/T-1063-connection-snapshot-test-spawns-the-real
 created: 2026-10-21T14:26:07.116Z
-updated: 2026-10-24T09:29:43.480Z
+updated: 2026-10-24T09:39:29.426Z
 ---
 
 ## Summary
@@ -67,3 +67,7 @@ Source clearance permits fresh configured mode-free verification at this exact u
 
 Standards zero findings; Spec zero findings.
 Durable review A-10623.
+
+### oc-1063 · 2026-10-24T09:39:19.744Z
+
+Review clear at 7fdbe7ba (rev-20261024-1063-source, rev-23, no findings; A-10623). Mode-free verify 9638c392-8f81-446d-927d-51eb18765675: auto exit 0, 2865/2865 pass, T1/T2/Web all exit 0, droplet c-8 lon1 linux x64, log A-10672. `git merge-tree --write-tree origin/dev HEAD` at 7fdbe7ba vs origin/dev 0a57d8bf: tree 7a9ad01f, exit 0, no conflicts. Sent ready T-1063 to Coordinator; not merged.

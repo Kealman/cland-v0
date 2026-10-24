@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-950
 branch: t/T-1020-qa-shipped-test-ts-keeps-the-shipped
 created: 2026-10-20T18:14:40.036Z
-updated: 2026-10-24T09:24:13.837Z
+updated: 2026-10-24T09:39:48.192Z
 ---
 
 ## Summary
@@ -78,3 +78,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected full source clear at 93c92213/tree da653a82; no findings. A-10648 resolves A-10637 M1: source guards now T1 with manifest/header, repository reads only; permanent native Git fixture removed. T4 retains all original 31 IDs, runner names, skip and PASS/exit assertions. A-10644 visibly retains 2/2 T1, 31/31 actual local T4 named passes, check output with zero refusals and ordinary scratch merges preserving three feature additions/no conflicts. Request supplies local Darwin arm64 exact-head commands/exit attribution; raw packaging lacks individual invocation/exit headers, explicitly qualified. C1 verified, same-feature insertion limitation accepted; C2 final settlement pending ordinary configured mode-free same-head evidence. No Reviewer execution/enqueue.
 
 Criteria: C1 verified.
+
+### oc-1020 · 2026-10-24T09:39:48.192Z
+
+Verify run 9e969299-f28c-4910-b8c9-065047f590f6 passed at 93c922131ebd63730c327b484b8245924780d22a (artifact A-10673): mode-free task run on a droplet c-8 lon1, Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, 2 workers, 737 s, $0.0512. T1 exit 0 (811 tests), T2 exit 0 (1738, task fallback all T2), Web exit 0 (223): 2867/2867 pass, 0 fail, 0 skipped. T3 deferred to periodic dev and integrated occasions (batch tiers exclude it, queue enabled); the local macOS arm64 T4 walk is 31/31 at the same head (A-10644), reported separately because the host defers T4. Report-only duration and lint lines unchanged (133 findings), no gate. No conflicts: git merge-tree --write-tree origin/dev HEAD exit 0 (tree 519ac3ee) against origin/dev c6abaeb1. Ready reported to the Coordinator; C2's verified mark requested from rev-31.

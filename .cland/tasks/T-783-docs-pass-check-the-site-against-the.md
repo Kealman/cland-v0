@@ -3,7 +3,7 @@ id: T-783
 kind: task
 title: "Docs pass: check the site against the shipped behaviour"
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -24,9 +24,9 @@ blocked_by:
   - E-418
   - E-419
 topic: null
-branch: null
+branch: t/T-783-docs-pass-check-the-site-against-the
 created: 2026-10-18T06:04:23.644Z
-updated: 2026-10-18T06:04:29.265Z
+updated: 2026-10-24T09:39:52.388Z
 ---
 
 ## Summary

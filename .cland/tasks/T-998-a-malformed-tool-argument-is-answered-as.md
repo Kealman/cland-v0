@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-939
 branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T09:28:55.431Z
+updated: 2026-10-24T09:40:04.675Z
 ---
 
 ## Summary

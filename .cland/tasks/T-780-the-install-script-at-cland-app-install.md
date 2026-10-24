@@ -3,7 +3,7 @@ id: T-780
 kind: task
 title: The install script at cland.app/install.sh
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-778
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-780-the-install-script-at-cland-app-install
 created: 2026-10-18T06:04:23.227Z
-updated: 2026-10-18T06:04:23.227Z
+updated: 2026-10-24T09:39:45.535Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-779
 kind: task
 title: "Homebrew: brew install cland on macOS"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:04:22.818Z
-updated: 2026-10-18T06:04:22.818Z
+updated: 2026-10-24T09:39:32.445Z
 ---
 
 ## Summary

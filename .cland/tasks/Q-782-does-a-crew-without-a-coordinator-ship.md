@@ -6,12 +6,12 @@ state: open
 labels:
   - needs-info
 assignee: null
-parent: E-778
+parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:04:23.508Z
-updated: 2026-10-18T06:04:23.508Z
+updated: 2026-10-24T09:38:42.323Z
 ---
 
 ## Summary

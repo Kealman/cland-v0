@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-948
 branch: t/T-1202-merge-batches-whose-candidate-touches
 created: 2026-10-24T06:46:04.922Z
-updated: 2026-10-24T09:34:23.600Z
+updated: 2026-10-24T09:37:49.950Z
 ---
 
 ## Summary
@@ -129,3 +129,33 @@ Post-result read-only merge-tree against origin/dev0a57d8bf reports four conflic
 
 QA none/after-stage; live policy needs landing/restart. Reviewer performed static source/Git/artifact reads only, no tests/probes/edits/GUI/merge/delegation. Standards/evidence clear; Spec/evidence clear at this head, final integration pending.
 Durable review A-10667.
+
+### rev-23 · 2026-10-24T09:37:49.950Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1202-source3
+commit: 71a36775279633ff8aed34afb7498f26f17a7d42
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1202 authorized merge delta source review — clear
+
+Head71a36775279633ff8aed34afb7498f26f17a7d42/tree615851ce8f2bed185fc0148e2b5da245c1b69b62. Parents reviewed49b74365f88a472ea05cee2416b923f5b33e0445 and dev69b3dc7d. Coordinator9f30c71e explicitly requested this single integration after T-542/T-422 landing. Run rev-20261024-1202-source3; scope delta; findings []. Read-only parent diffs and combined merge diff inspected; origin task ref matches. Both axes in-session.
+
+## Standards
+
+Clear. Resolutions retain T-1203 changed T3/T4 and mapped T4 guards once, T-1018 T0 batch guidance, T-1202 conditional Web, T-542 root install warning/safe shared-reader routing and T-422 sealed-ledger fixture guidance. Implement/QA skills, shared tests table/procedure, CLI help and roles-clauses assertions describe the combined behavior; default/project clauses and reserve checks remain aligned. Upstream implement CHANGES entries retained alongside T-1202. No conflict markers or whitespace errors.
+
+T-1202 controller and verification-commands/web-phase assertions are unchanged from source-clear49b74365. The overlapping FIFO fixture now supplies immutable diff-tree landed paths through its existing Git port and adds assertion diagnostics, matching upstream T-542; FIFO, receipt and closed-item assertions remain. No new native process/browser, timing cap or workload change.
+
+## Spec
+
+Clear. Conditional candidate web/ selection, Web-after-T1 plan, whole-Web diagnosis, missing/conflicting successful step proof, combined-red refusal and M1's full pinned confirmation after either T1 file recovery remain intact. merge-batches.ts, verification-plan.ts and verification-occasion.ts are byte-unchanged from49b74365. Suites' three-line Web admission hunk is preserved atop upstream host-check dependency hint logic; that addition does not change batch command/selection pinning. Upstream mapped-guard selection removes duration metadata for batch occasions as before; it does not replace the conditional Web path. No changed public contract beyond reviewed upstream policies.
+
+A-10668 retains original post-merge native output/exits from local Darwin arm64, source tree committed unchanged by this merge: merge-batches55/55 (7489.701167ms), clauses39/39 (120.679959ms), verification-commands15/15 (537.411750ms), web-phase8/8 (312.193958ms),117 T1 tests across four files, no failures/skips; check exit0 with report-only lint133/60files/zero refusals. No reruns for transcription. These are local source-equivalent merge-tree receipts, not the fresh configured merged-head Linux result.
+
+Prior5bcc907b/A-10662 and evidence audit A-10667 remain green at parent49b74365 only, including report-mode loaded max0.600898692s. They are not merged-head final evidence. C1/C2 final runtime marks await a fresh configured mode-free result at exactly71a36775. Source clearance permits that submission, unchanged head, reporting to Reviewer/item lead. Live batch policy still needs landing/restart under rule19; QA none/after-stage. Reviewer static source/Git/artifact inspection only; no tests/probes/edits/GUI/merge/delegation. Standards zero findings; Spec zero findings.
+Durable review A-10670.

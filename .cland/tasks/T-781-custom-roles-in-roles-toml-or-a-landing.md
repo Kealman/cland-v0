@@ -3,7 +3,7 @@ id: T-781
 kind: task
 title: Custom roles in roles.toml, or a landing card that claims none
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - needs-info
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:04:23.355Z
-updated: 2026-10-18T06:04:23.355Z
+updated: 2026-10-24T09:39:33.285Z
 ---
 
 ## Summary

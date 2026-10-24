@@ -3,7 +3,7 @@ id: T-1158
 kind: task
 title: Rendered Mermaid diagrams in the web workbench
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-947
 branch: t/T-1158-rendered-mermaid-diagrams-in-the-web
 created: 2026-10-22T23:41:27.072Z
-updated: 2026-10-24T09:35:21.654Z
+updated: 2026-10-24T09:37:52.806Z
 ---
 
 ## Summary
@@ -28,14 +28,14 @@ A Mermaid diagram artifact opens rendered in the sandboxed viewer, with its sour
 ## Acceptance criteria
 
 - [x] C1. A `.mmd` diagram artifact opens rendered in a sandboxed iframe from a capability URL, and its source stays available one key away (Web test).
-  - done: impl-1158 · 2026-10-24T09:04:35.726Z
   - verified: rev-23 [reviewer] · run rev-20261024-1158-final · 2026-10-24T09:23:51.037Z · commit 0921bd5014e7d89bfa622e35c8806057ce76e5a2
+  - done: impl-1158 · 2026-10-24T09:37:45.363Z
 - [x] C2. `mermaid` is a pinned dependency of the web workspace only, loaded lazily on first `.mmd` open; the shell's initial bundle size is unchanged within 1 KB, shown in a test or build check.
-  - done: impl-1158 · 2026-10-24T09:04:35.957Z
   - verified: rev-23 [reviewer] · run rev-20261024-1158-final · 2026-10-24T09:23:51.037Z · commit 0921bd5014e7d89bfa622e35c8806057ce76e5a2
+  - done: impl-1158 · 2026-10-24T09:37:45.564Z
 - [x] C3. Diagram text cannot execute script (strict security level) and a parse error shows the error with the source, both shown in Web tests.
-  - done: impl-1158 · 2026-10-24T09:04:36.313Z
   - verified: rev-23 [reviewer] · run rev-20261024-1158-final · 2026-10-24T09:23:51.037Z · commit 0921bd5014e7d89bfa622e35c8806057ce76e5a2
+  - done: impl-1158 · 2026-10-24T09:37:45.868Z
 
 ## Comments
 
@@ -122,3 +122,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-24T09:35:15.860Z
 
 Decision (human, General 2026-10-24 09:34Z, answer to ask 8e773d6e): use mermaid 12.2.0 now; the two-week minimum age for this package is waived. 12.1.0 carried the low KaTeX advisory GHSA-238p-pmpm-9mq7 through its ^0.16.47 range; 12.2.0 takes a patched KaTeX.
+
+### impl-1158 · 2026-10-24T09:37:46.060Z
+
+Human-approved Mermaid12.2.0 upgrade at8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b, following authorized conflict-free origin/devc6abaeb1 mergefd24fbe8. Private install only. A-10669 retains original audit/install/check/Web stdout and native command/exit/chunk ledger. npm audit exit0,total0; KaTeX0.18.10 removesGHSA-238p-pmpm-9mq7. Local Darwinarm64 final source-tree npm run check exit0 (lint report-only133findings,0refusals); Mermaid Web2/2pass(1.781/1.205s); standalone bundle-size check exit0,455323→455554(+231B,limit1024). Exactly3installed versions changed: Mermaid,KaTeX,KaTeX's Commander; no new direct dependency. Prior0921bd50 configured green is historical. Fresh delta source review and subsequent mode-free verification required at8379fcf0; no new-head suite/QA claim.
