@@ -3,7 +3,7 @@ id: T-515
 kind: task
 title: RULES.md writer leaves a trailing blank line that trips git diff --check
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1197
 blocked_by: []
 regression_of: T-455
-topic: null
-branch: null
+topic: topic-1009
+branch: t/T-515-rules-md-writer-leaves-a-trailing-blank
 created: 2026-10-15T16:44:45.990Z
-updated: 2026-10-24T20:48:44.217Z
+updated: 2026-10-24T21:49:09.325Z
 ---
 
 ## Summary

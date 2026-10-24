@@ -16,7 +16,7 @@ found_by: droplet
 topic: null
 branch: null
 created: 2026-10-24T20:36:21.596Z
-updated: 2026-10-24T20:36:30.567Z
+updated: 2026-10-24T21:13:42.112Z
 closed: 2026-10-24T20:36:30.567Z
 ---
 
@@ -107,3 +107,33 @@ Already fixed on dev: T-1255 (landed 8c9e064d) migrates the seven T3 fixtures T-
 ### coord · 2026-10-24T20:36:30.567Z
 
 Duplicate of T-1255 (landed 8c9e064d).
+
+### hub · 2026-10-24T21:13:42.112Z
+
+Periodic run 679cfcb8-60d9-4f29-9e95-23aa0de00d65; red head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; tree 5c7b99ce510e85a8de29336d129abbe47f22d429
+Last green run 41de302e-c97d-440e-b5e2-6baa0ebfe89d; head 89e5c304bef194c07caff3e41a82d0e62a2e2902
+Original log A-11364: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11364-suite-679cfcb8-60d9-4f29-9e95-23aa0de00d65-all-at-8fd6195.log
+hub/test/adapter-native-boundary.test.ts: culprit at fffc70b8c61f5d3755eee6d128334752d72d9b8c A session's shell identity is not bound to a per-session credential (T-1220)
+Run 04d8f22f-df6f-4a14-a68d-14dcdb1de079; head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; red; log A-11397: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11397-suite-04d8f22f-df6f-4a14-a68d-14dcdb1de079-all-at-8fd6195.log
+Run 2a731a72-5f92-4012-ae80-f95c16e7636d; head 89e5c304bef194c07caff3e41a82d0e62a2e2902; green; log A-11398: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11398-suite-2a731a72-5f92-4012-ae80-f95c16e7636d-all-at-89e5c30.log
+Run 14ccf1e5-ede8-44be-8d38-6e3b9805dbd6; head 12f25962a439aca333d69742c731e26dd8d61f77; green; log A-11399: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11399-suite-14ccf1e5-ede8-44be-8d38-6e3b9805dbd6-all-at-12f2596.log
+Run 77151170-10ae-4f32-9fd9-a5b1b16a269e; head 32b505ff9764e4ac2d4ee9eccdfb2576b883a98c; green; log A-11400: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11400-suite-77151170-10ae-4f32-9fd9-a5b1b16a269e-all-at-32b505f.log
+Run 062a4163-1d9c-4284-9e1a-0f488dd69d8d; head 8a069e4a3a05fc4647f3be98d9b8fe334db42171; green; log A-11405: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11405-suite-062a4163-1d9c-4284-9e1a-0f488dd69d8d-all-at-8a069e4.log
+Run 6176b9b5-54c2-423c-8796-d371faa7d698; head 708ad732fec056195a2dd1c5179fef41b7956541; red; log A-11407: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11407-suite-6176b9b5-54c2-423c-8796-d371faa7d698-all-at-708ad73.log
+Run d18b80cb-5018-4876-b825-80b48de8829e; head 795799df95022f1b9bd03a2bfd803204c5c38f8d; green; log A-11418: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11418-suite-d18b80cb-5018-4876-b825-80b48de8829e-all-at-795799d.log
+Run 8b7ae472-c95f-4a7d-af1f-eb43c161908e; head 6950fd2f66f595adeb7c6e9c5dd939a1d8d23a70; green; log A-11426: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11426-suite-8b7ae472-c95f-4a7d-af1f-eb43c161908e-all-at-6950fd2.log
+Run 5cac8120-5d5e-49d9-a34c-187d15d5a996; head fffc70b8c61f5d3755eee6d128334752d72d9b8c; red; log A-11432: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11432-suite-5cac8120-5d5e-49d9-a34c-187d15d5a996-all-at-fffc70b.log
+Run 3cb542e2-e08f-4183-bbef-b6a5fc69f2ae; head 6950fd2f66f595adeb7c6e9c5dd939a1d8d23a70; green; log A-11441: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11441-suite-3cb542e2-e08f-4183-bbef-b6a5fc69f2ae-all-at-6950fd2.log
+Run b72dfb76-c245-4c82-afd0-9fd38943978a; head fffc70b8c61f5d3755eee6d128334752d72d9b8c; red; log A-11452: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11452-suite-b72dfb76-c245-4c82-afd0-9fd38943978a-all-at-fffc70b.log
+hub/test/merge-gate.test.ts: inconclusive (no failure in the requested file)
+Run b04f7249-bebd-4b69-92ee-b2317be0eca9; head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; inconclusive; log A-11455: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11455-suite-b04f7249-bebd-4b69-92ee-b2317be0eca9-all-at-8fd6195.log
+hub/test/request-guard.test.ts: inconclusive (no failure in the requested file)
+Run 532f8aeb-5ee1-4412-af1d-73404d4c408f; head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; inconclusive; log A-11457: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11457-suite-532f8aeb-5ee1-4412-af1d-73404d4c408f-all-at-8fd6195.log
+hub/test/scenarios/hook-bridge.test.ts: inconclusive (no failure in the requested file)
+Run 65bb9714-7341-4d3d-bc95-13f7d29a40c9; head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; inconclusive; log A-11458: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11458-suite-65bb9714-7341-4d3d-bc95-13f7d29a40c9-all-at-8fd6195.log
+hub/test/scenarios/stage-close.test.ts: inconclusive (no failure in the requested file)
+Run 6578b90a-6cbd-43d2-8beb-695adb073a1e; head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; inconclusive; log A-11462: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11462-suite-6578b90a-6cbd-43d2-8beb-695adb073a1e-all-at-8fd6195.log
+hub/test/subscription-frame.test.ts: inconclusive (no failure in the requested file)
+Run 66f0839c-51b6-41a5-aa51-b0e5ee780563; head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; inconclusive; log A-11465: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11465-suite-66f0839c-51b6-41a5-aa51-b0e5ee780563-all-at-8fd6195.log
+hub/test/suite-human.test.ts: inconclusive (no failure in the requested file)
+Run 10b4fa88-dd46-48af-81fc-bdc3ad24e13f; head 8fd6195fd9fb83d0e50db635e4508e9e429689c2; inconclusive; log A-11467: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11467-suite-10b4fa88-dd46-48af-81fc-bdc3ad24e13f-all-at-8fd6195.log

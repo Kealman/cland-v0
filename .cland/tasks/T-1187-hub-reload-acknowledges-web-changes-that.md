@@ -2,8 +2,8 @@
 id: T-1187
 kind: task
 title: Hub reload acknowledges [web] changes that the running web edge ignores
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1002
 branch: t/T-1187-hub-reload-acknowledges-web-changes-that
 created: 2026-10-23T21:39:31.010Z
-updated: 2026-10-24T20:56:54.235Z
+updated: 2026-10-24T21:48:13.439Z
+closed: 2026-10-24T21:48:13.439Z
 ---
 
 ## Summary
@@ -27,8 +28,9 @@ Treat `web` as a startup field, so that a reload that changes it is refused with
 
 ## Acceptance criteria
 
-- [ ] C1. Changing `[web] origin`, `bind` or `port` and running `cland hub reload` is either refused with a message naming a restart, or applied to the running edge. No reload acknowledges a `[web]` change that the edge ignores (test).
-  - failed: rev-23 [reviewer] · 2026-10-24T20:56:54.235Z · note Functional implementation accepted, but new documentation fails the existing docs guard and config-set per-file guidance is missing; corrected-head source clearance/runtime evidence required.
+- [x] C1. Changing `[web] origin`, `bind` or `port` and running `cland hub reload` is either refused with a message naming a restart, or applied to the running edge. No reload acknowledges a `[web]` change that the edge ignores (test).
+  - done: impl-1187 · 2026-10-24T20:58:11.363Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1187-final-1 · 2026-10-24T21:13:19.925Z · commit d3d85833d28e364214ad5586b4dc8e3526eccb57
 
 ## Comments
 
@@ -80,3 +82,39 @@ Standards2medium findings; Spec0functional findings.
 Durable audit A-11421.
 
 Criteria: C1 failed (Functional implementation accepted, but new documentation fails the existing docs guard and config-set per-file guidance is missing; corrected-head source clearance/runtime evidence required.).
+
+### rev-26 · 2026-10-24T20:59:27.451Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1187-source-2
+commit: d3d85833d28e364214ad5586b4dc8e3526eccb57
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-11427 records corrected full source review, carrying rev-23's accepted functional audit A-11421. M1/M2 are resolved by exact test-path headings, separate config-set guide/index and cross-links; guards and functional tests unchanged. Rechecked web startup-field equality before publication, atomic last-good pair, config-set restart/pending-save behavior, generated tests and consumer inventory. Help/frozen row, README and implement skill/CHANGES match. A-11424 retains available original local excerpts, exits and native timings with dirty precommit/per-run hash/raw-envelope gaps explicitly labelled; docs guard red then 3/3 green. C1 runtime remains unverified. Source clear permits one ordinary mode-free verify at unchanged d3d85833, then exact-head evidence review. No per-item QA or landing claim.
+
+### impl-1187 · 2026-10-24T21:12:57.734Z
+
+Same-head verify 03f86816-ca11-4305-882e-34fad8198d64 at d3d85833d28e364214ad5586b4dc8e3526eccb57: exit 0, 3069/3069, zero failures/cancellations/skips/todos (A-11460). T0 host check; T1 142 files/893 tests; T2 all-files coverage fallback 246 files/1841 tests; Web 44 files/225 tests. T3/T4 did not run; unchanged T3 deferred to periodic/integrated occasions, configured batch lacks T3. Droplet c-8 lon1 linux x64 6.8.0-142-generic, Node 24.21.0, Neovim 0.12.5; Chrome Headless Shell 156.0.8078.4, Playwright shell v1248; lifetime 720 s, cost $0.0500, workers 2. Duration/tier/test-lint budgets report-only; warnings retained, not performance passes. All six new regression identities have native pass timings and explicit 5/5 load receipts in A-11460: four web.<key> refusal cases, equivalent/removal, config-set restart/pending-save. Existing docs guard also passes its three cases. Read-only final check after result: clean HEAD unchanged; fresh git fetch origin dev gave 5205aeb68c1e9f5b8978afbbe9c18e8a6a103dde; merge-tree --write-tree HEAD origin/dev exited 0 with tree 20e02274fc6c26cb1ff90f1e476f9a8593070e4d, no conflict. No merge performed. Final evidence review requested before ready report.
+
+### rev-26 · 2026-10-24T21:13:19.925Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1187-final-1
+commit: d3d85833d28e364214ad5586b4dc8e3526eccb57
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-11464 audits raw A-11460 exact-head mode-free03f86816: 3069 ordinary test/432 file passes, separately30 actual load repetitions across six identities5/5. origin/bind/port/dist refusal cases assert exit1/restart guidance plus retained old budget/config provenance/web status/role model. Equivalent parsed settings accept then origin removal refuses/retains; config-set persists restart-only origin and keeps pending reloadable edits out of active budget. Reload10/10/config-set11/11 pass. Host gate tree b285e6c9 reused/not remote repeated; all T0/T1/fallback hub+Neovim T2/Web green. T3/T4/integration/QA excluded; report-only warning/missing-baseline limits retained. A-11427 source clear carried; C1 verified. Lead reports clean unchanged head/fresh dev5205aeb6 merge-tree exit0; Coordinator owns enqueue/merge.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-24T21:48:13.439Z
+
+Merged 8bcd7b85a475fea5b61df7d53129f9e2ec6b1e58 onto dev.

@@ -2,8 +2,8 @@
 id: T-619
 kind: task
 title: Decide whether to adopt OpenCode role instructions, after T-536's forced-compaction comparison
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-994
 branch: t/T-619-decide-whether-to-adopt-opencode-role
 created: 2026-10-16T15:53:55.297Z
-updated: 2026-10-24T20:16:54.765Z
+updated: 2026-10-24T21:04:01.587Z
+closed: 2026-10-24T21:04:01.587Z
 ---
 
 ## Summary
@@ -192,3 +193,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-11384 audits original same-head 02931624/A11383 and carries source4/A11375. Parsed3090 ordinary test/435file passes, no fail/cancel/skip or separate load finishes. Host T0(check38.405s, gate05163885 reused/not remote repeat), Linux c8lon1 T1/allfallback hub+NeovimT2/3changedT3files30casesonce/Web complete; remaining T3/T4 absent. Actual prepared Headless Shell156.0.8078.4/v1248, source launches prerequisite.executablePath headlessly. Adapter20/20 includes default/optout/fallback/oldendpoint2.416/2.347/2.418/2.538s, retainedentry2.371s/lostwrite2.804s with exact retry receipt; nativeT2 30/30 preserves refusal cleanup/retry; pool9/9 includes OpenCode true3.987s/false3.672s; crew1/1 9.041s. Crew already has15.136129s legacy E880 allowance; runner's suggested13.562 stanza is not an installed edit. Generic budgets/lint/Webwall/ratchet report-only,9missing; ratchet2205.585vs2195.304 growth/incomplete retained. ChangedT3 addedwall52.096exwait distinct from97.304summedtests; dropletlife732s/$0.0508 not suitewall. Local macOS targeted20/9 comments supplemental; original Linux durable receipts independently establish runtime. Claimant conflictcheck devfdcea0b9 clean, no merge/headchange. C1/C2allverified, no findings. No fullT3/T4, peritemQA, native-provider compaction or landing claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T21:04:01.587Z
+
+Merged 5205aeb68c1e9f5b8978afbbe9c18e8a6a103dde onto dev.
