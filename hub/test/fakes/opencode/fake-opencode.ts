@@ -32,6 +32,7 @@
 // GET …/message/{id} supplies the referenced assistant tool part. /test/message can hold those lookups. A text
 // containing "needs a form" raises `form.created` and waits for a reply or a cancel.
 // POST /test/turn {paused} holds/resumes input execution while the native turn remains running.
+// POST /test/shell {command} runs a shell tool with the server's inherited cland identity.
 //
 // State lives under FAKE_OPENCODE_HOME: sessions/<ses>.json (shared by every server, like OpenCode's database),
 // servers/<pid>.json (the live servers, for the tests' cleanup), prompts/<ses>.log (each prompt and its delivery).
@@ -43,7 +44,8 @@
 // Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
 // Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
 // fixture or set FAKE_OPENCODE_TURN_MS explicitly, with a comment naming the race/behaviour.
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { fixtureEnvironment } from '../../../../test-support/fixture-environment.ts';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createPortServer } from 'node:net';
@@ -284,6 +286,17 @@ async function serve(args: string[]): Promise<number> {
       const url = new URL(req.url ?? '/', 'http://x');
       const parts = url.pathname.split('/').filter(Boolean); // api, session, <id>, …
       const method = req.method ?? 'GET';
+      if (url.pathname === '/test/shell' && method === 'POST') {
+        const { command } = await readBody(req);
+        if (typeof command !== 'string') return send(res, 400, { message: 'command required' });
+        // Preserve only the adapter-supplied cland variables across the sealed child boundary.
+        const identity = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('CLAND_')));
+        // cland-allow-child-env: fixtureEnvironment seals HOME/Git/providers; dynamic extras retain the native server's cland identity under test.
+        const result = await new Promise(resolve => execFile('sh', ['-c', command], {
+          cwd: process.cwd(), env: fixtureEnvironment(HOME, process.env, identity), timeout: 15_000,
+        }, (error, stdout, stderr) => resolve({ code: error ? error.code : 0, stdout, stderr })));
+        return send(res, 200, { data: result });
+      }
       if (url.pathname === '/test/stream' && method === 'POST') {
         streamPaused = (await readBody(req)).paused === true;
         if (streamPaused) for (const stream of streams) stream.end();

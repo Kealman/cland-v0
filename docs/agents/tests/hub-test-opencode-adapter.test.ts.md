@@ -9,3 +9,15 @@ human input has not reached the adapter, then release and require the human's
 injected receipt. OpenCode's fake `/test/turn` endpoint holds execution without
 changing the busy state. Existing human steering during `waiting for approval`
 is a different state and remains covered by the Codex contract/reconciliation tests.
+
+The shell identity contract (T-1219) runs a command through fake OpenCode's
+authenticated `/test/shell` endpoint, inheriting the server's five `CLAND_*`
+identity variables without using its MCP config as a shell environment. The
+fixture seals HOME, XDG, Git and provider variables before starting the shell.
+Two launched Implementers claim separate items/topics, then their real CLI
+children submit mode-free `verify` concurrently. Hold executor capacity with
+the injected compatibility observation; assert both distinct persisted queued
+jobs and their named owners through hub status and queue replies. This proves
+admission and attribution only; it runs no package checks or suites. Compare
+the shell identity with the unchanged MCP environment and independently assert
+the launch's name, id, role, discovery path and nonempty launch token.

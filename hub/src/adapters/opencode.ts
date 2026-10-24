@@ -174,7 +174,15 @@ export class OpenCodeAdapter implements HarnessAdapter {
       try {
         const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId, launchToken), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
         yield* wait(transaction.file(files.log, true));
-        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: withoutExecutorCredentials(accountEnvironment(this.#env, p.accountEnv)), files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
+        const env = withoutExecutorCredentials({
+          ...accountEnvironment(this.#env, p.accountEnv),
+          CLAND_HUB_FILE: this.#host.discoveryFile,
+          CLAND_SESSION_ID: p.sessionId,
+          CLAND_SESSION_NAME: p.name,
+          ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
+          ...(p.role ? { CLAND_ROLE: p.role } : {}),
+        });
+        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
         pid = started.pid;
         const { url } = started;
         const client = new OpenCodeClient(url, password);

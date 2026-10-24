@@ -20,11 +20,83 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import type { ApprovalRecord } from '../src/protocol.ts';
+import type { ApprovalRecord, HubStatus, VerificationQueue } from '../src/protocol.ts';
 import { nativeProjectHub as projectHub, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, inProcessSpoke, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 import { NO_PS } from './native-process.ts';
+import { writeSuiteFixture } from './suite-fixture.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
+
+test('OpenCode shell tools inherit session identity and admit two separately owned verify runs', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  await writeSuiteFixture(root, 'true', 'true', { stack: 'other', check: 'true', test: 'true', verification: 'executor="local"' });
+  await writeFile(join(root, 'shell-probe.mjs'), `
+import { execFile } from 'node:child_process';
+const [cli, recipient, topic] = process.argv.slice(2);
+const keys = ['CLAND_HUB_FILE', 'CLAND_SESSION_ID', 'CLAND_SESSION_NAME', 'CLAND_LAUNCH_TOKEN', 'CLAND_ROLE'];
+const identity = Object.fromEntries(keys.map(key => [key, process.env[key] ?? null]));
+// cland-allow-child-env: the fake shell seals its environment before this native CLI inheritance probe.
+execFile(process.execPath, [cli, 'verify', '--report', topic, '--to', recipient, '--json'],
+  { timeout: 10000 }, (error, stdout, stderr) => {
+    console.log(JSON.stringify({ identity, code: error ? error.code : 0, stdout, stderr }));
+  });
+`);
+  // Admission/ownership is the subject; an occupied executor prevents any package commands.
+  const { discovery } = await projectHub(t, root, fake.env, {
+    compatibility: { occupied: async () => true, holder: async () => ({ holder: null, since: null }) },
+  });
+  const ui = await connectUi(t, discovery);
+  const sessions = [
+    await launch(ui, 'shell-a', { role: 'implementer', model: 'opencode/fake-paid' }),
+    await launch(ui, 'shell-b', { role: 'implementer', model: 'opencode/fake-paid' }),
+  ];
+  const topics: string[] = [];
+  for (const session of sessions) {
+    const made = await ui.request({ type: 'task.create', title: session.name, size: 'S', assignee: session.name });
+    assert.equal(made.ok, true, made.error);
+    const item = (made.value as { item: { id: string } }).item.id;
+    const claimed = await ui.request({ type: 'task.claim', item, as: { name: session.name, sessionId: session.sessionId, shell: true } });
+    assert.equal(claimed.ok, true, claimed.error);
+    const topic = await ui.request({ type: 'topic.create', title: session.name, item });
+    assert.equal(topic.ok, true, topic.error);
+    topics.push((topic.value as { topic: { id: string } }).topic.id);
+  }
+  const quote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+  const probes = await Promise.all(sessions.map(async (session, index) => {
+    const command = [process.execPath, join(root, 'shell-probe.mjs'), CLI_ENTRY, session.name, topics[index]!].map(quote).join(' ');
+    const { data } = await api(session, root, 'POST', '/test/shell', { command }) as { data: { code: number; stdout: string; stderr: string } };
+    assert.equal(data.code, 0, data.stderr);
+    return JSON.parse(data.stdout) as { identity: Record<string, string | null>; code: number; stdout: string; stderr: string };
+  }));
+  for (const [index, probe] of probes.entries()) {
+    const session = sessions[index]!;
+    const config = JSON.parse(await readFile(join(root, '.cland/opencode', session.name, 'opencode.json'), 'utf8'));
+    const { CLAND_DELIVERY: _delivery, ...identity } = config.mcp.servers.cland.environment;
+    assert.deepEqual(probe.identity, identity, 'the shell and MCP carry the same five identity variables');
+    assert.equal(probe.identity.CLAND_HUB_FILE, join(root, '.cland/hub.json'));
+    assert.equal(probe.identity.CLAND_SESSION_ID, session.sessionId);
+    assert.equal(probe.identity.CLAND_SESSION_NAME, session.name);
+    assert.equal(probe.identity.CLAND_ROLE, 'implementer');
+    assert.ok(probe.identity.CLAND_LAUNCH_TOKEN);
+    assert.equal(probe.code, 0, probe.stderr);
+  }
+  const jobs = probes.map(probe => JSON.parse(probe.stdout) as { id: string });
+  assert.notEqual(jobs[0]!.id, jobs[1]!.id, 'each session gets its own submission');
+  // Observe persisted queue records, rather than trusting the launch replies.
+  const queued = await ui.request({ type: 'hub.status', history: true });
+  assert.equal(queued.ok, true, queued.error);
+  const suites = (queued.value as HubStatus).suites!;
+  const queue = await ui.request({ type: 'suite.queue' });
+  assert.equal(queue.ok, true, queue.error);
+  const waiters = (queue.value as VerificationQueue).waiters;
+  for (const [index, job] of jobs.entries()) {
+    const receipt = suites.find(suite => suite.id === job.id)!;
+    assert.ok(receipt, `persisted suite ${job.id}`);
+    assert.equal(receipt.state, 'queued');
+    assert.equal(waiters.find(waiter => waiter.id === job.id)?.session, sessions[index]!.name);
+  }
+});
 
 test('the first OpenCode native prompt carries the role clause before the launch brief', async (t) => {
   const root = await tempProject(t);

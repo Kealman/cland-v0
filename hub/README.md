@@ -1254,7 +1254,7 @@ The default Coordinator, Lead and Implementer permission lists include `ask.forw
 
 ### The CLI in a session's shell
 
-The adapters put `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` in a launched session's shell (Claude Code and Codex; `$CLAND_ROLE` too where there is a role). With either set, every frame the CLI sends carries the session as `as`, the hub takes the call as that session's (by the id first; an id or a name the hub does not know is a roleless session, refused everything that needs a role, never the human), and the audit records the session with `client: "cli"`. What the call may do:
+The adapters put `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` in a launched session's shell (Claude Code, Codex and OpenCode; `$CLAND_ROLE` too where there is a role). With either set, every frame the CLI sends carries the session as `as`, the hub takes the call as that session's (by the id first; an id or a name the hub does not know is a roleless session, refused everything that needs a role, never the human), and the audit records the session with `client: "cli"`. What the call may do:
 
 | Command | In a session's shell |
 | --- | --- |
@@ -2234,6 +2234,14 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 See [Accounts and limits](#accounts-and-limits) for the registry, process environment, polling and launch refusals.
 
 `src/adapters/opencode.ts`, with `opencode/client.ts` (the HTTP API and the event stream), `opencode/state.ts` (events to states) and `opencode/server.ts` (the session's server and its files). Launched with `"harness": "opencode"`.
+
+The server process and its shell tools receive `CLAND_HUB_FILE`,
+`CLAND_SESSION_ID`, `CLAND_SESSION_NAME`, `CLAND_LAUNCH_TOKEN` when present,
+and `CLAND_ROLE` when assigned. The generated cland MCP server environment
+retains the same identity plus `CLAND_DELIVERY=adapter`. Shell CLI calls,
+including verification submissions, therefore carry their session's identity.
+See [The CLI in a session's shell](#the-cli-in-a-sessions-shell) for the current
+environment-based identity trust boundary.
 
 Without an account, each server uses `OPENCODE_DB=$XDG_DATA_HOME/cland/opencode/opencode.db`, or `~/.local/share/cland/opencode/opencode.db` when no absolute `XDG_DATA_HOME` is set. This database is shared by the user's cland projects and separate from OpenCode's background service: the service's boot sweep cannot resume a cland session. A registry account keeps its `data_home` (`<data_home>/opencode/opencode.db`) or explicit `db`. An account pointing at the user's default database shares the sweep hazard; `cland doctor` warns about it.
 
