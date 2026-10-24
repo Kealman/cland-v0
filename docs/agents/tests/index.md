@@ -73,6 +73,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`nvim/test/artifact-render.test.ts`](../../../nvim/test/artifact-render.test.ts) | [Notes](nvim-test-artifact-render.test.ts.md) |
 | [`nvim/test/hub-read-component.test.ts`](../../../nvim/test/hub-read-component.test.ts) | [Notes](nvim-test-hub-read-component.test.ts.md) |
 | [`nvim/test/panel-placement-component.test.ts`](../../../nvim/test/panel-placement-component.test.ts) | [Notes](nvim-test-panel-placement-component.test.ts.md) |
+| [`nvim/test/qa-shipped.test.ts`](../../../nvim/test/qa-shipped.test.ts) | [Notes](nvim-test-qa-shipped.test.ts.md) |
 | [`nvim/test/startup-budget.test.ts`](../../../nvim/test/startup-budget.test.ts) | [Notes](nvim-test-startup-budget.test.ts.md) |
 | [`web/test/artifacts.test.ts`](../../../web/test/artifacts.test.ts) | [Notes](web-test-artifacts.test.ts.md) |
 | [`web/test/asks.test.ts`](../../../web/test/asks.test.ts) | [Notes](web-test-asks.test.ts.md) |

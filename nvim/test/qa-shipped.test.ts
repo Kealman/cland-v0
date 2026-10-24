@@ -8,28 +8,55 @@ const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const SHIPPED = fileURLToPath(new URL('../../qa/cases/', import.meta.url));
 
-for (const name of ['ARTIFACT-001', 'GRAPH-001', 'ITEMS-002', 'PANELS-005', 'PANELS-006', 'PANELS-007', 'PANELS-008', 'PANELS-009', 'PANELS-010', 'PANELS-011', 'PANELS-012', 'PANELS-013', 'PANELS-014', 'PANELS-015', 'PANELS-016', 'PANELS-017', 'PANELS-018', 'THREAD-001', 'THREAD-002', 'THREAD-003', 'THREAD-004', 'THREAD-005', 'THREAD-006', 'THREAD-007', 'THREAD-008', 'THREAD-009', 'THREAD-010', 'PANELS-019']) {
+// The curated shipped catalogue, one case per line and grouped by feature: a case
+// added by another item touches the lines of its own feature, so two items that
+// each add a different case merge without rewriting the catalogue (T-1020). The
+// layout, the set and the case files are guarded at T1 in
+// hub/test/qa-shipped-catalogue.test.ts.
+const CATALOGUE = [
+  // Rendered artifacts
+  'ARTIFACT-001',
+  'ARTIFACT-002',
+  // The explorer
+  'EXPLORER-002',
+  // The experimental graph
+  'GRAPH-001',
+  // The items panel
+  'ITEMS-002',
+  // Panels, sessions and the palette
+  'PANELS-005',
+  'PANELS-006',
+  'PANELS-007',
+  'PANELS-008',
+  'PANELS-009',
+  'PANELS-010',
+  'PANELS-011',
+  'PANELS-012',
+  'PANELS-013',
+  'PANELS-014',
+  'PANELS-015',
+  'PANELS-016',
+  'PANELS-017',
+  'PANELS-018',
+  'PANELS-019',
+  'PANELS-020',
+  // The thread
+  'THREAD-001',
+  'THREAD-002',
+  'THREAD-003',
+  'THREAD-004',
+  'THREAD-005',
+  'THREAD-006',
+  'THREAD-007',
+  'THREAD-008',
+  'THREAD-009',
+  'THREAD-010',
+];
+
+for (const name of CATALOGUE) {
   test(`${name} passes through the headless QA runner`, { skip }, async (t) => {
     const run = await qa(t, [`${SHIPPED}${name}.lua`]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
     assert.equal(run.code, 0);
   });
 }
-
-test('EXPLORER-002 passes through the headless QA runner', { skip }, async t => {
-  const run = await qa(t, [`${SHIPPED}EXPLORER-002.lua`]);
-  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-  assert.equal(run.code, 0);
-});
-
-test('PANELS-020 passes through the headless QA runner', { skip }, async t => {
-  const run = await qa(t, [`${SHIPPED}PANELS-020.lua`]);
-  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-  assert.equal(run.code, 0);
-});
-
-test('ARTIFACT-002 passes through the headless QA runner', { skip }, async t => {
-  const run = await qa(t, [`${SHIPPED}ARTIFACT-002.lua`]);
-  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-  assert.equal(run.code, 0);
-});
