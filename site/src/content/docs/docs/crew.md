@@ -99,10 +99,29 @@ Permissions are never off by default. `skip` is a conscious choice: make it for 
 | --- | --- |
 | Coordinator, Lead, QA | `danger-full-access` |
 | Reviewer | `read-only` |
-| Implementer | `workspace-write`: its own worktree and the temp directory. |
+| Implementer | `workspace-write`: its own worktree, the temp directory and the narrow roots below. |
 | Aide | `workspace-write` |
 
-Existing role files are preserved. The built-in compatibility defaults used when sandbox settings are omitted differ: Implementer and Aide inherit `danger-full-access`, while Reviewer inherits `read-only`. Inspect `cland role list` for the effective settings; the example above explicitly chooses `workspace-write`.
+These defaults apply both to new projects and when a role or its `sandbox` key is missing. Implementer and Aide fallbacks now use `workspace-write` instead of full access. Coordinator and Lead fallbacks now explicitly grant full access instead of using Codex's own setting. Existing explicit values are kept, and running sessions keep their launch policy until relaunched.
+
+To change a role's sandbox, edit its launch table in `.cland/roles.toml`:
+
+```toml
+[implementer.launch]
+sandbox = "workspace-write"
+# Override the default extra roots only when your project needs a different set.
+writable_roots = [
+  ".git/objects", ".git/refs", ".git/logs", ".git/worktrees",
+  ".cland/territory.git/objects", ".cland/territory.git/refs",
+  ".cland/territory.git/logs", ".cland/artifacts",
+]
+```
+
+`writable_roots` paths are relative to the project root; a written list replaces the defaults. The Implementer gets the roots shown above for task-worktree commits, fetches, local territory pushes and edits to owned artifacts. Neither repository's `hooks/` or `config` is writable. Hub tools write tracker items and artifact records in the hub process, so those mutations need no extra shell roots. An Aide on workspace-write has no extra roots; root-level Git commits need another policy because `.git/index.lock` and `.git/COMMIT_EDITMSG` stay protected. A QA role changed to `workspace-write` inherits `[".cland/qa"]` for runs and evidence unless you supply another list. A project whose root is itself a linked worktree needs a separate policy for its external Git metadata.
+
+User configuration and package caches outside the worktree need additional roots. macOS workspace-write also restricts process inspection (`ps`) and file watching (FSEvents); adding writable directories does not remove those restrictions.
+
+Choose `sandbox = "danger-full-access"` to remove the sandbox, or `sandbox = ""` to use Codex's own configuration. Full access lets commands write anywhere the user can. Implementer and Aide default to full network access; Reviewer has none.
 
 With `network = "local"`, a sandboxed session reaches the hub, local sockets and loopback, and nothing else.
 

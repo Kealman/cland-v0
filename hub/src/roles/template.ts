@@ -25,6 +25,8 @@ export function rolesTemplate(installed: readonly HarnessId[]): string {
     if (harness === 'codex') {
       if (role === 'coordinator' || role === 'lead') policy += '# Full access for cland git refs, territory, network, hub sockets and session/worktree launches.\n';
       policy += `approval = "never"\nsandbox = "${CODEX_SANDBOX[role]}"\n`;
+      const roots = /^writable_roots = .+$/m.exec(shipped)?.[0];
+      if (roots) policy += roots + '\n';
     }
     return `[${role}.launch]\n${launch.trimEnd()}\n${policy}`;
   });

@@ -20,6 +20,16 @@ Leads retain scoped launch/stop authority; listing needs no item claim.
 See the [permission table](../../hub/README.md#permissions) and the
 [regression seam](tests/hub-test-permissions.test.ts.md).
 
+Codex command sandboxes are separate from these hub grants. Generated and
+built-in fallback sandboxes agree: Implementer/Aide workspace-write, Reviewer
+read-only, Coordinator/Lead/QA full access. T-1222 changes omitted sandbox keys
+for Implementer/Aide from full access to workspace-write and for Coordinator/Lead
+from Codex's own configuration to explicit full access. Explicit project values
+are kept; running sessions retain their policy until relaunched. Configure
+`writable_roots` for workspace-write roles that commit from linked task worktrees
+or write outside their cwd. See [The Codex sandbox](../review-and-qa.md#the-codex-sandbox)
+for setup, limits and historical evidence. Role clauses are unchanged.
+
 On hub frames, role/tool availability comes first; unavailable tools return
 `forbidden` without argument diagnostics. Available tools validate arguments
 before argument-dependent scope and ownership checks. The spoke retains local

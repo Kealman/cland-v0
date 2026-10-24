@@ -41,6 +41,12 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/project-probes.test.ts`](../../../hub/test/project-probes.test.ts) | [Notes](hub-test-project-probes.test.ts.md) |
 | [`hub/test/quarantine-runner.test.ts`](../../../hub/test/quarantine-runner.test.ts) | [Notes](hub-test-quarantine-runner.test.ts.md) |
 | [`hub/test/roles-clauses.test.ts`](../../../hub/test/roles-clauses.test.ts) | [Notes](hub-test-roles-clauses.test.ts.md) |
+| [`hub/test/roles-template.test.ts`](../../../hub/test/roles-template.test.ts) | [Notes](hub-test-roles-template.test.ts.md) |
+| [`hub/test/roles-template-component.test.ts`](../../../hub/test/roles-template-component.test.ts) | [Notes](hub-test-roles-template-component.test.ts.md) |
+| [`hub/test/codex-workspace-git.test.ts`](../../../hub/test/codex-workspace-git.test.ts) | [Notes](hub-test-codex-workspace-git.test.ts.md) |
+| [`hub/test/roles-component.test.ts`](../../../hub/test/roles-component.test.ts) | [Notes](hub-test-roles-component.test.ts.md) |
+| [`hub/test/adapter-composition.test.ts`](../../../hub/test/adapter-composition.test.ts) | [Notes](hub-test-adapter-composition.test.ts.md) |
+| [`hub/test/codex-adapter.test.ts`](../../../hub/test/codex-adapter.test.ts) | [Notes](hub-test-codex-adapter.test.ts.md) |
 | [`hub/test/session-archive.test.ts`](../../../hub/test/session-archive.test.ts) | [Notes](hub-test-session-archive.test.ts.md) |
 | [`hub/test/spoke-artifact-budget.test.ts`](../../../hub/test/spoke-artifact-budget.test.ts) | [Notes](hub-test-spoke-artifact-budget.test.ts.md) |
 | [`hub/test/stage-qa.test.ts`](../../../hub/test/stage-qa.test.ts) | [Notes](hub-test-stage-qa.test.ts.md) |

@@ -185,6 +185,8 @@ export const ROLE_USAGE = `  role set <session> <role>   assign a built-in role 
                   save launch settings; applies from the role's next launch
                   --model "" and --account "" use the harness's default
   role list       the roles, their launch defaults and holders (--json for JSON)
+                  Codex sandbox defaults: Implementer/Aide workspace-write, Reviewer read-only,
+                  Coordinator/Lead/QA danger-full-access; override sandbox/writable_roots in roles.toml
 `;
 
 export const CREW_USAGE = `  crew show       effective staffing policy and summary (--json)

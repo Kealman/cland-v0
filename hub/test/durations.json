@@ -2915,7 +2915,6 @@
     "hub/test/close-shards.test.ts::close shards balance largest hub files first, use median for unknowns and place Neovim on the lightest hub shard": 0.008032,
     "hub/test/close-shards.test.ts::close shards balance the combined hub and indivisible Neovim workload": 0.000525,
     "hub/test/close-shards.test.ts::explicit shard files retain resource classes and include Neovim only on its assigned droplet": 0.18577,
-    "hub/test/codex-adapter.test.ts::Codex launches Implementer and QA with full access, Reviewer read-only, and the T-48 profile when configured (T-65)": 5.231784,
     "hub/test/codex-adapter.test.ts::a Codex app-server that dies: the state turns unknown and the hub logs it once": 1.97916,
     "hub/test/codex-adapter.test.ts::a failed Codex turn is recorded in Agents and the events view and reported to the sender": 1.659782,
     "hub/test/codex-adapter.test.ts::a launched Codex session: the app-server runs with the spoke, a UI message goes queued → delivered → injected, the reply comes back, and the state follows thread/status/changed": 2.509806,
@@ -6880,12 +6879,12 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
-    "hub/test/codex-adapter.test.ts::Codex launches Implementer and QA with full access, Reviewer read-only, and the T-48 profile when configured (T-65)": {
-      "seconds": 14.033542,
-      "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-11-19",
-      "reason": "load-variance headroom near the tier budget (T-923)"
+    "hub/test/codex-adapter.test.ts::Codex launches Implementer with narrow workspace roots, QA full access, Reviewer read-only, and the configured T-48 profile (T-1222)": {
+      "seconds": 8,
+      "owner": "E-778",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "Sealed native fake-binary policy contract shares one scratch setup, launches five role/profile app-servers and observes two stop/relaunch receipts. Based on one Linux droplet c-8 sample of 5.272721635 s at 381a8799, run 44abe56f (A-10803); 8 s gives about 1.5x headroom for run variance. No fixed waits to remove; renamed identity has no stage baseline yet (T-1222)."
     },
     "hub/test/config-reload-component.test.ts::hub reload publishes config and roles together and retains both after either file fails": {
       "seconds": 2.129789,

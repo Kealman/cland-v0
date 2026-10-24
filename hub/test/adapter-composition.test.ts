@@ -27,7 +27,11 @@ test('launch and relaunch policy follows the actual harness across role defaults
         const { approval, sandbox, permissions } = fake.spawns.at(-1)!;
         const expected = harness === 'opencode' ? {} : explicit
           ? { approval: 'untrusted', sandbox: { mode: 'workspace-write', writableRoots: [join(root, 'shared')], network: 'local' }, permissions: 'auto' }
-          : { approval: 'never', sandbox: { mode: 'danger-full-access', writableRoots: [], network: 'full' } };
+          : { approval: 'never', sandbox: { mode: 'workspace-write', writableRoots: [
+            join(root, '.git/objects'), join(root, '.git/refs'), join(root, '.git/logs'), join(root, '.git/worktrees'),
+            join(root, '.cland/territory.git/objects'), join(root, '.cland/territory.git/refs'), join(root, '.cland/territory.git/logs'),
+            join(root, '.cland/artifacts'),
+          ], network: 'full' } };
         assert.deepEqual({ ...(approval ? { approval } : {}), ...(sandbox ? { sandbox } : {}), ...(permissions ? { permissions } : {}) }, expected, name);
         assert.equal((await ui.request({ type: 'session.stop', session: name })).ok, true);
         // Change the role's default after launch: relaunch must keep the session's actual harness.

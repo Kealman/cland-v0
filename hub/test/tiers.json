@@ -74,6 +74,7 @@
     },
     "hub/test/codex-delivery.test.ts": "T2",
     "hub/test/codex-native.test.ts": "T2",
+    "hub/test/codex-workspace-git.test.ts": "T4",
     "hub/test/computed-sessions.test.ts": "T2",
     "hub/test/config-reload-component.test.ts": "T2",
     "hub/test/config-reload.test.ts": "T3",

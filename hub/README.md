@@ -1131,14 +1131,15 @@ How a launched session may act is read from `[<role>.launch]` at each launch, an
 | `network` | `none`, `local`, `full`; needs a sandbox | `local`: Unix sockets under the project's `.cland/`, the session's cwd and the temp dir, and loopback, so `cland` reaches the hub and tests start their own hubs; every other host is refused. `full`: the whole network. |
 | `permissions` | `skip`; `""`: the harness's own settings | Claude Code only: `skip` launches (and relaunches) the session with `--dangerously-skip-permissions`, so it never stops at a permission prompt or an auto-mode classifier. OpenCode maps `skip` to allow-all rules, subject to the item rule below; Codex ignores it. |
 
-A key the table leaves out takes the role's built-in value from the table above, key by key, so a `[<role>.launch]` written before these keys existed still launches with its role's approval and sandbox defaults; only a written value overrides, and `""` asks for none. Inherited roots apply only to `workspace-write`, and `danger-full-access` closes no network. The Coordinator has no built-in values. A wrong value, `writable_roots` with a sandbox that is not `workspace-write`, or `network` or `writable_roots` with `sandbox = ""` makes the file unreadable, as any other mistake in it. `cland role list` shows each role's values. `docs/review-and-qa.md` ("The Codex sandbox") says what each role's sandbox allows, what it cannot, and why.
+A key the table leaves out takes the role's built-in value, key by key; only a written value overrides, and `""` asks for the harness's own setting. Generated and fallback Codex sandboxes agree for every role. T-1222 changes omitted sandbox keys for Implementer and Aide from full access to `workspace-write`, and for Coordinator and Lead from Codex's own setting to explicit `danger-full-access`. Explicit project settings and already-running sessions stay as they are; the new policy applies at launch or relaunch. Inherited roots apply only to `workspace-write`, and `danger-full-access` closes no network. A wrong value, `writable_roots` with a sandbox that is not `workspace-write`, or `network` or `writable_roots` with `sandbox = ""` makes the file unreadable. `cland role list` shows each role's values. `docs/review-and-qa.md` ("The Codex sandbox") describes the limits and historical measurements.
 
-Projects that prefer T-48's restricted profile can set the following keys in `[implementer.launch]` (and in `[qa.launch]`, omitting `writable_roots` for QA):
+The workspace-write Implementer inherits `.git/objects`, `.git/refs`, `.git/logs`, `.git/worktrees`, `.cland/territory.git/objects`, `.cland/territory.git/refs`, `.cland/territory.git/logs` and `.cland/artifacts`. These permit task-worktree commits, fetches, local territory pushes and owned-artifact edits without opening either repository's hooks/config. A written `writable_roots` list replaces those defaults. Hub tools perform tracker/artifact record writes in the hub process. The workspace-write Aide has no extra roots; root-level commits cannot write `.git/index.lock` or `.git/COMMIT_EDITMSG`. QA changed to `workspace-write` inherits `[".cland/qa"]` unless a list is supplied. User config, npm caches and external Git metadata when the project root is itself linked need separate access; macOS ps/FSEvents restrictions are not lifted by roots.
+
+Projects that prefer T-48's local-network profile can set the following keys in `[implementer.launch]` or `[qa.launch]`, keeping each role's inherited writable roots:
 
 ```toml
 approval = "never"
 sandbox = "workspace-write"
-writable_roots = ["."]
 network = "local"
 ```
 

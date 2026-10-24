@@ -197,7 +197,7 @@ test('Coordinator is exclusive: a second assignment is refused with the reason; 
   // cland role list: each role with its defaults and holders
   const list = await cland(root, 'role', 'list');
   assert.equal(list.code, 0, list.stderr);
-  assert.match(list.stdout, /^Coordinator \(one holder\)  launch: claude-code, model claude-fable-5-1, effort max, account harness default, permissions auto, approval harness default, sandbox harness default\n {2}coord \[Coordinator\]\n/);
+  assert.match(list.stdout, /^Coordinator \(one holder\)  launch: claude-code, model claude-fable-5-1, effort max, account harness default, permissions auto, approval harness default, sandbox danger-full-access\n {2}coord \[Coordinator\]\n/);
   assert.match(list.stdout, /\nImplementer  launch: opencode, model harness default, effort harness default, account harness default, guard: OpenCode's own\n {2}impl-1 \[Implementer\]\n/);
   assert.match(list.stdout, /\nReviewer  launch: codex, model gpt-6\.1-sol, effort high, account harness default, permissions harness default, approval never, sandbox read-only \(network: none\)\n {2}no holder\n/);
   assert.match(list.stdout, /\nQA  launch: codex, model gpt-6-astra, effort high, account harness default, permissions harness default, approval never, sandbox danger-full-access\n {2}no holder\n/);
@@ -235,11 +235,15 @@ test('roles.toml: approval, sandbox, writable_roots and network of a launch are 
   const launch = (lines: string) => parseRoles(`[qa.launch]\nharness = "codex"\n${lines}\n`).get('qa')?.launch;
   // nothing given (a roles.toml written before these keys existed): the role's built-in approval and sandbox, not none
   const qaSandbox = { mode: 'danger-full-access', writableRoots: [], network: 'full' };
+  const implementerSandbox = { mode: 'workspace-write', network: 'full', writableRoots: [
+    '.git/objects', '.git/refs', '.git/logs', '.git/worktrees',
+    '.cland/territory.git/objects', '.cland/territory.git/refs', '.cland/territory.git/logs', '.cland/artifacts',
+  ] };
   assert.deepEqual(launch(''), { harness: 'codex', account: null, model: null, effort: null, approval: 'never', sandbox: qaSandbox, permissions: null });
   const implementer = parseRoles('[implementer.launch]\nharness = "codex"\nmodel = "gpt-6.1-sol"\n').get('implementer')?.launch;
-  assert.deepEqual([implementer?.approval, implementer?.sandbox], ['never', qaSandbox]);
-  // the Coordinator has none built in
-  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { harness: 'codex', account: null, model: null, effort: null, approval: null, sandbox: null, permissions: null });
+  assert.deepEqual([implementer?.approval, implementer?.sandbox], ['never', implementerSandbox]);
+  // Coordinator has an explicit full-access sandbox, while approval remains the harness default.
+  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { harness: 'codex', account: null, model: null, effort: null, approval: null, sandbox: qaSandbox, permissions: null });
   // only what is written overrides, key by key
   assert.deepEqual(launch('approval = "on-request"'), { harness: 'codex', account: null, model: null, effort: null, approval: 'on-request', sandbox: qaSandbox, permissions: null });
   assert.deepEqual(launch('network = "full"')?.sandbox, { ...qaSandbox, network: 'full' });
@@ -255,7 +259,7 @@ test('roles.toml: approval, sandbox, writable_roots and network of a launch are 
   assert.deepEqual(launch('sandbox = "workspace-write"')?.sandbox, { mode: 'workspace-write', writableRoots: ['.cland/qa'], network: 'full' });
   assert.deepEqual(launch('sandbox = "workspace-write"\nwritable_roots = []')?.sandbox?.writableRoots, []);
   assert.deepEqual(launch('sandbox = "workspace-write"\nwritable_roots = ["."]')?.sandbox?.writableRoots, ['.']);
-  assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "workspace-write"\n').get('implementer')?.launch.sandbox?.writableRoots, []);
+  assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "workspace-write"\n').get('implementer')?.launch.sandbox?.writableRoots, implementerSandbox.writableRoots);
 
   assert.throws(() => launch('approval = "always"'), /qa\.launch\.approval must be one of never, on-request, untrusted/);
   assert.throws(() => launch('sandbox = "open"'), /qa\.launch\.sandbox must be one of read-only, workspace-write, danger-full-access/);
@@ -269,7 +273,7 @@ test('roles.toml: approval, sandbox, writable_roots and network of a launch are 
   assert.deepEqual(
     ['coordinator', 'implementer', 'reviewer', 'qa'].map((r) => [defaults.get(r)?.launch.approval, defaults.get(r)?.launch.sandbox]),
     [
-      [null, null],
+      [null, qaSandbox],
       [null, null],
       ['never', { mode: 'read-only', writableRoots: [], network: 'none' }],
       ['never', qaSandbox],

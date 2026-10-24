@@ -1,12 +1,47 @@
 // T2: hub startup policy and Aide launch defaults through one real socket; no native harness processes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { RoleList } from '../src/protocol.ts';
 import { parseRoles, DEFAULTS } from '../src/roles/config.ts';
 import { connectUi, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import { rolesTemplate } from '../src/roles/template.ts';
+import { threadPolicy } from '../src/adapters/codex.ts';
+import { parse } from 'smol-toml';
+
+test('generated and fallback Implementer policy resolves narrow task-worktree Git and artifact roots (T-1222)', { timeout: 2000 }, async t => {
+  for (const source of [rolesTemplate(['codex']), '[implementer.launch]\nharness = "codex"\n']) {
+    const root = await tempProject(t);
+    const worktree = join(root, '.cland/worktrees/T-1');
+    const gitDir = join(root, '.git/worktrees/T-1');
+    await mkdir(worktree, { recursive: true });
+    await mkdir(gitDir, { recursive: true });
+    await writeFile(join(worktree, '.git'), `gitdir: ${gitDir}\n`);
+    await writeFile(join(root, '.cland/roles.toml'), source);
+    const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock() });
+    const ui = await connectUi(t, discovery);
+    const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex', cwd: worktree });
+    assert.equal(launched.ok, true, launched.error);
+    const request = fakes.codex!.spawns[0]!;
+    assert.equal(request.cwd, worktree);
+    const roots = [
+      join(root, '.git/objects'), join(root, '.git/refs'), join(root, '.git/logs'), join(root, '.git/worktrees'),
+      join(root, '.cland/territory.git/objects'), join(root, '.cland/territory.git/refs'), join(root, '.cland/territory.git/logs'),
+      join(root, '.cland/artifacts'),
+    ];
+    assert.deepEqual(request.sandbox, { mode: 'workspace-write', writableRoots: roots, network: 'full' });
+    const policy = await threadPolicy({ discoveryFile: join(root, '.cland/hub.json') }, worktree, request);
+    const profile = parse(policy.overrides.find(value => value.startsWith('permissions.cland='))!).permissions as { cland: { filesystem: Record<string, string> } };
+    assert.deepEqual({ ...profile.cland.filesystem }, Object.fromEntries(roots.map(path => [path, 'write'])));
+    for (const protectedPath of ['.git', '.git/hooks', '.git/config', '.cland/territory.git', '.cland/territory.git/hooks', '.cland/territory.git/config']) {
+      assert.equal(roots.some(path => join(root, protectedPath) === path || join(root, protectedPath).startsWith(path + '/')), false, protectedPath);
+    }
+    assert.deepEqual(policy.thread, { approvalPolicy: 'never', permissions: 'cland' });
+    assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
+  }
+});
 
 test('hub startup builds missing role policy from its own installation environment', { timeout: 2000 }, async t => {
   const root = await tempProject(t);

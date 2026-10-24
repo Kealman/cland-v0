@@ -91,7 +91,7 @@ First the roles, one line each, from the table in `WELCOME.md`: the crew table r
 - **QA**: `singleton`, launched once there is something to run.
 - **Leads**: none (`leads = []`) until one Coordinator cannot keep up.
 - **Aide**: `subagents` true.
-- **Prompts**: recommend `permissions = "auto"` for Claude Code roles: a classifier lets routine commands through and stops risky ones. Offer `skip` only as the human's explicit choice, saying the trade-off: no prompts and no classifier; the session runs any command. Codex roles keep `approval = "never"` with their sandbox: Reviewer `read-only`, Implementer `workspace-write`, QA `danger-full-access`, and an Aide on Codex `workspace-write`. OpenCode keeps its own settings.
+- **Prompts**: recommend `permissions = "auto"` for Claude Code roles: a classifier lets routine commands through and stops risky ones. Offer `skip` only as the human's explicit choice, saying the trade-off: no prompts and no classifier; the session runs any command. Codex sandboxes, including missing-key fallbacks: Reviewer `read-only`, Implementer and Aide `workspace-write`, QA, Coordinator and Lead `danger-full-access`. Generated Codex roles use `approval = "never"`. Implementer inherits narrow Git/territory/artifact roots; a written `writable_roots` list replaces them. The workspace-write Aide cannot commit at the root. Read `docs/review-and-qa.md#the-codex-sandbox` for roots, operations needing more access and evidence limits. OpenCode keeps its own settings.
 
 One harness is a valid crew. Name a model only when `cland models <harness>` lists it; otherwise `""`, the harness's default.
 

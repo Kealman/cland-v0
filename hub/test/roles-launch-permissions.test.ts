@@ -85,6 +85,11 @@ test('a valid custom name cannot inherit JavaScript object members as grants or 
   assert.equal(setMissingCodexSandbox(source, 'constructor', 'codex'), source, 'custom roles have no built-in sandbox compatibility default');
 });
 
+const implementerSandbox = { mode: 'workspace-write', network: 'full', writableRoots: [
+  '.git/objects', '.git/refs', '.git/logs', '.git/worktrees',
+  '.cland/territory.git/objects', '.cland/territory.git/refs', '.cland/territory.git/logs', '.cland/artifacts',
+] };
+
 test('session.list is a named read granted to every role separately from session mutations', () => {
   const shipped = parseRoles(DEFAULT_ROLES_TOML);
   const project = parseRoles(readFileSync(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
@@ -117,11 +122,12 @@ test('OpenCode role snapshots use native policy and warn only for explicit ignor
 test('Claude Code and Codex retain per-role inherited policy', { timeout: 500 }, () => {
   for (const harness of ['claude-code', 'codex']) {
     for (const [role, approval, sandbox, permissions] of [
-      ['coordinator', null, null, null], ['lead', null, null, null],
-      ['implementer', 'never', { mode: 'danger-full-access', writableRoots: [], network: 'full' }, null],
+      ['coordinator', null, { mode: 'danger-full-access', writableRoots: [], network: 'full' }, null],
+      ['lead', null, { mode: 'danger-full-access', writableRoots: [], network: 'full' }, null],
+      ['implementer', 'never', implementerSandbox, null],
       ['reviewer', 'never', { mode: 'read-only', writableRoots: [], network: 'none' }, null],
       ['qa', 'never', { mode: 'danger-full-access', writableRoots: [], network: 'full' }, null],
-      ['aide', 'never', { mode: 'danger-full-access', writableRoots: [], network: 'full' }, null],
+      ['aide', 'never', { mode: 'workspace-write', writableRoots: [], network: 'full' }, null],
     ] as const) {
       const launch = parseRoles(`[${role}.launch]\nharness = "${harness}"\n`).get(role)!.launch;
       assert.deepEqual([launch.approval, launch.sandbox, launch.permissions], [approval, sandbox, permissions], `${harness}/${role}`);
@@ -135,7 +141,7 @@ test('OpenCode defaults retain policy inputs for launches on another harness (T-
     const definition = parseRoles(text).get('implementer')!;
     assert.deepEqual(roleLaunchPolicy(definition, 'opencode'), native);
     for (const harness of ['claude-code', 'codex']) assert.deepEqual(roleLaunchPolicy(definition, harness), {
-      approval: 'never', sandbox: { mode: 'danger-full-access', writableRoots: [], network: 'full' }, permissions: null,
+      approval: 'never', sandbox: implementerSandbox, permissions: null,
     });
   }
   const own = parseRoles('[implementer.launch]\nharness = "opencode"\napproval = ""\nsandbox = ""\npermissions = ""\n').get('implementer')!;

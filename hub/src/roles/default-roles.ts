@@ -102,6 +102,8 @@ harness = "claude-code"
 model = "claude-fable-5-1"
 effort = "max"
 # account = ""
+# Codex launches need full access for project refs, territory and session/worktree management.
+sandbox = "danger-full-access"
 
 [coordinator.permissions]
 tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "publish", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list"]
@@ -140,6 +142,7 @@ harness = "claude-code"
 model = "claude-fable-5-1"
 effort = "max"
 # account = ""
+sandbox = "danger-full-access"
 
 [lead.permissions]
 tools = ["role.handover", "task.plan:show", "task.plan:set", "ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list"]
@@ -187,9 +190,11 @@ harness = "opencode"
 model = ""
 effort = ""
 # account = ""
-# Full access so any harness can do the work its role needs (T-65, human decision 2026-10-09).
+# Task-worktree Git and artifact writes without opening either repository's hooks or config (T-1222).
 approval = "never"
-sandbox = "danger-full-access"
+sandbox = "workspace-write"
+writable_roots = [".git/objects", ".git/refs", ".git/logs", ".git/worktrees", ".cland/territory.git/objects", ".cland/territory.git/refs", ".cland/territory.git/logs", ".cland/artifacts"]
+network = "full"
 
 [implementer.permissions]
 tools = ["ask.forward", "ask.answer", "send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
@@ -305,7 +310,8 @@ harness = "claude-code"
 effort = "max"
 # account = ""
 approval = "never"
-sandbox = "danger-full-access"
+sandbox = "workspace-write"
+network = "full"
 
 [aide.permissions]
 tools = ["rule.add", "rule.edit", "rule.retire", "rule.list", "task.plan", "task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.criterion", "task.view", "task.list", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "send", "topic.create", "history", "who", "session.list", "status", "session.launch", "session.stop", "session.resume", "task.import", "push"]

@@ -446,7 +446,7 @@ const threadCalls = (log: string, method: 'thread/start' | 'thread/resume'): Arr
     .filter((json) => json !== undefined)
     .map((json) => JSON.parse(json) as Record<string, unknown>);
 
-test('Codex launches Implementer and QA with full access, Reviewer read-only, and the T-48 profile when configured (T-65)', async (t) => {
+test('Codex launches Implementer with narrow workspace roots, QA full access, Reviewer read-only, and the configured T-48 profile (T-1222)', async (t) => {
   const root = await tempProject(t);
   // a repository with a worktree under .cland/worktrees, as an Implementer's item gets
   const worktree = join(root, '.cland', 'worktrees', 'T-1');
@@ -485,11 +485,19 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   const sockets = (cwd: string) => ({ [join(root, '.cland')]: 'allow', [cwd]: 'allow', [tmp]: 'allow', [join(root, '.cland', 'run')]: 'deny', [join(tmp, 'cland-run')]: 'deny' });
   const localNetwork = (cwd: string) => ({ enabled: true, allow_local_binding: true, unix_sockets: sockets(cwd) });
 
-  // the Implementer has full access even when launched in a worktree: no profile overrides are needed.
+  // The Implementer uses narrow Git and artifact roots when launched in a task worktree.
   const impl = await started('impl-1', { role: 'implementer', cwd: worktree, effort: 'low' });
   assert.equal(impl.cwd, worktree);
   assert.match(await fake.log(impl.launched.pid!), /turn\/start input effort=low/);
-  assert.deepEqual([impl.thread, impl.overrides], [{ approvalPolicy: 'never', permissions: ':danger-full-access' }, {}]);
+  assert.deepEqual([impl.thread, impl.overrides], [{ approvalPolicy: 'never', permissions: 'cland' }, {
+    default_permissions: 'cland',
+    'permissions.cland': { extends: ':workspace', filesystem: {
+      [join(root, '.git/objects')]: 'write', [join(root, '.git/refs')]: 'write', [join(root, '.git/logs')]: 'write', [join(root, '.git/worktrees')]: 'write',
+      [join(root, '.cland/territory.git/objects')]: 'write', [join(root, '.cland/territory.git/refs')]: 'write', [join(root, '.cland/territory.git/logs')]: 'write',
+      [join(root, '.cland/artifacts')]: 'write',
+    }, network: { enabled: true } },
+    'features.network_proxy': false,
+  }]);
 
   // the Reviewer: read-only, no network, so a built-in profile is enough
   // Claude's permission mode is ignored: Codex keeps this role's approval and sandbox.

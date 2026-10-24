@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseCrew } from '../src/crew.ts';
-import { parseRoles } from '../src/roles/config.ts';
+import { fixedRoles, parseRoles, roleLaunchPolicy } from '../src/roles/config.ts';
 import { parse } from 'smol-toml';
 import type { HarnessId } from '../src/doctor/ranges.ts';
 import { harnessBinary, harnessInstallation, installedHarnesses, installedHarnessesAsync } from '../src/doctor/harnesses.ts';
@@ -41,6 +41,28 @@ test('Codex fallback uses each role sandbox without replacing shipped Codex mode
   }
   assert.equal(roles.get('reviewer')!.launch.model, 'gpt-6.1-sol');
   assert.equal(roles.get('qa')!.launch.model, 'gpt-6-astra');
+});
+
+test('generated Codex sandboxes match missing-file and missing-key fallbacks for every role (T-1222)', () => {
+  const generated = parseRoles(rolesTemplate(['codex']));
+  const missingFile = fixedRoles().get();
+  const omittedRoles = parseRoles('');
+  const expected = {
+    coordinator: 'danger-full-access', lead: 'danger-full-access',
+    implementer: 'workspace-write', reviewer: 'read-only', qa: 'danger-full-access', aide: 'workspace-write',
+  };
+  for (const [role, mode] of Object.entries(expected)) {
+    const sandbox = generated.get(role)!.launch.sandbox;
+    const writableRoots = role === 'implementer' ? [
+      '.git/objects', '.git/refs', '.git/logs', '.git/worktrees',
+      '.cland/territory.git/objects', '.cland/territory.git/refs', '.cland/territory.git/logs', '.cland/artifacts',
+    ] : [];
+    assert.deepEqual(sandbox, { mode, writableRoots, network: role === 'reviewer' ? 'none' : 'full' }, role);
+    const missingKey = parseRoles(`[${role}.launch]\nharness = "codex"\n`);
+    for (const [source, roles] of [['missing file', missingFile], ['omitted role', omittedRoles], ['missing sandbox key', missingKey]] as const) {
+      assert.deepEqual(roleLaunchPolicy(roles.get(role)!, 'codex').sandbox, sandbox, `${role}: ${source}`);
+    }
+  }
 });
 
 test('new crew policy gives the Aide sub-agents', async t => {
