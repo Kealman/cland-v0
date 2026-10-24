@@ -69,10 +69,11 @@ const presets = [
   },
   {
     id: 'solo',
-    label: 'Just me and one agent',
-    note: 'No crew at all: one implementer and you. Add roles when you need them.',
+    label: 'Smallest crew',
+    note: 'One Coordinator to lead, one Implementer to work through tasks.',
     crew: [
-      { name: 'Implementer', count: '×1', runs: 'Codex · gpt', does: 'Works the tasks you rank, one at a time, and asks you when stuck.', c: ROLE.impl },
+      { name: 'Coordinator', count: '×1', runs: 'Codex · gpt', does: 'Plans the work and brings you the decisions.', c: ROLE.coord },
+      { name: 'Implementer', count: '×1', runs: 'Codex · gpt', does: 'Works one task at a time and reports back to the Coordinator.', c: ROLE.impl },
     ],
   },
 ];
