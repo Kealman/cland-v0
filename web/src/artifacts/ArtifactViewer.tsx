@@ -28,7 +28,8 @@ export function ArtifactViewer({ connection, selected }: AreaContentProps) {
       const response = await fetch(url, { method: 'HEAD', signal: controller.signal, credentials: 'omit' });
       if (!response.ok) throw new Error(response.status === 404 ? 'Artifact file not found' : `Artifact request failed (${response.status})`);
       const mime = response.headers.get('Content-Type')?.split(';')[0] ?? '';
-      const type = mime === 'text/html' || (artifact.kind === 'diagram' && mime === 'image/svg+xml') ? 'page'
+      if (/\.mmd$/i.test(name)) url.search = '?render=mermaid';
+      const type = /\.mmd$/i.test(name) || mime === 'text/html' || (artifact.kind === 'diagram' && mime === 'image/svg+xml') ? 'page'
         : (artifact.kind === 'note' || artifact.kind === 'prompt') && /\.(md|markdown)$/i.test(name) ? 'markdown'
           : mime.startsWith('text/') || mime === 'application/json' || /\.(mmd|markdown)$/i.test(name) ? 'text' : 'download';
       let text: string | undefined;
@@ -51,6 +52,6 @@ export function ArtifactViewer({ connection, selected }: AreaContentProps) {
         : <div className={s.markdown} role="region" aria-label="Rendered Markdown"><MarkdownBody text={content.text ?? ''} /></div>}
     </>}
     {!artifact?.fileDeleted && content?.type === 'text' && <pre className={s.text} role="region" aria-label="File text">{content.text}</pre>}
-    {!artifact?.fileDeleted && content && content.type !== 'page' && <a className={s.download} href={content.url} download={content.name}>Download {content.name}</a>}
+    {!artifact?.fileDeleted && content && (content.type !== 'page' || /\.mmd$/i.test(content.name)) && <a className={s.download} href={content.url.split('?')[0]} download={content.name}>Download {content.name}</a>}
   </div>;
 }

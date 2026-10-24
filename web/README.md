@@ -834,11 +834,32 @@ as messages: headings, lists, fenced code and the parser's other supported block
 HTML remains literal text. **Show source** switches to raw text, and **Show
 rendered** switches back; both controls support Enter. The download remains available.
 Other text files (including Markdown file artifacts) open as literal text with a named download link;
-binary files offer a named download. The response type selects the view; `.mmd`
-and `.markdown` are text even when served as octet-stream. Missing files show
+binary files offer a named download. The response type selects the view; `.markdown`
+is text even when served as octet-stream. Missing files show
 **Artifact file not found**. Offline previews remain; reconnect refreshes through
 a new capability, and superseded reads cannot replace a later selection.
-Diagram HTML and SVG use the sandboxed viewer; raw Mermaid `.mmd` stays source text with a download link, without rendering.
+Diagram HTML, SVG and Mermaid `.mmd` use the sandboxed viewer. Mermaid opens the
+same capability URL with `?render=mermaid`; the renderer loads only when that frame
+opens. Focus enters its **Show source** button after rendering. Physical `s` toggles
+the source and rendered view; the button also supports Enter. Parse failures show
+Mermaid's message and the source. The raw download remains available outside the
+frame. Mermaid uses `securityLevel: 'strict'` in the opaque-origin sandbox, with
+colours from `tokens.css`; diagram directives cannot lower that security level.
+The rendered-page CSP permits only the bundled renderer, stylesheet and inline
+SVG styles, with no diagram network fetches or external images.
+
+`web/vite.config.ts` builds the independent classic-script Mermaid entry during
+both build and watch, before publishing the source stamp. Neither it nor its CSS
+is imported or preloaded by the shell. To compare initial JS against a measured
+pre-change production build, run `node web/check-shell-size.ts <baseline-js-bytes>`
+after building; the default growth limit is 1,024 bytes. T-1158's baseline at
+`89e5c304` was 455,323 bytes. Mermaid is pinned to `12.2.0` in the web workspace.
+The human approved this version on October 24, 2026, waiving the package's normal
+two-week release-age rule. Its patched KaTeX dependency removes
+[GHSA-238p-pmpm-9mq7](https://github.com/advisories/GHSA-238p-pmpm-9mq7),
+which affected the earlier `12.1.0` pin. The private-install audit on October 24
+reports zero vulnerabilities. Strict rendering, the opaque sandbox and the CSP
+remain enabled; no KaTeX trust options are enabled.
 
 The thread composer's `~` picker attaches available artifacts from its topic.
 Creating, moving, promoting,
@@ -1361,7 +1382,7 @@ node --test web/test/items-actions.test.ts # scope, selection, quick messages an
 node --test web/test/session-launch.test.ts # role defaults, fake Aide launch, no cwd and account refusals
 node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
 node --test web/test/session-drawer.test.ts # approval outcomes, cross-topic numeric pages/live races, composer routing and thread focus
-node --test web/test/artifacts.test.ts # tree, capability pages, sandbox isolation, text and downloads
+node --test web/test/artifacts.test.ts # tree, capability pages, strict Mermaid/source/errors, sandbox isolation, text and downloads
 node --test web/test/accounts.test.ts # own browser profile, two-context isolation, registry, windows, polls and Sessions strip
 node --test hub/test/web-accounts.test.ts # T1 worst window, severity, missing data and clock formats
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub

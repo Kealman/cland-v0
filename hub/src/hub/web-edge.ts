@@ -71,12 +71,20 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
     try {
       const file = await artifacts.read(path);
       if (!file) { reply(404, 'Artifact file not found'); return; }
-      const mime = MIME[extname(file.name).toLowerCase()] ?? 'application/octet-stream';
+      const rendered = extname(file.name).toLowerCase() === '.mmd'
+        && new URL(req.url!, 'http://localhost').searchParams.get('render') === 'mermaid';
+      const viewerOrigin = origin && req.headers.host?.toLowerCase() === new URL(origin).host ? origin : `http://${req.headers.host}`;
+      // Escape as text before putting any source into HTML, including </pre>.
+      const escape = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+      const body = rendered ? Buffer.from(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/mermaid.css"><script defer src="/mermaid.js"></script></head><body><pre data-source role="region" aria-label="File text">\n${escape(file.body.toString('utf8'))}</pre></body></html>`) : file.body;
+      const mime = rendered ? 'text/html; charset=utf-8' : MIME[extname(file.name).toLowerCase()] ?? 'application/octet-stream';
       // The response policy applies even when opened outside the workbench iframe.
-      res.setHeader('Content-Security-Policy', 'sandbox allow-scripts');
+      res.setHeader('Content-Security-Policy', rendered
+        ? `sandbox allow-scripts; default-src 'none'; script-src ${viewerOrigin}; style-src ${viewerOrigin} 'unsafe-inline'; img-src data:; font-src ${viewerOrigin}`
+        : 'sandbox allow-scripts');
       res.setHeader('Content-Type', mime);
-      res.setHeader('Content-Length', file.body.length);
-      res.writeHead(200).end(req.method === 'HEAD' ? undefined : file.body);
+      res.setHeader('Content-Length', body.length);
+      res.writeHead(200).end(req.method === 'HEAD' ? undefined : body);
     } catch { reply(404, 'Artifact file not found'); }
     return;
   }

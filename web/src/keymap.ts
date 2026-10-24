@@ -4,7 +4,7 @@ export type Area = typeof areas[number];
 export type Shortcut = Area | 'sheet-close' | 'events-subject' | 'events-open' | 'events-next' | 'events-previous' | 'events-fold' | 'events-leader' | 'events-older' | 'events-warnings' | 'events-clear' | 'events-all' | `events-kind-${number}` | `inbox-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'inbox-archive' | 'inbox-reply' | 'inbox-free' | 'inbox-next' | 'inbox-previous' | 'inbox-open' | 'inbox-remove' | 'ask-decline' | 'ask-free' | `ask-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
   | 'session-next' | 'session-previous' | 'session-open' | 'session-launch' | 'session-aide' | 'session-stop' | 'session-resume' | 'session-archive' | 'session-capabilities' | 'session-archive-toggle'
   | 'approval-once' | 'approval-always' | 'approval-deny' | 'approval-cancel'
-  | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
+  | 'artifact-source' | 'artifact-next' | 'artifact-previous' | 'artifact-open' | 'artifact-compose' | 'artifact-keep' | 'artifact-archive' | 'artifact-archive-toggle'
   | 'composer-send' | 'composer-send-always' | 'composer-newline' | 'composer-session' | 'composer-artifact'
   | 'topic-next' | 'topic-previous' | 'topic-open' | 'topic-close' | 'thread-next' | 'thread-previous' | 'thread-back' | 'thread-leader' | 'thread-toggle'
   | 'plan-approve' | 'plan-discuss' | 'tree-scope' | 'tree-back' | 'jump-leader' | 'jump-item' | 'jump-topic' | 'jump-session'
@@ -21,7 +21,7 @@ export function actionAtWidth(action: Shortcut, phone: boolean): boolean {
   ] as readonly Shortcut[]).includes(action);
 }
 
-export type KeyContext = 'sheet' | 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch' | 'more';
+export type KeyContext = 'sheet' | 'approval' | 'approval-note' | 'ask' | 'inbox-answer' | 'shell' | 'items' | 'topics' | 'thread' | 'inbox' | 'events' | 'composer' | 'session-composer' | 'reply' | 'sessions' | 'artifacts' | 'accounts' | 'palette' | 'help' | 'launch' | 'more' | 'artifact-viewer';
 export type KeyAction = { action: Shortcut; label: string; description?: string };
 
 const composerKeys = { Enter: 'composer-send', 'Shift+Enter': 'composer-newline', 'Meta+Enter': 'composer-send-always' } as const;
@@ -63,6 +63,7 @@ export const keyMap: Readonly<Record<KeyContext, Readonly<Record<string, Shortcu
   sessions: { KeyJ: 'session-next', ArrowDown: 'session-next', KeyK: 'session-previous', ArrowUp: 'session-previous',
     Enter: 'session-open', KeyL: 'session-launch', KeyA: 'session-aide', KeyX: 'session-stop', KeyR: 'session-resume',
     KeyD: 'session-archive', KeyC: 'session-capabilities', 'Shift+KeyA': 'session-archive-toggle' },
+  'artifact-viewer': { KeyS: 'artifact-source' },
   artifacts: { KeyJ: 'artifact-next', ArrowDown: 'artifact-next', ArrowUp: 'artifact-previous', Enter: 'artifact-open',
     KeyS: 'artifact-compose', KeyK: 'artifact-keep', KeyD: 'artifact-archive', 'Shift+KeyA': 'artifact-archive-toggle' },
   accounts: {},
@@ -169,6 +170,7 @@ export const contextActions: Readonly<Partial<Record<KeyContext, ReadonlyArray<K
     { action: 'session-resume', label: 'Resume session' }, { action: 'session-archive', label: 'Archive session' },
     { action: 'session-capabilities', label: 'Capabilities' }, { action: 'session-archive-toggle', label: 'Show archived sessions' },
   ],
+  'artifact-viewer': [{ action: 'artifact-source', label: 'Toggle diagram source' }],
   artifacts: [
     { action: 'artifact-next', label: 'Next artifact' }, { action: 'artifact-previous', label: 'Previous artifact' },
     { action: 'artifact-open', label: 'Open artifact' }, { action: 'artifact-compose', label: 'Attach to composer' },

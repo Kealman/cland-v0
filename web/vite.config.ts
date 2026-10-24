@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { build, defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,8 @@ export default defineConfig({
     name: 'cland-build-stamp',
     async buildStart() {
       await rm(`${dist}/build-stamp.json`, { force: true });
+      this.addWatchFile(fileURLToPath(new URL('./src/artifacts/mermaid-viewer.ts', import.meta.url)));
+      this.addWatchFile(fileURLToPath(new URL('./src/artifacts/MermaidViewer.module.css', import.meta.url)));
       before = await webSources(root);
       const tokens = await readFile(new URL('./src/tokens.css', import.meta.url), 'utf8');
       const value = tokens.match(/--panel:\s*([^;]+);/)?.[1]?.trim();
@@ -38,6 +40,12 @@ export default defineConfig({
       }) + '\n' });
     },
     async writeBundle() {
+      // Classic script in an opaque sandbox: no CORS or same-origin grant.
+      // Library mode inlines dynamic imports; this entry is absent from the shell.
+      await build({ configFile: false, define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: {
+        outDir: dist, emptyOutDir: false,
+        lib: { entry: fileURLToPath(new URL('./src/artifacts/mermaid-viewer.ts', import.meta.url)), name: 'ClandMermaid', formats: ['iife'], fileName: () => 'mermaid.js', cssFileName: 'mermaid' },
+      } });
       await checkAssets(dist);
       const after = await webSources(root);
       if (before.digest !== after.digest) throw new Error('Web sources changed during build; rebuild before serving');

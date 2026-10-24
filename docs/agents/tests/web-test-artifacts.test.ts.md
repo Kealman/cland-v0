@@ -7,7 +7,15 @@ on-demand folder files, and three bounded inventory pages without duplicate ids.
 Its opening cases assert the capability iframe's exact `allow-scripts` sandbox,
 a script's direct parent-document/cookie denial, full drawer height and split
 opening; capability text, named binary download completion, folder-child paths
-and missing bytes; and HTML/SVG diagrams versus raw Mermaid source plus download.
+and missing bytes; and HTML/SVG/Mermaid diagrams. Mermaid asserts no renderer request before opening,
+the capability frame URL and sandbox, rendered SVG nodes, immediate physical `s`
+and a non-Latin physical-code source toggle. A hostile directive attempts loose
+security, a source breakout, HTML event execution and a click callback; the test
+observes the SVG, absence of executable attributes/scripts/links and unchanged
+frame/parent execution sentinels. A parse failure retains Mermaid's actual error
+and the exact source including a leading newline. Raw downloads stay outside the
+sandbox. The production `check-shell-size.ts` tool compares initial JS against a
+measured baseline (T-1158: 455,323 bytes at `89e5c304`) with a 1,024-byte limit.
 Notes/prompts assert rendered Markdown, literal HTML and the source toggle's
 native Enter. This topic follows thread opening and survives reload; physical
 `s` preserves draft text, and public topic history retains the sent artifact.

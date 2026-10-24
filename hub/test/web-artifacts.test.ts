@@ -91,6 +91,19 @@ test('artifact.url mints random web-only URLs serving extension types without co
   assert.equal(refused.ok, false);
   assert.match(refused.error!, /web edge/);
   assert.equal((await web.request({ type: 'artifact.url', artifact: 'A-999999' })).ok, false);
+  const source = '\nflowchart TD\n%% </pre><script>untrusted()</script>\nA-->B';
+  const diagram = await artifact(local, { kind: 'diagram', content: source });
+  const raw = await mint(web, diagram.id);
+  assert.equal((await get(raw)).body, source, 'raw capability remains source bytes');
+  const rendered = await get(`${raw}?render=mermaid`);
+  assert.equal(rendered.status, 200);
+  assert.equal(rendered.headers['content-type'], 'text/html; charset=utf-8');
+  assert.ok(rendered.body.includes('&lt;/pre&gt;&lt;script&gt;untrusted()&lt;/script&gt;'));
+  assert.ok(rendered.body.includes('src="/mermaid.js"'));
+  assert.equal(rendered.headers['content-security-policy'], `sandbox allow-scripts; default-src 'none'; script-src ${origin}; style-src ${origin} 'unsafe-inline'; img-src data:; font-src ${origin}`);
+  const head = await get(`${raw}?render=mermaid`, undefined, 'HEAD');
+  assert.equal(head.body, '');
+  assert.equal(head.headers['content-length'], String(Buffer.byteLength(rendered.body)));
 });
 
 test('capabilities confine files and folders, including encoded traversal and symlinks', async t => {

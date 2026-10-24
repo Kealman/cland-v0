@@ -451,7 +451,7 @@ test('files and folder children open capability text or a named binary download 
   }, page => { page.on('websocket', socket => socket.on('framesent', event => frames.push(JSON.parse(String(event.payload))))); });
 });
 
-test('diagram HTML and SVG use the sandboxed viewer while Mermaid source stays text with a download', async t => {
+test('diagram HTML, SVG and Mermaid use the sandboxed viewer with source one physical key away', async t => {
   const fixture = await webFixture(t);
   const ui = await connectUi(t, fixture.hub.discovery);
   const source = join(fixture.root, 'diagrams');
@@ -467,7 +467,7 @@ test('diagram HTML and SVG use the sandboxed viewer while Mermaid source stays t
   const svg = await create({ title: 'SVG diagram', path: join(source, 'drawing.svg') });
   const html = await create({ title: 'HTML diagram', path: join(source, 'drawing.html') });
   const folder = await create({ title: 'Diagram folder', path: source, entry: 'drawing.html' });
-  await fixture.pageCase(t, async page => {
+  await fixture.pageCase(t, async (page, _origin, requests) => {
     await page.getByRole('button', { name: 'Artifacts', exact: true }).click();
     const mine = page.locator('[data-artifact-section="mine"]');
     const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
@@ -477,10 +477,16 @@ test('diagram HTML and SVG use the sandboxed viewer while Mermaid source stays t
       await row.press('Enter');
       await receipt;
     };
-    const text = drawer.getByRole('region', { name: 'File text', exact: true });
-    await open(raw.id, text.getByText('graph TD; A-->B', { exact: true }).waitFor());
-    assert.equal(await text.textContent(), 'graph TD; A-->B');
-    assert.equal(await drawer.getByRole('link', { name: `Download ${basename(raw.path)}`, exact: true }).getAttribute('download'), basename(raw.path));
+    assert.equal(requests.some(url => /\/mermaid\.(js|css)/.test(url)), false, 'no Mermaid load before a .mmd opens');
+    const rendered = drawer.frameLocator('iframe');
+    await open(raw.id, rendered.locator('svg .node').first().waitFor({ timeout: 3000 }));
+    assert.ok(requests.some(url => url.endsWith('/mermaid.js')), 'renderer requested on first .mmd open');
+    assert.equal(await drawer.locator('iframe').getAttribute('sandbox'), 'allow-scripts');
+    assert.match((await drawer.locator('iframe').getAttribute('src'))!, /\/a\/[a-f0-9]{64}\/.*\.mmd\?render=mermaid$/);
+    await page.keyboard.press('s');
+    assert.equal(await rendered.getByRole('region', { name: 'File text', exact: true }).textContent(), 'graph TD; A-->B');
+    await page.keyboard.press('s');
+    await rendered.locator('svg .node').first().waitFor();
     for (const [id, label] of [[svg.id, 'SVG diagram'], [html.id, 'HTML diagram']] as const) {
       await open(id, drawer.frameLocator('iframe').getByText(label, { exact: true }).waitFor());
       assert.equal(await drawer.locator('iframe').getAttribute('sandbox'), 'allow-scripts');
@@ -489,5 +495,48 @@ test('diagram HTML and SVG use the sandboxed viewer while Mermaid source stays t
     await open(`${folder.id}/drawing.html`, drawer.frameLocator('iframe').getByText('HTML diagram', { exact: true }).waitFor());
     assert.match((await drawer.locator('iframe').getAttribute('src'))!, /\/a\/[a-f0-9]{64}\/drawing.html$/);
     assert.equal(await drawer.locator('iframe').getAttribute('sandbox'), 'allow-scripts');
+  });
+});
+
+test('Mermaid strict mode blocks source scripts and callbacks, and a parse failure retains its message and exact source', async t => {
+  const fixture = await webFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const hostile = '%%{init: {"securityLevel":"loose"}}%%\n%% </pre><script>window.diagramExecuted = true</script>\nflowchart TD\nA["<img src=x onerror=window.diagramExecuted=true>"] --> B[Safe]\nclick A diagramCallback';
+  const broken = '\nflowchart TD\n A[unterminated';
+  const artifacts: Artifact[] = [];
+  for (const [title, content] of [['Hostile diagram', hostile], ['Broken diagram', broken]]) {
+    const made = await ui.request({ type: 'artifact.create', kind: 'diagram', topic: 'general', title, content });
+    assert.equal(made.ok, true, made.error);
+    artifacts.push((made.value as { artifact: Artifact }).artifact);
+  }
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Artifacts', exact: true }).click();
+    const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
+    const frame = drawer.frameLocator('iframe');
+    for (const [index, artifact] of artifacts.entries()) {
+      const receipt = index === 0 ? frame.locator('svg .node').first().waitFor() : frame.getByRole('alert').waitFor();
+      const row = page.locator(`[data-artifact-section="mine"] [data-object-id="${artifact.id}"]`);
+      await row.click();
+      await row.press('Enter');
+      await receipt;
+      if (index === 0) {
+        assert.equal(await frame.locator('svg [onclick], svg [onerror], svg script, svg a').count(), 0);
+        const node = frame.locator('svg .node').first();
+        await node.click();
+        assert.equal(await node.evaluate(() => Reflect.get(window, 'diagramExecuted')), undefined);
+        assert.equal(await page.evaluate(() => Reflect.get(window, 'diagramExecuted')), undefined);
+        await frame.getByRole('button', { name: 'Show source', exact: true }).focus();
+        // Physical code, independent of the active keyboard layout.
+        await frame.getByRole('button', { name: 'Show source', exact: true }).evaluate(node => node.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 'ы', bubbles: true, cancelable: true })));
+        assert.equal(await frame.getByRole('region', { name: 'File text', exact: true }).textContent(), hostile);
+      } else {
+        assert.match((await frame.getByRole('alert').textContent())!, /Parse error/);
+        assert.equal(await frame.getByRole('region', { name: 'File text', exact: true }).textContent(), broken);
+      }
+    }
+  }, async page => {
+    await page.addInitScript(() => {
+      Reflect.set(window, 'diagramCallback', () => Reflect.set(window, 'diagramExecuted', true));
+    });
   });
 });

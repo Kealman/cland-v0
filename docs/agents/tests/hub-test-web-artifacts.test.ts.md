@@ -3,7 +3,8 @@
 `web-artifacts.test.ts` exercises `artifact.url` on a cookie-authenticated web
 client and cookie-free HTTP reads at T2. It covers extension types, file/folder
 confinement, traversal and symlink refusal, HTML sandbox headers, relative
-stylesheets, revocation and the fixed session expiry with an injected clock.
+stylesheets, raw versus rendered `.mmd` capability bytes, escaped source breakout,
+rendered CSP and HEAD content length, revocation and the fixed session expiry with an injected clock.
 It also restarts the in-process hub to prove capability persistence and covers
 moved-file owning-folder substitution. The injected filesystem open port swaps
 a folder parent at the final open boundary: Linux must serve the already-anchored

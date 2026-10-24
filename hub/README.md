@@ -424,6 +424,15 @@ backslashes and symlink escapes are refused. MIME types follow the extension
 (with `application/octet-stream` for unknown extensions). Responses use
 `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: no-referrer` and `Content-Security-Policy: sandbox allow-scripts`.
+For a `.mmd` file, `?render=mermaid` serves a text-escaped HTML wrapper at the
+same capability, with strict Mermaid rendering inside the opaque-origin iframe.
+The original URL still serves raw bytes. The renderer and its CSS load only on
+frame opening; their separate build is never a shell import or preload. The
+rendered response keeps `sandbox allow-scripts` and adds `default-src 'none'`,
+origin-scoped scripts/styles/fonts, inline SVG styles and data images only.
+Physical `s` in the frame toggles source through the shared key map; parse errors
+show the error and source. See `web/README.md` for the dependency audit and
+initial-bundle size check.
 HTML can run scripts and load its own relative assets in an opaque origin;
 never combine `allow-scripts` with `allow-same-origin` on an artifact iframe.
 The web edge resolves its trusted project prefix once, so symlinked project

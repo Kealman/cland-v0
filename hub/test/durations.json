@@ -6290,7 +6290,6 @@
     "web/test/accounts.test.ts::Sessions account strip shows worst windows, limited reset, tooltips and a folding Accounts link": 1.054268,
     "web/test/artifacts.test.ts::Artifacts groups human, Aide and crew records with remembered section folds": 2.085714,
     "web/test/artifacts.test.ts::d archives without deleting human bytes and Enter requests folder files": 0.876295,
-    "web/test/artifacts.test.ts::diagram HTML and SVG use the sandboxed viewer while Mermaid source stays text with a download": 1.144618,
     "web/test/artifacts.test.ts::Enter opens a capability page full height and its script cannot read the workbench document or cookie": 1.030122,
     "web/test/artifacts.test.ts::files and folder children open capability text or a named binary download and report missing bytes": 1.226754,
     "web/test/artifacts.test.ts::k keeps and unkeeps an agent artifact while the up arrow navigates": 0.972577,
