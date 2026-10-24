@@ -222,11 +222,14 @@ test('ITEMS-001 passes against its own stdio hub, and against the stub hub with 
   assert.equal(stub.line.hub, 'stub');
 });
 
-test("the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the fixture role's defaults", { skip }, async (t) => {
+test("the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the Coordinator's defaults including its danger-full-access sandbox", { skip }, async (t) => {
   const run = await qa(t, [`${CASES}ROLES-001.lua`]);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-  const { screen, state } = run.line.evidence as { screen: string; state: { mode: string; roles: Array<{ role: string; launch: Record<string, string> }> } };
-  assert.deepEqual(state.roles.find((r) => r.role === 'coordinator')?.launch, { harness: 'codex', model: 'qa-model', effort: 'low' });
+  const { screen, state } = run.line.evidence as { screen: string; state: { mode: string; roles: Array<{ role: string; launch: Record<string, unknown> }> } };
+  assert.deepEqual(state.roles.find((r) => r.role === 'coordinator')?.launch, {
+    harness: 'codex', model: 'qa-model', effort: 'low',
+    sandbox: { mode: 'danger-full-access', network: 'full', writableRoots: [] },
+  });
   // the launcher's float is on the grid, with the keys typed into it
   assert.match(screen, /╭ launch a session ─+╮/);
   assert.match(screen, /│name +coord /);

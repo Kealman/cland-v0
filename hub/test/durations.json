@@ -5462,7 +5462,6 @@
     "nvim/test/qa.test.ts::keys longer than Neovim's input buffer are all typed, the last ones too": 1.175232,
     "nvim/test/qa.test.ts::qa.state() holds the stub scenario: the sessions with their states, the roles, and the topics, asks and items the screen shows": 0.541877,
     "nvim/test/qa.test.ts::stub QA accepts user-authored frames absent from the T2 recording catalog": 0.556079,
-    "nvim/test/qa.test.ts::the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the fixture role's defaults": 0.867676,
     "nvim/test/qa.test.ts::with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why": 0.000038,
     "nvim/test/qa.test.ts::with file writes also denied outside the temp dir, both cases pass and dump their evidence there": 0.000056,
     "nvim/test/qa.test.ts::with the network denied (no socket to bind or reach), both cases pass": 0.000178,
