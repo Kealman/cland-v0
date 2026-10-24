@@ -44,7 +44,8 @@ export async function prepareMergeBatch(root: string, id: string, members: Merge
   for (const entry of members) {
     try {
       const tip = await git(['rev-parse', `refs/heads/${entry.branch}`]);
-      if (tip !== entry.head || entry.verdictBase !== 'dev') throw new MergeError('merge-changed', 'queued head or base changed');
+      if (tip !== entry.head) throw new MergeError('merge-changed', `queued task branch changed during preparation; prepared head ${entry.head}, current head ${tip}`);
+      if (entry.verdictBase !== 'dev') throw new MergeError('merge-changed', `queued integration base changed from dev to ${entry.verdictBase}`);
       let tree: string;
       try { tree = (await git(['merge-tree', '--write-tree', '--name-only', '-z', head, tip])).split('\0')[0]!; }
       catch (error) {

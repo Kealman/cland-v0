@@ -6,6 +6,9 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { cland, eventually, nativeProjectHub } from './harness.ts';
+import { squashTask } from '../src/territory.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { preparedProject } from './prepared-project.ts';
 import { git, ok, json, project, task, review, refused, indexLockProject } from './merge-native-support.ts';
 
 
@@ -153,4 +156,30 @@ test('a root switched during real merge-tree preparation is refused without chan
   assert.equal(git(root, 'branch', '--show-current'), 'other');
   assert.equal(git(root, 'write-tree'), index);
   assert.equal(await readFile(join(root, 'driver.txt'), 'utf8'), 'on dev\n');
+});
+
+for (const movement of ['dev', 'task'] as const) test(`native final preparation identifies ${movement} head movement`, async t => {
+  // T3: the real Git ref reread after the final async message callback, before checkout/CAS.
+  const root = await preparedProject(t, 'territory', 'cland-merge-ref-race-');
+  const base = git(root, 'rev-parse', 'dev');
+  git(root, 'switch', '-qc', 't/parser');
+  await writeFile(join(root, 'parser.txt'), 'parser\n');
+  git(root, 'add', 'parser.txt'); git(root, 'commit', '-qm', 'Parser');
+  const tip = git(root, 'rev-parse', 'HEAD');
+  git(root, 'switch', '-q', 'dev');
+  const preparedHead = movement === 'dev' ? base : tip;
+  const currentHead = git(root, 'commit-tree', git(root, 'rev-parse', `${preparedHead}^{tree}`), '-p', preparedHead, '-m', 'Concurrent change');
+  let calls = 0, recorded = false;
+  await assert.rejects(squashTask(root, 't/parser', async () => {
+    if (++calls === 2) git(root, 'update-ref', `refs/heads/${movement === 'dev' ? 'dev' : 't/parser'}`, currentHead, preparedHead);
+    return 'Parser (T-1)\n\nItem: T-1';
+  }, work => work(), () => { recorded = true; }, () => {}, fixtureEnvironment(root, process.env)), {
+    code: 'merge-changed',
+    message: `merge-changed: ${movement === 'dev' ? 'integration base moved' : 'task branch changed'} during preparation; prepared head ${preparedHead}, current head ${currentHead}; try again`,
+  });
+  assert.equal(calls, 2, 'the mutation follows the last message callback');
+  assert.equal(recorded, false, 'ref movement refuses before recording a landing');
+  assert.equal(git(root, 'rev-parse', 'dev'), movement === 'dev' ? currentHead : base);
+  assert.equal(git(root, 'rev-parse', 't/parser'), movement === 'task' ? currentHead : tip);
+  assert.equal(existsSync(join(root, 'parser.txt')), false, 'no merge checkout was applied');
 });

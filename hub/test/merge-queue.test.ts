@@ -120,6 +120,7 @@ test('changed heads, not-clear verdicts and closed items drop pinned requests', 
     if (change === 'closed') await value(ui, { type: 'task.close', item: item.id });
     const history = await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
     assert.ok(history.messages.some(message => message.text.includes('merge-queue-dropped') && message.text.includes(change === 'verdict' ? 'not clear' : change)), change);
+    if (change === 'head') assert.ok(history.messages.some(message => message.text === `merge-queue-dropped ${item.id}: branch head changed or deleted; prepared head ${'b'.repeat(40)}, current head ${'c'.repeat(40)}`));
     assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, [], change);
   }
 });
@@ -131,7 +132,7 @@ test('a confirmed deleted branch drops its request with the original reason', as
   await tips.refresh();
   assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, []);
   const history = await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
-  assert.ok(history.messages.some(message => message.text === `merge-queue-dropped ${item.id}: branch head changed or deleted`));
+  assert.ok(history.messages.some(message => message.text === `merge-queue-dropped ${item.id}: branch head changed or deleted; prepared head ${'b'.repeat(40)}, current head missing`));
 });
 
 test('merge CLI renders queue replies, ordered entries and task positions', async t => {

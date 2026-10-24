@@ -196,7 +196,8 @@ export class TaskMerges {
             const result = await this.#squash(this.tracker.root, view.branch!, async (tip, base, baseTip, files) => {
               resumed(() => {
                 if (queuedCandidate && baseTip !== queuedCandidate.base) throw new MergeError('merge-changed', 'batch base moved before landing');
-                if (queuedCandidate && (tip !== queuedCandidate.head || !this.queue?.entries().some(entry => entry.item === id && entry.head === tip))) throw new MergeError('merge-changed', 'queued candidate changed before landing');
+                if (queuedCandidate && tip !== queuedCandidate.head) throw new MergeError('merge-changed', `${id}: queued task branch changed before landing; prepared head ${queuedCandidate.head}, current head ${tip}`);
+                if (queuedCandidate && !this.queue?.entries().some(entry => entry.item === id && entry.head === tip)) throw new MergeError('merge-changed', 'queued candidate removed before landing');
                 if (!queuedCandidate && override === undefined && this.queue?.enabled() && refusedOverridePaths(files).length) throw new MergeError('merge-changed', 'task requires the merge queue; try again');
                 if (override === undefined) return;
                 const refused = refusedOverridePaths(files);
@@ -209,7 +210,11 @@ export class TaskMerges {
               return resumed(() => {
                 validateLane();
                 authorize();
-                if (finalView.branch !== view.branch || this.tracker.freshnessTip(finalView.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || finalView.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
+                const currentHead = this.tracker.freshnessTip(finalView.branch);
+                if (finalView.branch !== view.branch || currentHead !== tip) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; prepared head ${tip}, current head ${currentHead ?? 'missing'}; try again`);
+                if (finalView.verdictBase !== base) throw new MergeError('merge-changed', `${id}: integration base changed from ${base} to ${finalView.verdictBase ?? 'missing'} during preparation; try again`);
+                const currentBase = this.tracker.freshnessTip(base);
+                if (currentBase !== baseTip) throw new MergeError('merge-changed', `${id}: ${queuedCandidate ? 'batch' : 'integration'} base moved during preparation; prepared head ${baseTip}, current head ${currentBase ?? 'missing'}; try again`);
                 return this.#message(finalView, override);
               });
             }, resumed, landing => this.tracker.recordMerge(id, { ...landing, branch: view.branch!, ...(override === undefined ? {} : { override }) }), authorize, this.#env);

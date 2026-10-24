@@ -62,7 +62,7 @@ export class MergeQueue {
       if (item?.state === 'closed' && this.tracker.mergeReceipt(entry.item)) { this.store.dropMerge(entry.item); continue; }
       if (!item || item.state === 'closed') reason = 'item closed or removed';
       else if (item.branch !== entry.branch) reason = 'task branch changed';
-      else if ((head !== null || absent.has(entry.branch)) && head !== entry.head) reason = 'branch head changed or deleted';
+      else if ((head !== null || absent.has(entry.branch)) && head !== entry.head) reason = `branch head changed or deleted; prepared head ${entry.head}, current head ${head ?? 'missing'}`;
       else {
         for (const kind of ['review', 'qa'] as const) {
           const verdict = item.verdicts.filter(v => v.source === 'hub' && v.verdict === kind && v.stage === undefined).at(-1);

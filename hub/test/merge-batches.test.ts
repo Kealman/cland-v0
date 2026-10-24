@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
+import { MergeError } from '../src/merge.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -434,8 +435,27 @@ test('leave-one-out preparation uses the original integration base when dev has 
   assert.deepEqual(merges, [['merge-tree', '--write-tree', '--name-only', '-z', 'original-dev', member.head]]);
 });
 
-test('three queued heads run once on a single candidate before landing FIFO', async t => {
-  const { f, runner, landed, reports, boundary, entries } = await fixture(t);
+test('batch preparation reports the pinned and current heads when a task ref moves', async () => {
+  const entry: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: '1'.repeat(40), verdictBase: 'dev', enqueued: '2026-10-16T12:00:00Z', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
+  await assert.rejects(prepareMergeBatch('/isolated', 'moved-head', [entry], {}, {
+    git: async args => {
+      if (args[1] === '--is-bare-repository') return 'false';
+      if (args[0] === 'rev-parse') return args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'f'.repeat(40);
+      assert.fail(`moved head reached Git preparation: ${args}`);
+    },
+    facts: async () => { assert.fail('moved head cannot be merged'); },
+    identity: async () => null, checkout: async () => {}, remove: async () => {},
+  }), error => {
+    assert.ok(error instanceof BatchRefusal);
+    assert.equal(error.entry, entry);
+    assert.equal(error.reason, `merge-changed: queued task branch changed during preparation; prepared head ${entry.head}, current head ${'f'.repeat(40)}`);
+    return true;
+  });
+});
+
+async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task') {
+  const { f, runner, landed, reports, boundary, entries, dropped } = await fixture(t);
+  let moved = false;
   // Exercise the real receipt and finishMerge path with Git represented by
   // immutable object/ref facts. Worktree removal returns an OS-edge receipt.
   const heads = new Map(entries.map(entry => [entry.branch, entry.head])); heads.set('dev', 'a'.repeat(40));
@@ -455,13 +475,15 @@ test('three queued heads run once on a single candidate before landing FIFO', as
     assert.equal(item.id, entry.item);
     await tracker.comment({ id: 'reviewer', name: 'reviewer', role: 'reviewer' }, item.id, '', { verdict: 'review', scope: 'full', result: 'clear', run: 'batch-review' });
   }
-  const queue = new MergeQueue(f.store, tracker, f.clock, () => true, git);
+  const headDrops: string[] = [];
+  const queue = new MergeQueue(f.store, tracker, f.clock, () => true, git, undefined, (entry, reason) => headDrops.push(`${entry.item}: ${reason}`));
   t.after(() => queue.stop());
   for (const entry of entries) f.store.enqueueMerge(entry);
   const worktrees = { serial: async <T>(work: () => Promise<T>) => work(), prune: async () => ({ removed: [], failed: [] }), pruneMerged: async () => ({ removed: [], failed: [] }) };
   const merges = new TaskMerges(tracker, worktrees, () => {}, undefined, {}, async (_root, operation) => operation(), queue,
     async (_root, branch, message, _resumed, prepared) => {
       const tip = heads.get(branch)!, base = heads.get('dev')!;
+      if (movement !== 'none' && !moved) { moved = true; heads.set(movement === 'dev' ? 'dev' : branch, 'f'.repeat(40)); }
       const text = await message(tip, 'dev', base, ['hub/src/parser.ts']);
       assert.match(text, /Reviewed-by: reviewer \(batch-review\)/);
       const commit = String(landed.length + 4).repeat(40);
@@ -476,8 +498,15 @@ test('three queued heads run once on a single candidate before landing FIFO', as
   t.after(() => merges.stop());
   const land = boundary.land;
   boundary.land = async (entry, candidate) => {
-    const result = await merges.merge(entry.item, entry.by, work => work(), undefined, () => {}, { head: entry.head, base: heads.get('dev')! });
-    assert.ok('commit' in result && !result.followUp);
+    try {
+      const result = await merges.merge(entry.item, entry.by, work => work(), undefined, () => {}, { head: entry.head, base: heads.get('dev')! });
+      assert.ok('commit' in result && !result.followUp);
+    } catch (error) {
+      // Match the hub boundary: base races rebuild; ordinary gate refusals drop.
+      if (error instanceof MergeError && error.code === 'merge-changed' && /(?:batch|integration) base moved/.test(error.message)) throw new BatchRebuild(error.message);
+      if (error instanceof MergeError) throw new BatchRefusal(entry, error.message);
+      throw error;
+    }
     await land(entry, candidate);
   };
   await runner.tick();
@@ -488,6 +517,18 @@ test('three queued heads run once on a single candidate before landing FIFO', as
   assert.deepEqual(landed, [], 'no entry lands before green');
   assert.equal(runner.snapshot()?.members.length, 3);
   await f.finish(run.id); await runner.tick();
+  if (movement === 'dev') await runner.tick();
+  if (movement === 'task') {
+    assert.deepEqual(headDrops, [`T-1: branch head changed or deleted; prepared head ${'1'.repeat(40)}, current head ${'f'.repeat(40)}`]);
+    assert.equal(tracker.mergeReceipt('T-1'), null, 'the moved head never lands');
+    const remainingRun = f.suites.status().at(-1)!;
+    assert.notEqual(remainingRun.id, run.id);
+    await f.finish(remainingRun.id); await runner.tick();
+    assert.deepEqual(landed, ['T-2', 'T-3'], 'only the moved member is dropped');
+    assert.equal(runner.snapshot(), null);
+    return;
+  }
+  assert.deepEqual(dropped, [], 'integration movement must not drop an unchanged task head');
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
   assert.equal(f.suites.status().length, 1);
   assert.deepEqual(landed.map(id => tracker.mergeReceipt(id)?.commit), ['4'.repeat(40), '5'.repeat(40), '6'.repeat(40)]);
@@ -495,7 +536,10 @@ test('three queued heads run once on a single candidate before landing FIFO', as
   assert.match(reports.join('\n'), /T-1, T-2, T-3.*tree code-complete.*T1, T3.*wall/s);
   assert.equal(runner.snapshot(), null);
   queue.stop(); merges.stop(); await tracker.stop();
-});
+}
+
+test('three queued heads run once on a single candidate before landing FIFO', t => queuedLanding(t, 'none'));
+for (const movement of ['dev', 'task'] as const) test(`queued heads handle ${movement} movement during preparation after green`, t => queuedLanding(t, movement));
 
 for (const trackerOnly of [true, false]) test(`${trackerOnly ? 'tracker-only' : 'code'} dev movement ${trackerOnly ? 'keeps' : 'rebuilds'} the green candidate`, async t => {
   const { f, runner, landed, move } = await fixture(t);

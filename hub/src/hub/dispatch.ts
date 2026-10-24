@@ -288,7 +288,7 @@ export class Dispatcher {
         } catch (error) {
           // A recoverable landing must keep its receipt and membership for retry;
           // only an ordinary gate refusal drops an entry from the next batch.
-          if (error instanceof MergeError && error.code === 'merge-changed' && error.message.includes('batch base moved')) throw new BatchRebuild(error.message);
+          if (error instanceof MergeError && error.code === 'merge-changed' && /(?:batch|integration) base moved/.test(error.message)) throw new BatchRebuild(error.message);
           if (error instanceof MergeError && !['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) throw new BatchRefusal(entry, error.message);
           throw error;
         }

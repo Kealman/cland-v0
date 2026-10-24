@@ -3782,7 +3782,11 @@ The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait
 `["T1", "T3"]`; this repository sets `["T1"]` (D67). When T3 is selected,
 identities absent from the last green batch or stage receipt get five
 repetitions. A green T1-only batch supplies no T3 receipt.
-Green candidates land in FIFO order. Red batches rerun
+Green candidates land in FIFO order. Integration-base movement during preparation
+keeps each task in the batch and rechecks the candidate against the retained green
+receipt. Documentation/tracker-only movement may reuse that receipt; code changes
+require a new run. A task-head change drops that member, with the prepared and
+current heads in its notice (a deleted ref is `missing`). Red batches rerun
 failing files on leave-one-out trees: `merge-bisected` rejects a unique culprit
 (or a red singleton). Without a unique green removal, one original-tree repeat
 can supply green proof; otherwise `merge-bisect-unresolved` rejects every member

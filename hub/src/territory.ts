@@ -773,7 +773,8 @@ export async function squashTask(
   const currentCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env);
   resumed(() => {
     if (currentCheckout !== base) throw new MergeError('merge-checkout', `the project root moved off ${base} during preparation`);
-    if (currentTip !== tip || currentBase !== before) throw new MergeError('merge-changed', 'a branch changed while the merge was prepared; try again');
+    if (currentTip !== tip) throw new MergeError('merge-changed', `task branch changed during preparation; prepared head ${tip}, current head ${currentTip ?? 'missing'}; try again`);
+    if (currentBase !== before) throw new MergeError('merge-changed', `integration base moved during preparation; prepared head ${before}, current head ${currentBase ?? 'missing'}; try again`);
   });
   // read-tree preserves unrelated local edits; update-ref is a compare-and-swap of the integration branch.
   const beforeIndex = await territoryGitAsync(root, ['write-tree'], undefined, undefined, env);

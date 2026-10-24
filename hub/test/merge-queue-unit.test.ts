@@ -96,7 +96,7 @@ test('authoritative reads still drop real deletions and changed heads with the o
   f.heads.delete('t/2');
   const remaining = await f.queue.refresh();
   assert.deepEqual(remaining.map(entry => entry.item), ['T-3', 'T-4', 'T-5', 'T-6']);
-  assert.deepEqual(f.drops, ['T-1: branch head changed or deleted', 'T-2: branch head changed or deleted']);
+  assert.deepEqual(f.drops, [`T-1: branch head changed or deleted; prepared head ${'1'.repeat(40)}, current head ${'f'.repeat(40)}`, `T-2: branch head changed or deleted; prepared head ${'2'.repeat(40)}, current head missing`]);
 });
 
 test('tracker tip notifications do not treat missing cached heads as deletion proof', async t => {
