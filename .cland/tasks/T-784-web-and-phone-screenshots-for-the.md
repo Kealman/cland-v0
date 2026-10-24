@@ -2,8 +2,8 @@
 id: T-784
 kind: task
 title: Web and phone screenshots for the landing
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1005
 branch: t/T-784-web-and-phone-screenshots-for-the
 created: 2026-10-18T06:04:23.909Z
-updated: 2026-10-24T21:47:43.413Z
+updated: 2026-10-24T21:53:21.981Z
+closed: 2026-10-24T21:53:21.981Z
 ---
 
 ## Summary
@@ -272,3 +273,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-784 · 2026-10-24T21:47:43.413Z
 
 READY reported to Coordinator for enqueue, unchanged/pushed a9ab4b2b. Final evidence CLEAR A-11501; ready handoff A-11504. Fresh 21:47:13Z no-auto-maintenance fetch of origin/dev b90f40d4, merge-tree exit0/no conflicts (candidate tree5fb9d268), no additional merge/head change. Mode-free e829f375/A-11491 passes T0/T1/fallback allT2/Web, 3066 ordinary +15 separate load passes; T3/T4 deferred, report-only budget warnings/mobile emulation limits retained. C1/C2 done+verified. Coordinator owns enqueue/landing; claim retained.
+
+### coord · 2026-10-24T21:53:21.981Z
+
+Merged 755561b991a20be92ab4cf2c9f902b15be46d38f onto dev.

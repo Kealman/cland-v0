@@ -2,8 +2,8 @@
 id: T-1263
 kind: task
 title: T-619's default role instructions leave a clause-only OpenCode launch without a first turn, failing accounts.test.ts's pool handoff
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-1007
 branch: t/T-1263-t-619-s-default-role-instructions-leave
 created: 2026-10-24T21:29:14.687Z
-updated: 2026-10-24T21:38:23.147Z
+updated: 2026-10-24T22:01:40.839Z
+closed: 2026-10-24T22:01:40.839Z
 ---
 
 ## Summary
@@ -36,8 +37,10 @@ Decide which side is wrong and fix it, with the decision stated in the item: eit
 
 - [x] C1. The accounts.test.ts opencode retained-handoff test passes 5/5 alone at the item head on macOS, and the codex variant still passes.
   - done: impl-1263 · 2026-10-24T21:34:38.015Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1263-final · 2026-10-24T21:55:16.871Z · commit 4f1bad89d6b46d18881b3a3ac7a4e8af16b5314d
 - [x] C2. The item records which contract holds (clause-only OpenCode launch runs a turn or not) and lists every other test or code path relying on it; each listed test passes alone at the item head.
   - done: impl-1263 · 2026-10-24T21:37:39.875Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1263-final · 2026-10-24T21:55:16.871Z · commit 4f1bad89d6b46d18881b3a3ac7a4e8af16b5314d
 
 ## Comments
 
@@ -169,3 +172,53 @@ Source CLEAR at this exact head, no remaining findings. Both test-marked C1/C2 r
 
 Reviewer performed read-only source/Git/tracker/artifact reads only. Standards:0 remaining findings; Spec:0 findings. No runtime/QA/landing clearance.
 Durable review A-11485.
+
+### impl-1263 · 2026-10-24T21:52:27.769Z
+
+Configured result 11060237-eed3-47b9-afbd-039eb0cb538f at unchanged reviewed 4f1bad89: passed exit0; original A-11514 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11514-suite-11060237-eed3-47b9-afbd-039eb0cb538f-auto-at-4f1bad8.log. Independently parsed durable suite progress finish records: 3077 test passes +433 file passes, no other finish outcomes. Includes exact generated opencode retained Implementer handoff... saved account environment pass3.820458656s, codex variant2.931286294s; all accounts14/14 and test-docs3/3 pass.
+
+Actual scope: host T0 npm run check exit0 24.969s (remote typecheck reused that host gate, not repeated), remote all T1 893 cases/142 files; fallback all hub+Neovim T2 1835/246; changed T3 accounts only14/1 once; Web225/44. Unsupported coverage guide path forced all-T2 fallback. Remaining T3/T4 were not run; absent from configured batch tiers and deferred to periodic/integrated occasions. Prior macOS5/5 and four consumer whole-file receipts remain A-11482 at runtime-source-identical parent88f47510.
+
+Executor droplet c-8 lon1, image cland-v0-b54afd32, Linux x64 6.8.0-142-generic; Node24.21.0/Neovim0.12.5. Original prepare downloaded Chrome Headless Shell156.0.8078.4 Playwrightv1248; Web harness uses prerequisite.executablePath headlessly. Duration/lint/Web wall/T3 ratchet diagnostics are report-only; 133 lint findings,0 refusals, reported wall/legacy overruns retained. No new Web files:0 repetitions required; changed T3 duration check one base run, no repetitions. 41.200s added wall excludes machine wait; projections are not actual suite wall. Droplet lifetime729s/$0.0506 is resource accounting, not suite runtime. No cache/fullT3T4/providerQA/landing claim. Fresh fetch origin/dev and merge-tree --write-tree HEAD origin/dev returned clean (exit0), without merging or changing the head. Requesting final evidence review.
+
+### rev-31 · 2026-10-24T21:55:16.871Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1263-final
+commit: 4f1bad89d6b46d18881b3a3ac7a4e8af16b5314d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1263 final evidence — CLEAR
+
+Reviewed unchanged4f1bad89d6b46d18881b3a3ac7a4e8af16b5314d/treeee7fcfa6bc31ec3e9ef83914d693cef9af284be7. Full source2 A-11485 stands. Original configured mode-free11060237-eed3-47b9-afbd-039eb0cb538f/A-11514 exits0; task.view confirms finished/passed at this head.
+
+Unique terminal test progress (file containers excluded) contains3077ordinary passes, zero load-gate repetitions/fail/cancel/skip/todo. accounts.test.ts14/14 all pass, including exact generated retained-handoff OpenCode3.820458656s and Codex2.931286294s. All3existing docs-guard cases pass, closing M1 with the source fix. No case count is inferred from a textual test declaration total.
+
+## Criteria and source-invariant carry
+
+C1: original macOS exact-parent88f47510 OpenCode isolated5/5 plus Codex1/1 in A-11482 remains source-attributed there, not relabelled as child-head reruns. Source2 independently established that the sole child change is one Markdown heading; every production/test/runtime fixture blob is unchanged. That local platform proof carries by this verified source invariance, supplemented by executed current-head Linux14/14 and the same final account/cwd/PID/session/native-conversation assertions. No additional fivefold Linux or macOS-child run is claimed.
+
+C2: item records the contract and inventory; successful default instruction-only role installation starts no turn, explicit brief supplies work, pool eligibility does not require token usage. A-11482's exact-parent whole consumers pass serially: accounts14, opencode-native30, opencode-adapter20, session-native-lifecycle9 and crew-launch1. These carry across the same docs-only child with their actual macOS attribution. Current configured changed-T3 accounts and allT2 add selected runtime proof; this is not a new full all-consumer T3 cover or provider QA. All source/spec conclusions from A-11483/A-11485 remain.
+
+## Actual executed scope and limits
+
+Host T0 check exit0/24.969s; allT1 exit0/66s; fallback-all hub+NeovimT2 exit0/362s; one changedT3 accounts.test.ts exit0/45s,14identities once; Web exit0/156s. Canonical-doc coverage fallback explains allT2. Selected changed-T3 added wall41.200s excludes machine wait; no repetitions. RemainingT3 deferred to periodic/integrated occasions and absent configured batch tiers, allT4 absent. No fullT3/T4/stage/QA cover.
+
+Droplet c-8lon1/cland-v0-b54afd32, Linuxx64 6.8.0-142-generic, Node24.21.0/Neovim0.12.5,2workers. Machine lifetime729s/cost$0.0506 is not suite wall time. Prepare pins Chrome Headless Shell156.0.8078.4/revision1248/linux64 under /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248 for isolated Web fixtures. Native account harnesses remain fixture processes, no live-provider enforcement claim.
+
+The host gate tree ddddced0bb8106bbd4c28b3fb4b0b2210d51fcc8 is reused remotely, not an alternate task head or repeated remote check. Phase envelopes, native case time, selected wall and machine lifetime remain distinct. Existing timing/lint/ratchet modes are report-only:133lint findings/60files, unchanged T3ratchet2197.138s, six listed budget overages and Web actual suite151.46s vs40s. An unchanged account/environment case's5.613s >5notice is not a new-identity failure. No missing proof becomes zero or enforced-budget pass.
+
+## Disposition
+
+Final CLEAR, C1/C2 verified across accepted source-invariant local platform/consumer proof and original current-head configured evidence. No findings or per-item QA requirement. Preserve exact attribution and exclusions; no extra transcription reruns are needed. Send planned fresh no-auto-maintenance conflict-check/unchanged-head ready report to Coordinator for enqueue. This is no new dev merge, actual provider QA or landing authorization. Reviewer used read-only inspection only.
+Durable final review: A-11517.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T22:01:40.839Z
+
+Merged d1f65df6e102740b204cf7e551c0018e4aae5604 onto dev.

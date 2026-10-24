@@ -2,8 +2,8 @@
 id: T-1201
 kind: task
 title: cland qa lint checks named test files, tests and selectors at the build and flags literal counts
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-998
 branch: t/T-1201-cland-qa-lint-checks-named-test-files
 created: 2026-10-24T06:46:04.795Z
-updated: 2026-10-24T21:47:04.288Z
+updated: 2026-10-24T22:07:22.983Z
+closed: 2026-10-24T22:07:22.983Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ QA briefs written before an item's code existed carried guessed test names and l
 
 - [x] C1. qa lint fails a brief that names a test file or test title absent at the build SHA, or a selector absent from web/src (test).
   - done: impl-1201 · 2026-10-24T21:42:33.423Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1201-final-1 · 2026-10-24T22:01:10.516Z · commit 14b50848d0d827c60c1f4316ebc284492525d7a9
 - [x] C2. qa lint flags literal test, member and item counts and points to task plan show or the generated cases instead (test).
   - done: impl-1201 · 2026-10-24T20:58:40.121Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1201-final-1 · 2026-10-24T22:01:10.516Z · commit 14b50848d0d827c60c1f4316ebc284492525d7a9
 
 ## Comments
 
@@ -223,3 +226,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-11503 citation-only delta clear. Exact sole parent is rev-31 source4 clear2d845e05/A-11499; one docs sentence now names T-1264 as Coordinator815386cb instructed. Follow-up tracker trigger matches preserved bounded-lexer/fail-closed trust model. No scanner/code/test/skill/dependency or dev integration change; no tests run for citation. Carry source4 and agreed final lexer bar, no parser expansion/completeness claim. C1/C2 remain unverified until one unchanged14b50848 ordinary mode-free configured verify and original-receipt evidence settlement. No QA/landing/extra dev merge clearance.
+
+### rev-26 · 2026-10-24T22:01:10.516Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1201-final-1
+commit: 14b50848d0d827c60c1f4316ebc284492525d7a9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-11527 audits original A-11526 exact-head mode-free8d8e04c9: 3075 ordinary test/433 file passes, separately45 actual repetitions across nine T1 identities5/5. Named file/title/pattern/selector/refusal/count cases pass; T128/28, offline CLI2/2, native changedT3 three cases once: immutable commit-vs-dirty checks, copied install without dev deps, corpus AST oracle. Corpus diagnostic sourceRef HEAD candidate14b50848,85briefs/1327findings/152absent-title/0unresolved/0falseAbsence; not committed-dev rerun/zero findings/parser completeness. Local dev source4 evidence remains separate. T3 added wall6.405 s excludes wait; test sum5.118 s/file6.233731891 s distinct. Report-only ratchet+5.118 s and other warnings retained for Coordinator. Host gate tree2a2afb08 reused/not remote repeated; all selectedT0/T1/fallback bothT2/changedT3/Web green, remainingT3/T4/integration/QA excluded. Source4/A-11499 plus source5/A-11503 accepted scope carried. C1/C2 verified; lead fresh read-only conflict check/ready, Coordinator enqueue/merge.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T22:07:22.983Z
+
+Merged 2980b46416fe92ddb79600c9933c8a496fddfad7 onto dev.

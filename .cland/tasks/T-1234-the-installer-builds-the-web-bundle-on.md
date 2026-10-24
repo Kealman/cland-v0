@@ -2,8 +2,8 @@
 id: T-1234
 kind: task
 title: The installer builds the web bundle on the user's machine instead of using a prebuilt release asset
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1004
 branch: t/T-1234-the-installer-builds-the-web-bundle-on
 created: 2026-10-24T11:05:26.095Z
-updated: 2026-10-24T21:48:00.836Z
+updated: 2026-10-24T21:53:39.065Z
+closed: 2026-10-24T21:53:39.065Z
 ---
 
 ## Summary
@@ -182,3 +183,7 @@ Report fresh no-auto-maintenance dev conflict check and unchanged-head readiness
 Durable final review A-11505.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T21:53:39.065Z
+
+Merged b5930f220802d7e834d9eac8d6711584f50d2784 onto dev.
