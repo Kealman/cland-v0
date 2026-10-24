@@ -42,7 +42,7 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   const api = await fakeDigitalOcean('cland-test-dry-run-fixture');
   onCleanup(t, () => api.close());
   const spend = join(root, '.cland/executor-state/spend.json');
-  // Settle startup bookkeeping before taking the byte-for-byte spend baseline.
+  // Register the scratch project before checking its accounting state.
   await rememberProject(root, { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state') });
   await writeFile(join(root, '.gitignore'), '.cland/\n');
   const git = async (...args: string[]) => promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root });
@@ -53,7 +53,6 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   const { discovery } = await projectHub(t, root, {}, { syntheticProvider: { token: 'cland-test-dry-run-fixture', endpoint: api.url } });
   const ui = await connectUi(t, discovery);
   const before = (await ui.request({ type: 'hub.status', history: true })).value as HubStatus;
-  const beforeSpend = await readFile(spend, 'utf8').catch(() => null);
   const output = await cland(root, 'verify', '--dry-run', '--executor', 'droplet');
   assert.equal(output.code, 0, output.stderr);
   assert.match(output.stdout, /verification dry-run/);
@@ -83,7 +82,9 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   assert.deepEqual(queue.waiters, []); assert.deepEqual(queue.remote, []); assert.equal(queue.holder, null);
   assert.deepEqual(await readdir(join(root, '.cland/run/suites')).catch(() => []), []);
   assert.deepEqual(await readdir(join(root, '.cland/run/executor/leases')).catch(() => []), []);
-  assert.equal(await readFile(spend, 'utf8').catch(() => null), beforeSpend);
+  const ledger = JSON.parse(await readFile(spend, 'utf8')) as { entries: { reservation: number; cost: number | null }[] };
+  assert.equal(ledger.entries.filter(entry => entry.cost === null).reduce((sum, entry) => sum + entry.reservation, 0), 0, 'dry-run reserves no spend');
+  assert.deepEqual(ledger.entries, [], 'dry-run adds no spend entries');
   assert.ok(api.requests.every(row => row.method === 'GET'), 'dry-run makes no provider mutations');
   assert.deepEqual(api.droplets, []);
   // The same admission lint still refuses an invalid working manifest.

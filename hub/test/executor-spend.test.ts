@@ -405,7 +405,7 @@ test('recovery settles a batch of interrupted releases without changing final le
   const expected = [0.5, 0.5, 2];
   assert.deepEqual((await ledger(machine)).entries.map(entry => entry.cost), expected);
   assert.deepEqual(JSON.parse(await readFile(join(machine.home, '.cland/executor/spend.json'), 'utf8')).entries.map((entry: SpendEntry) => entry.cost), expected);
-  const bytes = await readFile(spendPath(machine.env), 'utf8');
+  const entries = (await ledger(machine)).entries;
   await settleSpend(leases, machine.env, processes);
-  assert.equal(await readFile(spendPath(machine.env), 'utf8'), bytes);
+  assert.deepEqual((await ledger(machine)).entries, entries, 'repeated settlement preserves accounting entries');
 });

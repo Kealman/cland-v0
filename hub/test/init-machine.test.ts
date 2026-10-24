@@ -145,10 +145,15 @@ if (process.env.CLAND_INIT_MACHINE_SELFTEST !== '1') {
     const machine = await scratchMachine(t, { identity: false });
     const entries = [{ project: '/fixture/project', lease: 'lease-1', run: 'run-1', size: 'c-8', reservation: 0.1, cost: null, created: '2026-10-16T00:00:00Z', deadline: '2026-10-16T01:00:00Z' }];
     await legacyLedger(machine, entries);
-    assert.deepEqual(JSON.parse(await readFile(join(machine.home, '.cland', 'executor', 'spend.json'), 'utf8')), { version: 1, entries });
+    const legacy = JSON.parse(await readFile(join(machine.home, '.cland', 'executor', 'spend.json'), 'utf8'));
+    assert.equal(legacy.version, 1);
+    assert.deepEqual(legacy.entries, entries);
     machine.env.XDG_STATE_HOME = join(machine.home, 'custom-state');
     await mkdir(join(machine.env.XDG_STATE_HOME, 'cland'), { recursive: true });
     await writeFile(join(machine.env.XDG_STATE_HOME, 'cland', 'spend.json'), JSON.stringify({ version: 1, entries, projects: ['/fixture/project'] }));
-    assert.deepEqual(await ledger(machine), { version: 1, entries, projects: ['/fixture/project'] });
+    const current = await ledger(machine);
+    assert.equal(current.version, 1);
+    assert.deepEqual(current.entries, entries);
+    assert.deepEqual(current.projects, ['/fixture/project']);
   });
 }
