@@ -9,6 +9,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/approval-records.test.ts`](../../../hub/test/approval-records.test.ts) | [Notes](hub-test-approval-records.test.ts.md) |
 | [`hub/test/approval-restart.test.ts`](../../../hub/test/approval-restart.test.ts) | [Notes](hub-test-approval-restart.test.ts.md) |
 | [`hub/test/ask-outcomes.test.ts`](../../../hub/test/ask-outcomes.test.ts) | [Notes](hub-test-ask-outcomes.test.ts.md) |
+| [`hub/test/claude-code-accounts.test.ts`](../../../hub/test/claude-code-accounts.test.ts) | [Notes](hub-test-claude-code-accounts.test.ts.md) |
 | [`hub/test/claude-code-schedule.test.ts`](../../../hub/test/claude-code-schedule.test.ts) | [Notes](hub-test-claude-code-schedule.test.ts.md) |
 | [`hub/test/cli.test.ts`](../../../hub/test/cli.test.ts) | [Notes](hub-test-cli.test.ts.md) |
 | [`hub/test/codex-native.test.ts`](../../../hub/test/codex-native.test.ts) | [Notes](hub-test-codex-native.test.ts.md) |

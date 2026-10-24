@@ -358,7 +358,8 @@ test('a late Claude PID can be stopped while its identity probe is pending', { s
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, watch } from 'node:fs';
 const args = process.argv.slice(2);
-if (args[0] === '-o' && args[1] === 'pid=,lstart=' && existsSync(${JSON.stringify(target)}) && args[3].split(',').includes(readFileSync(${JSON.stringify(target)}, 'utf8'))) {
+const held = args[0] === '-o' && args[1] === 'pid=,lstart=' && existsSync(${JSON.stringify(target)}) && args[3].split(',').includes(readFileSync(${JSON.stringify(target)}, 'utf8'));
+if (held) {
   writeFileSync(${JSON.stringify(entered)}, '');
   await new Promise(resolve => {
     const watcher = watch(${JSON.stringify(bin)}, () => { if (existsSync(${JSON.stringify(release)})) { watcher.close(); resolve(); } });
@@ -366,7 +367,7 @@ if (args[0] === '-o' && args[1] === 'pid=,lstart=' && existsSync(${JSON.stringif
   });
 }
 const r = spawnSync('/bin/ps', args, { encoding: 'utf8' });
-writeFileSync(${JSON.stringify(finished)}, '');
+if (held) writeFileSync(${JSON.stringify(finished)}, '');
 process.stdout.write(r.stdout); process.stderr.write(r.stderr); process.exitCode = r.status ?? 1;
 `, { mode: 0o755 });
   const f = await fixture(t, { PATH: `${bin}:${process.env.PATH}` });
@@ -383,7 +384,17 @@ process.stdout.write(r.stdout); process.stderr.write(r.stderr); process.exitCode
     assert.equal(r.ok, true, r.error);
     assert.equal((r.value as { process: HarnessProcessView }).process.status, 'stopped');
   } finally {
-    await writeFile(release, '');
-    await eventually('the released identity probe finishes', async () => readFile(finished, 'utf8').then(() => true).catch(() => undefined));
+    try {
+      await writeFile(release, '');
+      await eventually('the released identity probe finishes', async () => readFile(finished, 'utf8').then(() => true).catch(() => undefined));
+    } finally {
+      // Stop future probes before tempProject can remove their executable and markers,
+      // even when an assertion or the held probe's completion wait fails.
+      f.ui.close();
+      await f.daemon.stop();
+    }
   }
+  const journal = completeJournalLines(await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
+  assert.ok(journal.some(entry => entry.event === 'hub-stopped'), 'the fixture hub stops before its probe directory can be removed');
+  assert.equal((await stat(bin)).isDirectory(), true, 'the probe directory survives until the hub has stopped');
 });
