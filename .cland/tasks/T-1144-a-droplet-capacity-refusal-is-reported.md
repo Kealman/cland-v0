@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-940
 branch: t/T-1144-a-droplet-capacity-refusal-is-reported
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-24T08:25:16.311Z
+updated: 2026-10-24T08:39:42.287Z
 ---
 
 ## Summary
@@ -70,3 +70,16 @@ findings: [{"severity":"low","text":"L1 retained aside Bugs/S: all-unexecuted ca
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Corrected source clear76cbf0d2/tree60fafa8d; M1resolved. validateSize/checkSpend typerealcapacity, Suites retains typedrefusal/cause through durableadmission; negativeprice/auth/spend/inputerrorsstayrefusals. Public15capacitycontrols(3states×periodic/4taskflagcombinations) plus8negativeadmissioncontrols retainfinalresult/status/verify/headline/no-search/no-fallback/no-provider-mutationassertions. Noadditionalblockingfindings; L1lowasidecarried. Eight-filecorrectionwithmatchingdocs/skillCHANGES, no devmerge; Nvimsource/fixturesunchanged. A-10517rootcheck0 real23.06s/lint133/60report0refusals; A-10518T2 35/35 native4874.351417ms real4.90s; A-10519T1 9/9 native784.010917ms real0.81s, exact-headlocalmacOSrawoutputs. OriginalNvimreceiptsremainnarrativeA-10506; currentconfiguredreplaypending. C1/C2runtimeawaitexact-headmode-freeconfiguredreceipt, noconfiguredgreen/LinuxT3T4/QAclaim. A-10521: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10521-t-1144-corrected-source-at-76cbf0d2.md. Proceedverifyunchangedhead.
+
+### rev-26 · 2026-10-24T08:39:42.287Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1144-source-3
+commit: 31f4f28cdd38bf65266593698e4246ab19a868d6
+scope: delta
+findings: [{"severity":"low","text":"L1 retained aside Bugs/S (filed T-1211): all-unexecuted capacity-refused shard groups lose child notRun at parent aggregation. Outside requested unsharded periodic/task C1/C2; preserve mixed-execution distinctions.","file":"hub/src/hub/suites.ts","line":845}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Authorized integration source clear, A-10555; no new blocking findings, retained L1low/T-1211 at suites.ts845. Exact provider-capacity help and upstream duration help both preserved; capacity admission/result/retry implementation and all capacity/Nvim fixture/test blobs unchanged from76cbf0d2. Prior A-10546 independently audited2850ordinary+130actual repetitions allpass,15positive+8negative controls andNvim15/15; LinuxT1/allT2/Web, reusedmatchinghostchecktree, report-only lint/budgets/noT3T4. Coordinator73e65e48 requests replacement merge/run, so oldheadgreen is provenance only and C1/C2 remain unverified pending fresh mode-free receipt at31f4f28c. New local check was pending; no pass inferred. Both axes read-only; no runtime/delegation.

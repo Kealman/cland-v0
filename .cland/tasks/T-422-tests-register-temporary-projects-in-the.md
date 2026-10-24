@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T08:26:03.845Z
+updated: 2026-10-24T08:40:25.036Z
 ---
 
 ## Summary
@@ -30,7 +30,7 @@ The host-wide executor ledger `~/.cland/executor/spend.json` lists 24 projects. 
 ## Acceptance criteria
 
 - [ ] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
-  - failed: rev-32 [reviewer] · 2026-10-24T08:26:03.845Z · note Required configured mode-free run f947dbf4 exits124 after two T2 failures and a timed-out/hung shared-cap case; later phases unrun.
+  - failed: rev-32 [reviewer] · 2026-10-24T08:40:25.036Z · note New held-ledger proof cleanup is outside resource-before-directory ownership, allowing live sweep writers during fixture removal on failure.
 - [x] C2. `rememberProject('/')` is refused, and the ledger never lists `/`.
   - done: impl-422 · 2026-10-24T07:53:42.861Z
 - [x] C3. A registered project whose directory is gone is pruned from `projects` by the sweep, with an event naming it.
@@ -137,3 +137,34 @@ Standards:one medium evidence blocker. Spec:C1 failed; no final criterion verifi
 Durable audit A-10524: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10524-t-422-failed-and-stalled-configured-evidence-at-9a10dabe.md
 
 Criteria: C1 failed (Required configured mode-free run f947dbf4 exits124 after two T2 failures and a timed-out/hung shared-cap case; later phases unrun.).
+
+### rev-32 · 2026-10-24T08:40:25.036Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261024-422-source-3
+commit: 0a403c821ed841813d7661a950ed1859b7e3ba03
+scope: full
+findings: [{"severity":"medium","text":"M3: raw t.after hooks here and line148 are outside scratchMachine's earlier resource-before-directory ownership hook. Failure/cancellation can remove the root before releasing/draining a live sweep writer. Register owned cleanup before starting sweep; retain completion and unchanged-ledger assertions.","file":"hub/test/executor-spend.test.ts","line":121}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-422 M2 correction source review — not clear
+Head0a403c821ed841813d7661a950ed1859b7e3ba03; tree4d36711a80015b2ef406370f00b45af66f91522f; sole parent9a10dabe40bf6b4d9179d97ed09d8b8be9b936a0. No dev merge. Accepted original/M1 source scope A-10464/A-10466 carried; failed configured A-10520/A-10524 remains failed/partial.
+
+## Standards
+M3 (medium), hub/test/executor-spend.test.ts:121 and148: both new held-ledger tests register raw t.after cleanup after scratchMachine has already installed process-cleanup's ownership hook. That ownership hook runs resources/hubs/directories/checks (process-cleanup.ts:58–64); the newly added hook does not join its resources/hubs phases. On failure/cancellation the registered directory removal can precede the later hook that releases the holder, advances the fake clock and awaits the live sweep writer. This violates rule12 and contradicts the new documentation's failure-cleanup guarantee.
+Register lock/executor/sweep drainage with onCleanup or beforeDirectories before starting the sweep; preserve safe release/abort order, completed sweep receipt and final ledger-byte/registration assertions. Drainage must still run for failure/timeouts before the scratch directory is removed. Do not rely on the normal success path having already completed.
+No other source findings. New production timing is otherwise sound: one timing object carrying clock/wait/process table reaches both migration load and registry transaction; DropletExecutor supplies its existing abortable #wait. Shutdown can reject a held retry without acquiring the foreign holder's ledger. No validation, reservation/tombstone/accounting or credential policy was loosened.
+Admission setup now observes the flushed durable executor-sweep record with zero failures before acquiring its own held lock. The observer's bounded polling reads persisted history; because it can read the completed receipt after publication, it cannot miss a frame. Original contention/cancellation/zero-resource assertions remain. Matching per-test notes/index use valid repository .test.ts headings. No independent smell finding.
+
+## Spec
+C1 remains blocked by M3's unsafe failure cleanup in the new integration proof. M2's missing wait/clock pairing and status-as-startup-receipt causes are source-resolved, subject to runtime revalidation. C2/C3 source behavior remains accepted; no final criterion verification now. All claimant done marks current.
+Coordinator f248e85e's pre-merge C1 scope remains approved scratch-ledger proofs plus fresh configured mode-free receipt; full local stage/real-ledger count comparison is separate Coordinator-owned landing evidence. Coordinator03b17a54 additionally requests scratch1159-project initial lock-hold measurement in the ready report; no such timing is claimed here.
+
+A-10549 explicitly retains the failed Linux/partial raw provenance, sealed local baseline comparisons and precise diagnosis: held-ledger control timed out2000ms before injecting the wait; later control green31ms, original shared-cap file12/12; admission setup reproduction “another hub holds the project's lock” atoldline37. New local macOS correction-tree admission4/4, suite-close9/9, safety12/12, spend23/23 and check pass (report-only lint132/59, zero refusals) are supplemental local summaries, not a configured/Linux pass. No fresh configured run has occurred.
+Reviewer source/Git/docs/artifact reads only, no tests, edits, browser, installs, live ledger change or delegation. qaPolicy none/after-stage. Fix M3, preserve original output attribution without transcription reruns, and request fresh source review before verification.
+Standards:one medium finding. Spec:C1 blocked by M3; C2/C3 execution pending.
+Durable audit A-10556: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10556-t-422-m2-correction-review-at-0a403c82.md
+
+Criteria: C1 failed (New held-ledger proof cleanup is outside resource-before-directory ownership, allowing live sweep writers during fixture removal on failure.).

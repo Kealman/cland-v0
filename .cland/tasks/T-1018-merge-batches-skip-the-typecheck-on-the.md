@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-928
 branch: t/T-1018-merge-batches-skip-the-typecheck-on-the
 created: 2026-10-20T17:30:31.804Z
-updated: 2026-10-24T08:34:14.504Z
+updated: 2026-10-24T08:35:10.061Z
 ---
 
 ## Summary
@@ -28,11 +28,11 @@ Every merge batch runs the T0 checks (at least `npm run typecheck` and the stati
 ## Acceptance criteria
 
 - [x] C1. A batch whose candidate tree fails `npm run typecheck` is red and its members are bisected, even when its T1 tests pass (test with two members that typecheck alone but not together).
-  - done: impl-1018 · 2026-10-24T07:53:19.069Z
   - verified: rev-23 [reviewer] · run rev-20261024-1018-final · 2026-10-24T08:27:06.399Z · commit c28fc37e222fabbcd8a0a815a569074610ed57e6
+  - done: impl-1018 · 2026-10-24T08:34:44.238Z
 - [x] C2. The batch result names the T0 step with its duration, and `docs/agents/tests.md` documents it.
-  - done: impl-1018 · 2026-10-24T07:44:22.354Z
   - verified: rev-23 [reviewer] · run rev-20261024-1018-final · 2026-10-24T08:27:06.399Z · commit c28fc37e222fabbcd8a0a815a569074610ed57e6
+  - done: impl-1018 · 2026-10-24T08:34:44.410Z
 
 ## Comments
 
@@ -222,3 +222,20 @@ At audit, branch remainsc28fc37e. The lead owns its required fresh origin/dev co
 Durable final review A-10529.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1018 · 2026-10-24T08:34:44.755Z
+
+After T-1198 landed, performed Coordinator6e14dab0-authorized merge of devf7a1684f atb7720480; combined both role-clause test-guidance paragraphs. An auto-merged duplicate index row failed doclinks1/2 and was corrected/ordered in pushed2efcb83310e33db1f802a9746c537e6fc0282435; doclinks then2/2. At b772 (same code/test tree as current): local macOS rootcheck exit0 (lint report133/60, zero refusals), batches46/46, commands15/15, webphase8/8, clauses39/39. Raw logs/patches A-10542, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10542-t-1018-t-1198-integration-2efcb833-native-checks-and-scope. C1/C2 re-marked done; delta review requested. Coordinator bd71808f explicitly directs current hosting-hub mode-free T0–T2+Web without restart; changed-T3/T4 duration check is not required for this item and will not be claimed.
+
+### rev-26 · 2026-10-24T08:35:10.061Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1018-source-5
+commit: 2efcb83310e33db1f802a9746c537e6fc0282435
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-10544 records both axes, no findings. Coordinator-authorized T-1198 integration preserves T-1018 batch T0/receipt/confirmation implementation and regression blobs unchanged from accepted c28fc37e. Sole manual role-clause test-note resolution keeps both policies; corrected index is the exact parent union, 99 unique rows. A-10542 original local macOS receipts: integration code/test-equivalent parent check0, batches46/46, commands15/15, Webplan8/8, roles39/39; exact corrected head docs2/2. Parent attribution, native timings and report-only lint133/60/0refusals retained. C1/C2 remain unverified at this changed head pending fresh mode-free configured result. Per Coordinator bd71808f, current non-restarted host T0–T2+Web is the gate; no live changed-T3/T4 duration measurement condition or claim. Old green A-10522 is provenance only. No Reviewer runtime/edits/delegation.

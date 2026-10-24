@@ -2,8 +2,8 @@
 id: T-1148
 kind: task
 title: run-suite crashes on an empty quarantine receipt and hides the Web phase's real failure
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-937
 branch: t/T-1148-run-suite-crashes-on-an-empty-quarantine
 created: 2026-10-22T17:21:01.416Z
-updated: 2026-10-24T08:20:28.276Z
+updated: 2026-10-24T08:42:54.919Z
+closed: 2026-10-24T08:42:54.919Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ When the quarantine receipt is missing, empty or torn, the runner reports the ph
 
 - [x] C1. An empty or truncated quarantine receipt yields a non-zero phase with an "incomplete: receipt missing" line naming the in-flight test, and no SyntaxError (test).
   - done: impl-1148 · 2026-10-24T07:54:07.970Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1148-final · 2026-10-24T08:37:52.974Z · commit 49738d52b9311b195b079f8c4789ef084503ab42
 - [x] C2. The phase output keeps the test process's exit status and stderr tail when the receipt is unusable (test).
   - done: impl-1148 · 2026-10-24T07:54:08.070Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1148-final · 2026-10-24T08:37:52.974Z · commit 49738d52b9311b195b079f8c4789ef084503ab42
 
 ## Comments
 
@@ -153,3 +156,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta source clear at 49738d52/tree18451f7a, no findings. A-10512 carries rev-23 source A-10463 and parent evidence A-10508. Verified Coordinator a6bb6168 and parents970cb402+aafdc9a4; actual index rows exactly equal parent union (81/88 ->89, no missing/extra). Task runner/reporter/load-gate/quarantine source/tests unchanged, matching README retained alongside incoming dev. A-10510/A-10511 local static/doc receipts inspected; C1/C2 final marks await fresh configured mode-free evidence at this head. Prior A-10504 belongs to970cb402 only. QA none/after-stage; native local T3 limits retained, no LinuxT3/stageQA claim. Reviewer ran no tests and did not enqueue.
+
+### impl-1148 · 2026-10-24T08:37:18.837Z
+
+Fresh mode-free verify d1ba9a6b-5405-40c7-8127-f6f4af3654fb at reviewed 49738d52b9311b195b079f8c4789ef084503ab42 exited 0: Linux x64 c-8 lon1 droplet, T1/T2/Web 2826/2826 passed, no failures/cancellations/skips. T3 was not selected; budget/lint report-only. Droplet lifetime 627s, cost $0.0436. Raw receipt A-10545. Current origin/dev c345bf92ecb1d105d614c4cccb3c089e12f02599 conflict check `git merge-tree --write-tree HEAD origin/dev` passed; task head and worktree remain unchanged/clean. Waiting for Reviewer same-head evidence settlement before final ready report/enqueue; no merge performed.
+
+### rev-31 · 2026-10-24T08:37:52.974Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1148-final
+commit: 49738d52b9311b195b079f8c4789ef084503ab42
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at unchanged merged/source-clear 49738d52/tree18451f7a. A-10548 carries rev-23 source A-10424/A-10463 and authorized delta A-10512. Fresh d1ba9a6b/A-10545 exit0,2826/2826,Linux c-8 lon1 T1/all fallback hub+Neovim T2/Web. Independently checked atomic publication ordinary+five distinct load passes/explicit5/5, max0.021103062s. Native C1/C2 fault regressions remain separate local Darwin correction-tree A-10447 25/25, inspected with source-equivalence/provenance limits; configured task did not execute T3/T4. Host T0 retained/not repeated remotely, budgets/lint/ratchet report-only with zero lint refusals. No outstanding findings or stageQA/Reviewer-runtime/enqueue claim.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T08:42:54.919Z
+
+Merged 666e19fa89158347849ac29f39cf607bbeb268cc onto dev.
