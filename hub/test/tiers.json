@@ -77,6 +77,7 @@
       "contract": "codex"
     },
     "hub/test/codex-delivery.test.ts": "T2",
+    "hub/test/codex-fake-envelope.test.ts": "T1",
     "hub/test/codex-native.test.ts": "T2",
     "hub/test/codex-workspace-git.test.ts": "T4",
     "hub/test/computed-sessions.test.ts": "T2",

@@ -4,6 +4,9 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/rule-sessions.test.ts`](../../../hub/test/rule-sessions.test.ts) | [Notes](hub-test-rule-sessions.test.ts.md) |
+| [`hub/test/session-native-lifecycle.test.ts`](../../../hub/test/session-native-lifecycle.test.ts) | [Notes](hub-test-session-native-lifecycle.test.ts.md) |
+| [`hub/test/codex-fake-envelope.test.ts`](../../../hub/test/codex-fake-envelope.test.ts) | [Notes](hub-test-codex-fake-envelope.test.ts.md) |
 | [`hub/test/suite-protocol.test.ts`](../../../hub/test/suite-protocol.test.ts) | [Notes](hub-test-suite-protocol.test.ts.md) |
 | [`hub/test/suite-cancel.test.ts`](../../../hub/test/suite-cancel.test.ts) | [Notes](hub-test-suite-cancel.test.ts.md) |
 | [`hub/test/suite-recovery.test.ts`](../../../hub/test/suite-recovery.test.ts) | [Notes](hub-test-suite-recovery.test.ts.md) |

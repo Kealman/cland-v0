@@ -296,11 +296,17 @@ const idle = (ui: FrameClient) => eventually('coord idle', async () => {
       assert.ok(batch.indexOf(notes[0]!) < batch.indexOf(notes[1]!) && batch.indexOf(notes[1]!) < batch.indexOf(notes[2]!) && batch.indexOf(notes[2]!) < batch.indexOf(report), 'digest preserves send order before the report');
       const history = await eventually('all digest members injected', async () => {
         const r = await ui.request({ type: 'topic.history', topic: 'agents' });
-        const messages = (r.value as { messages: Array<{ text: string; stage?: string }> }).messages;
+        const messages = (r.value as { messages: Array<{ id: string; text: string; stage?: string }> }).messages;
         return [...notes, report].every(text => messages.some(m => m.text === text && m.stage === 'injected')) ? messages : undefined;
       });
       assert.equal(history.filter(m => m.text === report).length, 1);
-      await ui.waitFor(f => f.type === 'message' && (f.message as { text: string }).text === `pong: ${notes[0]}`);
+      // T-360: the fake answers the last delivery, preserving the report's routing.
+      await ui.waitFor(f => {
+        if (f.type !== 'message') return false;
+        const message = f.message as { text: string; topic: string; replyTo?: string };
+        return message.text === `pong: ${report}` && message.topic === 'agents'
+          && message.replyTo === history.find(m => m.text === report)!.id;
+      });
       await idle(ui);
       // Count consumed inputs, not duplicate control-RPC logging when a role turn is steered.
       const inputs = (await readFile(join(home, 'log', `${p.pid}.inputs.jsonl`), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { text: string });

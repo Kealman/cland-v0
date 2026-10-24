@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import test from 'node:test';
 import { cland, connectUi, eventually, fakeClaude, fakeCodex, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
-import type { Message } from '../src/protocol.ts';
+import type { Inbox, Message } from '../src/protocol.ts';
 import type { Rule } from '../src/rules/rulebook.ts';
 
 test('shell rule changes reach fake Implementer turns, never steer, and show one event row without needs-you', async t => {
@@ -47,19 +47,33 @@ test('shell rule changes reach fake Implementer turns, never steer, and show one
   // While an approval turn is blocked, even another steered report cannot carry the rule.
   await ui.request({ type: 'topic.send', topic: 'general', to: ['impl'], text: 'needs approval' });
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.state === 'waiting for approval');
+  const retirementEvent = ui.waitFor(f => f.type === 'message' && (f.message as Message).from === 'hub'
+    && (f.message as Message).kind === 'event' && (f.message as Message).text.startsWith('rule 1 retired'));
   await run('retire', '1', '--reason', 'finished');
   await ui.request({ type: 'topic.send', topic: 'general', to: ['impl'], text: 'steered report' });
   assert.doesNotMatch(await codex.log(impl.pid), /rule 1 retired/);
   const { writeFile } = await import('node:fs/promises');
   await writeFile(join(codex.home, 'approve'), 'yes');
   await idle();
+  const retiredReply = ui.waitFor(f => f.type === 'message' && (f.message as Message).from === 'impl'
+    && (f.message as Message).topic === 'general' && (f.message as Message).text === 'pong: Read retired rule.');
   await turn('Read retired rule.');
+  const reply = (await retiredReply).message as Message;
+  const retirement = (await retirementEvent).message as Message;
   assert.match(await codex.log(impl.pid), /rule 1 retired.*finished/);
   const coordinatorLog = await claude.log((await claude.sessions()).find(p => p.name === 'coord')!.id);
   assert.match(coordinatorLog, /Read the task/);
   assert.doesNotMatch(coordinatorLog, /rule 1/);
   const after = await ui.request({ type: 'inbox.list' });
-  assert.equal((after.value as { needsYou: number }).needsYou, (before.value as { needsYou: number }).needsYou);
+  // T-360: the human's last delivery receives a reply; its preceding rule event does not.
+  const inboxBefore = before.value as Inbox, inboxAfter = after.value as Inbox;
+  const previousMessages = new Set(inboxBefore.messages.map(message => message.id));
+  assert.deepEqual(inboxAfter.messages.filter(message => !previousMessages.has(message.id))
+    .map(message => ({ id: message.id, from: message.from, topic: message.topic.id, text: message.text })),
+  [{ id: reply.id, from: 'impl', topic: 'general', text: 'pong: Read retired rule.' }]);
+  assert.equal(inboxAfter.needsYou, inboxBefore.needsYou + 1);
+  assert.ok(!inboxAfter.messages.some(message => message.id === retirement.id || message.topic.id === 'agents'),
+    'the Agents retirement event adds no needs-you row');
   const events = await ui.request({ type: 'events.list', filter: { kinds: ['rule'], subject: { kind: 'rule', id: '1' } } });
   assert.equal(events.ok, true, events.error);
   const rows = (events.value as { rows: Array<{ kind: string; subject: { kind: string; id: string } }> }).rows;

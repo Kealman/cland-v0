@@ -1,5 +1,7 @@
 // T3: native hard-limit error/hook contracts and an end-to-end account-limit hit.
 // Deferred eligibility uses FakeClock; permission permutations are T1 in account-permissions.test.ts.
+// The early first-turn hit is driven by the sessionless launcher's hub/report brief;
+// the fake must consume that brief before publishing the native launch response.
 import { completeJournalLines } from './journal-lines.ts';
 import { accountBinaries, accountClaude, accountCodex } from './account-fixture-env.ts';
 import { FakeClock } from './fake-clock.ts';

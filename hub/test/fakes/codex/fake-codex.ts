@@ -14,7 +14,10 @@
 //       connects to the real hub) with only its configured environment beside PATH and HOME.
 //       Every further `thread/start` starts the servers again, as the real app-server does: a second spoke with the
 //       session's identity, while the first thread's turns keep calling their tools through the first.
-//       A turn answers the last human or agent envelope in each input, tool output or steer, skipping hub events,
+//       A turn answers the last human or agent envelope in each input, tool output or steer, skipping hub events.
+//       In the first native text input only, the first envelope after the role clause (or no-role introduction)
+//       is also answerable when it is a hub report in Agents: the sessionless launch brief. Later hub reports
+//       and event-only digests receive no answer. The selected envelope supplies body, topic and reply id,
 //       with a `send` through the spoke, "pong: <text>", into that message's topic. A message containing "needs approval" first sets the model's own
 //       status line to "idle" through the spoke's `status` tool (the hub must not take it for the state), then asks
 //       for a command approval (`item/commandExecution/requestApproval` to the subscribers, status
@@ -79,6 +82,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import WebSocket, { WebSocketServer } from 'ws';
 import { fakeLogin, login, recordCall } from '../setup-profile.ts';
+import { answerableEnvelope } from '../codex-envelope.ts';
 
 const VERSION = '0.160.0';
 recordCall('codex', process.argv.slice(2));
@@ -347,8 +351,7 @@ async function appServer(args: string[]): Promise<number> {
         while (!existsSync(join(HOME, 'release-newer-turn'))) await sleep(5);
       }
       await sleep(TURN_MS);
-      const delivery = [...item.text.matchAll(/<channel ([^>]*)>\n([\s\S]*?)\n<\/channel>/g)]
-        .findLast(match => /\bfrom_kind="(?:human|agent)"/.test(match[1]!));
+      const delivery = answerableEnvelope(item.text, t.turns === 1 && record.items.length === 1 && !item.tool);
       const body = delivery?.[2];
       if (body?.includes('spawn legacy subagent')) {
         toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: { type: 'collabAgentToolCall', id: randomUUID(), tool: 'spawnAgent', status: 'completed', senderThreadId: t.id, receiverThreadIds: ['legacy-child'], model: 'gpt-legacy-1', prompt: null, reasoningEffort: null, agentsStates: {} } });
