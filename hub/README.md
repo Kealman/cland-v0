@@ -3587,7 +3587,8 @@ cached result as evidence; no tree equivalence is applied to review or QA marks.
 A human's `npm test` outside a cland session asks this same scheduler for a
 connection-owned slot before taking the compatibility lease. The runner prints
 its queue position, holder elapsed time and ETA as they change, and at least once
-a minute. Integrated Coordinator dev runs come first, then human waiters in
+a minute. A waiting runner polls `suite.slot` every two seconds; a free slot is
+observed on the next poll. Integrated Coordinator dev runs come first, then human waiters in
 enqueue order, then ranked item runs, then other runs in enqueue order. Human
 waiters have `kind: "hand run"`
 and `session: "human"`. Admission reserves ten seconds to acquire the lease;

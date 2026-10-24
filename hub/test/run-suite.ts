@@ -1,3 +1,4 @@
+import { waitForHumanSlot } from '../src/suite-human-queue.ts';
 import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { prepareRunnerFixture } from './fixture-directories.ts';
 import { mergeCoverageMaps, parseCoverageMap } from '../src/suite-coverage.ts';
@@ -450,22 +451,7 @@ async function humanQueue(cwd: string, selection: SuiteSelection, token: string,
     };
     let result = await request(); joined = true;
     if (force) { release(); return { close: () => {} }; }
-    let last = ''; let printed = 0;
-    while (!result.admitted) {
-      if (interrupted()) throw new Error('human suite interrupted');
-      const waiter = result.queue.waiters.find(w => w.id === result.id);
-      const holder = result.queue.holder;
-      const duration = (ms: number | null) => ms === null ? 'unknown' : `${Math.ceil(ms / 1000)}s`;
-      const place = `${waiter?.position ?? '?'} of ${result.queue.waiters.length}`;
-      const eta = duration(waiter?.etaMs ?? null);
-      const signature = `${place}:${eta}:${holder?.session}:${holder?.pid}`;
-      if (signature !== last || Date.now() - printed >= 60_000) {
-        process.stderr.write(`waiting for the suite queue: place ${place} · ${holder?.session ?? holder?.kind ?? 'no holder'} runs ${duration(holder?.runMs ?? null)} · ETA ~${eta}\n`);
-        last = signature; printed = Date.now();
-      }
-      await pause(250);
-      result = await request();
-    }
+    result = await waitForHumanSlot(result, { request, wait: pause, now: Date.now, interrupted, report: message => { process.stderr.write(message); } });
     return { close: release, locks: result.locks };
   } catch (error) {
     release();
