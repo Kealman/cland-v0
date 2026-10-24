@@ -40,6 +40,7 @@
     "hub/test/aide.test.ts": "T3",
     "hub/test/approval-records.test.ts": "T2",
     "hub/test/approval-restart.test.ts": "T3",
+    "hub/test/artifact-cleanup-unit.test.ts": "T1",
     "hub/test/artifact-cli-lifecycle.test.ts": "T3",
     "hub/test/artifact-cli.test.ts": "T2",
     "hub/test/artifact-delete.test.ts": "T2",

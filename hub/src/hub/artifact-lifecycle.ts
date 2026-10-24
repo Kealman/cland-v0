@@ -54,7 +54,7 @@ export class ArtifactLifecycle {
   }
 
   #deleting(a: Artifact | null): boolean {
-    return !!a?.deletion || !!a?.folder && this.#store.movedArtifacts().some(child => child.movedTo?.folder === a.id && child.deletion);
+    return !!a?.deletion || !!a?.folder && this.#store.hasMovedArtifactDeletion(a.id);
   }
 
   *#destination(path: string): IO<{ root: string; path: string }> {
@@ -244,8 +244,8 @@ export class ArtifactLifecycle {
     // a new file recreated at the old path belongs to the human and must survive.
     if (a.movedTo) yield* this.#removeOriginal(a, backup);
     if (a.folder) {
-      for (const moved of this.#store.movedArtifacts()) {
-        if (moved.movedTo?.folder === a.id) yield* this.#removeOriginal(moved, join(backup, folderName(moved.movedTo.path)));
+      for (const moved of this.#store.movedArtifacts(a.id)) {
+        yield* this.#removeOriginal(moved, join(backup, folderName(moved.movedTo!.path)));
       }
     }
     yield* wait(this.#files.rm(backup, { recursive: !!a.folder, force: true }));
@@ -364,10 +364,14 @@ export class ArtifactLifecycle {
    */
   *#cleanup(cutoff: number): IO<void> {
     const failures: unknown[] = [];
+    const index = this.#store.artifactIndex();
+    const movedArtifacts = index.filter(a => a.movedTo);
     // Only indexed intent grants ownership of manual-delete backups. Never infer it
     // from a filename inside a folder, where .retained is a valid human filename.
-    for (const a of [...this.#store.artifacts(), ...this.#store.movedArtifacts()]) {
-      if (!a.deletion) continue;
+    for (const candidate of index) {
+      if (!candidate.deletion) continue;
+      const a = this.#store.artifact(candidate.id);
+      if (!a?.deletion) continue;
       const ids = [a.id, ...(a.movedTo ? [a.movedTo.folder] : [])];
       if (ids.some(id => this.#busy.has(id))) continue;
       for (const id of ids) this.#busy.add(id);
@@ -375,7 +379,7 @@ export class ArtifactLifecycle {
       catch (err) { failures.push(err); }
       finally { for (const id of ids) this.#busy.delete(id); }
     }
-    for (const moved of this.#store.movedArtifacts()) {
+    for (const moved of movedArtifacts) {
       const owner = moved.movedTo!.folder;
       if (this.#busy.has(moved.id) || this.#busy.has(owner)) continue;
       this.#busy.add(moved.id); this.#busy.add(owner);
@@ -387,7 +391,11 @@ export class ArtifactLifecycle {
       catch (err) { failures.push(err); }
       finally { this.#busy.delete(moved.id); this.#busy.delete(owner); }
     }
-    for (const snapshot of this.#store.artifacts()) {
+    for (const candidate of index) {
+      if (candidate.movedTo) continue;
+      // Recovery and other operations can commit while filesystem I/O is suspended.
+      const snapshot = this.#store.artifact(candidate.id);
+      if (!snapshot || snapshot.movedTo) continue;
       if (this.#deleting(snapshot) || this.#busy.has(snapshot.id)) continue;
       this.#busy.add(snapshot.id);
       if (snapshot.folder) {

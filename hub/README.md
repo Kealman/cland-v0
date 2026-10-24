@@ -4730,6 +4730,8 @@ Artifacts record immutable author kind and role at creation. The human's and Aid
 
 Folder retention uses a rename to a deterministic `.retained` directory until the index commits. Failed index writes or a concurrent keep/reopen restore the entire folder; interrupted cleanup recovers on the next sweep. Deletion or housekeeping failures remain retryable. Ordinary file retention keeps its existing hard-link recovery.
 
+Each retention pass decodes one artifact-index snapshot for enumeration, including moved files. Pending moved-child deletion checks and folder deletion housekeeping use the destination index; checks after filesystem I/O still read the current artifact records. Artifacts added during a pass are enumerated on the next pass.
+
 `artifact.delete {artifact: "A-3"}` is a human-only UI protocol frame, used by Neovim's confirmed `x` action. The web authority policy refuses deletion; desktop web Artifacts offers Keep (`k`) and Archive (`d`). Agent sessions, including session-attributed client frames, are refused; there is no agent tool or CLI command. It removes the artifact’s stored file or folder and retains `fileDeleted: true` in the index. A moved id deletes its file inside the owning folder. Artifact events update the browser and deleted chips in topic history. Promoted project copies are retained.
 
 The built-in role tool lists now grant `artifact.keep`, `artifact.move` and `artifact.archive`. Existing explicit `roles.toml` lists need those grants added; `artifact.list` uses the existing history/read grant. No role clause changes are required.

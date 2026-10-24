@@ -1350,10 +1350,19 @@ export class Store implements HygieneMemory {
     return this.#prepare("select 1 from deliveries d join messages m on m.id = d.message_id where d.session_id = ? and m.topic = ? and d.state in ('delivered', 'injected', 'uncertain') limit 1").get(sessionId, topic) !== undefined;
   }
 
-  movedArtifacts(): Artifact[] { return this.#artifactIndex().filter(a => a.movedTo); }
+  movedArtifacts(folder?: string): Artifact[] {
+    if (folder === undefined) return this.artifactIndex().filter(a => a.movedTo);
+    const rows = this.#prepare("select value from artifacts where json_extract(value, '$.movedTo.folder') = ? order by number").all(folder) as Row[];
+    return rows.map(row => JSON.parse(row.value as string) as Artifact);
+  }
+
+  /** Use artifacts_destination without decoding unrelated children or the full index. */
+  hasMovedArtifactDeletion(folder: string): boolean {
+    return this.#prepare("select 1 from artifacts where json_extract(value, '$.movedTo.folder') = ? and json_extract(value, '$.deletion') is not null limit 1").get(folder) !== undefined;
+  }
 
   artifacts(topic?: string): Artifact[] {
-    return this.#artifactIndex().filter(a => !a.movedTo && (topic === undefined || a.topic === topic));
+    return this.artifactIndex().filter(a => !a.movedTo && (topic === undefined || a.topic === topic));
   }
 
   /** Stable newest-first pages avoid decoding the full artifact index on startup. */
@@ -1377,7 +1386,8 @@ export class Store implements HygieneMemory {
     return { artifacts, ...(more ? { more: true, before: artifacts.at(-1)!.id } : {}) };
   }
 
-  #artifactIndex(): Artifact[] {
+  /** One pass-local snapshot including redirects; mutation checks still read current records. */
+  artifactIndex(): Artifact[] {
     const rows = this.#prepare('select value from artifacts order by number').all() as Row[];
     return rows.map(r => JSON.parse(r.value as string) as Artifact);
   }
