@@ -61,8 +61,8 @@ test('invalid artifacts are typed refusals and leave the index unchanged', async
   await coord.waitForPresence(['coord']);
   const valid = { kind: 'note', title: 'Note', content: 'hello', topic: 'general' };
   for (const [change, code] of [
-    [{ kind: 'unknown' }, 'artifact-kind'], [{ path: join(root, 'missing'), content: undefined }, 'artifact-source'],
-    [{ path: join(root, 'missing') }, 'artifact-source'], [{ content: undefined }, 'artifact-source'],
+    [{ kind: 'unknown' }, 'invalid_argument'], [{ path: join(root, 'missing'), content: undefined }, 'artifact-source'],
+    [{ path: join(root, 'missing') }, 'invalid_argument'], [{ content: undefined }, 'invalid_argument'],
     [{ topic: 'absent' }, 'artifact-topic'], [{ title: '  ' }, 'artifact-title'],
     [{ title: 'first\nsecond' }, 'artifact-title'],
   ] as const) {

@@ -55,6 +55,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/test-docs-merge.test.ts`](../../../hub/test/test-docs-merge.test.ts) | [Notes](hub-test-test-docs-merge.test.ts.md) |
 | [`hub/test/test-docs.test.ts`](../../../hub/test/test-docs.test.ts) | [Notes](hub-test-test-docs.test.ts.md) |
 | [`hub/test/thread-runs.test.ts`](../../../hub/test/thread-runs.test.ts) | [Notes](hub-test-thread-runs.test.ts.md) |
+| [`hub/test/tool-arguments-spoke.test.ts`](../../../hub/test/tool-arguments-spoke.test.ts) | [Notes](hub-test-tool-arguments-spoke.test.ts.md) |
+| [`hub/test/tool-arguments.test.ts`](../../../hub/test/tool-arguments.test.ts) | [Notes](hub-test-tool-arguments.test.ts.md) |
 | [`hub/test/topics-component.test.ts`](../../../hub/test/topics-component.test.ts) | [Notes](hub-test-topics-component.test.ts.md) |
 | [`hub/test/verification-commands.test.ts`](../../../hub/test/verification-commands.test.ts) | [Notes](hub-test-verification-commands.test.ts.md) |
 | [`hub/test/web-artifacts.test.ts`](../../../hub/test/web-artifacts.test.ts) | [Notes](hub-test-web-artifacts.test.ts.md) |

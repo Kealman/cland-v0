@@ -50,7 +50,7 @@ If the human asked for the handover, show them the draft and apply their changes
 
 Call the spoke tool `role.handover` with `to` and `note`. The note is the Markdown above, or an object with `goals_now`, `work_in_flight`, `open_decisions` and `waiting_on`. Pass `then: "implementer"` only when the human wants you to stay on as an Implementer.
 
-- If the result is `{ ok: false, code: "note-incomplete", missing }`, fill in the named sections and call again.
+- If the result has `code: "invalid_argument"`, correct the named fields and retry (for example, supply the required `note`). A supplied Markdown note or empty section may return `{ ok: false, code: "note-incomplete", missing }`; fill in those sections and retry.
 - For any other refusal, tell the human what it says. Do not retry it another way.
 
 ## 5. Stop

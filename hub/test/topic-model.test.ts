@@ -201,9 +201,10 @@ test('an agent-created topic needs a title, is listed last until its first messa
   await ok(ui, { type: 'subscribe' });
 
   for (const args of [{}, { title: '   ' }]) {
-    const r = await coord.call<{ ok: boolean; error: string }>('topic.create', args);
+    const r = await coord.call<{ ok: boolean; error: string; code: string }>('topic.create', args);
     assert.equal(r.ok, false);
-    assert.match(r.error, /topic\.create needs a `title`|a topic needs a title/);
+    assert.equal(r.code, 'invalid_argument');
+    assert.match(r.error.split('; accepted fields:')[0]!, /title/);
   }
   const fromUi = await ui.request({ type: 'topic.create', title: '' });
   assert.equal(fromUi.error, 'a topic needs a title');

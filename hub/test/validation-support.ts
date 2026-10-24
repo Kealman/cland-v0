@@ -33,10 +33,12 @@ export async function dispatcherSpoke(t: import('node:test').TestContext, dispat
       if (frame.type === 'result') pending.get(frame.id)?.(frame as unknown as Record<string, unknown>);
     },
   }, { authenticated: true, edge: 'ws' });
-  t.after(() => { if (open) { open = false; conversation.closed(); } });
+  const close = () => { if (open) { open = false; conversation.closed(); } };
+  t.after(close);
   conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, name, sessionId, cwd: root }));
   await receiptBy(welcomed.promise, 'dispatcher welcome');
   return {
+    close,
     async call<T>(tool: string, args: Record<string, unknown> = {}): Promise<T> {
       const { id: item, ...rest } = args;
       if (tool === 'task.comment' && typeof rest.verdict === 'string') {

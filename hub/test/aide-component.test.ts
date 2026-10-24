@@ -80,7 +80,7 @@ test('Aide tracker, topics, artifacts and named sends work; crew operations name
     ['ask', { topic: opened.topic.id, question: 'Crew decision?', options: [] }],
     ['resolve', { topic: opened.topic.id }],
     ['merge', { item: id }],
-    ['role.handover', { to: 'coord' }],
+    ['role.handover', { to: 'coord', note: { goals_now: 'Fixture', work_in_flight: 'Nothing', open_decisions: 'Nothing', waiting_on: 'Nothing' } }],
     ['role.state', {}],
     ['subscribe', { subject: { item: id }, events: ['task'] }],
     ['task.rank', { id, top: true }],

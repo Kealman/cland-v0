@@ -78,7 +78,7 @@ test('hidden phone ask goes once through the worker and its message opens the ex
     const notified = pageUntil(page, () => (globalThis as NoticeWindow).notices.length === 1, 'worker showNotification receipt');
     void notified.catch(() => {});
     const ask = await sender.call<{ ok: boolean; ask: string }>('ask', { topic, question: 'Ship from the phone?', free: true });
-    assert.equal(ask.ok, true);
+    assert.equal(ask.ok, true, JSON.stringify(ask));
     await clock.advance(250);
     await notified;
     assert.deepEqual(await page.evaluate(() => (globalThis as NoticeWindow).notices), [{ title: 'coord · T-900001', options: { body: 'Ship from the phone?', tag: ask.ask, data: { area: 'Inbox', id: ask.ask } } }]);
@@ -190,7 +190,7 @@ for (const suppression of ['looking', 'disabled'] as const) test(`held registrat
     const held = pageUntil(page, () => (globalThis as NoticeWindow).held, 'delivery registration lookup held');
     void held.catch(() => {});
     const ask = await sender.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Hold notification delivery?', free: true });
-    assert.equal(ask.ok, true);
+    assert.equal(ask.ok, true, JSON.stringify(ask));
     await clock.advance(250);
     await held;
     if (suppression === 'looking') await page.evaluate(() => { (globalThis as NoticeWindow).looking = { visible: true, focused: true }; });

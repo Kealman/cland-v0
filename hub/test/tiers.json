@@ -489,6 +489,8 @@
     "hub/test/thread-seed-plan.test.ts": "T1",
     "hub/test/tier-context.test.ts": "T1",
     "hub/test/tier-tripwire-runner.test.ts": "T3",
+    "hub/test/tool-arguments-spoke.test.ts": "T2",
+    "hub/test/tool-arguments.test.ts": "T1",
     "hub/test/topic-model.test.ts": "T2",
     "hub/test/topic-withdraw.test.ts": "T2",
     "hub/test/topics-component.test.ts": "T2",

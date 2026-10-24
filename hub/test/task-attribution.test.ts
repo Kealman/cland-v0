@@ -52,9 +52,11 @@ test('CLI and tools persist, index, edit and journal regression discovery', asyn
     const args = tool === 'task.create' ? { title: 'Bad attribution', size: 'S', regression_of: '321' } : { id: item.id };
     for (const found_by of ['tests', 42, null]) {
       if (tool === 'task.edit' && found_by === null) continue;
-      const bad = await coord.call<{ ok: boolean; error: string }>(tool, { ...args, found_by });
+      const bad = await coord.call<{ ok: boolean; error: string; code: string }>(tool, { ...args, found_by });
       assert.equal(bad.ok, false);
-      assert.match(bad.error, /found_by must be one of/);
+      assert.equal(bad.code, 'invalid_argument');
+      assert.match(bad.error.split('; accepted fields:')[0]!, /found_by/);
+      for (const value of ['review', 'cover', 'droplet', 'qa', 'human']) assert.ok(bad.error.includes(value));
     }
   }
   const invalid = await cland(root, 'task', 'create', 'Invalid', '--size', 'S', '--regression-of', '321', '--found-by', 'tests');

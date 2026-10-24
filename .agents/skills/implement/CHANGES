@@ -75,3 +75,4 @@ T-1198: describe changed T3/T4 task duration sampling and point to the shared du
 T-1203: include tiers.json mapped T4 read-path guards in task verification; shared mapping and selection procedure stays in docs/agents/tests.md.
 T-1144: Distinguish provider capacity not-run receipts from executed failures and document no automatic fallback.
 T-1144 M1: Keep capacity unavailable through size/spend admission as well as acquisition.
+- T-998: distinguish correctable invalid_argument results from forbidden permission refusals and point to session-permission guidance.

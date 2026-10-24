@@ -226,7 +226,7 @@ test('permission rows preserve typed refusals, notices and audit provenance thro
   assert.equal((await ui.request({ type: 'role.clear', session: 'gone' })).ok, true);
   const gone = direct(ui, goneS, 'gone', 'sess-gone', null, 'gone');
   for (const tool of ['who', 'history', 'status', 'send', 'task.view', 'task.list', 'task.comment', 'task.claim', 'rename', 'session.launch']) {
-    const args = tool === 'send' || tool === 'status' ? { text } : tool === 'rename' ? { name: 'gone-2' } : tool === 'session.launch' ? { name: 'x' } : tool.startsWith('task.') && tool !== 'task.list' ? { id: 'T-1', text } : {};
+    const args = tool === 'send' || tool === 'status' ? { text } : tool === 'rename' ? { name: 'gone-2' } : tool === 'session.launch' ? { name: 'x' } : tool.startsWith('task.') && tool !== 'task.list' ? { id: 'T-1', ...(tool === 'task.comment' ? { text } : {}) } : {};
     await check(root, ui, gone, { tool, args, forbidden: tool, reason: /^a session with no role has no tools$/, ...(tool === 'send' ? { target: ' to the human' } : 'id' in args ? { target: ' T-1' } : {}) });
   }
 
@@ -423,13 +423,19 @@ test('the tools still to come are checked through the same table: one session, i
   const directRaw = direct(ui, raw, 'raw', 'sess-raw', 'coordinator', 'raw [Coordinator]');
   const unknown = /unknown request type/;
   const as = (role: string | null, label: string): Caller => ({ ...directRaw, role, label: role ? `raw [${label}]` : 'raw' });
-  const future = (tool: string, extra: Record<string, unknown> = {}) => ({ tool, args: { ...extra } });
+  // Permission controls use valid arguments; malformed calls now stop before the permission table.
+  const valid: Record<string, Record<string, unknown>> = {
+    ask: { topic: 'general', question: 'Which?', options: [] }, resolve: { topic: 'general' },
+    'topic.create': { title: 'Fixture' }, 'role.handover': { to: 'x', note: { goals_now: 'g', work_in_flight: 'w', open_decisions: 'o', waiting_on: 'n' } },
+    merge: { item: 'T-2' }, 'artifact.create': { kind: 'note', title: 'Fixture', topic: 'missing', content: 'Fixture' },
+  };
+  const future = (tool: string, extra: Record<string, unknown> = {}) => ({ tool, args: { ...valid[tool], ...extra }, ...(tool === 'merge' ? { target: ` ${extra.item ?? 'T-2'}` } : {}) });
   const rows: Array<[string | null, string, Array<Case>]> = [
     [
       'coordinator',
       'Coordinator',
       [
-        { ...future('ask', { text: 'which?' }), error: unknown },
+        future('ask'),
         // resolve and topic.create have frames (#32): allowed, they do their work
         future('resolve', { topic: 'general' }),
         future('topic.create', { title: 'Free topic' }),
@@ -437,7 +443,7 @@ test('the tools still to come are checked through the same table: one session, i
         // role.handover exists (#31): allowed by the table, then refused for a receiver the hub does not know
         { ...future('role.handover', { to: 'x', note: { goals_now: 'g', work_in_flight: 'w', open_decisions: 'o', waiting_on: 'n' } }), error: /"x" is not a session the hub knows/ },
         { ...future('merge', { item: 'T-2' }), error: /no branch/, errorCode: 'merge-branch' },
-        { ...future('artifact.create', { name: 'a' }), error: /no such artifact topic/, errorCode: 'artifact-topic' },
+        { ...future('artifact.create'), error: /no such artifact topic/, errorCode: 'artifact-topic' },
         { ...future('task.import', { repo: 'o/r' }), forbidden: 'task.import' },
       ],
     ],
@@ -445,7 +451,7 @@ test('the tools still to come are checked through the same table: one session, i
       'implementer',
       'Implementer',
       [
-        { ...future('ask', { text: 'which?' }), forbidden: 'ask' },
+        { ...future('ask'), forbidden: 'ask' },
         { ...future('resolve'), forbidden: 'resolve' },
         future('topic.create', { title: 'Mine', item: 'T-1' }),
         { ...future('topic.create', { title: 'Not mine', item: 'T-2' }), forbidden: 'topic.create', reason: /bound to its own item/, target: ' T-2' },

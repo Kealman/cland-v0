@@ -75,11 +75,13 @@ export class Refused extends Error {
   readonly code: string;
   readonly missing: string[] | undefined;
   readonly files: string[] | undefined;
-  constructor(message: string, code: string, missing?: string[], files?: string[]) {
+  readonly reason: string | undefined;
+  constructor(message: string, code: string, missing?: string[], files?: string[], reason?: string) {
     super(message);
     this.code = code;
     this.missing = missing;
     this.files = files;
+    this.reason = reason;
   }
 }
 
@@ -409,7 +411,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         this.#clock.clearTimeout(p.timer);
         if (frame.ok) p.resolve(frame.value);
         else if (frame.code === 'forbidden') p.reject(new Forbidden(frame.error, frame.permission ?? '', frame.role ?? null, frame.reason ?? ''));
-        else if (frame.code !== undefined) p.reject(new Refused(frame.error, frame.code, frame.missing, frame.files));
+        else if (frame.code !== undefined) p.reject(new Refused(frame.error, frame.code, frame.missing, frame.files, frame.reason));
         else p.reject(Object.assign(new Error(frame.error), frame.refusal ? { refusal: frame.refusal } : {}));
         break;
       }

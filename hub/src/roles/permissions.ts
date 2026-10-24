@@ -185,6 +185,25 @@ export type Decision = { ok: true } | { ok: false; permission: string; reason: s
 
 const label = (role: string) => ROLE_LABELS[role] ?? role;
 
+/** Fixed root boundary; shared by availability and the Lead scope guard. */
+export const LEAD_ROOT_TOOLS: readonly string[] = ['release', 'sync', 'push', 'hub.stop', 'hub.reload', 'rename', 'session.resume'];
+
+/** Tool availability uses no argument-dependent scopes or ownership facts. */
+export function toolAvailability(role: string | null, grants: readonly string[] | undefined, tool: string): Decision {
+  if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
+  if (role === 'lead' && LEAD_ROOT_TOOLS.includes(tool)) return { ok: false, permission: tool, reason: `root level: only the Coordinator may use ${tool}` };
+  if (role === 'aide' && !DEFAULT_PERMISSIONS.aide!.includes(tool)
+      || tool === 'ask' && role !== 'coordinator'
+      || tool === 'task.hold' && role !== 'reviewer' && role !== 'qa'
+      || tool === 'inbox.decline' || tool === 'inbox.read' || tool === 'account.clear') {
+    return decide(role, grants, { tool });
+  }
+  if (!grants?.some(grant => grant === tool || grant.startsWith(`${tool}:`))) return { ok: false, permission: tool, reason: `${label(role)} may not use ${tool}` };
+  if (tool === 'rename' && role !== 'coordinator') return { ok: false, permission: tool, reason: 'names never change: only the Coordinator renames' };
+  if (tool === 'artifact.promote' && role !== 'coordinator' && role !== 'aide') return { ok: false, permission: tool, reason: 'promote from the Coordinator’s shell with cland artifact promote' };
+  return { ok: true };
+}
+
 /**
  * May a session holding `role` (null: none) make `call`, under `grants` (its role's list)? A refusal names the
  * permission that would have allowed it (`tool` or `tool:scope`) and says why, for the model and the human.

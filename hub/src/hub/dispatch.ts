@@ -4,6 +4,7 @@ import { composeSnapshot, snapshotFrames } from './snapshot.ts';
 import { webAuthorityRefusal } from './web-authority.ts';
 import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
+import { InvalidArgument, validateToolFrame } from '../tool-arguments.ts';
 import { defaultConfig } from '../init/config.ts';
 import { DevT3Search } from './dev-t3-search.ts';
 import { DevT3Probes } from './dev-t3-probe.ts';
@@ -49,7 +50,7 @@ import { coveragePointers, parseCoverageMap } from '../suite-coverage.ts';
 import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
-import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
+import { decide, toolAvailability, LEAD_ROOT_TOOLS, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import { crewSummary, parseIdleFrom, resolveCrewIdle } from '../crew.ts';
 import type { RolesConfig } from '../roles/config.ts';
 import { ROLE_NAMES, withRole } from '../names.ts';
@@ -465,6 +466,7 @@ export class Dispatcher {
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
+    if (err instanceof InvalidArgument) return { type: 'result', id, ok: false, error: err.message, code: err.code, reason: err.reason };
     if (err instanceof AccountLimited) return { type: 'result', id, ok: false, error: err.message, code: err.code, account: err.account, resetsAt: err.resetsAt };
     if (err instanceof PublishError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof PushError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
@@ -488,6 +490,29 @@ export class Dispatcher {
    * a frame that is no tool the table knows goes on to its own "unknown request" answer.
    */
   #permitted(connection: Caller, frame: Record<string, unknown>, peer: Peer, answer = true): boolean {
+    const core = this.#options.core;
+    const roles = core.roles;
+    const grants = connection.role === null ? undefined : roles?.get().get(connection.role)?.permissions.tools;
+    const type = String(frame.type);
+    const tool = type.startsWith('event.') ? type.slice(6) : type === 'artifact.list' || type === 'merge.queue' ? 'history' : type;
+    if (['rule.add', 'rule.edit', 'rule.retire'].includes(type) && !['coordinator', 'aide'].includes(connection.role ?? '')) {
+      this.#refuse(connection, frame, peer, type, 'rule writes belong to the human, Coordinator or Aide; propose the rule to the Coordinator in your item topic', '', answer);
+      return false;
+    }
+    if (roles && (KNOWN_TOOLS.includes(tool) || connection.role === 'aide' && (tool === 'role.state' || tool.startsWith('session.'))) && !(tool === 'send' && frame.kind === 'request')) {
+      const availability = toolAvailability(connection.role, grants, tool);
+      if (!availability.ok) {
+        const target = tool === 'send' ? (!Array.isArray(frame.to) || frame.to.length === 0 ? ' to the human' : '') : typeof frame.item === 'string' ? ` ${frame.item}` : '';
+        this.#refuse(connection, frame, peer, availability.permission, availability.reason, target, answer);
+        return false;
+      }
+    }
+    try { validateToolFrame(frame, this.#options.tracker ? [...this.#options.tracker.kinds, 'category'] : undefined); }
+    catch (error) {
+      if (answer) peer.send(Dispatcher.#failure(String(frame.id), error));
+      else throw error;
+      return false;
+    }
     if (frame.type === 'send') {
       try { frame.to = sendRecipients(frame.to); }
       catch (error) {
@@ -501,16 +526,9 @@ export class Dispatcher {
       if (answer) peer.send(Dispatcher.#failure(String(frame.id), new Error(reason)));
       return false;
     }
-    const core = this.#options.core;
-    if (['rule.add', 'rule.edit', 'rule.retire'].includes(String(frame.type)) && !['coordinator', 'aide'].includes(connection.role ?? '')) {
-      this.#refuse(connection, frame, peer, String(frame.type), 'rule writes belong to the human, Coordinator or Aide; propose the rule to the Coordinator in your item topic', '', answer);
-      return false;
-    }
-    const roles = core.roles;
     if (!roles) return true;
     const call = this.#toolCall(connection, frame);
     if (!call) return true;
-    const grants = connection.role === null ? undefined : roles.get().get(connection.role)?.permissions.tools;
     const decision = decide(connection.role, grants, call);
     if (decision.ok) return true;
     const target = call.tool === 'send' ? (call.toHuman ? ' to the human' : '') : typeof call.item === 'string' ? ` ${call.item}` : '';
@@ -615,7 +633,7 @@ export class Dispatcher {
   #leadRefusal(connection: Caller, frame: Record<string, unknown>): string | null {
     if (connection.role !== 'lead') return null;
     const type = String(frame.type);
-    if (['release', 'sync', 'push', 'hub.stop', 'hub.reload', 'rename', 'session.resume'].includes(type)) {
+    if (LEAD_ROOT_TOOLS.includes(type)) {
       return `root level: only the Coordinator may use ${type}`;
     }
     const request = type === 'send' && frame.kind !== 'request' && typeof frame.text === 'string'

@@ -77,7 +77,7 @@ test('lead-1 hands its node and question to lead-2; the next verdict reaches the
     assert.equal(refused.ok, false, to);
     assert.match(refused.error ?? '', /already claims|root Coordinator/);
   }
-  assert.equal((await a.s.call<Result>('role.handover', { to: 'lead-2', note: { goals_now: 'Incomplete' } })).code, 'note-incomplete');
+  assert.equal((await a.s.call<Result>('role.handover', { to: 'lead-2', note: { goals_now: 'Incomplete' } })).code, 'invalid_argument');
   assert.equal((await claim(epic)).session, 'lead-1');
   const topic = (await coord.call<{ topic: { id: string } }>('topic.create', { title: 'Pending decision', item: heldTask })).topic.id;
   const asked = await impl.call<Result>('send', { to: [`lead ${heldTask}`], topic, kind: 'question', text: 'Which implementation?' });

@@ -190,8 +190,11 @@ test('a handover without a complete note is refused with the typed error naming 
   await a.waitForPresence(['coord', 'next']);
 
   const none = await a.call<Result>('role.handover', { to: 'next' });
-  assert.deepEqual([none.ok, none.code, none.missing], [false, 'note-incomplete', ['goals_now', 'work_in_flight', 'open_decisions', 'waiting_on']]);
-  assert.match(none.error ?? '', /^handover refused: the note has no "goals now", "work in flight", "open decisions", "waiting on" sections/);
+  assert.deepEqual([none.ok, none.code], [false, 'invalid_argument']);
+  assert.match(none.reason ?? '', /note/);
+  // A supplied note still gets the established section-level diagnostics.
+  const supplied = await a.call<Result>('role.handover', { to: 'next', note: '' });
+  assert.deepEqual([supplied.code, supplied.missing], ['note-incomplete', ['goals_now', 'work_in_flight', 'open_decisions', 'waiting_on']]);
   const noWaiting = await a.call<Result>('role.handover', { to: 'next', note: NOTE_MD.replace(/## Waiting on[\s\S]*$/, '') });
   assert.deepEqual([noWaiting.code, noWaiting.missing], ['note-incomplete', ['waiting_on']]);
   assert.match(noWaiting.error ?? '', /^handover refused: the note has no "waiting on" section —/);

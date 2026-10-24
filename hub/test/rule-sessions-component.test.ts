@@ -114,8 +114,13 @@ test('rule tools record human-message and Aide origins, refuse invented origins,
   for (const invalid of [undefined, { topic: 'general', msg_id: 'absent' }, { topic: 'agents', msg_id: message.id }, { topic: 'general', msg_id: agent.id }, 'shell']) {
     for (const [tool, input] of [['rule.add', args], ['rule.edit', { number: 1, text: 'Edited.' }], ['rule.retire', { number: 1, reason: 'retired' }]] as const) {
       const refused = await coord.call<Result>(tool, { ...input, origin: invalid });
-      assert.equal(refused.code, 'forbidden', JSON.stringify(refused));
-      assert.match(refused.reason!, /human.*message/);
+      if (invalid === 'shell') {
+        assert.equal(refused.code, 'invalid_argument', JSON.stringify(refused));
+        assert.match(refused.reason!.split('; accepted fields:')[0]!, /origin/);
+      } else {
+        assert.equal(refused.code, 'forbidden', JSON.stringify(refused));
+        assert.match(refused.reason!, /human.*message/);
+      }
     }
   }
   const refused = await impl.call<Result>('rule.add', args);
