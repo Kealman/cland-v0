@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-983
 branch: t/T-779-homebrew-brew-install-cland-on-macos
 created: 2026-10-18T06:04:22.818Z
-updated: 2026-10-24T14:27:24.171Z
+updated: 2026-10-24T18:44:25.360Z
 closed: 2026-10-24T14:27:24.171Z
 ---
 
@@ -289,3 +289,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-24T14:27:24.171Z
 
 Merged 749b13d2c803d31866e6e72a3008de38d38c47ed onto dev.
+
+### coord · 2026-10-24T18:44:25.360Z
+
+Human decision 2026-10-24 18:43Z (ask 01e1f90b): coord created the empty public tap Kealman/homebrew-tap with gh at the human's instruction, and set [release.homebrew] tap = "Kealman/homebrew-tap". The next cland release publishes Formula/cland.rb. Landing evidence for revised C1 is a clean-macOS brew install/version/doctor/upgrade/uninstall after that release; then the public docs drop the 'availability pending' label.

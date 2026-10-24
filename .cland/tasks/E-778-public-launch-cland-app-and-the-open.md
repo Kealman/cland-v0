@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:03:55.152Z
-updated: 2026-10-24T13:30:05.063Z
+updated: 2026-10-24T18:43:29.876Z
 ---
 
 ## Summary
@@ -55,12 +55,13 @@ stages:
       - - T-1223
       - - T-1222
         - T-1245
-  - name: screenshots
+  - name: screenshots and prebuilt web bundle
     qa:
       scope: none
       when: after-stage
     lanes:
       - - T-784
+      - - T-1234
 ```
 
 ## Comments

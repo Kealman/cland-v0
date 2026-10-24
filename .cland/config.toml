@@ -6,7 +6,7 @@ name = "v0"
 
 [release.homebrew]
 # Optional existing GitHub tap; empty disables formula publication.
-tap = ""
+tap = "Kealman/homebrew-tap"
 
 [publish]
 # Exact paths or directory/** prefixes eligible for out-of-release publication.
