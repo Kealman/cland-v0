@@ -207,7 +207,7 @@ function viewText(i: ItemView): string {
     `  created   ${i.created}`,
     `  updated   ${i.updated}`,
     ...(i.verify ? [`  verify    ${i.verify.id} · ${i.verify.state} · ${i.verify.result ?? '-'} · head ${i.verify.head} · finished ${i.verify.finished ?? '-'} · artifact ${i.verify.artifact ?? '-'}${i.verify.cached ? ' · cached' : ''}`] : []),
-    `  criteria  ${i.criteriaCounts.verified} verified / ${i.criteriaCounts.total} total · ${i.criteriaCounts.done} done · ${i.criteriaCounts.stale} stale · ${i.criteriaCounts.failed} failed`,
+    ...(i.criteriaCounts ? [`  criteria  ${i.criteriaCounts.verified} verified / ${i.criteriaCounts.total} total · ${i.criteriaCounts.done} done · ${i.criteriaCounts.stale} stale · ${i.criteriaCounts.failed} failed`] : []),
     ...(i.closed ? [`  closed    ${i.closed}`] : []),
     ...(i.github ? [`  github    ${i.github.repo}#${i.github.number}  ${i.github.url}`] : []),
     `  file      ${i.path}`,

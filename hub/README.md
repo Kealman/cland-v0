@@ -2378,6 +2378,8 @@ and replaces the hub's total on each report. A new launch under a reused name st
 
 `task.list` and `task` event summaries carry `criteria: {total, done, verified, stale, failed}` from indexed marks, without reading an item file. Counts are exclusive: failed takes priority over current verified, stale, then done; a checkbox alone counts as open. Verification is current only at the exact branch tip (the receipt tip for a landed task, `dev` for a planning container). `task.view` retains the full `criteria` array and adds `criteriaCounts` with the same counts.
 
+Plain CLI item output, including `task view` and `task comment`, accepts older hub replies without `criteriaCounts`, `closed` or `verify`. It omits those rows when absent and still prints the remaining item facts, body and comments.
+
 Tasks also carry `verify`, null until a matching verification exists: `{id, state, result, head, finished, artifact, cached?}`. The latest submitted job matching the item number or branch wins; results are `passed`, `failed`, `cancelled`, or null while queued/launching/running. `cached` holds the original run, head and candidate tree. Suites maintains these lookups across saves and reconstructs them on startup. Changes coalesce per task per tick and emit a silent `task` event; successful completion publishes one terminal card with its log artifact. A blocked report still publishes the terminal state. Subscribed sessions receive the usual suite report, with no additional delivery for this projection. The plain CLI view prints the closing time, counts and verification details.
 
 ### Migrating prefixes and categories

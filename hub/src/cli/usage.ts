@@ -94,6 +94,7 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
 export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [--regression-of <id>] [--found-by review|cover|droplet|qa|human] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent <id>] [--blocked-by <id>]… [--follows <id>]… [--topic t] [--branch b]
   task view <id> (any kind prefix in either case, or a bare number)
+    Text output shows criteria counts, closing time and latest verification only when supplied by the hub.
   task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text] [--allow-large <id>=<reason>]…
