@@ -41,3 +41,37 @@ archive continuation when byte-capped pages contain fewer than 200 messages.
 It also opens older-page rendered centre/split folder-child views, holds detail
 reads across reconnect and visibility reset, and proves both rendered/raw views
 retain their artifact identities before those detail receipts arrive.
+
+T-1026 retains the 20,000-line fixture and every original work cap. The input is
+normalized and split once for the async parse and projection. Each injected
+language reuses its parser across 64-region batches; descendants from the prior
+batch are removed after their immutable trees are saved, before the next parse.
+The existing long case additionally bounds parser creation at six. The context
+oracle includes 65 nested Markdown fences, crossing the batch boundary with
+inline descendants, so text, spans, links and applied styles detect stale-child
+reparsing or duplicate extraction. The callback audit still covers every turn,
+without allocating unused return-value tables in scheduled callbacks.
+
+For T-1026 duration evidence, keep the test identity unchanged. Record five
+sequential, standalone local executions with head/tree and platform, then the
+case's ordinary T2 timing from mode-free Linux droplet verification. Stage covers
+supply the subsequent Linux and macOS landing measurements. These standalone
+runs are local evidence, not five Linux load repetitions.
+
+The T-1026 duration fixture keeps exactly 20,000 source rows and 256 rich
+eight-line sections in eight distributed clusters of 32, including the existing
+start/middle/end samples. Each plain section reuses seven short plain lines and
+a blank paragraph boundary; it does not create one enormous unfinished paragraph.
+The clusters retain dense 128-row windows with more than 256 decorations. The
+fully rich recursive/context oracle is unchanged by this density reduction.
+Additional workload guards require at least 150 root extensions, 256 Lua regions,
+1,024 inline regions, 20,000 extraction/projection steps and 4,096 decorations,
+alongside exactly 20,000 settled rows. Diagnostic totals quantify the margin over
+every original per-slice cap. The RPC audit transfers each callback's assertion
+fields once, retaining every observed slice and reused-parser receipt.
+
+During T-1026 validation, temporarily raising each work/row/decoration cap in
+isolation must still fail its original cap assertion on this fixture. Restore
+the source after every targeted mutant; publish the original results and the
+restored head's green file result together. These negative controls establish
+that the shorter repeated syntax still pressures the deterministic limits.

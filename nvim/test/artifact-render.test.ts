@@ -162,30 +162,44 @@ test('first artifact open projects an existing modified editor buffer without lo
 test('a 20,000-line artifact yields to keys, bounds render work and caches the settled projection', { skip }, async t => {
   const root = await tempProject(t);
   const path = join(root, 'very-long.md');
-  const text = Array.from({ length: 2500 }, (_, i) => `# Slice ${i}\nUse **strong** and [brief](https://example.com/${i}).\n- List item\n> Quoted words\n\n\`\`\`lua\nprint(${i})\n\`\`\``).join('\n');
+  // Keep source scale independent of repeated syntax density. Eight distributed
+  // clusters retain dense 128-row decoration batches, including start/middle/end.
+  const rich = new Set(Array.from({ length: 8 }, (_, cluster) => {
+    const first = cluster === 4 ? 1248 : Math.round(cluster * (2500 - 32) / 7);
+    return Array.from({ length: 32 }, (_, i) => first + i);
+  }).flat());
+  assert.equal(rich.size, 256);
+  const plain = 'plain\n'.repeat(7); // Seven source lines and a paragraph boundary.
+  const text = Array.from({ length: 2500 }, (_, i) => rich.has(i)
+    ? `# Slice ${i}\nUse **strong** and [brief](https://example.com/${i}).\n- List item\n> Quoted words\n\n\`\`\`lua\nprint(${i})\n\`\`\``
+    : plain).join('\n');
   assert.equal(text.split('\n').length, 20000);
   await writeFile(path, text);
   const c = await (await artifactScreen(t, root)).start();
   await waitInitialSnapshots(c);
   await c.input('<Esc>');
   const first = await c.lua<{ pending: boolean; ms: number; rows: number; height: number; screen: string }>(`
-    _G.long_artifact={parsers=0,rows=0,async=0,slices={},key=false,first=true,reused={}}
+    _G.long_artifact={parsers=0,rows=0,async=0,slices={},key=false,first=true,reused={},rootExtensions=0,rootRows=0,injectedRegions=0,injectedBatches=0,regionLanguages={}}
     local audit=_G.long_artifact
     local active
+    local pipelines=setmetatable({},{__mode='k'})
     local function wrap(fn)
       local label=active and active.lang
+      local pipeline=pipelines[fn]
+      if pipeline==nil then
+        local source=debug.getinfo(fn,'S').source
+        pipeline=(source:find('cland/thread_md.lua',1,true) or source:find('cland/artifact_md.lua',1,true) or source:find('treesitter/languagetree.lua',1,true))~=nil
+        pipelines[fn]=pipeline
+      end
       return function(...)
         local parent=active
-        local source=debug.getinfo(fn,'S').source
-        local pipeline=source:find('cland/thread_md.lua',1,true) or source:find('cland/artifact_md.lua',1,true) or source:find('treesitter/languagetree.lua',1,true)
-        local slice={work=0,marks=0,rows=0,lang=label,pipeline=pipeline~=nil,parser=false}
+        local slice={work=0,marks=0,rows=0,lang=label,pipeline=pipeline,parser=false}
         active=slice
         local started=vim.uv.hrtime()
-        local result={fn(...)}
+        fn(...)
         slice.ms=(vim.uv.hrtime()-started)/1e6
         active=parent
         if slice.work>0 or slice.marks>0 or slice.rows>0 or slice.parser or slice.pipeline then slice.recorded=true; audit.slices[#audit.slices+1]=slice end
-        return unpack(result)
       end
     end
     local schedule,defer=vim.schedule,vim.defer_fn
@@ -214,6 +228,13 @@ test('a 20,000-line artifact yields to keys, bounds render work and caches the s
           local last=regions[1][1][4]
           assert(last-previous<=128,'bounded Markdown prefix extension')
           previous=last
+          audit.rootExtensions=audit.rootExtensions+1
+          audit.rootRows=last
+        else
+          audit.injectedRegions=audit.injectedRegions+#regions
+          audit.injectedBatches=audit.injectedBatches+1
+          local lang=self:lang()
+          audit.regionLanguages[lang]=(audit.regionLanguages[lang] or 0)+#regions
         end
         return included(self,regions)
       end
@@ -292,7 +313,27 @@ test('a 20,000-line artifact yields to keys, bounds render work and caches the s
     const screen = await c.waitScreen(s => s.includes(heading!) && s.includes(code!) && !s.includes('# Slice') && !s.includes('```'), `settled ${heading} grid`);
     assert.ok(screen.includes('Use strong and brief.'), screen);
   }
-  const audit = await c.lua<{ initialSliceMs: number; reused: { recorded?: boolean }[]; parsers: number; async: number; slices: { work: number; rows: number; marks: number; ms: number }[] }>('return _G.long_artifact');
+  // Send each observed callback once with just its assertion fields. Returning
+  // the audit directly duplicates reused slices and sends unused observer state.
+  const compact = await c.lua<{ initialSliceMs: number; reused: { recorded?: boolean }[]; parsers: number; async: number; rootExtensions: number; rootRows: number; injectedRegions: number; injectedBatches: number; regionLanguages: Record<string, number>; projectedRows: number; slices: [number, number, number, number][] }>(`
+    local audit=_G.long_artifact
+    local slices,reused={},{}
+    for _,s in ipairs(audit.slices) do slices[#slices+1]={s.work,s.rows,s.marks,s.ms} end
+    for _,s in ipairs(audit.reused) do reused[#reused+1]={recorded=s.recorded} end
+    return {initialSliceMs=audit.initialSliceMs,reused=reused,parsers=audit.parsers,async=audit.async,slices=slices,
+      rootExtensions=audit.rootExtensions,rootRows=audit.rootRows,injectedRegions=audit.injectedRegions,injectedBatches=audit.injectedBatches,
+      regionLanguages=audit.regionLanguages,projectedRows=vim.api.nvim_buf_line_count(0)}
+  `);
+  const audit = { ...compact, slices: compact.slices.map(([work, rows, marks, ms]) => ({ work, rows, marks, ms })) };
+  // Keep generous workload margins independently of the unchanged per-slice caps.
+  assert.equal(audit.rootRows, 20000);
+  assert.equal(audit.projectedRows, 20000);
+  assert.ok(audit.rootExtensions >= 150, 'many continuous-prefix extensions');
+  assert.ok(audit.regionLanguages.lua! >= 256, 'at least four Lua region batches');
+  assert.ok(audit.regionLanguages.markdown_inline! >= 1024, 'at least sixteen inline region batches');
+  assert.ok(audit.slices.reduce((n, s) => n + s.work, 0) >= 20000, 'extraction/projection crosses many work slices');
+  assert.ok(audit.slices.reduce((n, s) => n + s.marks, 0) >= 4096, 'decorations cross at least sixteen slices');
+  assert.ok(audit.parsers <= 6, `bounded parser creation across injection batches: ${audit.parsers}`);
   assert.ok(audit.reused.length > 0, 'fixture exercises synchronous reused-parser turns');
   assert.ok(audit.reused.every(s => s.recorded), 'every synchronous reused-parser turn is in the timing audit');
   assert.ok(audit.async > 0, 'whole-document parser uses asynchronous slices');
@@ -304,13 +345,13 @@ test('a 20,000-line artifact yields to keys, bounds render work and caches the s
   assert.ok(maximumSliceMs < 1000, 'gross one-second slice guard under load');
   await c.lua("require('cland.artifacts').open('A-1003')");
   assert.equal(await c.lua('return _G.long_artifact.parsers'), audit.parsers, 'unchanged 20,000-line version creates zero new parsers');
-  t.diagnostic(`20,000-line render: first ${first.ms.toFixed(3)} ms; ${audit.slices.length} slices; max slice ${maximumSliceMs.toFixed(3)} ms; initial render ${audit.initialSliceMs.toFixed(3)} ms; worst ${JSON.stringify(audit.slices.toSorted((a,b) => b.ms-a.ms).slice(0,3))}; max work ${Math.max(...audit.slices.map(s => s.work))}; max rows ${Math.max(...audit.slices.map(s => s.rows))}; max marks ${Math.max(...audit.slices.map(s => s.marks))}; parsers ${audit.parsers}; async ${audit.async}`);
+  t.diagnostic(`20,000-line render: ${Buffer.byteLength(text)} source bytes; ${rich.size} rich sections; first ${first.ms.toFixed(3)} ms; ${audit.slices.length} slices; max slice ${maximumSliceMs.toFixed(3)} ms; initial render ${audit.initialSliceMs.toFixed(3)} ms; worst ${JSON.stringify(audit.slices.toSorted((a,b) => b.ms-a.ms).slice(0,3))}; max work ${Math.max(...audit.slices.map(s => s.work))}; max rows ${Math.max(...audit.slices.map(s => s.rows))}; max marks ${Math.max(...audit.slices.map(s => s.marks))}; parsers ${audit.parsers}; async ${audit.async}; root extensions ${audit.rootExtensions} / ${audit.rootRows} rows; injections ${audit.injectedRegions} in ${audit.injectedBatches} batches ${JSON.stringify(audit.regionLanguages)}; total work ${audit.slices.reduce((n,s) => n+s.work,0)}; total projected rows ${audit.slices.reduce((n,s) => n+s.rows,0)}; settled rows ${audit.projectedRows}; total marks ${audit.slices.reduce((n,s) => n+s.marks,0)}`);
 });
 
 test('sliced artifacts retain whole-document Markdown context and discard superseded work', { skip }, async t => {
   const root = await tempProject(t);
   const path = join(root, 'context.md');
-  const text = ['# Whole context', '[Read][far]', '```text', ...Array.from({ length: 300 }, () => '# Literal code'), '```', '| Label | Value |', '|---|---|', ...Array.from({ length: 300 }, (_, i) => `| **Row ${i}** | ready |`), '', '```lua', `vim.cmd('echo \"nested\"')`, '```', '```markdown', '**Inner bold** [Nested](https://example.com/nested)', '```', '', '> let nested = 1', '> echo nested', '', 'local combined = [[', '', 'joined]]', '', '[far]: https://example.com/destination'].join('\n');
+  const text = ['# Whole context', '[Read][far]', '```text', ...Array.from({ length: 300 }, () => '# Literal code'), '```', ...Array.from({ length: 65 }, (_, i) => ['```markdown', `**Nested batch ${i}** [link](https://example.com/${i})`, '```']).flat(), '| Label | Value |', '|---|---|', ...Array.from({ length: 300 }, (_, i) => `| **Row ${i}** | ready |`), '', '```lua', `vim.cmd('echo \"nested\"')`, '```', '```markdown', '**Inner bold** [Nested](https://example.com/nested)', '```', '', '> let nested = 1', '> echo nested', '', 'local combined = [[', '', 'joined]]', '', '[far]: https://example.com/destination'].join('\n');
   await writeFile(path, text);
   const c = await (await artifactScreen(t, root)).start();
   await waitInitialSnapshots(c);

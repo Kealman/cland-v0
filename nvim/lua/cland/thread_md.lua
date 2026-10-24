@@ -11,6 +11,12 @@
 local M = {}
 local fit = require('cland.bars').fit
 
+local function copy_options(source)
+  local opts = {}
+  for key, value in pairs(source) do opts[key] = value end
+  return opts
+end
+
 local cache, order, cached, oldest = {}, {}, 0, 1
 local CACHE_MAX = 4000
 
@@ -79,7 +85,7 @@ function M.lines(text)
   return vim.split(text, '\n', { plain = true }), text
 end
 
-local function spans_of(text, lines, work, parser)
+local function spans_of(text, lines, work, parser, source)
   local out, links, tables, references = {}, {}, {}, {}
   local nrows = #lines
   -- one span, its end clamped to the body: nothing spills into the next message
@@ -103,7 +109,7 @@ local function spans_of(text, lines, work, parser)
     parser = vim.treesitter.get_string_parser(text .. '\n', 'markdown')
     parser:parse(true)
   end
-  local source = text .. '\n'
+  source = source or text .. '\n'
   parser:for_each_tree(function(tree, ltree)
     work()
     local lang = ltree:lang()
@@ -273,8 +279,11 @@ end
 local function parsed(text, work, parser)
   text = tostring(text or '')
   if cache[text] then return cache[text] end
-  local lines, clean = M.lines(text)
-  local ok, result = pcall(spans_of, clean, lines, work, parser)
+  local input = parser and parser.input
+  local lines, clean
+  if input then lines, clean = input.lines, input.clean
+  else lines, clean = M.lines(text) end
+  local ok, result = pcall(spans_of, clean, lines, work, parser, input and input.source)
   local body = ok and result or { lines = lines, spans = {}, links = {}, tables = {} }
   body.layouts = {}
   -- Projection visits each source row. Index spans and links once rather than
@@ -367,7 +376,7 @@ local function project(body, source_row, from, to, prefix, cell, work)
     work()
     local er = s.opts.end_row or s.row
     if s.row <= source_row and source_row <= er then
-      local opts = vim.tbl_extend('force', {}, s.opts)
+      local opts = copy_options(s.opts)
       if opts.end_row then
         local a = col(s.row == source_row and s.col or from)
         local z = col(er == source_row and opts.end_col or to)
@@ -464,7 +473,7 @@ function M.render(text, cells, work, parser)
     lines[#lines + 1], metadata[#metadata + 1] = p.text, { links = p.links, source_line = source_row + 1 }
     for _, s in ipairs(p.spans) do
       work()
-      local opts = vim.tbl_extend('force', {}, s.opts)
+      local opts = copy_options(s.opts)
       if opts.end_row then opts.end_row = row end
       spans[#spans + 1] = { row = row, col = s.col, opts = opts }
     end
@@ -574,10 +583,14 @@ function M.render_async(text, cells, done, valid)
       end)
       for lang, regions in pairs(discover(parser)) do
         work()
-        for first = 1, #regions, 64 do
-          work()
-          local loaded, child = pcall(parser.add_child, parser, lang)
-          if loaded then
+        local loaded, child = pcall(parser.add_child, parser, lang)
+        if loaded then
+          for first = 1, #regions, 64 do
+            work()
+            -- Reuse this language's native parser across independent batches.
+            -- Descendants belong to the previous batch; their trees have already
+            -- been snapshotted, so do not parse or extract them again.
+            for name in pairs(child:children()) do work(); child:remove_child(name) end
             -- A combined injection is one region containing all its ranges;
             -- it stays intact. Batches partition independent parser regions.
             child:set_included_regions(vim.list_slice(regions, first, first + 63))
@@ -587,7 +600,8 @@ function M.render_async(text, cells, done, valid)
       end
     end
     visit(root)
-    local parsed_trees = { for_each_tree = function(_, visit)
+    -- Normalize/split the full input once, shared by parsing and projection.
+    local parsed_trees = { input = {lines = lines, clean = clean, source = source}, for_each_tree = function(_, visit)
       for _, pair in ipairs(trees) do work(); visit(pair[1], pair[2]) end
     end }
     return M.render(text, cells, work, parsed_trees)
