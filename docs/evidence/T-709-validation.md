@@ -46,6 +46,7 @@ The T1 boundary remains empty over all 11 T2 files and their neutral dependencie
 
 A-4995 remains the durable complete bundle for the actual production prefix mutation/rewrite/restoration proof, arbitrary QA route red/green proof and all 17 existing T3 consumers. A-4996 independently inspected those proofs and all 256 unchanged T2 assertions. Those feature implementations are unchanged by the correction; current workbench and QA files also pass five times here.
 
+<!-- cland-allow-closed-wording: historical evidence records review still pending at that head -->
 See T-709-admission-audit.md for nine mechanical extraction comparisons. Source re-review and exact-reviewed-head droplet verification remain pending.
 
 ## Source carrier follow-up
@@ -58,6 +59,7 @@ See T-709-integration.md: merge5cfc492a preserves minimal compiler timing and bo
 
 ## Authorized T-684 integration
 
+<!-- cland-allow-closed-wording: historical integration evidence; until.ts is a filename -->
 See T-709-lint-integration.md: merge723daf59 keeps until.ts/neutral roots and both package scripts. Fetched-origin lint gate and shrink pass; generated baseline5e6e612e adds a zero-debt T1 entry, with total524 allowances unchanged. Seven files5/5 (245passes,0fail/skip), peak1m7.949<15; typecheck/tiers pass; exact40 replay refreshed atb27f71f4. Prior-head A-5059 is green. Delta source review and a fresh exact-head droplet remain required.
 
 ## Owned replay cancellation correction

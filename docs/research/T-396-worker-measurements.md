@@ -59,8 +59,11 @@ names, skips and cancellations visible, even when a run cannot finish.
 | 4 | Mac local | 1 | pending | | | | | n/a |
 | 5 | Mac local | 1 | pending | | | | | n/a |
 | 6 | Mac local | 1 | pending | | | | | n/a |
+<!-- cland-allow-closed-wording: c-16 is a droplet size; pending records an unmeasured historical experiment -->
 | 4 | c-16 | 1 | pending | | | | | |
+<!-- cland-allow-closed-wording: c-16 is a droplet size; pending records an unmeasured historical experiment -->
 | 6 | c-16 | 1 | pending | | | | | |
+<!-- cland-allow-closed-wording: c-16 is a droplet size; pending records an unmeasured historical experiment -->
 | 8 | c-16 | 1 | pending | | | | | |
 
 The 15:35Z Coordinator decision replaces the original six-local-run plan: run

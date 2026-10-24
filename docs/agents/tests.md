@@ -52,6 +52,20 @@ in [skill maintenance](../../skills/README.md). The T1 lint fixture rejects miss
 or empty records; `skill-provenance-merge.test.ts` proves native Git merge,
 `merge-tree` and one-parent squash preservation after copying the shipped skills.
 
+The closed-item wording guard (`hub/test/lint-closed-item-wording.ts`) checks
+repository `README*.md` files and `docs/**/*.md` against `.cland/tasks/*.md`,
+excluding dependency, Git and worktree directories. It fails with file/line
+diagnostics when a line combines a closed item reference with `until`, `stand-in`,
+`pending` or `later ticket`. Default tracker prefixes and numeric `T-n` aliases
+share identity; open and unknown references are ignored. This is a lexical
+same-line check, so unrelated clauses, runtime state and historical records need
+a same-line or immediately preceding standalone HTML comment:
+`<!-- cland-allow-closed-wording: reason -->`. Keep the reason specific; blank
+reasons do not exempt a line. An inline exemption applies only to its own line.
+In-memory fixture tracker controls run at T0 without a test worker; `--self-test`
+runs only those controls, and `--help` describes the command. The guard uses the
+candidate checkout's tracker state, without contacting a running hub.
+
 The T0 dictionary membership guard (`hub/test/lint-dictionary-membership.ts`)
 checks every `in` expression in `hub/src` with the TypeScript compiler API.
 String-indexed dictionaries (including `Record<string, …>`), `any`, `unknown`,

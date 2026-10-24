@@ -143,6 +143,7 @@ scope: full
 
 New projects and built-in fallbacks use the same Codex sandbox for every role (T-1222, human decision 2026-10-24). Implementer and Aide use `workspace-write`; Coordinator, Lead and QA use `danger-full-access`; Reviewer stays `read-only` with no network. This project's explicit `.cland/roles.toml` keeps the T-65 full-access policy for its own crew.
 
+<!-- cland-allow-closed-wording: existing sessions retain sandbox policy until relaunch; landed T-1222 is not pending -->
 These values come from `[<role>.launch]` in `.cland/roles.toml` (`approval`, `sandbox`, `writable_roots`, `network`; `hub/README.md`, ".cland/roles.toml") and are read at each launch and relaunch. An omitted role or sandbox key uses the built-in fallback; an explicit value is preserved, including `sandbox = ""` for Codex's own configuration. T-1222 tightens Implementer/Aide fallbacks from full access to workspace-write and changes Coordinator/Lead fallbacks from Codex's own setting to explicit full access. Existing sessions keep their policy until relaunched. Generated Codex roles use `approval = "never"`: a command the sandbox refuses fails without waiting for approval. Claude Code uses its own permission policy; generated roles use `permissions = "auto"`, while this project's explicit `skip` policy bypasses prompts and the classifier.
 
 | Role | Sandbox default | Network | Why |

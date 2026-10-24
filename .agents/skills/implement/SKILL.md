@@ -129,6 +129,11 @@ Automatic run reports and verify/executor-prepare defaults go to Agents, address
 
 Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers and add Web after T1 for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
+For README/docs edits, run `node hub/test/lint-closed-item-wording.ts` against the
+candidate tracker. Fix landed-work claims; document any historical or unrelated
+runtime wording with the reason-required line exemption in
+`docs/agents/tests.md` (closed-item wording guard).
+
 When changing dictionary membership or prototype checks in this repository's
 `hub/src`, read the T0 dictionary guard scope and exemption rules in
 `docs/agents/tests.md`.

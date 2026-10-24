@@ -1,5 +1,6 @@
 # T-182: launches follow the crew
 
+<!-- cland-allow-closed-wording: pending launches and reservation describe runtime state; T-211 identifies the handoff owner -->
 Launch admission enforces crew caps alongside role exclusivity, counting running sessions, live spokes, pending launches and supervised failed-launch cleanup. A retained Reviewer/QA pool runs from the project root and returns an idle member's actual name and stable native identity for the next item. Reuse checks current holds, deliveries and lifecycle work, delivers text or artifact briefs, and records the handoff in the journal and Agents topic. A handoff without a brief is reserved until ordinary addressed work reaches that member. Other roles reuse only matching working directories; Implementer pools return an explanatory launch note and remain capped. T-211 owns worktree handoff.
 
 Successful merge follow-up stops the item's launched per-item sessions when their current `stop_after` is `merge`, before pruning. A failure preserves the landed commit and reports the stop as a follow-up to retry. Pool, per-group and `never` sessions remain running. Crew reload appends updated sub-agent instructions to live role clauses, with `leads` staffing instructions for the Coordinator. Native first-turn clauses use the same source.

@@ -2,6 +2,7 @@
 
 Coordinator c4ed00a9 authorized one dev merge after prior-head green A-5059. Merge723daf59 integrates devb27f71f4; no further dev merge taken.
 
+<!-- cland-allow-closed-wording: historical integration evidence; until.ts is a filename -->
 The coverage fixture keeps both required changes: actual shared/test-support production roots and the new until.ts harness dependency. package.json preserves T-684’s gated lint/static ordering and T-709’s test:nvim-fixtures command. Other source changes are incoming dev. All existing test assertions are retained.
 
 Fetched origin, then npm run test:lint passed the new policy. npm run test:lint -- --shrink also passed; generated baseline committed as5e6e612e. Only change is an empty entry for the zero-debt T1 nvim-fixture-boundary test. Existing allowances total524 before and after; no per-file/category increase. No waits/process helpers or duration allowance added.
