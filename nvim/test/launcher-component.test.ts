@@ -262,3 +262,23 @@ test('the launcher shows what the hub refuses in the form and the panel, never a
   assert.equal(frame?.role, undefined);
 });
 
+
+
+test('a custom role fills launcher defaults and its named session appears in the crew', { skip }, async t => {
+  const c = await startShell(t, scenario => {
+    scenario.roles = [...['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide'].map(role => ({ role, label: role, exclusive: false, skills: [], launch: { harness: 'codex', model: null, effort: null }, holders: [] })), { role: 'docs-writer', label: 'docs-writer', exclusive: false, skills: [],
+      launch: { harness: 'codex', model: 'docs-model', effort: 'high' }, holders: [] }];
+  });
+  await c.input('<Esc><Space>l');
+  await c.waitScreen(screen => screen.includes('launch a session'), 'launcher');
+  await c.input('writer-1<Tab>docs-writer<Tab>');
+  const defaults = await c.waitScreen(screen => /harness +codex/.test(screen) && /model +docs-model/.test(screen), 'custom role defaults');
+  assert.match(defaults, /effort +high/);
+  await c.input('<CR>');
+  const screen = await c.waitScreen(screen => /writer-1 \[docs-writer\]/.test(screen) && !screen.includes('launch a session'), 'custom crew row');
+  assert.match(screen, /writer-1 \[docs-writer\]/);
+  const frame = (await requestsOf(c, 'session.launch'))[0];
+  assert.equal(frame?.role, 'docs-writer');
+  assert.equal(frame?.model, 'docs-model');
+  assert.equal(frame?.harness, 'codex');
+});

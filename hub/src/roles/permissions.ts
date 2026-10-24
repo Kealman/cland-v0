@@ -22,11 +22,12 @@
 // day their frame arrives, through the same `decide`; `ask` (#33) has its frame. `resolve` and `topic.create` (#32) have theirs; `role.handover`
 // (#31) is the Coordinator's; `role.state` is no table tool: a session reads the state of the role it holds (the
 // dispatcher checks).
-import { NAME_RE, BUILTIN_RESERVED, ROLE_LABELS } from '../names.ts';
+import { NAME_RE, BUILTIN_RESERVED, ROLE_LABELS, isCustomRole } from '../names.ts';
 import { criterionRefusal } from '../tracker/criteria.ts';
 
 /** Every tool the table knows: today's spoke frames and the ones still to come. */
 export const KNOWN_TOOLS: readonly string[] = [
+  'verify',
   'rule.add', 'rule.edit', 'rule.retire', 'rule.list',
   'subscribe',
   'unsubscribe',
@@ -87,8 +88,19 @@ export const SCOPES: Readonly<Record<string, readonly string[]>> = {
 
 const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'session.list', 'history', 'status', 'task.view', 'task.list', 'rule.list'];
 
+/** Custom roles are advisory workers; these exact grants cannot acquire built-in authority. */
+export const CUSTOM_ROLE_GRANTS: readonly string[] = [
+  ...READS, 'send:agents', 'task.claim:own', 'task.comment:own', 'topic.create:own',
+  'task.plan:show', 'task.criterion:done', 'task.edit:review', 'verify',
+  'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive',
+];
+
+export function customGrantRefusal(grant: string, where: string): string | null {
+  return CUSTOM_ROLE_GRANTS.includes(grant) ? null : `${where}: custom roles cannot grant "${grant}"`;
+}
+
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
-export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
+export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = Object.assign(Object.create(null) as Record<string, readonly string[]>, {
   aide: [ 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'session.list', 'status', 'session.launch', 'session.stop', 'session.resume', 'task.import', 'push'],
   coordinator: [
     'rule.add', 'rule.edit', 'rule.retire',
@@ -131,7 +143,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   implementer: ['ask.forward', 'ask.answer', 'send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
-};
+});
 
 /** Why a grant list is wrong, or null. `where` names it for the message (`reviewer.permissions.tools`). */
 export function grantRefusal(grant: string, where: string): string | null {
@@ -151,6 +163,8 @@ export function grantRefusal(grant: string, where: string): string | null {
  */
 export type ToolCall = {
   tool: string;
+  verifyMode?: string;
+  verifyOccasion?: string;
   /** Live hierarchy admission, computed from indexed claims and session work. */
   levelRefusal?: string | null;
   /** Explicit launch role, or the role already assigned to the requested name. */
@@ -166,6 +180,8 @@ export type ToolCall = {
   request?: boolean;
   /** Explicit session addresses on a send; Aides address sessions by name only. */
   to?: string[];
+  /** Loaded role addresses, including custom names; Aides keep named-session addressing only. */
+  roleNames?: readonly string[];
   /** `send` to the human: whether the human's latest message in the target topic addressed the caller (by name or
    *  by its role), which lets it reply there without `send:human`. */
   mentioned?: () => boolean;
@@ -191,6 +207,7 @@ export const LEAD_ROOT_TOOLS: readonly string[] = ['release', 'sync', 'push', 'h
 /** Tool availability uses no argument-dependent scopes or ownership facts. */
 export function toolAvailability(role: string | null, grants: readonly string[] | undefined, tool: string): Decision {
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
+  const available = isCustomRole(role) ? grants?.filter(grant => CUSTOM_ROLE_GRANTS.includes(grant)) : grants;
   if (role === 'lead' && LEAD_ROOT_TOOLS.includes(tool)) return { ok: false, permission: tool, reason: `root level: only the Coordinator may use ${tool}` };
   if (role === 'aide' && !DEFAULT_PERMISSIONS.aide!.includes(tool)
       || tool === 'ask' && role !== 'coordinator'
@@ -198,7 +215,7 @@ export function toolAvailability(role: string | null, grants: readonly string[] 
       || tool === 'inbox.decline' || tool === 'inbox.read' || tool === 'account.clear') {
     return decide(role, grants, { tool });
   }
-  if (!grants?.some(grant => grant === tool || grant.startsWith(`${tool}:`))) return { ok: false, permission: tool, reason: `${label(role)} may not use ${tool}` };
+  if (!available?.some(grant => grant === tool || grant.startsWith(`${tool}:`))) return { ok: false, permission: tool, reason: `${label(role)} may not use ${tool}` };
   if (tool === 'rename' && role !== 'coordinator') return { ok: false, permission: tool, reason: 'names never change: only the Coordinator renames' };
   if (tool === 'artifact.promote' && role !== 'coordinator' && role !== 'aide') return { ok: false, permission: tool, reason: 'promote from the Coordinator’s shell with cland artifact promote' };
   return { ok: true };
@@ -218,6 +235,9 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   // The hub validates the request fields before recording anything.
   if (tool === 'send' && call.request) return { ok: true };
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
+  if (tool === 'verify' && isCustomRole(role) && (call.claimed?.() !== true || (call.verifyMode !== undefined && call.verifyMode !== 'auto') || call.verifyOccasion !== undefined)) {
+    return { ok: false, permission: tool, reason: 'custom roles verify only their own claimed task, without a mode or occasion' };
+  }
   if (tool === 'session.launch' && call.launchRole === 'lead' && role !== 'coordinator' && role !== 'aide') {
     return { ok: false, permission: tool, reason: 'root level: only the Coordinator or an Aide on the human’s word launches Leads' };
   }
@@ -227,7 +247,7 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   // v0.1.4 §3.5 (amending v0.1 §3.3): an Aide's tool boundary and named addressing are fixed, even if its file grants more.
   if (role === 'aide') {
     if (!DEFAULT_PERMISSIONS.aide!.includes(tool)) return { ok: false, permission: tool, reason: `Aide rule (v0.1 §3.3): an Aide may not use ${tool}; its tools are limited to the tracker, artifacts, named sends, topics, history, who, status and sessions on the human's word` };
-    if (tool === 'send' && call.to?.some(tag => { const name = tag.trim().replace(/^@/, ''); return !NAME_RE.test(name) || BUILTIN_RESERVED.has(name); })) {
+    if (tool === 'send' && call.to?.some(tag => { const name = tag.trim().replace(/^@/, ''); return !NAME_RE.test(name) || BUILTIN_RESERVED.has(name) || call.roleNames?.includes(name) === true; })) {
       return { ok: false, permission: 'send', reason: 'Aide rule (v0.1 §3.3): an Aide sends to sessions by name only, or to topics without addressees' };
     }
   }
@@ -238,8 +258,8 @@ export function decide(role: string | null, grants: readonly string[] | undefine
     return { ok: false, permission: 'task.comment:verdict', reason: `${label(role)} may write only ${own === 'qa' ? 'QA' : 'review'} verdicts` };
   }
   if (tool === 'task.edit' && call.status !== undefined && role !== 'coordinator' && role !== 'aide') {
-    if (role !== 'implementer' || call.status !== 'review' || !call.statusOnly || call.claimed?.() !== true) {
-      return { ok: false, permission: 'task.edit:review', reason: 'only the Coordinator or an Aide sets any status; an Implementer may set only review on its claimed item, without other edits' };
+    if ((role !== 'implementer' && !isCustomRole(role)) || call.status !== 'review' || !call.statusOnly || call.claimed?.() !== true) {
+      return { ok: false, permission: 'task.edit:review', reason: 'only the Coordinator or an Aide sets any status; an Implementer or custom role may set only review on its claimed item, without other edits' };
     }
   }
   if (tool === 'task.criterion') {
@@ -251,7 +271,7 @@ export function decide(role: string | null, grants: readonly string[] | undefine
     const decision = decide(role, grants, { tool: 'task.criterion', criterionOp: 'verify' });
     if (!decision.ok) return decision;
   }
-  const list = grants ?? [];
+  const list = isCustomRole(role) ? (grants ?? []).filter(grant => CUSTOM_ROLE_GRANTS.includes(grant)) : grants ?? [];
   const has = (g: string) => list.includes(g);
   if (has(tool)) return { ok: true };
   const scoped = list.filter((g) => g.startsWith(`${tool}:`));

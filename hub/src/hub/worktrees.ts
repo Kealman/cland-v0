@@ -1,3 +1,4 @@
+import { isCustomRole } from '../names.ts';
 // Task worktrees in the hub (T-58; T-20 decisions D3, D7, D8): the first claim of an open task makes its branch and
 // its worktree, `session.launch` with an item makes them before the session starts there and claims the item for
 // it, and the human lists and prunes them. The Git work is the territory module's, under its lock; this module
@@ -208,7 +209,7 @@ export class TaskWorktrees {
    * the project root; a Lead records its node in process.item without a task worktree.
    */
   async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null; note?: string } & WorktreeOutcome> {
-    if (request.role !== 'implementer' && request.role !== 'lead' && request.role !== 'reviewer' && request.role !== 'qa') throw new Error('`item` is for an Implementer, Lead, Reviewer or QA');
+    if (request.role !== 'implementer' && request.role !== 'lead' && request.role !== 'reviewer' && request.role !== 'qa' && !isCustomRole(request.role)) throw new Error('`item` is for an Implementer, custom worker, Lead, Reviewer or QA');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = await this.#tracker.viewAsync(request.item, resumed);
     resumed(() => authorize?.());
@@ -217,11 +218,11 @@ export class TaskWorktrees {
     if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.ladder.canLead(view.kind))) {
       throw new Error('a Lead needs an open configured container');
     }
-    if (request.role === 'implementer') resumed(() => this.#tracker.assertPlanLaunch(view.id));
+    if (request.role === 'implementer' || isCustomRole(request.role)) resumed(() => this.#tracker.assertPlanLaunch(view.id));
     const originalAuthorize = authorize;
     authorize = () => resumed(() => {
       originalAuthorize?.();
-      if (request.role === 'implementer') this.#tracker.assertPlanLaunch(view.id);
+      if (request.role === 'implementer' || isCustomRole(request.role)) this.#tracker.assertPlanLaunch(view.id);
     });
     // A matching offline claimant can launch onto its own node; Sessions.launch still refuses a live name.
     // Other claims yield only from the Coordinator or human, as before.

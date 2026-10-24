@@ -84,6 +84,7 @@
     "hub/test/cover-quiet.test.ts": "T3",
     "hub/test/crew-launch.test.ts": "T2",
     "hub/test/crew.test.ts": "T2",
+    "hub/test/custom-roles-component.test.ts": "T2",
     "hub/test/daemon.test.ts": "T3",
     "hub/test/default-subscriptions-lifecycle.test.ts": "T3",
     "hub/test/default-subscriptions-workflow.test.ts": "T3",

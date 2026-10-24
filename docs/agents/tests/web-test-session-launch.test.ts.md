@@ -15,3 +15,13 @@ seam covers actual worktree creation. Model discovery replies are scripted at th
 WebSocket harness boundary so no installed account or provider binary is probed;
 all other frames reach the scratch hub. A held old catalog reply cannot replace
 current choices. No real session or live project is used.
+
+# Web session launcher
+
+Web seam: sealed `webFixture`, authenticated page, fake harnesses and CLI readback.
+Use the pinned isolated Headless Shell, its scratch profile and normal CSP.
+T-781 adds one custom definition alongside existing roles; select its role in the
+real launcher and retain harness/model/effort assertions, the anchored crew row,
+and session-list role/model readback. Arm the row observer before submitting.
+The fixture observes browser process-group exit and stops the scratch hub before
+removing its root. A current production bundle is required for standalone runs.

@@ -1,3 +1,4 @@
+import { isCustomRole } from '../names.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { summary as bodySummary, outline, sentences } from './summary.ts';
 import { ExplorerFieldsIndex, type ExplorerFields, type SummaryText } from './explorer-fields.ts';
@@ -1859,7 +1860,7 @@ export class Tracker {
     const snapshot = v.stage === undefined ? null : this.#stageSnapshot(id, v.stage);
     const closure = v.stage === undefined ? null : this.#index.stageClosure(id, v.stage);
     const claim = this.#index.claimOf(id);
-    const independent = !claim || !['implementer', 'aide'].includes(claim.role ?? '') || !v.writer || !this.sameSession(claim.sessionId, v.writer.sessionId);
+    const independent = !claim || !(['implementer', 'aide'].includes(claim.role ?? '') || isCustomRole(claim.role)) || !v.writer || !this.sameSession(claim.sessionId, v.writer.sessionId);
     if (!(independent && v.source === 'hub' && v.writer?.role === 'qa' && v.writer.sessionId !== 'human' && !v.writer.sessionId.startsWith('cli:')
       && !!v.commit && !!snapshot?.merged && snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none' && snapshot.hash === v.stage_hash)) return false;
     const ancestor = this.#fresh.ancestor(id, v.commit) ?? (closure?.hash === snapshot.hash && closure.head === v.commit ? true : undefined);
@@ -2755,7 +2756,7 @@ export class Tracker {
           this.#ensureSession(writer);
           if (writer.role !== 'qa' || writer.id !== actor.id) throw new TrackerError('stage QA writer changed; retry');
           const claim = this.#index.claimOf(this.#referenceId(rawId)!);
-          if (claim && ['implementer', 'aide'].includes(claim.role ?? '') && this.sameSession(claim.sessionId, writer.id)) throw new TrackerError('the claiming session cannot supply stage QA');
+          if (claim && (['implementer', 'aide'].includes(claim.role ?? '') || isCustomRole(claim.role)) && this.sameSession(claim.sessionId, writer.id)) throw new TrackerError('the claiming session cannot supply stage QA');
           v!.by = formatVerdictBy(writer.name, writer.role);
           let checked = evidence;
           return this.#writeComment(writer, rawId, body, v, null, resumed, () => {
@@ -3626,7 +3627,7 @@ export class Tracker {
       if (held?.sessionId === this.#sessionId(actor.id) && held.session === actor.name && held.role === actor.role) return { id, claim: held };
       const claim: Claim = { session: actor.name, sessionId: this.#sessionId(actor.id), role: actor.role,
         claimedAt: held?.sessionId === this.#sessionId(actor.id) ? held.claimedAt : this.#now().toISOString() };
-      const persist = (actor.role === 'implementer' || actor.role === 'aide') && this.#index.get(id)?.kind === 'task';
+      const persist = (actor.role === 'implementer' || actor.role === 'aide' || isCustomRole(actor.role)) && this.#index.get(id)?.kind === 'task';
       if (persist) {
         await this.#mutate(id, actor, 'claim', item => this.#setStatus(item, 'in progress'), resumed, undefined, () => { check(); }, () => this.#index.setClaim(id, { ...claim, sessionId: this.#sessionId(actor.id) }));
       }

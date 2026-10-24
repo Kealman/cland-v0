@@ -9,7 +9,7 @@ export const NAME_RE = /^[a-z0-9][a-z0-9-]{0,23}$/;
 export const ROLE_NAMES: readonly string[] = ['coordinator', 'implementer', 'reviewer', 'qa', 'aide', 'lead'];
 
 /** How a role is written next to a name. */
-export const ROLE_LABELS: Readonly<Record<string, string>> = { coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', aide: 'Aide' };
+export const ROLE_LABELS: Readonly<Record<string, string>> = Object.assign(Object.create(null) as Record<string, string>, { coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', aide: 'Aide' });
 
 /** Roles whose item claims identify the lead of that node. The Coordinator leads the project root. */
 export function isNodeLeadRole(role: string | null | undefined): boolean {
@@ -23,6 +23,11 @@ export function withRole(name: string, role: string | null | undefined): string 
 
 /** Names no session may take: address tags, the hub itself, and the roles. */
 export const BUILTIN_RESERVED: ReadonlySet<string> = new Set(['all', 'lead', 'hub', ...ROLE_NAMES]);
+
+/** Only loaded definitions assign roles; this distinguishes their custom names at authority boundaries. */
+export function isCustomRole(role: string | null | undefined): boolean {
+  return typeof role === 'string' && NAME_RE.test(role) && !BUILTIN_RESERVED.has(role) && role !== 'human' && role !== 'custom';
+}
 
 /** A refusal reason, or null when the name is acceptable. Live names are the caller's to check. */
 export function nameRefusal(name: string, reserved: ReadonlySet<string> = new Set()): string | null {

@@ -44,7 +44,7 @@ import { machineHealthSummary } from '../executor/droplet/health.ts';
 import { reportSharedDefects } from './shared-defects.ts';
 import { quarantineResults, recordQuarantineResults, type QuarantineHistory } from '../suite-quarantine.ts';
 import { describeSelection, selectPackageSuite } from '../suite-selection.ts';
-import { isAbsolute, join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { readFile, stat, mkdir, writeFile, rename } from 'node:fs/promises';
 import { coveragePointers, parseCoverageMap } from '../suite-coverage.ts';
 import { timingSafeEqual } from 'node:crypto';
@@ -53,7 +53,7 @@ import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, toolAvailability, LEAD_ROOT_TOOLS, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import { crewSummary, parseIdleFrom, resolveCrewIdle } from '../crew.ts';
 import type { RolesConfig } from '../roles/config.ts';
-import { ROLE_NAMES, withRole } from '../names.ts';
+import { isCustomRole, withRole } from '../names.ts';
 import {
   PROTOCOL_VERSION, VERIFY_OCCASIONS,
   UPDATE_HINT,
@@ -724,7 +724,7 @@ export class Dispatcher {
           return !!claim && !!tracker?.sameSession(claim.sessionId, sessionActor(connection, UNKNOWN_SESSION).id);
         },
       } : {}),
-      ...(tool === 'send' ? { to: Array.isArray(frame.to) ? frame.to as string[] : [], toHuman: !Array.isArray(frame.to) || frame.to.length === 0, request: frame.kind === 'request', mentioned: () => this.#mentioned(connection, frame) } : {}),
+      ...(tool === 'send' ? { roleNames: this.core.roleNames(), to: Array.isArray(frame.to) ? frame.to as string[] : [], toHuman: !Array.isArray(frame.to) || frame.to.length === 0, request: frame.kind === 'request', mentioned: () => this.#mentioned(connection, frame) } : {}),
       // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too
       ...(tool === 'task.comment'
         ? {
@@ -772,7 +772,7 @@ export class Dispatcher {
     this.#artifactTopic(caller, topic);
     const names = new Set([...core.presence().map(p => p.name), ...core.store.knownSessions().map(p => p.name)]);
     for (const target of to) {
-      if (!names.has(target) && !ROLE_NAMES.includes(target) && target !== 'all' && !target.includes('*') && !/^lead (?:[A-Za-z]-)?\d+$/.test(target)) throw new Error(`no suite recipient named ${target}`);
+      if (!names.has(target) && !core.roleNames().includes(target) && target !== 'all' && !target.includes('*') && !/^lead (?:[A-Za-z]-)?\d+$/.test(target)) throw new Error(`no suite recipient named ${target}`);
     }
     return caller;
   }
@@ -1444,7 +1444,7 @@ export class Dispatcher {
             const itemId = 'item' in subject ? subject.item : 'subtree' in subject ? subject.subtree : null;
             if (itemId && !this.#options.tracker?.resolveId(itemId)) throw new Error(`no item ${itemId}`);
             if ('topic' in subject && !core.store.topic(subject.topic)) throw new Error(`no topic ${subject.topic}`);
-            if ('role' in subject && !ROLE_NAMES.includes(subject.role)) throw new Error(`unknown role ${subject.role}`);
+            if ('role' in subject && !core.roleNames().includes(subject.role)) throw new Error(`unknown role ${subject.role}`);
             value = { subscription: core.store.addSubscription(caller.sessionId, { id: randomUUID(), ...input }) };
             break;
           }
@@ -1862,6 +1862,16 @@ export class Dispatcher {
         // roles and claims, rather than requiring its original spoke to remain connected.
         const current = actor ? this.#asSession({ as: actor }) : null;
         if (actor && current?.sessionId !== actor.sessionId) throw new Error('suite caller identity is unavailable');
+        if (current && isCustomRole(current.role)) {
+          const tracker = this.#options.tracker;
+          const own = tracker?.list().find(item => item.kind === 'task' && item.state === 'open'
+            && item.claim && tracker.sameSession(item.claim.sessionId, current.sessionId)
+            && item.id === core.store.topic(topic)?.item
+            && resolve(request.cwd) === taskWorktreePath(tracker.root, item.id));
+          const decision = decide(current.role, core.roles?.get().get(current.role!)?.permissions.tools,
+            { tool: 'verify', claimed: () => !!own, verifyMode: request.mode, ...(request.occasion ? { verifyOccasion: request.occasion } : {}) });
+          if (!decision.ok) throw new ToolForbidden(current.role, decision.permission, decision.reason);
+        }
         // A report-free preview has no artifact or send side effects to authorize.
         if (!request.dryRun || request.report) {
           this.#suitePermissions(actor, topic, to);

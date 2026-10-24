@@ -4,14 +4,14 @@
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { parse } from 'smol-toml';
-import { ROLE_NAMES } from '../names.ts';
+import { ROLE_NAMES, nameRefusal } from '../names.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { rolesTemplate } from './template.ts';
 import { projectSkills } from './skills.ts';
 import { installedHarnessesAsync } from '../doctor/harnesses.ts';
-import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
+import { DEFAULT_PERMISSIONS, grantRefusal, customGrantRefusal } from './permissions.ts';
 import { APPROVALS, PERMISSIONS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Permissions, type Sandbox } from '../adapters/contract.ts';
 
 export type LaunchDefaults = {
@@ -32,7 +32,7 @@ export type LaunchDefaults = {
 
 export type RoleDefinition = {
   role: string;
-  /** At most one holder (the Coordinator). */
+  /** At most one holder when enabled (the Coordinator default). */
   exclusive: boolean;
   clause: string;
   skills: string[];
@@ -42,7 +42,7 @@ export type RoleDefinition = {
   /** Explicit launch keys ignored by the selected harness; one warning per role. */
   warnings?: string[];
   /** The spoke tools the role may use, as grants (`tool` or `tool:scope`, see `permissions.ts`); enforced by the
-   *  dispatcher on every call. A role table with no `tools` list gets the built-in table's. */
+   *  dispatcher on every call. Built-ins inherit their grants; custom roles default to deny. */
   permissions: { tools: string[] };
 };
 
@@ -99,7 +99,7 @@ const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox
   if (mode === 'danger-full-access' && network !== null && network !== 'full') throw new Error(`${where}.network cannot be ${network} with sandbox = "danger-full-access": nothing is closed there`);
   return {
     mode,
-    writableRoots: mode === 'workspace-write' ? (roots ?? (base?.writableRoots.length ? base.writableRoots : (DEFAULT_WRITABLE_ROOTS[role] ?? []))) : [],
+    writableRoots: mode === 'workspace-write' ? (roots ?? (base?.writableRoots.length ? base.writableRoots : (Object.hasOwn(DEFAULT_WRITABLE_ROOTS, role) ? DEFAULT_WRITABLE_ROOTS[role]! : []))) : [],
     network: mode === 'danger-full-access' ? 'full' : (network ?? base?.network ?? 'none'),
   };
 };
@@ -110,20 +110,22 @@ export function roleLaunchPolicy(definition: RoleDefinition, harness: string): P
   const launch = definition.policyOverrides;
   if (!launch) return definition.launch;
   const role = definition.role;
+  const where = ROLE_NAMES.includes(role) ? role : `custom.${role}`;
   const builtin = BUILT_IN?.get(role)?.launch;
   return {
-    approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
-    sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
-    permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`, true),
+    approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${where}.launch.approval`),
+    sandbox: sandboxOf(launch, `${where}.launch`, builtin?.sandbox ?? null, role),
+    permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${where}.launch.permissions`, true),
   };
 }
 
 /** A role's grants: each one checked against the table's tools and scopes; absent → the built-in list. */
-const grants = (v: unknown, role: string): string[] => {
+const grants = (v: unknown, role: string, where = role): string[] => {
   if (v === undefined) return [...(DEFAULT_PERMISSIONS[role] ?? [])];
-  const list = strings(v, `${role}.permissions.tools`).map((g) => g.trim());
+  const list = strings(v, `${where}.permissions.tools`).map((g) => g.trim());
   for (const g of list) {
-    const refusal = grantRefusal(g, `${role}.permissions.tools`);
+    const refusal = grantRefusal(g, `${where}.permissions.tools`)
+      ?? (!ROLE_NAMES.includes(role) ? customGrantRefusal(g, `${where}.permissions.tools`) : null);
     if (refusal) throw new Error(refusal);
   }
   return [...new Set(list)];
@@ -141,48 +143,62 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null, al
 
 function parseDefinitions(text: string, fallback: RolesConfig | null, allowedHarnesses?: readonly string[], builtInPolicy = false): RolesConfig {
   const doc = parse(text) as Record<string, unknown>;
-  const unknown = Object.keys(doc).filter((k) => !ROLE_NAMES.includes(k));
+  const unknown = Object.keys(doc).filter((k) => k !== 'custom' && !ROLE_NAMES.includes(k));
   if (unknown.length) throw new Error(`unknown role ${unknown.map((k) => `[${k}]`).join(', ')} (roles: ${ROLE_NAMES.join(', ')})`);
   const out = new Map<string, RoleDefinition>();
-  for (const role of ROLE_NAMES) {
-    const t = doc[role];
+  const custom = doc.custom ?? {};
+  if (!isRecord(custom)) throw new Error('[custom] must be a table');
+  for (const role of Object.keys(custom)) {
+    const refusal = nameRefusal(role, new Set(['human', 'custom']));
+    if (refusal) throw new Error(`custom.${role}: ${refusal}`);
+  }
+  for (const role of [...ROLE_NAMES, ...Object.keys(custom)]) {
+    const isCustom = !ROLE_NAMES.includes(role);
+    const where = isCustom ? `custom.${role}` : role;
+    const t = isCustom ? custom[role] : doc[role];
     if (t === undefined) {
       const d = (fallback ?? DEFAULTS).get(role);
       if (d) out.set(role, d);
       continue;
     }
-    if (!isRecord(t)) throw new Error(`[${role}] must be a table`);
+    if (!isRecord(t)) throw new Error(`[${where}] must be a table`);
     const launch = t.launch ?? {};
     const permissions = t.permissions ?? {};
     const builtin = BUILT_IN?.get(role)?.launch ?? null;
-    if (!isRecord(launch)) throw new Error(`[${role}.launch] must be a table`);
-    if (!isRecord(permissions)) throw new Error(`[${role}.permissions] must be a table`);
-    if (t.exclusive !== undefined && typeof t.exclusive !== 'boolean') throw new Error(`${role}.exclusive must be true or false`);
+    if (!isRecord(launch)) throw new Error(`[${where}.launch] must be a table`);
+    if (!isRecord(permissions)) throw new Error(`[${where}.permissions] must be a table`);
+    if (t.exclusive !== undefined && typeof t.exclusive !== 'boolean') throw new Error(`${where}.exclusive must be true or false`);
+    if (isCustom) {
+      for (const key of Object.keys(t)) if (!['clause', 'skills', 'exclusive', 'launch', 'permissions'].includes(key)) throw new Error(`${where}.${key}: unknown field`);
+      for (const key of Object.keys(launch)) if (!['harness', 'model', 'effort', 'account', 'approval', 'sandbox', 'writable_roots', 'network', 'permissions'].includes(key)) throw new Error(`${where}.launch.${key}: unknown field`);
+      for (const key of Object.keys(permissions)) if (key !== 'tools') throw new Error(`${where}.permissions.${key}: unknown field`);
+      if (!optString(t.clause, `${where}.clause`)) throw new Error(`${where}.clause is required`);
+    }
     const selectedHarness = launch.harness === undefined ? builtin?.harness : launch.harness;
-    const harness = allowedHarnesses === undefined ? optString(selectedHarness, `${role}.launch.harness`)
-      : oneOf(selectedHarness, allowedHarnesses, `${role}.launch.harness`);
-    if (harness === null) throw new Error(`${role}.launch.harness is required`);
+    const harness = allowedHarnesses === undefined ? optString(selectedHarness, `${where}.launch.harness`)
+      : oneOf(selectedHarness, allowedHarnesses, `${where}.launch.harness`);
+    if (harness === null) throw new Error(`${where}.launch.harness is required`);
     const nativePolicy = harness === 'opencode' && !builtInPolicy;
     const ignored = nativePolicy ? ['approval', 'sandbox', 'writable_roots', 'network', 'permissions'].filter(key => launch[key] !== undefined) : [];
     out.set(role, {
       role,
       exclusive: t.exclusive === true,
-      clause: (optString(t.clause, `${role}.clause`) ?? '').trim(),
-      skills: strings(t.skills, `${role}.skills`),
+      clause: (optString(t.clause, `${where}.clause`) ?? '').trim(),
+      skills: strings(t.skills, `${where}.skills`),
       ...(nativePolicy ? { policyOverrides: Object.fromEntries(ignored.map(key => [key, launch[key]])) } : {}),
-      ...(ignored.length ? { warnings: [`${role}.launch: OpenCode ignores ${ignored.join(', ')}; OpenCode's own configuration governs`] } : {}),
+      ...(ignored.length ? { warnings: [`${where}.launch: OpenCode ignores ${ignored.join(', ')}; OpenCode's own configuration governs`] } : {}),
       launch: {
-        account: optString(launch.account, `${role}.launch.account`),
+        account: optString(launch.account, `${where}.launch.account`),
         harness,
-        model: optString(launch.model, `${role}.launch.model`),
-        effort: optString(launch.effort, `${role}.launch.effort`),
+        model: optString(launch.model, `${where}.launch.model`),
+        effort: optString(launch.effort, `${where}.launch.effort`),
         // The snapshot describes the role's default harness. Keep OpenCode's ignored inputs
         // above for other actual launch harnesses; `""` selects a harness's own defaults.
-        approval: nativePolicy ? null : launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
-        sandbox: nativePolicy ? null : sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
-        permissions: nativePolicy ? null : launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`, true),
+        approval: nativePolicy ? null : launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${where}.launch.approval`),
+        sandbox: nativePolicy ? null : sandboxOf(launch, `${where}.launch`, builtin?.sandbox ?? null, role),
+        permissions: nativePolicy ? null : launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${where}.launch.permissions`, true),
       },
-      permissions: { tools: grants(permissions.tools, role) },
+      permissions: { tools: grants(permissions.tools, role, where) },
     });
   }
   return out;

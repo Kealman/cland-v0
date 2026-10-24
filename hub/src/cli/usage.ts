@@ -130,11 +130,12 @@ ${IMPORT_USAGE}                  every task command takes --json, and --as <name
 
 export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--account name] [--effort e] [--cwd dir | --item T-<n>] [--brief text|A-<n>]
                   launch a harness session through the hub; a role's launch defaults
-                  (.cland/roles.toml) fill the harness, model, effort and account not given; --item starts an
-                  Implementer in its task worktree, or a Lead on an open epic/release at the root, with its claim;
+                  (.cland/roles.toml) fill the harness, model, effort and account not given; custom roles use
+                  --role <name> from [custom.<name>]. --item starts an
+                  Implementer or custom worker in its task worktree, or a Lead on an open epic/release at the root, with its claim;
                   --brief delivers text or an artifact's content once after the role clause
   session list [--archived]    launched sessions and the archived count (--json for JSON); --archived shows only the archive
-                  read-only: every role has the separate session.list permission by default
+                  read-only: built-in roles have session.list by default; custom roles grant it explicitly
   session archive <name>  archive a stopped or exited session
   session prune --older-than <duration> [--dry-run]  remove old archived session records; keep the journal
   session attach <name>   print the command that attaches a terminal to the session
@@ -171,7 +172,7 @@ export const RELEASE_USAGE = `  publish <branch> --item T-n [--dry-run] [--json]
   sync [--json]          fetch GitHub main and replay unreleased dev commits; never pushes to GitHub
 `;
 
-export const ROLE_USAGE = `  role set <session> <role>   assign a role (coordinator, lead, implementer, reviewer, qa, aide) to a session,
+export const ROLE_USAGE = `  role set <session> <role>   assign a built-in role or a [custom.<name>] role from roles.toml to a session,
                   live or not yet connected; the session gets the role's clause
                   --note-file <file>  with a handover note (Markdown: Goals now, Work in flight, Open decisions,
                                       Waiting on); the Coordinator moves from its holder, who is told to stop

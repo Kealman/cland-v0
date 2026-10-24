@@ -51,12 +51,12 @@ export function nextStatus(current: TopicStatus, move: TopicMove): TopicStatus {
  * qa) and `@<session-name>`. No `@all` and no globs for the human in v0: those stay text. `known` tells whether a
  * name is a session the hub knows; a tag that is neither is returned in `unknown` (it addresses nobody).
  */
-export function mentions(text: string, known: (name: string) => boolean): { to: string[]; unknown: string[] } {
+export function mentions(text: string, known: (name: string) => boolean, roles: readonly string[] = ROLE_NAMES): { to: string[]; unknown: string[] } {
   const to: string[] = [];
   const unknown: string[] = [];
   for (const tag of parseTags(text)) {
     if (tag.toLowerCase() === 'all' || tag.includes('*')) continue;
-    if (tag === 'lead' || tag.startsWith('lead ') || ROLE_NAMES.includes(tag) || known(tag)) to.push(tag);
+    if (tag === 'lead' || tag.startsWith('lead ') || roles.includes(tag) || known(tag)) to.push(tag);
     else unknown.push(tag);
   }
   return { to, unknown };

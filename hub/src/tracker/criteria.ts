@@ -1,3 +1,4 @@
+import { isCustomRole } from '../names.ts';
 // Acceptance criteria and their source spans; checkbox state never implies a mark.
 export type CriterionMark =
   | { kind: 'done'; by: string; at: string }
@@ -113,8 +114,8 @@ export function parseCriteria(body: string, definitionOfDone = false): { criteri
 
 /** Parties named by §3.4, enforced at both the dispatcher and the tracker write boundary. */
 export function criterionRefusal(op: unknown, actor: { role: string | null; human: boolean; claimed: boolean }): string | null {
-  if (op === 'done') return actor.human || actor.role === 'coordinator' || actor.role === 'aide' || actor.role === 'implementer' && actor.claimed
-    ? null : 'done requires the live claimant Implementer, Coordinator, Aide or human';
+  if (op === 'done') return actor.human || actor.role === 'coordinator' || actor.role === 'aide' || (actor.role === 'implementer' || isCustomRole(actor.role)) && actor.claimed
+    ? null : 'done requires the live claimant Implementer or custom role, Coordinator, Aide or human';
   if (op === 'verify' || op === 'fail') return !actor.human && (actor.role === 'reviewer' || actor.role === 'qa')
     ? null : 'verify and fail require Reviewer or QA';
   if (op === 'add' || op === 'edit' || op === 'remove' || op === 'normalize') return actor.human || actor.role === 'coordinator' || actor.role === 'aide'

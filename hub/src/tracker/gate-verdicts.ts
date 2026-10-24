@@ -1,3 +1,4 @@
+import { isCustomRole } from '../names.ts';
 // One criteria and verdict evaluation for the merge gate and the hub's ready status. Input must carry merge evidence,
 // annotated with the freshness cache; file headers do not substitute for hub-written verdicts.
 import { MergeError } from '../merge.ts';
@@ -10,7 +11,7 @@ function verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
   if (!v) throw new MergeError(all.length ? `${kind}-provenance` : `${kind}-missing`, `${view.id}: no hub-written ${kind} verdict`);
   const role = kind === 'review' ? 'reviewer' : 'qa';
   if (v.writer?.role !== role || v.writer.sessionId === 'human' || v.writer.sessionId.startsWith('cli:')) throw new MergeError(`${kind}-role`, `${view.id}: the ${kind} writer did not hold ${role}`);
-  if ((view.claim?.role === 'implementer' || view.claim?.role === 'aide') && view.claim.sessionId === v.writer.sessionId) throw new MergeError(`${kind}-claimant`, `${view.id}: its claiming session cannot supply ${kind}`);
+  if (view.claim && (view.claim.role === 'implementer' || view.claim.role === 'aide' || isCustomRole(view.claim.role)) && view.claim.sessionId === v.writer.sessionId) throw new MergeError(`${kind}-claimant`, `${view.id}: its claiming session cannot supply ${kind}`);
   if (v.result !== 'clear') throw new MergeError(`${kind}-not-clear`, `${view.id}: ${kind} is not clear`);
   // mergeViewAsync annotates the latest hub verdict even when a later file-only header exists.
   const current = v.current;

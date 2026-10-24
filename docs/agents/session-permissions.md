@@ -1,7 +1,7 @@
 # Session reads and lifecycle permissions
 
 `cland session list`, `cland session list --json` and `--archived` use the
-separate `session.list` read grant. Every role has it by default, like `who`.
+separate `session.list` read grant. Every built-in role has it by default, like `who`.
 The CLI preserves the calling shell's session identity and the hub checks its
 current role; listing does not launch a session. The shipped and project role
 clauses name the read and its lack of mutation authority within their existing
@@ -32,3 +32,24 @@ MCP task tools retain the legacy `item` locator alias for canonical `id`.
 CLI task frames continue to carry `item`; legacy task-list item context is ignored.
 MCP `ask` retains omitted `options` as a free-only question: the spoke supplies `[]`
 before sending the wire frame, which still requires a concrete string array.
+
+## Custom roles
+
+Definitions live under `[custom.<name>]` in `.cland/roles.toml`; launch with
+`cland session launch <session> --role <name>`. Their tools default to deny;
+`permissions.tools` lists exact grants from the custom allowlist in
+[hub permissions](../../hub/README.md#custom-roles). Unknown fields, unknown
+or forbidden grants and reserved names refuse the edit with the field path.
+The previous valid snapshot remains in force.
+
+A custom worker may claim an assigned item with `task.claim:own`, mark its own
+criteria `done`, set only `review` on its own claim, and request built-in review.
+Its `verify` grant admits mode-free task runs only for that live claim's worktree
+and topic; occasions and other items are refused. The hub's ready transition and
+merge gates remain the same. Route questions and completion to the Coordinator
+or responsible built-in lead: `lead T-n` skips custom claims. Custom roles do not
+write Reviewer/QA verdicts or verify/fail criterion marks. Their clause comes
+from the custom table; built-in clause text stays unchanged.
+
+Staff custom sessions manually. Automatic custom pools and hierarchy roles are
+outside this capability. See the [worked example](../../site/src/content/docs/docs/crew.md#add-a-custom-role).

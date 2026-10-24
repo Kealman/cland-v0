@@ -14,6 +14,12 @@ async function launchFixture(t: TestContext, clock = new FakeClock()) {
   return webFixture(t, { clock, accountReader: async () => [], prepare: async root => {
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/roles.toml'), `
+[custom.docs-writer]
+clause = "Write docs and report to the Coordinator."
+[custom.docs-writer.launch]
+harness = "codex"
+model = "docs-model"
+effort = "high"
 [aide.launch]
 harness = "codex"
 model = "gpt-fake-1"
@@ -348,5 +354,31 @@ test('Launch waits for role defaults when the initial sessions snapshot is delay
         else route.send(message);
       });
     });
+  });
+});
+
+
+test('a custom role is selectable with its own defaults and appears in the crew after launch', async t => {
+  const fixture = await launchFixture(t);
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    await launchReady(page);
+    await page.getByRole('button', { name: 'Launch a session', exact: true }).click();
+    const form = page.getByRole('form', { name: 'Launch a session', exact: true });
+    await form.getByLabel('Name', { exact: true }).fill('writer-1');
+    await form.getByLabel('Role', { exact: true }).selectOption('docs-writer');
+    assert.equal(await form.getByLabel('Harness', { exact: true }).inputValue(), 'codex');
+    assert.equal(await form.getByLabel('Model', { exact: true }).inputValue(), 'docs-model');
+    assert.equal(await form.getByLabel('Effort', { exact: true }).inputValue(), 'high');
+    const row = page.locator('[data-session-slot="groups"] [data-object-id="writer-1"]');
+    const appeared = row.waitFor();
+    await form.getByRole('button', { name: 'Launch', exact: true }).click();
+    await appeared;
+    assert.match(await row.textContent() ?? '', /docs-writer/);
+    const listed = await cland(fixture.root, 'session', 'list', '--json');
+    assert.equal(listed.code, 0, listed.stderr);
+    const launched = (JSON.parse(listed.stdout).processes as HarnessProcessView[]).find(row => row.name === 'writer-1')!;
+    assert.equal(launched.role, 'docs-writer');
+    assert.equal(launched.model, 'docs-model');
   });
 });

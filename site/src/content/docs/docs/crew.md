@@ -18,7 +18,7 @@ The hub re-reads both files on change. A file that does not parse is refused wit
 
 ## Launch settings: `roles.toml`
 
-Each role has a `[<role>.launch]` table. The roles are `coordinator`, `lead`, `implementer`, `reviewer`, `qa` and `aide`.
+Each role has a `[<role>.launch]` table. The built-in roles are `coordinator`, `lead`, `implementer`, `reviewer`, `qa` and `aide`. Add custom roles under `[custom.<name>]`, as shown in [Shaping a role](#shaping-a-role).
 
 ```toml
 [implementer.launch]
@@ -50,7 +50,7 @@ Model ids by harness:
 
 ### Set it with commands
 
-You never need to edit the file by hand:
+Change launch settings with commands; create custom definitions in the file:
 
 ```sh
 # The models a harness offers, under a given account
@@ -351,7 +351,7 @@ Keep `[plan] qa_default` at its default, `{ scope = "none", when = "per-item" }`
 
 ## Shaping a role
 
-The six roles are fixed: the hub knows what each may do. What you change is how each one works:
+The six built-in roles keep their authority and review gates. You can change how each works:
 
 - **`clause`**: the role's instructions, delivered to every holder at assignment and on every reconnect. Add your own lines, for example a Reviewer that checks every change against your security checklist.
 - **`skills`**: the skills the holder is pointed at, from `.agents/skills/`. Add a skill of your own to the folder and list it here.
@@ -365,6 +365,44 @@ You are a Reviewer: you review changes when the item's lead or the Coordinator a
 - Check every change against docs/security.md before a clear verdict.
 """
 ```
+
+### Add a custom role
+
+A docs writer, an advisory security reviewer or an epic planning helper can have its own clause, skills and launch defaults. Add its table under `custom` in `.cland/roles.toml`:
+
+```toml
+[custom.docs-writer]
+clause = """
+Write project documentation. Work only on an item assigned to you, claim it,
+mark its criteria done and request the built-in Reviewer in its item topic.
+After source review clears, verify that exact head and wait for evidence review.
+Report questions and completion to the Coordinator; it lands the work.
+"""
+skills = ["implement"]
+
+[custom.docs-writer.launch]
+harness = "codex"
+model = ""               # harness default; set a model id to choose one
+effort = "high"
+approval = "never"
+sandbox = "workspace-write"
+
+[custom.docs-writer.permissions]
+tools = ["send:agents", "who", "task.view", "task.list", "task.claim:own", "task.comment:own", "topic.create:own", "task.edit:review", "task.criterion:done", "artifact.create", "verify"]
+```
+
+```sh
+cland session launch writer-1 --role docs-writer --item T-42
+cland role launch docs-writer --model your-model-id
+```
+
+The table name `docs-writer` is the role name in launch commands, role addresses, `who`, session lists and both workbenches. The web role selector and Neovim launcher use its launch defaults. Its clause reaches the holder at launch and on reconnect. Staffing is manual: custom roles have no `crew.toml` pool or hierarchy policy.
+
+Names have 1–24 lowercase letters, digits or hyphens, starting with a letter or digit. Built-in names, `all`, `hub`, `human` and `custom` are reserved. A nonempty `clause` and `launch.harness` are required; `skills` defaults to `[]`, `exclusive` to `false`, and omitted model, effort, account and harness permission settings use the harness defaults. `exclusive = true` allows one holder. Unknown custom fields and invalid grants are refused with their field path; a bad edit retains the last valid configuration.
+
+Custom hub tools default to deny. The allowed grants are `send:agents`, `who`, `session.list`, `history`, `status`, `task.view`, `task.list`, `rule.list`, `subscribe`, `unsubscribe`, `subscriptions`, `task.plan:show`, `task.claim:own`, `task.comment:own`, `topic.create:own`, `task.edit:review`, `task.criterion:done`, `artifact.create`, `artifact.keep`, `artifact.move`, `artifact.archive` and `verify`. Write the exact grant; an unscoped `send` or `task.comment` is refused. `verify` covers only a claimed task in its own worktree and item topic, without an explicit mode or occasion. Criterion completion and status → `review` require its own live claim; no other edit is allowed.
+
+Custom roles report findings to the built-in Reviewer or QA. They cannot write verdicts, verify or fail criteria, merge work, launch sessions, change rules, acquire the human's authority or replace the Coordinator. `lead T-n` skips a custom claimant and reaches the responsible built-in lead. Address a custom holder by name or `@docs-writer`.
 
 Rules that apply to several roles belong in the [rulebook](/docs/concepts/#rulebook) instead: the hub adds a role's rules to its clause.
 

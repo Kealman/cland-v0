@@ -92,6 +92,10 @@ const flagValue = (args: string[], flag: string): string | undefined => {
 function roleProblem(role: string, args: string[]): string | null {
   if (role === 'human') return null;
   const [root, sub] = args;
+  // Verification uses scheduler admission, not the built-in tool-grant lists.
+  // Its report, mode and Aide checks remain in lintQaBrief below; the custom
+  // verify grant in KNOWN_TOOLS must not change built-in brief policy.
+  if (root === 'verify' || root === 'suite') return null;
   const tool = root === 'artifact' && ['new', 'create'].includes(sub ?? '') ? 'artifact.create'
     : root === 'task' && sub === 'import-github' ? 'task.import'
     : KNOWN_TOOLS.includes(root ?? '') ? root! : sub ? `${root}.${sub}` : root ?? '';

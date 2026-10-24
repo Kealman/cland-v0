@@ -1146,6 +1146,40 @@ Write `network = "local"` explicitly: omitted keys inherit the current role defa
 
 The hub loads the file asynchronously before serving requests, then reads it on a 500 ms timer (`ROLES_REFRESH_MS`), without depending on filesystem watches. A saved edit becomes visible within 500 ms plus the async read and parse time; if a read was already in flight, allow that read to finish plus the next 500 ms tick and read. Slow or unavailable storage can delay refresh, but never blocks a permission check. Each check reads only the last successfully parsed snapshot. A refresh publishes a new map atomically; a check already using the previous map keeps it for that synchronous stretch. Handlers that await file preparation check the current snapshot again before publication, so a grant revoked during the wait refuses the resumed action. Read replay is invalidated when the snapshot changes, so a cached allowed answer cannot survive the refreshed grant. A file that does not parse is logged (`roles-unreadable`); a removed file is logged (`roles-missing`); both keep the last good permissions and launch defaults. An unreadable startup file keeps the built-in defaults. The hub never rewrites an existing file. Launch, relaunch and human role assignment instead await `RolesFile.fresh()`: an asynchronous stat, any older refresh already in flight, and a new read when the file changed. Parsing still publishes only changed valid text. These rare operations immediately see a saved launch-profile or clause edit; hot permission checks retain the bounded-refresh snapshot.
 
+### Custom roles
+
+`[custom.<name>]` defines an additional role, launched with `--role <name>` and
+listed alongside the six built-ins in `role.list`, `who`, sessions and both
+workbench launchers. The role's clause and usable skills arrive on launch and
+reconnect. Built-in tables remain editable; a custom table with a built-in name
+is a collision. Names follow the session-name grammar; `all`, `hub`, `human` and
+`custom` are also reserved. Custom role names are reserved against session names.
+
+A nonempty `clause` and `launch.harness` are required. Optional `skills` defaults
+to `[]`, `exclusive` to false, and launch model/effort/account/native permission
+settings to the harness defaults. Unknown custom fields fail with their complete
+path. `[custom.<name>.permissions] tools` defaults to `[]`, with exact known
+`tool` or `tool:scope` grants validated at load. A refused refresh keeps the last
+good configuration. The [crew documentation](../site/src/content/docs/docs/crew.md#add-a-custom-role)
+has a complete docs-writer definition and launch example.
+
+Custom grants are limited to `send:agents`, the reads/subscriptions/status grants
+(`who`, `session.list`, `history`, `status`, `task.view`, `task.list`, `rule.list`,
+`subscribe`, `unsubscribe`, `subscriptions`, `task.plan:show`),
+`task.claim:own`, `task.comment:own`, `topic.create:own`, `task.edit:review`,
+`task.criterion:done`, `artifact.create`, `artifact.keep`, `artifact.move`,
+`artifact.archive` and `verify`. Only a live own claim permits done marks or a
+status-only change to review. Verification admits that claimed task's worktree
+and topic only, with the default mode and no occasion. Custom sessions can
+request the built-in Reviewer, complete evidence review and reach the normal
+hub-written ready status; the Coordinator lands the item through the same gate.
+
+The dispatcher enforces this ceiling even on a supplied grant list: custom roles
+cannot write review/QA verdicts or criterion verification, take verifier holds,
+merge/release, manage roles or sessions, write rules, or gain human/Coordinator
+authority. Built-in role-name routing stays separate; `lead T-n` skips custom
+claims. Custom staffing is manual; `crew.toml` pools and hierarchy remain built-in.
+
 ### Assignment
 
 - **The human** assigns with `role.set` (UI) or `cland role set <session> <role>`, and revokes with `role.clear` or `cland role clear <session>`. With a note or `move` the role moves from its holder (see Handover). A live session gets its clause at once (and what was queued for the role); a name not connected yet gets the role when a session takes the name. A role follows the name: a session that reconnects under it has it back.

@@ -6,7 +6,7 @@
 // The move itself is the core's (`HubCore.moveRole`: one store transaction, the notices, the events); this module
 // reads and renders the note, moves the tracker claims with the role, and answers `role.state`.
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
-import { ROLE_LABELS, ROLE_NAMES } from '../names.ts';
+import { ROLE_LABELS } from '../names.ts';
 import type { RoleHolder, RoleState } from '../protocol.ts';
 import { isRoleRecord, parseNote, renderNote, type PendingClaims, type RoleRecord } from './note.ts';
 import type { Tracker } from '../tracker/tracker.ts';
@@ -41,7 +41,7 @@ export function handOver(
 ): RoleHolder {
   if (args.item !== undefined && args.role !== 'lead') throw new Error('a node item is only valid for Lead handover');
   const note = args.note === undefined && !args.noteRequired ? null : parseNote(args.note);
-  if (!ROLE_NAMES.includes(args.role)) throw new Error(`unknown role "${args.role}" (roles: ${ROLE_NAMES.join(', ')})`);
+  if (!ctx.core.roleNames().includes(args.role)) throw new Error(`unknown role "${args.role}" (roles: ${ctx.core.roleNames().join(', ')})`);
   const toId = args.role === 'lead' ? ctx.core.sessionIdentity(`name:${args.to}`) : sessionIdOf(ctx, args.to);
   if (args.requireKnown && !ctx.core.presence().some((p) => p.name === args.to) && !ctx.launched?.(args.to)) {
     throw new Error(`"${args.to}" is not a session the hub knows: hand the ${label(args.role)} role to a live session, or to one launched with \`session.launch\``);
@@ -105,7 +105,7 @@ const WAITING_WINDOW = 200;
  * is newer than their last word in the topic.
  */
 export function roleState(ctx: HandoverContext, role: string, session?: string): RoleState {
-  if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+  if (!ctx.core.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${ctx.core.roleNames().join(', ')})`);
   const { core } = ctx;
   const allHolders = core.roleList().roles.find((r) => r.role === role)?.holders ?? [];
   if (role === 'lead' && !session) {

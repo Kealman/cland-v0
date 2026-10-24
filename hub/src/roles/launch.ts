@@ -14,8 +14,8 @@ export type RoleLaunchResult = { role: string; launch: LaunchDefaults; changes: 
 /** Only source keys show an explicit choice; the parsed launch contains compatibility defaults. */
 export function setMissingCodexSandbox(text: string, role: string, harness: string | undefined): string {
   const written = parse(text)[role] as { launch?: { sandbox?: unknown } } | undefined;
-  return harness?.trim() === 'codex' && written?.launch?.sandbox === undefined && CODEX_SANDBOX[role] !== undefined
-    ? setRoleKey(text, role, 'launch', 'sandbox', CODEX_SANDBOX[role]) : text;
+  return harness?.trim() === 'codex' && written?.launch?.sandbox === undefined && Object.hasOwn(CODEX_SANDBOX, role)
+    ? setRoleKey(text, role, 'launch', 'sandbox', CODEX_SANDBOX[role]!) : text;
 }
 
 export async function setRoleLaunch(path: string, role: string, fields: LaunchFields, resumed: Resumed, authorize: () => void, env: NodeJS.ProcessEnv): Promise<{ result: RoleLaunchResult; roles: RolesConfig }> {

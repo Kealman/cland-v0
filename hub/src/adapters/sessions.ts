@@ -19,7 +19,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { sessionCwdRefusal } from './session-cwd.ts';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
+import { nameRefusal, withRole } from '../names.ts';
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, Message, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
@@ -829,7 +829,7 @@ export class Sessions {
       const refusal = nameRefusal(request.name, new Set(['human']));
       if (refusal) throw new Error(refusal);
       const role = request.role ?? this.#core.store.roleOf(request.name);
-      if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+      if (role !== null && !this.#core.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.#core.roleNames().join(', ')})`);
       if (role === 'lead' && !request.item) throw new Error('a Lead launch needs `item` naming an open configured container');
       return role;
     });

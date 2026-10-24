@@ -158,7 +158,8 @@ export function migrateAideTools(text: string): { text: string; added: string[];
  * The returned text always passes the hub's roles parser; its errors propagate unchanged.
  */
 export function setRoleKey(text: string, role: string, table: 'launch' | 'permissions', key: string, value: string | readonly string[], comment?: string): string {
-  if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role [${role}]`);
+  if (!parseRoles(text).has(role)) throw new Error(`unknown role [${role}]`);
+  const prefix = ROLE_NAMES.includes(role) ? [role] : ['custom', role];
   if (table !== 'launch' && table !== 'permissions') throw new Error('role table must be launch or permissions');
   if (!/^[A-Za-z0-9_-]+$/.test(key)) throw new Error('role key must be a bare TOML key');
   if (comment?.includes('\n') || comment?.includes('\r')) throw new Error('role key comment must be a single line');
@@ -166,7 +167,7 @@ export function setRoleKey(text: string, role: string, table: 'launch' | 'permis
   const lines = statements(text);
   const headers = lines.flatMap((line, index) => text.slice(line.start, line.end).trimStart().startsWith('[')
     ? [{ index, path: keyPath(text.slice(line.start, line.end)) }] : []);
-  const header = headers.find(h => h.path.length === 2 && h.path[0] === role && h.path[1] === table);
+  const header = headers.find(h => h.path.length === prefix.length + 1 && prefix.every((part, i) => h.path[i] === part) && h.path.at(-1) === table);
   const newline = text.match(/\r?\n/)?.[0] ?? '\n';
   const encoded = JSON.stringify(value);
   const newComment = comment === undefined || comment === '' ? '' : ` # ${comment.replace(/^#\s*/, '')}`;
@@ -186,10 +187,10 @@ export function setRoleKey(text: string, role: string, table: 'launch' | 'permis
       result = text.slice(0, at) + (at && text[at - 1] !== '\n' ? newline : '') + `${key} = ${encoded}${newComment}${newline}` + text.slice(at);
     }
   } else {
-    const last = headers.filter(h => h.path[0] === role).at(-1);
+    const last = headers.filter(h => prefix.every((part, i) => h.path[i] === part)).at(-1);
     const next = last && headers.find(h => h.index > last.index);
     const at = next ? lines[next.index]!.start : text.length;
-    result = text.slice(0, at) + (at && text[at - 1] !== '\n' ? newline : '') + `[${role}.${table}]${newline}${key} = ${encoded}${newComment}${newline}` + text.slice(at);
+    result = text.slice(0, at) + (at && text[at - 1] !== '\n' ? newline : '') + `[${prefix.join('.')}.${table}]${newline}${key} = ${encoded}${newComment}${newline}` + text.slice(at);
   }
   parseRoles(result, null, HARNESSES);
   return result;

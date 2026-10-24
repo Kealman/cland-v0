@@ -57,7 +57,7 @@ import {
   type TopicStatus,
   type VerificationQueue,
 } from '../protocol.ts';
-import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole, isNodeLeadRole } from '../names.ts';
+import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole, isNodeLeadRole, isCustomRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
 import { clauseText, projectRulesText, PROJECT_RULES_HEADING, roleClauseSections, revokedText, staffingClause } from '../roles/clause.ts';
 import { isRoleRecord, noteText, renderNote, type PendingClaims, type RoleRecord } from '../roles/note.ts';
@@ -326,6 +326,9 @@ export class HubCore {
       });
     }
   }
+
+  /** Built-ins retain their order; configured custom roles append to the same public list. */
+  roleNames(): string[] { return [...new Set([...ROLE_NAMES, ...(this.#roles?.get().keys() ?? [])])]; }
 
   roleDefinition(role: string) {
     const definition = this.#roles?.get().get(role);
@@ -1310,6 +1313,7 @@ export class HubCore {
   /** Shared name reservation invariant. Explicit paths may reuse settled history; generated names may not.
    * Pending aliases stay reserved until adoption settles, including for their owner. */
   nameReservation(name: string, sessionId?: string, retained?: ReadonlySet<string>): string | null {
+    if (this.roleNames().includes(name)) return `name "${name}" is reserved for a role`;
     const holder = this.#live.get(name);
     if (holder && holder.sessionId !== sessionId) return `name "${name}" is in use by a live session`;
     if (this.#store.sessionAlias(name)) return `name "${name}" has a pending session identity adoption: retry after adoption succeeds`;
@@ -1418,8 +1422,8 @@ export class HubCore {
       ({ role, fresh, carried } = r);
     } else if (hello.role !== undefined) {
       // no project: the role is a declared label; an unknown one is ignored
-      if (ROLE_NAMES.includes(hello.role)) role = hello.role;
-      else this.#log({ event: 'role-ignored', name, role: hello.role, roles: ROLE_NAMES });
+      if (this.roleNames().includes(hello.role)) role = hello.role;
+      else this.#log({ event: 'role-ignored', name, role: hello.role, roles: this.roleNames() });
     }
     // Only a validated new hello proves launch ownership. A join returned above;
     // refused names and roles likewise cannot enter a launch's rollback targets.
@@ -1497,30 +1501,30 @@ export class HubCore {
     const refusal = (role: string, taken: string) => `role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``;
     const launched = this.#launchedRole?.(name, hello.sessionId, hello.launchToken) ?? null;
     const held = this.#store.roleOf(name);
-    if (launched?.first && launched.role !== null && launched.role === held && ROLE_NAMES.includes(launched.role)) {
+    if (launched?.first && launched.role !== null && launched.role === held && this.roleNames().includes(launched.role)) {
       const taken = this.#exclusiveHolder(launched.role, name);
       if (taken) return { ok: false, message: refusal(launched.role, taken) };
       return { ok: true, role: launched.role, fresh: true, carried: launched.carried };
     }
-    if (held !== null && ROLE_NAMES.includes(held)) {
+    if (held !== null && this.roleNames().includes(held)) {
       const taken = this.#exclusiveHolder(held, name);
       if (taken) {
         // a stale holder: another session took the role while this one was forgotten
         this.#store.rememberRole(name, null);
         this.#log({ event: 'role-superseded', session: name, sessionId: hello.sessionId, role: held, holder: taken });
         this.#emitRole(name, null, held, `superseded: ${taken} holds it`);
-        return { ok: false, message: `no role: "${name}" no longer holds the role ${ROLE_LABELS[held] ?? held}: ${taken} holds it now, and one session holds it at a time — assign another with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
+        return { ok: false, message: `no role: "${name}" no longer holds the role ${ROLE_LABELS[held] ?? held}: ${taken} holds it now, and one session holds it at a time — assign another with \`cland role set ${name} <${this.roleNames().join('|')}>\`; the session connects on its next retry` };
       }
       if (hello.role !== undefined && hello.role !== held) this.#log({ event: 'role-request-ignored', name, requested: hello.role, holds: held });
       return { ok: true, role: held, fresh: false, carried: launched?.role === held && launched.carried };
     }
-    if (launched !== null && !launched.first && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
+    if (launched !== null && !launched.first && launched.role !== null && this.roleNames().includes(launched.role)) {
       const taken = this.#exclusiveHolder(launched.role, name);
       if (taken) return { ok: false, message: refusal(launched.role, taken) };
       return { ok: true, role: launched.role, fresh: true, carried: false };
     }
     const asked = hello.role !== undefined ? ` (it asked for "${hello.role}", which the hub grants only to a session it launched for that role)` : '';
-    return { ok: false, message: `no role: "${name}" holds none${asked} — assign one with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
+    return { ok: false, message: `no role: "${name}" holds none${asked} — assign one with \`cland role set ${name} <${this.roleNames().join('|')}>\`; the session connects on its next retry` };
   }
 
   /** After the welcome: hand a session what waited for it, oldest first; drop what waited too long. A message
@@ -2118,7 +2122,7 @@ export class HubCore {
    * Returns what the name held before, for `releaseLaunchRole`. Throws the exclusivity refusal.
    */
   reserveLaunchRole(name: string, role: string): { previous: string | null; previousSessionId: string | null } {
-    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    if (!this.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.roleNames().join(', ')})`);
     const identityRefusal = this.nameReservation(name, this.#live.get(name)?.sessionId);
     if (identityRefusal) throw new Error(identityRefusal);
     const taken = this.#exclusiveHolder(role, name);
@@ -2141,7 +2145,7 @@ export class HubCore {
   /** Take a ticket before I/O, then validate against each fresh snapshot. A move may replace the current holder.
    * Tickets do not grant a role; release on success or refusal, including failures before fresh validation. */
   admitRole(name: string, role: string, move = false): { validate: () => void; release: () => void } {
-    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    if (!this.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.roleNames().join(', ')})`);
     const identityRefusal = this.nameReservation(name, this.#live.get(name)?.sessionId);
     if (identityRefusal) throw new Error(identityRefusal);
     const refusal = nameRefusal(name, this.#reserved);
@@ -2254,7 +2258,7 @@ export class HubCore {
   assignRole(name: string, role: string): RoleHolder {
     const launch = this.#launchMutationRefusal(name);
     if (launch) throw new Error(launch);
-    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    if (!this.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.roleNames().join(', ')})`);
     const refusal = nameRefusal(name, this.#reserved);
     if (refusal) throw new Error(refusal);
     const reserved = this.nameReservation(name, this.#live.get(name)?.sessionId);
@@ -2370,13 +2374,13 @@ export class HubCore {
       const launch = this.#launchMutationRefusal(name);
       if (launch) throw new Error(launch);
     }
-    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    if (!this.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.roleNames().join(', ')})`);
     const refusal = nameRefusal(to, this.#reserved);
     if (refusal) throw new Error(refusal);
     const reserved = this.nameReservation(to, this.#live.get(to)?.sessionId);
     if (reserved) throw new Error(reserved);
     if (from === to) throw new Error(`${withRole(to, role)} already holds the role`);
-    if (then !== null && (!ROLE_NAMES.includes(then) || then === role || this.#roles?.get().get(then)?.exclusive)) throw new Error(`a handover may leave the previous holder an Implementer (then: "implementer"), not "${then}"`);
+    if (then !== null && (!this.roleNames().includes(then) || then === role || this.#roles?.get().get(then)?.exclusive)) throw new Error(`a handover may leave the previous holder an Implementer (then: "implementer"), not "${then}"`);
     const taken = this.#exclusiveHolder(role, from === null ? [to] : [to, from]);
     if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
     const cFrom = from !== null ? this.#live.get(from) : undefined;
@@ -2457,7 +2461,7 @@ export class HubCore {
     const config = this.#roles?.get();
     const since = this.#now().getTime() - this.#queueTtlMs;
     return {
-      roles: ROLE_NAMES.map((role) => {
+      roles: this.roleNames().map((role) => {
         const d = config?.get(role);
         const names = new Set([...[...this.#live.values()].filter((c) => c.role === role).map((c) => c.name), ...this.#store.sessionsWithRole(role, since).filter((n) => !this.#live.has(n))]);
         return {
@@ -2624,7 +2628,7 @@ export class HubCore {
   #roleHolders(known: ReadonlySet<string>, vacant: 'offline-holders' | 'placeholder'): Map<string, string[]> {
     const since = this.#now().getTime() - this.#queueTtlMs;
     const roles = new Map<string, string[]>();
-    for (const role of ROLE_NAMES) {
+    for (const role of this.roleNames()) {
       if (role === 'aide') { roles.set(role, []); continue; }
       const live = [...this.#live.values()].filter((c) => c.role === role).map((c) => c.name);
       const holders = live.length || vacant === 'placeholder' ? live : this.#store.sessionsWithRole(role, since).filter((n) => known.has(n) && !this.#live.has(n));
@@ -2710,7 +2714,7 @@ export class HubCore {
       const node = this.#items?.get?.(id) ?? items.find(i => i.id === id);
       return node && owns(node);
     });
-    if (role !== COORDINATOR && !(role === 'implementer' && owns(item)) && !ancestor) return;
+    if (role !== COORDINATOR && !((role === 'implementer' || isCustomRole(role)) && owns(item)) && !ancestor) return;
     return { item, role: request[1] === 'review' ? 'reviewer' : 'qa' };
   }
 
@@ -2750,7 +2754,7 @@ export class HubCore {
         const from = senderId ? this.#store.nameOfSession(senderId) : null;
         const topic = this.#store.topic(message.topic!);
         const senderRole = from ? this.#store.roleOf(from) : null;
-        const permission = decide(senderRole, senderRole === null ? undefined : this.roleDefinition(senderRole)?.permissions.tools ?? DEFAULT_PERMISSIONS[senderRole], { tool: 'send', to: [role] });
+        const permission = decide(senderRole, senderRole === null ? undefined : this.roleDefinition(senderRole)?.permissions.tools ?? DEFAULT_PERMISSIONS[senderRole], { tool: 'send', to: [role], roleNames: this.roleNames() });
         const request = from && topic && this.#verifierRequest(from, senderRole, message.text, topic);
         const now = this.#now().getTime();
         let reason = now - queued.queuedAt > this.#queueTtlMs ? 'queue TTL expired; send a fresh request'
@@ -3109,7 +3113,7 @@ export class HubCore {
     if (to !== undefined && HubCore.#normalized(to).length) tags = to;
     else {
       const known = new Set([...this.#live.keys(), ...this.#known()]);
-      const found = mentions(text, (name) => known.has(name));
+      const found = mentions(text, (name) => known.has(name), this.roleNames());
       tags = found.to.length ? found.to : [DEFAULT_HUMAN_ADDRESSEE];
       unmentioned = found.unknown;
     }
