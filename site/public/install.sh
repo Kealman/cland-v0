@@ -107,16 +107,19 @@ mkdir source
 tar -xzf archive.tar.gz -C source --strip-components=1
 cd source
 [ -f package-lock.json ] && [ -f hub/bin/cland.ts ] || fail 'Release archive is missing cland sources or its lockfile.'
-printf 'Installing locked build dependencies (lifecycle scripts disabled)...\n'
-npm ci --include=dev --ignore-scripts --no-audit --no-fund
-# npm prune rewrites the lockfile even when its contents do not change.
-# Preserve this build input and its mtime for cland doctor's web receipt.
-cp -p package-lock.json ../build-package-lock.json
-printf 'Building the web workbench...\n'
-npm run build
-printf 'Removing development dependencies...\n'
-npm prune --omit=dev --ignore-scripts --no-audit --no-fund
-cp -p ../build-package-lock.json package-lock.json
+printf 'Building cland from locked dependencies...\n'
+if [ -f packaging/build-install.sh ]; then
+    sh packaging/build-install.sh
+else
+    # Published tags predating the shared helper keep their original build path.
+    # In particular, CLAND_VERSION=v0.2.0 remains installable by this script.
+    printf 'Using the legacy source-release build...\n'
+    npm ci --include=dev --ignore-scripts --no-audit --no-fund
+    cp -p package-lock.json ../build-package-lock.json
+    npm run build
+    npm prune --omit=dev --ignore-scripts --no-audit --no-fund
+    cp -p ../build-package-lock.json package-lock.json
+fi
 : > .cland-installer
 version=$(node -p 'require("./package.json").version')
 cd "$stage"

@@ -36,7 +36,7 @@ const commandUsage = {
 
   PUBLISH_USAGE: "  publish <branch> --item T-n [--dry-run] [--json]   publish approved marketing commits to GitHub main and site, merge and sync dev\n",
 
-  RELEASE_USAGE: "  release <vX.Y.Z> [--dry-run] [--json]   publish dev as GitHub main and an annotated tag atomically; Coordinator's shell or human\n  release --item T-n [<vX.Y.Z>] [--dry-run] [--json]   publish the release item's version and notes, then close it\n",
+  RELEASE_USAGE: "  release <vX.Y.Z> [--dry-run] [--json]   publish dev as GitHub main and an annotated tag atomically; Coordinator's shell or human\n  release --item T-n [<vX.Y.Z>] [--dry-run] [--json]   publish the release item's version and notes, then close it\n  release: optional [release.homebrew] tap publishes Formula/cland.rb to tap main after the product push; dry-run previews the tag URL, SHA follows download\n",
 
   SYNC_USAGE: "  sync [--json]          fetch GitHub main and replay unreleased dev commits; never pushes to GitHub\n",
 

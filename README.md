@@ -69,8 +69,10 @@ One Claude plan works too: opus leads, sonnet implements and reviews. So does a 
 macOS:
 
 ```sh
-brew install cland
+brew install kealman/tap/cland
 ```
+
+The Homebrew tap is pending publication. Until it is available, use the source install below.
 
 Linux:
 

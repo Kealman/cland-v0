@@ -140,6 +140,9 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/custom-roles-component.test.ts`](../../../hub/test/custom-roles-component.test.ts) | [Notes](hub-test-custom-roles-component.test.ts.md) |
 | [`nvim/test/launcher-component.test.ts`](../../../nvim/test/launcher-component.test.ts) | [Notes](nvim-test-launcher-component.test.ts.md) |
 | [`web/test/session-launch.test.ts`](../../../web/test/session-launch.test.ts) | [Notes](web-test-session-launch.test.ts.md) |
+| [`hub/test/homebrew.test.ts`](../../../hub/test/homebrew.test.ts) | [Notes](hub-test-homebrew.test.ts.md) |
+| [`hub/test/homebrew-download.test.ts`](../../../hub/test/homebrew-download.test.ts) | [Notes](hub-test-homebrew-download.test.ts.md) |
+| [`hub/test/homebrew-publication.test.ts`](../../../hub/test/homebrew-publication.test.ts) | [Notes](hub-test-homebrew-publication.test.ts.md) |
 | [`hub/test/cli-usage-merge.test.ts`](../../../hub/test/cli-usage-merge.test.ts) | [Notes](hub-test-cli-usage-merge.test.ts.md) |
 | [`hub/test/dev-t3-search-component.test.ts`](../../../hub/test/dev-t3-search-component.test.ts) | [Notes](hub-test-dev-t3-search-component.test.ts.md) |
 

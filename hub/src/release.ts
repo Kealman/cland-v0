@@ -1,3 +1,4 @@
+import type { HomebrewResult } from './homebrew.ts';
 export type ReleaseCode = 'release-item' | 'release-version' | 'release-tag' | 'release-empty' | 'release-github' | 'release-behind'
   | 'release-t3' | 'release-state' | 'release-territory' | 'release-changed' | 'sync-dirty' | 'sync-conflict' | 'sync-behind' | 'sync-recovery';
 
@@ -11,6 +12,7 @@ export class ReleaseError extends Error {
 
 export type ReleaseResult = {
   version: string; commit: string; notes: string; refs: string[]; dryRun: boolean;
+  homebrew?: HomebrewResult;
   followUp?: { step: string; error: string };
 };
 

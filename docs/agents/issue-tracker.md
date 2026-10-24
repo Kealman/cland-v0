@@ -231,3 +231,14 @@ After dependency-changing merges, queue entries, landing results and the landing
 comment name the changed manifests/lockfiles and required `npm install` in the
 root. The Coordinator stops shared readers before updating that install; the
 merge gate and task claim never invoke an installer.
+
+## Homebrew release follow-up
+
+For cland's opt-in `[release.homebrew] tap`, follow
+[hub/README.md, Homebrew formula publication](../../hub/README.md#homebrew-formula-publication).
+The Coordinator includes the preview's tap/main/file/version and exact tag URL in
+the release approval ask. SHA-256 is computed after the product tag is published,
+then recorded before the tap push. On a `homebrew` follow-up failure, keep
+`release.tmp` and retry the same item/version; the product may already be public.
+The human creates the tap. Real clean-macOS Homebrew evidence follows creation;
+sealed source-build and pure render tests supply pre-merge evidence.

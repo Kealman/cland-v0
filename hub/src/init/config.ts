@@ -19,6 +19,7 @@ import type { HarnessId } from '../doctor/ranges.ts';
 export type ProjectConfig = {
   name: string;
   publish: { allowPaths: string[] };
+  release: { homebrew: { tap: string } };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
   verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
@@ -37,6 +38,7 @@ const MINUTE = 60_000;
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   publish: { allowPaths: ['site/**', 'docs/brand/**', 'README.md', 'LICENSE', '.github/workflows/pages.yml'] },
+  release: { homebrew: { tap: '' } },
   setup: { declinedInstalls: [], declinedAccounts: [] },
   merge: { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
   verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
@@ -59,6 +61,10 @@ export function renderConfig(c: ProjectConfig): string {
 
 [project]
 name = ${JSON.stringify(c.name)}
+
+[release.homebrew]
+# Optional existing GitHub tap; empty disables formula publication.
+tap = ${JSON.stringify(c.release.homebrew.tap)}
 
 [publish]
 # Exact paths or directory/** prefixes eligible for out-of-release publication.
@@ -209,6 +215,12 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   if (publish.allow_paths !== undefined) {
     if (!Array.isArray(publish.allow_paths) || !publish.allow_paths.every(path => typeof path === 'string' && /^(?!\/)(?!.*(?:^|\/)\.\.?(?:\/|$))[^*?\\]+(?:\/\*\*)?$/.test(path))) throw new Error('publish.allow_paths must contain exact relative paths or directory/** prefixes');
     c.publish.allowPaths = [...new Set(publish.allow_paths)] as string[];
+  }
+  const release = (doc.release ?? {}) as Record<string, unknown>;
+  const homebrew = (release.homebrew ?? {}) as Record<string, unknown>;
+  if (homebrew.tap !== undefined) {
+    if (typeof homebrew.tap !== 'string' || homebrew.tap !== '' && !/^[A-Za-z0-9-]+\/homebrew-[A-Za-z0-9-]+$/.test(homebrew.tap)) throw new Error('release.homebrew.tap must be empty or owner/homebrew-name');
+    c.release.homebrew.tap = homebrew.tap;
   }
   const setup = (doc.setup ?? {}) as Record<string, unknown>;
   if (setup.declined_installs !== undefined) {

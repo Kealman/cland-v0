@@ -22,3 +22,14 @@ deadlines bound setup and behaviour; installed-version assertions remain final.
 These fake releases prove the installer contract, not the actual product on a
 clean OS. Cold Ubuntu/Fedora install, doctor, dependency/download timings and size
 are post-landing evidence under E-778 C2. Site publication is separate.
+
+T-779: local source archives include `packaging/build-install.sh`, shared with
+the Homebrew formula. These tests execute that script through the installer with
+native Node/npm offline, proving build-before-prune and lockfile mtime preservation.
+Formula rendering and tap publication have separate Homebrew test files.
+
+Old-layout archives deliberately omit the shared helper: the installer uses its
+legacy locked build/prune path. Their regression keeps install and update version
+receipts, built Web output, prune and lockfile-mtime checks, and the previous
+command after a failed update. The old-install-moved interruption case also uses
+old-layout archives and retains its rollback receipt and working-command check.

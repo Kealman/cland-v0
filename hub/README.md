@@ -2054,7 +2054,49 @@ Both release forms, including dry-run, read the root `package.json` at the selec
 
 The notes list one `T-12 <tracker title>` line per `Item:` trailer in the range from the default branch to `dev`, in commit order, followed by non-item commit subjects. If an item was removed, its commit subject supplies the title. Git creates an annotated tag object at the pinned dev commit, then one atomic push sends that commit as GitHub's default branch and the tag object as `refs/tags/<version>`. No GitHub API is called and no project version file is changed. Only after that push succeeds does cland advance the local default branch, install the local tag and publish that branch and tag to the territory. A GitHub hook rejection reports Git's message and leaves all local and remote refs unchanged.
 
-The result is `{version, commit, notes, refs, dryRun}`. A failure after GitHub accepts the push returns `followUp: {step, error}` saying `released; follow-up failed`. Preserve `.cland/release.tmp`, repair the named obstruction and retry the same version and, for an item release, the same item. The receipt, written before pushing, pins the annotated tag object, dev commit, notes and optional item id. A retry with a different item or a version-only command cannot consume an item release receipt. A retry checks that exact tag on GitHub and finishes the local refs and territory even after a hub restart or a lost push reply, without publishing later dev work. The receipt is removed after the item closure and other follow-up complete; retrying an already written closure adds no duplicate release comment.
+The result is `{version, commit, notes, refs, dryRun, homebrew}` (`homebrew` is additive; older consumers keep their existing fields). A failure after GitHub accepts the push returns `followUp: {step, error}` saying `released; follow-up failed`. Preserve `.cland/release.tmp`, repair the named obstruction and retry the same version and, for an item release, the same item. The receipt, written before pushing, pins the annotated tag object, dev commit, notes and optional item id. A retry with a different item or a version-only command cannot consume an item release receipt. A retry checks that exact tag on GitHub and finishes the local refs and territory even after a hub restart or a lost push reply, without publishing later dev work. The receipt is removed after the item closure and other follow-up complete; retrying an already written closure adds no duplicate release comment.
+
+#### Homebrew formula publication
+
+cland's optional `[release.homebrew] tap = "Kealman/homebrew-tap"` in committed
+`.cland/config.toml` enables a second, separate Git push inside `cland release`.
+The default empty tap reports **Homebrew skipped** and does no tap work. The human
+creates the GitHub tap repository first; cland never creates it. Only the existing
+human/Coordinator release authorization permits publication. Keep the tap empty
+until that repository exists and Git authentication can write to it.
+
+The dry run names the tap, `main`, `Formula/cland.rb`, version and exact source
+URL (`https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/<tag>`).
+It explicitly says the SHA-256 follows download after the product push: the tag
+archive does not exist during preview. Include this destination and URL in the
+human's single release approval. The approved formula points to those tag bytes;
+there is no second approval after hashing. Product publication and tap publication
+are separate transactions, so a tap failure leaves an already published product.
+
+After the product push and local refs succeed, release hashes the complete HTTPS
+archive (120-second/64-MiB bound), records its SHA-256 in `release.tmp`, and renders
+`packaging/homebrew/cland.rb.in` from the pinned release commit. It preserves other
+tap files and commits only `Formula/cland.rb` on top of tap `main` (or creates the
+first commit in an empty tap). A lease refuses concurrent changes; the new commit's
+parent guarantees a fast-forward. The result's additive `homebrew` field, CLI
+output and release-item comment name the final SHA and tap commit. Preserve the
+receipt on a `homebrew` follow-up failure and retry the same item/version. Retry
+uses its pinned tap, source commit and recorded SHA, and reads the remote formula
+to recognize an accepted push whose reply was lost. Item closure waits for this
+follow-up. Legacy receipts without a tap retain their original scope.
+
+The formula uses `node@24` for both build and command execution, with a minimum
+24.13 check. It and `site/public/install.sh` call `packaging/build-install.sh`:
+locked dependencies with lifecycle scripts disabled, Web build, then dev-dependency
+pruning while preserving the lockfile's build mtime. The curl installer retains
+the equivalent legacy build steps for published archives without that helper,
+including `CLAND_VERSION=v0.2.0`. Sealed local archive tests
+exercise that build; pure Node tests check formula rendering. Real clean-macOS
+`brew install kealman/tap/cland`, `cland --version`, `cland doctor`, upgrade and
+uninstall are landing evidence after the human creates the tap. Until publication,
+site and README label Homebrew pending and offer source installation. See
+[Homebrew's tap convention](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap)
+and [formula cookbook](https://docs.brew.sh/Formula-Cookbook).
 
 `cland sync [--json]` sends a `sync` frame. The human or the Coordinator's shell with the `sync` grant may call it; it has no spoke tool. It refuses while a merge still needs checkout, item, claim or topic completion, preserving that landing's recovery identity. From a clean root on dev it fetches GitHub, requires GitHub's default branch to fast-forward the local default branch, and prepares a replay of the range from the default branch to `dev` on the fetched commit in an isolated checkout. Replay retains merge structure. A dirty root refuses; a conflict aborts preparation, names the files in the error and `files` result field, and leaves every integration ref and the root tree untouched. On success it installs the replay in the root, atomically updates the local default branch and dev, and publishes those refs only to the territory. It never pushes to GitHub.
 

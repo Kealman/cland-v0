@@ -1,3 +1,4 @@
+import { homebrewDescription } from '../homebrew.ts';
 import { parseArgs } from 'node:util';
 import { hubDiscovery, projectRoot, readDiscovery } from '../project.ts';
 import type { ReleaseResult, SyncResult } from '../release.ts';
@@ -13,7 +14,7 @@ export async function runRelease(args: string[], cwd = process.cwd()): Promise<n
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
   const result = await askHubFrame(d, { type: 'release', ...(positionals[0] === undefined ? {} : { version: positionals[0] }), ...(values.item === undefined ? {} : { item: values.item }), dryRun: values['dry-run'] === true }, 120_000) as ReleaseResult;
-  process.stdout.write(values.json ? `${JSON.stringify(result)}\n` : `${result.dryRun ? 'Would release' : 'Released'} ${result.version} at ${result.commit}\n${result.notes}\n${result.refs.map(ref => `github ${ref}`).join('\n')}\n${result.followUp ? `${result.followUp.error}\n` : ''}`);
+  process.stdout.write(values.json ? `${JSON.stringify(result)}\n` : `${result.dryRun ? 'Would release' : 'Released'} ${result.version} at ${result.commit}\n${result.notes}\n${result.refs.map(ref => `github ${ref}`).join('\n')}\n${result.homebrew ? `${homebrewDescription(result.homebrew)}\n` : ''}${result.followUp ? `${result.followUp.error}\n` : ''}`);
   return 0;
 }
 

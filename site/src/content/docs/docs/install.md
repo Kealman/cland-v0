@@ -12,8 +12,17 @@ cland runs on **macOS** and **Linux**. Windows is not supported.
 ### macOS: Homebrew
 
 ```sh
-brew install cland
+brew install kealman/tap/cland
 ```
+
+The tap is pending publication: the human must first create
+`Kealman/homebrew-tap`, and a release must publish its formula. Until then, use
+the [source install](#from-source).
+
+Homebrew supplies `node@24` (at least 24.13), builds the web workbench from the
+release's locked dependencies, and puts `cland` on PATH. Its command wrapper
+uses that Node runtime even if another Node version is first on your PATH.
+The formula's source and dependencies live in its Homebrew keg under `libexec`.
 
 ### Linux or macOS without Homebrew: install script
 
@@ -28,6 +37,8 @@ and `npm` on your PATH, and run the command again.
 It fetches the newest stable `vX.Y.Z` tag from the public repository, downloads
 that tag's source tarball, installs its locked build dependencies with lifecycle
 scripts disabled, builds the web workbench, and removes development dependencies.
+Older tags without the shared build helper use the equivalent legacy build steps,
+so the pinned-version command below also works for those archives.
 It prints each step and never uses `sudo`. Download or build failures leave the
 current installation in place. An interrupted update restores the old version
 and prints any retained staging or recovery path; keep that path until recovery

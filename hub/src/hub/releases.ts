@@ -1,3 +1,4 @@
+import { homebrewDescription } from '../homebrew.ts';
 import { publishGit, clearPublishReceipt, type PublishResult } from '../territory-publish.ts';
 import { pushDev, PushError, type PushResult } from '../territory-push.ts';
 import type { Actor, Tracker } from '../tracker/tracker.ts';
@@ -150,7 +151,7 @@ export class Releases {
           if (!dryRun && !result.followUp) {
             if (releaseItem !== undefined) {
               step = 'close';
-              const comment = `Released ${result.version} at ${result.commit}.`;
+              const comment = `Released ${result.version} at ${result.commit}.${result.homebrew ? `\n${homebrewDescription(result.homebrew)}` : ''}`;
               const view = await this.tracker.viewAsync(releaseItem, resumed);
               if (view.state !== 'closed' || !view.comments.some(entry => entry.text === comment)) {
                 await this.tracker.close(actor, releaseItem, comment, resumed, authorize);

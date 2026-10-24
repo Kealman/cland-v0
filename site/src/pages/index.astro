@@ -79,7 +79,7 @@ const presets = [
 ];
 
 const installs = [
-  { id: 'mac', label: 'macOS · Homebrew', lines: ['brew install cland'] },
+  { id: 'mac', label: 'macOS · Homebrew (pending)', lines: ['brew install kealman/tap/cland'] },
   { id: 'linux', label: 'Linux · script', lines: ['curl -fsSL https://cland.app/install.sh | sh'] },
   { id: 'source', label: 'From source', lines: ['git clone https://github.com/Kealman/cland-v0 cland', 'cd cland && npm ci && npm link'] },
 ];
@@ -215,9 +215,10 @@ const crewRows = [
         <a href="#how" class="btn btn-ghost">How it works</a>
       </div>
       <div class="copy-box">
-        <span class="prompt">$</span><code>brew install cland</code>
-        <button type="button" class="copy-btn" data-copy="brew install cland" aria-label="Copy the install command"><span aria-live="polite">Copy</span></button>
+        <span class="prompt">$</span><code>brew install kealman/tap/cland</code>
+        <button type="button" class="copy-btn" data-copy="brew install kealman/tap/cland" aria-label="Copy the install command"><span aria-live="polite">Copy</span></button>
       </div>
+      <p>Homebrew tap pending publication. <a href="/docs/install/#from-source">Install from source</a>.</p>
     </div>
     <div class="hero-visual">
       <div role="img" aria-label="A crew in cland: a coordinator on Claude Code with opus, implementers on OpenCode and Claude Code, a reviewer on Codex, one decision waiting for you" class="crew-window">

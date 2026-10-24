@@ -112,10 +112,14 @@ test('installer rejects absent or unsupported Node before fetching or changing t
   await assert.rejects(access(env.PREFIX!));
 });
 
-async function release(t: test.TestContext, root: string, version: string, broken = false) {
+async function release(t: test.TestContext, root: string, version: string, broken = false, legacy = false) {
   const source = join(root, version, 'cland-tag');
   await mkdir(join(source, 'hub/bin'), { recursive: true });
   await mkdir(join(source, 'web'), { recursive: true });
+  if (!legacy) {
+    await mkdir(join(source, 'packaging'));
+    await copyFile(fileURLToPath(new URL('../../packaging/build-install.sh', import.meta.url)), join(source, 'packaging/build-install.sh'));
+  }
   const helper = join(root, version, 'package');
   await mkdir(helper);
   await writeFile(join(helper, 'package.json'), JSON.stringify({ name: 'build-helper', version: '1.0.0', main: 'index.cjs' }));
@@ -184,10 +188,41 @@ test('a failed release build preserves the installed command and releases stagin
   await assert.rejects(access(join(env.PREFIX!, 'lib/.cland-install-lock')));
 });
 
+test('old-layout archives install, update and preserve the current command after a failed update', async t => {
+  const { root, env } = await fixture(t);
+  for (const [version, broken] of [['0.1.0', false], ['0.2.0', false], ['0.3.0', true]] as const) {
+    const url = await release(t, root, version, broken, true);
+    const attempt = run(t, '/bin/sh', ['install.sh'], {
+      cwd: root, env: fixtureEnvironment(root, env, {
+        PATH: env.PATH, REAL_NODE: process.execPath, FAKE_NODE_VERSION: 'v24.21.0',
+        FAKE_RELEASE_MAP: env.FAKE_RELEASE_MAP, CLAND_RELEASE_URL: url,
+      }), timeout: 30_000,
+    });
+    if (broken) await assert.rejects(attempt, /Command failed/);
+    else {
+      await attempt;
+      const command = await run(t, join(env.PREFIX!, 'bin/cland'), ['--version'], {
+        cwd: root, env: fixtureEnvironment(root, process.env), timeout: 15_000,
+      });
+      assert.equal(command.stdout.trim(), `${version}: --version`);
+      assert.equal(await readFile(join(env.PREFIX!, 'lib/cland/web/dist/index.html'), 'utf8'), 'built');
+      await assert.rejects(access(join(env.PREFIX!, 'lib/cland/node_modules/build-helper')));
+      await assert.rejects(access(join(env.PREFIX!, 'lib/cland/packaging/build-install.sh')));
+      assert.equal((await stat(join(env.PREFIX!, 'lib/cland/package-lock.json'))).mtimeMs, Number(await readFile(join(env.PREFIX!, 'lib/cland/web/dist/lock-mtime'), 'utf8')));
+    }
+  }
+  const command = await run(t, join(env.PREFIX!, 'bin/cland'), ['--version'], {
+    cwd: root, env: fixtureEnvironment(root, process.env), timeout: 15_000,
+  });
+  assert.equal(command.stdout.trim(), '0.2.0: --version');
+  await assert.rejects(access(join(env.PREFIX!, 'lib/.cland-install-lock')));
+});
+
 test('interruption after moving the old release restores its working command', async t => {
   const { root, env } = await fixture(t);
   for (const [version, interrupt] of [['0.1.0', false], ['0.2.0', true]] as const) {
-    const url = await release(t, root, version);
+    // Keep the shipped pre-helper layout on the interruption/rollback boundary.
+    const url = await release(t, root, version, false, true);
     const attempt = run(t, '/bin/sh', ['install.sh'], {
       cwd: root, env: fixtureEnvironment(root, env, {
         PATH: env.PATH, REAL_NODE: process.execPath, FAKE_NODE_VERSION: 'v24.21.0',

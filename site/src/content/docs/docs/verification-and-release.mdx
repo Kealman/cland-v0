@@ -246,6 +246,14 @@ A release:
 3. Creates an annotated tag `v<version>` at `dev` and pushes `dev` as GitHub `main` and the tag in **one atomic push** to the `github` remote.
 4. Only after GitHub accepts it, moves your local `main` and the territory, comments the tag on the release item and closes it. The next open release becomes current.
 
+For cland itself, optional `[release.homebrew] tap = "Kealman/homebrew-tap"`
+also publishes `Formula/cland.rb` to the existing tap's `main` branch after the
+product push. The release preview names the tap, version and tag URL for approval;
+SHA-256 is computed from that archive after publication and printed in the result.
+An empty tap skips this step. If it fails, keep `release.tmp` and retry the same
+item/version to finish the already published release. Only the human creates the
+tap repository.
+
 No GitHub API is called and no version file in your project is changed. Product publication uses `cland release`; approved marketing-only publication uses `cland publish`.
 
 ```mermaid

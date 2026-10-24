@@ -1,3 +1,5 @@
+import { archiveSha256, publishFormula, renderFormula, type HomebrewPlan, type HomebrewResult } from './homebrew.ts';
+import { parseConfig } from './init/config.ts';
 import { committedTree } from './verification-tree.ts';
 import { parseItemReference } from './tracker/prefixes.ts';
 // Release orchestration uses only the territory's async Git runner and lock. The annotated object is prepared
@@ -13,7 +15,7 @@ import { isSemverVersion } from './tracker/item.ts';
 
 type RunGit = typeof git;
 
-type Receipt = { version: string; commit: string; main: string; tag: string; notes: string; github: string; item?: string };
+type Receipt = { version: string; commit: string; main: string; tag: string; notes: string; github: string; item?: string; homebrew?: HomebrewPlan };
 // Keep receipt `main` as the default branch tip so older recovery files still resume.
 const releaseBranch = async (root: string, env: NodeJS.ProcessEnv, run: RunGit = git): Promise<string> => {
   const recorded = await run(territoryPath(root), ['config', '--get', 'cland.defaultBranch'], undefined, undefined, env).catch(() => '');
@@ -64,7 +66,7 @@ export async function fetchGithub(root: string, resumed: Resumed, publishing = f
     if (!sha) throw new ReleaseError('release-github', `github has no ${primary} branch`);
     return { found, main: sha };
   });
-  await run(root, ['fetch', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', url, main], undefined, undefined, env);
+  await run(root, ['fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', url, main], undefined, undefined, env);
   return resumed(() => ({ url, main, tags: found }));
 }
 
@@ -78,7 +80,13 @@ async function record(root: string, text: string): Promise<void> {
   await rename(`${path}.write.tmp`, path);
 }
 
-async function finish(root: string, receipt: Receipt, resumed: Resumed, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+type HomebrewBoundary = { sha256?: typeof archiveSha256; publish?: typeof publishFormula };
+const homebrewResult = (plan?: HomebrewPlan): HomebrewResult => plan
+  ? { ...plan, status: plan.commit ? 'published' : 'planned' }
+  : { status: 'skipped', message: 'Homebrew skipped: release.homebrew.tap is not configured.' };
+const followUpStep = (err: unknown) => (err as { releaseStep?: string })?.releaseStep ?? 'local refs';
+
+async function finish(root: string, receipt: Receipt, resumed: Resumed, env: NodeJS.ProcessEnv, authorize: () => void, boundary: HomebrewBoundary): Promise<void> {
   await releaseState(root, resumed, env);
   const primary = await releaseBranch(root, env);
   const main = await ref(root, `refs/heads/${primary}`, env);
@@ -91,12 +99,29 @@ async function finish(root: string, receipt: Receipt, resumed: Resumed, env: Nod
   await git(root, ['update-ref', '--stdin'], true, commands, env);
   // Sync can rewrite dev; publishing the default branch here does not accidentally republish a later dev tip.
   await git(root, ['push', '--atomic', territoryPath(root), `${receipt.commit}:refs/heads/${primary}`, `${receipt.tag}:refs/tags/${receipt.version}`], true, undefined, env);
+  if (receipt.homebrew) {
+    try {
+      resumed(authorize);
+      const plan = receipt.homebrew;
+      if (!plan.sha256) {
+        plan.sha256 = await (boundary.sha256 ?? archiveSha256)(plan.url);
+        await record(root, `${JSON.stringify(receipt)}\n`);
+      }
+      const template = await git(root, ['show', `${receipt.commit}:packaging/homebrew/cland.rb.in`], false, undefined, env);
+      const formula = renderFormula(template, { ...plan, sha256: plan.sha256 });
+      // Recheck the tap even with a recorded commit, including after a lost push reply.
+      plan.commit = await (boundary.publish ?? publishFormula)(root, plan, formula, resumed, authorize, env);
+      await record(root, `${JSON.stringify(receipt)}\n`);
+    } catch (err) {
+      throw Object.assign(new Error(err instanceof Error ? err.message : String(err)), { releaseStep: 'homebrew' });
+    }
+  }
 }
 
 /** Remove recovery state only after the hub has recorded the successful result. */
 export const clearPublicationReceipt = (root: string, kind: 'release' | 'sync'): Promise<void> => rm(kind === 'release' ? receiptPath(root) : syncReceiptPath(root), { force: true });
 
-export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, itemRelease?: { item: string; notesPrefix: string }, env: NodeJS.ProcessEnv = process.env, requireT3?: (head: string, tree: string) => void): Promise<ReleaseResult> {
+export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, itemRelease?: { item: string; notesPrefix: string }, env: NodeJS.ProcessEnv = process.env, requireT3?: (head: string, tree: string) => void, boundary: HomebrewBoundary = {}): Promise<ReleaseResult> {
   if (await access(join(root, '.cland', 'publish.tmp')).then(() => true, err => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; })) throw new ReleaseError('release-state', 'finish pending cland publish first');
   const pendingSync = await access(syncReceiptPath(root)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
   resumed(() => { if (pendingSync) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
@@ -118,7 +143,7 @@ export async function releaseGit(root: string, version: string | undefined, dryR
       throw new ReleaseError('release-changed', `finish pending release ${prior.version}${prior.item ? ` from ${prior.item}` : ' without --item'} first`);
     }
   });
-  const result = (receipt: Receipt): ReleaseResult => ({ version: name, commit: receipt.commit, notes: receipt.notes, refs: [`${receipt.commit}:refs/heads/${primary}`, `${receipt.tag}:refs/tags/${name}`], dryRun });
+  const result = (receipt: Receipt): ReleaseResult => ({ version: name, commit: receipt.commit, notes: receipt.notes, refs: [`${receipt.commit}:refs/heads/${primary}`, `${receipt.tag}:refs/tags/${name}`], dryRun, homebrew: homebrewResult(receipt.homebrew) });
   // A retry after a lost push reply or a failed local follow-up recognizes the exact annotated object.
   if (prior && github.tags.get(`refs/tags/${prior.version}`) === prior.tag) {
     resumed(() => {
@@ -127,9 +152,9 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     if (!await ancestor(root, prior.commit, github.main, env)) throw new ReleaseError('release-changed', `GitHub ${primary} no longer contains the published release; reconcile GitHub before completing local refs`);
     if (dryRun) return resumed(() => result(prior));
     // The tag object is unreferenced locally until follow-up; GC may have pruned it after a lost reply.
-    await git(root, ['fetch', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', github.url, prior.tag], undefined, undefined, env);
-    try { resumed(authorize); await finish(root, prior, resumed, env); return resumed(() => result(prior)); }
-    catch (err) { return resumed(() => ({ ...result(prior), followUp: { step: 'local refs', error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } })); }
+    await git(root, ['fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', github.url, prior.tag], undefined, undefined, env);
+    try { resumed(authorize); await finish(root, prior, resumed, env, authorize, boundary); return resumed(() => result(prior)); }
+    catch (err) { return resumed(() => ({ ...result(prior), followUp: { step: followUpStep(err), error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } })); }
   }
   // Read the pinned build, never an uncommitted bump in the checkout. Published
   // receipt recovery above finishes its original build even if dev has moved on.
@@ -167,10 +192,19 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     const found = await title(item.id);
     resumed(() => titled.push(`${item.id} ${found ?? item.subject}`));
   }
+  // Read opt-in publication from the committed release, never a later checkout edit.
+  const configPath = await git(root, ['ls-tree', '--name-only', state.dev, '--', '.cland/config.toml'], false, undefined, env);
+  const configText = configPath ? await git(root, ['show', `${state.dev}:.cland/config.toml`], false, undefined, env) : '';
+  const tap = parseConfig(configText, 'release', env).release.homebrew.tap;
+  const homebrew: HomebrewPlan | undefined = tap ? { tap, branch: 'main', file: 'Formula/cland.rb', version: name, url: `https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/${name}` } : undefined;
+  if (homebrew) {
+    const template = await git(root, ['show', `${state.dev}:packaging/homebrew/cland.rb.in`], false, undefined, env);
+    resumed(() => renderFormula(template, { ...homebrew, sha256: '0'.repeat(64) }));
+  }
   const { notes, preview } = resumed(() => {
     const commits = [...titled, ...other].join('\n');
     const notes = itemRelease === undefined ? commits : [itemRelease.notesPrefix, commits].filter(Boolean).join('\n\n');
-    return { notes, preview: dryRun ? { version: name, commit: state.dev, notes, refs: [`${state.dev}:refs/heads/${primary}`, `refs/tags/${name}:refs/tags/${name}`], dryRun } : null };
+    return { notes, preview: dryRun ? { version: name, commit: state.dev, notes, refs: [`${state.dev}:refs/heads/${primary}`, `refs/tags/${name}:refs/tags/${name}`], dryRun, homebrew: homebrewResult(homebrew) } : null };
   });
   if (requireT3) {
     const tree = await committedTree(root, state.dev, env);
@@ -183,7 +217,7 @@ export async function releaseGit(root: string, version: string | undefined, dryR
   if (preview) return preview;
   const ident = await git(root, ['var', 'GIT_COMMITTER_IDENT'], undefined, undefined, env);
   const tag = await git(root, ['mktag'], false, `object ${state.dev}\ntype commit\ntag ${name}\ntagger ${ident}\n\n${notes}\n`, env);
-  const receipt: Receipt = resumed(() => ({ version: name, commit: state.dev, main: state.main, tag, notes, github: github.url, ...(itemRelease ? { item: itemRelease.item } : {}) }));
+  const receipt: Receipt = resumed(() => ({ version: name, commit: state.dev, main: state.main, tag, notes, github: github.url, ...(itemRelease ? { item: itemRelease.item } : {}), ...(homebrew ? { homebrew } : {}) }));
   const current = await releaseState(root, resumed, env);
   const text = resumed(() => {
     if (current.main !== state.main || current.dev !== state.dev) throw new ReleaseError('release-changed', `${primary} or dev moved while preparing the release; preview again`);
@@ -196,8 +230,8 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     // Preserve the prepared receipt: a transport error can follow a successful receive. No local ref moved.
     throw err;
   }
-  try { await finish(root, receipt, resumed, env); return resumed(() => result(receipt)); }
-  catch (err) { return resumed(() => ({ ...result(receipt), followUp: { step: 'local refs', error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } })); }
+  try { await finish(root, receipt, resumed, env, authorize, boundary); return resumed(() => result(receipt)); }
+  catch (err) { return resumed(() => ({ ...result(receipt), followUp: { step: followUpStep(err), error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } })); }
 }
 
 export type SyncReceipt = { oldMain: string; oldDev: string; main: string; dev: string; territoryMain: string | null; territoryDev: string | null };
