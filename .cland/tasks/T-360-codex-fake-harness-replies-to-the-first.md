@@ -3,7 +3,7 @@ id: T-360
 kind: task
 title: Codex fake harness replies to the first channel block of a digest instead of the message addressed to it
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - qa-found
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T21:06:21.500Z
-updated: 2026-10-24T06:46:22.743Z
+updated: 2026-10-24T11:48:14.985Z
 ---
 
 ## Summary

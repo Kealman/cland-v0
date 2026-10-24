@@ -3,7 +3,7 @@ id: T-1220
 kind: task
 title: A session's shell identity is not bound to a per-session credential
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T11:11:17.138Z
+updated: 2026-10-24T11:52:58.045Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Trust model today: every session runs as the same OS user on one machine. This g
   - done: impl-1220 · 2026-10-24T10:13:17.395Z
 - [x] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
   - done: impl-1220 · 2026-10-24T10:13:17.528Z
-- [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
-  - failed: rev-31 [reviewer] · 2026-10-24T11:11:17.138Z · note Async relaunch must recheck caller authority after persistence and roll back role reservations when credential preparation fails.
+- [x] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
+  - done: impl-1220 · 2026-10-24T11:42:16.976Z
 
 ## Comments
 
@@ -134,3 +134,120 @@ Complete remaining source finding set M3/M4. C3 fails for relaunch authorization
 Durable review A-10804.
 
 Criteria: C3 failed (Async relaunch must recheck caller authority after persistence and roll back role reservations when credential preparation fails.).
+
+### impl-1220 · 2026-10-24T11:20:23.548Z
+
+Pushed 923b23887eb3910eda86aa5691c5547db87a5bb7 for remaining M3/M4. Dynamic caller authorization reaches private resume, credential preparation completion/native entry and adapter callbacks; current target row is reread. Reserved stop/preparation/native-entry failures share settlement; pre-native failure is rethrown after rollback without a false exited publication. Closure drains lifecycle settlement before closing tables. Seven credential lifecycle cases pass with original test-first failures retained in A-10824; affected local macOS arm64 files pass (lifecycle6, reservation67, component resume4, account10, archive13, raw CLI8, native boundary29, daemon18, docs3). Check exit0, report-only lint133/60, zero refusals. No configured-suite claim or dev merge. Request fresh full source review before mode-free verify.
+
+### rev-31 · 2026-10-24T11:21:48.776Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-source3
+commit: 923b23887eb3910eda86aa5691c5547db87a5bb7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1220 full source review — clear
+
+Head 923b23887eb3910eda86aa5691c5547db87a5bb7, tree 2b2dd47cd6233d8efde152c217211150116b42c3. Parent 241701ab8f5e50fe523bf903684e694e94ca06a2; no dev merge. Origin ref matches; clean task tree; fixed-base whitespace check clean. Scope full after correction, carrying original security review A-10740 and independent full corrected review A-10804. Both Standards and Spec axes reviewed in-session; no subagents or execution.
+
+Standards: zero remaining findings. M1 canonical guide/index contract and M2 asynchronous per-session I/O ownership remain resolved. This correction changes only sessions.ts, the existing T2 I/O regression file, its indexed guide and hub README. No changed tier, baseline, allowance, workload, assertion relaxation or role grants.
+
+M3 resolved: outer resume passes dynamic authorize into private #resume. authorizeResume checks shutdown, the caller's current grant and the current target row/account; it runs before queued credential storage and again after awaited persistence immediately before native entry. Native resume callbacks receive the same dynamic authorization; explicit stop receives it too. Resumed remains timing, not a substitute for authorization. The public fixed-role socket regression holds the exact rename, revokes the Coordinator's role, then asserts forbidden, zero native resumes, stopped target and no durable reservation.
+
+M4 resolved: stop/preparation/native-entry now share failure settlement. Errors before native entry, AccountLimited and ToolForbidden release the attempt's role reservation and rethrow the original error; they do not falsely publish an OS exit. Existing native recovery handling remains. Sessions.close drains lifecycle tails as well as credential I/O/archive work, and production table/storage disposal awaits it. Faulted-rename test inspects durable reservation plus public role ownership, preserves stopped state, confirms no pending cleanup, then proves subsequent resume admission. Shutdown test holds preparation, closes project sessions, releases it, requires refusal and zero native resumes, waits for disposal, then inspects the durable database for no residual role/reservation. Existing four success/readiness/drain proofs remain unchanged.
+
+Spec: zero additional findings. Original session credential attribution, explicit environment precedence, private fallback/migration, adapter-owned credential delivery, rotation/cleanup and human-approved identity-free single-user trust model are unchanged. Current source meets C1–C3's implementation requirements; final criterion verification remains dependent on the configured exact-head runtime result. Prior source failures are not represented as runtime passes.
+
+Evidence audited: A-10824 original records SHA256 79f85371a215074cb81b1e6f6066b09a766cb415ecec7dbb08b781b086eed8a7 matches provenance. Committed seven-case source SHA256 f95885d0d4ed56c28c00c305e8b0857ba4a0dafcfedb2bdf679aef37c68bb9af matches provenance. Original M3 red was undefined versus forbidden; M4 red retained worker/implementer reservation versus []; intermediate shutdown red returned true versus false. Final seven-case correction working-tree receipt exit 0, 7/7, zero failures/skips/cancellations: original positive cases 687.497/26.062/21.786/25.522 ms; revocation 22.273 ms; fault/retry 19.949 ms; shutdown 17.997 ms. Native runner 1201.403 ms, process wall 1230 ms. Test source and production were then committed unchanged; these are not exact-commit reruns.
+
+Other retained Darwin arm64 Node24.21 targeted receipts: lifecycle6, name-reservation67, component-resume4, account-limited10, archive13, raw CLI8, native-boundary29, daemon18, docs guard3, all exit0. Final check exit0, process wall34560ms, lint report-only133/60 and zero refusals; intermediate TypeScript result annotation failure retained before corrected cast. A-10779 preserves previous M2 proof; A-10742/A-10754 retain partial original sweep/failures/truncations. No full suite, Linux, QA or latency-gate inference.
+
+Clear source at 923b2388, findings []. C1–C3 remain unverified until ordinary configured mode-free verification at this exact clean head. Implementer may submit that run, route its result here, and preserve head. Local cover quiet remains in effect; no local targeted reruns. No dev merge absent Coordinator instruction; enqueues currently held by Coordinator. Reviewer performed only read-only source/Git/artifact inspection.
+
+Durable source review A-10826.
+
+### rev-31 · 2026-10-24T11:33:03.063Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-evidence1
+commit: 923b23887eb3910eda86aa5691c5547db87a5bb7
+scope: evidence
+findings: [{"severity":"medium","text":"M5: twelve existing fixture cases hit missing/invalid session credentials before their intended permission/behavior assertions. Complete explicit owned-authority fixture migration without weakening admission or negative tests.","file":"hub/test/artifact-delete.test.ts","line":18},{"severity":"medium","text":"M6: configured archive workload fails indexed shared-item timestamp lookup contract, actual 2 versus expected 1. Preserve async freshness and bounded query work; diagnose and fix without raising caps.","file":"hub/test/inbox-workload.test.ts","line":113},{"severity":"medium","text":"M7: two cross-flavour progress integration cases fail: held progress injects 1 versus 0, and uncertain digest is undefined versus ['old progress']. Establish exact async setup readiness while retaining final delivery/membership assertions.","file":"hub/test/progress.test.ts","line":68}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+T-1220 configured evidence — not clear
+
+Exact source-cleared head 923b23887eb3910eda86aa5691c5547db87a5bb7/tree 2b2dd47cd6233d8efde152c217211150116b42c3, source A-10826. task.view confirms failed finished run 66921553-ae31-456c-8fd1-b99fd65ecb00, original log A-10836. This evidence verdict does not reopen resolved M1–M4; it records three remaining integration groups exposed by the configured run.
+
+Actual failures before classification
+
+M5 — medium — hub/test/artifact-delete.test.ts:18 and other authenticated fixtures.
+Artifact-delete expected /only the human/, but actual was: session "coord" credential is missing or invalid; reconnect this session's own MCP spoke to provision its shell credential, or resume with --relaunch (A-10836 lines13394–13408). Demo-cap actual qa-demo credential refusal/false versus true; epic-close's two cases actual qa-demo credential refusal and CLI exit1 versus0. Six skills-onboarding cases actual onboarding-aide credential refusal/exit1 versus0; two verdict-criteria cases actual rev/qa-1 credential refusals/exit1 versus0. Total12. Static spot checks confirm raw fixture actors/CLI identity claims without their own credential, e.g artifact-delete line18, demo-cap lines28–33, skills-onboarding lines123–126 and verdict-criteria lines42–43. Complete the explicit owned-authority fixture migration while preserving each downstream permission/behavior assertion and the raw negative credential tests. Do not relax production credential admission or replace assertions with generic refusals.
+
+M6 — medium — hub/test/inbox-workload.test.ts:113 / shared archive sweep.
+"one indexed item timestamp lookup for a shared item", actual2 expected1 (log13465–13478). The asynchronous archive implementation re-reads shared item timestamps at publication; that necessary freshness must retain the existing bounded-query contract. Diagnose/fix at the indexed cache/revalidation seam, retaining current eligibility and bounded-work assertions. Do not raise the workload cap merely to accept this run.
+
+M7 — medium — hub/test/progress.test.ts:68 and153.
+"held progress starts no native input", actual1 expected0; uncertain digest actual undefined expected ['old progress'] (log13482–13518). The cross-flavour fixtures use presence as setup before recording injection membership. Diagnose the new async welcome/initial-input readiness boundary and establish its exact bounded setup receipt; preserve final no-input, digest membership, uncertain retry and delivery assertions. This evidence identifies failing integration, not a proven independent product defect. Implementer0fce47ba independently identifies the setup race and plans a correction.
+
+Run accounting
+
+Configured mode-free auto exit1. Host T0 exit0,52.041s. T1 exit0,envelope58s,actual suite54.23s; all-T2 fallback was selected, T2 exit1,envelope258s,actual suite254.55s. The structured finish records contain2313 ordinary tests:2298pass/15fail;80 distinct load-gate test passes are separate. Thus completed-before-interruption2393/2378pass/15fail includes those80 repetitions; do not confuse the two accounting scopes. No ordinary skips reported.
+
+The eight raw CLI credential cases and seven I/O/authorization/rollback cases each passed ordinary execution and five distinct load-gate repetitions with explicit5/5 receipts. This supports those focused behaviors, not final readiness. Raw CLI ordinary times1.124373/.392754/.631002/.718399/.382460/.454347/.268416/.338588s; seven I/O ordinary times.101388/.045550/.046666/.047338/.086913/.067800/.050066s.
+
+Changed T3/T4 selection and mapped inbox-verifier-load guard were planned, but no T3/T4 or Web phase completed. Their table projections/zero observations are not execution receipts. No native harness/QA/all-tier cover claim. Host typecheck marker7843ebd9acb96e7acf32ca0f7d1932c7115dadb0 was not repeated remotely. Lint133/60 and listed generic budgets/ratchet remain report-only; these15 assertions, not report warnings or capacity, caused failure.
+
+Executor Linux x64 6.8.0-142-generic, c-8 lon1, cland-v0-bfce446e, Node24.21.0/Neovim0.12.5, workers2, lifetime406s,cost$0.0282. Machine fsync8.81ms/SQLite9.59ms,iowait.01%,steal.01%; no capacity/infrastructure classification inferred.
+
+Disposition
+
+C3 failed for incomplete authorization fixture migration and asynchronous archive/progress integration. C1/C2 remain unverified in tracker pending final configured settlement. No unchanged-head retry: correct, preserve original diagnostics/source receipts, commit/push, restore claimant done mark and request fresh full source review before mode-free verification. Local cover quiet holds: no local test execution until release. No dev merge or enqueue absent Coordinator instruction. Reviewer inspected only source, Git and original logs; no tests executed.
+Durable evidence disposition A-10839.
+
+Criteria: C3 failed (Configured run fails 15 T2 cases: missing fixture credentials, archive query-count regression and progress async setup failures; later phases incomplete.).
+
+### impl-1220 · 2026-10-24T11:42:17.075Z
+
+Pushed 26b52798324645e764efc8e46f871330b94a4616 after failed run66921553 (A-10836/A-10839). M5 authentication-fixture omissions, M6 redundant archive lookup and M7 progress setup corrected with all original final assertions retained. Coordinator's complete12-case (a)/(b) classification is in A-10847. Six onboarding cases use raw tokenless ID/name CLI after own-spoke readiness, not synthetic tokens; added fresh Aide first-CLI/tokenless-after-welcome proof. Archive uses event-updated cache during I/O and a new held-removal reopen case. Check passed locally Darwin arm64, report lint133/60, zero refusals; native test execution at this new head is pending while cover quiet holds. Requesting fresh source review before configured verification; no dev merge.
+
+### rev-31 · 2026-10-24T11:44:14.469Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-source4
+commit: 26b52798324645e764efc8e46f871330b94a4616
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1220 full corrected source review — clear
+
+Reviewed 26b52798324645e764efc8e46f871330b94a4616, tree 732c3f1079f61d4ca15b069cb044e10abced475f, parent923b23887eb3910eda86aa5691c5547db87a5bb7. Origin task ref matches; clean tracked tree; fixed-base whitespace check clean. No dev merge. Scope full after M5–M7 correction; carry independent security/lifecycle review A-10826 and failed configured evidence A-10839. Standards and Spec reviewed in-session without subagents or execution.
+
+Standards: no remaining source findings.
+M5 correction enumerates all12 credential refusals. Artifact-delete opts into authenticated sessionUi; epic-close and verdict-criteria use authenticated sessionCland for known --as claims. Existing sessionClient now attaches owned synthetic authority to send as well as request, repairing demo-start's raw-send bypass. Explicit credentials remain untouched, identity-free actors unchanged, provisional IDs are not adopted, and production admission is unchanged. Existing downstream permission/lease/verdict/readback assertions remain.
+
+The six onboarding cases deliberately avoid synthetic credentials: an owned Aide spoke has stable ID/name and an awaited own who round trip; raw CLI calls pass ID/name without a token and read the real fallback file. The fake-GitHub child environment remains intact. This corrects incomplete name-only fixture setup, not a production fallback bypass. Raw credential-admission tests retain unwrapped harness clients. New fresh-Aide case obtains its actual own fake-adapter launch token, asserts no fallback exists before its first raw CLI, then connects its own spoke, awaits readiness, checks0600, repeats a tokenless CLI, and verifies both comment authors plus no token in logs. Existing Coordinator upgrade/no-token and old-env-token migration proofs remain.
+
+M6 source correction replaces unconditional post-removal closedAt reads with event-refreshed tracked timestamps. The existing tracker listener updates a cached close timestamp synchronously on relevant item changes and schedules/coalesces another sweep. After awaited removal, sweep still re-reads current process, pending-stop/running/archive eligibility, item association and deadline using the current cache. New item identities still get an indexed lookup through archiveDue. The one-lookup workload assertion is unchanged. New fake-clock component test prearms a removal hold, reaches the due boundary, reopens the item while I/O is held, releases, awaits sweep completion, then checks unarchived/visible state. The due item and stop interval are explicit. No query cap or workload relaxation.
+
+M7 source correction awaits receiving-spoke who readiness, then arms a bounded initial hub-input injected-stage observer before fake idle. The measured injection mark follows that setup. Original zero-extra-input, digest membership, uncertain retry and final delivery assertions remain across all flavours. Presence alone is no longer the readiness boundary. New indexed guides have exact test-path headings and existing target files; source inspection confirms index membership.
+
+Spec: no additional findings. Credential protocol/adapters/private file validation, own environment precedence, migration, rotation, async persistence and owned shutdown from prior clear source remain unchanged. The only production delta is archive timestamp cache maintenance. M1–M4 remain resolved. Same-user identity-free human behavior stays the human-approved trust boundary, not OS isolation.
+
+Evidence and limits
+A-10847 retains original check outputs and the twelve-case classification. First check exit1 was TS2345 at session-credential-fixture frame typing; corrected generic frame shape check exit0, Darwin arm64 Node24.21.0, process wall51138ms, report-only lint133/60, zero refusals. Two explanatory documentation sentences followed check; no exact-commit check rerun claimed. New runtime tests were intentionally NOT executed under active local stage-cover quiet. No red/green pass is invented for this correction.
+
+Prior configured66921553/A-10836 at923b2388 remains failed:2313 ordinary tests2298pass/15fail plus80 actual repetition passes; T0/T1 completed, T2 failed, changedT3/T4/Web incomplete. Its focused8CLI+7I/O ordinary and5/5 groups remain historical support only. This source clearance does not turn that receipt green or verify current-head runtime criteria.
+
+Disposition
+Clear source at26b52798, findings[]. All C1–C3 remain pending configured exact-head runtime settlement. Restore/retain claimant done marks, submit ordinary configured mode-free verification at this unchanged clean head, route result here. Droplet runs are unaffected by current local cover quiet; do not start local targeted tests until cover release. No unchanged-head retry of the historical failure, unauthorized dev merge or enqueue. Reviewer performed read-only source/Git/artifact inspection only.
+Durable source review A-10855.

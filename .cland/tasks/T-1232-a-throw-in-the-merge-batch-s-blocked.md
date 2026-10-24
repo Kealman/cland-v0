@@ -3,7 +3,7 @@ id: T-1232
 kind: task
 title: A throw in the merge batch's blocked-report path crashes the hub
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - bug
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T10:52:41.334Z
-updated: 2026-10-24T10:52:41.334Z
+updated: 2026-10-24T11:48:15.565Z
 ---
 
 ## Summary

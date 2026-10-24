@@ -3,7 +3,7 @@ id: T-1098
 kind: task
 title: Periodic dev culprit search refuses Web test files as invalid batch diagnostic files
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - bug
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1194
 blocked_by: []
-topic: null
-branch: null
+topic: topic-968
+branch: t/T-1098-periodic-dev-culprit-search-refuses-web
 created: 2026-10-22T07:52:03.979Z
-updated: 2026-10-24T07:18:02.231Z
+updated: 2026-10-24T11:50:06.145Z
 ---
 
 ## Summary

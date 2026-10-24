@@ -3,7 +3,7 @@ id: T-1030
 kind: task
 title: Recorded-frame matching misses the /private/tmp alias, so Neovim shell tests fail with TMPDIR under /tmp
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T20:51:01.853Z
-updated: 2026-10-24T06:46:21.619Z
+updated: 2026-10-24T11:48:14.588Z
 ---
 
 ## Summary

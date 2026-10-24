@@ -3,18 +3,19 @@ id: T-1108
 kind: task
 title: Late-PID probe test fails cleanup with ENOTEMPTY when its fake ps rewrites a marker after teardown
 state: open
-status: backlog
+status: in progress
 size: XS
+criterion_seq: 2
 labels:
   - flaky
   - ready-for-agent
 assignee: null
 parent: E-1196
 blocked_by: []
-topic: null
-branch: null
+topic: topic-972
+branch: t/T-1108-late-pid-probe-test-fails-cleanup-with
 created: 2026-10-22T13:55:59.920Z
-updated: 2026-10-24T06:46:22.369Z
+updated: 2026-10-24T11:53:43.311Z
 ---
 
 ## Summary
@@ -28,7 +29,8 @@ Teardown is race-free. Either stop the fixture hub before the temp directory is 
 ## Acceptance criteria
 
 - [ ] C1. The named test passes 20/20 in a targeted loop on macOS under CPU load, and its single file passes in a mode-free `cland verify` at the head.
-- [ ] C2. Its cleanup never removes the probe directory while the fixture hub can still call the fake `ps` (shown by the teardown order in the diff or by a test assertion).
+- [x] C2. Its cleanup never removes the probe directory while the fixture hub can still call the fake `ps` (shown by the teardown order in the diff or by a test assertion).
+  - done: impl-1108 · 2026-10-24T11:53:43.311Z
 
 ## Comments
 
@@ -43,3 +45,7 @@ The hub's failing-file rerun de13704a (A-9185) at the same head fae121ec ran on 
 ### coord · 2026-10-22T19:12:15.036Z
 
 Recurred in a full Linux run of T-1150 at e83b5945 (verify all 58a7464d, A-9422, c-8 lon1): the same ENOTEMPTY rmdir on cland-claude-pid-probe-* during teardown. The run went red only on this; T1, T2 and every other T3 test passed. That makes two occurrences today, so it now costs full reruns.
+
+### impl-1108 · 2026-10-24T11:52:44.153Z
+
+Test-first proof on macOS/local at ad611df9 + worktree diff: added a durable `hub-stopped` journal assertion while the probe directory is still present. Red: AssertionError [ERR_ASSERTION]: the fixture hub stops before its probe directory can be removed (actual false, expected true), 1/1 selected test failed. Minimal fix explicitly closes UI/stops fixture hub in nested finally and makes only the held identity probe write its finished receipt. Green: named test passed 1/1 (1.259 s test; no suite gate). Whole-file check and source review next; C1 load loop awaits Coordinator's exclusive window.

@@ -3,17 +3,17 @@ id: T-511
 kind: task
 title: Cancelled local verify leaves the suite lock held when a fake child recreates the suite root; admission refuses cleanup forever
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1194
 blocked_by: []
-topic: null
-branch: null
+topic: topic-971
+branch: t/T-511-cancelled-local-verify-leaves-the-suite
 created: 2026-10-15T15:58:21.157Z
-updated: 2026-10-24T06:46:19.380Z
+updated: 2026-10-24T11:53:09.995Z
 ---
 
 ## Summary
@@ -32,3 +32,7 @@ Cancelling a local verify can wedge local admission for good. On 2026-10-15 at 1
 ### coord · 2026-10-15T15:59:15.048Z
 
 Repaired by hand under the human's approval at 15:58Z; see T-204. The quarantined lock files are kept for diagnosis in the Coordinator job tmp until this is fixed.
+
+### impl-511 · 2026-10-24T11:53:09.995Z
+
+Test-first C2/C4 recovery slice: sealed public verification fixture kills its package runner, then fake child recreates the exact recorded phase-root path with a different inode. RED on macOS/local at ad611df9 + test: `next local run admitted after quarantine: not within 7000 ms`. Production change in progress; no live locks touched.

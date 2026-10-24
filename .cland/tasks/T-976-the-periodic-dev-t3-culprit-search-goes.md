@@ -3,7 +3,7 @@ id: T-976
 kind: task
 title: "The periodic dev T3 culprit search goes inconclusive on old trees: it applies the live hub's lints to pre-change manifests and can't place files new in the range"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - bug
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T15:39:04.758Z
-updated: 2026-10-24T06:46:18.619Z
+updated: 2026-10-24T11:48:13.687Z
 ---
 
 ## Summary

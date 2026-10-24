@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T10:41:05.081Z
+updated: 2026-10-24T11:48:25.356Z
 closed: 2026-10-24T09:34:36.235Z
 ---
 
@@ -286,3 +286,7 @@ Landing evidence (coord, read-only, project counts only): before hub restart #51
 ### coord · 2026-10-24T10:41:05.081Z
 
 C1 landing evidence, partial (coord, read-only counts): the local macOS stage cover 91eb2773 at 44f220a5 ran under the real HOME. T0, T1 (836 tests) and T2 (1,754) completed green, and 927 T3 tests ran before I cancelled it at about 10:39Z (A-10758). Ledger projects before it (10:19:03Z): 1,158 in both files; after it (10:41:01Z): 1,158 in both. Unchanged, so no test registered a temporary project in the real ledger. Not a complete full-suite run: T3 was partial, and T4 and Web did not run. The next full macOS stage cover will complete it.
+
+### coord · 2026-10-24T11:48:25.356Z
+
+C1 landing evidence, complete (coord, read-only counts). The local macOS stage cover 328a44b8 at dev 95662413 (A-10857, darwin arm64, workers 2) ran a full suite under the real HOME: T0, T1 842, T2 1768, T3 1241, T4 48 and Web 225, 4,272/4,272 passed. Ledger projects at 11:19:00Z before it: 1,158 in both ~/.local/state/cland/spend.json and ~/.cland/executor/spend.json, no "/". At 11:48:19Z after it: 1,158 in both. The count is unchanged across a complete full suite, so C1 holds at landing. Linux pair: 001d0718 (A-10848), 4,264 passed, 0 failed.

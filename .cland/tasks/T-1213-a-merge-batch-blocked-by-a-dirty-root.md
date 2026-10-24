@@ -3,7 +3,7 @@ id: T-1213
 kind: task
 title: A merge batch blocked by a dirty root never retries after the root is clean
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - bug
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1193
 blocked_by: []
-topic: null
-branch: null
+topic: topic-970
+branch: t/T-1213-a-merge-batch-blocked-by-a-dirty-root
 created: 2026-10-24T09:00:22.102Z
-updated: 2026-10-24T09:00:22.102Z
+updated: 2026-10-24T11:54:12.233Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ On 2026-10-24 at 08:57Z, batch 5ffe19ca (T-1144, T-539) passed its suite, then s
 
 - [ ] C1. A batch blocked by a recoverable landing error retries on a later tick once the cause is gone (for merge-dirty, a clean root), without cancelling a member, shown by a hub test that dirties then cleans the root (test).
 - [ ] C2. The blocked notice names the cause and says the queue retries by itself; a non-recoverable failure still waits for a human or Coordinator action and says so (test).
+
+## Comments
+
+### impl-1213 · 2026-10-24T11:54:12.233Z
+
+Implemented the dirty-root retry tracer bullet at the documented T1 landing seam. Red: dirty→clean root left landed=[] instead of T-1/T-2/T-3 with merge-dirty retained. Green: all 62 merge-batches.test.ts tests pass locally on macOS on the ad611df9-based working tree, including five recoverable landing codes across reopen and a permanent/untyped hold control. This is a targeted file receipt, not task-suite evidence; duration gates were not run. Source/docs/help changes in progress; no dependency or role-clause changes.

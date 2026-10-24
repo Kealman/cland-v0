@@ -3,7 +3,7 @@ id: T-522
 kind: task
 title: Remote ETA ignores durable-only leases, so a blocked explicit droplet waiter shows ETA 0
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-965
 branch: t/T-522-remote-eta-ignores-durable-only-leases
 created: 2026-10-15T18:16:12.637Z
-updated: 2026-10-24T11:14:45.752Z
+updated: 2026-10-24T11:32:39.503Z
 ---
 
 ## Summary
@@ -26,7 +26,7 @@ The remote ETA estimate in hub/src/hub/suites.ts (around line 698) ignores durab
 - [x] C1. Remote ETAs count every lease that holds a remote slot, durable-only ones included, and a waiter blocked by one shows an ETA of at least that lease's remaining expected time, or "unknown".
   - done: oc-522 · 2026-10-24T11:07:14.629Z
 - [ ] C2. A test holds a preparation-only lease with an explicit remote waiter queued, and the queue shows a non-zero or unknown ETA.
-  - failed: rev-23 [reviewer] · 2026-10-24T11:13:27.773Z · note M1: New regression cases lack the required per-test guidance/index entry.
+  - failed: rev-23 [reviewer] · 2026-10-24T11:32:39.503Z · note Configured run failed four assertions and six native120s timeouts; only partial T1 evidence, no T2/Web.
 
 ## Comments
 
@@ -93,3 +93,29 @@ A-10808 retains partial original local macOS arm64/Node24.21 receipt excerpts: p
 
 C1 and C2 remain pending configured same-head runtime settlement; source establishes implementation and regression shape only. Source clear permits mode-free configured cland verify at this exact unchanged head, reporting result to Reviewer and lead. Do not label it a full all-tier run; retain actual selection/platform/gates. No per-item QA brief/policy. Reviewer static source/Git/artifact reads only; no tests/probes/edits/install/Git mutation/browser/delegation. Standards zero remaining findings; Spec zero findings.
 Durable verdict A-10813.
+
+### rev-23 · 2026-10-24T11:32:39.503Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261024-522-evidence1
+commit: 3fb01872fc165e4f49473c8672c7d009570a440b
+scope: evidence
+findings: [{"severity":"medium","text":"M2: Configured3ce5c77d/A-10835 failed four executor timeout/checkpoint assertions and six merge-batches diagnosis tests timed out; T2/Web did not run. Diagnose exact seams, preserve assertions/timeouts, and source-review corrections before retry.","file":"hub/test/executor-run-rules.test.ts","line":25}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-522 same-head evidence review — not clear
+
+Head3fb01872fc165e4f49473c8672c7d009570a440b; source2 A-10813 remains historical source clearance. Configured mode-free3ce5c77d-cef3-4ea8-8571-a3904d59a20d / original log A-10835 finished exit1. Scope evidence, run rev-20261024-522-evidence1.
+
+M2 medium: four executor-run-rules assertions fail: silent task/integrated runs do not publish the expected stall terminal receipt (line25), silence deadline does not expire between transport polls (line68), and failed checkpoint terminal receipt is false (line130). Six merge-batches identities finish cancelled with native 'test timed out after120000ms': unresolved red repeat, independent flaky batches, diagnostic file/job provenance, diagnosis reopen, skipped rerun and cancelled-repeat recovery. These are actual assertion/timeouts, not report-only budget regressions. Root cause and relation to the task's new asynchronous lease reads are not established by the log; do not classify as shared infrastructure or relax assertions/timeouts without diagnosis.
+
+Native finish counts830 ordinary pass,4fail,6cancelled;135passing file finishes/twofailed;10additional load-gate test/file passes. The two new durable-lease ETA cases pass base0.096040595s/0.020531881s plus5/5 each (worst0.153450145s/0.055887114s). These targeted successes do not establish a green configured run. T0host check exits0/23.822s; T1exits1/envelope780s/actualsuite776.13s; T2/Web never execute. No T3/T4 or integrated cover. Host gate95856821... is reported reused, not repeated remotely; no separate candidate remote typecheck claimed.
+
+Linuxx64 c-8lon1 cland-v0-12c5f752, Node24.21/Nvim0.12.5 workers2, lifetime871s/$0.0605. Diskfsync8.1ms/SQLite9.51ms and no steal/iowait do not support dismissing failures as host slowness. Lint133/60 and duration/ratchet reports are report-only; their large values reflect failures and are not the reason for clearance refusal.
+
+C1/C2 remain unverified; C2 failed for incomplete passing regression coverage across configured verification. Preserve failed native receipt and diagnose exact seams. No unchanged retry requested; any correction needs fresh committed source review before another configured run. Current macOS stage cover prohibits local tests until released; ask the Coordinator for an authorized route if needed, never bypass cover-quiet. QA none. Reviewer static tracker/log/source reads only, no tests/probes/edits/install/Git mutation/browser/delegation. Standards one medium runtime-evidence finding M2; Spec not finally established.
+Durable disposition A-10838.
+
+Criteria: C2 failed (Configured run failed four assertions and six native120s timeouts; only partial T1 evidence, no T2/Web.).

@@ -3,17 +3,17 @@ id: T-1214
 kind: task
 title: Parallel CLI changes conflict on the single usage text in hub/src/cli/usage.ts
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1196
 blocked_by: []
-topic: null
-branch: null
+topic: topic-975
+branch: t/T-1214-parallel-cli-changes-conflict-on-the
 created: 2026-10-24T09:01:40.293Z
-updated: 2026-10-24T09:01:40.293Z
+updated: 2026-10-24T11:50:59.036Z
 ---
 
 ## Summary

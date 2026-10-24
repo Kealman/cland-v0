@@ -3,7 +3,7 @@ id: T-1149
 kind: task
 title: Neovim artifact-render test misses the artifact event within 10 s under Linux load
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - flaky
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T17:31:42.287Z
-updated: 2026-10-24T06:46:21.983Z
+updated: 2026-10-24T11:48:14.685Z
 ---
 
 ## Summary

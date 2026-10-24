@@ -3,7 +3,7 @@ id: T-1222
 kind: task
 title: cland init writes a Codex sandbox for Implementer and Aide that differs from the built-in defaults
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-960
 branch: t/T-1222-cland-init-writes-a-codex-sandbox-for
 created: 2026-10-24T09:42:30.046Z
-updated: 2026-10-24T11:17:37.965Z
+updated: 2026-10-24T11:49:15.569Z
 ---
 
 ## Summary
@@ -33,12 +33,15 @@ Found by impl-783 in the T-783 docs pass (2026-10-24 09:41Z, topic-953). `hub/sr
   - done: impl-1222 · 2026-10-24T10:46:22.221Z
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source2 · 2026-10-24T11:00:27.117Z · commit 381a8799f392239cd9ad57d7806adc540f913b5d
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source3 · 2026-10-24T11:17:12.364Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
+  - verified: rev-23 [reviewer] · run rev-20261024-1222-final · 2026-10-24T11:34:04.365Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
 - [x] C2. `cland init`'s generated roles.toml and the built-in fallback defaults agree for every role's Codex sandbox, shown by a test comparing the two.
   - done: impl-1222 · 2026-10-24T11:17:37.965Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1222-final · 2026-10-24T11:34:04.365Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
 - [x] C3. site/src/content/docs/docs/ states the default and how to change it.
   - done: impl-1222 · 2026-10-24T10:46:23.987Z
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source2 · 2026-10-24T11:00:27.117Z · commit 381a8799f392239cd9ad57d7806adc540f913b5d
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source3 · 2026-10-24T11:17:12.364Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
+  - verified: rev-23 [reviewer] · run rev-20261024-1222-final · 2026-10-24T11:34:04.365Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
 
 ## Comments
 
@@ -179,3 +182,54 @@ Correction check and repository-tier-plan success are claimant-reported local re
 Durable review A-10814.
 
 Criteria: C1 verified, C3 verified.
+
+### impl-1222 · 2026-10-24T11:32:21.068Z
+
+Configured mode-free run0ebbab22 at source-cleared ec1732a6 passed (A-10837): T0, T1, fallback-all T2, changedT3 (12 assertions) and Web completed; 2937pass/0fail/1skip of2938 tests. ChangedT4 was the macOS-only synthetic Seatbelt test and skipped on Linux; its earlier macOS local receipt is preserved in A-10777. UnchangedT3 remains deferred. Budget/lint report mode; no native Codex/Landlock enforcement claim. Linux droplet c-8/lon1, lifetime720s,cost$0.0500,workers2. Final evidence review requested. Fetched origin/dev95662413 and merge-tree conflict check exited0; reviewed head ec1732a6 and clean worktree unchanged. No merge performed.
+
+### rev-23 · 2026-10-24T11:34:04.365Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1222-final
+commit: ec1732a6de20181f0d80cb65d191e4d2239909a6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1222 final same-head evidence review — clear
+
+Head ec1732a6de20181f0d80cb65d191e4d2239909a6/tree68de3695d329f93d6417f3c4962d7b73d01253c9, independently matching origin task ref. Source3 rev-20261024-1222-source3/A-10814 and prior full audit A-10776/A-10782 carry forward unchanged. Scope evidence, run rev-20261024-1222-final; findings []; C1/C2/C3 verified.
+
+Configured mode-free0ebbab22-8f87-4fcd-b43b-cd8dfd414d07, original log A-10837, finishes exit0. Native records2937 ordinary test passes plus1 explicit platform skip,424passing file finishes, and10additional load-gate test/file passes. The ten are actual five repetitions each of generated-role equality and generated/fallback absolute-root resolution, not inferred from headers. No failures/cancellations. The earlier44abe56f/A-10803 remains a failed prior-head receipt, separately disposed in A-10814; this new receipt supplies the missing passing phases.
+
+Actual phases: host T0check exit0/38.789s; allT1 (137files/837top-level tests); fallback allT2 across hub/Neovim (241files/1755top-level tests); changedT3codex-adapter (onefile/12passing identities once); changedT4codex-workspace-git (one explicitly skipped macOS-only identity, zero passing identities); fullWeb44files/224top-level tests. This is not a complete T3/T4 or stage cover. T1/T2/T3/T4/Web envelopes62/347/35/6/161s differ from suite walls57.73/342.58/30.97/1.04/157.19s. Selected changed-T3 added wall30.912s and skipped-T4 phase added wall0.989s are observed excluding machine wait, not summed test durations or whole-tier projections.
+
+C2 runtime verified: all-six-role generated/missing-file/missing-key equality passes0.002439098s plus5/5 (maximum0.003976138s); generated/fallback exact Implementer task-worktree Git/territory/artifact roots pass0.215411767s plus5/5 (maximum0.22266548s). Full native fake-Codex adapter file passes12/12; policy/relaunch scenario passes5.526557637s within the reviewed8s allowance. Its lingering >5s regression notice is informational for this known allowed identity, not an enforcing failure. Exact allow-map stanza remains:
+{
+  "hub/test/codex-adapter.test.ts::Codex launches Implementer with narrow workspace roots, QA full access, Reviewer read-only, and the configured T-48 profile (T-1222)": {
+    "seconds": 8,
+    "owner": "E-778",
+    "added": "2026-10-24",
+    "expires": "2026-10-31",
+    "reason": "Sealed native fake-binary policy contract shares one scratch setup, launches five role/profile app-servers and observes two stop/relaunch receipts. Based on one Linux droplet c-8 sample of 5.272721635 s at 381a8799, run 44abe56f (A-10803); 8 s gives about 1.5x headroom for run variance. No fixed waits to remove; renamed identity has no stage baseline yet (T-1222)."
+  }
+}
+
+Linux skip is explicitly 'needs macOS sandbox-exec; Linux parity is out of scope'. It is not a passing Linux sandbox test. Accepted earlier local macOS synthetic Seatbelt evidence in A-10777 remains separately source/platform attributed under Coordinatorc68ca68a; it proves allowed scratch Git writes and denied hooks/config/protected-push paths via synthetic Seatbelt. This and T2 resolved-policy proof satisfy the approved task merge boundary, not native Codex sandbox enforcement. Real-Codex scratch commit/push is an E-778 after-landing/before-launch check; Linux Landlock parity remains out of scope.
+
+C1 final human Aide choice remains workspace-write/no extra roots/no Aide root commits, per corrected decision0c61c0e7; C3 defaults/override/access/evidence documentation remains verified. No policy is provisional. Explicit role settings and written lists remain honored.
+
+Host marker38f547c82003d8cd9fb4c787c206b859115a98ca is independently a Git tree; retained host gate was not repeated remotely. Runtime Linuxx64 6.8.0-142-generic c-8lon1 cland-v0-0e7b859c, Node24.21/Nvim0.12.5 workers2/Web4, life720s/$0.0500; diskfsync9.08ms/SQLite12.39ms. Lint133/60, missing baselines and unrelated Web/scale/render/ratchet diagnostics remain report-only, including Web observed wall157.19s over40s, items49.869s, and T3 ratchet2183.081 vs2182.786 with incomplete base. No clean enforcing-tier-budget claim.
+
+Recovered raw A-10784 independently fills prior docs guard green3/3 chunk66f700/exit0. A-10818 retains correction check ordering: fullcheck begins on initial5.272722 allowance tree, final8s patch precedes terminal pollc7fd7c/exit0/zero lintrefusals; final8s static validation+commit/push57fbc3 exits0 at ec1732a6. No exact-commit full-check rerun or inferred overall wall time claimed. Original local receipts remain supplemental to configured Linux.
+
+QA none/after-stage, no QA brief/pass, stage closure, publication or native-enforcement claim. Coordinator stage-cover enqueue hold still applies; this verdict is readiness evidence, not enqueue authorization. Reviewer performed static Git/source/artifact/tracker reads only; no tests/probes/install/edits/Git mutation/browser/delegation. Standards0 findings; Spec0 findings.
+Durable final audit A-10841.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1222 · 2026-10-24T11:35:55.272Z
+
+Ready handoff sent to Coordinator with A-10842. Hub ready; final evidence verdict A-10841 verifies C1–C3 at ec1732a6, no findings. Configured green receipt A-10837 retains Linux platform skip and report-mode scope; original local receipts remain A-10777/A-10784/A-10818. Current origin/dev95662413 unchanged since clean conflict check; reviewed head/worktree unchanged. No merge or enqueue; Coordinator cover hold applies. E-778 real Codex scratch commit/push remains agreed landing evidence before launch.
