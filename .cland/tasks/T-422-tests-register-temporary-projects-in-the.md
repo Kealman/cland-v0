@@ -3,7 +3,7 @@ id: T-422
 kind: task
 title: Tests register temporary projects in the real host executor ledger
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T08:47:45.033Z
+updated: 2026-10-24T09:02:10.049Z
 ---
 
 ## Summary
@@ -31,10 +31,13 @@ The host-wide executor ledger `~/.cland/executor/spend.json` lists 24 projects. 
 
 - [x] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
   - done: impl-422 · 2026-10-24T08:46:38.455Z
+  - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
 - [x] C2. `rememberProject('/')` is refused, and the ledger never lists `/`.
   - done: impl-422 · 2026-10-24T07:53:42.861Z
+  - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
 - [x] C3. A registered project whose directory is gone is pruned from `projects` by the sweep, with an event naming it.
   - done: impl-422 · 2026-10-24T07:53:42.964Z
+  - verified: rev-32 [reviewer] · run rev-20261024-422-final · 2026-10-24T09:02:09.655Z · commit 5c0f0527aebf63314ad35ff9ea743e1d077feee1
 
 ## Comments
 
@@ -197,3 +200,41 @@ No configured verification yet at5c0f0527. qaPolicy none/after-stage, no brief.
 Reviewer performed read-only source/Git/docs/artifact checks, no tests, probes, installs, browser, live-ledger mutations or delegation; both axes completed personally.
 Standards:0 findings. Spec:0 findings.
 Durable audit A-10571: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10571-t-422-m3-corrected-source-review-at-5c0f0527.md
+
+### impl-422 · 2026-10-24T09:01:50.160Z
+
+Configured mode-free verification 8b3cc947 at head 5c0f0527aebf63314ad35ff9ea743e1d077feee1 completed green: 2820 tests passed, zero failures/cancellations/skips. Linux x64 droplet c-8 lon1, workers 2, lifetime 711s, $0.0494. T1 plus all fallback T2 across hub/Neovim and Web completed; T3 deferred to periodic/integrated occasions; lint/duration gates report-only. Exact log A-10593. Source head/tree unchanged after review. Read-only conflict check against origin/dev 30b7b71f reports only adjacent guidance additions in .agents/skills/implement/SKILL.md; reported to Lead with keep-both resolution, no dev merge performed. Native scratch 1159-project registry measurement A-10565: maximum continuous primary hold 84.647ms and registry sweep 139.989ms on local macOS arm64; not Linux or whole-start timing. Literal real-ledger/full-suite stage evidence remains Coordinator-owned.
+
+### rev-32 · 2026-10-24T09:02:09.655Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-422-final
+commit: 5c0f0527aebf63314ad35ff9ea743e1d077feee1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-422 final same-head evidence review — clear
+Exact unchanged head5c0f0527aebf63314ad35ff9ea743e1d077feee1; tree99ebc4f62f722717e67b9b6fe83ce5a93058dc8b. Accepted source A-10464/A-10466/A-10556/A-10571 carried. Fresh configured mode-free run8b3cc947-f2cb-4b8f-a09c-070ead9a8bdd, original A-10593, exit0.
+
+## Standards
+No findings. Independently parsed ordinary structured finishes:2820test/418file passes;55 additional load-gate test/file passes =11new identities×5actual repetitions. No fail/cancel/skip/todo. Executor base counts794+1401+346+279=2820; printed file-plan aggregates792/1710/223 are separate counts.
+Linuxx64 6.8.0-142-generic c-8lon1 dropletcland-v0-49d775b7, Nodev24.21.0/Neovimv0.12.5, workers2(Web4). Completed T0 hostcheck, allT1, fallback allT2hub+Neovim andWeb. New registration/grace/invalid-root/stopped-root, pruned startup, both env-overlay and all three lock/shutdown identities each have5/5 load receipts.
+Previously failing integration cases now pass: executor-admission-lock7/7 (including assertion-failure cleanup), executor-safety-component12/12 (shared cap/release), suite-close-component9/9 (held provider cancellation/zero reservation). No relaxed final assertion or timing budget.
+
+## Spec
+C1 pre-merge verified per Coordinator f248e85e: approved scratch-ledger regression proofs and fresh configured task receipt. account-fixture-env5/5 includes pruned-root startup and unchanged inherited scratch HOME/XDG/override state. suite-accounting15/15 includes partial and explicit hostile options.env controls with final owned paths, actual accounting entries and unchanged scratch primary/legacy ledgers. suite-persistence4/4 confirms restored fixture environment; executor-run-rules10/10 and lock-liveness6/6 pass.
+This does NOT claim a full-suite run under real HOME or a real-ledger projects before/after check. The literal local macOS full stage comparison remains Coordinator-owned landing evidence, explicitly not pre-merge.
+C2 verified: executor-spend20/20 covers refusal of filesystem roots/HOME/aliases/missing/file/relative/uninitialized directories before any ledger write, canonical valid aliases, and removal of invalid old registrations.
+C3 verified: the persisted24h grace/reset/restart proof observes published primary/legacy projects plus prune events, retains reservations, prevents retained entries reviving missing scans and restores valid returned roots. Stopped initialized project survives48h without hub discovery/lock. M1–M3 source corrections remain resolved. Verify allC1–C3 within this agreed scope.
+Coordinator-requested scratch1159-project lock measurement remains supplemental A-10565/A-10560: localmac registry139.989333ms/maxcontinuous primary84.647209ms, identical production since0a403c82. This is not a measured full hub start or Linux/concurrent-hub guarantee.
+
+T0 stdout retained; remote typecheck reused hostgateeb04b8c6a699fec8ae45e45a5ec835e535e7d655, not repeated on droplet. Generic lint/duration/ratchet diagnostics report-only (132findings/59files,1missingbaseline, incomplete base timings). ActualWeb shard170.71s exceeds40sreport budget; projected150.266s at2workers is not actualWeb4wall. Existing unrelated report-only warnings retained. T3/T4 unrun/deferred, no full-suite/QA claim.
+Command wall65/378/175s, shard60.63/373.12/170.71s; droplet lifetime711s/cost$0.0494. Failed historicalA-10520 remains failed/partial, not relabelled.
+Reviewer read source/logs/Git/artifacts only; no tests, edits, browser, installs, merges or real-ledger mutation/delegation. qaPolicy none/after-stage.
+Standards:0findings. Spec:0findings; allC1–C3verified for merge under the Coordinator's disposition.
+Durable audit A-10597: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10597-t-422-final-same-head-evidence-at-5c0f0527.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

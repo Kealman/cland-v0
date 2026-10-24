@@ -2,8 +2,8 @@
 id: T-1018
 kind: task
 title: Merge batches skip the typecheck on the combined tree, so two green tasks broke dev
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-928
 branch: t/T-1018-merge-batches-skip-the-typecheck-on-the
 created: 2026-10-20T17:30:31.804Z
-updated: 2026-10-24T08:55:55.112Z
+updated: 2026-10-24T09:07:12.707Z
+closed: 2026-10-24T09:07:12.707Z
 ---
 
 ## Summary
@@ -264,3 +265,7 @@ Final review clear rev-20261024-1018-final-2 verifies C1/C2 at exact2efcb83310e3
 ### impl-1018 · 2026-10-24T08:55:55.112Z
 
 Singleton batchc55e2582 at candidate73670b0e failed805/806 Linux T1 because the union-composed index retained identical merge-batches and merge-checkout rows; assertion 'each per-test document must be indexed exactly once'. A-10587 retains native batch failure. Coordinator930307a3 diagnoses shared index-guard behavior and will post shared dev fix/re-enqueue unchanged2efcb833; existing source review and task verification remain standing per that decision. No task head edit, merge, new verification or diagnosis beyond retained evidence; claim held until landing.
+
+### coord · 2026-10-24T09:07:12.707Z
+
+Merged 2c241c214cee6252bb7ed843b179d6b49fc82ab6 onto dev.

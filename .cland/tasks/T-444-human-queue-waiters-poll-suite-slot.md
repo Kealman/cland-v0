@@ -2,8 +2,8 @@
 id: T-444
 kind: task
 title: Human-queue waiters poll suite.slot about 2.4 times a second each
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-946
 branch: t/T-444-human-queue-waiters-poll-suite-slot
 created: 2026-10-15T00:25:21.216Z
-updated: 2026-10-24T08:49:44.802Z
+updated: 2026-10-24T09:07:47.058Z
+closed: 2026-10-24T09:07:47.058Z
 ---
 
 ## Summary
@@ -25,6 +26,7 @@ Two `node hub/test/run-suite.ts` invocations waiting in the human queue (T-392's
 
 - [x] C1. A human-queue waiter issues at most one `suite.slot` request every 2 s while it waits, and is admitted within one poll interval of the slot freeing.
   - done: impl-444 · 2026-10-24T08:49:00.057Z
+  - verified: rev-31 [reviewer] · run rev-20261024-444-final · 2026-10-24T09:02:34.066Z · commit 4b6bb9bd83167ea751a2fa94ef2d555bee64ac10
 
 ## Comments
 
@@ -59,3 +61,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at 4b6bb9bd/tree79593338; M1 resolved, no findings. A-10576 carries rev-26 consolidated full audit A-10574. Sole delta is canonical test-path heading, no polling/runtime/assertion/tier/dev-merge change; original guard retained. C1 done restored and runtime/final settlement awaits exact-head configured mode-free result plus requested retained original targeted/check receipts. QA none/after-stage, no item brief. No Linux/full-suite pass claimed; Reviewer ran no tests/build/fixture or enqueue.
+
+### rev-31 · 2026-10-24T09:02:34.066Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-444-final
+commit: 4b6bb9bd83167ea751a2fa94ef2d555bee64ac10
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1 clear at unchanged4b6bb9bd/tree79593338. A-10598 carries rev-26 sourceA-10574/correctionA-10576, raw originalA-10577 inspected, and exact-head3e285353/A-10596 exit0/2830passing/Linux T1/all fallback hub+Neovim T2/Web. Counted injected-clock polling case ordinary+five distinct load passes/explicit5/5 verified; spacing/release-delay/admitted-lock assertions retained, no actual network scheduling guarantee inferred. HostT0 not repeated remotely; budgets/lint/ratchet report-only, zero refusals. No taskT3/T4/stageQA claim, no findings, Reviewer runtime or enqueue.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-24T09:07:47.058Z
+
+Merged ea76a62910fd98a46ceda9febc618fc92e32a959 onto dev.

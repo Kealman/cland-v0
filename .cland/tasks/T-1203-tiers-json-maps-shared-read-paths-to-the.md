@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-944
 branch: t/T-1203-tiers-json-maps-shared-read-paths-to-the
 created: 2026-10-24T06:46:05.046Z
-updated: 2026-10-24T08:48:50.276Z
+updated: 2026-10-24T09:07:44.805Z
 ---
 
 ## Summary
@@ -25,10 +25,13 @@ Changes to shared read paths (T-1147) were selected without the T4 load files th
 
 - [x] C1. A change to a mapped read path adds its T4 load files to the task's selection, and the report names why (test).
   - done: impl-1203 · 2026-10-24T08:39:30.709Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1203-final · 2026-10-24T09:01:11.152Z · commit f62bba8581ef5b6dbef86ee95a2c7df13825e270
 - [x] C2. The T-1147 read path is mapped, and the mapping is documented in docs/agents/tests.md (docs).
   - done: impl-1203 · 2026-10-24T08:39:31.096Z
   - verified: rev-23 [reviewer] · run rev-20261024-1203-source · 2026-10-24T08:42:08.214Z · commit 53f6a4a5dcba687268311e1986e14d6c21bcaafa
   - verified: rev-31 [reviewer] · run rev-20261024-1203-source2 · 2026-10-24T08:48:50.276Z · commit f62bba8581ef5b6dbef86ee95a2c7df13825e270
+  - verified: rev-31 [reviewer] · run rev-20261024-1203-final · 2026-10-24T09:01:11.152Z · commit f62bba8581ef5b6dbef86ee95a2c7df13825e270
+  - verified: rev-31 [reviewer] · run rev-20261024-1203-delta · 2026-10-24T09:07:44.805Z · commit f56f5de3c49d693ec4ca9408abf69a90367f6394
 
 ## Comments
 
@@ -90,5 +93,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at f62bba85/tree7ddf733f; no findings. A-10573 carries rev-23 full audit A-10559 and prior exact-head local A-10553/A-10554/A-10562. Exactly one shared regex and its guide now include mapped T4 guards; defaults/project assertions and byte/growth reserves retained, production/mapping/tests unchanged, no dev merge. Coordinator9748c33c directs migration/review/verify;099ed493 accepts core.ts mapping and historical cost with live cost after restart. A-10570 local39/39 native exit0 has precommit source-equivalence attribution; old failed Linux A-10567 remains failed. C2 mapping/docs re-established; C1 final settlement awaits fresh configured mode-free result, actual selected phases distinct from post-restart T4 execution. Reviewer ran no tests or enqueue.
+
+Criteria: C2 verified.
+
+### rev-31 · 2026-10-24T09:01:11.152Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1203-final
+commit: f62bba8581ef5b6dbef86ee95a2c7df13825e270
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at f62bba85/tree7ddf733f. A-10594 audits replacement70ab0443/A-10592 exit0,2830/2830,Linux c-8 lon1 T1/all fallback hub+Neovim T2/Web. Independently verified mapped selector/reason ordinary+five distinct load passes and manifest guard ordinary+five/explicit5/5; corrected clauses pass. Carries rev-23 sourceA-10559/correctionA-10573 and native prior-head selector proofA-10554/A-10562. Actual T4 workload not executed by current host; Coordinator selector-proof/post-restart execution disposition and099ed493 historical cost acceptance remain explicit. C2 mapping/docs established. HostT0 not repeated remotely; budgets/lint report-only, zero refusals, no stageQA or Reviewer runtime/enqueue claim. No findings.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-31 · 2026-10-24T09:07:44.805Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1203-delta
+commit: f56f5de3c49d693ec4ca9408abf69a90367f6394
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear at f56f5de3/tree 3591c0ce; no findings. A-10615 carries A-10559/A-10573 source and A-10594 prior-head evidence. Coordinator b013cc54 authorized dev merge after T-1144. Manual usage resolution retains capacity-refusal and mapped T4 guard guidance; mapping/selector/shards/tests unchanged. Incoming runner/capacity/wire changes preserve selection and incomplete/unavailable evidence authority. A-10604 check exit 0; A-10605 local Darwin arm64 165/165 targeted contracts exit 0. C2 mapping/docs verified; C1 final settlement pending fresh configured mode-free verification at this head. Prior f62 runtime remains prior-head only. Coordinator-accepted historical cost/post-restart live T4 distinction retained in A-10599. No Reviewer execution or enqueue.
 
 Criteria: C2 verified.

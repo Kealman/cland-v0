@@ -9,12 +9,12 @@ labels:
   - needs-triage
   - opencode
 assignee: null
-parent: C-326
+parent: E-1216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T15:53:55.297Z
-updated: 2026-10-16T15:53:55.297Z
+updated: 2026-10-24T09:04:32.699Z
 ---
 
 ## Summary

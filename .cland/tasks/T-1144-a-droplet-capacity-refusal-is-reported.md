@@ -2,8 +2,8 @@
 id: T-1144
 kind: task
 title: A droplet capacity refusal is reported as a red periodic dev T3 run, and no executor fallback applies
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-940
 branch: t/T-1144-a-droplet-capacity-refusal-is-reported
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-24T08:51:59.804Z
+updated: 2026-10-24T09:03:16.816Z
+closed: 2026-10-24T09:03:16.816Z
 ---
 
 ## Summary
@@ -100,3 +101,7 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Final evidence clear, A-10582; C1/C2 verified with retained L1low/T-1211. Freshc4eb3310/A-10581 exact31f4f28c native2853ordinary+130actual repetitions allpass.15positivecapacity+8negativeadmission controls, periodicrestart/glyph andNvim15/15pass; 26identities5/5,maxload0.518191997s,noallowance need. Linuxc8lon1T1/allfallbackT2bothpackages/actualWeb; A-10552localcheck0real41.74s,matchinghostgatetree reusednotremotecheck. Lint133/60,budgets/ratchet report-only,Web137.49sshardslowwarning retained,noT3T4/providerlive/QAclaim. Source3A-10555 unchanged; parentreceiptprovenanceonly. Leadreportsfreshdev89e5c304conflictcheck0/unchangedcleanhead.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T09:03:16.816Z
+
+Merged 74407f6ef6cfdca357c8a15b1780740cc3a65266 onto dev.

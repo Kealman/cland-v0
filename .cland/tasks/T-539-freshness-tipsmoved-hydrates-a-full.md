@@ -2,8 +2,8 @@
 id: T-539
 kind: task
 title: "Freshness #tipsMoved hydrates a full Tracker.list to find freshness-dependent items"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-945
 branch: t/T-539-freshness-tipsmoved-hydrates-a-full
 created: 2026-10-15T21:17:45.123Z
-updated: 2026-10-24T08:53:47.390Z
+updated: 2026-10-24T09:07:34.934Z
+closed: 2026-10-24T09:07:34.934Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear, A-10585; C1/C2 verified, no findings. Freshfb98df04/A-10583 native2830ordinary+10actualloadreps allpass, LinuxT1/allfallbackT2bothpackages/Web; hostchecktree reusednotremoterepeated,lint/budgetsreportonly. Sourcepredicate/order/announce/readyscheduling preserved; public/index regressions5/5each. OriginalA-10561 proves comparable3432→3403executedlandingstatements/3checks; both developmentcounts preceded experimental3000-limitfailures, explicitly notwhole-testpasses. Original10000limitrestored; laterlocal30/30 andcurrentLinux repeat3403landing/4593ten-close,3/20checks. Localrequired freshness/ready/mergegates allpass with working-tree/source-equivalent timing attribution, notexactheadLinuxT3claim. SHA/nativechunks audited; no transcriptionreruns. T3T4/QA separate; leadownsfinaldevconflictcheck.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T09:07:34.934Z
+
+Merged 57bddc59c7aabbe1dcf3e400d9dda358639da49e onto dev.

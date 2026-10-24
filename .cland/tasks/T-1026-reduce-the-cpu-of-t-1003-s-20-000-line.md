@@ -3,7 +3,7 @@ id: T-1026
 kind: task
 title: Reduce the CPU of T-1003's 20,000-line incremental parse proof to fit the T2 budget
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-943
 branch: t/T-1026-reduce-the-cpu-of-t-1003-s-20-000-line
 created: 2026-10-20T19:23:30.653Z
-updated: 2026-10-24T08:58:02.606Z
+updated: 2026-10-24T09:06:47.156Z
 ---
 
 ## Summary
@@ -63,3 +63,20 @@ Criteria: C1 failed (Mode-free Linux target timing5.490006315s exceeds explicit 
 ### impl-1026 · 2026-10-24T08:58:02.606Z
 
 First Linux receipt bfeacdf8/A-10578 at cfb1481e: T1/T2/Web 2828/2828 ordinary assertions pass, but the exact native target timing is 5.490006315 s, above C1's requested 5 s. Executor: droplet c-8 lon1, linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5; budget mode report. C1 remains unmet, as evidence review rev-20261024-1026-evidence-1 records. No pass/ready claim. Further CPU investigation retains fixture/identity/caps; timer reuse and explicit prefix edit experiments were discarded after no material gain. RPC audit transfer compacted in WIP; decision pending on retaining all 20,000 lines with fewer repeated rich sections while explicitly proving every cap is still crossed.
+
+### impl-1026 · 2026-10-24T09:06:13.954Z
+
+Revised source f08e705122b677d15fa7398fbcc05c6d44dad748 / tree 64838985ce75e8a244aed07f07a28f710ba6a609 follows Coordinator decision 3577aafa: exactly 20,000 lines, 256 rich sections in eight distributed dense clusters including start/middle/end; all original cap assertions and test identity unchanged. Fully rich 65-fence recursive/context oracle unchanged. Local Darwin arm64 same-head standalone samples (all exit 0) in original A-10608: 0.658751500, 0.704180833, 0.675970167, 0.643990834, 0.643756959 s. Every sample: root 157 extensions / 20,000 rows (156.25x128); injected regions 3292 inline (51.44x64) and 261 Lua including first paint (4.08x64); 78821 extraction/projection steps (307.89x256); 20,000 applied and settled rows (156.25x128); 6400 decorations (25x256). Observed maxima still 256 work/128 rows/256 marks, and first paint viewport+4, key while pending, settled start/middle/end grids and zero-parser reopen pass. A-10606 records separate doubled-cap negative controls, each failing its original work/row/mark cap assertion; all mutations restored. Full file 14/14 and npm run check pass; lint report mode, zero refusals. Fresh full source review requested, explicitly requiring Reviewer agreement that proof strength is unchanged; Linux same-head timing still pending.
+
+### rev-26 · 2026-10-24T09:06:47.156Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1026-source-2
+commit: f08e705122b677d15fa7398fbcc05c6d44dad748
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Revised fixture source clear, A-10609. I explicitly agree required proof strength is unchanged under Coordinator3577aafa:20000rows/exactname/alloriginalcaps retained; eight32-rich-section clusters include0/1250/2499 and reach256work/128rows/256marks. Added lowerworkload guards retain large root/injection/work/projection/decoration margins; rich65-fence contextoracle unchanged. A-10606 separate512work/256row/512mark mutants each fail its ORIGINAL capassertion; restoredproduction unchangedfromcfb. CompactRPC retains every callback/allassertionfields, no samplesdropped. This intentionally reduces density/bytes, not a claim fullyrich20000linesmeetsnewtiming. C1runtimepending freshLinuxunder5s+fiveexactheadlocalreceipts; old5.490006315s remains failedprovenance. Proceedmode-freeatunchangedf08e7051. NoReviewer runtime/edits/delegation.

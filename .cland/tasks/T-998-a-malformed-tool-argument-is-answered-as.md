@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-939
 branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T08:52:45.657Z
+updated: 2026-10-24T09:08:07.849Z
 ---
 
 ## Summary
@@ -32,13 +32,14 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
 - [x] C1. `task.criterion` with an unknown field or a missing `op` answers a non-`forbidden` validation code that names the field and the accepted values (test).
   - done: impl-998 · 2026-10-24T08:04:53.216Z
 - [x] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
-  - done: impl-998 · 2026-10-24T08:51:38.194Z
+  - done: impl-998 · 2026-10-24T09:07:07.821Z
 - [x] C3. A validation failure is not posted to the Agents topic as a refusal (test).
   - done: impl-998 · 2026-10-24T08:04:53.496Z
 - [x] C4. The MCP server instructions and `hub/README.md` say a validation error may be corrected and retried, unlike `forbidden`.
   - done: impl-998 · 2026-10-24T08:04:53.588Z
   - verified: rev-23 [reviewer] · run rev-20261024-998-source3 · 2026-10-24T08:23:09.451Z · commit 47fd9660d25c9e530118f4001da1646b0cc49ded
   - verified: rev-23 [reviewer] · run rev-20261024-998-source4 · 2026-10-24T08:52:45.657Z · commit ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91
+  - verified: rev-26 [reviewer] · run rev-20261024-998-source-5 · 2026-10-24T09:08:07.849Z · commit e4dc52f0109a2afd5ba9661eb8fe32470cf670a6
 
 ## Comments
 
@@ -230,5 +231,52 @@ Configured 8ed1905f/A-10538 at 47fd9660 remains failed evidence (six failures); 
 
 Standards: zero remaining findings. Spec: zero remaining findings.
 Durable review A-10584.
+
+Criteria: C4 verified.
+
+### rev-23 · 2026-10-24T09:01:29.454Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261024-998-evidence2
+commit: ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91
+scope: evidence
+findings: [{"severity":"medium","text":"M6: early availability replaces the fixed Lead root-only denial with generic missing-grant wording; preserve the established root-level prohibition/reason and existing whole-list authorization assertions.","file":"hub/test/lead-permissions-component.test.ts","line":103}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-998 configured evidence review — not clear
+
+Reviewed head ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91, tree772d5349b34f2dea623159d78478add0cebdc484. Source4 A-10584 is the preceding source clearance; configured fd597c1a-5f92-4e99-88dc-f119eb4ebf17/A-10591 exits1 at that same head. Run rev-20261024-998-evidence2; scope evidence.
+
+## Standards/evidence
+
+M6 (medium), hub/test/lead-permissions-component.test.ts:103 / hub/src/roles/permissions.ts toolAvailability: the new generic availability refusal intercepts a Lead's root-only operation before its established fixed root-level prohibition. Actual raw A-10591 lines12529–12542: expected /root level.*Coordinator/, actual 'forbidden: release (Lead may not use release)'. The existing test explicitly adds release/sync/push/hub.stop/session.resume custom grants and requires the root-only denial for each. Dispatcher #leadRefusal at lines626–630 retains that fixed rule, including hub.reload and rename. Preserve this role-only prohibition/reason at the early availability boundary rather than weakening the existing denial assertions. Reproduce the affected file and audit its whole root-operation list; preserve authorization, no schema exposure and current subtree controls. This is the sole completed failed assertion, not a timing hypothesis. Implementer has independently identified it and is correcting before fresh source review.
+
+Native finish records distinguish 2196 ordinary tests (2195 pass/1 fail), 335 ordinary files (334 pass/1 fail), plus45 actual load-gate tests/files, all pass. Hub completed2241/2240/1 includes repetitions. T1 exit0; hub T2 exit1 before complete fallback/Neovim/Web receipts. Web completed zero tests. No T3/T4 executed. Queued/blocked batch notices do not establish a task T3 result.
+
+Linux x64 droplet c-8 lon1 cland-v0-24fbceb4, Node24.21.0/Neovim0.12.5, workers2; lifetime364s/$0.0253. Native suite walls57.13s and218.10s differ from phase envelopes61s/222s and projections. Host check97565142a45b0870f7c6bbe2a03a85daa1ae3040 is a Git tree object, reused rather than repeated remotely. Lint132/59files, three missing baselines, duration/ratchet diagnostics remain report-only. Existing report-only lifecycle mismatches are preserved in raw log; they are not this run's assertion failure.
+
+## Spec/evidence
+
+All eight new T1 validation identities and the one T2 MCP identity pass their ordinary case plus actual5/5 repetitions each. Maximum observed per-identity T1 sample0.095801059s; MCP0.077412808s. No new passing sample reaches its allowance threshold. Those passes establish targeted progress, not a green configured gate or complete Web coverage. C4 source verification remains; C1/C3 final runtime remains pending. C2 fails because the required lead authorization compatibility case is red. M1–M5 remain source-resolved; M6 is the complete observed run-failure set.
+
+Preserve A-10591 and earlier failed receipts. Correct, commit/push and request fresh source review before another configured mode-free run; no unchanged-head retry requested. QA none/after-stage. Reviewer performed read-only static source/Git/artifact inspection only; no tests, probes, edits, installs, GUI, merge or delegation. Standards/evidence: one medium compatibility finding. Spec/evidence: final gate incomplete.
+Durable review A-10595.
+
+Criteria: C2 failed (Configured fd597c1a fails the existing Lead root-only authorization compatibility assertion; complete fallback/Web receipts are unavailable.).
+
+### rev-26 · 2026-10-24T09:08:07.849Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-998-source-5
+commit: e4dc52f0109a2afd5ba9661eb8fe32470cf670a6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+M6 source delta clear, A-10616; no findings. Exact existing seven Lead root-only operations shared by early availability and retained scope guard; fixed root-level denial/reason precedes genericgrant/schema checks, including customgrants. OriginalLeadT2fileunchanged; newT1raw-hubvalid/malformed default/custom controls retain exactforbiddenpermission/reason. PriorfullA-10584/M1–M5 acceptedcontract carries; C4docsunchanged/sourceverified. A-10614raw localredreproduced; corrected4/4T2+9/9T1 at512dsourceequivalent, finale4dc onlyerasedtypeannotation afterTS7022; exactfinalcheck0/reportlint132/59/0refusals. No new exactheadconfiguredpass; oldA-10591 remainsfailedpartialT2/Webabsent. Proceedmode-freeunchangede4dc; C1–C3runtimepending.
 
 Criteria: C4 verified.

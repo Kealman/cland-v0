@@ -3,7 +3,7 @@ id: T-1202
 kind: task
 title: Merge batches whose candidate touches web/ also run the Web tier
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-1193
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1202-merge-batches-whose-candidate-touches
 created: 2026-10-24T06:46:04.922Z
-updated: 2026-10-24T06:46:48.794Z
+updated: 2026-10-24T09:08:06.998Z
 ---
 
 ## Summary
