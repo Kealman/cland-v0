@@ -3770,12 +3770,23 @@ result and log-artifact pointer before other details when the configured cap is 
 With `tiers.json` and `[merge] queue = true` in both the candidate and hosting
 hub, task verification plans T0 (check), all T1, coverage-selected hub T2 and
 diff-selected Neovim T2. Coverage fallbacks run all T2 across both packages,
-clearing inherited Neovim subsets. Task plans exclude T3/T4, including process
-smoke; results name whether T3 is in the merge batch or deferred to periodic dev
+clearing inherited Neovim subsets. Tasks additionally run each added/changed
+T3/T4 test file once, without load repetitions; unchanged process smoke stays deferred; results name whether T3 is in the merge batch or deferred to periodic dev
 and integrated occasions, with the queue state. Explicit `all`
 retains T3. A flaky-gate second task receipt uses the same mode-free selection.
 Projects with the queue disabled or absent, and legacy candidates without
 `tiers.json`, retain their previous plan.
+
+The task duration check uses changed test-file paths from the fetched dev
+merge-base diff plus dirty/untracked paths, independently of T2 coverage.
+Fallback keeps that exact T3/T4 file set. On the Linux droplet, passing T3
+identities at >=80% of their tier budget print JSON allowances with 1.5x worst
+passing sample headroom, the nearest open container owner and seven-day UTC
+dates; T4 has no budget and prints no stanza. No manifest values are written.
+The ready report retains stanzas and measured added phase wall (excluding
+machine wait), with platform/executor. Local macOS is not Linux evidence.
+The hosting hub must land/restart onto this admission capability before live
+proof. See [shared duration procedure](../docs/agents/tests.md#task-t3t4-duration-check-t-1198).
 
 Code changes enqueue through `cland merge T-<n>` after same-head task verification
 and final review/QA verdicts. `queued <n>` is a FIFO position, not a landing.
@@ -4771,7 +4782,7 @@ Clause procedure (defaults coordinator, project coordinator):
 
 The Web phase is outside T0–T3 and runs after hub phases: machine resource, two
 local workers, four droplet workers. Task verification includes it, even under
-the T0–T2 cap; merge batches exclude it. Periodic dev and integrated/occasion
+the ordinary T0–T2 plan; merge batches exclude it. Periodic dev and integrated/occasion
 runs include it. Reduced hub/Neovim modes include the Web smoke. Close shards
 carry Web with Neovim once. Tier commands infer Web only for candidates declaring
 `supportsWebPhase` in the cland runner; pinned commands and result/cache identity

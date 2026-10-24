@@ -2,10 +2,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { durationBudgetReport, type DurationBudgetContext } from '../src/suite-duration-budget.ts';
-import type { DurationManifest } from '../src/suite-durations.ts';
+import { durationAllowanceStanzas, lintDurationManifest, type DurationManifest } from '../src/suite-durations.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
 const manifest = (): DurationManifest => ({ version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} });
+
+test('allowance stanzas use the worst passing sample at the tier threshold with dated 1.5x headroom', () => {
+  const current = manifest();
+  const file = 'hub/test/process.test.ts', soak = 'hub/test/soak.test.ts';
+  const before = JSON.stringify(current);
+  const samples = [
+    { file, name: 'threshold', seconds: 8, outcome: 'pass' as const },
+    { file, name: 'threshold', seconds: 9, outcome: 'pass' as const },
+    { file, name: 'threshold', seconds: 40, outcome: 'fail' as const },
+    { file, name: 'below', seconds: 7.999, outcome: 'pass' as const },
+    { file, name: 'skipped', seconds: 40, outcome: 'skip' as const },
+    { file, name: 'old receipt without outcome', seconds: 40 },
+    { file: soak, name: 'soak', seconds: 90, outcome: 'pass' as const },
+  ];
+  const stanzas = durationAllowanceStanzas(samples, current, { [file]: 'T3', [soak]: 'T4' }, { owner: 'E-1195', now: Date.parse('2026-12-29T23:59:59Z') });
+  assert.deepEqual(stanzas, { [`${file}::threshold`]: {
+    seconds: 13.5, owner: 'E-1195', added: '2026-12-29', expires: '2027-01-05',
+    reason: 'T3 measured peak 9 s; 1.5x headroom for process.test.ts: threshold.',
+  } });
+  lintDurationManifest({ ...current, allow: stanzas }, { now: Date.parse('2026-12-29T23:59:59Z'), owners: { 'E-1195': { state: 'open', kind: 'epic' } } });
+  assert.equal(JSON.stringify(current), before, 'printing leaves all manifest values unchanged');
+});
 
 test('Suites budget reports use supplied history without a repository', async t => {
   const before = manifest(), current = manifest();

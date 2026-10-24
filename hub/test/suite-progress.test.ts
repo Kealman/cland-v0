@@ -82,7 +82,7 @@ test('duration receipts count test bodies once without their outer file envelope
   reporter.write({ type: 'test:complete', data });
   reporter.write({ type: 'test:complete', data: { ...data, name: 'body', line: 9, details: { passed: true, duration_ms: 250 } } });
   assert.deepEqual(output.trim().split('\n').map(row => JSON.parse(row)), [
-    { file: 'hub/test/example.test.ts', name: 'body', seconds: 0.25 },
+    { file: 'hub/test/example.test.ts', name: 'body', seconds: 0.25, outcome: 'pass' },
   ]);
   reporter.destroy();
 });

@@ -507,6 +507,39 @@ test('a missing map explicitly falls back to the package rule', async t => {
   assert.match(selection.reason, /coverage map missing/);
 });
 
+test('task admission adds only changed T3/T4 files, including renamed and untracked files, without expanding on fallback', async t => {
+  const { root, git } = await gitFixture(t);
+  const tests = { 'hub/test/changed.test.ts': 'T3', 'hub/test/deleted.test.ts': 'T3', 'hub/test/unchanged.test.ts': 'T3', 'nvim/test/soak.test.ts': 'T4' } as const;
+  for (const file of Object.keys(tests)) {
+    await mkdir(join(root, file, '..'), { recursive: true });
+    await writeFile(join(root, file), "import test from 'node:test'; test('old identity', () => {});\n");
+  }
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, '.cland/tasks/T-214-fixture.md'), '---\nid: T-214\nkind: task\ntitle: Task\nstate: open\nparent: E-1\n---\n');
+  await writeFile(join(root, '.cland/tasks/E-1-fixture.md'), '---\nid: E-1\nkind: epic\ntitle: Owner\nstate: open\n---\n');
+  await writeFile(join(root, '.cland/config.toml'), '[merge]\nqueue = true\n');
+  await git('add', '.'); await git('commit', '-m', 'tier baseline'); await git('push', 'origin', 'HEAD:dev');
+  await writeFile(join(root, 'hub/test/changed.test.ts'), "import test from 'node:test'; test('renamed identity', () => {});\n");
+  await git('rm', 'hub/test/deleted.test.ts');
+  await writeFile(join(root, 'nvim/test/soak.test.ts'), "import test from 'node:test'; test('changed soak', () => {});\n");
+  await writeFile(join(root, 'hub/test/new.test.ts'), "import test from 'node:test'; test('new identity', () => {});\n");
+  const { 'hub/test/deleted.test.ts': _deleted, ...retained } = tests;
+  const current = { ...retained, 'hub/test/new.test.ts': 'T3' as const };
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: current }));
+  const selection = await selectPackageSuite(root);
+  assert.deepEqual(selection.durationCheck?.files, ['hub/test/changed.test.ts', 'hub/test/new.test.ts', 'nvim/test/soak.test.ts']);
+  assert.equal(selection.durationCheck?.owner, 'E-1');
+  assert.deepEqual(selection.tiers, ['T1', 'T2', 'T3', 'T4']);
+  const phases = await packageShards(root, selection.mode, undefined, selection);
+  assert.deepEqual(phases.flatMap(phase => phase.targets).sort(), selection.durationCheck!.files);
+  const { tierSuiteSelection } = await import('../src/suite-selection.ts');
+  for (const tier of ['T3', 'T4'] as const) {
+    const narrowed = tierSuiteSelection(selection, tier);
+    assert.deepEqual((await packageShards(root, narrowed.mode, undefined, narrowed)).flatMap(phase => phase.targets).sort(), tier === 'T3' ? ['hub/test/changed.test.ts', 'hub/test/new.test.ts'] : ['nvim/test/soak.test.ts']);
+  }
+});
+
 test('task admission requires explicit merge queue protection before reducing tiers', async t => {
   const { root, source } = await coverageFixture(t);
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {

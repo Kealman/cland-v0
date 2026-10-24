@@ -23,7 +23,7 @@ export default class DurationReporter extends Transform {
       const file = reporterFile(event.data.file, process.env.TEST_SUITE_CWD ?? process.cwd());
       // test:complete also includes the file envelope that ordered pass/fail
       // suppresses when the file contains tests. Do not double its duration.
-      if (!fileEnvelope(event.data, process.env.TEST_SUITE_CWD ?? process.cwd())) record = JSON.stringify({ file, name: event.data.name, seconds: event.data.details.duration_ms / 1000 }) + '\n';
+      if (!fileEnvelope(event.data, process.env.TEST_SUITE_CWD ?? process.cwd())) record = JSON.stringify({ file, name: event.data.name, seconds: event.data.details.duration_ms / 1000, outcome: event.data.skip ? 'skip' : event.data.todo ? 'todo' : event.data.details.passed ? 'pass' : 'fail' }) + '\n';
     }
     this.#overheadMs += performance.now() - started;
     callback(null, record);

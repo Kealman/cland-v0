@@ -16,6 +16,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh
                   occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
                   release cache: same effective executor/OS and full coverage; cache notices name original occasion/executor
                   Web: task and integrated/periodic/occasion runs, excluded from merge batches; web/** selects web-only; missing browser/libs: Web not run (reason retained)
+                  task: T0–T2 + Web + changed T3/T4 files once; >=80% T3 budget prints 1.5x allowances; T4 has no budget
                   periodic dev T3 is hub-owned: bundles its captured commit; delivery failures are infrastructure, retried next interval
   suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result
   verify cancel [<suite id>] [--json]

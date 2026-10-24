@@ -189,11 +189,11 @@ This repository's budget manifest uses report mode until after v0.1.4 (D73);
 enforcement returns under E-880. The duration-budget section below describes
 allowances, enforcement and the T3 growth ratchet.
 
-Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets, and never admit T3. Successful coverage keeps diff-selected Neovim T2. T3 runs in batches whose configured tiers include it, in periodic `dev-t3` runs, and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports name whether T3 is in the merge batch or deferred to periodic dev and integrated occasions, with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
+Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets. Tasks also run added/changed T3/T4 test files once for the duration check below; fallback never widens that set. Successful coverage keeps diff-selected Neovim T2. T3 runs in batches whose configured tiers include it, in periodic `dev-t3` runs, and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports name whether T3 is in the merge batch or deferred to periodic dev and integrated occasions, with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
 
 | Run kind | Plan after T0 |
 | --- | --- |
-| Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages |
+| Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 test files once |
 | Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; this repository T1); five repetitions of T3 identities absent from the last green batch or stage receipt |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
@@ -211,13 +211,13 @@ plus durable 5/5 load proofs from task heads that have landed on dev.
 The hub owns batch, dev-t3 and soak occasions. The Coordinator requests stage, epic and
 release occasions; QA may request epic for its demo. An explicit `all` on a task
 head requires authorization and retains T3. A flaky-gate second task receipt
-uses the same mode-free selection. T3 smoke files are filtered out of task plans.
+uses the same mode-free selection. Unchanged T3 smoke files are filtered out of task plans.
 
 ### Periodic dev T2/T3 and release gate
 
 `[merge] batch_tiers` selects a nonempty set of T1–T4 tiers for each batch.
 Its default is `["T1", "T3"]`; this repository sets `["T1"]` (D67).
-Task verification stays T0–T2. A green batch with T1 only supplies no T3 receipt.
+Task verification adds changed T3/T4 files once to T0–T2 (duration check below). A green batch with T1 only supplies no T3 receipt.
 With this repository's T1-only batches, automated T2 coverage after merge runs
 only in the periodic dev run, the nightly soak and close occasions (stage, epic
 and release). Ordinary integrated `dev` or explicit `all` remains available for
@@ -1183,7 +1183,7 @@ references and the isolated proof in the owner ticket. The manifest starts empty
   "version": 1,
   "tests": {
     "hub/test/example.test.ts::known flake": {
-      "owner": "T-123",
+      "owner": "E-123",
       "reason": "Two independent flaky runs; isolated 5/5 green (evidence in T-123).",
       "added": "2026-10-16",
       "expires": "2026-10-23"
@@ -1265,6 +1265,48 @@ projection at the same workers is strictly below 900 seconds. While the base is
 In report mode, tier and ratchet diagnostics cannot change an exit status, and
 the existing new-identity gate below remains active unchanged.
 
+### Task T3/T4 duration check (T-1198)
+
+A mode-free task verify with the merge queue enabled in the candidate and hosting
+hub adds one execution of every top-level identity in each added or changed T3/T4
+test file. “Changed” means the test file appears in the no-renames diff from the
+merge-base of fetched `origin/dev` to `HEAD`, or in dirty/untracked paths. A renamed
+file is an addition; a renamed identity changes its file. Deleted files are omitted.
+Changes to production code or a shared test helper alone do not select unchanged
+T3/T4 files. Coverage selection and fallback affect T2, never expand this check to
+the whole T3/T4 tier. Each selected file runs once, independently of coverage/smoke
+subsets; these identities receive no load-gate repetitions. T4 enables the soak
+prerequisite for its base execution and has no tier budget, so prints no stanza.
+
+On the configured Linux droplet, each selected T3 identity at **>=80%** of its tier
+per-test budget prints `duration allowance stanza` followed by a JSON object to
+copy into `hub/test/durations.json`'s `allow` map. `durationAllowanceStanzas` is the
+shared printer for duration tooling. It uses only explicitly passing samples,
+chooses the worst observed passing sample per identity and rounds **1.5x** upward
+to milliseconds. Failed, skipped, TODO and old outcome-less receipts contribute
+no recommendation. This follows **T-931's headroom rule**: set an allowance at
+about 1.5x the worst observed passing sample, rather than at the last sample.
+Review the generated reason for the lifecycle need before committing. The owner
+is the task's nearest open container, with UTC `added` today and `expires` seven
+days later. A missing open container is reported instead of printing an invalid
+stanza. Existing allowances and baselines remain untouched.
+
+The ready report retains the complete JSON stanza and a `duration check:` line
+naming platform/executor, selection rule, passing identity count and **added wall**:
+the measured selected-phase wall excluding machine-lease wait. This is the added
+work in a typical task verify: zero extra phases when no T3/T4 file changed;
+otherwise one base execution of just those files plus runner setup. It is not a
+projection of the whole tier and does not estimate contention with other work.
+Local macOS execution is explicitly labelled as lacking Linux evidence. A cache
+hit retains its original platform/executor; it is not a fresh Linux sample.
+
+The hub pins tier commands at admission. Updating only a candidate runner cannot
+enable this capability on an older hosting hub: land the capability and restart
+the hub before claiming live mode-free Linux evidence. Selection's optional
+`durationCheck` field and timing's optional `outcome` are additive. Existing
+selection consumers keep their fields; timing refresh, tier reports, coverage
+and observers retain all timing rows. Only the stanza printer filters pass rows.
+
 `hub/test/durations.json` sets a 5-second test budget and a 60-second file budget
 for hub and Neovim. Files sum top-level test-time; nested durations are included
 in their parent. Only a new over-budget test or file fails its run with a named
@@ -1278,7 +1320,7 @@ needs that time:
 ```json
 "hub/test/example.test.ts::real lifecycle": {
   "seconds": 6.1,
-  "owner": "T-123",
+  "owner": "E-123",
   "added": "2026-10-17",
   "expires": "2026-10-24",
   "reason": "Starts multiple real workers and proves their confirmed teardown."
@@ -1286,7 +1328,7 @@ needs that time:
 "hub/test/example.test.ts": {
   "file": true,
   "seconds": 65.2,
-  "owner": "T-123",
+  "owner": "E-123",
   "added": "2026-10-17",
   "expires": "2026-10-24",
   "reason": "Aggregates independent end-to-end lifecycle and recovery cases."
@@ -1582,7 +1624,7 @@ the output-checkpoint/append boundary without resetting the admitted limit.
 
 Clause procedure (defaults implementer, project implementer):
 
-- `hub-selected` names changed functions, covering tests and the map artifact. Queue-enabled tasks run all T1 and selected T2, with all T2 in both packages on fallback. T3 smoke runs in batches and integrated runs. Coverage maps come from green integrated runs; ancestry, mapping and fallback rules are in docs/agents/tests.md.
+- `hub-selected` names changed functions, covering tests and the map artifact. Queue-enabled tasks run all T1 and selected T2, with all T2 in both packages on fallback. Changed T3/T4 files run once; remaining T3 smoke runs in batches and integrated runs. Coverage maps come from green integrated runs; ancestry, mapping and fallback rules are in docs/agents/tests.md.
 
 Clause procedure (defaults implementer, project implementer):
 

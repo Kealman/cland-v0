@@ -160,6 +160,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   const priority = [
     ...(webPhase ? [webUnavailableLine(webPhase)] : []),
     ...executedTiers,
+    ...lines.filter(line => /^(?:duration check:|duration allowance stanza )/.test(line)),
     ...['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier Web', 'tier share'].flatMap(key => !(key === 'tier Web' && webPhase) && lastTiers.has(key) && !executedTiers.includes(lastTiers.get(key)!) ? [lastTiers.get(key)!] : []),
     ...new Set(lines.filter(line => line.startsWith('test lint (report only):'))),
     ...durationBudgetSummary(lines),
@@ -449,8 +450,8 @@ export class Suites {
     let admitted = projectTest ? { ...projectTest, ...(candidate.selection.fetchedDev ? { fetchedDev: candidate.selection.fetchedDev } : {}) } : candidate.selection;
     // The hosting hub owns landing. A candidate-local opt-in cannot promise
     // batch coverage while this hub can still land code directly.
-    if (admitted.tiers?.join(',') === 'T1,T2' && !config?.merge.queue) {
-      const { tiers: _tiers, ...broad } = admitted;
+    if ((admitted.durationCheck || admitted.tiers?.join(',') === 'T1,T2') && !config?.merge.queue) {
+      const { tiers: _tiers, durationCheck: _durationCheck, ...broad } = admitted;
       admitted = { ...broad, reason: `${broad.reason}; hosting merge queue disabled: retaining process coverage` };
     }
     // Explicit command tiers apply to any stack; cland file planning stays runner-only.

@@ -78,12 +78,14 @@ test('per-tier commands preserve the repository task file plan', async t => {
     { mode: 'full', files: [], reason: 'fallback' },
     { mode: 'hub-selected', files: [], reason: 'coverage', tests: ['hub/test/merge-queue.test.ts'], nvimTests: ['nvim/test/client-component.test.ts'] },
     { mode: 'nvim-only', files: [], reason: 'Neovim' },
+    { mode: 'hub-selected', files: ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/soak.test.ts'], reason: 'changed process files', tests: ['hub/test/merge-queue.test.ts'], durationCheck: { files: ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/soak.test.ts'] } },
   ] satisfies SuiteSelection[]) {
     const f = small;
     const admitted = taskSuiteSelection(source, 't/T-717', 'auto', true);
+    if (admitted.durationCheck) admitted.tiers = ['T1', 'T2', 'T3', 'T4'];
     const before = await f.plan(admitted);
     const split: string[] = [];
-    for (const tier of ['T1', 'T2', 'Web']) {
+    for (const tier of ['T1', 'T2', ...(admitted.durationCheck ? ['T3', 'T4'] : []), 'Web']) {
       const plan = await packageSuitePlan(f.root, 'auto', ['--tier', tier], { hub: 'hub.lock', nvim: 'nvim.lock' }, { CLAND_SUITE_SELECTION: JSON.stringify(admitted), CLAND_SUITE_WORKERS: '2' });
       assert.deepEqual(plan.lockDirs, ['hub.lock', 'nvim.lock']);
       assert.equal(plan.targeted, false);
@@ -93,7 +95,13 @@ test('per-tier commands preserve the repository task file plan', async t => {
     }
     split.sort();
     assert.deepEqual(split, before, source.mode);
-    assert.ok(before.every(file => ['T1', 'T2', 'Web'].includes(f.tier(file))));
+    assert.ok(before.every(file => ['T1', 'T2', 'Web'].includes(f.tier(file)) || admitted.durationCheck?.files.includes(file)));
+    if (admitted.durationCheck) {
+      const { pinVerificationPlan } = await import('../src/verification-plan.ts');
+      const pinned = pinVerificationPlan({ prepare: '', check: 'check', test: '', tiers: { T1: 'unit', T2: 'component', T3: 'integration', T4: 'soak' } }, { branch: 't/T-717', mode: 'auto', selection: admitted, queueEnabled: true });
+      assert.deepEqual(pinned.plan?.map(step => step.name), ['check', 'T1', 'T2', 'T3', 'T4']);
+      assert.equal(occasionSelection(admitted, 'stage').durationCheck, undefined, 'integrated occasions retain their full tier set');
+    }
   }
 });
 

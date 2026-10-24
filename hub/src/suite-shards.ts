@@ -193,6 +193,21 @@ async function lintDurations(cwd: string, history: DurationHistory): Promise<voi
 /** Package cadence excludes soak files unless the admitted selection enables them. */
 export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: DurationHistory & { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
   const phases = await unfilteredPackageShards(cwd, mode, selection, coverage, options);
+  if (coverage?.durationCheck) {
+    const assignments = await readTierAssignments(cwd);
+    // Changed process files are independent of function coverage and smoke sets.
+    // Remove any earlier occurrence before appending, so each file runs once.
+    const changed = coverage.durationCheck.files.filter(file => ['T3', 'T4'].includes(assignments?.get(file) ?? ''));
+    for (const phase of phases) {
+      const targets: string[] = [];
+      for await (const file of glob(phase.targets, { cwd })) if (!changed.includes(file)) targets.push(file);
+      phase.targets = targets;
+    }
+    for (const prefix of ['hub/', 'nvim/']) {
+      const targets = changed.filter(file => file.startsWith(prefix));
+      if (targets.length) phases.push({ name: `${prefix === 'hub/' ? 'hub' : 'Neovim'} changed duration`, targets, resource: 'machine', workers: options.workers ?? (await suiteLimits(cwd, options.executor)).workers });
+    }
+  }
   const webFiles = [...await readTierAssignments(cwd) ?? []].filter(([, tier]) => tier === 'Web').map(([file]) => file).sort();
   if (webFiles.length && coverage?.web !== 'none' && (!selection || selection.nvim)) {
     const full = coverage?.web === 'all' || coverage?.web !== 'smoke' && (mode === 'full' || mode === 'web-only');
@@ -206,12 +221,12 @@ export async function packageShards(cwd: string, mode: SuiteMode, selection?: { 
     const planned: SuiteShard[] = [];
     for (const phase of phases) {
       const targets: string[] = [];
-      for await (const file of glob(phase.targets, { cwd })) if (tiers.get(file) === 'Web' || coverage.tiers.includes(tiers.get(file)! as NonNullable<SuiteSelection['tiers']>[number])) targets.push(file);
+      for await (const file of glob(phase.targets, { cwd })) if ((tiers.get(file) === 'Web' || coverage.tiers.includes(tiers.get(file)! as NonNullable<SuiteSelection['tiers']>[number])) && (!coverage.durationCheck || !['T3', 'T4'].includes(tiers.get(file)!) || coverage.durationCheck.files.includes(file))) targets.push(file);
       if (targets.length) planned.push({ ...phase, targets: targets.sort() });
     }
     // Coverage restricts T2 only. Every task proves the whole T1 rule set,
     // including when the diff selects only Neovim or a single hub function.
-    if (coverage.tiers.length === 2 && coverage.tiers.includes('T1') && coverage.tiers.includes('T2')) {
+    if (coverage.durationCheck && coverage.tiers.includes('T1') || coverage.tiers.length === 2 && coverage.tiers.includes('T1') && coverage.tiers.includes('T2')) {
       const units = [...tiers].filter(([, tier]) => tier === 'T1').map(([file]) => file).sort();
       for (const phase of planned) phase.targets = phase.targets.filter(file => !units.includes(file));
       if (units.length) planned.unshift({ name: 'T1 whole', targets: units, resource: 'free', workers: 1 });

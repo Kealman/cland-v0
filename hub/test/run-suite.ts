@@ -21,7 +21,7 @@ import { packageShards, readTierAssignments, type SuiteShard } from '../src/suit
 import { planTierReport, tierReport, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
-import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
+import { durationAllowanceStanzas, checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
 import { durationBudgetReport } from '../src/suite-duration-budget.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
@@ -82,6 +82,8 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let peak = loadavg()[0]!;
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
   let durationManifest: DurationManifest | null = null;
+  let durationCheckWallMs = 0;
+  const durationCheckFiles = new Set<string>();
   let budgetOverheadMs = 0;
   let loadExtraWallMs = 0;
   const regressions: DurationRegression[] = [];
@@ -287,6 +289,11 @@ process.chdir(cwd);`);
           budgetFailed ||= checked.failures.length > 0;
         } finally { budgetOverheadMs += performance.now() - budgetStarted; }
       }
+      const checkedFiles = options.selection?.durationCheck?.files.filter(file => args.some(arg => !arg.startsWith('-') && matchesGlob(file, arg))) ?? [];
+      if (checkedFiles.length) {
+        durationCheckWallMs += Date.now() - phaseStarted - machineWait;
+        for (const file of checkedFiles) durationCheckFiles.add(file);
+      }
       await sweep(holder);
       root = undefined;
       active = undefined; activeIdentity = null;
@@ -325,6 +332,15 @@ process.chdir(cwd);`);
         const budgetStarted = performance.now();
         try {
           const tiers = await readTierAssignments(options.cwd ?? process.cwd());
+          if (tiers && durationCheckFiles.size && options.selection?.durationCheck) {
+            const samples = observed.filter(test => durationCheckFiles.has(test.file));
+            process.stderr.write(`duration check: ${durationCheckFiles.size} changed T3/T4 files; ${samples.filter(test => test.outcome === 'pass').length} passing identities; added wall ${(durationCheckWallMs / 1000).toFixed(3)} s (selected phases, excluding machine wait); platform ${process.platform}; executor ${process.env.CLAND_SUITE_EXECUTOR ?? 'local'}; changed = test file in branch diff from origin/dev merge-base plus dirty/untracked files; one base execution, no repetitions; T4 has no tier budget; no stanza${process.platform === 'linux' ? '' : '; Linux evidence unavailable on this platform'}\n`);
+            const owner = options.selection.durationCheck.owner;
+            if (owner) {
+              const stanzas = durationAllowanceStanzas(samples, durationManifest, Object.fromEntries(tiers), { owner });
+              if (Object.keys(stanzas).length) process.stderr.write(`duration allowance stanza ${JSON.stringify(stanzas)}\n`);
+            } else process.stderr.write('duration check: allowance owner unavailable; cannot print commit-ready stanzas; link task to an open container\n');
+          }
           if (tiers) for (const line of durationBudgetReport(durationManifest, Object.fromEntries(tiers), observed)) process.stderr.write(line + '\n');
         } catch { process.stderr.write('budget (report only): unavailable (report read failed)\n'); }
         for (const line of durationRegressions(regressions)) process.stderr.write(line + '\n');
@@ -428,8 +444,8 @@ export async function packageSuitePlan(cwd: string, mode: string, extra: string[
   }
   // Explicit test targets retain the single-phase fixture/targeted-run interface.
   let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv(env) ?? await selectPackageSuite(cwd, mode as SuiteRequest);
-  if (!extra.length && mode === 'all' && selection.tiers?.join(',') === 'T1,T2') {
-    const { tiers: _tiers, nvimTests: _nvimTests, ...full } = selection;
+  if (!extra.length && mode === 'all' && (selection.durationCheck || selection.tiers?.join(',') === 'T1,T2')) {
+    const { tiers: _tiers, nvimTests: _nvimTests, durationCheck: _durationCheck, ...full } = selection;
     selection = { ...full, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
   }
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };

@@ -92,3 +92,9 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`web/test/thread-runs.test.ts`](../../../web/test/thread-runs.test.ts) | [Notes](web-test-thread-runs.test.ts.md) |
 | [`web/test/topics.test.ts`](../../../web/test/topics.test.ts) | [Notes](web-test-topics.test.ts.md) |
 | [`web/test/withdraw.test.ts`](../../../web/test/withdraw.test.ts) | [Notes](web-test-withdraw.test.ts.md) |
+| [`hub/test/suite-selection.test.ts`](../../../hub/test/suite-selection.test.ts) | [Notes](hub-test-suite-selection.test.ts.md) |
+| [`hub/test/durations-runner.test.ts`](../../../hub/test/durations-runner.test.ts) | [Notes](hub-test-durations-runner.test.ts.md) |
+| [`hub/test/suite-duration-budget.test.ts`](../../../hub/test/suite-duration-budget.test.ts) | [Notes](hub-test-suite-duration-budget.test.ts.md) |
+| [`hub/test/suite-task-selection.test.ts`](../../../hub/test/suite-task-selection.test.ts) | [Notes](hub-test-suite-task-selection.test.ts.md) |
+| [`hub/test/suite-progress.test.ts`](../../../hub/test/suite-progress.test.ts) | [Notes](hub-test-suite-progress.test.ts.md) |
+| [`hub/test/roles-clauses.test.ts`](../../../hub/test/roles-clauses.test.ts) | [Notes](hub-test-roles-clauses.test.ts.md) |

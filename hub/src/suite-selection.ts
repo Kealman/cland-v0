@@ -6,12 +6,14 @@ import { dirname, posix, relative, resolve } from 'node:path';
 import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
 import { defaultConfig, parseConfig } from './init/config.ts';
 import { fetchSuiteDev, selectionFailure } from './suite-dev-fetch.ts';
+import { readTierAssignments } from './suite-shards.ts';
+import { durationAllowanceOwner } from './suite-durations.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
-export type SuiteSelection = { web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
-/** Task receipts cover hermetic rules; process evidence belongs to the merge batch. */
+/** Task rules/components plus a bounded changed-file process duration sample. */
 export function taskSuiteSelection(selection: SuiteSelection, branch: string, requested: SuiteRequest, queueEnabled: boolean): SuiteSelection {
   if (!queueEnabled || !branch.startsWith('t/') || requested === 'all') return selection;
   const fallback = selection.mode === 'full' || selection.mode === 'hub-only';
@@ -26,7 +28,11 @@ export function tierSuiteSelection(selection: SuiteSelection, tier: NonNullable<
   if (tier === 'Web') return { ...selection, tiers: [], web: selection.web ?? (selection.mode === 'full' || selection.mode === 'web-only' ? 'all' : 'smoke') };
   const narrowed: SuiteSelection = { ...selection, tiers: [tier], web: 'none', soak: tier === 'T4' };
   // Task coverage narrows components only; the unit command still proves all rules.
-  if (tier === 'T1' && selection.tiers?.join(',') === 'T1,T2' && !selection.shard) {
+  if (tier === 'T1' && (selection.durationCheck || selection.tiers?.join(',') === 'T1,T2') && !selection.shard) {
+    const { tests: _tests, nvimTests: _nvimTests, ...whole } = narrowed;
+    return { ...whole, mode: 'full', nvimFull: true };
+  }
+  if (selection.durationCheck && (tier === 'T3' || tier === 'T4')) {
     const { tests: _tests, nvimTests: _nvimTests, ...whole } = narrowed;
     return { ...whole, mode: 'full', nvimFull: true };
   }
@@ -68,7 +74,8 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
 
 /** Cache receipts are reusable only for identical effective package/test sets. */
 export function sameSuiteSelection(previous: SuiteSelection | undefined, selection: SuiteSelection): boolean {
-  return previous?.web === selection.web
+  return JSON.stringify(previous?.durationCheck) === JSON.stringify(selection.durationCheck)
+    && previous?.web === selection.web
     && JSON.stringify(previous?.tiers) === JSON.stringify(selection.tiers)
     && previous?.soak === selection.soak
     && previous?.mode === selection.mode
@@ -235,7 +242,14 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
   if (!tiered || !task || requested === 'all') return selection;
   const source = await readFile(resolve(cwd, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
   const config = source === null ? defaultConfig('suite') : parseConfig(source, 'suite', env);
-  return taskSuiteSelection(selection, branch, requested, config.merge.queue);
+  const taskSelection = taskSuiteSelection(selection, branch, requested, config.merge.queue);
+  if (taskSelection.tiers?.join(',') !== 'T1,T2') return taskSelection;
+  const assignments = await readTierAssignments(cwd);
+  const files = taskSelection.files.filter(file => ['T3', 'T4'].includes(assignments?.get(file) ?? '')).sort();
+  if (!files.length) return taskSelection;
+  const owner = await durationAllowanceOwner(cwd, branch.split('/')[1]!.match(/^[A-Z]+-\d+/)?.[0] ?? '');
+  return { ...taskSelection, durationCheck: { files, ...(owner ? { owner } : {}) },
+    tiers: ['T1', 'T2', ...(['T3', 'T4'] as const).filter(tier => files.some(file => assignments?.get(file) === tier))] };
 }
 
 /** Keep large stage identity sets below OS argument/environment size limits. */
@@ -253,6 +267,10 @@ export function selectionFromEnv(env: NodeJS.ProcessEnv = process.env): SuiteSel
   if (!value || typeof value !== 'object' || !Object.hasOwn(value, 'mode') || !['full', 'hub-only', 'hub-selected', 'nvim-only', 'web-only'].includes(String(value.mode)) || !Object.hasOwn(value, 'files') || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !Object.hasOwn(value, 'reason') || typeof value.reason !== 'string') throw new Error('invalid suite selection');
   if (value.mode === 'hub-selected' && (!Object.hasOwn(value, 'tests') || !Array.isArray(value.tests) || !value.tests.length || !value.tests.every(file => typeof file === 'string' && /^hub\/(?:src|test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected hub tests');
   if (Object.hasOwn(value, 'nvimTests') && (!Array.isArray(value.nvimTests) || !value.nvimTests.length || !value.nvimTests.every(file => typeof file === 'string' && /^nvim\/test\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected Neovim tests');
+  if (Object.hasOwn(value, 'durationCheck')) {
+    const check = value.durationCheck as Record<string, unknown> | null;
+    if (!check || typeof check !== 'object' || !Array.isArray(check.files) || !check.files.length || !check.files.every(file => typeof file === 'string' && /^(?:hub\/(?:src|test)|nvim\/test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')) || new Set(check.files).size !== check.files.length || check.owner !== undefined && (typeof check.owner !== 'string' || !/^[A-Z]+-[1-9]\d*$/.test(check.owner))) throw new Error('invalid task duration check');
+  }
   if (Object.hasOwn(value, 'web') && !['all', 'smoke', 'none'].includes(String(value.web))) throw new Error('invalid Web selection');
   if (Object.hasOwn(value, 'shard')) {
     const shard = value.shard as Record<string, unknown> | null;

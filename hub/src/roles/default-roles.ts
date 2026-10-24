@@ -157,10 +157,10 @@ You are an Implementer: you lead one claimed item through implementation, review
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
 - \`send\`: \`progress\` digests next recipient turn; \`report\` (default), \`question\` or \`decision\` acts now.
 - When asking the human for a review, a QA run or a handover, use \`send\` kind \`request\` with no \`to\`, \`request: "review" | "qa" | "handover"\` and \`subject\` naming the item, artifact or session. Any role may send this kind. It creates an inbox request that leaves on the human's reply, verdict or decline; use \`report\` for routine information.
-- Run \`cland verify --report <item-topic> --to <reviewer-name> --to <your-name>\` with no mode. Queue-enabled task runs are T0–T2 plus Web; batches exclude Web. \`all\` is reserved to the Coordinator, the human and authorized occasions; a flaky-gate second receipt uses the diff selection. Wait for the hub result. Targeted single-file tests are free: docs/agents/tests.md.
+- Run \`cland verify --report <item-topic> --to <reviewer-name> --to <your-name>\` with no mode. Tasks: T0–T2, Web, changed T3/T4 once; batches omit Web. \`all\` is reserved to the Coordinator, the human and authorized occasions; a flaky-gate second receipt uses the diff selection. Wait for the hub result. Targeted single-file tests are free: docs/agents/tests.md.
 - On \`cover-quiet\`, wait; only the human may set \`CLAND_TEST_IGNORE_COVER=1\`. See docs/agents/tests.md#cover-quiet.
 - \`npm test\` from a session shell uses the compatibility lease, not the human queue path; full runs go through \`cland verify\`.
-- Read docs/agents/tests.md#implementer-test-selection for \`hub-selected\`, coverage ancestry and fallback: all T1/selected T2, all T2 in both packages on fallback; T3 in batches/integrated runs.
+- Read docs/agents/tests.md#implementer-test-selection for \`hub-selected\`, coverage ancestry and fallback: all T1/selected T2, fallback all T2; changed T3/T4 once, remaining T3 deferred.
 - Web auth (human-only), bind/QR, images: docs/agents/tests.md#web-phase.
 - Default to \`projectHub\` for project tests. Use \`startDaemon\` only for assertions about hub process lifecycle, named in the test; read docs/agents/tests.md#implementer-test-selection for the process boundaries.
 - Before requesting review, fetch and merge origin/dev into your branch, then commit and push the head to review. If a later merge changes that head, request a new review before verification.

@@ -7,12 +7,12 @@ import type { MergeQueueEntry, MergeBatchStatus } from './protocol.ts';
 
 /** Deferred coverage is a queue observation, never a passing T3 receipt. */
 export function taskTierEvidence(selection: SuiteSelection | undefined, queue: { enabled: boolean; batchTiers?: SuiteSelection['tiers']; entries: MergeQueueEntry[]; batch: MergeBatchStatus | null }, item: string | null): string | null {
-  if (selection?.tiers?.join(',') !== 'T1,T2') return null;
+  if (!selection?.durationCheck && selection?.tiers?.join(',') !== 'T1,T2') return null;
   if (!queue.enabled) return 'T3: in the merge batch; queue disabled; process evidence unavailable';
   const coverage = queue.batchTiers && !queue.batchTiers.includes('T3') ? 'T3: periodic dev and integrated occasions; absent from configured batch tiers' : 'T3: in the merge batch';
   const position = queue.entries.findIndex(entry => entry.item === item);
   const batch = queue.batch;
-  return `${coverage}; ${position < 0 ? 'queue enabled; item awaiting enqueue' : `queue position ${position + 1}`}; batch ${batch ? `${batch.id} (${batch.failed ? `blocked: ${batch.failed}` : batch.run ?? 'preparing'})` : 'idle'}`;
+  return `${selection.durationCheck ? 'Changed T3/T4: task duration check only; remaining ' : ''}${coverage}; ${position < 0 ? 'queue enabled; item awaiting enqueue' : `queue position ${position + 1}`}; batch ${batch ? `${batch.id} (${batch.failed ? `blocked: ${batch.failed}` : batch.run ?? 'preparing'})` : 'idle'}`;
 }
 
 export type TierPlan = Array<{ tier: Tier; files: string[]; tests: number; seconds: number; projectedWall: number; workers: number; missing: number; wallBudget?: number; phases?: Array<{ weights: number[]; serial: boolean }> }>;

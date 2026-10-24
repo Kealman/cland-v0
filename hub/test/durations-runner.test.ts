@@ -1,5 +1,6 @@
 // T3: real Node runner lifecycle: deadlines and signals reap repetitions before phase-root removal.
 // Real reporter contract uses fixture-local admission leases.
+import type { SuiteSelection } from '../src/suite-selection.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { suiteProgress } from '../src/suite-progress.ts';
 import { timingReceipts } from '../src/suite-tier-report.ts';
@@ -31,8 +32,8 @@ test('skipped', {skip: 'fixture platform'}, () => {});`);
     await mkdir(join(cwd, 'nvim/test/scenarios'), { recursive: true });
     await writeFile(join(cwd, 'nvim/test/scenarios/workbench.test.ts'), '// empty cross-package smoke fixture\n');
   }
-  const start = (loadGate = false) => {
-    const selection = { mode: 'hub-only', files: ['hub/test/fixture.test.ts'], reason: 'fixture task selection from hub', loadGate };
+  const start = (loadGate = false, extraSelection: Partial<SuiteSelection> = {}) => {
+    const selection = { mode: 'hub-only', files: ['hub/test/fixture.test.ts'], reason: 'fixture task selection from hub', loadGate, ...extraSelection };
     const code = packageRun
       ? `import {runPackageSuite} from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd, lockDirs: { hub: join(cwd, 'lock'), nvim: join(cwd, 'nvim-lock') } })});`
       : `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection })});`;
@@ -46,11 +47,40 @@ test('skipped', {skip: 'fixture platform'}, () => {});`);
     );
     return { child: execution.child, result, output: () => output };
   };
-  const run = (loadGate = false) => start(loadGate).result;
+  const run = (loadGate = false, extraSelection: Partial<SuiteSelection> = {}) => start(loadGate, extraSelection).result;
   const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 0.05, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
   const path = join(cwd, 'hub/test/durations.json');
   return { run, start, manifest, path, cwd, file };
 }
+
+test('task duration check runs changed T3/T4 identities once and retains commit-ready stanzas in its report', async t => {
+  const { run, manifest, path, cwd, file } = await fixture(t, true);
+  const journal = join(cwd, 'duration-journal');
+  await writeFile(file, `import test from 'node:test'; import { appendFileSync } from 'node:fs';
+    test('passing [identity].*', async () => { appendFileSync(${JSON.stringify(journal)}, 'T3\\n'); await new Promise(r => setTimeout(r, 100)); });
+    test('skipped identity', { skip: 'fixture prerequisite' }, () => {});`);
+  await writeFile(join(cwd, 'hub/test/soak.test.ts'), `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('soak identity', () => { if (process.env.CLAND_TEST_SOAK !== '1') throw new Error('soak prerequisite not enabled'); appendFileSync(${JSON.stringify(journal)}, 'T4\\n'); });`);
+  await writeFile(join(cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/test/fixture.test.ts': 'T3', 'hub/test/soak.test.ts': 'T4', 'nvim/test/scenarios/workbench.test.ts': 'T3',
+  } }));
+  const contents = JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60, T3: { testSeconds: 0.05, fileSeconds: 120, wallSeconds: 900 } } });
+  await writeFile(path, contents);
+  const result = await run(true, { mode: 'full', tiers: ['T1', 'T2', 'T3', 'T4'], durationCheck: { files: ['hub/test/fixture.test.ts', 'hub/test/soak.test.ts'], owner: 'E-677' } });
+  assert.equal(result.code, 0, result.output);
+  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['T3', 'T4']);
+  assert.doesNotMatch(result.output, /load gate start:/);
+  const rows = result.output.split('\n').filter(line => line.startsWith('duration allowance stanza '));
+  assert.equal(rows.length, 1, result.output);
+  const entries = JSON.parse(rows[0]!.slice('duration allowance stanza '.length));
+  assert.deepEqual(Object.keys(entries), ['hub/test/fixture.test.ts::passing [identity].*']);
+  assert.ok(entries[Object.keys(entries)[0]!].seconds >= 0.15);
+  assert.equal(entries[Object.keys(entries)[0]!].owner, 'E-677');
+  assert.match(result.output, /duration check:.*added wall [\d.]+ s/);
+  assert.match(result.output, /T4 has no tier budget; no stanza/);
+  const { suiteSummary } = await import('../src/hub/suites.ts');
+  assert.ok(suiteSummary(result.output).includes(rows[0]!), 'ready report retains the complete JSON stanza');
+  assert.equal(await readFile(path, 'utf8'), contents);
+});
 
 test('task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase', async t => {
   const { run, manifest, path, cwd, file } = await fixture(t, true);

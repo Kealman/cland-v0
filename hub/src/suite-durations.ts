@@ -1,5 +1,5 @@
 import { glob, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { isMap, isScalar, parseDocument } from 'yaml';
 import { projectRoot } from './project.ts';
 import { parseItem } from './tracker/item.ts';
@@ -7,7 +7,7 @@ import type { Tier } from './suite-shards.ts';
 
 export const DURATION_MANIFEST = 'hub/test/durations.json';
 export type TierBudget = { testSeconds: number; fileSeconds: number; wallSeconds: number };
-export type TestTiming = { file: string; name: string; seconds: number };
+export type TestTiming = { file: string; name: string; seconds: number; outcome?: 'pass' | 'fail' | 'skip' | 'todo' };
 export const TIER_BUDGETS = {
   T1: { testSeconds: 0.5, fileSeconds: 10, wallSeconds: 120 },
   T2: { testSeconds: 2, fileSeconds: 30, wallSeconds: 480 },
@@ -28,6 +28,43 @@ export type DurationRegression = { key: string; before: number; now: number; bud
 export type DurationOwner = { state: string; kind: string; parent?: string | null };
 const seconds = (value: number) => Number(value.toFixed(3)).toString();
 const durationDate = (value: unknown): number => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? Date.parse(value) : NaN;
+
+/** Ready-to-commit entries; never modify a baseline or an existing allowance. */
+export function durationAllowanceStanzas(tests: TestTiming[], manifest: DurationManifest, tiers: Record<string, Tier>, options: { owner: string; now?: number }): DurationManifest['allow'] {
+  const added = new Date(options.now ?? Date.now()).toISOString().slice(0, 10);
+  const expires = new Date(durationDate(added) + 7 * 86_400_000).toISOString().slice(0, 10);
+  const worst = new Map<string, TestTiming>();
+  for (const test of tests) {
+    if (test.outcome !== 'pass' || !Number.isFinite(test.seconds) || test.seconds < 0) continue;
+    const key = timingKey(test);
+    if (!worst.has(key) || worst.get(key)!.seconds < test.seconds) worst.set(key, test);
+  }
+  return Object.fromEntries([...worst].sort(([a], [b]) => a.localeCompare(b)).flatMap(([key, test]) => {
+    const tier = tiers[test.file];
+    const budget = tier && (manifest.budget[tier] ?? TIER_BUDGETS[tier])?.testSeconds;
+    if (budget === undefined || test.seconds < budget * 0.8) return [];
+    return [[key, { seconds: Math.ceil(test.seconds * 1500) / 1000, owner: options.owner, added, expires,
+      reason: `${tier} measured peak ${seconds(test.seconds)} s; 1.5x headroom for ${basename(test.file)}: ${test.name}.` }]];
+  }));
+}
+
+/** The nearest open container survives closure of the task that measured it. */
+export async function durationAllowanceOwner(cwd: string, item: string): Promise<string | undefined> {
+  const root = projectRoot(cwd), seen = new Set<string>();
+  let id: string | null | undefined = item;
+  while (id && /^[A-Z]+-[1-9]\d*$/.test(id) && !seen.has(id)) {
+    seen.add(id);
+    let parent: string | null | undefined;
+    for await (const path of glob(`.cland/tasks/${id}-*.md`, { cwd: root })) {
+      const parsed = parseItem(await readFile(join(root, path), 'utf8'));
+      if (parsed.fm.id !== id) continue;
+      if (parsed.fm.state === 'open' && !['task', 'question', 'spec', 'map'].includes(parsed.fm.kind)) return id;
+      parent = parsed.fm.parent;
+      break;
+    }
+    id = parent;
+  }
+}
 
 /** Dated allowances expire at midnight UTC; legacy allowances expire on owner closure. */
 export function durationAllowanceExpiries(manifest: DurationManifest) {

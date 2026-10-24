@@ -26,6 +26,7 @@ export function loadProofIdentities(log: string): string[] {
 
 /** Occasion receipts replace the baseline; landed task proofs extend it. */
 export function loadGateRepetitions(identity: string, selection: SuiteSelection | undefined, durationTests: Record<string, number>): 0 | 5 {
+  if (selection?.durationCheck?.files.includes(identity.split('::')[0]!)) return 0; // Task process identities execute once.
   if (identity.startsWith('web/test/')) return 0; // Web's latency budget is never measured under repetition load.
   if (selection?.loadGateTests && !selection.loadGateTests.includes(identity)) return 0;
   if (selection?.loadGateFiles && !selection.loadGateFiles.includes(identity.split('::')[0]!)) return 0;
