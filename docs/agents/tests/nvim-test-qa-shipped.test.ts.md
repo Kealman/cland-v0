@@ -20,3 +20,10 @@ conflict. The scratch Git merge that proves two branches adding different cases
 combine cleanly is task evidence in the item topic (T-1020, A-10628), not a test:
 it needs a real Git repository and belongs to no permanent tier. The walk's test
 names are unchanged, so `hub/test/durations.json` keeps its per-case budgets.
+
+`EXPLORER-001` checks the outline at 200×50 with the card open, where the tree
+has fewer than 118 content columns and omits the lead. It then widens the grid
+to 280 columns, waits for a rendered tree of at least 118 content columns, and
+requires `coord` in the explorer buffer while the card remains open. Both
+layouts retain named screen/state dumps. The width is the actual tree window
+minus its reserved final column, not the terminal width (T-436).

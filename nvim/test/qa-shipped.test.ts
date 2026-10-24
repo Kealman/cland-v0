@@ -18,6 +18,7 @@ const CATALOGUE = [
   'ARTIFACT-001',
   'ARTIFACT-002',
   // The explorer
+  'EXPLORER-001',
   'EXPLORER-002',
   // The experimental graph
   'GRAPH-001',
