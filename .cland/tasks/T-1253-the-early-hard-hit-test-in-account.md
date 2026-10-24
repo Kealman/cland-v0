@@ -2,8 +2,8 @@
 id: T-1253
 kind: task
 title: Codex fake skips launch briefs since T-360, so the early hard-hit test misses its 15 s save window
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-360
 topic: topic-991
 branch: t/T-1253-the-early-hard-hit-test-in-account
 created: 2026-10-24T14:32:25.597Z
-updated: 2026-10-24T15:08:53.618Z
+updated: 2026-10-24T15:33:57.827Z
+closed: 2026-10-24T15:33:57.827Z
 ---
 
 ## Summary
@@ -26,8 +27,10 @@ updated: 2026-10-24T15:08:53.618Z
 
 - [x] C1. The cause is named (T-360's fake skips the hub-enveloped launch brief) and a T1 control of the fake's envelope selection is red before the fix and green after, while T-360's digest control stays green (test).
   - done: impl-1253 · 2026-10-24T15:05:05.871Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1253-final-1 · 2026-10-24T15:24:47.319Z · commit 9d4fafe3a6e783ebb38bca49fd1a000e75c7e0a8
 - [x] C2. The early hard-hit case in account-limited.test.ts passes 5/5 run alone on macOS and in the item's mode-free Linux verify, without raising the 15 s window or relaxing the assertion (test).
   - done: impl-1253 · 2026-10-24T15:05:05.927Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1253-final-1 · 2026-10-24T15:24:47.319Z · commit 9d4fafe3a6e783ebb38bca49fd1a000e75c7e0a8
 
 ## Comments
 
@@ -51,3 +54,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-11240 full Standards/Spec source review clear, no findings. Fake-only pure selector admits first launch hub/report/Agents envelope following actual role/no-role intro only on turn1/item1/not-tool; last-human/agent/routing and hub-event suppression retained. T1controls/tiers/guides appropriate. Actual Coordinator189e6df2/d5e73039 authorize only two consumer corrections: exact sole General pong Inbox row+count/noAgents retirement; final-report topic/replyTo across restart, all other checks kept. account-limited assertions/15s untouched, only header changed. C1/C2 unverified pending native originals/runtime. A11225/A11239 local summaries carry dirtypremerge provenance; original outputs being preserved. Actual Coordinator3aae0e7c/037b0028 requires five exact single-case pattern runs at currenthead; whole-file5x10 is additional only. Source clear permits one unchanged-head mode-free verify; final evidence needs macisolated5/5 plus Linuxearlyhit/changedT3 receipt. No finalready/QA/landing claim.
+
+### rev-26 · 2026-10-24T15:24:47.319Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1253-final-1
+commit: 9d4fafe3a6e783ebb38bca49fd1a000e75c7e0a8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-11249 final audit carries source1/A11240. A11241 all30manifest hashes match; exact isolatedmacOSpattern5/5each1test0fail at currenthead0.910–0.929s, separate from wholefile5x10 premerge evidence. C1red transcribed originaltoolreturn and contemporaneousA11225 retain missingtree limit; postmergeT1/nativeT360digest originals preserved with actual source attribution. Linux495f5cdb/A11248exit0 at9d4fafe3: parsed3055ordinarytest/432filepasses plus20actualT1loadtests4identitieseach5/5. Earlyhit2.102012313s; original15s/session/reset/journal unchanged. T0/allT1/fallback allhub+NeovimT2/3changedT3files22casesonce/Webpass, maxT3case7.434248569s<8trigger, noallowance. Addedwall53.036s distinct from89.682testsummed; host24.258s/tree34df9a36separate/notrepeatremote. Lint133/60,6missingbaselines/existingtiming/Webwarnings report-only. C1/C2allverified. Claimant reports clean unchangedhead/dev1f98589e conflictfree read-onlycheck. No fullT3/T4/itemQA/landingclaim.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T15:33:57.827Z
+
+Merged 6950fd2f66f595adeb7c6e9c5dd939a1d8d23a70 onto dev.

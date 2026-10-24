@@ -2,8 +2,8 @@
 id: T-1220
 kind: task
 title: A session's shell identity is not bound to a per-session credential
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T14:49:53.147Z
+updated: 2026-10-24T16:08:09.085Z
+closed: 2026-10-24T16:08:09.085Z
 ---
 
 ## Summary
@@ -29,10 +30,13 @@ Trust model today: every session runs as the same OS user on one machine. This g
 
 - [x] C1. A shell CLI call is attributed to a session only when it presents that session's own per-session credential; a call presenting another session's identity is refused, shown in a sealed real-hub test.
   - done: impl-1220 · 2026-10-24T10:13:17.395Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1220-final · 2026-10-24T16:00:07.184Z · commit 19c6c0df3e568f1b10d8fc99e39059399fc97a8f
 - [x] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
   - done: impl-1220 · 2026-10-24T10:13:17.528Z
-- [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
-  - failed: rev-31 [reviewer] · 2026-10-24T14:49:53.146Z · note Authorized retry89849235 remains exit1 on T-1253 native first-turn coverage; mappedT4/Web absent. Pending Coordinator disposition, no current complete runtime proof.
+  - verified: rev-31 [reviewer] · run rev-20261024-1220-final · 2026-10-24T16:00:07.184Z · commit 19c6c0df3e568f1b10d8fc99e39059399fc97a8f
+- [x] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
+  - done: impl-1220 · 2026-10-24T15:37:45.176Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1220-final · 2026-10-24T16:00:07.184Z · commit 19c6c0df3e568f1b10d8fc99e39059399fc97a8f
 
 ## Comments
 
@@ -617,3 +621,76 @@ M11 remains unresolved runtime evidence, now explicitly linked to reproduced sha
 Durable review A-11221.
 
 Criteria: C3 failed (Authorized retry89849235 remains exit1 on T-1253 native first-turn coverage; mappedT4/Web absent. Pending Coordinator disposition, no current complete runtime proof.).
+
+### impl-1220 · 2026-10-24T15:37:45.254Z
+
+Per Coordinator62eddc73, merged pinned dev6950fd2f/T-1253 into55a993aa and pushed19c6c0df3e568f1b10d8fc99e39059399fc97a8f. Conflicts preserve auth aliases plus incoming account-limit explanation and suite/verifier fixture imports; no test-body/assertion/bound/permission change. Requested early native-hit case passes once1/1; T1 envelope4/help1/usage1/arguments10/docs3 pass; suite-protocol15,verifier-routing16,raw credentials9 pass; typecheck0 on local Darwin arm64. Original working-tree receipts A-11255. Prior failed head/base controls and suite receipts remain historical. Requesting merge-only delta source review before one mode-free verification.
+
+### rev-31 · 2026-10-24T15:39:55.209Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-shared-fix-integration
+commit: 19c6c0df3e568f1b10d8fc99e39059399fc97a8f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1220 authorized T-1253 integration delta — clear
+
+Head19c6c0df3e568f1b10d8fc99e39059399fc97a8f / tree85524b522e7576f789fff6546e59ec2582dd771c; parents source-cleared55a993aa67299d3c15c4e12f8ec1c7874e509dda and exact incoming dev6950fd2f66f595adeb7c6e9c5dd939a1d8d23a70. Origin task ref matches; claimant reports clean. Scope merge-only delta, carrying A-11159/A-11088 and accepted full credential source history. Directly read Coordinator f65f285b and62eddc73: deterministic shared T-1253 regression of T-360, hold old head, integrate that exact landed dev, typecheck/targetedT1/early-hit once, delta review then one mode-free run. This integration is within the explicit authorization. Reviewer read-only; no tests/delegation/T-1253 investigation.
+
+Standards/Spec: no delta findings. Combined conflict diff has exactly the three stated import/comment resolutions:
+- account-limited keeps credential fixture aliases and incoming explanation of initial hub/report launch brief; all early-hit body/reset/session/one-event assertions and15000ms bound unchanged.
+- suite-protocol keeps sessionUi/sessionClandWithEnv aliases while retaining incoming lstat/realpath/symlink/randomUUID/sweep/ownDirectory helpers and new owned-directory/quarantine tests.
+- verifier-routing keeps sessionUi alias while retaining incoming SQLite/path/componentProject imports, durable reservation/closed-item/queued-verifier cases and original assertions.
+Against incoming dev these three files differ only in the existing credential imports/removal of unauthenticated aliases. New incoming connectUi calls therefore use the existing authenticated fixture without changing their bodies/permissions. No assertion, timeout, fixture size or security boundary relaxation.
+
+T-1253 fake-codex, codex-envelope helper and four T1 controls are blob-identical to incoming dev. Its initial introduction/role hub-report handling is carried intact; later hub envelopes remain excluded as the imported controls specify. No new fake fix or independent root-cause work was done in T-1220. M11's prior shared-baseline failure is addressed in the incoming source, but current configured runtime proof remains required.
+
+Production own-credential modules, frame actor/socket client, CLI actor, three harness adapters/session adapter, credential test fixture and prior corrected Web artifact/drawer sources are unchanged from55a993aa. Incoming core/store changes clean stale verifier reservations; incoming Dispatcher changes retain guarded diagnostics plus fourth boundary repetition and demo notices. Protocol/wire carry localBlocked and incoming selection fields while preserving task credential fields. Those are existing dev integrations, not a new full audit of unrelated work. Tier union loses no key/value from either parent. Task/subscriptions guidance and matching frozen command rows remain the only help differences versus incoming dev; export composition/help-template blobs match dev. No new dependency/role/timing allowance/baseline or generic budget change.
+
+A-11255 inspected original local Darwin arm64/Node24.21 receipt files, code0/no signal, precommit merge source subsequently committed unchanged:
+isolated early-hit exactly1/1, body0.905696250s, Node1.250637916s, collector1.276s; Codex envelope4/4; frozen help1/1; usage1/1; arguments10/10; docs3/3; suite-protocol15/15; verifier-routing16/16; raw credential9/9. npm typecheck0, measured collector2.991s. Whole-file runner/collector/body timings remain distinct. No load loop, exact-postcommit rerun, Linux or full configured success inferred; this was typecheck/targeted validation, not a claimed full npmcheck/lint run.
+
+Delta source clear, findings[]. C1–C3 all claimant done, runtime-unverified at19c6c0df. Prior failed A-11196/A-11220 and local head/dev0/5 A-11203 remain failed historical receipts; neither the shared fix nor isolated local green relabels them. A-11221's exhausted old-head retry is not reused: Coordinator explicitly authorized this new merged-head verification.
+
+Run one ordinary configured mode-free verify at unchanged19c6c0df, route original result here and request evidence review before ready. Report actual T0/runtime phases, native platform, skipped/unexecuted guards, repetitions and enforced/report-only gates. No further merge/source mutation absent authorization and fresh review; no QA/enqueue/landing/current complete runtime claim.
+Durable review A-11257.
+
+### rev-31 · 2026-10-24T16:00:07.184Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-final
+commit: 19c6c0df3e568f1b10d8fc99e39059399fc97a8f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1220 final current-head evidence review — clear
+
+Head19c6c0df3e568f1b10d8fc99e39059399fc97a8f / Git tree85524b522e7576f789fff6546e59ec2582dd771c; origin task ref matches. Carries full credential source history, final help integration A-11159 and authorized shared-fix integration A-11257 / rev-20261024-1220-shared-fix-integration. Direct Coordinator62eddc73 authorized this new-head run after landed T-1253. Read-only Reviewer inspected task.verify and original A-11264; no tests/build/probes/delegation.
+
+Configured ordinary mode-free045a66d5-9077-42d8-bbb1-75205d807d14 exits0 at the reviewed integrated head. Independently counted3248 ordinary test finishes, all pass, zero failures/cancellations/skips/todo. Eighteen affected new T1/T2 groups each have5/5 passing load bodies:90 additional passes, excluded from3248. AllT1/full fallback hub+NeovimT2,24changedT3files/187passing identities once, one mappedT4guard once and Web complete. The changedT3 selected-phase added252.551s excluding machine wait; T4 selected-phase2.418s, no repetitions. Remaining unchangedT3/T4 are deferred, not claimed as covered.
+
+C1 verified: sealed real-hub credential CLI9/9 passes, including own session attribution, refusing another/invalid identity credential, explicit invalid-env precedence over fallback, per-session fallback binding, reconnect/upgrade/relaunch/archival rotation. The exact attribution case1.093443932s and fallback-binding case0.564472026s pass. Async credential IO7/7 passes, including persistence-before-welcome, writer drain/archive removal, launch reservation rollback, caller revalidation after held persistence, rotation-before-adapter and shutdown settlement. Source-audited credential/module/actor authority and real shell controls remain unchanged by integration.
+
+C2 verified: explicit identity-free human/own-spoke permissions test passes0.428511957s; documentation and task/subscriptions help preserve the deliberate human policy and require credentials for known-session claims. Frozen-help compatibility/usage and full selected suite remain green. No inference that session-claiming shells become human on invalid credentials.
+
+C3 verified: full selected adapter/environment/native coverage completes. Claude environment7/7 includes “only their own shell credential through launch and relaunch”0.013602033s; OpenCode adapter16/16 includes inherited shell identity/two separately owned verify runs2.909386561s; Claude native adapter6/6 and all other selected harness lifecycle cases pass. Fixture environment controls reject poisoned parent/overlay credentials and retain only owned/disposable paths. These execute the source-reviewed Claude/Codex/OpenCode credential delivery design; no production permission or trust model change is inferred from fake-harness tests.
+
+Previous M11 blocker is resolved by actual current-head native proof: account-limited early-first-turn hard-hit now passes2.223094871s with original retained mark/session/reset/event assertions and15s bound. Shared T-1253 source was integrated without local weakening. Earlier head/dev0/5 A-11203 and failed A-11196/A-11220 remain failed historical evidence; no flake exemption or retroactive pass used. Prior M9/M10 Web fixture fixes also have current native Web proof: artifacts12/12, session-drawer7/7, with original assertions retained. Mapped inbox-verifier-load guard “100-frame verifier delivery bursts never scan retained message history” passes1.450547086s once; T4 load repetitions correctly absent.
+
+Executor runtime: Linux x64 6.8.0-142-generic / Node24.21 / Neovim0.12.5; droplet c-8lon1 cland-v0-43f82f1d,workers2,lifetime1025s,cost$0.0712. T0 host-check envelope24.051s references reused gate tree9db57ffe14959af61713d110b1b4f829164a55d5, explicitly not repeated remotely; it is not Linux exact-head T0 execution. T1envelope70s,T2 410s,T3 257s,T4 7s,Web176s; observed Web shard170.66s/phase suite170.78s exceeds40s report-only wall budget. Test lint, general duration notices, missing baselines and T3 ratchet remain report-only. Generated allowance stanzas for existing identities are advisory evidence, not source edits or proof of enforce-mode timing compliance. No new hard-gate failure or waiver; no baseline/allowance change required for settlement.
+
+A-11255 local Darwin arm64 typecheck/targeted/isolated pass stays separately attributed to the unchanged precommit merge source; it is not substituted for current native Linux completion. This final result supplies runtime proof previously missing at19c6c0df. All C1–C3 claimant done and now verified; zero remaining findings. No further source changes/repetitions required. Include a fresh no-auto-maintenance dev conflict result with unchanged head/tree in ready evidence for Coordinator enqueue. This verdict asserts no fresh-dev conflict result, actual merge, restart #54 execution, QA or release/landing cover. Any later authorized integration requires new delta/current-head evidence.
+Durable review A-11265.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-24T16:08:09.085Z
+
+Merged fffc70b8c61f5d3755eee6d128334752d72d9b8c onto dev.

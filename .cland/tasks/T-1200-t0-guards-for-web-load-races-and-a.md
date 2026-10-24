@@ -2,8 +2,8 @@
 id: T-1200
 kind: task
 title: T0 guards for Web load races and a repetition gate for new Web files
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-980
 branch: t/T-1200-t0-guards-for-web-load-races-and-a
 created: 2026-10-24T06:46:04.641Z
-updated: 2026-10-24T15:06:19.735Z
+updated: 2026-10-24T15:30:10.537Z
+closed: 2026-10-24T15:30:10.537Z
 ---
 
 ## Summary
@@ -27,10 +28,12 @@ Three Web load races in v0.2 (T-1157 auto-retry, T-1182 measuring before the pho
   - verified: rev-23 [reviewer] · run rev-20261024-1200-final · 2026-10-24T14:45:13.218Z · commit 28d1199181840673345d0136f748295739d0d655
   - done: impl-1200 · 2026-10-24T15:01:43.821Z
   - verified: rev-23 [reviewer] · run rev-20261024-1200-final2 · 2026-10-24T15:02:01.477Z · commit e676c8ee14402dbbd1cd1ac07bc38878e7ea8941
+  - verified: rev-23 [reviewer] · run rev-20261024-1200-final3 · 2026-10-24T15:21:50.738Z · commit 9f89e39b9b4c3906b02b71c63aa1b4fc675083fd
 - [x] C2. A new Web test file passes 10 repetitions at two workers under CPU load before ready, and verify reports the count (test).
   - verified: rev-23 [reviewer] · run rev-20261024-1200-final · 2026-10-24T14:45:13.218Z · commit 28d1199181840673345d0136f748295739d0d655
   - done: impl-1200 · 2026-10-24T15:01:43.909Z
   - verified: rev-23 [reviewer] · run rev-20261024-1200-final2 · 2026-10-24T15:02:01.477Z · commit e676c8ee14402dbbd1cd1ac07bc38878e7ea8941
+  - verified: rev-23 [reviewer] · run rev-20261024-1200-final3 · 2026-10-24T15:21:50.738Z · commit 9f89e39b9b4c3906b02b71c63aa1b4fc675083fd
 
 ## Comments
 
@@ -286,3 +289,46 @@ A-11237 retains original local macOS resolved-tree outputs/exits subsequently co
 OldA-11232/A-11233 settle e676c8ee only:3077ordinary+30identity-load, synthetic10/10CPU, production missing proof. Current runtime marks stale; claimant checked marks retained. Clear source permits one ordinary mode-free configured verify at unchanged9f89e39b then new-head evidence review, preserving actual phases/count/platform/report-only/missing-field attribution. No forced full cover/extra reps/local unleased load. No itemQA(none/after-stage)/stage/landing claim. Coordinator owns enqueue/merge and further integration decisions. Standards0 findings; Spec0 findings.
 
 Durable audit A-11238.
+
+### rev-23 · 2026-10-24T15:21:50.738Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1200-final3
+commit: 9f89e39b9b4c3906b02b71c63aa1b4fc675083fd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1200 final landed-T511 integration evidence — clear
+
+Head9f89e39b9b4c3906b02b71c63aa1b4fc675083fd/tree09d8b1c366ffff28a28c9a5799ca03c2654a23de; source-clear rev-20261024-1200-delta4/A-11238 carries prior complete source and both-feature integration audits. Original ordinary mode-freed593f90f-e064-4a77-8921-90fae068a053/A-11246 exits0, independently confirmed exact-head passed by task.view and matching branch ref. Scope evidence, run rev-20261024-1200-final3; findings[]. Static read-only log/JSON/Git/tracker inspection only; no tests/probes/edits/mutation/delegation.
+
+## Standards
+Native finishes3081ordinary passing tests/429files plus30separate identity-load test/file passes(sixT1identities×five), zero failure/cancellation/skip/todo, no hard new-identity duration failure. Actual phases: hostT0, allT1(140files/888manifest tests), fallbackallhub+NvimT2(244/1812), changedT3suite-runner once46identities, allWeb(44/225). Raw nested totals differ from manifest top-level totals. No full unchangedT3/T4/stage cover.
+
+General budgets/resource/newWeb gate and lint133findings/60files report-only; five missing baselines/other overages retained. T3ratchet2196.888vs2195.304s(+1.584s), incomplete two-file base, is projection rather than elapsedwall. Existing takeover10.724s/printed16.086s recommendation is not a hard new-identity failure or an applied edit.
+
+## Spec
+C1 verified using cleared planted syntax controls/resize receipt audit and successful hostT024.178s. Marker35a20db256ad1450465eee319d161f0a9397c61a independently Git tree, host retained not remote repeated typecheck.
+
+C2 pre-merge contract verified within explicit Coordinator50603879 report-only rollout and90231c27 landing boundary. Native synthetic ten-child/two-lane CPU contract passes1.584513244s; log15430 prints 'web/test/new.test.ts 10/10 passed; workers 2; CPU load; attempted 10/10'. Cleared assertions retain fresh processes/complete summaries/CPU progress/sealed env/ten receipt files/empty tracked child set/observed cleanup. This is synthetic process/CPU lifecycle evidence, not production browser new-file load.
+
+New host ancestor/new/renamed/existing/newer-tip control .003460797s, runner populated/intersection/[]/absent .000388005s, transport/cache/malformed-path control .000801680s; each5/5(max .004463022/.003707279/.003352857s). Original new-file planner, incomplete/skip/fail/no-load rejection and typed terminal summary also5/5(max .007568105/.007550972/.003061974s). Thirty load passes are separate from3081ordinary.
+
+Production admission log17431 explicitly remains 'not run; dev baseline unavailable; missing load proof' under old hub; no zero-new or production10/10 inferred. Coordinator90231c27 accepts absent-field compatibility until restart#54 and owns post-restart new-file droplet count as C2 landing evidence outside pre-merge gate. C2 mark covers amended pre-merge requirement only; outstanding landing proof is not marked complete. Ordinary Webwall157.742s/40sreport-only, admission extra0.000s rounded, synthetic1.584513244s and suitewall157.90s are distinct.
+
+Tier envelopesT1/T2/T3/Web77/379/85/163s versus suite72.23/374.70/80.17/157.90s; shards72.21/276.57hub+98.08Nvim/80.14/157.79. Selected changed-phase addedwall80.088s excludes machinewait; T1identityloadextra8.20s separate. Configured droplet execution confirmed by tracker; native Linux runner paths,workers2(Web4),diskfsync5.22ms/SQLite13.57ms,temp.09/.48ms,iowait/steal.01%. Delivered summary truncates before executor footer, so no unobserved lifetime/cost/machine-id inferred.
+
+Source delta retained incoming T511 borrowed/interrupted conditional sweep/finally ownership, localBlocked wire and exact combined help. Current successful selected phases exercise integrated runner without asserting unrelated full native cancellation/recovery cover. Historical A-11232/A-11233 remain e676c8ee-only.
+
+C1/C2 verified at9f89e39b within accepted rollout boundary. Fresh conflict check/Coordinator enqueue remains lead responsibility; no extra merge requested. No itemQA(none/after-stage),stage/production landing claim. Coordinator owns enqueue/merge and post-restart production count. Standards0 findings; Spec0 findings within accepted rollout boundary.
+
+Durable audit A-11247.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T15:30:10.537Z
+
+Merged 795799df95022f1b9bd03a2bfd803204c5c38f8d onto dev.
