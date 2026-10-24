@@ -10,8 +10,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { assetName, NVIM_DIR, NVIM_VERSION } from '../bin/nvim-path.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
+import { ensureFixtureAdmission } from './fixture.ts';
 
 test('nvim-path.ts prints the binary from a path with a space, # and %', async (t) => {
+  await ensureFixtureAdmission();
   const base = await mkdtemp(join(tmpdir(), 'cland-path-'));
   ownDirectory(t, base);
   const nvimDir = join(base, 'a b#c%20d', 'nvim');
@@ -20,13 +23,14 @@ test('nvim-path.ts prints the binary from a path with a space, # and %', async (
   await copyFile(join(NVIM_DIR, 'bin', 'nvim-path.ts'), join(nvimDir, 'bin', 'nvim-path.ts'));
   // CLAND_NVIM names the binary: any existing file will do, nothing is downloaded
   const fake = join(nvimDir, 'NVIM_VERSION');
-  const out = spawnSync(process.execPath, [join(nvimDir, 'bin', 'nvim-path.ts')], { env: { ...process.env, CLAND_NVIM: fake }, encoding: 'utf8' });
+  const out = spawnSync(process.execPath, [join(nvimDir, 'bin', 'nvim-path.ts')], { cwd: base, env: fixtureEnvironment(base, process.env, { CLAND_NVIM: fake }), encoding: 'utf8' });
   assert.equal(out.status, 0, out.stderr);
   assert.equal(out.stdout, `${fake}\n`);
 });
 
 /** A release tarball of our own, served from a file: URL, with its digest; `resolve()` runs the resolver as a script. */
 async function fakeRelease(t: TestContext, extra: Record<string, string> = {}) {
+  await ensureFixtureAdmission();
   const base = await mkdtemp(join(tmpdir(), 'cland-nvim-race-'));
   ownDirectory(t, base);
   const asset = assetName();
@@ -36,12 +40,11 @@ async function fakeRelease(t: TestContext, extra: Record<string, string> = {}) {
   await mkdir(join(src, unpacked, 'bin'), { recursive: true });
   await writeFile(join(src, unpacked, 'bin', 'nvim'), '#!/bin/sh\necho fake\n', { mode: 0o755 });
   const tarball = join(base, asset);
-  const tar = spawnSync('tar', ['-czf', tarball, '-C', src, unpacked]);
+  const tar = spawnSync('tar', ['-czf', tarball, '-C', src, unpacked], { cwd: base, env: fixtureEnvironment(base, process.env) });
   assert.equal(tar.status, 0, String(tar.stderr));
   const sha = createHash('sha256').update(await readFile(tarball)).digest('hex');
   const cache = join(base, 'cache');
-  const env = {
-    ...process.env,
+  const env = fixtureEnvironment(base, process.env, {
     CLAND_NVIM: '',
     CLAND_NVIM_CACHE_DIR: cache,
     CLAND_NVIM_DOWNLOAD_URL: pathToFileURL(tarball).href,
@@ -49,10 +52,10 @@ async function fakeRelease(t: TestContext, extra: Record<string, string> = {}) {
     // the download holds still before it writes, so two resolvers overlap
     CLAND_TEST_NVIM_DOWNLOAD_PAUSE_MS: '500',
     ...extra,
-  };
+  });
   const resolve = () =>
     new Promise<{ code: number | null; stdout: string; stderr: string }>((done) => {
-      const child = spawn(process.execPath, [join(NVIM_DIR, 'bin', 'nvim-path.ts')], { env });
+      const child = spawn(process.execPath, [join(NVIM_DIR, 'bin', 'nvim-path.ts')], { cwd: base, env });
       ownProcess(t, child.pid);
       // a resolver stuck on a lock never ends on its own (it waits up to ten minutes): fail the test instead
       const timer = setTimeout(() => child.kill('SIGKILL'), 20_000);
@@ -66,7 +69,7 @@ async function fakeRelease(t: TestContext, extra: Record<string, string> = {}) {
       });
     });
   const dir = join(cache, NVIM_VERSION);
-  return { dir, unpacked, expected: join(dir, unpacked, 'bin', 'nvim'), resolve };
+  return { base, dir, unpacked, expected: join(dir, unpacked, 'bin', 'nvim'), resolve };
 }
 
 test('two resolvers starting on an empty cache at once: one downloads, the other waits for it, both print the same binary', async (t) => {
@@ -101,7 +104,7 @@ test("two resolvers that both find a dead holder's lock: one breaks it, neither 
   const r = await fakeRelease(t, { CLAND_TEST_NVIM_BREAK_PAUSE_MS: '400' });
   if (!r) return t.skip('no pinned build for this platform');
   await mkdir(r.dir, { recursive: true });
-  const dead = spawnSync(process.execPath, ['-e', '']).pid as number;
+  const dead = spawnSync(process.execPath, ['-e', ''], { cwd: r.base, env: fixtureEnvironment(r.base, process.env) }).pid as number;
   await writeFile(join(r.dir, '.download.lock'), `${dead}\n`);
   const [a, b] = await Promise.all([r.resolve(), r.resolve()]);
   assert.equal(a.code, 0, a.stderr);
@@ -114,6 +117,7 @@ test("two resolvers that both find a dead holder's lock: one breaks it, neither 
 
 // T-48: a session in a worktree runs the suite with the network closed, so it cannot download a Neovim of its own.
 test('a linked worktree with no Neovim of its own uses the one cached in the main worktree, and downloads nothing', async (t) => {
+  await ensureFixtureAdmission();
   const asset = assetName();
   if (!asset) return t.skip('no pinned build for this platform');
   const base = await realpath(await mkdtemp(join(tmpdir(), 'cland-path-wt-')));
@@ -131,8 +135,8 @@ test('a linked worktree with no Neovim of its own uses the one cached in the mai
   await mkdir(join(cached, '..'), { recursive: true });
   await writeFile(cached, '#!/bin/sh\necho fake\n', { mode: 0o755 });
   // a download would fail at once: the release is nowhere
-  const env = { ...process.env, CLAND_NVIM: '', CLAND_NVIM_CACHE_DIR: '', CLAND_NVIM_DOWNLOAD_URL: pathToFileURL(join(base, 'no-such-release.tar.gz')).href, CLAND_NVIM_DOWNLOAD_SHA256: '0'.repeat(64) };
-  const run = (root: string) => spawnSync(process.execPath, [join(root, 'nvim', 'bin', 'nvim-path.ts')], { env, encoding: 'utf8' });
+  const env = fixtureEnvironment(base, process.env, { CLAND_NVIM: '', CLAND_NVIM_CACHE_DIR: '', CLAND_NVIM_DOWNLOAD_URL: pathToFileURL(join(base, 'no-such-release.tar.gz')).href, CLAND_NVIM_DOWNLOAD_SHA256: '0'.repeat(64) });
+  const run = (root: string) => spawnSync(process.execPath, [join(root, 'nvim', 'bin', 'nvim-path.ts')], { cwd: root, env, encoding: 'utf8' });
 
   const out = run(worktree);
   assert.equal(out.status, 0, out.stderr);

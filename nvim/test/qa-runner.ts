@@ -1,25 +1,26 @@
-import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 // Shared headless QA CLI fixture; all children belong to the calling test.
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ownProcess } from '../../hub/test/process-cleanup.ts';
+import { tempProject } from '../../hub/test/harness.ts';
 const CLI = fileURLToPath(new URL('../../hub/bin/cland.ts', import.meta.url));
 
 type Line = { case: string; result: string; duration_ms: number; build: string; hub: string; message?: string; evidence: unknown };
 type Run = { code: number | null; stdout: string; stderr: string; line: Line };
 
 /** Run `cland --headless --qa …`, optionally under a command prefix (a sandbox); the one JSON line parsed. */
-export function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: Record<string, string>; cwd?: string; started?: (child: ChildProcess) => void } = {}): Promise<Run> {
+export async function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: Record<string, string>; cwd?: string; started?: (child: ChildProcess) => void } = {}): Promise<Run> {
+  const root = await tempProject(t, 'cland-qa-cli-');
   const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   if (process.env.CLAND_NVIM) env.CLAND_NVIM = process.env.CLAND_NVIM;
   Object.assign(env, options.env);
   // Node restores a deleted coverage variable; disable writes sandbox profiles may deny.
   if (options.prefix?.includes('/usr/bin/sandbox-exec')) env.NODE_V8_COVERAGE = '';
   const argv = [...(options.prefix ?? []), process.execPath, CLI, '--headless', '--qa', ...args];
-  const child = spawn(argv[0] as string, argv.slice(1), { cwd: options.cwd ?? process.cwd(), env: withoutExecutorCredentials(env), stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(argv[0] as string, argv.slice(1), { cwd: options.cwd ?? root, env: fixtureEnvironment(root, process.env, env), stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   t.after(() => void child.kill('SIGKILL'));
   options.started?.(child);

@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 
 const nvim = await nvimOrSkip();
 
@@ -42,7 +43,7 @@ test('human criterion keys preserve marks and removed ids; panel, cards and grap
   await writeFile(join(root,'.cland/config.toml'),'[tracker]\nlevels = ["epic"]\n');
   await writeFile(join(root,'.cland/tasks/T-1-epic.md'),`---\nid: T-1\nkind: epic\ntitle: Criteria epic\nstate: open\ncreated: ${AT}\nupdated: ${AT}\n---\n`);
   const path=join(root,'.cland/tasks/T-2-criteria.md');
-  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, env: fixtureEnvironment(root, process.env), encoding: 'utf8' }).trim();
   git('init', '-q', '-b', 'dev'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.com'); git('config', 'commit.gpgsign', 'false');
   git('commit', '--allow-empty', '-qm', 'Display build');
   const head = git('rev-parse', 'HEAD');
@@ -98,7 +99,7 @@ test('the shown explorer card refreshes criteria after a watched save that prese
   await mkdir(join(root,'.cland/tasks'),{recursive:true});
   await writeFile(join(root,'.cland/config.toml'),'[tracker]\nlevels = ["epic"]\n');
   await writeFile(join(root,'.cland/tasks/T-1-epic.md'),`---\nid: T-1\nkind: epic\ntitle: Criteria epic\nstate: open\ncreated: ${AT}\nupdated: ${AT}\n---\n`);
-  const git=(...args:string[])=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+  const git=(...args:string[])=>execFileSync('git',args,{cwd:root,env:fixtureEnvironment(root,process.env),encoding:'utf8'}).trim();
   git('init','-q','-b','dev'); git('config','user.name','Test'); git('config','user.email','test@example.com'); git('config','commit.gpgsign','false');
   git('commit','--allow-empty','-qm','Card criteria build');
   const head=git('rev-parse','HEAD');

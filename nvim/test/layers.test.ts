@@ -11,6 +11,7 @@ import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { connectUi, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import type { Scenario } from './stub-hub.ts';
 
 const nvim = await nvimOrSkip();
@@ -118,7 +119,8 @@ test('a layout flush defers while another writer owns ui.json and preserves its 
 test('stale UI recovery preserves a competing replacement and treats EPERM as alive', { skip }, async t => {
   const { readFile, writeFile, rm } = await import('node:fs/promises');
   const { spawn } = await import('node:child_process');
-  const dead = spawn(process.execPath, ['-e', '']);
+  const root = await tempProject(t);
+  const dead = spawn(process.execPath, ['-e', ''], { cwd: root, env: fixtureEnvironment(root, process.env) });
   const deadPid = dead.pid!;
   await new Promise<void>(resolve => dead.once('exit', () => resolve()));
   const c = await start(t);

@@ -1,5 +1,5 @@
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
-import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 // The Neovim client's seam: the real client (`nvim --clean -u nvim/init.lua`) headless with `--listen`,
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -118,17 +118,16 @@ export async function createClient(t: TestContext, bin: string, root: string, en
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
   if (native) native.ownDirectory(t, dir); else ownDirectory(t, dir);
   const sock = join(dir, 'nvim.sock');
-  const childEnv: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_') && !k.startsWith('NVIM')) childEnv[k] = v;
+  const base = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('NVIM')));
   // the restart snapshot lives under stdpath('state'): one per test
-  Object.assign(childEnv, { NVIM_APPNAME: 'cland-nvim', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
+  const childEnv: Record<string, string> = { NVIM_APPNAME: 'cland-nvim', CLAND_ROOT: root, ...env };
   if (stubOnly) childEnv.CLAND_STUB_FRAME_FIXTURES = frameFixturesForTest(process.argv[1]);
   // Replay stress belongs to the Neovim stub, never to real hubs or production.
   for (const key of ['CLAND_STUB_SNAPSHOT_DELAY_MS', 'CLAND_STUB_ROLE_DELAY_MS']) {
     if (env.CLAND_COMMAND && process.env[key]) childEnv[key] = process.env[key];
   }
   if (opts.launcher) childEnv.CLAND_NVIM = bin;
-  const launchEnv = withoutExecutorCredentials(childEnv);
+  const launchEnv = fixtureEnvironment(dir, base, childEnv);
   const ownership = fixtureOwnership([root, fileURLToPath(new URL('../../', import.meta.url))]);
   const launch = () => opts.launcher
     ? spawn(join(NVIM_DIR, 'bin/cland-nvim'), ['--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe', ownership.fd] })

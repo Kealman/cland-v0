@@ -11,6 +11,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { qa } from './qa-runner.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
+import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 
 const nvim = await nvimOrSkip();
@@ -84,6 +86,26 @@ test('SHELL-001 passes against its own stdio hub: exit 0 and one JSON line with 
   assert.match(evidence.screen, /⌁ queued/);
   assert.equal(evidence.screen.split('\n').length, 45, 'the fixed 160×45 grid');
   assert.deepEqual(evidence.state.topics.map((x) => x.id), ['general', 'agents']);
+});
+
+test('the QA fixture seals its CLI environment before the product starts', { skip }, async t => {
+  const dir = await tempDir(t, 'cland-qa-env-');
+  const probe = join(dir, 'probe.sh');
+  const receipt = join(dir, 'environment');
+  await writeFile(probe, 'out=$1; shift\nprintf "%s\\n" "$HOME" "${OPENAI_API_KEY-unset}" "${GIT_DIR-unset}" "${CLAND_FIXTURE_EXPLICIT-unset}" "$PWD" > "$out"\nexec "$@"\n');
+  const parent = process.env;
+  process.env = { ...fixtureEnvironment(dir, parent), HOME: join(dir, 'parent-home'), OPENAI_API_KEY: 'synthetic-parent-key', GIT_DIR: join(dir, 'parent-git') };
+  let run;
+  try {
+    run = await qa(t, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { prefix: ['/bin/sh', probe, receipt], env: { CLAND_FIXTURE_EXPLICIT: 'requested' } });
+  } finally { process.env = parent; }
+  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+  const [home, key, git, explicit, cwd] = (await readFile(receipt, 'utf8')).trim().split('\n');
+  assert.notEqual(home, join(dir, 'parent-home'));
+  assert.equal(key, 'unset');
+  assert.equal(git, 'unset');
+  assert.equal(explicit, 'requested');
+  assert.notEqual(cwd, process.cwd());
 });
 
 test('a failed expectation exits 1 with FAIL, its message, and the grid and the state dumped in --out', { skip }, async (t) => {
@@ -293,7 +315,7 @@ test('a Normal-mode command after a long stretch arrives whole when there is an 
 test('`cland --qa-fixture` writes a new fixture project only: an existing one is refused and left as it was', async (t) => {
   const dir = realpathSync(await tempDir(t, 'cland-qa-fixture-'));
   const fixture = (title: string) => JSON.stringify({ dir, project: 'proj', items: [{ id: 'T-1', title }] });
-  const write = (input: string) => spawnSync(process.execPath, [CLI, '--qa-fixture'], { input, encoding: 'utf8' });
+  const write = (input: string) => spawnSync(process.execPath, [CLI, '--qa-fixture'], { cwd: dir, env: fixtureEnvironment(dir, process.env), input, encoding: 'utf8' });
   const first = write(fixture('First'));
   assert.equal(first.status, 0, first.stderr);
   assert.equal(first.stdout.trim(), join(dir, 'proj'));
@@ -360,7 +382,8 @@ test(':Cland qa dump <path> writes the grid and the state in an ordinary run', {
 
 // ------------------------------------------------------------------ under sandbox-exec
 
-const SANDBOX = existsSync('/usr/bin/sandbox-exec') && spawnSync('/usr/bin/sandbox-exec', ['-p', '(version 1)(allow default)', '/usr/bin/true']).status === 0;
+const sandboxEnv = await accountFixtureEnvironment();
+const SANDBOX = existsSync('/usr/bin/sandbox-exec') && spawnSync('/usr/bin/sandbox-exec', ['-p', '(version 1)(allow default)', '/usr/bin/true'], { cwd: sandboxEnv.HOME, env: sandboxEnv }).status === 0;
 const sandboxSkip = skip || (SANDBOX ? false : 'needs macOS sandbox-exec');
 const sandboxed = (profile: string) => ['/usr/bin/sandbox-exec', '-p', `(version 1)(allow default)${profile}`];
 const NO_NETWORK = '(deny network*)';

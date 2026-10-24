@@ -2,7 +2,6 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { nvimOrSkip, startClient, tempProject } from './stub-client.ts';
 
 const nvim = await nvimOrSkip();
@@ -11,10 +10,10 @@ const bin = 'bin' in nvim ? nvim.bin : '';
 
 async function client(t: TestContext) {
   const root = await tempProject(t);
-  return startClient(t, bin, root, fixtureEnvironment(root, process.env, {
+  return startClient(t, bin, root, {
     CLAND_HUB_TRANSPORT: 'stdio',
     CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]),
-  }));
+  });
 }
 
 test('a 20 MiB frame in 64 KiB chunks decodes once within 2 s and bounded allocation', { skip }, async t => {

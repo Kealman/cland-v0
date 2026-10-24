@@ -4,21 +4,19 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { centreOf, clock as clockOf } from './stub-client.ts';
 import type { Scenario } from './stub-hub.ts';
-import { eventually, tempProject } from './fixture.ts';
-import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
+import { eventually } from './fixture.ts';
 import { skip, ts, proc, baseScenario, startShell, requestsOf, onSessionRow, statusLine, type Shell } from './shell-fixture.ts';
 
 const topBar = (s: string) => s.split('\n')[0] ?? '';
 
 test('the OpenCode capability table shows the reliable approval relay', { skip }, async t => {
-  const envRoot = await tempProject(t);
   const c = await startShell(t, s => {
     s.processes = [{ ...proc('impl-1', 'implementer', 'idle'), harness: 'opencode' }];
     s.adapters = { opencode: {
       terminal: 'none', launchPolicy: 'rules, not a sandbox', history: 'none', usage: 'reliable', setModel: 'none', approvalRelay: 'reliable',
       states: { busy: 'reliable', idle: 'reliable', 'waiting for approval': 'heuristic', 'waiting for human': 'heuristic' },
     } };
-  }, fixtureEnvironment(envRoot, process.env));
+  });
   await onSessionRow(c, 'impl-1');
   await c.input('c');
   const screen = await c.waitScreen(s => s.includes('impl-1 [Implementer] · OpenCode · capability table') && /approvalRelay +reliable/.test(s), 'OpenCode relay capability row');
@@ -1516,8 +1514,7 @@ async function snapshotClock(c: Shell) {
 }
 
 test('a late original items answer completes startup after its deadline instead of being discarded', { skip }, async t => {
-  const envRoot = await tempProject(t);
-  const c = await startShell(t, withItems, fixtureEnvironment(envRoot, process.env));
+  const c = await startShell(t, withItems);
   const clock = await snapshotClock(c);
   await c.control({ set: { holdSnapshots: ['task.list'] } });
   await c.lua("require('cland.state').S.items_loaded = false; require('cland').refresh()");
@@ -1535,8 +1532,7 @@ test('a late original items answer completes startup after its deadline instead 
 });
 
 test('only a missing snapshot retries with backoff, and its oldest late answer retains live task events', { skip }, async t => {
-  const envRoot = await tempProject(t);
-  const c = await startShell(t, withItems, fixtureEnvironment(envRoot, process.env));
+  const c = await startShell(t, withItems);
   const clock = await snapshotClock(c);
   await c.control({ set: { holdSnapshots: ['task.list'] } });
   await c.lua("require('cland').refresh()");
@@ -1569,8 +1565,7 @@ test('only a missing snapshot retries with backoff, and its oldest late answer r
 });
 
 test('a reconnect reads each startup list once then settles for ten fake minutes while task events update the explorer', { skip }, async t => {
-  const envRoot = await tempProject(t);
-  const c = await startShell(t, withItems, fixtureEnvironment(envRoot, process.env));
+  const c = await startShell(t, withItems);
   const clock = await snapshotClock(c);
   const reconnected = c.reconnect();
   await c.waitScreen(s => s.includes('hub: reconnecting'), 'old transport disconnected before retry');
@@ -1600,8 +1595,7 @@ test('a reconnect reads each startup list once then settles for ten fake minutes
 });
 
 test('the header shows sessions and Coordinator while the startup items list is delayed', { skip }, async t => {
-  const envRoot = await tempProject(t);
-  const c = await startShell(t, s => { withItems(s); s.holdSnapshots = ['task.list', 'hub.status']; }, fixtureEnvironment(envRoot, process.env), false);
+  const c = await startShell(t, s => { withItems(s); s.holdSnapshots = ['task.list', 'hub.status']; }, {}, false);
   await c.control({ waitSnapshot: 'task.list' });
   await c.control({ waitSnapshot: 'hub.status' });
   const screen = await c.waitScreen(s => topBar(s).includes('coord-1 Coordinator') && /sessions\s+3/.test(topBar(s)), 'session.list independently fills the header');

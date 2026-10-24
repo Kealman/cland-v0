@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import { eventually, tempProject } from './fixture.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import { localClock } from './local-clock.ts';
-import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { nvimOrSkip, startClient, type Client } from './stub-client.ts';
 const nvim = await nvimOrSkip(), skip = 'skip' in nvim ? nvim.skip : false, bin = 'bin' in nvim ? nvim.bin : '';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
@@ -157,10 +156,10 @@ const approvalRecord = (extra: Record<string, unknown> = {}) => ({
 });
 async function approvalClient(t: Parameters<typeof tempProject>[0], view: string, record = approvalRecord(), ageMs = 0) {
   const root = await tempProject(t), path = join(root, 'approval.sock');
-  const c = await startClient(t, bin, root, fixtureEnvironment(root, {}, {
+  const c = await startClient(t, bin, root, {
     CLAND_STUB_NOW: approvalTime, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
     CLAND_STUB_CONTROL: path, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ attach: {}, inbox: { approvals: [record] } }),
-  }));
+  });
   await waitInitialSnapshots(c);
   await localClock(c, 'cland.inbox', Date.parse(approvalTime) + ageMs);
   await focus(c, view);

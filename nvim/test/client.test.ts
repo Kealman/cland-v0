@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { cland, killDaemon, readDiscovery, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { centreOf, nvimOrSkip, startClient } from './harness.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 
 const nvim = await nvimOrSkip();
 
@@ -62,7 +63,7 @@ test('with no hub running, the client starts the project hub and connects to it'
 test('a stale hub.json (its hub killed, its socket gone) makes the client start a hub after a few failed connects', { skip }, async (t) => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  const dead = spawnSync(process.execPath, ['-e', '0']).pid;
+  const dead = spawnSync(process.execPath, ['-e', '0'], { cwd: root, env: fixtureEnvironment(root, process.env) }).pid;
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: join(root, '.cland', 'gone.sock'), port: 1, secret: 'f'.repeat(64), pid: dead, version: '0.0.0' }));
   const c = await startClient(t, bin, root);
   try {

@@ -490,6 +490,15 @@ Human topic messages carry `message` (the default), `decision` or `question` in 
 
 ## Tests
 
+`test/client.ts` supplies a sealed environment for every `startClient` call,
+including the launcher path: disposable HOME, XDG and account directories,
+synthetic Git identity, isolated Git configuration and no inherited credentials.
+Pass only explicit fixture inputs in the environment argument; the shared
+builder filters credentials and Git overrides after that argument too. Tests
+that exercise state migration may still pass their own scratch XDG directories.
+The QA CLI fixture and direct Neovim/resolver hosts also run from disposable
+working directories with sealed environments.
+
 After selection or resize, observe the selected item's rendered fields with a
 bounded wait before asserting them. A matching card `drawn_key` proves identity,
 but does not prove that its progress or geometry is current. Aggregate progress

@@ -602,6 +602,16 @@ promise for each caller, preserving node:test resource attribution. Changes to
 these shared paths keep full package selection, and the T2 import guard follows
 them transitively.
 
+`createClient` seals its launch environment by default with the shared
+`fixtureEnvironment`: each client owns a disposable HOME, XDG and account roots,
+synthetic Git identity and isolated Git configuration. Its environment argument
+contains explicit scratch-owned inputs, not a copy of the parent environment;
+credentials and Git overrides are filtered again after those inputs. Both the
+direct binary and `cland-nvim` launcher use that final environment. The QA CLI
+fixture, resolver fixtures and direct Lua hosts also use sealed environments and
+disposable working directories. Stub replay delay controls remain explicit
+runner inputs; ordinary inherited CLAND/NVIM variables do not reach the client.
+
 `nvim/test/stub-hub.ts` replays committed JSON recordings for config, criteria,
 visibility counts and frame projections. It retains scripted actions and frame
 barriers, with no runtime hub import. A missing recording fails with the refresh
