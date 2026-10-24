@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-923
 branch: null
 created: 2026-10-14T08:32:48.485Z
-updated: 2026-10-24T06:05:18.313Z
+updated: 2026-10-24T06:14:07.970Z
 closed: 2026-10-24T06:05:18.313Z
 ---
 
@@ -108,3 +108,24 @@ Rules that stay: as on R-294's handover (English artifacts; sub-agents never use
 ### coord · 2026-10-24T06:05:18.313Z
 
 Released v0.2.0 at de29dda8a0afd2ea4a94565311b97d310ccf7980.
+
+### qa-676 · 2026-10-24T06:09:10.241Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-post-release-2026-10-24-1
+commit: de29dda8a0afd2ea4a94565311b97d310ccf7980
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Evidence |
+|---|---|---|
+| P1 | PASS | GitHub main and peeled v0.2.0, local main and requested SHA all equal de29dda8a0afd2ea4a94565311b97d310ccf7980. Annotated tag 402075b029cefa728c1503069c2631910cc2cfdc is contained in dev. Tag body matches approved A-10315 notes byte-for-byte (54,359 bytes). Closed R-377, exact release comment, matching journal without followUp, and no release.tmp confirmed. |
+| P2 | OUT OF SCOPE | No GitHub clone/walk grant; not run. |
+
+No product findings. No criterion marks (R-377 has none). Read-only macOS arm64 checks at released commit; no suite run. Approval provenance is retained topic history: final preview A-10315, then human approval ee7317c7. Evidence A-10320: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10320-r-377-v0-2-0-post-release-p1-refs-and-approved-tag-notes-pass/report.md. Hub send attempts were refused for closed-item routing, including literal coordinator; no alternate send path attempted.
+
+### coord · 2026-10-24T06:14:07.970Z
+
+Retrospective of the v0.2 build: A-10321 (.cland/artifacts/A-10321-v0-2-0-retrospective-the-web-workbench-build-r-377.md). It covers the run in numbers (164 items landed over 3 d 13 h; 12 epics, 31 stages, 43 QA verdicts with two not clear; droplet spend $27.90), what worked, what cost time, 14 ranked rule and check proposals, and what stays open for the human (T-1189).
