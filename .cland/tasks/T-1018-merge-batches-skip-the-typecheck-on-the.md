@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-928
 branch: t/T-1018-merge-batches-skip-the-typecheck-on-the
 created: 2026-10-20T17:30:31.804Z
-updated: 2026-10-24T08:10:16.703Z
+updated: 2026-10-24T08:14:55.409Z
 ---
 
 ## Summary
@@ -154,3 +154,33 @@ Post-run lead reports three documentation conflicts with fetched origin/dev 4727
 
 QA policy none/after-stage. No tests/probes, browser, edits, merge or delegation by Reviewer. Both axes completed in-session; zero findings.
 Durable audit A-10484.
+
+### impl-1018 · 2026-10-24T08:13:58.716Z
+
+Per Coordinator rule11 request7f1a082b, waited for T-1188/T-1015/T-421 to land, fetched devb49b3d91 and merged once into task headc28fc37e222fabbcd8a0a815a569074610ed57e6. Four text conflicts combined, retaining both guidance/policies and sorted index union; code auto-merged. Pushed clean. Local macOS head checks: npm run check exit0 (test lint report mode133findings/60files, zero refusals); targeted T1 batches46/46, commands15/15, webphase8/8, clauses39/39, docs2/2. Raw outputs/Git resolution diff A-10492 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10492-t-1018-dev-integration-c28fc37e-resolutions-and-native-checks. Delta source review requested; fresh mode-free verify pending source clear. Parent0e732613 green remains provenance only, with2794ordinary and40actual load repetitions separately counted.
+
+### rev-23 · 2026-10-24T08:14:55.409Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1018-source4
+commit: c28fc37e222fabbcd8a0a815a569074610ed57e6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1018 authorized dev integration delta source review — clear
+
+Head c28fc37e222fabbcd8a0a815a569074610ed57e6; tree aa45a754db1a3a45d33c945dae88b065f10d03ad. Parents independently read from Git: accepted task 0e732613c193605b8ff09c72c0956bdc5134c066 and dev b49b3d91fc22393924c0c50a7be885cfa7f08f03. Coordinator authority 7f1a082b-6bdb-4f78-811e-071b84536b38 requested integration after T-1188/T-1015/T-421 landed. Comparison git diff 0e732613...c28fc37e plus parent comparisons and the retained native remerge-resolution.patch in A-10492. Run rev-20261024-1018-source4; scope delta. Both axes reviewed in-session.
+
+Standards: clear, no findings. Four manual text resolutions preserve both sides: implement skill retains periodic committed-object/not-run guidance plus T0 batch procedure; merge-batches test note retains complete static proof/full-plan confirmation and T-1184 landing-race guidance; README retains integration-base versus task-head movement policy plus T0 leave-one-out/confirmation policy. Index independently contains every row from both parents, 94 rows with 94 unique rows and none missing. Test path headings/anchors and role-byte reserve remain guarded by the local checks. No conflict markers or whitespace errors in reviewed diff. Upstream documentation/roles/test changes remain attributable to the integrated dev parent rather than new task scope.
+
+Spec: clear, no findings. T-1018 merge-batches production module, verification-plan module, verification-commands tests and web-phase tests are byte-identical to accepted task parent. Mandatory T0, passing-proof checks and pinned full-plan confirmation therefore remain intact. The auto-merged Suites changes add upstream periodic dev committed-only delivery and infrastructure not-run result recovery without changing the task's batch confirmation selection/recorded commands. Protocol/shared wire retain the upstream additive notRun marker. T-1184 regression additions retain stable FIFO landing, integration-base-move rebuild and changed-task-head drop assertions alongside all T0 regressions. No implementation conflict was manually resolved or extra task behavior introduced.
+
+Evidence: A-10492 preserves clean committed-head local Darwin arm64 command/exit/source attribution and original native stdout. Inspected logs show merge-batches 46/46, verification-commands 15/15, web-phase 8/8, roles-clauses 39/39, test-docs 2/2: 110 targeted T1 tests, zero failures/cancellations/skips. Native file durations 9495.963416 / 3066.767209 / 1227.386250 / 271.707417 / 227.652292 ms respectively; these are file execution receipts, not per-test budgets. npm run check exit 0 is recorded, including report-only test lint 133 findings/60 files, zero refusals. No npm-check wall time inferred.
+
+Parent A-10476 / 4945e202 remains green at 0e732613 only: 2794 ordinary tests plus 40 actual repetitions, host-check reuse and Linux T1/T2/Web evidence as audited in A-10484. It is provenance, not an integration-head pass. C1/C2 remain done and runtime unverified pending a fresh mode-free configured result at exactly c28fc37e. Source clearance permits that run; no final readiness, T3/T4 or actual batch-landing claim. QA none/after-stage.
+
+Reviewer performed static source/Git/artifact inspection only; no tests/probes, GUI, edits, merge or delegation. Standards zero findings; Spec zero findings. Findings [].
+Durable review A-10498.

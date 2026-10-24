@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-939
 branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T08:08:49.007Z
+updated: 2026-10-24T08:21:49.287Z
 ---
 
 ## Summary
@@ -32,7 +32,7 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
 - [x] C1. `task.criterion` with an unknown field or a missing `op` answers a non-`forbidden` validation code that names the field and the accepted values (test).
   - done: impl-998 · 2026-10-24T08:04:53.216Z
 - [ ] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
-  - failed: rev-23 [reviewer] · 2026-10-24T08:08:49.007Z · note Conditional required plan arguments can still reach forbidden/Agents refusal; mutation table uses invalid baselines and can pass on unrelated validation errors.
+  - failed: rev-23 [reviewer] · 2026-10-24T08:21:49.287Z · note Both new indexed tool-validation test notes fail the existing T1 exact test-path heading guard; M1/M2 fixes accepted.
 - [x] C3. A validation failure is not posted to the Agents topic as a refusal (test).
   - done: impl-998 · 2026-10-24T08:04:53.496Z
 - [x] C4. The MCP server instructions and `hub/README.md` say a validation error may be corrected and retried, unlike `forbidden`.
@@ -85,3 +85,43 @@ C2 failed for M1/M2. C1/C3 runtime pending; C4 source established. Complete find
 Durable review A-10478.
 
 Criteria: C2 failed (Conditional required plan arguments can still reach forbidden/Agents refusal; mutation table uses invalid baselines and can pass on unrelated validation errors.).
+
+### impl-998 · 2026-10-24T08:19:36.593Z
+
+Review M1/M2 corrected and fresh review requested at a0fa769b9cc05f0556624cd10cc1cb5a0d95418f, tree 21941c53cab60b00218aec1b1bbfd019a32c60b6. Declared conditional inputs now validate before authorization; baselines are explicit/pure-validated and each mutation must identify its field outside the accepted-field inventory. Exact-head local macOS check passed (T0; runtime lint report only 132 findings, 0 refusals); 6 new T1 and 1 new T2 targeted tests passed. Raw records A-10509; original targeted/check receipts A-10496/A-10499. Waiting source verdict before mode-free verification; no further dev merge.
+
+### rev-23 · 2026-10-24T08:21:49.287Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261024-998-source2
+commit: a0fa769b9cc05f0556624cd10cc1cb5a0d95418f
+scope: delta
+findings: [{"severity":"medium","text":"M3: both new indexed notes must use exact repository test-path headings; prose headings here and in hub-test-tool-arguments-spoke.test.ts.md fail test-docs.test.ts.","file":"docs/agents/tests/hub-test-tool-arguments.test.ts.md","line":1}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-998 correction source review — not clear
+
+Head a0fa769b9cc05f0556624cd10cc1cb5a0d95418f; tree 21941c53cab60b00218aec1b1bbfd019a32c60b6. Delta from reviewed 203c05ad4579cce1f52c1934fff9f4874a2e10f4: seven files, 122 additions / 16 removals. Original base remains 4727549e; no post-review dev merge. Run rev-20261024-998-source2. Both axes reviewed in-session.
+
+## Standards
+
+M3 (medium), docs/agents/tests/hub-test-tool-arguments.test.ts.md:1 and hub-test-tool-arguments-spoke.test.ts.md:1: both indexed notes use prose headings (“Tool argument validation” / “MCP argument diagnostics”). Existing test-docs.test.ts requires the exact repository test-path heading to establish source/filename/index mapping. These notes therefore fail configured T1. Set the headings to # hub/test/tool-arguments.test.ts and # hub/test/tool-arguments-spoke.test.ts and include the existing docs guard in correction checks. This contract was missed in my original review; no requirement changed. Implementer has now reproduced it and reports a local heading-only fix, not yet committed/reviewed here.
+
+M2 is resolved. Explicit baseline inventory matches every exported tool, each baseline passes the pure validator without dispatching side effects, and one-field unknown/missing/type/enum mutations assert the diagnostic prefix names the target field while excluding the accepted-field inventory. Public dispatcher/no-refusal assertions remain. Existing permission controls carry valid content/run fields. Artifact compatibility expectations migrate structural unknown-enum/missing/conflicting-source cases to invalid_argument while retaining artifact-source for nonexistent bytes, artifact-topic for missing state and artifact-title for semantic title errors. No budget/wait/assertion bounds weakened.
+
+## Spec
+
+M1 is resolved. Shared validation requires id for non-migrate plan operations and yaml for set, rejects allow_large outside set before permissions. Public malformed-plan cases observe invalid_argument and unchanged Agents history; a well-formed set remains forbidden with a refusal notice. Additional conditional shape checks mirror existing tracker contracts for criterion selector/text/run/note, task size/found_by, rank slot, verdict fields/review scope/QA no-scope, artifact source exclusivity and session item/cwd. They preserve authorization and state-dependent outcomes. MCP forwarding and original C1/C3 controls are unchanged. README and tool guidance reflect plan requirements. No new Spec finding.
+
+C4 permission/retry instructions remain established in source. M3 prevents the source/test package from clearing C2's complete validation-coverage gate; C2 failed pending doc correction. C1/C3 remain runtime pending, not re-failed.
+
+## Evidence
+
+A-10509 preserves actual red/green tool records, working-tree/head/platform attribution and native exits/timings. M1 red returned forbidden instead of invalid_argument; M2 red failed invalid-baseline assertion; corrected public file passes six tests. It includes exact-head replacement check/table/spoke structured receipts at a0fa769b: local macOS check exit0, six T1 and one T2 passes. Additional correction-tree permissions 14, criterion-write 13 and artifact 15 passes are separately attributed. The original artifact compatibility failure is retained rather than labelled green. A-10496 preserves original targeted output and A-10499 original 203c05ad check, without transcription reruns. npm check has report-only lint 132 findings/zero refusals; it did not establish the omitted docs runtime guard. No configured suite exists.
+
+Complete correction finding set: M3 only; M1/M2 accepted. Commit/push heading fixes and request fresh source review before mode-free verification. QA none/after-stage. Reviewer performed static source/Git/artifact inspection only, no tests/probes, edits, browser, merge or delegation. Standards one medium; Spec zero remaining findings.
+Durable review A-10514.
+
+Criteria: C2 failed (Both new indexed tool-validation test notes fail the existing T1 exact test-path heading guard; M1/M2 fixes accepted.).

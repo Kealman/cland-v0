@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-937
 branch: t/T-1148-run-suite-crashes-on-an-empty-quarantine
 created: 2026-10-22T17:21:01.416Z
-updated: 2026-10-24T07:57:42.239Z
+updated: 2026-10-24T08:20:28.276Z
 ---
 
 ## Summary
@@ -112,3 +112,44 @@ Evidence: A-10447 retains the correction's native targeted output, 25/25 tests w
 
 C1/C2 remain done but runtime verification pending the configured same-head result. Source clearance permits mode-free verification at exactly 970cb402; it is not final readiness. QA policy none/after-stage, no per-item QA brief. Reviewer performed static source/Git/artifact inspection only; no tests, probes, browser, edits, merge or delegation. Findings: [].
 Durable review A-10463.
+
+### rev-23 · 2026-10-24T08:19:06.400Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1148-evidence1
+commit: 970cb402aa954b18ba2986b26000ddd6c674c234
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1148 same-head evidence audit — clear; authorized integration pending
+
+Head 970cb402aa954b18ba2986b26000ddd6c674c234; tree 085e6db887ae68d1d5d3d545b65b346905d8432c. Source clearance A-10463 (M1–M3 resolved) remains current. Run rev-20261024-1148-evidence1. Findings [].
+
+A-10504 / configured mode-free a51c6b04-ca14-4a1b-8aee-aacbd1974c8c exits 0 at exact reviewed head, independently matched to current branch. Parsed native finishes: 2,795 ordinary test passes and 418 file passes, plus five actual load-gate test/file passes, zero failures/cancellations/skips. Repetitions are additional, not included in 2,795. T1 and fallback all T2 across hub/Neovim plus complete Web (44 files, 223 top-level tests) completed.
+
+Linux x64 6.8.0-142-generic droplet c-8 lon1 cland-v0-923de6ee, Node v24.21.0, Neovim v0.12.5; workers 2 / Web4; lifetime 617 s, cost $0.0429. Actual suite durations 51.37 / 318.04 / 141.76 s, Web shard 141.65 s. Report phase envelopes 55/323/145 s and projections remain separate. Host npm run check is retained; host gate 46e7352f29ed8b451c29722bc3c44a8b9f3946dc independently resolves to a candidate tree object, reused rather than executed again on droplet.
+
+The new atomic receipt-publication T1 test passes in 0.012056668 s and five actual repetitions, maximum 0.013813382 s. No affected-file tier mismatch found. Generic five-repetition headers do not establish any other repetitions. Generic lint (132 findings/59 files), duration budgets, one missing baseline and incomplete-base T3 ratchet are report-only; existing Web/scale warnings and Web wall projections are retained, not enforced-budget compliance.
+
+T3/T4 are absent from this configured task run; T3 is explicitly deferred to periodic/integrated occasions and absent configured batch tiers. The public process-fault regressions are therefore supported by local Darwin arm64 correction-tree A-10447: 25/25 targeted tests across quarantine/reporter/runner/admission/docs, zero failures/cancellations/skips, native duration 17,966.732542 ms. Those retained tests assert missing/empty/torn ordinary and repetition receipts, nonzero native status/signal/stderr-tail retention, zero-native-exit turned into failure, no false quarantine excuse, and exact split-UTF8 identity. They are local targeted T3 evidence, not Linux T3 or load repetitions. A-10448 retains local check output; A-10438 retains original earlier 19+45 tool receipts with separate attribution; A-10417 carries source/platform/cleanup limits. No tests were rerun by Reviewer.
+
+C1/C2 source and local behavior evidence are satisfactory at 970cb402, with the configured same-head green above. However, the post-run lead conflict check found an additive index conflict with fetched dev. Coordinator a6bb6168-6bfb-422c-ae14-5fb221c1caa9 now explicitly requests dev integration, a delta review and fresh mode-free verification. This audit accepts current-head green as provenance and intentionally leaves final criterion verification/readiness pending the replacement merge head; it is not exact-head evidence for that changed head.
+
+QA policy none/after-stage. Both axes completed in-session; no tests/probes, edits, browser, merge or delegation by Reviewer. Standards zero findings; Spec zero findings.
+Durable audit A-10508.
+
+### rev-31 · 2026-10-24T08:20:28.276Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1148-delta
+commit: 49738d52b9311b195b079f8c4789ef084503ab42
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source clear at 49738d52/tree18451f7a, no findings. A-10512 carries rev-23 source A-10463 and parent evidence A-10508. Verified Coordinator a6bb6168 and parents970cb402+aafdc9a4; actual index rows exactly equal parent union (81/88 ->89, no missing/extra). Task runner/reporter/load-gate/quarantine source/tests unchanged, matching README retained alongside incoming dev. A-10510/A-10511 local static/doc receipts inspected; C1/C2 final marks await fresh configured mode-free evidence at this head. Prior A-10504 belongs to970cb402 only. QA none/after-stage; native local T3 limits retained, no LinuxT3/stageQA claim. Reviewer ran no tests and did not enqueue.

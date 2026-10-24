@@ -3,7 +3,7 @@ id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-929
 branch: t/T-542-a-merge-that-adds-a-package-leaves-the
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-24T08:12:14.029Z
+updated: 2026-10-24T08:16:20.609Z
 ---
 
 ## Summary
@@ -248,3 +248,32 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1/C2/C3 clear atunchanged42916599/treed8c4d18f, accepted source A-10387/A-10396/A-10412/A-10457/A-10462 carried and criterion paths/tests reread. A-10485/f6b6b5b9 exit0: independently parsed2808ordinary/418file passes; load110testfinishes =40top-level repetitions(8identities×5)+70nested,40files pass; nofail/cancel/skip. C1package/lock/workspacechanges name rootnpm install in responses/notices/comments/recovery/queue, sharedreader intact. C2lock-backed missing-package hints and negative controls/no-machine pass. C3Playwright resolution/rootlink, staleown/link/artifact/optionalomission controls pass. FIFO/stage/plan/docs repairedproofs pass; noassertionrelaxation. Newtoploadmax0.905245s belowallowancetrigger. T1/allfallbackT2hub+Neovim/Webexit0 Linuxc8lon1 cland-v0-4d8efb91 Node24.21/Nvim0.12.5 workers2(Web4),736s/$0.0511. Hostcheckstdout/0refusals, remotereusedf33c9188tree/notrepeated. Lint132/59,duration/tier/ratchetreport-only, Web175.14s suite/175s shard>40sreportbudget/1missingbaseline retained. NoT3T4/afterstageQAclaim; oldfailures/localprovenancelimits retained. A-10486: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10486-t-542-final-evidence-at-42916599.md. No findings.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-32 · 2026-10-24T08:16:20.609Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-542-merge-source
+commit: 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-542 authorized merge delta source review — clear
+Head 9c368b0a932ceb9b386a385e597a2eba29b4d1c0; tree 414134c9b166d4e9140808f36b38b2a2dfcda56d. Parents 429165999efae93962d52d84a36ef3f92d837bff (reviewed task) and fa47bbb4351367584fa3309ac9b9b5b47872190b (incoming dev); merge base d9ffa83083f437f19f4a46c426ba83d0d828873a. Coordinator f5f55ffd explicitly requested this merge, combined notes and retained cases before fresh review/verify.
+
+## Standards
+No findings. Read-only three-way blob audit: 12 task-only paths exactly preserve the task parent, 62 incoming-only paths exactly preserve dev, and no changes occur outside either parent's changes. Reviewed the 19 shared nontracker paths against both parents.
+Conflict resolution in merge-batches keeps upstream queuedLanding's stable/dev/task movement cases and refusal routing, while retaining T-542's immutable diff-tree path fact and failure diagnostics. All no-before-green/FIFO/receipt/closed-item/controller assertions remain. PlanGit injection and its no-commit-id path formatting remain exactly as accepted after M4. T-421 planned-stage cases are incoming-only/exact.
+Both add/add per-test notes retain each side under one valid test heading. Index links are deduplicated, not removed. Skill instructions/change entry, README, tracker docs and usage retain both T-542 and upstream changes.
+Shared source merges are complementary: queue/result/landing dependency notices survive T-1184's head/base movement guards; dispatcher preserves both dependency notice and base-race rebuild routing; merge CLI retains dependency rendering and T-1188 help early return; task CLI retains warning output and old-hub optional field guard. Protocol/shared-wire retain both optional dependency metadata and infrastructure outcome metadata. Suites retains locked-dependency host-failure diagnosis beside upstream periodic captured-commit/recovery behavior.
+No new native process/test boundary, relaxed assertion or timing change was introduced by the resolution. No independent smell finding.
+
+## Spec
+No findings. Carry original accepted source and M1–M5 corrections from A-10387/A-10396/A-10412/A-10457/A-10462, plus rev-26 final A-10486 at42916599. This delta preserves C1 required-install reporting, C2 missing-lock diagnostics and C3 root links/stale-artifact/optional omission behavior. The existing prior-head verification marks are stale at this new commit and are not renewed by source review. All C1–C3 require fresh same-head evidence before final verification. qaPolicy none/after-stage.
+
+A-10494 preserves local macOS merged precommit tree excerpts/exits: merge-batches39/39, planned-stage16/16, test-docs2/2, npm run check exit0 (report-only lint133/60, zero refusals). Native file durations8.012813125/9.885730542/0.159070625s are those targeted runs, not configured suite wall. Prior Linux A-10485/f6b6b5b9 green2808 and finalA-10486 remain historical at42916599 only. No merged-head configured/Linux green yet.
+Reviewer read source, Git object metadata, topic authorization and artifacts; no tests, edits, merge, browser, install or delegation. Both axes completed personally.
+Standards:0 findings. Spec:0 findings.
+Durable audit A-10503: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10503-t-542-authorized-merge-delta-at-9c368b0a.md

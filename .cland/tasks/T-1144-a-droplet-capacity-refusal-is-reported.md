@@ -5,6 +5,7 @@ title: A droplet capacity refusal is reported as a red periodic dev T3 run, and 
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels:
   - bug
   - ready-for-agent
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-940
 branch: t/T-1144-a-droplet-capacity-refusal-is-reported
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-24T08:10:53.692Z
+updated: 2026-10-24T08:21:56.146Z
 ---
 
 ## Summary
@@ -28,10 +29,31 @@ A run refused by the provider before any test executes reads as unavailable, not
 ## Acceptance criteria
 
 - [ ] C1. A periodic dev T3 run whose droplet acquisition is refused for capacity posts a "not run" notice naming the refusal, with no "red" wording and no culprit search (test).
+  - failed: rev-26 [reviewer] · 2026-10-24T08:21:56.146Z · note Configured size unavailable/absent can be rejected by checkSpend before a durable periodic not-run result exists.
 - [ ] C2. A task verify refused for capacity before any test reports a distinct unavailable outcome in its result and its suite result line (test).
+  - failed: rev-26 [reviewer] · 2026-10-24T08:21:56.146Z · note Task explicit-droplet/size admission can throw a generic capacity error before durable unavailable result/status/suite publication.
 
 ## Comments
 
 ### coord · 2026-10-22T15:44:54.346Z
 
 Related, from rev-32 (T-1117 review, A-9249). A reviewer cannot record 'runtime evidence unavailable' at a head. A not-clear evidence verdict requires a nonempty failed list, so a capacity refusal can only be told to the lead in prose. Consider a verdict or evidence state for 'not run (provider)' that names no criterion failure, alongside C2's distinct unavailable outcome.
+
+### impl-1144 · 2026-10-24T08:15:10.957Z
+
+C1/C2 red→green at sealed fake-provider/public-report seams: unavailable region catalog first produced `Periodic dev T3 red` and `auto exit 1`; capacity now retains outcome.notRun=provider-capacity plus original cause and reports not run/unavailable. Default and explicit droplet task paths covered, no local/region/size fallback. Item verify projection and journal display also required migration from exit-code-only failure labels; Neovim recorded client updated. Baseline/restart/retry coverage extended for provider capacity.
+
+### rev-26 · 2026-10-24T08:21:56.146Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261024-1144-source-1
+commit: 484a0d118122f62ce1ac6fcd1eb3e8fda60c4f77
+scope: full
+findings: [{"severity":"medium","text":"M1 (C1/C2): checkSpend still generically rejects missing/unavailable configured sizes; Suites#start calls it at528 before durable job persistence536 for explicit droplet/periodic requests. No provider-capacity result/status/line is created, and periodic emits generic skipped. validateSize similarly rejects explicit --size capacity before admission (Suites426–430). Carry typed capacity through admission, preserving malformed-slug/invalid-price/auth/spend errors; add configured unavailable/absent size and explicit-size public controls.","file":"hub/src/executor/droplet/droplet.ts","line":160},{"severity":"low","text":"L1 aside Bugs/S: common shard aggregation drops child notRun markers, so an all-unexecuted capacity-refused stage/close group becomes failed/red at parent. Outside requested unsharded periodic/task C1/C2 scope; reported to lead for Coordinator follow-up. Keep mixed executed/unexecuted groups distinct.","file":"hub/src/hub/suites.ts","line":834}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Completefullsourceaudit484a0d11/treeb46e2a07 baseaafdc9a4. Blocking M1medium preadmissioncapacitygap, accepted bylead; L1low shardedparentaside separatelyreportedforfiling. NootherblockingStandards/Specfindings. Region-refusal acquiredpath/T1015durability/baselines/retry/nocover/search, taskunavailableprojection, journal/WebCLI/Nvim consumer migration anddocs/help/skillprovenance otherwisealign. AddedNvimrecordingsretained23adds/0deletes, noexistingassertionrelaxation. A-10506 narrativeworking-tree9T1/15T2/15record-replay/check0 is targetedsupport, notrawconfigured/Linux/T3proof; preserveoriginalstdout/exits/native timings/sourceattributionwithouttranscriptionreruns. A-10515: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10515-t-1144-source-review-at-484a0d11.md. C1/C2failedM1; fix,remarkdone, freshsource beforemode-freeverify. NoReviewer runtime/edits.
+
+Criteria: C1 failed (Configured size unavailable/absent can be rejected by checkSpend before a durable periodic not-run result exists.), C2 failed (Task explicit-droplet/size admission can throw a generic capacity error before durable unavailable result/status/suite publication.).
