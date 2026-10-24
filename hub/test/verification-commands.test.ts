@@ -10,6 +10,7 @@ import { writeSuiteFixture } from './suite-fixture.ts';
 import { parseConfig } from '../src/init/config.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
 import { clandRunner, verificationCommands, recordedCommands } from '../src/verification-commands.ts';
+import { suiteSummary } from '../src/hub/suites.ts';
 
 test('cland runner presence and capabilities are resolved from the candidate', async t => {
   const root = await tempProject(t);
@@ -79,6 +80,27 @@ test('this repository names its tier commands for every mode', async t => {
     assert.deepEqual(plan?.map(step => step.name), ['check', 'T1', 'T2', 'T3', 'Web']);
     await f.finish(job.id);
   }
+  f.configure('[merge]\nqueue=true\nbatch_tiers=["T1"]');
+  const batch = await f.launch({ mode: 'all', occasion: 'batch', fresh: true });
+  const delivered = f.delivered.get(batch.id)!;
+  assert.equal(delivered.cwd, f.root, 'execute the combined candidate checkout');
+  assert.deepEqual(recordedCommands(delivered).plan, [
+    { name: 'check', command: 'npm run check' }, { name: 'T1', command: 'node hub/test/run-suite.ts --tier T1' },
+  ]);
+  const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+  assert.match(pkg.scripts.check, /^npm run typecheck && .*npm run test:lint$/);
+  assert.match(pkg.scripts['test:lint'], /^npm run test:static && /);
+  await f.finish(batch.id);
+});
+
+test('a red batch host check retains the timed T0 receipt without creating a droplet', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet', dropletServices: { hostGate: async run => ({ tree: run.tree ?? null, command: 'npm run check', code: 2 }) } }, 'check="npm run check"\ntest_unit="true"\n');
+  const job = await f.launch({ mode: 'all', occasion: 'batch', fresh: true });
+  await f.suites.settled(); await f.tick(); await f.suites.settled();
+  const receipt = await f.suites.receipt(job.id);
+  assert.match(receipt.job.outcome?.cause ?? '', /host check failed \(exit 2\); no droplet created/);
+  assert.match(suiteSummary(receipt.log), /tier T0: exit 2; duration \d+(?:\.\d+)? s;/);
+  assert.deepEqual(f.acquisitions, []);
 });
 
 test('a different resolved command cannot reuse the same candidate tree green', async t => {
@@ -115,7 +137,7 @@ test('tier command plans pin task, batch, integrated and occasion cadence', asyn
   } };
   for (const [run, expected] of [
     [{ branch: 't/T-717', mode: 'auto' }, ['check', 'T1', 'T2']],
-    [{ branch: 'detached', mode: 'all', occasion: 'batch' }, ['T1', 'T3']],
+    [{ branch: 'detached', mode: 'all', occasion: 'batch' }, ['check', 'T1', 'T3']],
     [{ branch: 'dev', mode: 'auto' }, ['check', 'T1', 'T2', 'T3']],
     [{ branch: 't/T-717', mode: 'all' }, ['check', 'T1', 'T2', 'T3']],
     [{ branch: 'dev', mode: 'all', occasion: 'stage' }, ['check', 'T1', 'T2', 'T3', 'T4']],
@@ -150,7 +172,7 @@ test('other-stack admission records task and batch tier plans through a reopen',
   await f.tick();
   await f.suites.settled();
   assert.deepEqual(recordedCommands(f.delivered.get(batch.id)!).plan, [
-    { name: 'T1', command: 'python3 -m pytest unit' }, { name: 'T3', command: 'python3 -m pytest integration' },
+    { name: 'check', command: 'python3 -m compileall .' }, { name: 'T1', command: 'python3 -m pytest unit' }, { name: 'T3', command: 'python3 -m pytest integration' },
   ]);
   await f.finish(batch.id);
 });
@@ -205,9 +227,9 @@ test('recorded commands compose configured batch tiers with periodic T3', async 
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   for (const [tiers, occasion, expected] of [
-    [['T1'], 'batch', ['T1']],
-    [['T1', 'T3'], 'batch', ['T1', 'T3']],
-    [['T2', 'T4'], 'batch', ['T2', 'T4']],
+    [['T1'], 'batch', ['check', 'T1']],
+    [['T1', 'T3'], 'batch', ['check', 'T1', 'T3']],
+    [['T2', 'T4'], 'batch', ['check', 'T2', 'T4']],
     [['T1'], 'dev-t3', undefined],
   ] as const) {
     f.configure(`[merge]\nqueue=true\nbatch_tiers=${JSON.stringify(tiers)}\n`);

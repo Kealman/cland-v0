@@ -43,7 +43,7 @@ for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirt
       assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
       const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
       assert.ok(script.indexOf("echo '$ npm run typecheck'") < script.indexOf("echo '$ npm test'"));
-      assert.ok(script.includes("/bin/sh -c 'npm run typecheck' || suite_command_exit=$?"));
+      assert.ok(script.includes('tier T0: exit %s'));
       assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'`));
       assert.ok(script.includes("/bin/sh -c 'npm test' || suite_command_exit=$?"));
       assert.equal((await exec('git', ['status', '--porcelain'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout, '');
@@ -234,7 +234,7 @@ test('droplet delivery uses recorded shell lines after the project config change
   assert.equal(f.api.machineDirs.size, 1);
   for (const directory of f.api.machineDirs.values()) {
     const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
-    assert.match(script, /\/bin\/sh -c 'printf recorded-check' \|\| suite_command_exit=\$\?/);
+    assert.match(script, /tier T0: exit %s/);
     assert.match(script, /tier T1: exit %s/);
     assert.match(script, /tier T2: exit %s/);
     assert.doesNotMatch(script, /exit 9[1-5]/);

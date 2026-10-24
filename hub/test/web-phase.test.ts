@@ -110,7 +110,7 @@ test('without Web files task, batch, periodic and stage commands and phases stay
   assert.deepEqual(await packageShards(root, task.mode, undefined, task, { workers: 4 }), [{ ...unit, name: 'T1 whole' }, component]);
   const batch = occasionSelection(full, 'batch', ['T1']);
   assert.deepEqual(await packageShards(root, batch.mode, undefined, batch, { workers: 4 }), [unit]);
-  for (const [occasion, names] of [[undefined, ['check', 'T1', 'T2']], ['batch', ['T1']], ['dev-t3', ['check', 'T2', 'T3']], ['stage', ['check', 'T1', 'T2', 'T3', 'T4']]] as const) {
+  for (const [occasion, names] of [[undefined, ['check', 'T1', 'T2']], ['batch', ['check', 'T1']], ['dev-t3', ['check', 'T2', 'T3']], ['stage', ['check', 'T1', 'T2', 'T3', 'T4']]] as const) {
     const selection = occasion ? occasionSelection(full, occasion, ['T1']) : task;
     assert.deepEqual(pinVerificationPlan(commands, { branch: 't/T-1025', mode: 'auto', ...(occasion ? { occasion } : {}), selection }).plan!.map(step => step.name), names);
     assert.ok(!(await packageShards(root, selection.mode, undefined, selection)).some(phase => phase.name.startsWith('Web')));

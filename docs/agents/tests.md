@@ -376,9 +376,21 @@ starts the oldest `batch` entries (default 3) when full, or after `batch_wait`
 (default `"10m"`) from the oldest request. It prepares squash objects in order,
 checks immutable merged-tree lint and duration budgets, and verifies a detached
 candidate with the hub-owned `batch` occasion. That run selects
+T0 first through the candidate's resolved `[verification] check` command, then
 `[merge] batch_tiers` (default T1 and T3), with five load repetitions only for T3
 identities absent from the last green batch or stage receipt. It uses the configured executor and Coordinator
 priority, occupying one suite slot.
+
+T0 is mandatory whenever a check command is configured, regardless of
+`batch_tiers`. This repository's `npm run check` runs typecheck, the Web build
+and the T0 static/test lints on the combined candidate checkout. Local workers
+record `tier T0: exit <code>; duration <seconds> s; output tail: ...` before the
+runtime tiers. Droplet batches record the same timed step at the host gate;
+the worker reuses it only for the matching candidate tree and command, otherwise
+it runs T0 again. A failed check stops the tiers and makes the batch red.
+Batch results retain the executed step names and durations. A successful original
+or recovered batch with a configured check requires a passing T0 receipt; missing
+or conflicting T0 proof holds as inconclusive, never a zero-duration pass.
 
 On green, each member lands through the existing merge receipt, checkout,
 territory publication and cleanup path. Dev movement reuses green candidate
@@ -391,7 +403,7 @@ Queue and batch state survive reopening the hub store. `cland merge queue` and
 `cland verify queue` show the current batch and its members. Results and logs go
 to Agents and each member's requester and item lead. A
 red batch of one refuses its member with `merge-bisected`, naming the failed
-tests. Larger red batches rerun only the failing files on each leave-one-out
+tests or T0. Larger red batches rerun only the failing files or failed T0 step on each leave-one-out
 tree, pinned to the original integration base. A unique green removal refuses
 that member and lets the others land on the green tree. Otherwise those files
 rerun once on the original batch tree: completed passing receipts for every
@@ -399,6 +411,15 @@ original failure let it land, while red or incomplete proof refuses every
 member with `merge-bisect-unresolved` and sends the Coordinator one evidence
 notice. File jobs retain their run, tree, log, seconds and provider cost, use the
 same queue, and supply no full-suite cache proof.
+T0 diagnostics run the complete check command rather than a file subset and
+require an explicit passing T0 receipt. If two members typecheck alone but fail
+together, both leave-one-out checks are green: a red original-tree repeat then
+refuses both as `merge-bisect-unresolved`. A green static omission or original-tree
+repeat only selects a candidate: the hub starts a full confirmation batch on that
+exact head/tree before landing. It retains the original batch's pinned commands
+and tier selection across config changes and restart. A later red runtime tier
+is handled as a red batch; static success never substitutes for those tiers.
+Test-identity flakes keep their separate quarantine observation rules.
 Aborted, timed-out, unavailable or otherwise inconclusive original runs or file
 jobs hold the batch with their retained receipts and one Coordinator notice. They establish
 neither a red alternative nor an unresolved red repeat; recovery is an explicit

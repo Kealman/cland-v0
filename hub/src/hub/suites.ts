@@ -147,7 +147,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   // Keep every failed repetition's full error/stack next to the count summary.
   const loadDiagnostics = text.split('\n').filter(line => line.startsWith('load gate failure '));
   timings.push(...loadDiagnostics);
-  const tierLines = text.split('\n').filter(line => /^tier (?:(?:T[1-4]|Web):|share:)/.test(line));
+  const tierLines = text.split('\n').filter(line => /^tier (?:(?:T[0-4]|Web):|share:)/.test(line));
   timings.push(...text.split('\n').filter(line => /^shard-\d+ tier (?:T[1-4]|Web):/.test(line)));
   const lastTiers = new Map<string, string>();
   for (const line of tierLines) lastTiers.set(line.split(':')[0]!, line);
@@ -155,7 +155,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   // summaries ahead of timings and failure excerpts in the bounded delivery.
   const lintTiers = lines.filter(line => line.startsWith('test lint tier:')).length;
   const lintFindings = lines.filter(line => line.startsWith('test lint finding:')).length;
-  const executedTiers = tierLines.filter(line => /^tier (?:T[1-4]|Web): exit /.test(line));
+  const executedTiers = tierLines.filter(line => /^tier (?:T[0-4]|Web): exit /.test(line));
   const webPhase = unavailableWebPhase(text);
   const priority = [
     ...(webPhase ? [webUnavailableLine(webPhase)] : []),
@@ -410,7 +410,7 @@ export class Suites {
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}:${input.batch.diagnostic?.key ?? 'batch'}`, shell: true }, fresh: true };
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
@@ -418,7 +418,9 @@ export class Suites {
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+    if (input.batchPlanFrom && (!input.batch || input.batch.diagnostic || input.occasion !== 'batch')) throw new Error('pinned batch plan requires a full batch confirmation');
+    const pinned = input.batchPlanFrom ? (await this.receipt(input.batchPlanFrom)).job : undefined;
     const config = this.#options.projectConfig?.();
     const settings = { ...this.#options };
     const executor = input.executor ?? settings.executor ?? 'local';
@@ -438,7 +440,7 @@ export class Suites {
     // Validate the candidate as before; only the hub owns execution policy.
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
     const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
-    let commands = await verificationCommands(input.cwd, this.#root, this.#env);
+    let commands = pinned ? structuredClone(recordedCommands(pinned)) : await verificationCommands(input.cwd, this.#root, this.#env);
     const runner = await clandRunner(input.cwd);
     if (!runner && (input.mode === 'hub' || input.mode === 'nvim')) throw new Error("hub and nvim are cland's own suite phases; this project's test runs in full: cland verify");
     const workers = input.workers ?? limits.workers;
@@ -462,7 +464,8 @@ export class Suites {
     // Explicit command tiers apply to any stack; cland file planning stays runner-only.
     if (runner && commands.tiers && config?.merge.queue && !admitted.tiers) admitted = taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, true);
     const files = runner ? (input.devT3Probe?.files ?? input.batch?.diagnostic?.files) : undefined;
-    if (files && (!files.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
+    const diagnosticSteps = input.batch?.diagnostic?.steps;
+    if (files && (!files.length && !diagnosticSteps?.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
     let selection: SuiteSelection = files
       ? { mode: 'full', files, reason: input.devT3Probe ? 'periodic dev T3 failing-file rerun' : 'batch failing-file rerun', loadGate: false, soak: false,
@@ -471,9 +474,15 @@ export class Suites {
       : runner ? occasionSelection(admitted, input.occasion, config?.merge.batchTiers) : admitted;
     const commandSelection = runner || !commands.tiers ? selection : occasionSelection(taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, config?.merge.queue ?? false), input.occasion, config?.merge.batchTiers);
     if (!runner && commands.tiers && commandSelection.tiers) selection = { ...selection, tiers: commandSelection.tiers };
-    commands = pinVerificationPlan(commands, { branch, mode: input.mode, ...(input.occasion ? { occasion: input.occasion } : {}), selection, queueEnabled: config?.merge.queue ?? false });
+    if (pinned) selection = structuredClone(pinned.selection ?? selection);
+    else commands = pinVerificationPlan(commands, { branch, mode: input.mode, ...(input.occasion ? { occasion: input.occasion } : {}), selection, queueEnabled: config?.merge.queue ?? false });
+    if (diagnosticSteps?.length) {
+      const plan = verificationSteps(commands).filter(step => diagnosticSteps.includes(step.name) || Boolean(files?.length));
+      if (diagnosticSteps.some(name => !plan.some(step => step.name === name))) throw new Error('batch diagnostic step has no configured command');
+      commands = { ...commands, plan };
+    }
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
-    if (runner && input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
+    if (!pinned && runner && input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
     if (runner && !input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
     const tierPlan = !runner ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
@@ -905,10 +914,15 @@ export class Suites {
     const command = verificationSteps(recordedCommands(job)).find(step => step.name === 'check')?.command;
     await appendFile(job.log, `\nHost gate: ${command ?? 'check not set'}\n`);
     if (!command) return;
+    const started = this.#clock.now().getTime();
+    const record = async () => {
+      this.#save(job);
+      await appendFile(job.log, `\ntier T0: exit ${job.hostGate!.code}; duration ${(this.#clock.now().getTime() - started) / 1000} s; output tail: host check\n`);
+      if (job.hostGate!.code !== 0) throw new Error(`host check failed (exit ${job.hostGate!.code}); no droplet created`);
+    };
     if (this.#options.dropletServices?.hostGate) {
       job.hostGate = await this.#options.dropletServices.hostGate(runRef(job));
-      this.#save(job);
-      if (job.hostGate.code !== 0) throw new Error(`host check failed (exit ${job.hostGate.code}); no droplet created`);
+      await record();
       return;
     }
     const tree = await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head);
@@ -917,10 +931,9 @@ export class Suites {
     try {
       const child = spawn('/bin/sh', ['-c', command], { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
       this.#hostGates.set(job.id, child);
-      const code = await new Promise<number>((resolve, reject) => { child.once('error', reject); child.once('close', code => resolve(code ?? 1)); });
+      const code = await new Promise<number>((resolve, reject) => { child.once('error', reject); child.once('close', (code, signal) => resolve(code ?? (signal === 'SIGKILL' ? 137 : signal === 'SIGINT' ? 130 : 143))); });
       job.hostGate = { tree, command, code };
-      this.#save(job);
-      if (code !== 0) throw new Error(`host check failed (exit ${code}); no droplet created`);
+      await record();
     } finally { this.#hostGates.delete(job.id); await fd.close(); }
   }
   #launchRemote(job: SuiteJob): void {

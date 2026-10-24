@@ -722,7 +722,7 @@ export type RoleHolder = { name: string; role: string | null; label: string; liv
 export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
 
 // hub/src/protocol.ts
-export type BatchSuite = { id: string; members: MergeQueueEntry[]; diagnostic?: { key: string; files: string[] } };
+export type BatchSuite = { id: string; members: MergeQueueEntry[]; diagnostic?: { key: string; files: string[]; steps?: ('check' | 'test' | 'T1' | 'T2' | 'T3' | 'T4' | 'Web')[] } };
 
 // hub/src/protocol.ts
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string; cancel?: boolean };

@@ -74,6 +74,104 @@ async function fixture(t: Parameters<typeof suiteUnit>[0]) {
 
 const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","name":"rejects stale input"}]\n# tests 1\n# fail 1\n';
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
+const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
+const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
+
+for (const log of [passLog, t0Red + passLog]) test(`recovered exit-zero batch holds with ${log === passLog ? 'missing' : 'conflicting'} T0 proof`, async t => {
+  const state = await fixture(t);
+  const { f, landed, dropped, boundary } = state;
+  const notices: TopicNotice[] = [];
+  boundary.notice = notice => { notices.push(notice); };
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 0, passLog);
+  const receipt = await f.suites.receipt(original.id);
+  // Plant the retained pre-upgrade/incomplete receipt after its writer has
+  // finished, before reopening the controller that must validate it.
+  await writeFile(receipt.job.log, log);
+  await state.reopen(); await state.runner.tick();
+  assert.deepEqual(landed, []);
+  assert.deepEqual(dropped, []);
+  assert.match(state.runner.snapshot()?.failed ?? '', /original.*inconclusive.*passing step receipt/);
+  assert.equal(f.suites.status().length, 1);
+  assert.equal(notices.length, 1);
+  await state.reopen(); await state.runner.tick();
+  assert.equal(notices.length, 1, 'the durable hold is not republished after restart');
+});
+
+for (const path of ['unique omission', 'passing repeat']) for (const tierCode of [0, 1]) test(`T0 ${path} requires its full pinned plan before landing: later tier exit ${tierCode}`, async t => {
+  const state = await fixture(t);
+  const { f, entries, boundary, landed } = state;
+  entries.splice(2);
+  await writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="npm run check"\ntest_unit="unit"\n');
+  f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T1"]');
+  const build = boundary.build;
+  boundary.build = async (id, members, base) => {
+    const candidate = await build(id, members, base);
+    candidate.tree = [...landed, ...members.map(member => member.item)].sort().join('+');
+    f.candidate.tree = candidate.tree;
+    return candidate;
+  };
+  await f.clock.advance(600_000);
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 2, t0Red); await state.runner.tick();
+  for (let index = 0; index < (path === 'unique omission' ? 2 : 3); index++) {
+    const red = path === 'unique omission' && index === 1;
+    await f.finish(f.suites.status().at(-1)!.id, red ? 2 : 0, red ? t0Red : t0Green);
+    await state.runner.tick();
+  }
+  assert.deepEqual(landed, [], 'passing only static bisection cannot authorize landing');
+  const selected = state.runner.snapshot()!.candidate!;
+  await writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="wrong check"\ntest_integration="wrong integration"\n');
+  f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T3"]');
+  await state.reopen(); await state.runner.tick();
+  const confirmation = f.suites.status().at(-1)!;
+  assert.equal(confirmation.occasion, 'batch');
+  assert.equal(confirmation.batch?.diagnostic, undefined);
+  assert.equal(confirmation.head, selected.head); assert.equal(confirmation.tree, selected.tree);
+  await f.finish(confirmation.id, tierCode, t0Green + `tier T1: exit ${tierCode}; duration 1 s; output tail: unit\n` + (tierCode ? failureLog : passLog));
+  const receipt = await f.suites.receipt(confirmation.id);
+  assert.deepEqual(receipt.job.commands?.plan, [{ name: 'check', command: 'npm run check' }, { name: 'T1', command: 'unit' }], 'the original batch commands survive config reload and reopen');
+  assert.deepEqual(receipt.job.selection?.tiers, ['T1']);
+  await state.runner.tick();
+  assert.deepEqual(landed, tierCode ? [] : path === 'unique omission' ? ['T-2'] : ['T-1', 'T-2']);
+});
+
+test('two individually typechecking members with a red combined T0 are bisected and refused after a red repeat', async t => {
+  const { f, runner, entries, boundary, dropped, landed, reports } = await fixture(t);
+  entries.splice(2);
+  await writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="npm run check"\ntest_unit="true"\n');
+  f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T1"]');
+  const build = boundary.build;
+  boundary.build = async (id, members, base) => {
+    const candidate = await build(id, members, base);
+    candidate.tree = members.length === 2 ? 'combined-type-error' : `green-${members[0]!.item}`;
+    f.candidate.tree = candidate.tree;
+    return candidate;
+  };
+  const red = 'wire-conformance.ts(10,1): error TS2344: Type false does not satisfy constraint true.\ntier T0: exit 2; duration 3 s; output tail: error TS2344\n';
+  await f.clock.advance(600_000);
+  await runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 2, red);
+  assert.deepEqual((await f.suites.receipt(original.id)).job.commands?.plan, [{ name: 'check', command: 'npm run check' }, { name: 'T1', command: 'true' }]);
+  await runner.tick();
+  assert.equal(runner.snapshot()?.failed, undefined, 'a completed T0 failure starts diagnosis rather than an inconclusive hold');
+  for (let index = 0; index < 3; index++) {
+    const job = f.suites.status().at(-1)!;
+    assert.deepEqual(job.batch?.diagnostic?.files, []);
+    await f.finish(job.id, index === 2 ? 2 : 0, index === 2 ? red : 'tier T0: exit 0; duration 1 s; output tail: typecheck and static lints passed\n');
+    assert.deepEqual((await f.suites.receipt(job.id)).job.commands?.plan, [{ name: 'check', command: 'npm run check' }], 'T0 diagnostics run the complete check, without runtime tiers');
+    await runner.tick();
+  }
+  assert.equal(f.suites.status().length, 4, 'original, two green individual trees, red combined repeat');
+  assert.deepEqual(landed, []);
+  assert.equal(dropped.length, 2);
+  assert.ok(dropped.every(reason => /merge-bisect-unresolved: T0/.test(reason)));
+  assert.match(reports[0]!, /T0: exit 2; duration 3 s/);
+  assert.equal(runner.snapshot(), null);
+});
 
 test('diagnostic identity failure holds the batch with omission and Git evidence', async t => {
   const state = await fixture(t);
@@ -341,6 +439,7 @@ test('a cancelled alternative after a green omission holds diagnosis without bla
 test('diagnostic results preserve abandoned and unknown evidence as inconclusive', () => {
   const complete = { state: 'finished' as const, outcome: { code: 1, cause: '' } };
   const budgetLog = 'suite test failures []\nduration budget: hub/test/example.test.ts::new lifecycle 5.036 s > 5 s (add to hub/test/durations.json with a reason)\n';
+  const t0 = 'tier T0: exit 2; duration 0.2 s; output tail: typecheck failed\n';
   for (const receipt of [
     { ...complete, cancelled: true },
     { ...complete, requesterDied: true },
@@ -350,12 +449,18 @@ test('diagnostic results preserve abandoned and unknown evidence as inconclusive
     { ...complete, outcome: { code: 1, cause: 'remote machine lost' } },
     { ...complete, outcome: { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' } },
     { ...complete, outcome: { code: 1, cause: 'unknown result' } },
-  ]) for (const log of [failureLog, budgetLog]) assert.equal(diagnosticResult(receipt, log).result, 'inconclusive');
+  ]) for (const log of [failureLog, budgetLog, t0]) assert.equal(diagnosticResult(receipt, log).result, 'inconclusive');
   assert.equal(diagnosticResult(complete, '').result, 'inconclusive', 'an exit code without test failures supplies no red proof');
   assert.equal(diagnosticResult(complete, failureLog).result, 'red');
   assert.equal(diagnosticResult(complete, budgetLog).result, 'red');
   assert.equal(diagnosticResult(complete, 'duration budget: missing tier for hub/test/example.test.ts\n').result, 'inconclusive');
   assert.equal(diagnosticResult({ ...complete, outcome: { code: 0, cause: '' } }, passLog).result, 'green');
+  assert.equal(diagnosticResult(complete, t0).result, 'red');
+  assert.equal(diagnosticResult(complete, t0.replace('exit 2;', 'exit 143;')).result, 'inconclusive');
+  const green = { ...complete, outcome: { code: 0, cause: '' } };
+  assert.equal(diagnosticResult(green, passLog, ['check']).result, 'inconclusive', 'passing tests cannot stand for an unobserved T0 check');
+  assert.equal(diagnosticResult(green, t0, ['check']).result, 'inconclusive');
+  assert.equal(diagnosticResult(green, t0.replace('exit 2;', 'exit 0;'), ['check']).result, 'green');
 });
 
 test('a cancelled repeat holds the batch without an unresolved refusal', async t => {

@@ -5,7 +5,7 @@
 name = "v0"
 
 [merge]
-# D67: task receipts cover T0–T2; batches run T1 and periodic dev runs cover T3.
+# D67/T-1018: task receipts cover T0–T2; batches run T0+T1 and periodic dev runs cover T3.
 queue = true
 # D64 (2026-10-19 15:20Z) held 4 per batch until the v0.1.4 release; back to 3 (the default) after it shipped (2026-10-20).
 batch = 3

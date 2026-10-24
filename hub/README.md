@@ -2920,7 +2920,7 @@ Project test commands are configured under `[verification]`: `test_unit` (T1),
 `test_component` (T2), `test_integration` (T3), and `test_soak` (T4).
 Each is a POSIX shell command; empty means unset. Use
 `cland config set verification.test_unit '<command>'` to store it verbatim.
-Tasks with hosting batch protection run `check`, unit and component; merge batches run commands matching `merge.batch_tiers` (default unit/integration; this repo unit only); periodic `dev-t3` runs integration;
+Tasks with hosting batch protection run `check`, unit and component; merge batches run `check` (T0) before commands matching `merge.batch_tiers` (default unit/integration; this repo unit only); periodic `dev-t3` runs integration;
 integrated dev, explicit `all` and tasks without batch protection run T1–T3; occasions and nightly soak run all
 four. Tier lines report exit, duration and output tail. Admission records the
 commands so config reloads cannot change queued evidence. With only `test` set,
@@ -3801,7 +3801,8 @@ Changes wholly in the documentation/tracker allowlist still land immediately;
 skills and role configuration go through the queue.
 
 The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait`
-(default `"10m"`). It checks the immutable merged candidate on one slot using
+(default `"10m"`). It runs the resolved `check` (T0) on the immutable merged
+candidate before its runtime tiers, on one slot using
 `[merge] batch_tiers`, a nonempty set of T1–T4 tiers. Its default is
 `["T1", "T3"]`; this repository sets `["T1"]` (D67). When T3 is selected,
 identities absent from the last green batch or stage receipt get five
@@ -3811,10 +3812,15 @@ keeps each task in the batch and rechecks the candidate against the retained gre
 receipt. Documentation/tracker-only movement may reuse that receipt; code changes
 require a new run. A task-head change drops that member, with the prepared and
 current heads in its notice (a deleted ref is `missing`). Red batches rerun
-failing files on leave-one-out trees: `merge-bisected` rejects a unique culprit
+failing files or the failed T0 check on leave-one-out trees: `merge-bisected` rejects a unique culprit
 (or a red singleton). Without a unique green removal, one original-tree repeat
 can supply green proof; otherwise `merge-bisect-unresolved` rejects every member
 and notifies the Coordinator. Inconclusive runs hold the batch for its decision.
+Results name T0 with its measured duration, including a red host check before
+droplet creation. Static bisection selects a candidate for the original pinned
+full-plan confirmation before landing; missing or conflicting successful T0 proof
+holds the batch. See [queued merge batches](../docs/agents/tests.md#queued-merge-batches)
+for step receipts and combined-tree typecheck bisection.
 `merge-conflict` and `merge-budget` go to the item lead for a fix and renewed
 review/verification. See the [merge skill](../.agents/skills/merge/SKILL.md) for
 refusal ownership and recovery.

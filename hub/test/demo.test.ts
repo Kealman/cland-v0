@@ -39,7 +39,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   ] };
   assert.deepEqual((await readLease(dir)).demo?.commands, pinned);
   const script = await readFile(join(dir, 'run.sh'), 'utf8');
-  assert.match(script, /\/bin\/sh -c 'printf admitted-check'/);
+  assert.match(script, /tier T0: exit %s/);
   assert.match(script, /tier T1: exit %s/);
   assert.match(script, /tier T4: exit %s/);
   assert.doesNotMatch(script, /\/bin\/sh -c 'false'/);

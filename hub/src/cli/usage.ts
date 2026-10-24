@@ -151,6 +151,7 @@ export const WORKTREE_USAGE = `  worktree list   the task worktrees (.cland/work
 export const MERGE_USAGE = `  merge <T-id> [--json]   queue a reviewed head when [merge] queue=true, otherwise land on dev; Coordinator or supervising Lead
                           a root with core.bare=true refuses as merge-bare; inspect and restore its shared Git config
   merge queue [--json]  list queued heads in FIFO order
+                          batches run check (T0) before batch_tiers; a red check bisects the members
     --cancel              drop a queued request; supervising Lead, Coordinator or human
     --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria
                           allowed: .cland/tasks/**, .cland/RULES.md, docs/**, GLOSSARY.md, README.md files, qa/briefs/**

@@ -3,6 +3,7 @@
 
 import type { Layer } from './hub/visibility.ts';
 import type { ItemSummary } from './tracker/tracker.ts';
+import type { VerificationStep } from './verification-plan.ts';
 export type { ModelDelta, ModelEvent, SlimTaskFrame, VisibilityFrame } from '../../shared/wire/index.ts';
 import type { ModelDelta, SlimTaskFrame, VisibilityFrame } from '../../shared/wire/index.ts';
 
@@ -367,7 +368,7 @@ export type Hello = {
 export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
 
 export type MergeQueueEntry = { item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
-export type BatchSuite = { id: string; members: MergeQueueEntry[]; diagnostic?: { key: string; files: string[] } };
+export type BatchSuite = { id: string; members: MergeQueueEntry[]; diagnostic?: { key: string; files: string[]; steps?: VerificationStep['name'][] } };
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string; cancel?: boolean };
 export type MergeQueueRequest = { type: 'merge.queue'; id: string };
 

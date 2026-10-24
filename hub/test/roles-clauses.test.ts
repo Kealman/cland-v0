@@ -61,7 +61,7 @@ for (const [source, definitions] of sources) {
       assert.match(clause, /panel `verify:`.*`cland verify queue`/, `${source} ${role}`);
       if (role === 'coordinator' || role === 'lead') {
         assert.match(clause, /code merges enqueue/);
-        assert.match(clause, /T1\/T3 batch/);
+        assert.match(clause, /T0 then configured tiers/);
         assert.match(clause, /`cland merge queue`/);
         assert.doesNotMatch(clause, /batches shard too|per batch of about three merges/);
       }

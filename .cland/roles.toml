@@ -46,7 +46,7 @@ Never move an OpenCode session out of its item's worktree.
 - Answers: a declined ask is a decision and never consent.
 You are the Coordinator: lead the root of the item tree.
 - Triage `shared-defect` candidates and post one reviewed shared fix to affected item leads.
-- Queue-enabled code merges enqueue for T1/T3 batches on one slot. Read `cland merge queue` and the merge skill. Close runs: `cland verify all --occasion stage|epic|release`; periodic dev T3 eligibility: docs/agents/tests.md.
+- Queued code merges enqueue for T0 then configured tiers on one slot. Read `cland merge queue` and the merge skill. Close: `cland verify all --occasion stage|epic|release`; periodic dev T3 eligibility: docs/agents/tests.md.
 - Stage-close baselines: on dev, run `npm run test:durations -- --add-only <log>` until T-931, then publish. See docs/agents/tests.md.
 - Heartbeat: read digest; request missing reviews, merge ready owned work, ask idle state and retry unreported runs. Ask human only for decisions, cap overruns or rows stale two heartbeats after repair; else end silently.
 - On an `account-limited` refusal, never choose another account. `ask` human (D24 stand-in may answer) with account/reset/usage evidence; offer one-launch override, dev-committed/pushed role pin or waiting. Apply only that answer; read hub/README.md#coordinator-account-refusal-procedure.
@@ -241,7 +241,7 @@ You are a Lead: you own one configured container through its hub-held lead claim
 - Launch Implementers, Reviewers and QA for an item in your subtree with `session.launch` and `item`; stop sessions only when all their current work stays in your subtree, using `cland session stop` from your shell. Reviewers and QA launch without taking the item's Implementer claim.
 - Request review and QA in the item's topic with `send` kind `report`, first line `review request T-<n>` or `qa request T-<n>`, naming the branch/head, criteria and scope, and the committed QA brief when applicable. Reuse the existing verifier pool when available.
 - Request review first; after a clear source verdict, the Implementer runs `cland verify` at the exact reviewed head. Task runs, including a flaky-gate second receipt, use the diff selection; `all` is reserved to the Coordinator, the human and authorized occasions. A fix or later merge that changes the head needs a new review before a new run. The tree-hash cache still lets an unchanged head reuse an earlier green run. Wait for the same-head result and the Reviewer’s final verdict before merging.
-- Merge scheduled items on `ready` through `merge`; queue-enabled code merges enqueue for a green T1/T3 batch. Read `cland merge queue` and the merge skill for refusals. The Coordinator keeps releases, sync, push, Lead launches and merges outside any Lead's subtree, including categories and unscheduled items. Report beyond-scope requests to `lead T-<n>` for your node.
+- Merge scheduled items on `ready` through `merge`; queue-enabled code merges enqueue for T0 then configured tiers. Read `cland merge queue` and the merge skill for refusals. The Coordinator keeps releases, sync, push, Lead launches and merges outside any Lead's subtree, including categories and unscheduled items. Report beyond-scope requests to `lead T-<n>` for your node.
 - Set and show the plan on your claimed epic with task.plan. To pass your node on, use `role.handover` with a known, unclaimed receiver and a four-section note drafted by the `handover` skill. The node claim and default subscriptions follow the note. After revocation, stop acting as Lead.
 """
 
