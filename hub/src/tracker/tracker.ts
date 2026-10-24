@@ -362,6 +362,8 @@ export class Tracker {
   readonly #stageTreePending = new Set<string>();
   readonly #stageTreeWaiters = new Map<string, Set<string>>();
   readonly #stageTreeRetries = new Map<string, NodeJS.Timeout>();
+  readonly #stageHistoryAbort = new AbortController();
+  #stageHistory: { head: string; items?: Set<number>; pending: boolean; retry: number; waiters: Set<string> } | undefined;
   readonly #verifyChanges = new Map<string, { item: string | null; branch: string }>();
   #verifyImmediate: NodeJS.Immediate | null = null;
 
@@ -905,6 +907,7 @@ export class Tracker {
     if (options.stalled) this.#abandonStorage(options.stalled);
     if (this.#stopping) return this.#stopping;
     this.#capturePruneAbort.abort();
+    this.#stageHistoryAbort.abort();
     this.#clock.clearTimeout(this.#capturePruneTimer);
     const freshnessStopped = this.#fresh.stop();
     if (this.#verifyImmediate) clearImmediate(this.#verifyImmediate);
@@ -1792,6 +1795,36 @@ export class Tracker {
       withCurrent(v, v.stage === undefined ? this.#demoCurrent(id, v.commit) : this.#stageCurrent(id, v)));
   }
 
+  /** No receipt and no branch is evidence-only only after dev's Item trailers are known.
+   * One off-path history read serves every stage at that tip; errors stay unknown
+   * and can retry on a later plan read, without busy-looping views. */
+  #stageUnlanded(id: string, child: string): boolean {
+    const head = this.#fresh.tip('dev');
+    if (!head || this.#stopping) return false;
+    if (this.#stageHistory?.head !== head) this.#stageHistory = { head, pending: false, retry: 0, waiters: new Set() };
+    const history = this.#stageHistory;
+    if (history.items) return !history.items.has(idNumber(child));
+    history.waiters.add(id);
+    if (!history.pending && this.#clock.now().getTime() >= history.retry) {
+      history.pending = true;
+      this.#runBackground(async () => {
+        await new Promise<void>(resolve => setImmediate(resolve));
+        const out = await this.#git(['log', '--format=%H%x00%(trailers:key=Item,valueonly)%x00', head, '--'], undefined, this.#stageHistoryAbort.signal).catch(() => null);
+        if (this.#stopping || this.#stageHistory !== history) return;
+        history.pending = false;
+        history.retry = this.#clock.now().getTime() + 2000;
+        if (out === null) return;
+        history.items = new Set(out.split('\0').filter((_token, index) => index % 2 === 1).flatMap(trailers => trailers.split('\n')).flatMap(line => {
+          const ref = parseItemReference(line.trim(), this.kinds);
+          return ref ? [ref.n] : [];
+        }));
+        for (const waiting of history.waiters) { this.#announce(waiting, true); this.#schedulePlannedFor(waiting); }
+        history.waiters.clear();
+      });
+    }
+    return false;
+  }
+
   /** A stage stays closed across later dev builds, but its own plan and landing evidence must stay unchanged. */
   #stageSnapshot(id: string, name: string): { hash: string; merged: boolean; mergedCount: number; statuses: Record<string,number>; items: string[]; qa: QaPolicy } | null {
     const plan = this.#index.plan(id), stage = plan?.stages.find(s => s.name === name);
@@ -1804,7 +1837,11 @@ export class Tracker {
       const child = this.#index.get(childId), receipt = this.#index.mergeReceipt(childId);
       const status = child?.state === 'closed' ? 'done' : child?.status ?? 'backlog';
       statuses[status] = (statuses[status] ?? 0)+1;
+      const evidenceOnly = child?.kind === 'task' && child.state === 'closed' && child.status === 'done'
+        && child.branch === null && !receipt && this.#stageUnlanded(id, childId);
       return { id: childId, state: child?.state, parent: child?.parent ? `T-${idNumber(child.parent)}` : child?.parent, kind: child?.kind, commit: receipt?.commit ?? null, base: receipt?.base ?? null,
+        // Preserve hashes for landed tasks and old stage QA receipts.
+        ...(evidenceOnly ? { evidenceOnly: true } : {}),
         belongs: !!child && (child.parent === id || this.#ancestorIds(child.parent).includes(id)) };
     });
     const overrides = items.map(childId => [childId, planOverride(plan!, childId) ?? null]);
@@ -1813,8 +1850,8 @@ export class Tracker {
       .filter(qa => qa.when === 'after-stage' && qa.scope !== 'none');
     const qa: QaPolicy = policies.length ? { scope: policies.some(qa => qa.scope === 'full') ? 'full' : 'affected', when: 'after-stage' } : stage.qa;
     return { hash: createHash('sha256').update(JSON.stringify([stage, overrides, facts])).digest('hex'),
-      merged: facts.every(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || !!f.commit && f.base === 'dev')),
-      mergedCount: facts.filter(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || !!f.commit && f.base === 'dev')).length,
+      merged: facts.every(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || f.evidenceOnly || !!f.commit && f.base === 'dev')),
+      mergedCount: facts.filter(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || f.evidenceOnly || !!f.commit && f.base === 'dev')).length,
       statuses, items, qa };
   }
 

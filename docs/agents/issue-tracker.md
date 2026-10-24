@@ -122,6 +122,8 @@ criteria still require `task.view` when reviewing an item.
 
 Before requesting review, the Implementer fetches and merges `origin/dev`, commits and pushes its head, sets the claimed item to `review`, and sends `review request T-<n>` to `reviewer` in its topic. After a clear source verdict it runs `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. The Reviewer leaves run-dependent criteria unverified until that same-head result arrives, then records the final verdict. The merge gate and verdict rules are unchanged; see [test guidance](tests.md) and [review and QA](../review-and-qa.md).
 
+A plan stage also counts evidence-only tasks toward completion: closed `done`, no branch, no landing receipt and no `Item:` trailer on dev. A branch-backed task still needs a dev landing receipt, even with an empty branch. Required stage QA and platform covers remain in force; `task.view.merged` continues to mean an actual dev landing. See [stage QA](../review-and-qa.md#stage-qa-verdicts).
+
 ## Acceptance criteria
 
 Criteria live under `## Acceptance criteria` in a task or configured container body. Containers also recognize checkboxes under `## Definition of done`; both sections share stable ids. `task view --json` returns `item.criteria` with each criterion's stable id, text, checkbox and marks. Old checkboxes have no ids until the first criterion operation assigns them in list order. `criterion_seq` in frontmatter retains the highest allocated number, including removed criteria; keep it when editing by hand. Ids are never reused.

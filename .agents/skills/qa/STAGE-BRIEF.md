@@ -14,7 +14,7 @@ Read membership, counts and other plan facts from `task plan show` at the run; r
 
 ## Build
 
-Use a clean detached worktree at the full dev SHA named in the request. HEAD must equal that SHA and refs/heads/dev before and after running. All listed items must have merged onto dev. A dirty build, missing merge or moved dev blocks this run; retain any collected evidence and report to the requester.
+Use a clean detached worktree at the full dev SHA named in the request. HEAD must equal that SHA and refs/heads/dev before and after running. Every listed task needs a dev landing receipt or evidence-only completion: closed `done`, no branch, no landing receipt and no `Item:` trailer on dev. A task with a branch still needs its landing receipt, even when the branch has no commits. A dirty build, missing required merge or moved dev blocks this run; retain any collected evidence and report to the requester.
 
 In this repository, give the detached worktree a `node_modules` symlink to the project's installed dependencies before any Web steps; retain the build prerequisites of each standalone test (E-413 stage 2 setup; A-8634 R12).
 

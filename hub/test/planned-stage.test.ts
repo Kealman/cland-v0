@@ -1,7 +1,7 @@
 // T2: stage rules through injected Git, store reopen and in-process spoke/socket edges.
 import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
-import { beforeDirectories } from './process-cleanup.ts';
+import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 import { planStageHub, writeBarrier, seedPlanStageCover, PlanGit } from './plan-stage-fixture.ts';
 import { withPlan } from '../src/tracker/plan.ts';
@@ -14,14 +14,14 @@ import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
 import { cland, connectUi, connectWsUi, dispatcherUi, eventually, projectHub, inProcessSpoke, startHub, tempProject } from './harness.ts';
 
-async function fixture(t: test.TestContext, approval = false, gated = false) {
+async function fixture(t: test.TestContext, approval = false, gated = false, facts?: PlanGit) {
   const root = await tempProject(t);
   if (approval) {
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
   }
   const gate = gated ? writeBarrier(t) : undefined;
-  let component = await planStageHub(t, root, undefined, { approval, gate });
+  let component = await planStageHub(t, root, facts, { approval, gate });
   const { discovery } = component;
   let ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
@@ -161,6 +161,94 @@ for (const [qa, settleBeforeHub] of [[false, false], [true, false], [true, true]
   await f.status(f.c.id, 'planned');
   assert.equal((await f.read(active.id)).status, 'in progress');
   assert.equal((await f.read(f.epic.id)).stages?.[0]?.state, 'closed');
+});
+
+test('plan show closes a stage with landed and evidence-only done tasks (in-process)', async t => {
+  const f = await fixture(t);
+  await f.set(); await f.status(f.a.id, 'planned');
+  await f.component.branch(f.a.id);
+  for (const item of [f.a, f.b]) {
+    const closed = await f.ui.request({ type: 'task.close', item: item.id });
+    assert.equal(closed.ok, true, closed.error);
+  }
+  const head = f.component.facts.head;
+  f.component.tracker.recordMerge(f.a.id, { branch: `t/${f.a.id}`, tip: head, commit: head, base: 'dev' });
+  assert.equal((await f.read(f.b.id)).branch, null);
+  assert.equal((await f.read(f.b.id)).status, 'done');
+  const stage = await eventually('mixed stage closes', async () => {
+    const value = (await f.read(f.epic.id)).stages?.[0];
+    return value?.state === 'closed' ? value : undefined;
+  });
+  assert.equal(stage.merged, 2);
+  const shown = await cland(f.root, 'task', 'plan', 'show', f.epic.id, '--json');
+  assert.equal(shown.code, 0, shown.stderr);
+  assert.equal(JSON.parse(shown.stdout).stages[0].state, 'closed');
+  assert.equal((await f.read(f.epic.id)).state, 'open');
+  await f.status(f.c.id, 'planned');
+});
+
+test('plan show keeps a done task with an unlanded empty branch open (in-process)', async t => {
+  const f = await fixture(t);
+  f.plan.stages[0]!.lanes = [[f.a.id]];
+  await f.set(); await f.status(f.a.id, 'planned');
+  await f.component.branch(f.a.id);
+  assert.equal(f.component.facts.branches.get(`t/${f.a.id}`), f.component.facts.head, 'branch has no new commits');
+  const closed = await f.ui.request({ type: 'task.close', item: f.a.id });
+  assert.equal(closed.ok, true, closed.error);
+  assert.equal((await f.read(f.a.id)).status, 'done');
+  const shown = await cland(f.root, 'task', 'plan', 'show', f.epic.id, '--json');
+  assert.equal(shown.code, 0, shown.stderr);
+  assert.equal(JSON.parse(shown.stdout).stages[0].state, 'open');
+  assert.equal((await f.read(f.epic.id)).stages?.[0]?.merged, 0);
+  assert.equal((await f.read(f.c.id)).status, 'backlog');
+});
+
+test('a dev Item trailer prevents evidence-only closure when a landing receipt is missing (in-process)', async t => {
+  const f = await fixture(t);
+  f.plan.stages[0]!.lanes = [[f.a.id]];
+  f.plan.stages[1]!.lanes = [[f.b.id]];
+  await f.set(); await f.status(f.a.id, 'planned');
+  f.component.facts.commit(['src/changed.ts'], f.a.id);
+  await f.component.tracker.refreshFreshness();
+  for (const item of [f.a, f.b]) {
+    const closed = await f.ui.request({ type: 'task.close', item: item.id });
+    assert.equal(closed.ok, true, closed.error);
+  }
+  // Both stages share the same dev history read. The evidence-only stage's
+  // closure observes that read's completion before the negative assertion.
+  await eventually('trailer-free stage closes after history resolves', async () =>
+    (await f.read(f.epic.id)).stages?.[1]?.state === 'closed' ? true : undefined);
+  const shown = await cland(f.root, 'task', 'plan', 'show', f.epic.id, '--json');
+  assert.equal(shown.code, 0, shown.stderr);
+  assert.equal(JSON.parse(shown.stdout).stages[0].state, 'open');
+  assert.equal((await f.read(f.c.id)).status, 'backlog');
+});
+
+test('evidence-only closure waits for dev history and retries a failed read (in-process)', async t => {
+  const facts = new PlanGit(), read = facts.read;
+  const history = Promise.withResolvers<string | null>();
+  onCleanup(t, () => history.resolve(null));
+  let reads = 0;
+  facts.read = async args => {
+    if (args.includes('--format=%H%x00%(trailers:key=Item,valueonly)%x00')) {
+      reads++;
+      if (reads === 1) return history.promise;
+    }
+    return read(args);
+  };
+  const f = await fixture(t, false, false, facts);
+  f.plan.stages[0]!.lanes = [[f.a.id]];
+  await f.set(); await f.status(f.a.id, 'planned');
+  const closed = await f.ui.request({ type: 'task.close', item: f.a.id });
+  assert.equal(closed.ok, true, closed.error);
+  await eventually('dev history read entered', () => reads === 1 ? true : undefined);
+  assert.equal((await f.read(f.epic.id)).stages?.[0]?.state, 'open');
+  assert.equal((await f.read(f.c.id)).status, 'backlog');
+  history.resolve(null);
+  await f.component.clock.advance(2000);
+  await eventually('successful dev history retry closes the stage', async () =>
+    (await f.read(f.epic.id)).stages?.[0]?.state === 'closed' ? true : undefined);
+  assert.equal(reads, 2, 'the successful history is shared by later plan reads');
 });
 
 test('valid hand plans and offline plan changes move only newly joined current-stage tasks (in-process)', async t => {
