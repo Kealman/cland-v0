@@ -182,3 +182,6 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/screenshot-capture.test.ts`](../../../hub/test/screenshot-capture.test.ts) | [Notes](hub-test-screenshot-capture.test.ts.md) |
 
 | [`hub/test/web-release-publication.test.ts`](../../../hub/test/web-release-publication.test.ts) | [Notes](hub-test-web-release-publication.test.ts.md) |
+| [`hub/test/qa-lint-build.test.ts`](../../../hub/test/qa-lint-build.test.ts) | [Notes](hub-test-qa-lint-build.test.ts.md) |
+| [`hub/test/qa-lint.test.ts`](../../../hub/test/qa-lint.test.ts) | [Notes](hub-test-qa-lint.test.ts.md) |
+| [`hub/test/qa-lint-cli.test.ts`](../../../hub/test/qa-lint-cli.test.ts) | [Notes](hub-test-qa-lint-cli.test.ts.md) |

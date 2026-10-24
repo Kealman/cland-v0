@@ -33,7 +33,7 @@ Each is a command and its expected outcome; record each with `sh .agents/skills/
 | --- | --- | --- |
 | M1 | `<command>` | `<exact outcome>` |
 
-Before requesting QA, run `cland qa lint <brief>` with this filled brief at the build under test. The brief is complete only when qa lint passes at the build. Use a `role` column (or `Role: Implementer` above the checks) to assign commands to a role; cleanup operands are literal paths.
+Before requesting QA, run `cland qa lint <brief>` with this filled brief at the build under test. The brief is complete only when qa lint passes at the build. Pin source with `--commit <sha>` when needed; use the `docs/agents/qa-brief-lint.md` reference syntax for test titles and selectors, and derive totals from generated cases or `cland task plan show <item>`. Use a `role` column (or `Role: Implementer` above the checks) to assign commands to a role; cleanup operands are literal paths.
 
 ## Probes that mislead
 

@@ -68,7 +68,7 @@ if (help !== undefined) {
     break;
   case 'qa': {
     const { runQaLint } = await import('../src/cli/qa-lint.ts');
-    process.exitCode = runQaLint(rest);
+    process.exitCode = await runQaLint(rest);
     break;
   }
   case '--headless':

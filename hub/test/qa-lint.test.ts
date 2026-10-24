@@ -135,3 +135,146 @@ test('Implementer topic creation requires a nonempty item option rather than a t
     assert.deepEqual(lintQaBrief('| role | command | expected |\n| --- | --- | --- |\n| Implementer | `cland topic create hello' + binding + '` | topic |'), [], binding);
   }
 });
+
+test('brief test files resolve in the build inventory including ambiguous basenames', () => {
+  const build = new Map([
+    ['hub/test/current.test.ts', "test('current case', () => {});"],
+    ['web/test/shared.test.ts', ''], ['hub/test/shared.test.ts', ''],
+  ]);
+  const brief = 'Run `hub/test/current.test.ts`.\nRun `hub/test/removed.test.ts`.\nRun `shared.test.ts`.';
+  const findings = lintQaBrief(brief, build);
+  assert.deepEqual(findings.map(f => f.line), [2, 3]);
+  assert.match(findings[0]!.message, /test file.*removed.*absent.*build/);
+  assert.match(findings[1]!.message, /ambiguous.*shared.*full path/);
+});
+
+test('brief test titles and Node patterns match declarations in their named build files', () => {
+  const build = new Map([
+    ['hub/test/current.test.ts', "// test('comment only', () => {});\nconst prose = 'not a test';\ntest('current case', () => {});\ntest(`literal template`, () => {});"],
+    ['web/test/other.test.ts', "test('elsewhere', () => {});"],
+  ]);
+  const brief = [
+    '`hub/test/current.test.ts` test: `current case`',
+    '`hub/test/current.test.ts` test title: `removed case`',
+    '`hub/test/current.test.ts` test: `elsewhere`',
+    '`hub/test/current.test.ts` test: `comment only`',
+    '`node --test --test-name-pattern="^current case$" hub/test/current.test.ts`',
+    '`node --test --test-name-pattern \'absent.*case\' hub/test/current.test.ts`',
+    '`node --test --test-name-pattern="[" hub/test/current.test.ts`',
+    '`hub/test/current.test.ts` test: `literal template`',
+  ].join('\n');
+  const findings = lintQaBrief(brief, build);
+  assert.deepEqual(findings.map(f => f.line), [2, 3, 4, 6, 7]);
+  assert.match(findings[0]!.message, /test title.*removed case.*absent.*build/);
+  assert.match(findings[3]!.message, /test pattern.*matches no.*build/);
+  assert.match(findings[4]!.message, /invalid test pattern/);
+});
+
+test('brief selectors require source evidence in web/src rather than tests or other files', () => {
+  const build = new Map([
+    ['web/src/Card.tsx', '<button data-testid="current" aria-label={"Open"} id="card" className={styles.card}>Open</button>'],
+    ['web/src/Card.module.css', '.card { display: block; }'],
+    ['web/test/card.test.ts', 'const selector = \'[data-testid="removed"]\';'],
+  ]);
+  const brief = [
+    'Selector: `[data-testid="current"]`',
+    'Selector: `[data-testid="removed"]`',
+    'Selector: `button[aria-label="Open"]`',
+    'Selector: `.card`', 'Selector: `#card`',
+    'page.locator(\'[data-missing]\')',
+    'document.querySelector(".removed")',
+  ].join('\n');
+  const findings = lintQaBrief(brief, build);
+  assert.deepEqual(findings.map(f => f.line), [2, 6, 7]);
+  for (const finding of findings) assert.match(finding.message, /selector.*absent.*web\/src/);
+});
+
+test('brief literal test member and item totals point to generated cases or the current plan', () => {
+  const brief = [
+    'Exactly 23 tests pass.', 'All twelve members land.', 'Expect 4 items.',
+    'TAP: `# tests 23`', 'Members: 12', 'item count = 4',
+    'Run tests at the build; derive members with `cland task plan show E-1`.',
+    'Use a 4 second deadline and a 390 px viewport; T-23 is an item id.',
+  ].join('\n');
+  const findings = lintQaBrief(brief);
+  assert.deepEqual(findings.map(f => f.line), [1, 2, 3, 4, 5, 6]);
+  for (const finding of findings.slice(0, 1)) assert.match(finding.message, /literal test count.*generated cases/);
+  for (const finding of findings.filter(f => [2, 3, 5, 6].includes(f.line))) assert.match(finding.message, /task plan show/);
+});
+
+test('brief prose test names and plural title lists cannot bypass title checks', () => {
+  const build = new Map([['hub/test/current.test.ts', "test('present', () => {});"]]);
+  const brief = '`hub/test/current.test.ts`\nThe test `missing` must pass.\nTests: `present`, `also missing`.';
+  assert.deepEqual(lintQaBrief(brief, build).map(f => f.line), [2, 3]);
+});
+
+test('selector attributes match whole names so data-id and aria-label do not invent id or label', () => {
+  const build = new Map([['web/src/Card.tsx', '<button data-id="card" aria-label="Open" />']]);
+  const brief = [
+    'Selector: `[data-id="card"]`', 'Selector: `[aria-label]`',
+    'Selector: `[id="card"]`', 'Selector: `#card`', 'Selector: `[label]`',
+  ].join('\n');
+  assert.deepEqual(lintQaBrief(brief, build).map(f => f.line), [3, 4, 5]);
+});
+
+test('title source scanning keeps escaped static titles and ignores opaque source literals', () => {
+  const text = [
+    String.raw`test('a \'quoted\' title', () => {});`,
+    String.raw`it.only("Unicode \u{1f600} and \x41", () => {});`,
+    'const text = "test(\'string decoy\', () => {})";',
+    "const re = /test('regex decoy',/;",
+    'const dynamic = `prefix ${`test(\'nested decoy\', () => {})`} suffix`;',
+    "/* test('comment decoy', () => {}); */",
+    "test('computed' + suffix, () => {});",
+    'const fraction = "=" / 2;',
+    'const interpolation = `fraction ${2 / 1}`;',
+    "test('after division', () => {});",
+  ].join('\n');
+  const build = new Map([['hub/test/current.test.ts', text]]);
+  const brief = [
+    'test: `a \'quoted\' title`', 'test: `Unicode 😀 and A`',
+    'test: `string decoy`', 'test: `regex decoy`', 'test: `nested decoy`',
+    'test: `comment decoy`', 'test: `computed`', 'test: `after division`',
+  ].join('\n');
+  assert.deepEqual(lintQaBrief(brief, build).map(f => f.line), [3, 4, 5, 6, 7]);
+});
+
+test('regex bodies after arrows and control statements never declare test titles', () => {
+  const source = [
+    "const arrow = () => /test('arrow decoy')/;",
+    "if (ready) /test('if decoy')/.test(value);",
+    "while (ready) /test('while decoy')/.test(value);",
+    "for (; ready ;) /test('for decoy')/.test(value);",
+    "if (ready) {} else /test('else decoy')/.test(value);",
+    "function pattern() { return /test('return decoy')/; }",
+    "const divided = 10 / 2; test('after division', () => {});",
+    "test('real static title', () => {});",
+  ].join('\n');
+  const build = new Map([['hub/test/current.test.ts', source]]);
+  const brief = [
+    'Tests: `arrow decoy`, `if decoy`, `while decoy`, `for decoy`, `else decoy`, `return decoy`',
+    'Tests: `after division`, `real static title`',
+  ].join('\n');
+  const findings = lintQaBrief(brief, build);
+  assert.equal(findings.length, 6);
+  assert.deepEqual(findings.map(f => f.line), [1, 1, 1, 1, 1, 1]);
+  for (const title of ['arrow', 'if', 'while', 'for', 'else', 'return']) assert.ok(findings.some(f => f.message.includes(`${title} decoy`)));
+});
+
+test('for-await and postfix contexts stay precise while ambiguous expression-brace names fail closed', () => {
+  const build = new Map([['hub/test/current.test.ts', [
+    "async function patterns() { for await (const value of []) /test('for-await decoy')/.test(value); }",
+    "let value = 2; value++ / 2; test('after increment division', () => {}); const tail = /x/;",
+    "value-- / 2; test('after decrement division', () => {}); const another = /x/;",
+    "const ratio = { value: 2 } / 2; test('after object division', () => {}); const objectTail = /x/;",
+    "const callable = function() {} / 2; test('after function division', () => {}); const functionTail = /x/;",
+  ].join('\n')]]);
+  const brief = [
+    'test: `for-await decoy`', 'test: `after increment division`',
+    'test: `after decrement division`', 'test: `after object division`',
+    'test: `after function division`',
+  ].join('\n');
+  const findings = lintQaBrief(brief, build);
+  assert.deepEqual(findings.map(f => f.line), [1, 4, 5]);
+  assert.ok(findings.every(f => /unresolved/.test(f.message)), 'ambiguous scope fails closed rather than asserting absence');
+});

@@ -1,5 +1,6 @@
 // Static QA brief checks. Never evaluate shell text or contact the project's hub.
 import * as help from './cli/usage.ts';
+import { lintQaReferences } from './qa-lint-references.ts';
 import { decide, DEFAULT_PERMISSIONS, KNOWN_TOOLS, type ToolCall } from './roles/permissions.ts';
 
 export type QaLintFinding = { line: number; message: string; command?: string };
@@ -124,7 +125,7 @@ function roleProblem(role: string, args: string[]): string | null {
 }
 
 /** Lint table commands, check identifiers/surfaces, and shell cleanup in code. */
-export function lintQaBrief(source: string): QaLintFinding[] {
+export function lintQaBrief(source: string, build?: ReadonlyMap<string, string>): QaLintFinding[] {
   const findings: QaLintFinding[] = [];
   const ids = new Map<string, number>();
   let headers: string[] = [];
@@ -135,6 +136,11 @@ export function lintQaBrief(source: string): QaLintFinding[] {
   source.split(/\r?\n/).forEach((line, index) => {
     const number = index + 1;
     const add = (message: string, command?: string) => findings.push({ line: number, message, ...(command ? { command } : {}) });
+    const count = '(?:\\d[\\d,]*|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty(?:[ -]\\w+)?)';
+    for (const kind of ['test', 'member', 'item']) {
+      const total = new RegExp(`\\b${count}\\s+(?:(?:matched|passing|selected|total|closed|open)\\s+)?${kind}s?\\b|\\b${kind}s?(?:\\s+count)?\\s*(?:[:=]|\\bare\\b)?\\s*${count}\\b`, 'i');
+      if (total.test(line)) add(`literal ${kind} count; derive ${kind === 'test' ? 'the required names and totals from generated cases at the build' : 'membership from cland task plan show <item> at the build'}`);
+    }
     if (/^\s*```/.test(line)) {
       shellFence = !fence && /^\s*```(?:sh|bash|shell)?\s*$/.test(line);
       fence = !fence; headers = []; return;
@@ -213,5 +219,5 @@ export function lintQaBrief(source: string): QaLintFinding[] {
       }
     }
   });
-  return findings;
+  return [...findings, ...(build ? lintQaReferences(source, build) : [])].sort((a, b) => a.line - b.line);
 }

@@ -6,17 +6,11 @@ import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { CLI_ENTRY, tempProject, type CliResult } from './harness.ts';
 import { clandCliLaunch } from './tier-cli.ts';
-import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 function lintCli(root: string, ...args: string[]): Promise<CliResult> {
-  const home = join(root, 'home');
-  const env = withoutExecutorCredentials({ PATH: '/usr/bin:/bin', HOME: home,
-    XDG_CONFIG_HOME: join(home, 'config'), XDG_DATA_HOME: join(home, 'data'),
-    XDG_STATE_HOME: join(home, 'state'), XDG_CACHE_HOME: join(home, 'cache'),
-    GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' });
   return new Promise((resolve, reject) => {
-    // cland-allow-child-env: offline CLI subject uses a literal PATH/scratch HOME/XDG environment and null Git configs without inherited credentials
-    clandCliLaunch(() => execFile(process.execPath, [CLI_ENTRY, 'qa', ...args], { cwd: root, env, encoding: 'utf8', timeout: 10_000 }, (error, stdout, stderr) => {
+    clandCliLaunch(() => execFile(process.execPath, [CLI_ENTRY, 'qa', ...args], { cwd: root, env: fixtureEnvironment(root, process.env), encoding: 'utf8', timeout: 10_000 }, (error, stdout, stderr) => {
       if (error && typeof error.code !== 'number') reject(error);
       else resolve({ code: error ? error.code as number : 0, stdout, stderr });
     }));
