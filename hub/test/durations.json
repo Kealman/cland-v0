@@ -2861,7 +2861,7 @@
     "hub/test/cli-identity.test.ts::cland task view and comment use the shell identity and preserve ownership": 0.941407,
     "hub/test/cli-identity.test.ts::cland topic answer from a session's shell retains its typed refusal and identity": 0.779912,
     "hub/test/cli-identity.test.ts::human-only shell commands enforce the held role while reads remain allowed": 0.354944,
-    "hub/test/cli-identity.test.ts::the Coordinator manages the sessions and the hub from its shell, by the permission table: it lists, stops and resumes a launched session and stops the hub; an Implementer is refused each": 4.150616,
+    "hub/test/cli-identity.test.ts::the Coordinator manages the sessions and the hub from its shell; an Implementer may list but cannot mutate sessions or stop the hub": 4.150616,
     "hub/test/cli-imports.test.ts::CLI commands load only their own source closure within the import budgets": 0.5815,
     "hub/test/cli-imports.test.ts::database-free CLI commands never resolve node:sqlite in their import graph": 3.677794,
     "hub/test/cli-imports.test.ts::subcommand import failures retain each dispatch error line and exit code": 2.76775,

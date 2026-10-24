@@ -54,6 +54,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'task.claim',
   'task.hold',
   'task.import',
+  'session.list',
   'session.launch',
   'session.archive',
   'session.prune',
@@ -84,11 +85,11 @@ export const SCOPES: Readonly<Record<string, readonly string[]>> = {
   'topic.create': ['own'],
 };
 
-const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 'status', 'task.view', 'task.list', 'rule.list'];
+const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'session.list', 'history', 'status', 'task.view', 'task.list', 'rule.list'];
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
-  aide: [ 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status', 'session.launch', 'session.stop', 'session.resume', 'task.import', 'push'],
+  aide: [ 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'session.list', 'status', 'session.launch', 'session.stop', 'session.resume', 'task.import', 'push'],
   coordinator: [
     'rule.add', 'rule.edit', 'rule.retire',
     'send',

@@ -29,6 +29,11 @@ for (const [source, definitions] of sources) {
     }
   });
   for (const [role, definition] of definitions) {
+    test(`${source} ${role}: clause names the independent session read`, () => {
+      const clause = clauseText(`queue-${role}`, role, definition);
+      assert.ok(clause.includes('cland session list [--json]'));
+      assert.ok(clause.includes('session.list grant; no mutation authority'));
+    });
     test(`${source} ${role}: clause reply keeps the byte reserve`, () => {
       // Preserve the former T3 fixture: queue-<role>, default staffing, no installed
       // project skills or handover note. Rulebook guidance/data grow independently.
@@ -52,8 +57,8 @@ for (const [source, definitions] of sources) {
       if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
       else assert.match(clause, /naming its size \(XS, S, M, L or XL\) and category/);
       if (role === 'coordinator') assert.match(trackerProcedures, /The explorer's messages come from the human in General or the item's topic: the text, then `from the explorer · scope …` and one line per item \(id · kind · status · container · rank · title\)\. Act on them through the tracker\./);
-      assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);
-      assert.match(clause, /sessions panel's `verify:` line.*`cland verify queue`/, `${source} ${role}`);
+      assert.match(clause, /human `npm test` queues/, `${source} ${role}`);
+      assert.match(clause, /panel `verify:`.*`cland verify queue`/, `${source} ${role}`);
       if (role === 'coordinator' || role === 'lead') {
         assert.match(clause, /code merges enqueue/);
         assert.match(clause, /T1\/T3 batch/);

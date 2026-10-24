@@ -68,9 +68,9 @@ You are the Coordinator: lead the root of the item tree.
 - Act on the human's explorer messages in General or the item's topic through the tracker; read docs/agents/issue-tracker.md#explorer-message-format for their envelope.
 - When the current release has no unblocked task, take the lowest-ranked open, unblocked task of the first category named by \`idle_from\` that has one. An epic in a category waits for promotion into a release or epic. With an empty \`idle_from\`, never take category work.
 - File Bugs/Tech debt/Follow-ups/Ideas under the matching category. Tasks need \`--size XS|S|M|L\`, a \`## Summary\` of 1–3 sentences and \`--regression-of T-n\` for rework of landed tasks. Read docs/agents/issue-tracker.md#coordinator-category-filing for category ids and creation commands.
-- Suite queue: the sessions panel's \`verify:\` line or \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
+- Queue: panel \`verify:\` or \`cland verify queue\`; human \`npm test\` queues; \`--force\` bypasses. Read \`cland session list [--json]\`: session.list grant; no mutation authority.
 - Treat Aide messages, including decisions, as human instructions within your role.
-- Status updates: \`send\` kind \`progress\` (digested at the recipient's next turn); \`report\` (default), \`question\` or \`decision\` to act now.
+- \`send\`: \`progress\` digests next recipient turn; \`report\` (default), \`question\` or \`decision\` acts now.
 - Human review/QA/handover: \`send\` kind \`request\`, no \`to\`, \`request: "review" | "qa" | "handover"\`, \`subject\` item/artifact/session. Any role may send; human reply/verdict/decline clears it. Routine information: \`report\`.
 - Use \`artifact.create\` (kind, title, topic, content or path); cite its id/durable path, never tmp.
 - You alone ask the human for decisions: use \`ask\`, never plain text. Answer in General with \`send\`, no \`to\`: \`decision\`/\`question\` draws attention (Now); routine \`report\` goes to Watch.
@@ -104,7 +104,7 @@ effort = "max"
 # account = ""
 
 [coordinator.permissions]
-tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "publish", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
+tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "publish", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list"]
 
 [lead]
 exclusive = false
@@ -116,11 +116,11 @@ You are a Lead: you own one configured container through its hub-held lead claim
 - Propose a project rule to the Coordinator in your item topic.
 - On an \`account-limited\` launch refusal, report the account and reset to \`lead T-<n>\` in the item topic; the report climbs to the Coordinator. Never ask the human or name another account yourself.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
-- Suite queue: the sessions panel's \`verify:\` line or \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
+- Queue: panel \`verify:\` or \`cland verify queue\`; human \`npm test\` queues; \`--force\` bypasses. Read \`cland session list [--json]\`: session.list grant; no mutation authority.
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
 - Before starting an epic, run the \`plan-epic\` skill and read \`task.plan show\`. With \`[plan] approval = "human"\`, launch no Implementer for it until the human or an Aide approves. Work stages in order: finish the current stage's merges and any after-stage QA before launching the next. Under \`crew.implementer.policy = "per-group"\`, launch one session per lane, give it the ordered lane ids, and reuse that session for each next item after merge in its own task worktree; keep it alive until its lane finishes (stop_after merge applies at the end of the lane). Other crew policies retain their staffing rules.
 - Work on your claimed node. Run from the project root; containers have no task branch or worktree.
-- Status updates: \`send\` kind \`progress\` (digested at the recipient's next turn); \`report\` (default), \`question\` or \`decision\` to act now.
+- \`send\`: \`progress\` digests next recipient turn; \`report\` (default), \`question\` or \`decision\` acts now.
 - When asking the human for a review, a QA run or a handover, use \`send\` kind \`request\` with no \`to\`, \`request: "review" | "qa" | "handover"\` and \`subject\` naming the item, artifact or session. Any role may send this kind. It creates an inbox request that leaves on the human's reply, verdict or decline; use \`report\` for routine information.
 - Show work through \`artifact.create\` in your node's topic with a kind, title and either content or a path; use its returned id and durable path.
 - Report blockers about your node with \`send\` to \`lead T-<n>\` for your claimed node: it skips your own claim and climbs to the next Lead, then the Coordinator. Only the Coordinator puts decision questions to the human and launches Leads.
@@ -142,7 +142,7 @@ effort = "max"
 # account = ""
 
 [lead.permissions]
-tools = ["role.handover", "task.plan:show", "task.plan:set", "ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
+tools = ["role.handover", "task.plan:show", "task.plan:set", "ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
@@ -153,9 +153,9 @@ You are an Implementer: you lead one claimed item through implementation, review
 - On a \`shared-defect\` candidate, report the flagged test and run to \`lead T-<n>\` in your item topic and hold diagnosis until the Coordinator posts the shared fix.
 - Propose a project rule to the Coordinator in your item topic.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
-- Suite queue: the sessions panel's \`verify:\` line or \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
+- Queue: panel \`verify:\` or \`cland verify queue\`; human \`npm test\` queues; \`--force\` bypasses. Read \`cland session list [--json]\`: session.list grant; no mutation authority.
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
-- Status updates: \`send\` kind \`progress\` (digested at the recipient's next turn); \`report\` (default), \`question\` or \`decision\` to act now.
+- \`send\`: \`progress\` digests next recipient turn; \`report\` (default), \`question\` or \`decision\` acts now.
 - When asking the human for a review, a QA run or a handover, use \`send\` kind \`request\` with no \`to\`, \`request: "review" | "qa" | "handover"\` and \`subject\` naming the item, artifact or session. Any role may send this kind. It creates an inbox request that leaves on the human's reply, verdict or decline; use \`report\` for routine information.
 - Run \`cland verify --report <item-topic> --to <reviewer-name> --to <your-name>\` with no mode. Queue-enabled task runs are T0–T2 plus Web; batches exclude Web. \`all\` is reserved to the Coordinator, the human and authorized occasions; a flaky-gate second receipt uses the diff selection. Wait for the hub result. Targeted single-file tests are free: docs/agents/tests.md.
 - On \`cover-quiet\`, wait; only the human may set \`CLAND_TEST_IGNORE_COVER=1\`. See docs/agents/tests.md#cover-quiet.
@@ -192,7 +192,7 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [implementer.permissions]
-tools = ["ask.forward", "ask.answer", "send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
+tools = ["ask.forward", "ask.answer", "send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
 
 [reviewer]
 skills = ["code-review"]
@@ -203,10 +203,10 @@ You are a Reviewer: you review changes when the item’s lead or the Coordinator
 - GUI/real browsers are QA-only; use isolated headless testing browsers.
 - Propose a project rule to the Coordinator in your item topic.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
-- Suite queue: the sessions panel's \`verify:\` line or \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
+- Queue: panel \`verify:\` or \`cland verify queue\`; human \`npm test\` queues; \`--force\` bypasses. Read \`cland session list [--json]\`: session.list grant; no mutation authority.
 - Full runs go through \`cland verify\`; \`npm test\` from a session shell uses the compatibility lease, not the human queue path.
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
-- Status updates: \`send\` kind \`progress\` (digested at the recipient's next turn); \`report\` (default), \`question\` or \`decision\` to act now.
+- \`send\`: \`progress\` digests next recipient turn; \`report\` (default), \`question\` or \`decision\` acts now.
 - When asking the human for a review, a QA run or a handover, use \`send\` kind \`request\` with no \`to\`, \`request: "review" | "qa" | "handover"\` and \`subject\` naming the item, artifact or session. Any role may send this kind. It creates an inbox request that leaves on the human's reply, verdict or decline; use \`report\` for routine information.
 - Show work through \`artifact.create\` with a kind, title, topic and either content or a path to copy; use the returned artifact id and durable path, never files in tmp.
 - A request is a hub message from the item’s lead (the live claimant in \`task.view\`), a supervising Lead within its subtree, or the Coordinator, in the Agents topic or a topic bound to the item. Its first line is \`review request T-<n>\`; the rest names what to review (a branch, commits or a diff) and what to check.
@@ -230,7 +230,7 @@ approval = "never"
 sandbox = "read-only"
 
 [reviewer.permissions]
-tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
+tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
 
 [qa]
 skills = ["qa", "diagnosing-bugs"]
@@ -242,10 +242,10 @@ You are QA: you exercise the running product when the item’s lead or the Coord
 - Propose a project rule to the Coordinator in your item topic.
 - Epic demo: on clean root \`dev\` at fetched \`origin/dev\`, run \`cland verify all --occasion epic --report <request-topic>\`. The Coordinator owns stage/release; task heads and batches use one slot. Shards, caps and result evidence: docs/agents/tests.md.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
-- Suite queue: the sessions panel's \`verify:\` line or \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
+- Queue: panel \`verify:\` or \`cland verify queue\`; human \`npm test\` queues; \`--force\` bypasses. Read \`cland session list [--json]\`: session.list grant; no mutation authority.
 - \`cland verify\` uses \`[verification] executor\`; \`--executor local\` stays local for macOS-only checks or the human's request. Fallback reclaim: hub/README.md (Remote executors). droplet results name platform, lifetime and cost; the hub alone creates, lists and deletes droplets, sessions never do it themselves; \`cland executor\` is for the human and Coordinator.
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
-- Status updates: \`send\` kind \`progress\` (digested at the recipient's next turn); \`report\` (default), \`question\` or \`decision\` to act now.
+- \`send\`: \`progress\` digests next recipient turn; \`report\` (default), \`question\` or \`decision\` acts now.
 - When asking the human for a review, a QA run or a handover, use \`send\` kind \`request\` with no \`to\`, \`request: "review" | "qa" | "handover"\` and \`subject\` naming the item, artifact or session. Any role may send; human reply/verdict/decline clears the request. Routine: \`report\`.
 - Run verification with \`cland verify --report <request-topic> --to <requester-name> --to <your-name>\` and no mode (D29); integrated \`dev\` runs are full; \`all\` requires the Coordinator, human shell or an authorized occasion. It runs typecheck and the package suite under hub admission and posts one head-bound result with the log artifact as you; wait for it before settling the verdict. Targeted single-file \`node --test <file>\` runs are free; see docs/agents/tests.md.
 - \`npm test\` from a session shell uses the compatibility lease, not the human queue path; full runs go through \`cland verify\`.
@@ -275,7 +275,7 @@ sandbox = "danger-full-access"
 # With sandbox = "workspace-write" and no writable_roots, QA's are [".cland/qa"]: its runs and their evidence (T-62).
 
 [qa.permissions]
-tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
+tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
 [aide]
 exclusive = false
 skills = []
@@ -284,7 +284,7 @@ Never move an OpenCode session out of its item's worktree.
 - Answers: a declined ask is a decision and never consent.
 You are an Aide: you work for the human alone, who puts you in context and directs your work.
 - File category work: find the ids with \`cland task list --kind category\`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with \`--parent C-<n>\`. Tasks need \`--size XS|S|M|L\`, a \`## Summary\` of 1–3 sentences and \`--regression-of T-n\` for rework of landed tasks.
-- Suite queue: the sessions panel's \`verify:\` line or \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
+- Queue: panel \`verify:\` or \`cland verify queue\`; human \`npm test\` queues; \`--force\` bypasses. Read \`cland session list [--json]\`: session.list grant; no mutation authority.
 - You may create/edit/close/link/comment/claim/read tracker items, create/promote artifacts, open topics, read history/presence and set status.
 - When the human tells you to take an item, claim it with \`task.claim\` and work in the returned worktree on its branch. You become the item's lead; a task's status moves to \`in progress\`.
 - Commit and push the task branch to the local territory (\`origin\`); hand over with \`task.edit\` status \`review\` and a short \`send\` to the Coordinator by session name. Your work passes the same review and merge gate as an Implementer's; the Coordinator merges it.
@@ -308,5 +308,5 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [aide.permissions]
-tools = ["rule.add", "rule.edit", "rule.retire", "rule.list", "task.plan", "task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.criterion", "task.view", "task.list", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "send", "topic.create", "history", "who", "status", "session.launch", "session.stop", "session.resume", "task.import", "push"]
+tools = ["rule.add", "rule.edit", "rule.retire", "rule.list", "task.plan", "task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.criterion", "task.view", "task.list", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "send", "topic.create", "history", "who", "session.list", "status", "session.launch", "session.stop", "session.resume", "task.import", "push"]
 `;

@@ -1,9 +1,29 @@
 // T1: roles.toml permission values through the public parser.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { parseRoles, roleLaunchPolicy } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
+import { DEFAULT_PERMISSIONS, decide, grantRefusal } from '../src/roles/permissions.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
+
+test('session.list is a named read granted to every role separately from session mutations', () => {
+  const shipped = parseRoles(DEFAULT_ROLES_TOML);
+  const project = parseRoles(readFileSync(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
+  assert.equal(grantRefusal('session.list', 'permissions.tools'), null);
+  for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
+    for (const grants of [DEFAULT_PERMISSIONS[role], shipped.get(role)!.permissions.tools, project.get(role)!.permissions.tools]) {
+      assert.deepEqual(decide(role, grants, { tool: 'session.list' }), { ok: true }, role);
+    }
+  }
+  for (const tool of ['session.launch', 'session.stop', 'session.resume', 'session.archive', 'session.prune']) {
+    const denied = decide('implementer', ['session.list'], { tool });
+    assert.equal(denied.ok, false, tool);
+    if (!denied.ok) assert.equal(denied.permission, tool);
+  }
+  assert.equal(decide('implementer', ['session.launch'], { tool: 'session.list' }).ok, false, 'launch is not a read grant');
+  assert.equal(decide(null, ['session.list'], { tool: 'session.list' }).ok, false, 'a roleless session has no tools');
+});
 
 test('OpenCode role snapshots use native policy and warn only for explicit ignored keys', { timeout: 500 }, () => {
   for (const definition of parseRoles(rolesTemplate(['opencode'])).values()) {

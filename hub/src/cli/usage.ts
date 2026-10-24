@@ -127,6 +127,7 @@ export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--
                   Implementer in its task worktree, or a Lead on an open epic/release at the root, with its claim;
                   --brief delivers text or an artifact's content once after the role clause
   session list [--archived]    launched sessions and the archived count (--json for JSON); --archived shows only the archive
+                  read-only: every role has the separate session.list permission by default
   session archive <name>  archive a stopped or exited session
   session prune --older-than <duration> [--dry-run]  remove old archived session records; keep the journal
   session attach <name>   print the command that attaches a terminal to the session

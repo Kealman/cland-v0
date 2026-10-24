@@ -9,7 +9,7 @@ The next holder continues from the note and the hub. It never sees your transcri
 
 ## 1. Find the receiver
 
-The argument names the session that takes the role. Call `who`. The receiver must be connected, or be a session launched through the hub (`session.list`).
+The argument names the session that takes the role. Call `who`. The receiver must be connected, or be a session launched through the hub (`cland session list --json`). The separate `session.list` read grant is held by every role by default; it grants no session lifecycle mutations.
 
 - A Coordinator asks the human when no receiver is named. If the human wants a fresh receiver, launch it with `session.launch` and give it no role; the role arrives with the handover.
 - A Lead's receiver must hold no item claim. If a receiver must be chosen or launched, send a question to `lead T-<n>` for your claimed node, naming the missing receiver; the question climbs to the supervising Lead or Coordinator.

@@ -661,8 +661,7 @@ export class Dispatcher {
   /** The table's view of a spoke frame, or null when it is no tool the table knows. */
   #toolCall(connection: Caller, frame: Record<string, unknown>): ToolCall | null {
     const type = String(frame.type);
-    // listing the launched sessions goes with launching them
-    const tool = type.startsWith('event.') ? type.slice(6) : type === 'session.list' ? 'session.launch' : type === 'artifact.list' || type === 'merge.queue' ? 'history' : type;
+    const tool = type.startsWith('event.') ? type.slice(6) : type === 'artifact.list' || type === 'merge.queue' ? 'history' : type;
     if (!KNOWN_TOOLS.includes(tool) && !(connection.role === 'aide' && (tool === 'role.state' || tool.startsWith('session.')))) return null;
     const item = typeof frame.item === 'string' ? frame.item.trim() || null : null;
     const tracker = this.#options.tracker;
@@ -1934,8 +1933,8 @@ export class Dispatcher {
         const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
         // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
         // audited as it. What the permission table knows is decided by the table, as for the session's own tool call
-        // (launching, listing, stopping and resuming sessions, stopping the hub: the Coordinator's); reading the hub's
-        // state is anyone's; everything else is the human's alone.
+        // (session.list is a separate read; session lifecycle mutations and hub.stop keep their own grants);
+        // other hub-state reads are anyone's; everything else is the human's alone.
         const caller = plumbing ? null : this.#asSession(frame);
         if (caller !== null) {
           audit(frame.id, { session: caller.name, sessionId: caller.sessionId, role: caller.role, tool: String(frame.type), args: summarize(frame), client });

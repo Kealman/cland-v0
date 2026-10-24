@@ -98,7 +98,7 @@ test('human-only shell commands enforce the held role while reads remain allowed
   }
   await value(cli, { type: 'session.list', as: { name: 'coord', sessionId: 'sess-coord', shell: true } });
   const listed = await cli.request({ type: 'session.list', as: { name: 'impl-1', sessionId: 'sess-impl', shell: true } });
-  assert.match(listed.error ?? '', /forbidden: session\.launch \(Implementer may not/);
+  assert.equal(listed.ok, true, listed.error);
   const set = await cland(root, 'role', 'set', 'impl-1', 'reviewer');
   assert.equal(set.code, 0, set.stderr);
 });
@@ -125,7 +125,7 @@ test('cland task view and comment use the shell identity and preserve ownership'
   assert.match(other.stderr, /forbidden: task\.comment/);
 });
 
-test('the Coordinator manages the sessions and the hub from its shell, by the permission table: it lists, stops and resumes a launched session and stops the hub; an Implementer is refused each', { skip: NO_PS }, async (t) => {
+test('the Coordinator manages the sessions and the hub from its shell; an Implementer may list but cannot mutate sessions or stop the hub', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
   await startDaemon(t, root, fake.env);
@@ -143,7 +143,6 @@ test('the Coordinator manages the sessions and the hub from its shell, by the pe
   const cli = await connectUi(t, await readDiscovery(root), 'cli');
   for (const [type, fields, permission] of [
     ['session.launch', { name: 'worker-2', harness: 'codex' }, 'session.launch'],
-    ['session.list', {}, 'session.launch'],
     ['session.stop', { session: 'worker-1' }, 'session.stop'],
     ['session.resume', { session: 'worker-1', relaunch: true }, 'session.resume'],
     ['hub.stop', {}, 'hub.stop'],
@@ -154,6 +153,9 @@ test('the Coordinator manages the sessions and the hub from its shell, by the pe
   }
   assert.equal(pidAlive(server.pid), true, 'nothing was stopped');
 
+  const implList = await clandWithEnv(root, impl, 'session', 'list');
+  assert.equal(implList.code, 0, implList.stderr);
+  assert.match(implList.stdout, /^worker-1 .*codex {2}running/);
   const list = await clandWithEnv(root, coord, 'session', 'list');
   assert.equal(list.code, 0, list.stderr);
   assert.match(list.stdout, /^worker-1 .*codex {2}running/);

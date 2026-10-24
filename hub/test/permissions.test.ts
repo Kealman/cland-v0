@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { cland, connectUi, dispatcherUi, eventually, inProcessSpoke, projectHub, tempProject, waitForAbsence, type Discovery, type FrameClient, type Session } from './harness.ts';
+import { cland, clandWithEnv, connectUi, dispatcherUi, eventually, inProcessSpoke, projectHub, tempProject, waitForAbsence, type Discovery, type FrameClient, type Session } from './harness.ts';
 import { value, dispatcherSpoke } from './validation-support.ts';
 import { DEFAULT_PERMISSIONS } from '../src/roles/permissions.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
@@ -81,6 +81,39 @@ async function setup(t: TestContext) {
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   return { root, discovery, ui, loaded, fakes, dispatcher };
 }
+
+test('an Implementer shell lists launched sessions in text and JSON while session mutations stay refused', async t => {
+  const { root, ui, fakes } = await setup(t);
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: 'sess-impl', role: 'implementer' });
+  t.after(() => impl.close());
+  await impl.waitForPresence(['impl']);
+  await value(ui, { type: 'session.launch', name: 'worker', harness: 'codex' });
+  const shell = { CLAND_SESSION_ID: 'sess-impl', CLAND_SESSION_NAME: 'impl' };
+  const listed = await clandWithEnv(root, shell, 'session', 'list');
+  assert.equal(listed.code, 0, listed.stderr);
+  assert.match(listed.stdout, /^worker .*codex {2}running/m);
+  const json = await clandWithEnv(root, shell, 'session', 'list', '--json');
+  assert.equal(json.code, 0, json.stderr);
+  assert.deepEqual(JSON.parse(json.stdout).processes.map((p: { name: string }) => p.name), ['worker']);
+  const archived = await clandWithEnv(root, shell, 'session', 'list', '--archived', '--json');
+  assert.equal(archived.code, 0, archived.stderr);
+  assert.deepEqual(JSON.parse(archived.stdout).processes, []);
+  for (const args of [
+    ['launch', 'forbidden-worker', '--harness', 'codex'],
+    ['stop', 'worker'],
+    ['resume', 'worker', '--relaunch'],
+    ['archive', 'worker'],
+    ['prune', '--older-than', '1d'],
+  ]) {
+    const refused = await clandWithEnv(root, shell, 'session', ...args);
+    assert.equal(refused.code, 1, refused.stdout);
+    assert.ok(refused.stderr.includes(`forbidden: session.${args[0]} (Implementer may not use session.${args[0]})`), refused.stderr);
+  }
+  assert.equal(fakes.codex!.spawns.length, 1, 'only the human launch reached the adapter');
+  const reads = (await audits(root)).filter(a => a.session === 'impl' && a.tool === 'session.list');
+  assert.ok(reads.length > 0);
+  assert.ok(reads.every(a => a.role === 'implementer' && a.sessionId === 'sess-impl' && a.client === 'cli' && a.outcome === 'ok'));
+});
 
 test('permission rows preserve typed refusals, notices and audit provenance through the dispatcher', async (t) => {
   const { root, ui, dispatcher } = await setup(t);
@@ -476,7 +509,7 @@ test('roles.toml is the table: an edited permission list is in force on the next
   // the human gives the Reviewer the human's ear and closing, and takes `who` away
   const file = join(root, '.cland', 'roles.toml');
   const text = await readFile(file, 'utf8');
-  const reviewerList = 'tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]';
+  const reviewerList = 'tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]';
   assert.ok(text.includes(reviewerList));
   const edited = text.replace(reviewerList, 'tools = ["send:agents", "send:human", "task.comment:verdict", "task.close", "history", "status"]');
   const beforeLoad = loaded.length;
@@ -485,6 +518,9 @@ test('roles.toml is the table: an edited permission list is in force on the next
   await check(root, ui, rev, { tool: 'send', args: { text: 'hello human' } });
   await check(root, ui, rev, { tool: 'task.close', args: { id: 'T-1' } });
   await check(root, ui, rev, { tool: 'who', forbidden: 'who', reason: /Reviewer may not use who/ });
+  const list = await clandWithEnv(root, { CLAND_SESSION_NAME: 'rev', CLAND_SESSION_ID: 'sess-rev' }, 'session', 'list');
+  assert.equal(list.code, 1, list.stdout);
+  assert.match(list.stderr, /forbidden: session\.list \(Reviewer may not use session\.list\)/);
   const denied = await s.call<ToolResult>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
   assert.deepEqual([denied.ok, denied.code, denied.permission], [false, 'forbidden', 'subscribe']);
   await notice(ui, 'rev [Reviewer] tried event.subscribe: forbidden (Reviewer may not use subscribe)');

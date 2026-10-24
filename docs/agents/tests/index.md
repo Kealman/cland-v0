@@ -26,6 +26,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/item-summary.test.ts`](../../../hub/test/item-summary.test.ts) | [Notes](hub-test-item-summary.test.ts.md) |
 | [`hub/test/opencode-adapter.test.ts`](../../../hub/test/opencode-adapter.test.ts) | [Notes](hub-test-opencode-adapter.test.ts.md) |
 | [`hub/test/opencode-native.test.ts`](../../../hub/test/opencode-native.test.ts) | [Notes](hub-test-opencode-native.test.ts.md) |
+| [`hub/test/permissions.test.ts`](../../../hub/test/permissions.test.ts) | [Notes](hub-test-permissions.test.ts.md) |
 | [`hub/test/project-probes.test.ts`](../../../hub/test/project-probes.test.ts) | [Notes](hub-test-project-probes.test.ts.md) |
 | [`hub/test/session-archive.test.ts`](../../../hub/test/session-archive.test.ts) | [Notes](hub-test-session-archive.test.ts.md) |
 | [`hub/test/spoke-artifact-budget.test.ts`](../../../hub/test/spoke-artifact-budget.test.ts) | [Notes](hub-test-spoke-artifact-budget.test.ts.md) |
