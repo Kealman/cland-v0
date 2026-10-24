@@ -3,7 +3,7 @@ id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-929
 branch: t/T-542-a-merge-that-adds-a-package-leaves-the
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-24T08:16:20.609Z
+updated: 2026-10-24T08:28:09.229Z
 ---
 
 ## Summary
@@ -26,12 +26,15 @@ T-427 merged at 21:28Z (bd2fdba4). It switched the typecheck script to `typescri
 - [x] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
   - done: impl-542 · 2026-10-24T07:57:07.047Z
   - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
+  - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final · 2026-10-24T08:27:34.999Z · commit 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
 - [x] C2. A host typecheck that fails with MODULE_NOT_FOUND for a dependency named in the lockfile reports "dependencies out of date: run npm install", not just exit 1.
   - done: impl-542 · 2026-10-24T07:32:19.602Z
   - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
+  - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final · 2026-10-24T08:27:34.999Z · commit 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
 - [x] C3. `task claim` leaves a new task worktree resolving the root's dependencies (playwright-core included), or links them, and the report names a stale worktree install (test).
   - done: impl-542 · 2026-10-24T07:38:30.667Z
   - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
+  - verified: rev-32 [reviewer] · run rev-20261024-542-merge-final · 2026-10-24T08:27:34.999Z · commit 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
 
 ## Comments
 
@@ -277,3 +280,40 @@ A-10494 preserves local macOS merged precommit tree excerpts/exits: merge-batche
 Reviewer read source, Git object metadata, topic authorization and artifacts; no tests, edits, merge, browser, install or delegation. Both axes completed personally.
 Standards:0 findings. Spec:0 findings.
 Durable audit A-10503: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10503-t-542-authorized-merge-delta-at-9c368b0a.md
+
+### impl-542 · 2026-10-24T08:27:14.447Z
+
+Merged head 9c368b0a has green mode-free run 5c646f62/A-10528: 2847/2847 tests, Linux x64 droplet c-8 lon1, T1 + all fallback T2 (hub/Neovim) + Web; matching host T0 receipt reused; budgets/lint report-only, T3/T4 outside task run. Droplet lifetime 571s, cost $0.0397. Fresh fetched-dev conflict check at fd959ce7 succeeded (merge-tree f87638ea); task head unchanged and worktree clean. Awaiting Reviewer final evidence verdict; Coordinator lands, Implementer does not merge.
+
+### rev-32 · 2026-10-24T08:27:34.999Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261024-542-merge-final
+commit: 9c368b0a932ceb9b386a385e597a2eba29b4d1c0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-542 merged-head final evidence review — clear
+Exact unchanged head 9c368b0a932ceb9b386a385e597a2eba29b4d1c0; tree414134c9b166d4e9140808f36b38b2a2dfcda56d. Source/delta audit A-10503 remains applicable. Fresh configured mode-free run5c646f62-60b6-461a-9482-e917e855e165, original logA-10528, overall exit0.
+
+## Standards
+No findings. All T1, fallback all T2 across hub/Neovim and Web complete successfully on Linuxx64 6.8.0-142-generic c-8lon1 dropletcland-v0-00931dcb, Nodev24.21.0/Neovimv0.12.5, workers2(Web4).
+Independent structured-log count:2847 ordinary test passes/418 file passes; 110 additional scope=load-gate test finishes (40 top-level repetitions across8identities,70 nested finishes) and40 passing load files. All outcomes pass; nofail/cancel/skip/todo. Executor base test counts794+1428+346+279=2847; printed file-plan aggregates792/1723/223 are separate.
+Every new top-level T-542 identity has an explicit5/5 load receipt. Repaired merge-batches39/39, plan-gate9/9, planned-stage16/16, epic-close15/15 and docs2/2 pass. The stable/dev/task movement merge cases survive the resolution; no assertion relaxation.
+
+## Spec
+C1 verified: package-lock/package/workspace manifest cases require root npm install while retaining shared tree; README negative control, recovered landing comments/results, queue metadata and CLI rendering all pass, with source enqueuer notice integration carried from A-10503. merge-recovery17/17 and merge-queue13/13.
+C2 verified: suite-queue-policy6/6 includes locked ESM yaml and absolute CJS typescript7 missing-module hints, unknown-package/type-error negative controls and no machine creation.
+C3 verified: task-worktrees19/19 includes actual scratch playwright-core resolution through root link, preserved stale own install/link, matching hidden metadata with missing/older actual manifests, and valid optional omissions for both install kinds.
+Verify C1–C3 at this exact merged head. M1–M5 remain resolved; no new findings. qaPolicy none/after-stage.
+
+T0/check stdout is retained in A-10528; remote typecheck reused host gate3506381c23815f8e8398744f851d7995e4a3c36c, not repeated on droplet. This task receipt covers T0–T2/Web, not T3/T4/full suite. Generic lint/duration/ratchet diagnostics remain report-only:133findings/60files,1missing baseline and incomplete base timings. Existing shell/items/connection/item-summary budget warnings remain; actualWeb shard128.26s exceeds40sreport budget. Projected150.266s at2workers is separate from observed Web4worker runtime.
+Command durations51/304/132s; shard wall46.93/300.30/128.26s; droplet lifetime571s/cost$0.0397. Prior failedA-10405/A-10437 and green42916599/A-10485 remain historical, not relabelled or substituted.
+Reviewer read original logs/source/Git metadata only; no tests, edits, merge, install, browser or delegation.
+Standards:0findings. Spec:0findings; allC1–C3verified.
+Durable audit A-10532: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10532-t-542-merged-head-final-evidence-at-9c368b0a.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

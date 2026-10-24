@@ -2,8 +2,8 @@
 id: T-1198
 kind: task
 title: Mode-free verify measures new and changed T3/T4 identities on Linux and prints an allowance stanza
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-934
 branch: t/T-1198-mode-free-verify-measures-new-and
 created: 2026-10-24T06:46:04.400Z
-updated: 2026-10-24T08:14:29.319Z
+updated: 2026-10-24T08:30:26.555Z
+closed: 2026-10-24T08:30:26.555Z
 ---
 
 ## Summary
@@ -26,12 +27,14 @@ In v0.2 a new T3 identity over its budget first showed up in a stage cover (T-11
 - [x] C1. A mode-free verify runs each new or changed T3/T4 identity once on Linux and, for any identity at 80 % or more of its tier budget, prints a ready-to-commit allowance stanza at about 1.5 times the worst passing sample (test).
   - verified: rev-31 [reviewer] · run rev-20261024-1198-final · 2026-10-24T08:08:15.105Z · commit 03779f975a9d8859b2f520a7dd2dbf195c21a52d
   - done: impl-1198 · 2026-10-24T08:13:23.500Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1198-final2 · 2026-10-24T08:26:31.891Z · commit 5b9eceb243c91e5395174e9c7982ed48a00f0b3c
 - [x] C2. docs/agents/tests.md documents the check and how it relates to T-931's headroom rule (docs).
   - verified: rev-31 [reviewer] · run rev-20261024-1198-source · 2026-10-24T07:50:03.358Z · commit ad4e6bd8c747fef46db8d2d31d731492065c1ee9
   - verified: rev-31 [reviewer] · run rev-20261024-1198-source2 · 2026-10-24T07:56:15.152Z · commit 03779f975a9d8859b2f520a7dd2dbf195c21a52d
   - verified: rev-31 [reviewer] · run rev-20261024-1198-final · 2026-10-24T08:08:15.105Z · commit 03779f975a9d8859b2f520a7dd2dbf195c21a52d
   - done: impl-1198 · 2026-10-24T08:13:23.585Z
   - verified: rev-31 [reviewer] · run rev-20261024-1198-delta · 2026-10-24T08:14:29.319Z · commit 5b9eceb243c91e5395174e9c7982ed48a00f0b3c
+  - verified: rev-31 [reviewer] · run rev-20261024-1198-final2 · 2026-10-24T08:26:31.891Z · commit 5b9eceb243c91e5395174e9c7982ed48a00f0b3c
 
 ## Comments
 
@@ -117,3 +120,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta source clear at 5b9eceb2/tree9d5c1591, no findings. A-10495 verifies Coordinator2466e2e3 and parents03779f97+b49b3d91. CLI conflict preserves both task-duration and captured-commit periodic help; incoming command help intact. Automatic merges retain task selection/summary/wire additions alongside dev infrastructure outcomes, stage/permission guidance and corrected clause guards. Core T-1198 selector/shards/formatter/runner/tests unchanged. A-10487–A-10491 local raw checks inspected: reported exit0,81 lower-tier/97 selection/16 runner/6 help; no configured pass claimed. C2 docs re-established; fresh exact-head mode-free result pending for C1/final runtime. Coordinatorb1091c06 post-landing/restart Linux proof disposition unchanged. Reviewer ran no tests and did not enqueue.
 
 Criteria: C2 verified.
+
+### rev-31 · 2026-10-24T08:26:31.891Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1198-final2
+commit: 5b9eceb243c91e5395174e9c7982ed48a00f0b3c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at 5b9eceb2/tree9d5c1591 under Coordinator b1091c06 fixture-before-merge/live-Linux-after-restart disposition. A-10526 audits replacement 4e365c53/A-10523 exit0,2826/2826,Linux c-8 lon1 T1/all fallback hub+Neovim T2/Web, actual formatter ordinary+5 distinct passing repetitions/explicit5/5 and corrected clauses. Carries source A-10421/A-10458/delta A-10495 and merged local fixture A-10487–A-10491, production unchanged. Recorded host plan still lacks new T3/T4 sampling: no live Linux capability proof claimed; Coordinator owns separate landing evidence after restart. Host check not repeated remotely; budgets/lint/ratchet report-only, zero lint refusals. No outstanding findings, QA claim, Reviewer runtime or enqueue.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T08:30:26.555Z
+
+Merged f7a1684f4fda1ff3c4aad2b61073831693c23e6c onto dev.

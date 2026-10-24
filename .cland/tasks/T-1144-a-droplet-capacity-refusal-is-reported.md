@@ -3,7 +3,7 @@ id: T-1144
 kind: task
 title: A droplet capacity refusal is reported as a red periodic dev T3 run, and no executor fallback applies
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-940
 branch: t/T-1144-a-droplet-capacity-refusal-is-reported
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-24T08:21:56.146Z
+updated: 2026-10-24T08:25:16.311Z
 ---
 
 ## Summary
@@ -28,10 +28,10 @@ A run refused by the provider before any test executes reads as unavailable, not
 
 ## Acceptance criteria
 
-- [ ] C1. A periodic dev T3 run whose droplet acquisition is refused for capacity posts a "not run" notice naming the refusal, with no "red" wording and no culprit search (test).
-  - failed: rev-26 [reviewer] · 2026-10-24T08:21:56.146Z · note Configured size unavailable/absent can be rejected by checkSpend before a durable periodic not-run result exists.
-- [ ] C2. A task verify refused for capacity before any test reports a distinct unavailable outcome in its result and its suite result line (test).
-  - failed: rev-26 [reviewer] · 2026-10-24T08:21:56.146Z · note Task explicit-droplet/size admission can throw a generic capacity error before durable unavailable result/status/suite publication.
+- [x] C1. A periodic dev T3 run whose droplet acquisition is refused for capacity posts a "not run" notice naming the refusal, with no "red" wording and no culprit search (test).
+  - done: impl-1144 · 2026-10-24T08:24:01.065Z
+- [x] C2. A task verify refused for capacity before any test reports a distinct unavailable outcome in its result and its suite result line (test).
+  - done: impl-1144 · 2026-10-24T08:24:01.253Z
 
 ## Comments
 
@@ -57,3 +57,16 @@ finding_counts: {"high":0,"medium":1,"low":1}
 Completefullsourceaudit484a0d11/treeb46e2a07 baseaafdc9a4. Blocking M1medium preadmissioncapacitygap, accepted bylead; L1low shardedparentaside separatelyreportedforfiling. NootherblockingStandards/Specfindings. Region-refusal acquiredpath/T1015durability/baselines/retry/nocover/search, taskunavailableprojection, journal/WebCLI/Nvim consumer migration anddocs/help/skillprovenance otherwisealign. AddedNvimrecordingsretained23adds/0deletes, noexistingassertionrelaxation. A-10506 narrativeworking-tree9T1/15T2/15record-replay/check0 is targetedsupport, notrawconfigured/Linux/T3proof; preserveoriginalstdout/exits/native timings/sourceattributionwithouttranscriptionreruns. A-10515: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10515-t-1144-source-review-at-484a0d11.md. C1/C2failedM1; fix,remarkdone, freshsource beforemode-freeverify. NoReviewer runtime/edits.
 
 Criteria: C1 failed (Configured size unavailable/absent can be rejected by checkSpend before a durable periodic not-run result exists.), C2 failed (Task explicit-droplet/size admission can throw a generic capacity error before durable unavailable result/status/suite publication.).
+
+### rev-26 · 2026-10-24T08:25:16.311Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1144-source-2
+commit: 76cbf0d24da306d48cdb2b04841d017820cb5688
+scope: delta
+findings: [{"severity":"low","text":"L1 retained aside Bugs/S: all-unexecuted capacity-refused sharded stage/close groups lose child notRun at parent aggregation. Outside requested unsharded periodic/task C1/C2; separately reported to lead/Coordinator for follow-up, preserving mixed execution distinctions.","file":"hub/src/hub/suites.ts","line":844}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Corrected source clear76cbf0d2/tree60fafa8d; M1resolved. validateSize/checkSpend typerealcapacity, Suites retains typedrefusal/cause through durableadmission; negativeprice/auth/spend/inputerrorsstayrefusals. Public15capacitycontrols(3states×periodic/4taskflagcombinations) plus8negativeadmissioncontrols retainfinalresult/status/verify/headline/no-search/no-fallback/no-provider-mutationassertions. Noadditionalblockingfindings; L1lowasidecarried. Eight-filecorrectionwithmatchingdocs/skillCHANGES, no devmerge; Nvimsource/fixturesunchanged. A-10517rootcheck0 real23.06s/lint133/60report0refusals; A-10518T2 35/35 native4874.351417ms real4.90s; A-10519T1 9/9 native784.010917ms real0.81s, exact-headlocalmacOSrawoutputs. OriginalNvimreceiptsremainnarrativeA-10506; currentconfiguredreplaypending. C1/C2runtimeawaitexact-headmode-freeconfiguredreceipt, noconfiguredgreen/LinuxT3T4/QAclaim. A-10521: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10521-t-1144-corrected-source-at-76cbf0d2.md. Proceedverifyunchangedhead.

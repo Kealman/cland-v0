@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-928
 branch: t/T-1018-merge-batches-skip-the-typecheck-on-the
 created: 2026-10-20T17:30:31.804Z
-updated: 2026-10-24T08:14:55.409Z
+updated: 2026-10-24T08:34:14.504Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Every merge batch runs the T0 checks (at least `npm run typecheck` and the stati
 
 - [x] C1. A batch whose candidate tree fails `npm run typecheck` is red and its members are bisected, even when its T1 tests pass (test with two members that typecheck alone but not together).
   - done: impl-1018 · 2026-10-24T07:53:19.069Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1018-final · 2026-10-24T08:27:06.399Z · commit c28fc37e222fabbcd8a0a815a569074610ed57e6
 - [x] C2. The batch result names the T0 step with its duration, and `docs/agents/tests.md` documents it.
   - done: impl-1018 · 2026-10-24T07:44:22.354Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1018-final · 2026-10-24T08:27:06.399Z · commit c28fc37e222fabbcd8a0a815a569074610ed57e6
 
 ## Comments
 
@@ -184,3 +186,39 @@ Parent A-10476 / 4945e202 remains green at 0e732613 only: 2794 ordinary tests pl
 
 Reviewer performed static source/Git/artifact inspection only; no tests/probes, GUI, edits, merge or delegation. Standards zero findings; Spec zero findings. Findings [].
 Durable review A-10498.
+
+### impl-1018 · 2026-10-24T08:26:50.173Z
+
+Fresh mode-free run286a8a19 at exact reviewed c28fc37e222fabbcd8a0a815a569074610ed57e6 passed T0–T2+Web on Linux c-8 lon1: 2833ordinary passes plus40actual load repetitions (8×5) separately counted; T3/T4 outside coverage, lint/duration budgets report-only. Lifetime573s, cost$0.0398. Native A-10522 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10522-suite-286a8a19-4b81-4c45-84ea-89f6c6a0cbce-auto-at-c28fc37.log. Final fetch origin/devfd959ce7 and read-only merge-tree exit0/no conflicts; reviewed head/index/worktree unchanged. Reviewer final settlement pending; Coordinator enqueues, no self-merge.
+
+### rev-23 · 2026-10-24T08:27:06.399Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1018-final
+commit: c28fc37e222fabbcd8a0a815a569074610ed57e6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1018 final evidence review — clear
+
+Head c28fc37e222fabbcd8a0a815a569074610ed57e6; tree aa45a754db1a3a45d33c945dae88b065f10d03ad. Run rev-20261024-1018-final. Source4 A-10498, source3 A-10450 and accepted implementation review A-10418 carry forward. Original M1/M2 proof gaps and M3 stale no-Web expectation are resolved. Findings [].
+
+A-10522 / fresh configured mode-free run 286a8a19-4b81-4c45-84ea-89f6c6a0cbce is exit0 at this exact source-cleared merge head. Independently matched task.verify and current branch head. Parsed native finish events: 2,833 ordinary test passes / 418 file passes, plus 40 actual load-gate test/file passes (eight identities x five repetitions), zero failures/cancellations/skips. Ordinary and repetition counts remain separate.
+
+Actual completed phases: all T1, fallback all T2 across hub/Neovim, and complete Web (44 files, 223 top-level tests). Linux x64 6.8.0-142-generic droplet c-8 lon1 cland-v0-36d024cb; Node v24.21.0, Neovim v0.12.5; workers2/Web4; lifetime573s/cost$0.0398. Native suite durations50.64/294.60/127.98s, Web shard127.88s. Phase envelopes54/299/131s and projected wall are separate measures. Host npm run check stdout is retained; gate34624b8c032403ac622900e4640b963938cd3583 independently resolves to a tree object for the matching candidate and is reused, not rerun on Linux.
+
+C1 verified. The approved semantic MergeBatches/Suites seam observes two individually passing candidates with red combined T0, bisection and refusal after red repeat. This identity passes0.126668421s plus5/5 actual repetitions max0.175926177s. Four unique-omission/passing-repeat x later-tier green/red cases each pass with5/5, max0.295361639s; they enforce exact-candidate pinned full-plan confirmation before landing. Both recovered missing/conflicting T0-proof cases pass with5/5 each, max0.105757209s. This is controller/command-plan evidence, not a claim of running a real compiler on synthetic branches; A-10418 explicitly accepted that seam.
+
+C2 verified. Timed red batch-host-check receipt/no-droplet case passes0.027762462s plus5/5 max0.052932157s. Reviewed production reports retain named T0 code/duration, and docs/agents/tests.md plus matching README/skills explain its placement and diagnostic/confirmation behavior. Corrected no-Web expectation passes0.040626753s. No new T1 identity in this run reaches0.4s; prior observed max0.33862415s also remains below it, so no new allowance required. No affected-file tier mismatch found.
+
+Generic lint133 findings/60files, duration budgets, one missing baseline and incomplete-base ratchet remain report-only. Existing Web/scale and projected-wall warnings are retained; assertion-green is not enforced-budget compliance. T3/T4 were not selected; configured policy defers T3 to periodic/integrated occasions and excludes it from batch tiers. No Linux T3, full integration, actual production batch landing or QA claim.
+
+A-10492 preserves integration-head local110 targeted T1 passes/check0; A-10441 earlier M3 native receipts, A-10411 implementation correction provenance, and original failed A-10432 remain distinctly attributed. Parent A-10476 and auditA-10484 are green provenance for0e732613 only, not reused for this head; A-10522 is the fresh replacement-head receipt.
+
+At audit, branch remainsc28fc37e. The lead owns its required fresh origin/dev conflict check before enqueueing; if a new conflict requires another authorized integration, changed-head delta review/verification is mandatory. No new head mutation is requested by this verdict. Both C1/C2 verified at this exact head. QA policy none/after-stage. Reviewer performed static source/Git/artifact evidence inspection only, no tests/probes, edits, browser, merge or delegation. Standards zero findings; Spec zero findings.
+Durable final review A-10529.
+
+Criteria: C1 verified, C2 verified.

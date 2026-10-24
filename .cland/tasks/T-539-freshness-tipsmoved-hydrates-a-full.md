@@ -3,7 +3,7 @@ id: T-539
 kind: task
 title: "Freshness #tipsMoved hydrates a full Tracker.list to find freshness-dependent items"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - hub
@@ -13,9 +13,9 @@ assignee: null
 parent: E-1197
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-539-freshness-tipsmoved-hydrates-a-full
 created: 2026-10-15T21:17:45.123Z
-updated: 2026-10-24T06:46:56.095Z
+updated: 2026-10-24T08:34:29.238Z
 ---
 
 ## Summary

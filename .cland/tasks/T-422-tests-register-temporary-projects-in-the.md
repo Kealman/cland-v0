@@ -3,7 +3,7 @@ id: T-422
 kind: task
 title: Tests register temporary projects in the real host executor ledger
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-936
 branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T08:00:19.343Z
+updated: 2026-10-24T08:26:03.845Z
 ---
 
 ## Summary
@@ -29,8 +29,8 @@ The host-wide executor ledger `~/.cland/executor/spend.json` lists 24 projects. 
 
 ## Acceptance criteria
 
-- [x] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
-  - done: impl-422 · 2026-10-24T07:59:41.843Z
+- [ ] C1. A full suite run leaves `~/.cland/executor/spend.json` `projects` unchanged.
+  - failed: rev-32 [reviewer] · 2026-10-24T08:26:03.845Z · note Required configured mode-free run f947dbf4 exits124 after two T2 failures and a timed-out/hung shared-cap case; later phases unrun.
 - [x] C2. `rememberProject('/')` is refused, and the ledger never lists `/`.
   - done: impl-422 · 2026-10-24T07:53:42.861Z
 - [x] C3. A registered project whose directory is gone is pruned from `projects` by the sweep, with an event naming it.
@@ -101,3 +101,39 @@ Supplemental request evidence: local macOS arm64 affected suite-accounting + exe
 Reviewer performed source/Git/docs reads only; no tests, probes, installs, browser, edits, live ledger changes or delegation.
 Standards: 0 outstanding findings. Spec: 0 outstanding findings.
 Durable audit A-10466: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10466-t-422-corrected-source-review-at-9a10dabe.md
+
+### rev-32 · 2026-10-24T08:26:03.845Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261024-422-evidence-1
+commit: 9a10dabe40bf6b4d9179d97ed09d8b8be9b936a0
+scope: evidence
+findings: [{"severity":"medium","text":"M2: configured executor integration coverage fails/stalls: admission cleanup and held-provider cancellation fail; shared-cap test times out and worker cleanup hangs. Diagnose narrow sealed cases and retain safety/cancellation/zero-reservation assertions and bounds; root cause not established by partial log.","file":"hub/test/executor-admission-lock.test.ts","line":81}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-422 configured evidence review — not clear
+Source-reviewed head 9a10dabe40bf6b4d9179d97ed09d8b8be9b936a0; tree 2af3f1b903abfebf383d5b8d6a4327531cccabd9. Configured mode-free run f947dbf4-5163-4409-873e-b593b8811365, raw log A-10520. Overall exit124: “stalled: no output for 10 min”.
+
+Actual failure receipts before classification:
+- A-10520:6679–6681: assertion failures drain acquisitions asleep on either admission lock — outcome fail, 0.1374851s, followed by “✖ assertion failures drain acquisitions asleep on either admission lock”.
+- A-10520:9862–9864: two protocol projects reserve against one cap and confirmed release replaces the reservation — timedOut:true, outcome cancelled, 240.001207343s.
+- A-10520:9865: cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend — outcome fail, 120.200249365s.
+Final watchdog says the safety test/file remains stuck and the suite-close file remains in flight. Worker end-of-file assertion stacks are absent from this interrupted log; no specific assertion value or root cause is fabricated.
+
+## Standards
+M2 (medium), hub/test/executor-admission-lock.test.ts:81 (also executor-safety-component.test.ts:356 and suite-close-component.test.ts:235): configured executor regression coverage fails/stalls, so the new sweep/isolation behavior is not yet integration-safe. Reproduce these narrow cases at sealed scratch/injected seams, identify the actual failure and restore their existing safety/cancellation/zero-reservation receipts and cleanup. Source inspection identifies new sweep/ledger-lock work as an audit target, not an established diagnosis. No evidence warrants an unchanged-head flaky retry, relaxed bounds or assertions, native provider calls or a shared-infrastructure classification.
+M1 remains source-resolved at9a10dabe. The new targeted isolation and registry cases pass in the observed phases; their success does not clear the unrelated integration failures.
+
+## Spec
+C1 fails the pre-merge requirement for a green configured mode-free task receipt under Coordinator f248e85e. Earlier approved scratch-ledger proofs remain valid but cannot replace the failed receipt. C2/C3 receive no final verification marks from this failed partial pass. The literal real-ledger/full local macOS stage comparison remains Coordinator-owned landing evidence, with no real-HOME mutation by Reviewer.
+Fix requires fresh source review before another run if head changes.
+
+Observed scope: Linux x64 6.8.0-142-generic c-8 lon1 cland-v0-5a48355b, Nodev24.21.0/Neovimv0.12.5, workers2. T1 exit0, command62s/shard57.42s, executor794pass. Hub T2 partial, Neovim/Web unrun; T3/T4 unrun/deferred. Independently parsed test finishes:1842 ordinary passes,2 ordinary failures,1 timed-out cancellation,40 passing load-gate finishes. Hub completed-before-interruption aggregate1884 =1842pass+40loadpass+2fail, excluding that cancelled/in-flight test. The headline794passes only covers completed T1, not the interrupted overall run. Later projected times are not runtime.
+Hostcheck gate39c54baccc526579a7600d7909fdba1b33faa99b reused/not repeated remotely. Generic lint/timing/ratchet diagnostics report-only,132findings/59files,1missingbaseline; no overall pass, duration or coverage claim. Droplet lifetime1174s/cost$0.0815; CPU iowait/steal unavailable, not zero.
+Reviewer read source/logs/Git only, with no tests, edits, installs, browser, live-ledger changes or delegation. qaPolicy none/after-stage.
+Standards:one medium evidence blocker. Spec:C1 failed; no final criterion verified.
+Durable audit A-10524: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10524-t-422-failed-and-stalled-configured-evidence-at-9a10dabe.md
+
+Criteria: C1 failed (Required configured mode-free run f947dbf4 exits124 after two T2 failures and a timed-out/hung shared-cap case; later phases unrun.).

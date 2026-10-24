@@ -3,17 +3,17 @@ id: T-1203
 kind: task
 title: tiers.json maps shared read paths to the T4 load files that guard them, and verify selection adds them
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1195
 blocked_by: []
-topic: null
-branch: null
+topic: topic-944
+branch: t/T-1203-tiers-json-maps-shared-read-paths-to-the
 created: 2026-10-24T06:46:05.046Z
-updated: 2026-10-24T06:46:52.645Z
+updated: 2026-10-24T08:31:28.120Z
 ---
 
 ## Summary
