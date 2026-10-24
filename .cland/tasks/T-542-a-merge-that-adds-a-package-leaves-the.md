@@ -3,7 +3,7 @@ id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -16,15 +16,15 @@ blocked_by: []
 topic: topic-929
 branch: t/T-542-a-merge-that-adds-a-package-leaves-the
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-24T07:56:12.752Z
+updated: 2026-10-24T08:11:09.547Z
 ---
 
 ## Summary
 T-427 merged at 21:28Z (bd2fdba4). It switched the typecheck script to `typescript7@npm:typescript@7.0.2`. `cland merge` doesn't install dependencies, so the root checkout's `node_modules` had no `typescript7`. The next root run, E-387's stage close 02c7cfc7 at 21:40Z, failed in 9 s with "host typecheck failed (exit 1); no droplet created", and a `MODULE_NOT_FOUND` showed in the log. Task worktrees resolve `node_modules` from the root, so every implementer's typecheck after rebasing on dev would fail the same way. The Coordinator recovered with `npm install` in the root, which left the lockfile unchanged.
 
 ## Acceptance criteria
-- [ ] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
-  - failed: rev-26 [reviewer] · 2026-10-24T07:56:12.752Z · note The M4 correction adds an indexed helper note that cannot satisfy the existing .test.ts heading guard, blocking configured verification.
+- [x] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
+  - done: impl-542 · 2026-10-24T07:57:07.047Z
 - [x] C2. A host typecheck that fails with MODULE_NOT_FOUND for a dependency named in the lockfile reports "dependencies out of date: run npm install", not just exit 1.
   - done: impl-542 · 2026-10-24T07:32:19.602Z
 - [x] C3. `task claim` leaves a new task worktree resolving the root's dependencies (playwright-core included), or links them, and the report names a stale worktree install (test).
@@ -217,3 +217,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Complete delta audit atdd8ddb16/tree6e986e69 from2b17007c: M4PlanGit/nativeGit injection resolved; --no-commit-id respects raw path format and older commit-prefix consumers remain. No existing assertion/timing/product changes, no devmerge. Carry accepted source A-10387/A-10396/A-10412; M1/M2/M3 remain resolved. Only new findingM5medium docs helper-index contract; C1failed,C2/C3runtimepending. A-10453 preserves failedLinuxA-10437 and separately summarizes precommitlocal9+12+15/check0, notraw/exact-headconfiguredproof. Preserve original stdout/exits/native timing/source limits without transcriptionreruns. A-10457: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10457-t-542-m4-correction-review-at-dd8ddb16.md. Correctdoc/index, re-markC1done, freshsource beforemode-freeverify; noprerun atthishead. Nootherdeltafindings.
 
 Criteria: C1 failed (The M4 correction adds an indexed helper note that cannot satisfy the existing .test.ts heading guard, blocking configured verification.).
+
+### rev-26 · 2026-10-24T07:57:42.315Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-542-source-5
+commit: 429165999efae93962d52d84a36ef3f92d837bff
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear at42916599/treed8c4d18f. M5resolved: helper guidance moved to planned-stage.test.ts consumer note/heading/index; docs guard unchanged. Documentation-only delta fromdd8ddb16, no devmerge. M4resolved source assessment A-10457 and accepted product/M3 reviews A-10387/A-10396/A-10412 carried; no findings. A-10461 original local macOS working-tree stdout/exits/native timings inspected:9plan-gate+12planned-stage+15epic-close, plus docs2/2 on later doccorrectiontree; not relabelled exactnewhead. Check excerpt explicitlypartialstdout/exit0/lintreport132/59/0refusals, not totalwallproof. HistoricalA-10437 remainsfailedpartial. A-10462: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10462-t-542-corrected-documentation-at-42916599.md. AllC1/C2/C3 remainpendingfreshsame-headconfiguredreceipt; proceedmode-freeverify. No currentconfiguredgreen/T3T4/Linux/QAclaim.

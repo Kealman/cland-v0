@@ -2,8 +2,8 @@
 id: T-1015
 kind: task
 title: Periodic dev T3 goes red when dev moves while it bundles the root
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-935
 branch: t/T-1015-periodic-dev-t3-goes-red-when-dev-moves
 created: 2026-10-20T17:26:44.017Z
-updated: 2026-10-24T07:54:22.690Z
+updated: 2026-10-24T08:10:20.864Z
+closed: 2026-10-24T08:10:20.864Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ The periodic dev T3 bundles the commit it was started for (from the object store
 
 - [x] C1. A periodic dev T3 started at commit X still bundles X when root dev moves during bundling (test).
   - done: impl-1015 · 2026-10-24T07:46:35.393Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1015-final-1 · 2026-10-24T08:06:43.873Z · commit 1456d31243043fcda66325840d706b1afc5de4cf
 - [x] C2. A bundling failure is reported as an infrastructure outcome, not red, starts no culprit search and is retried at the next eligible tip (test).
   - done: impl-1015 · 2026-10-24T07:53:09.858Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1015-final-1 · 2026-10-24T08:06:43.873Z · commit 1456d31243043fcda66325840d706b1afc5de4cf
 
 ## Comments
 
@@ -73,3 +76,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at1456d312/treebf5972bd, M1resolved; no findings. First terminal write retains saved infrastructure notRun/cause; restore protects that outcome and atomically heals old bare receipts. New T1 exact-checkpoint recovery retains final durable JSON/not-run/no-cover/no-search assertions; prior full-result recovery/retry tests retained. Three-file correction only, no devmerge; full A-10423 audit otherwise carried. A-10439 exact-head local T1/T2 native19/19 duration3532.829ms; A-10440 raw rootcheck0, actual lint133findings/60files/reportmode/0refusals. A-10428 prior-headstdout/A-10435 intermediate red-green source limits retained. A-10449 supersedes A-10444 lint-count typo: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10449-t-1015-corrected-source-verdict-at-1456d312.md. C1/C2 await actual same-head configured receipt, no current configuredgreen/LinuxT3T4/QAclaim. Proceed with mode-free verification at this unchanged head.
+
+### impl-1015 · 2026-10-24T08:06:25.433Z
+
+Configured mode-free verification 0996360e-9245-442c-b870-45184ff8b3ec completed exit 0 at exact source-clear head 1456d31243043fcda66325840d706b1afc5de4cf. Linux x64 droplet c-8 lon1, Node v24.21.0 / Neovim v0.12.5: 2798 tests, 2798 pass, 0 fail/cancel/skip/todo. T0, all T1, fallback all T2 in hub and Neovim, and Web completed; T3 deferred to periodic/integrated occasions (queue enabled; configured batches omit T3), not claimed as executed. Budgets and lint diagnostics report-only; result green despite reported duration warnings. Receipt A-10470 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10470-suite-0996360e-9245-442c-b870-45184ff8b3ec-auto-at-1456d31.log. Droplet lifetime 615 s, cost $0.0427. No source/head changes since clear review; final reviewer evidence settlement pending.
+
+### rev-26 · 2026-10-24T08:06:43.873Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1015-final-1
+commit: 1456d31243043fcda66325840d706b1afc5de4cf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at unchanged1456d312/treebf5972bd, carrying A-10423/A-10449 source. A-10470/0996360e exit0: independently parsed2798 ordinary/418file passes plus20actual load tests/20files pass, nofail/cancel/skip. C1 real sealed Git captured-X bundle/content case passes; C2 infrastructure/history/retry, public no-red/no-search and first-checkpoint healing cases pass; all4 identities5/5 load reps, noallowance trigger. T1/allfallbackT2hub+Neovim/actualWeb exit0 on Linux x64 c-8 lon1 cland-v0-44cdae89 Node24.21/Nvim0.12.5 workers2(Web4), lifetime615s/$0.0427. Rootcheck stdout retained/0refusals; remote reused hostgate6524f066 Git tree, not repeated. Lint133/60/duration/tier/ratchetreport-only, Web141.81s suite/141.70s shard>40s reportbudget and1missingbaseline retained. No configuredT3/T4 orrealprovider/periodicprocess/QAclaim; approved T1/T2 seams prove criteria. Local evidence source limits remain. A-10472: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10472-t-1015-final-evidence-at-1456d312.md. No findings.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T08:10:20.864Z
+
+Merged 1fd3495b0caf4d4d0b631611ac99be3645aeff10 onto dev.

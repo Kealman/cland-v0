@@ -2,8 +2,8 @@
 id: T-421
 kind: task
 title: A stage holding an evidence-only task stays open until the epic closes
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-933
 branch: t/T-421-a-stage-holding-an-evidence-only-task
 created: 2026-10-14T16:42:23.975Z
-updated: 2026-10-24T07:54:25.282Z
+updated: 2026-10-24T08:10:32.941Z
+closed: 2026-10-24T08:10:32.941Z
 ---
 
 ## Summary
@@ -30,9 +31,11 @@ Count a task closed `done` with no branch and no code as landed for stage closur
 - [x] C1. A stage whose tasks are all merged, apart from tasks closed `done` without a branch, reads `closed` in `task plan show`.
   - done: impl-421 · 2026-10-24T07:37:49.146Z
   - verified: rev-26 [reviewer] · run rev-20261024-421-final-1 · 2026-10-24T07:51:35.617Z · commit 76c1ba34efc3fc66cec30b9b8fbf94f41a4c45bf
+  - verified: rev-31 [reviewer] · run rev-20261024-421-final2 · 2026-10-24T08:06:57.397Z · commit 9de7ed364f4b60dc6452e91d68673649f8f7454c
 - [x] C2. A task with a branch and no landing commit still keeps its stage open.
   - done: impl-421 · 2026-10-24T07:32:20.457Z
   - verified: rev-26 [reviewer] · run rev-20261024-421-final-1 · 2026-10-24T07:51:35.617Z · commit 76c1ba34efc3fc66cec30b9b8fbf94f41a4c45bf
+  - verified: rev-31 [reviewer] · run rev-20261024-421-final2 · 2026-10-24T08:06:57.397Z · commit 9de7ed364f4b60dc6452e91d68673649f8f7454c
 
 ## Comments
 
@@ -107,3 +110,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta source clear at 9de7ed36/tree 2f2638c1, no findings. A-10451 carries rev-26 source A-10385/A-10399 and prior final A-10433 without relabelling old-head runtime. Verified Coordinator 25f3ec75 merge/review instruction and parents 76c1ba34+77a306bf. Sole index conflict retains ordered CLI/permissions/planned-stage/stage-qa entries; owned tracker and runtime tests/QA skill unchanged. Merged policy/docs preserve evidence-only eligibility and incoming session-list/CLI guidance. A-10442 retains new-head local check0/zero lint refusals and doc T1 2/2. C1/C2 require fresh configured mode-free exact-head settlement; Reviewer ran no tests and did not enqueue.
+
+### rev-31 · 2026-10-24T08:06:57.397Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-421-final2
+commit: 9de7ed364f4b60dc6452e91d68673649f8f7454c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at9de7ed36/tree2f2638c1. A-10473 audits replacement29e32ca4/A-10471 exit0/2813passing/no failure-cancel-skip at exact head, Linux c-8lon1 T1/all fallback hub+NeovimT2/Web complete. Four task-added cases independently have ordinary + five distinct passing load-gate identities and explicit5/5; max0.989543468s, no allowance needed. Stage QA/platform guard controls pass. Carries rev-26 source A-10385/A-10399 and authorized delta A-10451, no findings. HostT0 retained/not repeated remotely; budgets/testlint/tier/ratchet report-only with warnings visible. No configuredT3/T4 or stageQA claim; Reviewer ran no tests and did not enqueue.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-421 · 2026-10-24T08:07:32.534Z
+
+Ready at unchanged 9de7ed364f4b60dc6452e91d68673649f8f7454c: final review rev-20261024-421-final2 verifies C1/C2, hub status ready. Replacement 29e32ca4/A-10471 passes 2813/2813 on Linux droplet (all T1, fallback all T2 both packages, Web; report-only timing/lint gates; no configured T3/T4 claim). All four new stage cases pass 5/5 load reps. Fetched current origin/dev 4727549e and merge-tree conflict check exit0, worktree clean, head unchanged. Reported ready to Coordinator for enqueue; claim retained. Evidence-only derives from existing facts, no marker. Final evidence A-10473.
+
+### coord · 2026-10-24T08:10:32.941Z
+
+Merged b49b3d91fc22393924c0c50a7be885cfa7f08f03 onto dev.

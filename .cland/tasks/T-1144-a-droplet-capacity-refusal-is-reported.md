@@ -3,7 +3,7 @@ id: T-1144
 kind: task
 title: A droplet capacity refusal is reported as a red periodic dev T3 run, and no executor fallback applies
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - bug
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1194
 blocked_by: []
-topic: null
-branch: null
+topic: topic-940
+branch: t/T-1144-a-droplet-capacity-refusal-is-reported
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-24T06:46:50.403Z
+updated: 2026-10-24T08:10:53.692Z
 ---
 
 ## Summary

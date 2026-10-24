@@ -3,7 +3,7 @@ id: T-538
 kind: task
 title: Tracker index hydrate re-queries the row's own kind to canonicalize an id it already has
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - hub
@@ -13,9 +13,9 @@ assignee: null
 parent: E-1197
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-538-tracker-index-hydrate-re-queries-the-row
 created: 2026-10-15T21:15:50.790Z
-updated: 2026-10-24T06:46:56.006Z
+updated: 2026-10-24T08:11:05.984Z
 ---
 
 ## Summary

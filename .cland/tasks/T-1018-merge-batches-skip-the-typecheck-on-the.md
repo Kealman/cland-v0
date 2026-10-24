@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-928
 branch: t/T-1018-merge-batches-skip-the-typecheck-on-the
 created: 2026-10-20T17:30:31.804Z
-updated: 2026-10-24T07:54:15.372Z
+updated: 2026-10-24T08:10:16.703Z
 ---
 
 ## Summary
@@ -124,3 +124,33 @@ Old A-10432 / 653d0b93 at 322f3b6e remains failed T1 evidence: 782 ordinary pass
 
 QA policy none/after-stage, no per-item brief/criteria. Reviewer performed source/Git/artifact inspection only, no tests/probes, edits, browser, merge or delegation. Both axes completed in-session. Standards: zero findings. Spec: zero findings.
 Durable review A-10450.
+
+### rev-23 · 2026-10-24T08:10:16.703Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1018-evidence2
+commit: 0e732613c193605b8ff09c72c0956bdc5134c066
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1018 same-head evidence audit — clear, readiness held for authorized integration
+
+Head 0e732613c193605b8ff09c72c0956bdc5134c066; tree 4bbc42268b8ef2e30daab26b8443dfacef975b11. Run rev-20261024-1018-evidence2. Source3 A-10450 and accepted implementation review A-10418 carry forward; M1/M2 implementation and M3 compatibility correction are unchanged. Findings [].
+
+A-10476 / configured mode-free run 4945e202-85c4-419e-9f73-d9e18c069eca reports exit 0 at this exact head, independently matched to task.verify and current task branch. Parsed native finish events: 2,794 ordinary test passes / 418 file passes, plus 40 actual load-gate test passes / 40 file passes (eight new identities, five repetitions each), zero failures/cancellations/skips. The 2,794 count excludes repetitions.
+
+Actual completed phases: T1, fallback all T2 across hub/Neovim, and complete Web (44 files, 223 top-level tests). Linux x64 6.8.0-142-generic droplet c-8 lon1 cland-v0-e3ed54c0; Node v24.21.0, Neovim v0.12.5, workers 2 / Web runner 4. Droplet lifetime 737 s, cost $0.0512. Native suite durations 65.64 s / 376.41 s / 175.38 s; Web shard 175.23 s. Report phase envelopes (71/381/179 s) and projected walls are distinct. Host npm run check output is retained; f0bd4f03470ba4d155317aa44fba42d1b70a77d1 resolves to a tree object and is the matching candidate host-check gate, reused rather than rerun on Linux. T3/T4 were not executed; configured policy defers T3 to periodic/integrated occasions, absent batch tiers.
+
+The new combined-T0 bisection identity passed in 0.122713595 s, with 5/5 actual repetitions max 0.237227639 s. Four full-pinned-plan confirmation cases (unique omission/passing repeat x later-tier green/red) each passed with 5/5 actual repetitions, maximum 0.33862415 s. Both recovered missing/conflicting T0-proof cases passed with 5/5 each, maximum 0.140470303 s. Timed red host-check receipt/no-droplet case passed in 0.032971551 s, 5/5 maximum 0.080289851 s. Corrected no-Web batch case passed in 0.039373134 s; all eight web-phase cases passed. No new T1 identity reaches the 0.4 s allowance threshold in this run. No affected-file tier mismatch found.
+
+Generic duration/test-lint/ratchet diagnostics remain report-only: 132 findings in 59 files, one missing baseline, incomplete ratchet base, slow existing Web/scale identities and projected Web wall warnings. They are retained, not reclassified as enforced green budgets. Slow disk measurements (fsync 280.4 ms, SQLite 306.03 ms) are environmental observations, not evidence of an assertion failure or of a product performance guarantee. Old A-10432 / 653d0b93 remains failed historical T1 evidence.
+
+Standards evidence: ordinary and actual repetition events confirm the approved T1 seams; no Reviewer runtime execution or delegation. Spec evidence: combined candidate T0 failure/bisection, exact-candidate full-plan confirmation and timed T0 reporting are observed at the approved semantic seam; no real compiler process or actual production batch landing is claimed.
+
+Post-run lead reports three documentation conflicts with fetched origin/dev 4727549e, head/index/worktree unchanged. Coordinator decision 7f1a082b-6bdb-4f78-811e-071b84536b38 explicitly requests a single dev merge after the current batch lands, preserving T-1184 guidance, index entries and both README sections, followed by delta review and fresh mode-free verification. Therefore this receipt is accepted as green evidence for 0e732613 and retained as provenance; final C1/C2 criterion verification/readiness is intentionally left pending the replacement merge head. It must not be reused as exact-head evidence for that changed head.
+
+QA policy none/after-stage. No tests/probes, browser, edits, merge or delegation by Reviewer. Both axes completed in-session; zero findings.
+Durable audit A-10484.

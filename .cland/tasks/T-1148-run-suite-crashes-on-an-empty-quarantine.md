@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-937
 branch: t/T-1148-run-suite-crashes-on-an-empty-quarantine
 created: 2026-10-22T17:21:01.416Z
-updated: 2026-10-24T07:54:33.497Z
+updated: 2026-10-24T07:57:42.239Z
 ---
 
 ## Summary
@@ -88,3 +88,27 @@ Criteria: C1 failed (An indexed doc fails the source-heading guard; repetition r
 ### impl-1148 · 2026-10-24T07:54:08.172Z
 
 Corrected review M1–M3 at 970cb402aa954b18ba2986b26000ddd6c674c234. M1 heading assertion reproduced then docs guard passed. M2 faulted quarantined repetition reproduced `SyntaxError: Unexpected end of JSON input`; shared guarded reader now retains repetition native diagnostics without an excuse for missing/empty/truncated receipts. M3 split UTF-8 reproduced `held test ����`; streaming decoder now preserves `held test 🦊`. Local macOS at correction tree: 25/25 targeted T1/T3/docs tests passed, npm run check exit 0 (T0 lint report-only, 132 findings/0 refusals). Raw correction outputs A-10447/A-10448. Original d3ab834a check/19+45 raw receipts preserved from harness records in A-10438, not replaced by reruns. No full verification yet.
+
+### rev-23 · 2026-10-24T07:57:42.239Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1148-source2
+commit: 970cb402aa954b18ba2986b26000ddd6c674c234
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1148 corrected source review — clear
+
+Head 970cb402aa954b18ba2986b26000ddd6c674c234; tree 085e6db887ae68d1d5d3d545b65b346905d8432c. Delta from source-reviewed d3ab834a3d55ebb26770e93b796131ae4eaa7ae9: five files, 71 additions / 16 removals. Fixed original base remains 12817c759ab1aefad45add6cc26d26c5c862045e. Run rev-20261024-1148-source2. Both Standards and Spec reviewed in-session.
+
+Standards: clear. M1 is corrected by the exact indexed test-path heading. M3 uses StringDecoder('utf8') across stdout chunks while preserving raw passthrough. The deterministic process fixture splits the fox character's UTF-8 bytes across emitted chunks and asserts the exact retained in-flight name. Existing start/termination, ownership, outer bounds and cleanup assertions remain. No allowance, hang-guard, dependency or dev-merge change.
+
+Spec: clear. M2 is corrected through the shared readQuarantineReceipt helper, used by ordinary phase and repetition consumers. Missing files and malformed/empty JSON supply no quarantine authority; unrelated I/O failures remain visible. A failed repetition with an unusable receipt stays a failure, reports its exact file/name/repetition, native exit/signal and bounded stderr tail, and receives no excuse. The repetition drains stderr after owned-process cleanup and before reporting. Missing/empty/truncated repetition regressions assert native exit 1, stderr marker, incomplete identity, zero successful repetitions and no SyntaxError/false excuse. Ordinary incomplete/zero-exit handling and successful quarantine behavior are retained. M1–M3 from A-10424 are all addressed; no remaining findings.
+
+Evidence: A-10447 retains the correction's native targeted output, 25/25 tests with zero failures/cancellations/skips, duration 17,966.732542 ms. It covers quarantine, public runner faults, admission and indexed-doc guards. New repetition fault samples are approximately 1.74–1.92 s and split-Unicode sample approximately 0.782 s. A-10448 preserves the correction's full static-check output; implementer records native check exit 0 on local Darwin arm64 at this correction tree, with report-only test lint and zero refusals. These are local correction-tree receipts, not a configured/Linux suite. A-10438 preserves original tool command/output/exit records for the earlier 19 targeted and 45 lifecycle checks; earlier head attribution is retained rather than replaced by a transcription rerun. A-10417 supplies original source/platform/cleanup limitations.
+
+C1/C2 remain done but runtime verification pending the configured same-head result. Source clearance permits mode-free verification at exactly 970cb402; it is not final readiness. QA policy none/after-stage, no per-item QA brief. Reviewer performed static source/Git/artifact inspection only; no tests, probes, browser, edits, merge or delegation. Findings: [].
+Durable review A-10463.
