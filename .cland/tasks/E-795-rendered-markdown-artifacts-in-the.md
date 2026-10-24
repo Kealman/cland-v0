@@ -13,13 +13,17 @@ blocked_by: []
 topic: topic-782
 branch: null
 created: 2026-10-18T10:14:36.459Z
-updated: 2026-10-21T10:05:11.523Z
+updated: 2026-10-24T00:57:29.552Z
 closed: 2026-10-21T10:05:11.523Z
 ---
 
 ## Summary
 
 The human, 2026-10-18 10:14Z in General: an opened artifact shows raw Markdown and is hard to read, so artifacts should render properly in v0.2. Today `nvim/lua/cland/artifacts.lua` only sets `filetype = markdown`, so syntax colours apply but every `#`, `**`, backtick and bracket stays visible. Thread messages already render through `thread_md.lua` (T-133): concealed heading markers, code chips and bands, bullets as `•`, link styling and quotes. The web workbench (E-418, spec v0.2 §3) renders artifacts on its own.
+
+## Goal
+
+An opened Markdown artifact in the Neovim workbench reads rendered, as thread messages do, with its raw source one key away.
 
 ## Definition of done
 

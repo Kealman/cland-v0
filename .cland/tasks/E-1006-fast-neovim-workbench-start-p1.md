@@ -13,13 +13,17 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-21T23:01:40.033Z
+updated: 2026-10-24T00:57:30.245Z
 closed: 2026-10-21T23:01:40.033Z
 ---
 
 ## Summary
 
 P1 from the human, 2026-10-20 16:55Z: the Neovim workbench takes many minutes to start and slows the whole Mac while it loads. The explorer shows "loading the items…" for more than 5 minutes. The header says "no coordinator" and "sessions 0" while the hub is connected and holds the Coordinator and six sessions. The human: «запуск должен быть быстрым и если надо иметь ленивую подгрузку, но не так что десятками минут ждать», «весь мак жестко тормозит пока воркбенч грузится».
+
+## Goal
+
+The Neovim workbench starts fast: the explorer, the header's Coordinator and the session count appear within seconds on a large tracker, and loading never stalls the Mac.
 
 ## Notes
 

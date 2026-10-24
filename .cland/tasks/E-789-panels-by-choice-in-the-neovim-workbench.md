@@ -13,13 +13,17 @@ blocked_by: []
 topic: topic-774
 branch: null
 created: 2026-10-18T09:12:36.923Z
-updated: 2026-10-20T21:23:09.093Z
+updated: 2026-10-24T00:57:37.437Z
 closed: 2026-10-20T21:23:09.093Z
 ---
 
 ## Summary
 
 The human asked on 2026-10-18 (General, ask 03c2a877, answered 09:12Z) to let the human choose what each side panel of the Neovim workbench shows. Today the left panel is always Items and the right one switches among the other panels. Any panel should open on either side. Neovim only; the web keeps its own rail and split design.
+
+## Goal
+
+The human chooses what each side panel of the Neovim workbench shows: any panel opens on either side.
 
 ## What to build
 
