@@ -1,68 +1,88 @@
-# managed by cland 0.1.0 — cland update rewrites this file and keeps the values below; remove this line to take it over.
+# managed by cland 0.2.0 — cland update rewrites this file and keeps the values below; remove this line to take it over.
 # The project's cland settings (spec 4.9). Committed.
 
 [project]
 name = "v0"
 
-[merge]
-# D67/T-1018: task receipts cover T0–T2; batches run T0+T1 and periodic dev runs cover T3.
-queue = true
-# D64 (2026-10-19 15:20Z) held 4 per batch until the v0.1.4 release; back to 3 (the default) after it shipped (2026-10-20).
-batch = 3
-batch_tiers = ["T1"]
-# D69 (2026-10-19 19:48Z): T1-only batches take about 2 min, so the default 10 min wait for a full batch dominated landing; start after 2 min.
-batch_wait = "2m"
+[release.homebrew]
+# Optional existing GitHub tap; empty disables formula publication.
+tap = ""
+
+[publish]
+# Exact paths or directory/** prefixes eligible for out-of-release publication.
+allow_paths = ["site/**","docs/brand/**","README.md","LICENSE",".github/workflows/pages.yml"]
+
+[setup]
+# Missing harnesses declined in setup; --install <harness> runs their installer.
+declined_installs = []
+# Accounts declined in setup; add them to the machine-wide registry by hand to use them.
+declined_accounts = []
 
 [verification]
-# cland verify runs nothing until test is set; use cland config set verification.test '<command>'.
-# prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally.
+# cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'.
+# prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally.
+# Commands run under /bin/sh -c; prepare must be idempotent and write only ignored files.
 prepare = "node hub/bin/verify-prepare.ts"
 # check is the fast gate; runs first and on the host before a droplet is made.
 check = "npm run check"
 # test is the suite; its exit code decides the run.
 test = "npm test"
-# Unit rules per task, batch and occasion.
+# test_unit runs per task, in merge batches and at occasions (T1).
 test_unit = "node hub/test/run-suite.ts --tier T1"
-# Coverage-selected components per task, all at occasions.
+# test_component runs per task and at occasions (T2).
 test_component = "node hub/test/run-suite.ts --tier T2"
-# Process integration in periodic dev checks, T3-enabled batches and at occasions.
+# test_integration runs in T3-enabled batches, periodic dev checks and at occasions (T3).
 test_integration = "node hub/test/run-suite.ts --tier T3"
-# Long-running checks at occasions and nightly.
+# test_soak runs at occasions and in the nightly soak (T4).
 test_soak = "node hub/test/run-suite.ts --tier T4"
-# Admission budget; the legacy compatibility lease remains an additional limit.
+executor = "droplet"
+# Allow default droplet requests to use the local slot when remote is unavailable.
+local_fallback = false
+# Concurrent machine test files; the free shard always uses one worker.
+workers = 4
+# Extra load-gate lanes; repetitions of one new test stay sequential.
+load_gate_workers = 2
+# Local admission stays capped at one, behind the compatibility leases.
 budget = 1
-# D27 set 2 for the v0.1.2 build; the human raised it to 4 on 2026-10-15 (ask 35ca68c2), within the same $3 daily cap.
-# D58 (2026-10-18 09:33Z) raised it to 10 for that day only; restored to 6 (D42/D43) at 00Z 2026-10-19.
+# Parallel droplet runs beside the local slot.
 remote_budget = 6
+shards = 2
 lock_path = "/tmp/cland-suite.lock"
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = 1440
-# D27 build values (stand-in under D24, 2026-10-13): the hub enforces these for droplet runs.
-# The documented defaults are 110m, 75m and $5.
-# D28 (human, 2026-10-14): verification runs on droplets from the hub restart after T-347.
-# Task runs wait for a remote slot; reserve this Mac for the hub and sessions.
-# 2026-10-22: true from 15:45Z during the DO c-8 outage (ask a5cd288c); back to false at 16:53Z after green
-# droplet runs on blr1 (T-1110 68fb5b00) and sfo2 (T-1145 6ab00fe2, T-1130 batch 6c422a25).
-local_fallback = false
-executor = "droplet"
-# D53 (2026-10-16): droplet runs at 2 workers take 40–50 min of suite wall (T-686 run 16016692: 3025 s lifetime), so the bounds keep a margin.
+# Queue wait p90 target; informational, without changing admission.
+wait_p90_target = "20m"
+# Report function coverage older than this; mapped ancestor hunks still select.
+coverage_max_age = "172800s"
+# Newest coverage pointers to keep; artifact retention is independent.
+coverage_map_retention = 10
+# Named tests fail at this deadline; silent commands are stopped with their process tree.
+test_timeout = "120s"
+stall_timeout = "600s"
 lifetime = "90m"
+
 run_timeout = "75m"
-# D41 cap $14; D58 raised it to $30 for 2026-10-18 only, restored to 14 at 00Z 2026-10-19.
-# D68 (2026-10-19 17:23Z): $20 for 2026-10-19 only; restored to 14 at 00Z 2026-10-20.
 daily_spend_usd = 14
-# Nightly T1-T4 soak on one droplet (UTC).
+# Nightly UTC time (HH:MM); empty disables the droplet soak.
 soak = "03:00"
-# D67: hub-owned T3 on moved dev every two hours.
+# Periodic dev T3 interval; runs only when the verification candidate tree changed; empty disables it.
 dev_t3_every = "2h"
 
 [verification.droplet]
-# D53 (2026-10-16): 2 workers per c-8 (T-655: green at peak load 9; 4 workers peaked at 16 and went red).
 workers = 2
-# 2026-10-22 (stand-in under D24, ask d5820b85): DigitalOcean had no c-8 in lon1, nyc1 or sfo2 from 15:21Z,
-# so fra1 and ams3 join the snapshot regions; at 15:45Z DO listed c-8 only in blr1, which joins too (ask a5cd288c).
-# Droplets are chosen and reaped by the cland tags, never by region.
-regions = ["lon1", "fra1", "ams3", "nyc1", "sfo2", "blr1"]
+size = "c-8"
+prepare_size = "c-8"
+regions = ["lon1","fra1","ams3","nyc1","sfo2","blr1"]
+image = "ubuntu-24-04-x64"
+
+[merge]
+# Queue reviewed code heads for batch landing. Documentation and human overrides land immediately.
+queue = true
+# Maximum reviewed heads in one batch.
+batch = 3
+batch_tiers = ["T1"]
+# Start a partial batch after this wait from its oldest request.
+batch_wait = "120s"
 
 [sessions]
 # Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.
@@ -73,6 +93,9 @@ archive_after_stop = "86400s"
 # Other root kinds (category by default) have no version or rank. Leaves and map are outside the ladder.
 [tracker]
 levels = [["release","category"],"epic"]
+# Warn after 5 seconds; exit only if the same operation is still outstanding at this deadline.
+# Maximum: 2147483s (the platform timer limit).
+fatal_stall = "60s"
 
 [plan]
 approval = "none"
@@ -97,6 +120,17 @@ loop_breaker_window_minutes = 5
 loop_breaker_mute_minutes = 10
 # the largest message text, in bytes
 max_text_bytes = 8192
+
+# The browser listener defaults to loopback. Changes apply after a hub restart.
+[web]
+# Only the web edge uses this address; the spokes stay on loopback.
+bind = "127.0.0.1"
+# Optional HTTPS tunnel origin; forwarded headers are never trusted.
+origin = ""
+# 0 keeps the first free port in .cland/web-port; a taken port disables only this edge.
+port = 0
+# Empty serves the installed web/dist; a development bundle path is relative to the project root.
+dist = ""
 
 # Archived artifact files are removed after this many days; their index entries stay.
 [artifacts]

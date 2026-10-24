@@ -1,137 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook session-start # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook turn-start # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook turn-end # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook turn-end # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook permission # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook tool-done # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook notification # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Elicitation": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook elicitation # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook session-end # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook subagent-start # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook subagent-stop # managed by cland 0.1.0",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -143,6 +11,141 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook session-start # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook turn-start # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook turn-end # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook turn-end # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook permission # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook tool-done # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook notification # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Elicitation": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook elicitation # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook session-end # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook subagent-start # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook subagent-stop # managed by cland 0.2.0",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
     ]
+  },
+  "worktree": {
+    "bgIsolation": "none"
   }
 }
