@@ -14,8 +14,8 @@
 //       connects to the real hub) with only its configured environment beside PATH and HOME.
 //       Every further `thread/start` starts the servers again, as the real app-server does: a second spoke with the
 //       session's identity, while the first thread's turns keep calling their tools through the first.
-//       A turn answers each cland envelope it got (as input, tool output or steer) with a `send` through the spoke,
-//       "pong: <text>", into the message's topic. A message containing "needs approval" first sets the model's own
+//       A turn answers the last human or agent envelope in each input, tool output or steer, skipping hub events,
+//       with a `send` through the spoke, "pong: <text>", into that message's topic. A message containing "needs approval" first sets the model's own
 //       status line to "idle" through the spoke's `status` tool (the hub must not take it for the state), then asks
 //       for a command approval (`item/commandExecution/requestApproval` to the subscribers, status
 //       `active [waitingOnApproval]`) and waits for a client's answer, SIGUSR1, or the file `approve` in FAKE_CODEX_HOME.
@@ -347,7 +347,9 @@ async function appServer(args: string[]): Promise<number> {
         while (!existsSync(join(HOME, 'release-newer-turn'))) await sleep(5);
       }
       await sleep(TURN_MS);
-      const body = /<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(item.text)?.[1];
+      const delivery = [...item.text.matchAll(/<channel ([^>]*)>\n([\s\S]*?)\n<\/channel>/g)]
+        .findLast(match => /\bfrom_kind="(?:human|agent)"/.test(match[1]!));
+      const body = delivery?.[2];
       if (body?.includes('spawn legacy subagent')) {
         toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: { type: 'collabAgentToolCall', id: randomUUID(), tool: 'spawnAgent', status: 'completed', senderThreadId: t.id, receiverThreadIds: ['legacy-child'], model: 'gpt-legacy-1', prompt: null, reasoningEffort: null, agentsStates: {} } });
       }
@@ -394,15 +396,15 @@ async function appServer(args: string[]): Promise<number> {
         setStatus(t, { type: 'active', activeFlags: [] });
         await sleep(TURN_MS);
       }
-      const topic = /\btopic="([^"]+)"/.exec(item.text)?.[1];
-      const msgId = /\bmsg_id="([^"]+)"/.exec(item.text)?.[1];
+      const topic = /\btopic="([^"]+)"/.exec(delivery![1]!)?.[1];
+      const msgId = /\bmsg_id="([^"]+)"/.exec(delivery![1]!)?.[1];
       const where = { ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) };
       const request = /^(review|qa) request (T-\d+)\b/.exec(body);
       const script = request ? readJson<Partial<Record<VerdictKind, VerdictScript>>>(join(HOME, 'verdicts.json'))?.[request[1] as VerdictKind] : undefined;
       if (request && script) {
         const kind = request[1] as VerdictKind;
         const itemId = request[2] as string;
-        const from = /\bfrom="([^"]+)"/.exec(item.text)?.[1] ?? 'coordinator';
+        const from = /\bfrom="([^"]+)"/.exec(delivery![1]!)?.[1] ?? 'coordinator';
         const answer = await callTool('task.comment', { id: itemId, verdict: kind, ...(kind === 'review' ? { scope: 'full' } : {}), result: script.result, run: script.run, text: script.text });
         const parsed = parseJson<{ ok: boolean; error?: string }>(answer);
         const report = parsed?.ok ? `${kind} ${script.result} ${itemId} (run ${script.run})` : `${kind} refused ${itemId}: ${parsed?.error ?? answer ?? 'no answer'}`;

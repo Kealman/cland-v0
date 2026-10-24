@@ -14,6 +14,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/claude-code-accounts.test.ts`](../../../hub/test/claude-code-accounts.test.ts) | [Notes](hub-test-claude-code-accounts.test.ts.md) |
 | [`hub/test/claude-code-schedule.test.ts`](../../../hub/test/claude-code-schedule.test.ts) | [Notes](hub-test-claude-code-schedule.test.ts.md) |
 | [`hub/test/cli.test.ts`](../../../hub/test/cli.test.ts) | [Notes](hub-test-cli.test.ts.md) |
+| [`hub/test/codex-adapter.test.ts`](../../../hub/test/codex-adapter.test.ts) | [Notes](hub-test-codex-adapter.test.ts.md) |
 | [`hub/test/codex-native.test.ts`](../../../hub/test/codex-native.test.ts) | [Notes](hub-test-codex-native.test.ts.md) |
 | [`hub/test/computed-sessions.test.ts`](../../../hub/test/computed-sessions.test.ts) | [Notes](hub-test-computed-sessions.test.ts.md) |
 | [`hub/test/connection-resume.test.ts`](../../../hub/test/connection-resume.test.ts) | [Notes](hub-test-connection-resume.test.ts.md) |

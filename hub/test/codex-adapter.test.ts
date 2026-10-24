@@ -334,6 +334,39 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   });
 });
 
+test('the Codex fake answers the last delivery in a digest after a hub event', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  const client = await AppServerClient.connect(launched.harnessId!, { client: { name: 'digest-contract', version: '0' } });
+  t.after(() => client.close());
+  await client.request('thread/resume', { threadId: launched.harnessSessionId });
+  const completed: string[] = [];
+  client.on('notification', (method, params) => {
+    if (method === 'turn/completed') completed.push(params.turn.id);
+  });
+  const event = '<channel source="cland" from="hub" from_kind="hub" kind="event" to="coord" msg_id="event-first" topic="agents">\nevent · task · T-1 status changed\n</channel>';
+  const agent = '<channel source="cland" from="worker" from_kind="agent" to="coord" msg_id="agent-last" topic="general">\nAgent delivery\n</channel>';
+  const human = '<channel source="cland" from="human" from_kind="human" to="coord" msg_id="human-last" topic="general">\nReply in General\n</channel>';
+  const expected = [{ text: 'pong: Reply in General', topic: 'general', replyTo: 'human-last' }];
+  for (const [index, entries] of [[event, agent, human], [human, agent, event], [event]].entries()) {
+    if (index === 1) expected.push({ text: 'pong: Agent delivery', topic: 'general', replyTo: 'agent-last' });
+    const { turn } = await client.request<{ turn: { id: string } }>('turn/start', {
+      threadId: launched.harnessSessionId, toolOutput: { name: 'hub_event', output: entries.join('\nNext delivery:\n') },
+    });
+    await eventually('digest turn completed after its sends', () => completed.includes(turn.id) || undefined);
+    const replies = [];
+    for (const topic of ['agents', 'general']) {
+      const history = (await ui.request({ type: 'topic.history', topic })).value as { messages: Array<{ from: string; text: string; topic: string; replyTo?: string }> };
+      replies.push(...history.messages.filter(message => message.from === 'coord').map(({ text, topic, replyTo }) => ({ text, topic, replyTo })));
+    }
+    assert.deepEqual(replies, expected, `digest ${index}: select the last delivery and skip hub events`);
+  }
+});
+
 test('attach is `codex resume --remote` with no -c and no --profile, and the TUI joins the hub-owned thread', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
