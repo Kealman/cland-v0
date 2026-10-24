@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import type { EventsPage, Inbox } from '../../shared/wire/index.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { resizePage, webFixture, pageUntil } from './harness.ts';
 
 test('the phone frame replaces the rail without losing desktop state', async t => {
   const fixture = await webFixture(t);
@@ -63,11 +63,11 @@ test('the phone frame replaces the rail without losing desktop state', async t =
     await fixture.pageCase(t, async page => {
       let reloads = 0;
       page.on('framenavigated', frame => { if (frame === page.mainFrame()) reloads++; });
-      await page.setViewportSize({ width: 640, height: 844 });
+      await resizePage(page, { width: 640, height: 844 });
       await page.getByRole('navigation', { name: 'Areas', exact: true }).waitFor();
       assert.equal((await page.locator('aside').boundingBox())!.width, 60);
       assert.equal(await page.getByRole('navigation', { name: 'Phone areas', exact: true }).count(), 0);
-      await page.setViewportSize({ width: 639, height: 844 });
+      await resizePage(page, { width: 639, height: 844 });
       await page.getByRole('navigation', { name: 'Phone areas', exact: true }).waitFor();
       assert.equal(await page.getByRole('navigation', { name: 'Areas', exact: true }).count(), 0);
       assert.equal(reloads, 0);
@@ -84,7 +84,7 @@ test('the phone frame replaces the rail without losing desktop state', async t =
       await other.click();
       await page.getByRole('button', { name: 'Accounts', exact: true }).click();
       await other.getByRole('heading', { name: 'Accounts', exact: true }).waitFor();
-      await page.setViewportSize({ width: 390, height: 844 });
+      await resizePage(page, { width: 390, height: 844 });
       await other.waitFor({ state: 'detached' });
       assert.equal(await page.locator('main').getAttribute('aria-label'), 'Items');
       await page.locator('[data-tree-key=":unscheduled"]').click();
@@ -102,7 +102,7 @@ test('the phone frame replaces the rail without losing desktop state', async t =
       await page.reload();
       await page.getByRole('navigation', { name: 'Phone areas', exact: true }).waitFor();
       assert.equal(await other.count(), 0);
-      await page.setViewportSize({ width: 1440, height: 900 });
+      await resizePage(page, { width: 1440, height: 900 });
       await other.getByRole('heading', { name: 'Accounts', exact: true }).waitFor();
       assert.equal(await page.locator('[data-pane]').count(), 2);
       const primaryWidth = (await page.locator('[data-pane="primary"]').boundingBox())!.width;
@@ -177,7 +177,7 @@ test('phone badges share attention facts and count every event since the shared 
     await pageUntil(page, () => document.querySelector('[data-area="Inbox"] [data-count]')?.textContent === '1', 'phone attention receipt');
     assert.equal(await page.locator('[data-area="Topics"] [data-count]').textContent(), '0');
     assert.equal(await page.locator('[data-area="Sessions"] [data-count]').textContent(), '0');
-    await pageUntil(page, () => !document.querySelector('[data-inbox-events]')?.textContent?.includes('—'), 'complete Inbox event summary');
+    await pageUntil(page, () => /^△ \d+ new events · ⚠ 0$/.test(document.querySelector('[data-inbox-events]')?.textContent ?? ''), 'complete Inbox event summary');
     await page.locator('[data-area="Events"] [data-count]').filter({ hasText: String(events) }).waitFor();
     assert.equal(await page.locator('[data-area="Events"] [data-count]').textContent(), String(events));
     assert.equal(await page.locator('[data-inbox-events]').textContent(), `△ ${events} new events · ⚠ 0`);

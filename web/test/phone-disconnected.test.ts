@@ -5,7 +5,7 @@ import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import type { Inbox } from '../../shared/wire/index.ts';
 import { until } from '../../hub/test/until.ts';
-import { webFixture, pageUntil, reconnectUntilLive, pausePageClock } from './harness.ts';
+import { resizePage, webFixture, pageUntil, reconnectUntilLive, pausePageClock } from './harness.ts';
 
 test('phone disconnect shows a counting backoff and immediate Retry resets it without reloading', async t => {
   const fixture = await webFixture(t, { timezoneId: 'UTC' });
@@ -41,10 +41,10 @@ test('phone disconnect shows a counting backoff and immediate Retry resets it wi
     assert.match(await strip.innerText(), /retry in 1 s/);
     await page.clock.runFor(249);
     assert.equal(attempts.length, 6, 'Retry resets to 250 ms');
-    await page.setViewportSize({ width: 640, height: 844 });
+    await resizePage(page, { width: 640, height: 844 });
     await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'false', 'desktop width committed');
     assert.equal(await strip.count(), 0, 'desktop retains its dot');
-    await page.setViewportSize({ width: 390, height: 844 });
+    await resizePage(page, { width: 390, height: 844 });
     await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'true', 'phone width committed');
     assert.equal(await strip.count(), 1);
     await fixture.restartHub();

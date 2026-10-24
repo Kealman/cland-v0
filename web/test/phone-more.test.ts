@@ -5,7 +5,7 @@ import type { Page } from 'playwright-core';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Artifact } from '../../shared/wire/index.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { resizePage, webFixture, pageUntil } from './harness.ts';
 import { seedItem } from './items-fixture.ts';
 import { cland, connectUi } from '../../hub/test/harness.ts';
 import { until } from '../../hub/test/until.ts';
@@ -51,7 +51,7 @@ test('phone Items opens a reusable read-only full-screen card and returns by eit
     await page.goBack();
     await row.waitFor();
     assert.equal(await card.count(), 0);
-    await page.setViewportSize({ width: 640, height: 844 });
+    await resizePage(page, { width: 640, height: 844 });
     assert.equal(await page.getByRole('group', { name: 'Items view', exact: true }).getByRole('button', { name: 'Graph', exact: true }).getAttribute('aria-pressed'), 'true');
   }, async page => {
     await page.addInitScript(() => { if (!localStorage.getItem('cland.ui.items.v1')) localStorage.setItem('cland.ui.items.v1', JSON.stringify({ view: 'graph' })); });
@@ -92,7 +92,7 @@ test('phone item action keys are inert and desktop keys still filter, compose an
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Back to Items', exact: true }).tap();
     await row.waitFor();
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await resizePage(page, { width: 1440, height: 900 });
     await page.getByRole('group', { name: 'Items view', exact: true }).waitFor();
     await row.focus();
     await page.keyboard.press('Shift+D');
@@ -111,7 +111,7 @@ test('phone item action keys are inert and desktop keys still filter, compose an
     await card.getByRole('button', { name: 'Mark C1 done', exact: true }).click();
     await card.getByRole('button', { name: 'Mark C1 done', exact: true }).getByText('✓ Done', { exact: true }).waitFor();
     assert.equal((await view()).criteria[0].checked, true);
-    await page.setViewportSize({ width: 640, height: 844 });
+    await resizePage(page, { width: 640, height: 844 });
     await page.getByRole('group', { name: 'Items view', exact: true }).waitFor();
     assert.equal(await card.getByRole('textbox', { name: 'Criterion C1', exact: true }).count(), 1);
   }, undefined, { phone: true });
@@ -170,7 +170,7 @@ test('phone Accounts retains registry and window facts while notification switch
     await page.getByRole('region', { name: 'Profile', exact: true }).locator('time').nth(2).waitFor();
     assert.equal(await page.getByRole('switch').count(), 0);
     assert.equal(await page.getByRole('button', { name: /clear|remove|edit|revoke/i }).count(), 0);
-    await page.setViewportSize({ width: 640, height: 844 });
+    await resizePage(page, { width: 640, height: 844 });
     await page.getByRole('switch', { name: 'Needs you', exact: true }).waitFor();
     assert.equal(await page.getByRole('switch').count(), 2);
   }, undefined, { phone: true });

@@ -32,6 +32,17 @@ export async function pageUntil(page: Page, predicate: () => boolean, what: stri
   assert.equal(await page.evaluate(predicate), true, what);
 }
 
+/** A viewport command completes before React's media-query update commits. */
+export async function resizePage(page: Page, size: { width: number; height: number }): Promise<void> {
+  await page.setViewportSize(size);
+  // beforeNavigate sets the initial size; pageCase observes the first rendered
+  // navigation after goto. There is no React tree in about:blank.
+  if (page.url() === 'about:blank') return;
+  const phone = String(size.width < 640);
+  await page.locator(`#root > [data-phone="${phone}"]`).waitFor();
+  assert.equal(await page.locator('#root > [data-phone]').getAttribute('data-phone'), phone, 'rendered layout matches viewport');
+}
+
 /** Drive paused retries; the enclosing test timeout bounds the real Live receipt. */
 export async function reconnectUntilLive(page: Page): Promise<void> {
   const live = () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live';

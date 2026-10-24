@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { basename } from 'node:path';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { resizePage, webFixture, pageUntil } from './harness.ts';
 
 const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'];
 
@@ -55,9 +55,9 @@ test('the shell rail, top strip and physical-code navigation', async t => {
       await pageUntil(page, () => document.querySelector('aside')?.getBoundingClientRect().width === 60, 'remembered collapsed width');
       await page.getByRole('button', { name: 'Expand rail', exact: true }).click();
       assert.equal((await rail.boundingBox())?.width, 188);
-      await page.setViewportSize({ width: 1279, height: 900 });
+      await resizePage(page, { width: 1279, height: 900 });
       assert.equal((await rail.boundingBox())?.width, 60);
-      await page.setViewportSize({ width: 1280, height: 900 });
+      await resizePage(page, { width: 1280, height: 900 });
       assert.equal((await rail.boundingBox())?.width, 188, 'automatic collapse does not overwrite the button choice');
       await page.reload();
       assert.equal((await rail.boundingBox())?.width, 188);
@@ -133,7 +133,7 @@ test('the shell rail, top strip and physical-code navigation', async t => {
       assert.equal(await row.getAttribute('aria-current'), null);
       assert.equal(await row.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(19, 25, 35)');
       assert.equal(await page.locator('h1').textContent(), 'Sessions');
-      await page.setViewportSize({ width: 800, height: 900 });
+      await resizePage(page, { width: 800, height: 900 });
       await pageUntil(page, () => document.querySelector('[data-item-id]')?.textContent === 'R-1', 'release id rendered');
       const id = await page.locator('[data-item-id]').evaluate(node => {
         const style = getComputedStyle(node);

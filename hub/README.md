@@ -5071,6 +5071,24 @@ Clause procedure (defaults coordinator, project coordinator):
 
 ### Web verification phase
 
+New Web files also receive a separate report-only check when load gating is
+selected: ten fresh file processes, two workers, under an owned CPU load worker.
+Host selection compares changed Web tests with the merge-base tree of HEAD and
+freshly fetched dev, carrying new paths as `selection.webRepetitionFiles`.
+The runner intersects that list with admitted phase files and performs no Git
+lookup. A checked empty array means none new; an absent field means missing
+proof, including hubs started before this capability. Cache identity preserves
+the distinction. The check preserves the machine lease and runs after ordinary
+Web timing ends. Existing files get no repetitions.
+Verify retains the exact N/10 count, diagnostics and extra wall time; missing
+baselines, incomplete summaries, failures and skips supply no passing proof.
+This rollout does not block ready and does not change ordinary Web failure
+handling or the T1–T3 identity load gate. T0's shared Web AST scan refuses raw
+viewport changes outside `resizePage` and root-negated inline wait predicates.
+See [Web load-race guards](../docs/agents/tests.md#web-load-race-guards).
+Before restart #54 the missing-field report is expected. The Coordinator records
+the post-restart droplet count as C2 landing evidence, outside the pre-merge gate.
+
 The Web phase is outside T0–T3 and runs after hub phases: machine resource, two
 local workers, four droplet workers. Task verification includes it, even under
 the ordinary T0–T2 plan; merge batches add it after T1 when the candidate diff

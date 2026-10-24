@@ -36,6 +36,17 @@ For browser tests, follow `docs/agents/tests.md#web-phase` and `web/README.md#br
 
 For network bind, tunnel and QR tests, follow `docs/agents/tests.md#browser-sign-in-fixtures`: bind only disposable loopback aliases or use scratch config; observe web and spoke addresses independently.
 
+For Web load-race checks, use `resizePage` and the positive receipt guidance in
+`docs/agents/tests.md#web-load-race-guards`. New Web files have a separate
+report-only ten-file-repetition check with two workers and owned CPU load after
+ordinary Web timing, under the same machine lease. Verify retains the exact
+count. Host admission carries `webRepetitionFiles` from the HEAD/fetched-dev
+merge base; the runner does no Git lookup. An absent field is missing proof,
+while `[]` means checked none new. Before restart #54 absent-field reports are
+expected; the Coordinator records post-restart droplet counts as landing
+evidence, not a pre-merge gate. Incomplete or skipped receipts are missing proof. Do not run this CPU
+check as an unleased local probe. No role-clause expansion is needed.
+
 For missing droplet browser libraries, report to the item's lead: the human or Coordinator rebuilds the prepared snapshot after restarting the hub onto the provisioning change. See `docs/agents/tests.md#web-phase` for the root provisioning and lockfile-key boundary.
 
 For browser sign-in probes, follow `docs/agents/tests.md#browser-sign-in-fixtures`: `cland web` is human-only; use a disposable project and test client, with scratch browser opener stubs. Cookie sessions persist for 30 days from creation; `web --sessions` and `web --revoke <id>` are also human-only Unix-socket commands. Test clients use those frames on disposable projects, never the live session actor. `web.session` reads only the sign-in bound to the authenticated web socket, with no cookie or identity selector; `session.history` is a bounded human-client read across topics, separate from spoke `history`. Web launches refuse every own `cwd` field; local launches keep it. Web authority changes update the explicit deny-by-default policy and its protocol conformance test; use the same section for T1 policy and T2 web/Unix fixtures.

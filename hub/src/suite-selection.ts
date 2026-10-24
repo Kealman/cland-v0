@@ -8,9 +8,10 @@ import { defaultConfig, parseConfig } from './init/config.ts';
 import { fetchSuiteDev, selectionFailure } from './suite-dev-fetch.ts';
 import { readTierAssignments, readTierLoadGuards, type LoadGuards, type Tier } from './suite-shards.ts';
 import { durationAllowanceOwner } from './suite-durations.ts';
+import { selectWebRepetitionFiles, newWebFiles } from './web-repetitions.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
-export type SuiteSelection = { durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export const diagnosticTestFile = (file: string): boolean => /^(?!.*(?:^|\/)\.\.\/)(hub\/(test|src)|nvim\/test|web\/test)\/.*\.test\.ts$/.test(file);
 
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
@@ -93,6 +94,7 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
 /** Cache receipts are reusable only for identical effective package/test sets. */
 export function sameSuiteSelection(previous: SuiteSelection | undefined, selection: SuiteSelection): boolean {
   return JSON.stringify(previous?.durationCheck) === JSON.stringify(selection.durationCheck)
+    && JSON.stringify(previous?.webRepetitionFiles) === JSON.stringify(selection.webRepetitionFiles)
     && previous?.web === selection.web
     && JSON.stringify(previous?.tiers) === JSON.stringify(selection.tiers)
     && previous?.soak === selection.soak
@@ -204,10 +206,10 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
   let branch = '';
   let dev: string | undefined;
   let fallback: string | undefined;
+  const git = async (...args: string[]) => (await exec('git', args, { cwd, env: { ...env, GIT_TERMINAL_PROMPT: '0' }, timeout: args[0] === 'fetch' ? 5000 : 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
   const select = async (): Promise<SuiteSelection> => {
     let files: string[] = [];
     try {
-      const git = async (...args: string[]) => (await exec('git', args, { cwd, env: { ...env, GIT_TERMINAL_PROMPT: '0' }, timeout: args[0] === 'fetch' ? 5000 : 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
       branch = (await git('branch', '--show-current')).trim();
       task = branch.startsWith('t/');
       try { dev = await fetchSuiteDev(cwd, git); }
@@ -252,7 +254,11 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
     }
   };
   const selection = await select();
-  if (dev && !fallback) selection.fetchedDev = dev;
+  if (dev && !fallback) {
+    selection.fetchedDev = dev;
+    try { selection.webRepetitionFiles = await selectWebRepetitionFiles(selection.files, dev, git); }
+    catch { /* No trusted baseline list: the runner reports missing proof. */ }
+  }
   if (fallback) selection.fallback = fallback;
   if (task) selection.loadGate = true;
   // Older candidate packages without tier assignments retain their package contract.
@@ -288,6 +294,9 @@ export function selectionFromEnv(env: NodeJS.ProcessEnv = process.env): SuiteSel
     if (!check || typeof check !== 'object' || !Array.isArray(check.files) || !check.files.length || !check.files.every(file => typeof file === 'string' && /^(?:hub\/(?:src|test)|nvim\/test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')) || new Set(check.files).size !== check.files.length || check.owner !== undefined && (typeof check.owner !== 'string' || !/^[A-Z]+-[1-9]\d*$/.test(check.owner))) throw new Error('invalid task duration check');
   }
   if (Object.hasOwn(value, 'web') && !['all', 'smoke', 'none'].includes(String(value.web))) throw new Error('invalid Web selection');
+  if (Object.hasOwn(value, 'webRepetitionFiles') && (!Array.isArray(value.webRepetitionFiles)
+    || !value.webRepetitionFiles.every(file => typeof file === 'string' && !/[\r\n\0\\]/.test(file))
+    || newWebFiles(value.webRepetitionFiles, []).length !== value.webRepetitionFiles.length)) throw new Error('invalid Web repetition files');
   if (Object.hasOwn(value, 'shard')) {
     const shard = value.shard as Record<string, unknown> | null;
     if (!shard || typeof shard !== 'object' || !Object.hasOwn(shard, 'files') || !Array.isArray(shard.files) || !shard.files.every(file => typeof file === 'string') || !Object.hasOwn(shard, 'nvim') || typeof shard.nvim !== 'boolean') throw new Error('invalid suite shard selection');

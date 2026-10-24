@@ -152,7 +152,8 @@ test('tilde attaches an artifact chip and the received message carries the selec
     assert.equal(history.ok, true, history.error);
     const message = (history.value as { messages: TopicMessage[] }).messages.find(row => row.text === 'Attached composer receipt');
     assert.deepEqual(message?.artifacts?.map(row => row.id), [artifact.id]);
-    await pageUntil(page, () => !document.querySelector('[data-composer-artifact]'), 'received attachment leaves the draft');
+    await form.locator('[data-composer-artifact]').waitFor({ state: 'detached' });
+    assert.equal(await form.locator('[data-composer-artifact]').count(), 0, 'received attachment leaves the draft');
   });
 });
 

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import type { Artifact, ThreadRun, TopicMessage } from '../../shared/wire/index.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { resizePage, pageUntil, webFixture } from './harness.ts';
 import { seedItem } from './items-fixture.ts';
 
 test('phone topic opens full screen with its facts and both Back paths return to Topics', async t => {
@@ -125,7 +125,7 @@ test('phone HTML chips open the sandboxed full-screen viewer and return to the s
       assert.equal(await viewer.count(), 0);
       assert.equal(await log.evaluate(node => node.scrollTop), before);
     }
-    await page.setViewportSize({ width: 640, height: 844 });
+    await resizePage(page, { width: 640, height: 844 });
     await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'false', 'desktop width committed');
     const frame = page.locator(`[data-artifact-id="${artifacts[0]!.id}"] iframe`);
     await frame.waitFor();
@@ -172,7 +172,7 @@ test('phone run has two factual lines and a tap keeps its anchor in place', asyn
     await button.tap();
     await pageUntil(page, () => document.querySelector('[data-run-anchor]')?.getAttribute('aria-expanded') === 'false', 'run folds in place');
     assert.ok(Math.abs((await button.boundingBox())!.y - top) < 1);
-    await page.setViewportSize({ width: 640, height: 844 });
+    await resizePage(page, { width: 640, height: 844 });
     await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'false', 'desktop width committed');
     assert.equal(await log.locator('[data-run-anchor]').innerText(), run.foldLine);
   }, undefined, { phone: true });

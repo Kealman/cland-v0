@@ -9,7 +9,7 @@ import { until } from '../../hub/test/until.ts';
 import type { EventRow, EventsPage } from '../../shared/wire/index.ts';
 import { seedItem } from './items-fixture.ts';
 import type { Page } from 'playwright-core';
-import { reconnectUntilLive, webFixture, pageUntil, pausePageClock } from './harness.ts';
+import { resizePage, reconnectUntilLive, webFixture, pageUntil, pausePageClock } from './harness.ts';
 
 async function eventsFixture(t: Parameters<typeof webFixture>[0], count = 405) {
   const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
@@ -250,7 +250,8 @@ test('held Events pages preserve newer coalescing pushes and obsolete filter rep
     await page.locator(`[data-event-id="${group.id}"]`).waitFor();
     holding = false;
     for (const release of held.values()) release(); held.clear();
-    await pageUntil(page, () => !document.querySelector('[data-events-loading]'), 'older receipt applied after live burst');
+    await page.locator('[data-events-loading]').waitFor({ state: 'detached' });
+    assert.equal(await page.locator('[data-events-loading]').count(), 0, 'older receipt applied after live burst');
     assert.deepEqual(await page.locator('[data-event-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-event-id'))), [...first.rows, ...second.rows].map(row => row.id));
     holding = true;
     await page.locator('[data-event-id]').first().focus();
@@ -351,7 +352,7 @@ test('Events help keeps every key reachable by native scrolling in a small viewp
     await palette.getByRole('option', { name: /Filter rule events/ }).click();
     await pageUntil(page, () => document.querySelector('[data-events-filter]')?.textContent?.includes('kind: rule') === true && !document.querySelector('[data-events-loading]'), 'palette-only rule filter receipt');
     assert.equal(await page.locator('[data-event-id]').count(), 0);
-  }, page => page.setViewportSize({ width: 900, height: 560 }));
+  }, page => resizePage(page, { width: 900, height: 560 }));
 });
 
 test('Events refreshes its filtered feed after a hub restart without replaying the last-look write', async t => {

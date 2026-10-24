@@ -10,6 +10,7 @@ import { ownDirectory } from './process-cleanup.ts';
 import { fileURLToPath } from 'node:url';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
+import { runWebRepetitions } from './web-repetitions.ts';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
 // Admission retries every 250 ms, including when the competing waiter is paused.
@@ -42,6 +43,26 @@ async function until(check: () => boolean | Promise<boolean>) {
   for (let n = 0; n < 800; n++) { if (await check()) return; await delay(25); }
   throw new Error('runner did not reach the expected state');
 }
+
+test('Web repetition children publish ten completed summaries under CPU load and are reaped', async t => {
+  const dir = await fixture(t);
+  const owned = join(dir, 'repetitions');
+  await mkdir(owned);
+  const env = fixtureEnvironment(dir, process.env);
+  await mkdir(join(dir, 'web/test'), { recursive: true });
+  await writeFile(join(dir, 'web/test/new.test.ts'), `import test from 'node:test'; import assert from 'node:assert/strict';
+test('sealed repetition child', () => { assert.ok(process.env.HOME.startsWith(${JSON.stringify(owned)})); assert.equal(process.env.OPENAI_API_KEY, undefined); });`);
+  const lines: string[] = [];
+  const active = new Set<import('./process-cleanup.ts').ProcessIdentity>();
+  await runWebRepetitions({ files: ['web/test/new.test.ts'], planned: ['web/test/new.test.ts'], root: owned, cwd: dir, env,
+    active, interrupted: () => false, emit: line => lines.push(line) });
+  assert.match(lines.join('\n'), /10\/10 passed; workers 2; CPU load; attempted 10\/10/);
+  t.diagnostic(lines.at(-1)!);
+  assert.equal(active.size, 0, 'all child exit/cleanup receipts observed');
+  const receipts = (await readdir(owned)).filter(name => name.startsWith('web-repeat-'));
+  assert.equal(receipts.length, 10);
+  for (const name of receipts) assert.equal(JSON.parse(await readFile(join(owned, name, 'summary.json'), 'utf8')).complete, true);
+});
 
 test('a hub-only shard builds the bundle before its secret-scan worker starts', async t => {
   const dir = await fixture(t);

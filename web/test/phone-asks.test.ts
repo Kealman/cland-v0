@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { resizePage, webFixture, pageUntil } from './harness.ts';
 import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { until } from '../../hub/test/until.ts';
 import type { Page } from 'playwright-core';
@@ -56,7 +56,7 @@ test('focused phone free answer follows a resized visual viewport with three-lin
     await row(page, asked.ask).tap();
     const dialog = sheet(page);
     await dialog.getByRole('textbox', { name: 'Free answer', exact: true }).focus();
-    await page.setViewportSize({ width: 390, height: 500 });
+    await resizePage(page, { width: 390, height: 500 });
     await pageUntil(page, () => document.querySelector('[data-phone]') !== null && visualViewport!.height === 500 && Math.abs(document.querySelector('[data-bottom-sheet]')!.getBoundingClientRect().bottom - (visualViewport!.offsetTop + visualViewport!.height)) < 1, 'sheet follows the resized phone visual viewport');
     const questionStyle = await dialog.locator('h3').evaluate(node => ({ clamp: getComputedStyle(node).webkitLineClamp, height: node.getBoundingClientRect().height, line: parseFloat(getComputedStyle(node).lineHeight) }));
     assert.equal(questionStyle.clamp, '3');
@@ -65,7 +65,7 @@ test('focused phone free answer follows a resized visual viewport with three-lin
     assert.ok((await dialog.getByRole('button', { name: 'Send answer', exact: true }).boundingBox())!.y < 500, 'send remains in view');
     await dialog.getByRole('button', { name: 'Close sheet', exact: true }).tap();
     await sheet(page).waitFor({ state: 'hidden' });
-    await page.setViewportSize({ width: 390, height: 844 });
+    await resizePage(page, { width: 390, height: 844 });
     await row(page, asked.ask).tap();
     for (const option of await sheet(page).locator('[data-ask-option]').all()) assert.ok((await option.boundingBox())!.height >= 48, 'fresh opening has the unfocused option size');
   }, undefined, { phone: true });

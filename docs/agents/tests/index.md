@@ -64,6 +64,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/startup-replies-scale.test.ts`](../../../hub/test/startup-replies-scale.test.ts) | [Notes](hub-test-startup-replies-scale.test.ts.md) |
 | [`hub/test/suite-duration-budget.test.ts`](../../../hub/test/suite-duration-budget.test.ts) | [Notes](hub-test-suite-duration-budget.test.ts.md) |
 | [`hub/test/suite-progress.test.ts`](../../../hub/test/suite-progress.test.ts) | [Notes](hub-test-suite-progress.test.ts.md) |
+| [`hub/test/suite-runner.test.ts`](../../../hub/test/suite-runner.test.ts) | [Notes](hub-test-suite-runner.test.ts.md) |
 | [`hub/test/suite-selection.test.ts`](../../../hub/test/suite-selection.test.ts) | [Notes](hub-test-suite-selection.test.ts.md) |
 | [`hub/test/suite-cover.test.ts`](../../../hub/test/suite-cover.test.ts) | [Notes](hub-test-suite-cover.test.ts.md) |
 | [`hub/test/suite-soak-component.test.ts`](../../../hub/test/suite-soak-component.test.ts) | [Notes](hub-test-suite-soak-component.test.ts.md) |

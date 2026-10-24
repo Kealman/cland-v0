@@ -1845,6 +1845,38 @@ separately from tier projections and keeps a 180 s gross hang guard. Web runs af
 the hub phases with resource `machine`, two workers locally and four on droplets.
 It keeps the suite's joint lease and never runs in load-gate repetition lanes.
 
+New Web files have a separate, **report-only** admission check (T-1200), after
+the ordinary Web phase and outside its wall-time measurement. When load gating
+is selected, host admission compares changed Web test paths with the merge-base
+tree of HEAD and freshly fetched dev. It carries the new-file list in optional
+`selection.webRepetitionFiles`; renamed targets absent from that ancestor count
+as new, even if a newer dev tip already has them. An explicit empty list means
+checked, none new. Missing fetch/baseline proof leaves the field absent.
+The runner uses only that list, intersected with its admitted Web phase files;
+it does no Git lookup. Only new files run ten fresh whole-file processes, in two
+lanes of five, while an owned CPU worker stays busy. The same machine lease
+covers this check. Existing files start no repeat browser or CPU worker. Host
+selection adds at most a merge-base and one baseline-tree read for Web changes.
+An absent field reports missing proof rather than zero new files or repeating
+every existing file. This additive field preserves old selections; cache
+identity distinguishes absent, empty and populated lists.
+
+Each repetition needs a successful exit, one complete terminal summary, at least
+one passing test, no failure/cancellation/skip/todo and observed CPU progress over
+the run. Verify retains `load gate workers 2; Web repetition (report only):
+<file> N/10 passed; workers 2; CPU load; attempted M/10`, failure diagnostics and
+separate extra wall time. The existing load-worker summary prefix makes counts
+visible to running hubs without a new protocol or summary capability.
+Partial or unavailable evidence says `missing load proof`; it is never 10/10.
+During report rollout this check does not block ready. Ordinary Web failures
+still fail verification. This does not replace the existing five-repeat T1–T3
+identity load gate or its proof format. The T1 planner/summary controls live in
+`web-phase.test.ts`; `suite-runner.test.ts` owns the real child lifecycle receipt
+and runs through queued verification, not as an unleased local CPU probe.
+Before hub restart #54, mode-free verification is expected to report the absent
+field as `dev baseline unavailable`. A post-restart droplet count is C2 landing
+evidence recorded by the Coordinator, not a pre-merge gate (decision 90231c27).
+
 A diff wholly under `web/**` selects `web-only`: all Web tests plus `HUB_SMOKE`
 and `NVIM_SMOKE`. Other reduced modes include `web/test/smoke.test.ts`; protocol,
 shared wire, web edge and mixed web/non-web paths force full. Queue-enabled task
@@ -1924,6 +1956,24 @@ fake clock and can throw `Cannot fast-forward to the past`.
 The T0 `lint-web-workspace.ts` guard rejects raw same-time install/pause pairs,
 including pairs separated by comments or other statements; already-ahead pauses
 remain valid. Keep existing DOM and socket receipts before advancing paused time.
+
+### Web load-race guards
+
+Use `resizePage(page, size)` from `web/test/harness.ts` for every viewport resize.
+After navigation it waits for the shell's rendered `[data-phone="true|false"]`
+at the 640 px breakpoint and keeps the final attribute assertion. In
+`beforeNavigate`, it sets the initial viewport; `pageCase` observes the first
+rendered navigation after `goto`. Keep any narrower geometry receipt as well.
+
+T0 parses all `web/test/**/*.ts` and refuses raw `setViewportSize` calls outside
+that helper, including variable widths (their previous layout is not statically
+known). It also refuses root-negated inline predicates in `pageUntil`, `until`
+and `waitForFunction`, including block returns; double negation for positive
+presence is valid. Wait for the exact completion/row before a negative assertion.
+For an actual DOM departure use a bounded locator `waitFor({ state: 'detached' })`
+and keep the final count assertion. Do not replace a receipt with a rewritten
+negative boolean. Both guards share one AST walk and report its measured cost;
+they start no browser. Planted violations run in the same T0 command.
 
 ## Criterion write fixtures
 

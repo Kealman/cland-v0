@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { reconnectUntilLive, webFixture, pageUntil, pausePageClock } from './harness.ts';
+import { resizePage, reconnectUntilLive, webFixture, pageUntil, pausePageClock } from './harness.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { seedItem } from './items-fixture.ts';
@@ -383,7 +383,7 @@ test('Inbox answer keys remain visible through a complete native keyboard scroll
   const fixture = await inboxFixture(t);
   assert.equal((await fixture.sender.call<{ ok: boolean }>('ask', { topic: 'general', question: 'Small viewport ask', options: ['Keep', 'Change'], free: true })).ok, true);
   await fixture.pageCase(t, async page => {
-    await page.setViewportSize({ width: 1024, height: 600 });
+    await resizePage(page, { width: 1024, height: 600 });
     await page.locator('[data-inbox-kind="ask"] [data-object-id]').click();
     await page.keyboard.press('Shift+/');
     const help = page.getByRole('dialog', { name: 'Inbox keys', exact: true });
@@ -672,7 +672,7 @@ test('approval delivery stays pending until its receipt and failure preserves th
     const failed = card.getByRole('alert').getByText('fake approval delivery failed', { exact: true }).waitFor();
     fixture.fakes.codex!.settleApproval('race-worker', 'race-native', 'fail');
     await failed;
-    await pageUntil(page, () => !document.querySelector<HTMLButtonElement>('[data-approval-id] button[type="submit"]')?.disabled, 'manual retry enabled after pending recovery');
+    await pageUntil(page, () => document.querySelector<HTMLButtonElement>('[data-approval-id] button[type="submit"]')?.disabled === false, 'manual retry enabled after pending recovery');
     assert.equal(await card.getByRole('textbox', { name: 'Denial note', exact: true }).inputValue(), 'Keep this file');
     assert.equal(fixture.fakes.codex!.approvalAnswers.length, 1);
     await card.getByRole('button', { name: 'Deny', exact: true }).click();

@@ -34,6 +34,8 @@ import { suiteProgress, type TestProgress } from '../src/suite-progress.ts';
 import { StringDecoder } from 'node:string_decoder';
 
 import { webPhaseAvailable, type WebPrerequisite } from '../src/web-phase.ts';
+import { runWebRepetitions } from './web-repetitions.ts';
+import { WEB_REPETITION_REPORT } from '../src/web-repetitions.ts';
 
 // Candidate capability read by verificationCommands; old runners retain their recorded tiers.
 export const supportsWebPhase = true;
@@ -327,6 +329,18 @@ process.chdir(cwd);`);
       if (checkedFiles.length) {
         durationCheckWallMs += Date.now() - phaseStarted - machineWait;
         for (const file of checkedFiles) durationCheckFiles.add(file);
+      }
+      if (webPhase && options.selection?.loadGate && code === 0 && !interruption.signal) {
+        // This work owns the same machine lease but is outside Web's measured
+        // wall budget. Admission owns baseline selection; the runner needs no Git.
+        const repeatStarted = performance.now();
+        try {
+          await runWebRepetitions({ files: options.selection.webRepetitionFiles, planned: args.filter(arg => arg.startsWith('web/test/')),
+            root, cwd, env, interrupted: () => interruption.signal !== null, active: loadRunners, emit: line => process.stdout.write(line + '\n') });
+        } catch (error) {
+          process.stdout.write(`${WEB_REPETITION_REPORT} not run; ${String(error).replace(/\s+/g, ' ')}; missing load proof\n`);
+        }
+        process.stdout.write(`load gate Web extra wall ${((performance.now() - repeatStarted) / 1000).toFixed(3)} s; outside Web phase budget\n`);
       }
       // A borrowed interrupted run leaves root cleanup to its worker's hub-side
       // termination owner, which still holds the full descendant identities.

@@ -63,7 +63,64 @@ checkPageClock('planted.test.ts', 'await page.clock.install({ time: new Date("20
 checkPageClock('planted.test.ts', 'await pausePageClock(page, fixture.clock.now()); // page.clock.install({ time: T }); page.clock.pauseAt(T);');
 
 const tests = new URL('../../web/test/', import.meta.url);
-for await (const file of glob('**/*.test.ts', { cwd: tests })) {
-  checkPageClock(`web/test/${file}`, await readFile(new URL(file, tests), 'utf8'));
+let loadGuardMs = 0;
+function checkLoadRaces(file: string, text: string): void {
+  const started = performance.now();
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const unwrap = (node: ts.Node): ts.Node => ts.isParenthesizedExpression(node) ? unwrap(node.expression) : node;
+  const negated = (node: ts.Node): boolean => {
+    node = unwrap(node);
+    let count = 0;
+    while (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
+      count++;
+      node = unwrap(node.operand);
+    }
+    return count % 2 === 1;
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node)) {
+      const name = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : ts.isIdentifier(node.expression) ? node.expression.text : '';
+      const line = source.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+      // Any raw resize may cross the breakpoint: variables and initial phone
+      // contexts make a reliable static width history impossible.
+      let owner: ts.Node | undefined = node.parent;
+      while (owner && !ts.isFunctionLike(owner)) owner = owner.parent;
+      const resizeHelper = file === 'web/test/harness.ts' && owner && ts.isFunctionDeclaration(owner) && owner.name?.text === 'resizePage';
+      if (!resizeHelper) assert.notEqual(name, 'setViewportSize', `${file}:${line}: use resizePage to await the rendered [data-phone] layout`);
+      if (['pageUntil', 'until', 'waitForFunction'].includes(name)) {
+        const predicate = node.arguments[name === 'pageUntil' ? 1 : 0];
+        if (predicate && (ts.isArrowFunction(predicate) || ts.isFunctionExpression(predicate))) {
+          const check = (body: ts.Node): void => {
+            if (ts.isReturnStatement(body) && body.expression) assert.equal(negated(body.expression), false, `${file}:${line}: wait for a positive receipt before asserting absence`);
+            // A nested callback owns a different return value.
+            if (!ts.isFunctionLike(body)) ts.forEachChild(body, check);
+          };
+          if (ts.isBlock(predicate.body)) check(predicate.body);
+          else assert.equal(negated(predicate.body), false, `${file}:${line}: wait for a positive receipt before asserting absence`);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  loadGuardMs += performance.now() - started;
+}
+
+for (const text of [
+  'await page.setViewportSize({ width: 390, height: 844 });',
+  'await other.setViewportSize(size);',
+  'await pageUntil(page, () => !document.querySelector("article"), "gone");',
+  'await until(() => { return !retrying; }, { what: "done" });',
+  'await page.waitForFunction(() => !(window.ready));',
+  'await pageUntil(page, function () { return !!!document.querySelector("article"); }, "gone");',
+]) assert.throws(() => checkLoadRaces('planted.test.ts', text), /resizePage|positive receipt/);
+checkLoadRaces('planted.test.ts', 'await resizePage(page, { width: 390, height: 844 }); await pageUntil(page, () => !!document.querySelector("article"), "present");');
+checkLoadRaces('planted.test.ts', 'await pageUntil(page, () => document.querySelectorAll("article").length === 0, "departure applied"); // page.setViewportSize(size)');
+
+for await (const file of glob('**/*.ts', { cwd: tests })) {
+  const text = await readFile(new URL(file, tests), 'utf8');
+  if (file.endsWith('.test.ts')) checkPageClock(`web/test/${file}`, text);
+  checkLoadRaces(`web/test/${file}`, text);
 }
 console.log('web page clock: no raw same-time install/pauseAt pairs');
+console.log(`web load guards: resizePage boundary and positive wait predicates; shared AST scan ${loadGuardMs.toFixed(1)} ms; no browser work`);

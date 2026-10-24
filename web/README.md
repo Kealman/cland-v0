@@ -1420,6 +1420,14 @@ belong to short scratch roots. Keep CSP enabled; `pageUntil` polls with
 `page.evaluate`, retaining the final assertion. Observe the exact DOM/event
 boundary before asserting a result, with setup bounded separately.
 
+Use `resizePage(page, size)` for viewport changes: it waits for React's rendered
+shell `[data-phone]` value at the 640 px boundary and asserts it. Before navigation
+it only sets the initial size; the fixture waits for the first rendered navigation.
+Keep narrower geometry waits after it. T0 refuses raw viewport changes outside
+this helper and root-negated inline wait predicates. Observe a positive receipt
+before checking absence; DOM departures use bounded locator waits and final
+count assertions. Positive `!!element` presence checks remain valid.
+
 For an exact paused browser time, use `pausePageClock(page, time)` from the shared
 harness. It installs a minute before the requested `Date`, then pauses exactly
 there. T0 rejects raw install/pause pairs with the same time because the running
@@ -1435,8 +1443,22 @@ The smoke includes two failing fixtures to prove distinct diagnostic paths,
 retained trace contents and context disposal.
 The budgets are 4 seconds per top-level test and 40 seconds for the phase, currently
 reported under the repository's duration report mode. A 60-second gross hang
-guard reaps a stuck phase. Web never receives load-gate repetitions; browser
+guard reaps a stuck phase. Web never receives identity load-gate repetitions; browser
 assertions use deterministic facts and bounded waits, not latency assertions.
+
+When load gating is selected, newly added Web files get a separate report-only
+check after the ordinary phase: ten fresh whole-file repetitions, two workers
+and an owned CPU load worker, under the same machine lease. Existing files get
+no repetitions. Host admission pins new paths against HEAD's merge base with
+freshly fetched dev and carries `webRepetitionFiles` to the runner. The runner
+does no Git lookup: an explicit empty list means none new; an absent list means
+missing proof. Verify retains the
+N/10 count and failure diagnostics, and reports extra wall time outside the Web
+budget. A missing baseline, interrupted run, skip or absent terminal summary
+provides no passing proof. The new check starts in report mode and does not block
+ready during rollout. See [Web phase](../docs/agents/tests.md#web-phase).
+Before hub restart #54 missing-field reports are expected; the Coordinator owns
+post-restart droplet count evidence for C2 after landing.
 
 The connection case opens the link printed by `cland web --no-open` in its
 disposable project (with both browser openers stubbed). It proves the rendered

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { connectUi } from '../../hub/test/harness.ts';
 import { until } from '../../hub/test/until.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { resizePage, webFixture, pageUntil } from './harness.ts';
 
 async function physical(page: Page, chord: string) {
         for (const stroke of chord.split(' ')) await page.evaluate(stroke => {
@@ -295,7 +295,7 @@ test('Items help contains all 33 rows within small viewports during complete key
           return rect.top >= 0 && rect.left >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth;
         }), true, 'help dialog remains inside the viewport after scrolling');
         await observed.dispose();
-      }, page => page.setViewportSize(viewport));
+      }, page => resizePage(page, viewport));
     });
   }
 });

@@ -61,7 +61,8 @@ test('New Aide uses role defaults and Enter launches under Yours in the project 
     const appeared = page.getByRole('region', { name: 'Yours', exact: true }).locator('[data-object-id="aide-1"]').waitFor();
     await page.keyboard.press('Enter');
     await appeared;
-    await pageUntil(page, () => !document.querySelector('[aria-label="New Aide"] form, form[aria-label="New Aide"]'), 'launch form closed');
+    await form.waitFor({ state: 'detached' });
+    assert.equal(await form.count(), 0, 'launch form closed');
     const listed = await cland(fixture.root, 'session', 'list', '--json');
     assert.equal(listed.code, 0, listed.stderr);
     const row = (JSON.parse(listed.stdout).processes as HarnessProcessView[]).find(p => p.name === 'aide-1')!;

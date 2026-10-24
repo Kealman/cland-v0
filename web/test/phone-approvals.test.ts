@@ -6,7 +6,7 @@ import type { Inbox } from '../../shared/wire/index.ts';
 import { connectUi } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { until } from '../../hub/test/until.ts';
-import { webFixture, pageUntil } from './harness.ts';
+import { resizePage, webFixture, pageUntil } from './harness.ts';
 
 async function approvalFixture(t: Parameters<typeof webFixture>[0]) {
   const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
@@ -105,7 +105,7 @@ test('phone Deny shares the note label row and sends with or without a note', as
       assert.equal(await deny.isDisabled(), false, 'a note is optional');
       await field.fill(note);
       if (note) {
-        await page.setViewportSize({ width: 390, height: 500 });
+        await resizePage(page, { width: 390, height: 500 });
         await pageUntil(page, () => document.querySelector('[data-phone]') !== null && visualViewport!.height === 500 && Math.abs(document.querySelector('[data-bottom-sheet]')!.getBoundingClientRect().bottom - (visualViewport!.offsetTop + visualViewport!.height)) < 1, 'approval sheet follows the phone visual viewport');
       }
       await deny.tap();

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import type { HarnessProcessView } from '../../shared/wire/index.ts';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { pageUntil, webFixture } from './harness.ts';
+import { resizePage, pageUntil, webFixture } from './harness.ts';
 
 test('Sessions groups count fake sessions and remember folds without hub requests', async t => {
   const fixture = await webFixture(t);
@@ -93,7 +93,7 @@ test('Sessions rows render merged facts, holds, waiting detail and physical sele
     await row.press('ArrowDown');
     await second.press('k');
     assert.equal(await row.getAttribute('aria-pressed'), 'true');
-    await page.setViewportSize({ width: 600, height: 900 });
+    await resizePage(page, { width: 600, height: 900 });
     await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'true', 'phone layout committed before measuring rows');
     const narrow = async () => {
       const facts = await row.evaluate(node => {

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { webFixture, pageUntil } from './harness.ts';
+import { resizePage, webFixture, pageUntil } from './harness.ts';
 import { seedItem } from './items-fixture.ts';
 import { until } from '../../hub/test/until.ts';
 import { cland, connectUi } from '../../hub/test/harness.ts';
@@ -54,7 +54,8 @@ test('the Plan view in Items', async t => {
     await plan.click(); await page.keyboard.press('d');
     await page.getByRole('textbox', { name: 'Plan discussion' }).fill('Please explain the QA gate.');
     await plan.getByRole('button', { name: 'Send', exact: true }).click();
-    await pageUntil(page, () => !document.querySelector('[aria-label="Plan discussion"]'), 'discussion send receipt closes the composer');
+    await page.getByRole('textbox', { name: 'Plan discussion' }).waitFor({ state: 'detached' });
+    assert.equal(await page.getByRole('textbox', { name: 'Plan discussion' }).count(), 0);
     const topics = (await ui.request({ type: 'topic.list' })).value as { topics: { id: string; item: string | null }[] };
     const topic = topics.topics.find(topic => topic.item === 'E-900010');
     assert.ok(topic, 'discussion creates the epic topic');
@@ -123,8 +124,9 @@ test('the Plan view in Items', async t => {
     await page.getByRole('button', { name: 'Plan', exact: true }).click();
     const plan = page.getByRole('region', { name: 'Epic plan' });
     await plan.getByRole('button', { name: 'a · Approve' }).waitFor();
-    await page.setViewportSize({ width: 1279, height: 900 });
-    await pageUntil(page, () => ![...document.querySelectorAll('[aria-label="Epic plan"] button')].some(node => node.textContent === 'a · Approve'), 'resize removes approval');
+    await resizePage(page, { width: 1279, height: 900 });
+    await plan.getByRole('button', { name: 'a · Approve' }).waitFor({ state: 'detached' });
+    assert.equal(await plan.getByRole('button', { name: 'a · Approve' }).count(), 0);
     await plan.click();
     await page.keyboard.press('a');
     await page.getByRole('button', { name: 'Help', exact: true }).click();
@@ -133,7 +135,7 @@ test('the Plan view in Items', async t => {
     assert.doesNotMatch(await help.innerText(), /Approve plan/);
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.setViewportSize({ width: 390, height: 844 });
+    await resizePage(page, { width: 390, height: 844 });
     const row = page.getByRole('tree', { name: 'Items tree' }).locator('[data-object-id="E-900010"]');
     await row.waitFor();
     assert.equal(await plan.count(), 0, 'phone width replaces the planning view with the tree');
@@ -142,7 +144,7 @@ test('the Plan view in Items', async t => {
     assert.equal(frames.some(frame => frame.type === 'task.plan' && frame.op === 'approve'), false);
     assert.equal((await ui.request({ type: 'task.plan', item: 'E-900010', op: 'show' })).ok, true);
     assert.equal(((await ui.request({ type: 'task.plan', item: 'E-900010', op: 'show' })).value as { approval: { state: string } }).approval.state, 'pending');
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await resizePage(page, { width: 1280, height: 900 });
     await plan.getByRole('button', { name: 'a · Approve' }).waitFor();
     assert.equal(await plan.getByRole('button', { name: 'a · Approve' }).isEnabled(), true);
   }));

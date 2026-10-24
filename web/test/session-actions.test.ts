@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { until } from '../../hub/test/until.ts';
 import type { HarnessProcessView } from '../../shared/wire/index.ts';
-import { reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
+import { resizePage, reconnectUntilLive, pageUntil, webFixture } from './harness.ts';
 
 test('Stop confirms in place, Escape keeps the busy session, and Enter stops it', async t => {
   const fixture = await webFixture(t);
@@ -22,7 +22,8 @@ test('Stop confirms in place, Escape keeps the busy session, and Enter stops it'
     await confirm.waitFor();
     await confirm.getByRole('button', { name: 'Cancel', exact: true }).focus();
     await page.keyboard.press('Enter');
-    await pageUntil(page, () => !document.querySelector('[aria-label="Confirm Stop stop-worker"]'), 'Enter on Cancel leaves the session running');
+    await page.getByLabel('Confirm Stop stop-worker', { exact: true }).waitFor({ state: 'detached' });
+    assert.equal(await page.getByLabel('Confirm Stop stop-worker', { exact: true }).count(), 0, 'Enter on Cancel leaves the session running');
     await row.press('x');
     await confirm.waitFor();
     assert.equal(await page.locator('[data-session-detail="stop-worker"]').getByRole('button', { name: 'Stop', exact: true }).count(), 0);
@@ -39,7 +40,8 @@ test('Stop confirms in place, Escape keeps the busy session, and Enter stops it'
     const listed = await cland(fixture.root, 'session', 'list', '--json');
     assert.equal(listed.code, 0, listed.stderr);
     assert.equal((JSON.parse(listed.stdout).processes as HarnessProcessView[]).find(p => p.name === 'stop-worker')?.status, 'stopped');
-    await pageUntil(page, () => !document.querySelector('[aria-label="Confirm Stop stop-worker"]'), 'confirmation cleared after receipt');
+    await page.getByLabel('Confirm Stop stop-worker', { exact: true }).waitFor({ state: 'detached' });
+    assert.equal(await page.getByLabel('Confirm Stop stop-worker', { exact: true }).count(), 0, 'confirmation cleared after receipt');
   });
 });
 
@@ -125,7 +127,7 @@ test('At narrow width a tap or Enter opens the session page', async t => {
   const ui = await connectUi(t, fixture.hub.discovery);
   assert.equal((await ui.request({ type: 'session.launch', name: 'narrow-worker', harness: 'codex', model: 'gpt-fake-1' })).ok, true);
   await fixture.pageCase(t, async page => {
-    await page.setViewportSize({ width: 600, height: 900 });
+    await resizePage(page, { width: 600, height: 900 });
     await pageUntil(page, () => document.querySelector('[data-phone]')?.getAttribute('data-phone') === 'true', 'phone layout committed before session actions');
     assert.equal(await page.evaluate(() => window.matchMedia('(max-width: 639px)').matches), true);
     await page.getByRole('button', { name: 'Sessions', exact: true }).click();
@@ -206,7 +208,8 @@ test('The session page shows facts and capabilities and shares all four actions'
     const archive = detail.getByRole('group', { name: 'Confirm Archive page-worker', exact: true });
     await archive.waitFor();
     await archive.getByRole('button', { name: 'Confirm', exact: true }).click();
-    await pageUntil(page, () => !document.querySelector('[data-pane="primary"] [data-object-id="page-worker"]'), 'page archive removed list row');
+    await page.locator('[data-pane="primary"] [data-object-id="page-worker"]').waitFor({ state: 'detached' });
+    assert.equal(await page.locator('[data-pane="primary"] [data-object-id="page-worker"]').count(), 0, 'page archive removed list row');
     const listed = await ui.request({ type: 'session.list', archived: true });
     assert.ok((listed.value as { processes: HarnessProcessView[] }).processes.find(p => p.name === 'page-worker')?.archivedAt);
   });

@@ -15,6 +15,80 @@ import { webPhaseAvailable, unavailableWebPhase, webUnavailableLine } from '../s
 import { suiteEvidence } from '../src/suite-log.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { planTierReport, tierPlanWorkers } from '../src/suite-tier-report.ts';
+import { newWebFiles, repeatWebFiles, webRepeatSummary, selectWebRepetitionFiles, admittedWebRepetitions } from '../src/web-repetitions.ts';
+
+test('host pins new and renamed Web files against the merge base, not a newer fetched dev tip', async () => {
+  const commands: string[][] = [];
+  const git = async (...args: string[]) => {
+    commands.push(args);
+    if (args[0] === 'merge-base') { assert.deepEqual(args, ['merge-base', 'newer-dev', 'HEAD']); return 'shared-base\n'; }
+    assert.deepEqual(args, ['ls-tree', '-r', '--name-only', '-z', 'shared-base', '--', 'web/test']);
+    return 'web/test/existing.test.ts\0web/test/old-name.test.ts\0';
+  };
+  // newer-dev already contains concurrent.test.ts, but it was absent at the
+  // shared ancestor. That newer tip must neither hide it nor need delivery.
+  assert.deepEqual(await selectWebRepetitionFiles(['web/test/existing.test.ts', 'web/test/new.test.ts', 'web/test/renamed.test.ts', 'web/test/concurrent.test.ts', 'web/src/new.ts'], 'newer-dev', git),
+    ['web/test/concurrent.test.ts', 'web/test/new.test.ts', 'web/test/renamed.test.ts']);
+  assert.equal(commands.length, 2);
+  assert.deepEqual(await selectWebRepetitionFiles(['web/test/existing.test.ts'], 'newer-dev', git), []);
+  await assert.rejects(selectWebRepetitionFiles(['web/test/new.test.ts'], 'newer-dev', async () => { throw new Error('baseline unavailable'); }), /baseline unavailable/);
+});
+
+test('runner distinguishes an admitted list, a checked empty list and missing host proof', async () => {
+  const lines: string[] = [];
+  assert.deepEqual(admittedWebRepetitions(['web/test/new.test.ts', 'web/test/other.test.ts'], ['web/test/new.test.ts'], line => lines.push(line)), ['web/test/new.test.ts']);
+  assert.deepEqual(admittedWebRepetitions([], ['web/test/new.test.ts'], line => lines.push(line)), []);
+  assert.equal(lines.length, 0);
+  assert.equal(admittedWebRepetitions(undefined, ['web/test/new.test.ts'], line => lines.push(line)), undefined);
+  assert.match(lines.join('\n'), /not run; dev baseline unavailable; missing load proof/);
+  assert.doesNotMatch(lines.join('\n'), /0 new files/);
+});
+
+test('selection transport and cache preserve checked-empty versus absent Web proof', () => {
+  const selection = { mode: 'full' as const, files: [], reason: 'fixture' };
+  assert.equal(sameSuiteSelection(selection, { ...selection, webRepetitionFiles: [] }), false);
+  assert.equal(sameSuiteSelection({ ...selection, webRepetitionFiles: ['web/test/new.test.ts'] }, { ...selection, webRepetitionFiles: [] }), false);
+  for (const files of [[], ['web/test/new.test.ts']]) assert.deepEqual(selectionFromEnv({ CLAND_SUITE_SELECTION: JSON.stringify({ ...selection, webRepetitionFiles: files }) })!.webRepetitionFiles, files);
+  for (const files of [null, 'new', ['hub/test/new.test.ts'], ['web/test/../new.test.ts'], ['web/test/new.test.ts', 'web/test/new.test.ts']]) assert.throws(() => selectionFromEnv({ CLAND_SUITE_SELECTION: JSON.stringify({ ...selection, webRepetitionFiles: files }) }), /invalid Web repetition files/);
+});
+
+test('only Web files absent from the dev baseline receive ten whole-file repetitions on two workers', async () => {
+  assert.deepEqual(newWebFiles(['web/test/old.test.ts', 'web/test/new.test.ts', 'web/src/new.ts'], ['web/test/old.test.ts']), ['web/test/new.test.ts']);
+  const active = new Set<number>();
+  let peak = 0;
+  const calls: number[] = [];
+  const lines: string[] = [];
+  await repeatWebFiles(['web/test/new.test.ts'], async (_file, repetition, worker) => {
+    active.add(worker); peak = Math.max(peak, active.size);
+    calls.push(repetition);
+    await Promise.resolve();
+    active.delete(worker);
+    return { code: 0, complete: true, passed: 2, failed: 0, skipped: 0, cpu: true };
+  }, line => lines.push(line), () => false);
+  assert.deepEqual(calls.sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.equal(peak, 2);
+  assert.match(lines.join('\n'), /10\/10 passed; workers 2; CPU load/);
+  assert.match(suiteSummary(suiteEvidence(lines.join('\n'))), /10\/10 passed/);
+});
+
+test('Web repetition reports incomplete, skipped, failing and unloaded runs without claiming proof', async () => {
+  for (const bad of [{ complete: false }, { skipped: 1 }, { code: 1 }, { failed: 1 }, { passed: 0 }, { cpu: false }]) {
+    const lines: string[] = [];
+    await repeatWebFiles(['web/test/new.test.ts'], async (_file, repetition) => ({ code: 0, complete: true, passed: 2, failed: 0, skipped: 0, cpu: true, ...(repetition === 1 ? bad : {}) }), line => lines.push(line), () => false);
+    assert.match(lines.at(-1)!, /9\/10 passed.*missing load proof/);
+    assert.match(suiteSummary(suiteEvidence(lines.join('\n'))), /9\/10 passed/);
+  }
+  const lines: string[] = [];
+  await repeatWebFiles(['web/test/new.test.ts'], async () => { throw new Error('must not launch after interruption'); }, line => lines.push(line), () => true);
+  assert.match(lines.at(-1)!, /0\/10 passed.*attempted 0\/10.*missing load proof/);
+});
+
+test('only one complete, typed terminal summary supplies file repetition evidence', () => {
+  assert.deepEqual(webRepeatSummary('{"complete":true,"passed":2,"failed":0,"skipped":0}\n'), { complete: true, passed: 2, failed: 0, skipped: 0 });
+  for (const text of ['', 'null', '{"complete":true}', '{"complete":true,"passed":-1,"failed":0,"skipped":0}', '{"complete":true,"passed":2,"failed":0,"skipped":0}\n{}']) {
+    assert.equal(webRepeatSummary(text).complete, false, text);
+  }
+});
 
 async function sources(t: import('node:test').TestContext, web = true) {
   const root = await mkdtemp(join(tmpdir(), 'web-plan-'));
