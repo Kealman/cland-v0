@@ -12,6 +12,8 @@ closure observes the shared history read before asserting that a task with an
 read to prove unknown/error handling, then drive the fake clock for its retry.
 History is shared per dev tip; old landing-only stage hashes stay compatible.
 
+T-542 M4: the shared T2 plan/stage fixture injects both verdict reads and TaskMerges' native Git boundary through PlanGit. The landed-commit diff-tree read uses existing immutable path facts and respects --no-commit-id while preserving the older commit-prefixed reply for existing consumers. Never fall back to native Git in these non-repository roots. Run the helper consumers individually: plan-gate.test.ts, planned-stage.test.ts, epic-close.test.ts. Preserve all merge/ready/QA/stage/query-budget assertions and timing bounds.
+
 The per-item landing/ten-close workload uses `sqliteProbe` on its fixture-owned
 tracker connection, counting executed tracker statements rather than replacing
 `DatabaseSync.prototype.prepare`. T-539 measured the same landing at 3,432

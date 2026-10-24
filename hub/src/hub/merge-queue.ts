@@ -1,3 +1,4 @@
+import { dependencyInstall } from '../dependency-install.ts';
 // Durable FIFO requests pin a reviewed head; execution belongs to the merge batch runner.
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
@@ -107,9 +108,10 @@ export class MergeQueue {
     });
   }
 
-  enqueue(view: ItemView, head: string, base: string, actor: Actor): { item: string; queued: number } {
+  enqueue(view: ItemView, head: string, base: string, actor: Actor, files: readonly string[] = []): { item: string; queued: number } {
     this.reconcile();
-    const queued = this.store.enqueueMerge({ item: view.id, branch: view.branch!, head, verdictBase: base, enqueued: this.clock.now().toISOString(), by: actor });
+    const dependencies = dependencyInstall(this.tracker.root, files);
+    const queued = this.store.enqueueMerge({ ...(dependencies ? { dependencies } : {}), item: view.id, branch: view.branch!, head, verdictBase: base, enqueued: this.clock.now().toISOString(), by: actor });
     return { item: view.id, queued };
   }
 }

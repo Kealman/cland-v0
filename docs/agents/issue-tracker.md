@@ -220,3 +220,11 @@ Preserve `.cland/publish.tmp` after a failed push reply or follow-up. Repair the
 ## Coordinator category filing
 
 - File category work: find the ids with `cland task list --kind category`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with `--parent C-<n>`. Tasks need `--size XS|S|M|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n` for rework of landed tasks.
+
+Task preparation shares the root dependency install through a `node_modules`
+link when the task worktree has none. Claim/launch replies preserve existing
+installs and report stale ones with their worktree path and directory/link kind.
+After dependency-changing merges, queue entries, landing results and the landing
+comment name the changed manifests/lockfiles and required `npm install` in the
+root. The Coordinator stops shared readers before updating that install; the
+merge gate and task claim never invoke an installer.

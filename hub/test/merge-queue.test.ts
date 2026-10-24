@@ -24,7 +24,7 @@ async function checkoutClandFixture(cwd: string) {
   await verificationFixture(cwd);
 }
 
-async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
+async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = ['hub/src/parser.ts']) {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   const repository = parseConfig(await readFile(new URL('../../.cland/config.toml', import.meta.url), 'utf8'), 'repository', {});
@@ -37,7 +37,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
     if (args[0] === 'show-ref' && args.includes('--exclude-existing=refs/heads/')) return input!.trim().split('\n').filter(ref => !heads.has(ref.slice('refs/heads/'.length))).join('\n');
     if (args[0] === 'rev-parse') return heads.get(args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '')) ?? null;
     if (args[0] === 'merge-base') return 'a'.repeat(40);
-    if (args[0] === 'diff') return args.includes('--name-only') ? 'hub/src/parser.ts\0' : 'parser patch';
+    if (args[0] === 'diff') return args.includes('--name-only') ? files.join('\0') + '\0' : 'parser patch';
     if (args[0] === 'patch-id') return 'stable-patch';
     return null;
   }, ...options });
@@ -49,6 +49,17 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
   return { root, ui, dispatcher, item, clock, heads, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
 }
+
+test('merge queue carries the root install requirement for dependency changes', async t => {
+  const { root, ui, item } = await fixture(t, {}, ['package.json', 'hub/package.json', 'package-lock.json']);
+  await value(ui, { type: 'merge', item: item.id });
+  const queue = await value<{ entries: Array<{ dependencies?: unknown }> }>(ui, { type: 'merge.queue' });
+  assert.deepEqual(queue.entries[0]?.dependencies, { files: ['hub/package.json', 'package-lock.json', 'package.json'], command: 'npm install', cwd: root });
+  const shown = await cland(root, 'merge', 'queue');
+  assert.equal(shown.code, 0, shown.stderr);
+  assert.match(shown.stdout, /hub\/package.json, package-lock.json, package.json changed; run npm install in root/);
+  assert.ok(shown.stdout.includes(root));
+});
 
 test('startup preserves the durable queue when branch enumeration omits a live ref', async t => {
   const { root, ui, item, clock, heads, stop } = await fixture(t);

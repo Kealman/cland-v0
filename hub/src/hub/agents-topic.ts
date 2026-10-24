@@ -1,3 +1,5 @@
+import { dependencyInstallText } from '../dependency-install.ts';
+import type { DependencyInstall } from '../protocol.ts';
 // The Agents topic as the record (spec 4.5, decision #7): besides every agent-to-agent message (a session's `send`
 // with addressees lands there by default), the lifecycle events of the project, each a hub notice with a `kind`.
 // They come from the hub's domain events, as logged: `lifecycleNotice` maps one log entry to a notice (or to
@@ -104,7 +106,7 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return { kind: 'release', text: `${id} released${session ? ` (held by ${session})` : ''}${why}`, detail: { item: id, session } };
     }
     case 'task-merged':
-      return { kind: 'merge', text: `${String(entry.id)}: merged ${String(entry.commit)} onto ${String(entry.base)} by ${session ? label(session) : 'human'}${entry.override ? ` (human override: ${String(entry.override)})` : ''}`, detail: { item: entry.id, commit: entry.commit, base: entry.base, session, override: entry.override ?? null } };
+      return { kind: 'merge', text: `${String(entry.id)}: merged ${String(entry.commit)} onto ${String(entry.base)} by ${session ? label(session) : 'human'}${entry.override ? ` (human override: ${String(entry.override)})` : ''}${entry.dependencies ? `\n${dependencyInstallText(entry.dependencies as DependencyInstall)}` : ''}`, detail: { item: entry.id, commit: entry.commit, base: entry.base, session, override: entry.override ?? null } };
     case 'merge-resumed':
     case 'merge-follow-up-failed':
     case 'merge-recovery-pending':

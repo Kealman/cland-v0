@@ -5,11 +5,40 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { until, startHub } from './harness.ts';
 import { componentProject, human } from './merge-component-support.ts';
+import { lifecycleNotice } from '../src/hub/agents-topic.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { review } from './merge-support.ts';
+
+test('dependency-changing landings require a root install and keep the shared tree intact', async t => {
+  for (const file of ['package-lock.json', 'package.json', 'hub/package.json', 'README.md']) await t.test(file, async t => {
+    const f = await componentProject(t);
+    await mkdir(join(f.root, 'node_modules'), { recursive: true });
+    await writeFile(join(f.root, 'node_modules/reader'), 'still reading');
+    const work = await f.ticket(undefined, file);
+    await review(f.rev, work.id);
+    const result = await f.merges.merge(work.id, human, work => work());
+    assert.ok('commit' in result);
+    const expected = file === 'README.md' ? undefined : { files: [file], command: 'npm install', cwd: f.root };
+    assert.deepEqual(result.dependencies, expected);
+    const record = f.records.find(record => record.event === 'task-merged')!;
+    const notice = lifecycleNotice(record, name => name)!;
+    if (expected) {
+      assert.match(f.tracker.view(work.id).comments.at(-1)?.text ?? '', /package.*npm install/s);
+      assert.ok(notice.text.includes(file));
+      assert.match(notice.text, /run npm install in root/);
+      assert.ok(notice.text.includes(f.root));
+      const resumed = await f.merges.merge(work.id, human, work => work());
+      assert.ok('commit' in resumed);
+      assert.deepEqual(resumed.dependencies, expected);
+      assert.equal(resumed.commit, result.commit);
+    } else assert.doesNotMatch(notice.text, /npm install/);
+    assert.equal(await readFile(join(f.root, 'node_modules/reader'), 'utf8'), 'still reading');
+  });
+});
 
 test('injected merge freshness fan-out is measured as a resumed 400 ms stretch', async (t) => {
   const f = await componentProject(t);

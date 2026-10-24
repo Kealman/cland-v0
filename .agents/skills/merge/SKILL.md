@@ -31,6 +31,11 @@ The hub takes the oldest `[merge] batch` entries (default 3) when full or after 
 
 Results reach Agents, the requester and each item lead. The supervising Lead or Coordinator handles queue refusals below; the item's Implementer owns any fix and new review/verify cycle. When the queue is disabled, or changes stay wholly in the documentation/tracker allowlist below, the gate lands immediately with its required verdicts. The allowlist does not include skills or role configuration.
 
+Package manifest/lockfile changes add a required root `npm install` notice to
+queue entries, landing results and the durable landing comment; batch landing
+sends it to the enqueuer and item lead. Stop shared readers before updating the
+root install. The merge gate never runs npm or replaces shared `node_modules`.
+
 Landing keeps the task branch unchanged, creates one squash commit, closes the item and topic, releases the claim and removes its worktree and branch. Removal waits while a session stands inside; stop finished sessions so cleanup can complete.
 
 On refusal:

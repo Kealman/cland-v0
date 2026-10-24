@@ -35,8 +35,6 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/planned-stage.test.ts`](../../../hub/test/planned-stage.test.ts) | [Notes](hub-test-planned-stage.test.ts.md) |
 | [`hub/test/project-probes.test.ts`](../../../hub/test/project-probes.test.ts) | [Notes](hub-test-project-probes.test.ts.md) |
 | [`hub/test/quarantine-runner.test.ts`](../../../hub/test/quarantine-runner.test.ts) | [Notes](hub-test-quarantine-runner.test.ts.md) |
-| [`hub/test/merge-batches.test.ts`](../../../hub/test/merge-batches.test.ts) | [Notes](hub-test-merge-batches.test.ts.md) |
-| [`hub/test/merge-checkout.test.ts`](../../../hub/test/merge-checkout.test.ts) | [Notes](hub-test-merge-checkout.test.ts.md) |
 | [`hub/test/roles-clauses.test.ts`](../../../hub/test/roles-clauses.test.ts) | [Notes](hub-test-roles-clauses.test.ts.md) |
 | [`hub/test/session-archive.test.ts`](../../../hub/test/session-archive.test.ts) | [Notes](hub-test-session-archive.test.ts.md) |
 | [`hub/test/spoke-artifact-budget.test.ts`](../../../hub/test/spoke-artifact-budget.test.ts) | [Notes](hub-test-spoke-artifact-budget.test.ts.md) |
@@ -108,11 +106,10 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`web/test/thread-runs.test.ts`](../../../web/test/thread-runs.test.ts) | [Notes](web-test-thread-runs.test.ts.md) |
 | [`web/test/topics.test.ts`](../../../web/test/topics.test.ts) | [Notes](web-test-topics.test.ts.md) |
 | [`web/test/withdraw.test.ts`](../../../web/test/withdraw.test.ts) | [Notes](web-test-withdraw.test.ts.md) |
-| [`hub/test/suite-selection.test.ts`](../../../hub/test/suite-selection.test.ts) | [Notes](hub-test-suite-selection.test.ts.md) |
-| [`hub/test/durations-runner.test.ts`](../../../hub/test/durations-runner.test.ts) | [Notes](hub-test-durations-runner.test.ts.md) |
-| [`hub/test/suite-duration-budget.test.ts`](../../../hub/test/suite-duration-budget.test.ts) | [Notes](hub-test-suite-duration-budget.test.ts.md) |
-| [`hub/test/suite-task-selection.test.ts`](../../../hub/test/suite-task-selection.test.ts) | [Notes](hub-test-suite-task-selection.test.ts.md) |
-| [`hub/test/suite-progress.test.ts`](../../../hub/test/suite-progress.test.ts) | [Notes](hub-test-suite-progress.test.ts.md) |
-| [`hub/test/roles-clauses.test.ts`](../../../hub/test/roles-clauses.test.ts) | [Notes](hub-test-roles-clauses.test.ts.md) |
+| [`hub/test/task-worktrees.test.ts`](../../../hub/test/task-worktrees.test.ts) | [Notes](hub-test-task-worktrees.test.ts.md) |
+| [`hub/test/merge-recovery.test.ts`](../../../hub/test/merge-recovery.test.ts) | [Notes](hub-test-merge-recovery.test.ts.md) |
+| [`hub/test/merge-queue.test.ts`](../../../hub/test/merge-queue.test.ts) | [Notes](hub-test-merge-queue.test.ts.md) |
+| [`hub/test/suite-queue-policy.test.ts`](../../../hub/test/suite-queue-policy.test.ts) | [Notes](hub-test-suite-queue-policy.test.ts.md) |
+
 | [`hub/test/suite-human-queue.test.ts`](../../../hub/test/suite-human-queue.test.ts) | [Notes](hub-test-suite-human-queue.test.ts.md) |
 | [`hub/test/suite-tiers.test.ts`](../../../hub/test/suite-tiers.test.ts) | [Notes](hub-test-suite-tiers.test.ts.md) |

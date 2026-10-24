@@ -367,7 +367,8 @@ export type Hello = {
 
 export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
 
-export type MergeQueueEntry = { item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
+export type DependencyInstall = { files: string[]; command: 'npm install'; cwd: string };
+export type MergeQueueEntry = { dependencies?: DependencyInstall; item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
 export type BatchSuite = { id: string; members: MergeQueueEntry[]; diagnostic?: { key: string; files: string[]; steps?: VerificationStep['name'][] } };
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string; cancel?: boolean };
 export type MergeQueueRequest = { type: 'merge.queue'; id: string };

@@ -301,9 +301,9 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
       return `${String(value.id)} holds: ${JSON.stringify(value.holds)}\n`;
     case 'claim': {
       const claim = value.claim as Claim | null;
-      const worktree = value.worktree as { path: string; branch: string; createdWorktree: boolean } | null | undefined;
+      const worktree = value.worktree as { path: string; branch: string; createdWorktree: boolean; warning?: string } | null | undefined;
       const where = worktree ? `  worktree  ${worktree.path} on ${worktree.branch}${worktree.createdWorktree ? ' (created)' : ''}\n` : typeof value.reason === 'string' ? `  worktree  none: ${value.reason}\n` : '';
-      return claim ? `${String(value.id)} claimed by ${claimText(claim)}\n${where}` : `${String(value.id)} released\n`;
+      return claim ? `${String(value.id)} claimed by ${claimText(claim)}\n${where}${worktree?.warning ? `  ${worktree.warning}\n` : ''}` : `${String(value.id)} released\n`;
     }
     case 'comment': {
       const commit = value.commit as { note: string } | undefined;

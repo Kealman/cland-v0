@@ -68,6 +68,7 @@ T-971: Restore sealed child-launch builder, T0 guard and inventory guidance; ret
 2026-10-23 · T-1174: point install metadata, Inbox startup, Badging API and QR sign-in changes to the T2 edge and sealed phone seams; keep real installability/badge in QA.
 T-1175: Replace the open-page-only worker restriction with the sealed phone worker/edge test seam and keep real notification checks in QA.
 
+T-542: Document task dependency links, stale-install warnings and safe routing of missing locked dependency diagnostics.
 T-1198: describe changed T3/T4 task duration sampling and point to the shared duration procedure.
 2026-10-24 · T-1015: document captured-commit periodic bundling, remote checks, reusable infrastructure/not-run outcomes and sealed regression seams.
 T-1203: include tiers.json mapped T4 read-path guards in task verification; shared mapping and selection procedure stays in docs/agents/tests.md.

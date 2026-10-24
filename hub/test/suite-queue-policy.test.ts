@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 import childProcess, { type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { suiteUnit } from './suite-unit-fixture.ts';
 import { tempProject, eventually } from './harness.ts';
 import { beforeDirectories } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -97,4 +98,32 @@ test('task queue executes the hub policy with explicit worker overrides', async 
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\nworkers=0\n');
   await assert.rejects(suites.start({ mode: 'auto', cwd, topic: 'fixture', to: [], actor: null, dryRun: true }, () => {}), /workers.*positive/);
 
+});
+
+test('failed host checks diagnose missing locked dependencies without creating a machine', { timeout: 10000 }, async t => {
+  for (const [failure, locked] of [
+    ["Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'yaml' imported from /scratch/check.ts", true],
+    ["Error: Cannot find module '/scratch/node_modules/typescript7/lib/tsc.js'\ncode: 'MODULE_NOT_FOUND'", true],
+    ["Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'project-typo' imported from /scratch/check.ts", false],
+    ['Type error: value is not assignable', false],
+  ] as const) await t.test(failure.split('\n')[0], async t => {
+    const f = await suiteUnit(t, { executor: 'droplet', dropletServices: { hostGate: async run => {
+      await appendFile(run.log, failure + '\n');
+      return { tree: run.tree ?? null, command: 'npm run typecheck', code: 1 };
+    } } });
+    await writeFile(join(f.root, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: {
+      'node_modules/yaml': { version: '2.8.1' }, 'node_modules/typescript7': { version: '7.0.2' },
+    } }));
+    const job = await f.launch({ executor: 'droplet', fresh: true });
+    await f.machine.waits.run(f.suites.settled());
+    await f.tick();
+    await f.machine.waits.run(f.result(job.id));
+    const result = f.reports.find(report => report.id === job.id)!;
+    const log = await readFile(result.log, 'utf8');
+    assert.equal(result.outcome?.code, 1);
+    assert.match(result.outcome?.cause ?? log, /host check failed.*no droplet created/);
+    if (locked) assert.match((result.outcome?.cause ?? '') + log, /dependencies out of date: run npm install/);
+    else assert.doesNotMatch((result.outcome?.cause ?? '') + log, /dependencies out of date/);
+    assert.deepEqual(f.acquisitions, []);
+  });
 });

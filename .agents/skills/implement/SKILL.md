@@ -93,6 +93,12 @@ When changing dictionary membership or prototype checks in this repository's
 
 Once done, request the hub Reviewer as described below; outside a hub session, use the "code-review" skill.
 
+Task claim/launch links absent worktree `node_modules` to the root install.
+Read `worktree.warning` for stale own installs or links; never replace an install
+under running readers. A host check's `dependencies out of date: run npm install`
+means a locked package is missing: report it to the item lead so the Coordinator
+can arrange a root install after shared readers stop.
+
 Commit your work to the current branch.
 
 In a hub session, use the claimed item's existing topic; if it has none, open it with `cland topic create "<title>" --item T-<n> --json` or the `topic.create` tool. An Implementer may open only its own item's topic.

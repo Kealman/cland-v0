@@ -345,7 +345,8 @@ export type VerificationQueue = {
 export type MergeBatchStatus = { id: string; members: MergeQueueEntry[]; run?: string; candidate?: { tree: string }; failed?: string };
 
 // hub/src/protocol.ts
-export type MergeQueueEntry = { item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
+export type DependencyInstall = { files: string[]; command: 'npm install'; cwd: string };
+export type MergeQueueEntry = { dependencies?: DependencyInstall; item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
 
 // hub/src/protocol.ts
 export type VerificationHolder = {

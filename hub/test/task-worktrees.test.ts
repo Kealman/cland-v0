@@ -3,8 +3,9 @@
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { TaskWorktrees, type WorktreeGit, type Resumed } from '../src/hub/worktrees.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -91,6 +92,95 @@ test('task worktree policy links creation once and reuses the territory result o
   await f.tracker.link(human, 'T-2', { branch: 't/T-2-short' });
   assert.equal((await f.claim('T-2')).worktree?.branch, 't/T-2-short');
   assert.equal(f.calls.at(-1)!.item.branch, 't/T-2-short');
+});
+
+test('task claim links root dependencies including playwright-core without installing', async t => {
+  const f = await fixture(t);
+  await mkdir(join(f.root, 'node_modules/playwright-core'), { recursive: true });
+  await writeFile(join(f.root, 'node_modules/playwright-core/package.json'), JSON.stringify({ name: 'playwright-core', version: '1.64.1', main: 'index.js' }));
+  await writeFile(join(f.root, 'node_modules/playwright-core/index.js'), 'module.exports = "scratch playwright";');
+  await f.create('Dependency link');
+  const claimed = await f.claim('T-1');
+  assert.ok(claimed.worktree);
+  assert.equal(await realpath(join(claimed.worktree.path, 'node_modules')), join(f.root, 'node_modules'));
+  const require = createRequire(join(claimed.worktree.path, 'package.json'));
+  assert.equal(require('playwright-core'), 'scratch playwright');
+});
+
+test('reclaim names a stale worktree own install and preserves its files', async t => {
+  const f = await fixture(t);
+  await f.create('Stale own install');
+  const first = await f.claim('T-1');
+  const path = first.worktree!.path;
+  await writeFile(join(path, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { 'node_modules/playwright-core': { version: '1.64.1' } } }));
+  await mkdir(join(path, 'node_modules'), { recursive: true });
+  await writeFile(join(path, 'node_modules/.package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { 'node_modules/playwright-core': { version: '1.60.0' } } }));
+  const again = await f.claim('T-1');
+  assert.match((again.worktree as { warning?: string }).warning ?? '', /stale worktree install/);
+  assert.ok((again.worktree as { warning?: string }).warning?.includes(path));
+  assert.match((again.worktree as { warning?: string }).warning ?? '', /own node_modules/);
+  assert.match(await readFile(join(path, 'node_modules/.package-lock.json'), 'utf8'), /1.60.0/);
+});
+
+test('reclaim identifies a stale dependency link and a missing root install', async t => {
+  const f = await fixture(t);
+  await writeFile(join(f.root, 'package.json'), '{"name":"scratch"}');
+  await f.create('Absent install');
+  const missing = await f.claim('T-1');
+  assert.match(missing.worktree?.warning ?? '', /root node_modules.*missing/);
+  await mkdir(join(f.root, 'node_modules'), { recursive: true });
+  await writeFile(join(f.root, 'node_modules/.package-lock.json'), JSON.stringify({ packages: {} }));
+  await writeFile(join(missing.worktree!.path, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/playwright-core': { version: '1.64.1' } } }));
+  const linked = await f.claim('T-1');
+  assert.match(linked.worktree?.warning ?? '', /stale worktree install.*node_modules link/);
+  assert.ok(linked.worktree?.warning?.includes(linked.worktree.path));
+});
+
+test('reclaim checks actual packages when hidden install metadata matches', async t => {
+  for (const kind of ['own', 'link']) for (const actual of ['missing', 'older']) await t.test(`${kind}: ${actual}`, async t => {
+    const f = await fixture(t);
+    await f.create('Matching metadata');
+    const first = await f.claim('T-1');
+    const path = first.worktree!.path;
+    const modules = kind === 'own' ? join(path, 'node_modules') : join(f.root, 'node_modules');
+    await mkdir(modules, { recursive: true });
+    const lock = JSON.stringify({ packages: { 'node_modules/playwright-core': { version: '1.64.1' } } });
+    await writeFile(join(path, 'package-lock.json'), lock);
+    await writeFile(join(modules, '.package-lock.json'), lock);
+    if (actual === 'older') {
+      await mkdir(join(modules, 'playwright-core'), { recursive: true });
+      await writeFile(join(modules, 'playwright-core/package.json'), JSON.stringify({ name: 'playwright-core', version: '1.60.0' }));
+    }
+    const again = await f.claim('T-1');
+    assert.match(again.worktree?.warning ?? '', /stale worktree install/);
+    assert.ok(again.worktree?.warning?.includes(path));
+    assert.match(again.worktree?.warning ?? '', kind === 'own' ? /own node_modules/ : /node_modules link/);
+    assert.equal(await readFile(join(modules, '.package-lock.json'), 'utf8'), lock);
+    if (actual === 'older') assert.match(await readFile(join(modules, 'playwright-core/package.json'), 'utf8'), /1.60.0/);
+  });
+});
+
+test('healthy installs omit optional packages without stale warnings', async t => {
+  for (const kind of ['own', 'link']) await t.test(kind, async t => {
+    const f = await fixture(t);
+    await f.create('Healthy install');
+    const first = await f.claim('T-1');
+    const path = first.worktree!.path;
+    const modules = kind === 'own' ? join(path, 'node_modules') : join(f.root, 'node_modules');
+    await mkdir(join(modules, 'playwright-core'), { recursive: true });
+    const required = { 'node_modules/playwright-core': { version: '1.64.1' } };
+    await writeFile(join(path, 'package-lock.json'), JSON.stringify({ packages: { ...required,
+      'node_modules/other-platform': { version: '1.0.0', optional: true, os: ['fixture-other-os'] },
+      'node_modules/other-cpu': { version: '1.0.0', optional: true, cpu: ['fixture-other-cpu'] },
+      'node_modules/omitted-optional': { version: '1.0.0', optional: true },
+    } }));
+    await writeFile(join(modules, '.package-lock.json'), JSON.stringify({ packages: required }));
+    await writeFile(join(modules, 'playwright-core/package.json'), JSON.stringify({ name: 'playwright-core', version: '1.64.1' }));
+    const again = await f.claim('T-1');
+    assert.ok(again.worktree);
+    assert.equal(again.worktree.warning, undefined);
+    assert.equal(await realpath(join(path, 'node_modules')), modules);
+  });
 });
 
 test('worktree policy uses configured container articles without Git operations', async t => {

@@ -1,3 +1,4 @@
+import { dependencyInstallText } from '../dependency-install.ts';
 import { ModelOutput } from './model-output.ts';
 import { composeSnapshot, snapshotFrames } from './snapshot.ts';
 import { webAuthorityRefusal } from './web-authority.ts';
@@ -284,6 +285,12 @@ export class Dispatcher {
             if (this.#closed || !(options.projectConfig?.().merge.queue ?? false)) throw new Error('merge batch execution stopped');
           }, { head: entry.head, base: candidate.base });
           if ('queued' in result) throw new Error('batch landing requeued its member');
+          if (result.dependencies) {
+            const topic = options.tracker!.summary(entry.item)?.topic ?? AGENTS.id;
+            options.core.noticeTo(topic, { id: `merge-install:${result.commit}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`],
+              text: `${entry.item}: merged ${result.commit} onto ${result.base}. ${dependencyInstallText(result.dependencies)}`,
+              detail: { event: 'merge-install-required', item: entry.item, commit: result.commit, dependencies: result.dependencies } });
+          }
           if (result.followUp) throw new Error(result.followUp.error);
         } catch (error) {
           // A recoverable landing must keep its receipt and membership for retry;

@@ -66,7 +66,7 @@ export class PlanGit {
     }
     if (op === 'diff-tree') {
       const sha = args.at(-2)!;
-      return `${sha}\0${this.commits.get(sha)!.files.join('\0')}\0`;
+      return `${args.includes('--no-commit-id') ? '' : sha + '\0'}${this.commits.get(sha)!.files.join('\0')}\0`;
     }
     throw new Error(`unexpected Git fact: ${args.join(' ')}`);
   };
@@ -163,7 +163,11 @@ export async function planStageHub(t: TestContext, root: string, facts = new Pla
       const commit = facts.commit([]);
       prepared?.({ commit, base: 'dev', tip });
       return { commit, base: 'dev' };
-    }, undefined, facts.read);
+    }, async (_root, args) => {
+      const value = await facts.read(args);
+      if (value === null) throw new Error(`missing plan fixture Git fact: ${args.join(' ')}`);
+      return value;
+    }, facts.read);
     owners.push(() => merges.stop());
     const merge = async (id: string) => {
       try {

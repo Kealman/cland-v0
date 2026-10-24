@@ -1,3 +1,5 @@
+import { dependencyInstall, dependencyInstallText } from '../dependency-install.ts';
+import type { DependencyInstall } from '../protocol.ts';
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
 // the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
 import type { Git } from '../tracker/verdict-git.ts';
@@ -15,7 +17,7 @@ import type { Resumed, TaskWorktrees } from './worktrees.ts';
 import type { MergeQueue } from './merge-queue.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
-type LandedResult = { item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
+type LandedResult = { dependencies?: DependencyInstall; item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
 
 type MergeResult = LandedResult | { item: string; queued: number };
 
@@ -187,7 +189,7 @@ export class TaskMerges {
                 this.#message(finalView);
                 if (!this.queue?.enabled()) throw new MergeError('merge-changed', 'merge queue setting changed during enqueue; try again');
                 if (finalView.branch !== checked.branch || this.tracker.freshnessTip(finalView.branch) !== candidate.head || this.tracker.freshnessTip(candidate.base) !== candidate.baseTip || finalView.verdictBase !== candidate.base) throw new MergeError('merge-changed', `${id}: task branch changed during enqueue; try again`);
-                queued = this.queue!.enqueue(finalView, candidate.head, candidate.base, actor);
+                queued = this.queue!.enqueue(finalView, candidate.head, candidate.base, actor, candidate.files);
               });
               return;
             }
@@ -250,10 +252,15 @@ export class TaskMerges {
       if (queued) return queued;
       const result: LandedResult = { item: id, ...state.landed!, cleanup: 'pending' };
       try {
-        resumed(() => this.log({ event: recovered ? 'merge-resumed' : 'task-merged', id, session: actor.name, ...state.landed!, ...(reason === undefined ? {} : { override: reason }) }));
+        const files = await this.#git(this.tracker.root, ['diff-tree', '--no-commit-id', '--name-only', '--no-renames', '-r', '-z', result.commit, '--'], undefined, undefined, this.#env);
+        const dependencies = dependencyInstall(this.tracker.root, files.split('\0').filter(Boolean));
+        if (dependencies) result.dependencies = dependencies;
+      } catch (err) { return this.#incomplete(result, 'dependency report', err instanceof Error ? err.message : String(err), resumed); }
+      try {
+        resumed(() => this.log({ event: recovered ? 'merge-resumed' : 'task-merged', id, session: actor.name, ...state.landed!, ...(result.dependencies ? { dependencies: result.dependencies } : {}), ...(reason === undefined ? {} : { override: reason }) }));
       } catch (err) { return this.#incomplete(result, 'record', err instanceof Error ? err.message : String(err), resumed); }
       if (landingFailure) return this.#incomplete(result, landingFailure.step, landingFailure.error, resumed);
-      const failure = await resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`, resumed, authorize));
+      const failure = await resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${result.dependencies ? `\n${dependencyInstallText(result.dependencies)}` : ''}${reason === undefined ? '' : `\nHuman override: ${reason}`}`, resumed, authorize));
       return resumed(() => failure ? this.#incomplete(result, failure.step, failure.error, resumed) : result);
     }).then(async result => {
       if ('queued' in result || result.followUp) return result;

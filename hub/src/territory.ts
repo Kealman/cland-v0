@@ -516,7 +516,7 @@ export async function commitsAhead(root: string, branch: string, base: string | 
   return (await territoryGitAsync(root, ['log', '--format=%h %s', ...range, '--'], undefined, undefined, env)).split('\n').filter(Boolean);
 }
 
-export type TaskWorktree = { item: string; branch: string; path: string; base: string | null; createdBranch: boolean; createdWorktree: boolean };
+export type TaskWorktree = { warning?: string; item: string; branch: string; path: string; base: string | null; createdBranch: boolean; createdWorktree: boolean };
 
 /**
  * The item's task branch and worktree, made when missing (decision D7), reused when present: `branch` is the item's

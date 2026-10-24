@@ -1,3 +1,4 @@
+import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps } from '../verification-plan.ts';
 import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
@@ -910,6 +911,12 @@ export class Suites {
     const child = this.#hostGates.get(id);
     if (child?.pid && child.exitCode === null && child.signalCode === null) try { process.kill(-child.pid, 'SIGTERM'); } catch {}
   }
+  async #hostCheckFailure(job: SuiteJob, code: number): Promise<Error> {
+    const output = await readFile(job.log, 'utf8');
+    const hint = await missingDependencyHint(job.cwd, output.slice(output.lastIndexOf('\nHost gate:')), this.#root);
+    if (hint) await appendFile(job.log, `\n${hint}\n`);
+    return new Error(`host check failed (exit ${code}); no droplet created${hint ? `; ${hint}` : ''}`);
+  }
   async #hostGate(job: SuiteJob): Promise<void> {
     const command = verificationSteps(recordedCommands(job)).find(step => step.name === 'check')?.command;
     await appendFile(job.log, `\nHost gate: ${command ?? 'check not set'}\n`);
@@ -918,7 +925,7 @@ export class Suites {
     const record = async () => {
       this.#save(job);
       await appendFile(job.log, `\ntier T0: exit ${job.hostGate!.code}; duration ${(this.#clock.now().getTime() - started) / 1000} s; output tail: host check\n`);
-      if (job.hostGate!.code !== 0) throw new Error(`host check failed (exit ${job.hostGate!.code}); no droplet created`);
+      if (job.hostGate!.code !== 0) throw await this.#hostCheckFailure(job, job.hostGate!.code);
     };
     if (this.#options.dropletServices?.hostGate) {
       job.hostGate = await this.#options.dropletServices.hostGate(runRef(job));

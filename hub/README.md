@@ -1907,7 +1907,25 @@ In a project with a territory, a task's branch and worktree come from cland, nev
 
 The frames: `worktree.list` → `{worktrees: [{item, path, branch, title, kind, state, sessions, base, ahead}]}`, and `worktree.prune` → `{candidates}` with `dryRun` or no `items`, `{removed, failed}` with `items`.
 
+Task preparation links an absent worktree `node_modules` to the root install,
+including root-only tools such as `playwright-core`. Existing directories and
+links are preserved. The claim/launch result's optional `worktree.warning` names
+the worktree and whether a stale install is its own directory or a link; freshness
+compares lockfile package versions/integrities with npm's hidden install lock
+and checks actual installed package manifests/versions. Missing optional packages
+and optional bindings for other OS/CPU targets are legitimate omissions.
+A missing root install is reported for Node projects. Preparation never installs.
+
 ### The merge gate
+
+Changes to `package.json` or `package-lock.json` (including workspace manifests)
+produce an explicit required root `npm install` notice; landing never runs npm or
+replaces the shared dependency tree. Stop shared readers before the Coordinator
+updates that install. Queue entries and landing results add optional
+`dependencies: {files, command: "npm install", cwd}`; plain `cland merge queue`
+and `cland merge` print it, the durable landing comment retains it, and batch
+landing sends it to the enqueuer and item lead. A resumed landing reads the same
+facts from the landed commit, so cleanup retries retain the requirement.
 
 `cland merge T-12 [--json]` and the Coordinator spoke's `merge {item: "T-12"}` share one frame, `{"type":"merge","id":…, "item":"T-12"}`. The human may run it from their own shell. Implementer, Reviewer and QA calls, including their shell's CLI calls, are refused by the permission table and recorded in Agents.
 
@@ -3149,7 +3167,11 @@ to the human and the Coordinator; reap requires the token.
 Before acquiring a droplet, the hub runs the recorded check command at the
 submitted head on the host (`Host gate: <command>`). A failure posts
 `host check failed (exit <n>); no droplet created`; an unset check logs
-`Host gate: check not set` and continues. Delivery
+`Host gate: check not set` and continues. A `MODULE_NOT_FOUND` or
+`ERR_MODULE_NOT_FOUND` naming a locked package also reports
+`dependencies out of date: run npm install`, with the candidate checkout. Unknown
+imports and ordinary type errors retain their original failure. This diagnosis
+never runs an installer. Delivery
 bundles the head against its merge base with the prepared snapshot's base; without
 a merge base, or when the bundle would be empty, it sends a full bundle. As `runner`,
 the machine fetches that bundle, checks out the exact detached head and cleans the

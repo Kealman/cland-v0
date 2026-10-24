@@ -568,6 +568,7 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
     if (args[0] === 'for-each-ref') return [...heads].map(([branch, head]) => `${head} refs/heads/${branch}`).join('\n');
     if (args[0] === 'rev-parse') return heads.get(args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '')) ?? null;
     if (args[0] === 'merge-base') return 'a'.repeat(40);
+    if (args[0] === 'diff-tree') return 'hub/src/parser.ts\0';
     if (args[0] === 'diff') return args.includes('--name-only') ? 'hub/src/parser.ts\0' : 'patch';
     if (args[0] === 'patch-id') return 'stable';
     return null;
@@ -605,7 +606,7 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
   boundary.land = async (entry, candidate) => {
     try {
       const result = await merges.merge(entry.item, entry.by, work => work(), undefined, () => {}, { head: entry.head, base: heads.get('dev')! });
-      assert.ok('commit' in result && !result.followUp);
+      assert.ok('commit' in result && !result.followUp, JSON.stringify(result));
     } catch (error) {
       // Match the hub boundary: base races rebuild; ordinary gate refusals drop.
       if (error instanceof MergeError && error.code === 'merge-changed' && /(?:batch|integration) base moved/.test(error.message)) throw new BatchRebuild(error.message);
@@ -634,7 +635,7 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
     return;
   }
   assert.deepEqual(dropped, [], 'integration movement must not drop an unchanged task head');
-  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3'], JSON.stringify(runner.snapshot()));
   assert.equal(f.suites.status().length, 1);
   assert.deepEqual(landed.map(id => tracker.mergeReceipt(id)?.commit), ['4'.repeat(40), '5'.repeat(40), '6'.repeat(40)]);
   assert.ok(landed.every(id => tracker.summary(id)?.state === 'closed'));

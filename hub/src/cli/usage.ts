@@ -118,6 +118,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [-
   task claim <id> [--release] [--force]
                   claiming an open task in a project with a territory makes (or reuses) its branch
                   t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>
+                  links root node_modules when absent; reports stale own installs or links without replacing them
 ${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: "human"). In a
                   launched session's shell ($CLAND_SESSION_ID / $CLAND_SESSION_NAME) the call is always
                   that session's, checked against its role as its own tools are; --as cannot change it.
@@ -150,7 +151,8 @@ export const WORKTREE_USAGE = `  worktree list   the task worktrees (.cland/work
 
 export const MERGE_USAGE = `  merge <T-id> [--json]   queue a reviewed head when [merge] queue=true, otherwise land on dev; Coordinator or supervising Lead
                           a root with core.bare=true refuses as merge-bare; inspect and restore its shared Git config
-  merge queue [--json]  list queued heads in FIFO order
+                          changed package manifests/lockfiles require npm install in the root after shared readers stop
+  merge queue [--json]  list queued heads in FIFO order, including required dependency installs
                           batches run check (T0) before batch_tiers; a red check bisects the members
     --cancel              drop a queued request; supervising Lead, Coordinator or human
     --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria

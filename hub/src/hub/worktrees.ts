@@ -5,8 +5,8 @@
 // (`task-worktree`, an Agents notice through the log's tap). Its Git commands are awaited, never synchronous, and
 // run one operation at a time (`#serial`): the territory lock refuses a second holder rather than waiting for it.
 import { kindWithArticle } from '../tracker/kinds.ts';
-import { realpath, stat } from 'node:fs/promises';
-import { relative, resolve, sep } from 'node:path';
+import { lstat, readFile, realpath, stat, symlink } from 'node:fs/promises';
+import { join, relative, resolve, sep } from 'node:path';
 import type { LogFn } from '../log.ts';
 import type { Claim } from '../tracker/index-db.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
@@ -115,6 +115,48 @@ export class TaskWorktrees {
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
   async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<TaskWorktree> {
     const worktree = await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env);
+    // Share the root install without ever running an installer under live readers.
+    const modules = join(worktree.path, 'node_modules');
+    const present = await lstat(modules).catch(err => {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw err;
+    });
+    if (!present && await stat(join(this.root, 'node_modules')).then(s => s.isDirectory(), () => false)) {
+      resumed(authorize);
+      await symlink(join(this.root, 'node_modules'), modules, 'dir');
+    }
+    const installation = await lstat(modules).catch(err => {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw err;
+    });
+    if (installation) {
+      const readPackages = async (path: string): Promise<Record<string, { version?: string; integrity?: string; link?: boolean; optional?: boolean; os?: string[]; cpu?: string[] }> | null> => {
+        try { return JSON.parse(await readFile(path, 'utf8')).packages ?? null; }
+        catch { return null; }
+      };
+      const expected = await readPackages(join(worktree.path, 'package-lock.json'));
+      const installed = await readPackages(join(modules, '.package-lock.json'));
+      const applicable = (targets: string[] | undefined, host: string): boolean => !targets
+        || !targets.includes(`!${host}`) && (targets.every(target => target.startsWith('!')) || targets.includes(host) || targets.includes('any'));
+      let stale = false;
+      if (expected) for (const [path, pkg] of Object.entries(expected)) {
+        if (!path.includes('node_modules/') || pkg.link) continue;
+        // npm legitimately omits optional packages, notably other platforms' bindings.
+        if (pkg.optional && (!installed?.[path] || !applicable(pkg.os, process.platform) || !applicable(pkg.cpu, process.arch))) continue;
+        if (!installed?.[path] || installed[path].version !== pkg.version || installed[path].integrity !== pkg.integrity
+          || path.startsWith('/') || path.split('/').some(part => part === '..' || part === '.')) { stale = true; break; }
+        try {
+          const actual = JSON.parse(await readFile(join(worktree.path, path, 'package.json'), 'utf8'));
+          if (pkg.version !== undefined && actual.version !== pkg.version) { stale = true; break; }
+        } catch { stale = true; break; }
+      }
+      if (stale || !installation.isSymbolicLink() && !expected) {
+        worktree.warning = `stale worktree install: ${worktree.path} holds ${installation.isSymbolicLink() ? 'a node_modules link' : 'its own node_modules'}; dependencies out of date or unverified. Update the root with npm install only when shared readers are stopped; preserve any own install until it can safely be replaced with a root link.`;
+      }
+    }
+    if (!installation && await stat(join(this.root, 'package.json')).then(() => true, () => false)) {
+      worktree.warning = `worktree ${worktree.path}: root node_modules at ${join(this.root, 'node_modules')} is missing; run npm install in the root before using dependencies`;
+    }
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
     resumed(authorize);
