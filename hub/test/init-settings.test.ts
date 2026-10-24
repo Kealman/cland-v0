@@ -7,6 +7,7 @@ import { test, type TestContext } from 'node:test';
 import { provisionClaudeSettings } from '../src/init/claude-settings.ts';
 import { Report } from '../src/init/files.ts';
 import { HOOK_EVENTS } from '../src/adapters/claude-code.ts';
+import { VERSION } from '../src/version.ts';
 
 function fixture(t: TestContext): string {
   const root = mkdtempSync(join(tmpdir(), 'cland-init-settings-'));
@@ -26,6 +27,18 @@ test('fresh settings disable background worktree isolation beside the cland hook
   const settings = JSON.parse(readFileSync(join(root, '.claude/settings.json'), 'utf8'));
   assert.deepEqual(settings.worktree, { bgIsolation: 'none' });
   assert.deepEqual(Object.keys(settings.hooks).sort(), Object.keys(HOOK_EVENTS).sort());
+});
+
+test('init and update provision one synchronous managed Bash literal-rm guard', t => {
+  const root = fixture(t);
+  for (const action of ['created', 'unchanged']) {
+    assert.equal(provision(root).changes[0]?.action, action);
+    const settings = JSON.parse(readFileSync(join(root, '.claude/settings.json'), 'utf8'));
+    assert.deepEqual(settings.hooks.PreToolUse, [{
+      matcher: 'Bash',
+      hooks: [{ type: 'command', command: `[ -n "$CLAND_SESSION_NAME" ] || ! command -v cland >/dev/null 2>&1 || cland hook literal-rm # managed by cland ${VERSION}`, timeout: 10 }],
+    }]);
+  }
 });
 
 test('provisioning restores edited isolation once, then preserves current settings bytes and mtime', { timeout: 5000 }, t => {

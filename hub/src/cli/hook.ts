@@ -1,6 +1,6 @@
 // `cland hook <event>`: what a launched session's harness runs from inside the session — its hooks and the cland
 // mod — to tell the hub what is happening (spec 4.3, 4.9). It posts one `session.signal` over the hub's Unix
-// socket and exits; it never fails the harness (exit 0 whatever happened, a note on stderr).
+// socket and exits 0. The local literal-rm guard and worktree-create refusal exit 2.
 //
 //   cland hook <event> --session <name> [--launch <id>] [--hub-file <.cland/hub.json>]   the harness's JSON payload on stdin
 //   cland hook bridge  --session <name> [--launch <id>] [--hub-file <.cland/hub.json>]   the mod's bridge: stays
@@ -18,6 +18,7 @@ import { PROTOCOL_VERSION, parseFrame, type ClientHello } from '../protocol.ts';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { bridgeGraceMs } from './hook-timing.ts';
 import { askHubFrame } from './socket-client.ts';
+import { literalRmRefusal } from './literal-rm.ts';
 
 export { HOOK_USAGE } from './usage.ts';
 
@@ -196,7 +197,7 @@ function bridgeOnce(d: { socket: string; secret: string }, session: string, laun
 
 /**
  * The harness asked for a worktree of its own: refused, with the session's own named on stderr (what the harness
- * shows the model), and recorded at the hub. The only hook that fails the harness: that is its whole point.
+ * shows the model), and recorded at the hub. Like literal-rm, its exit 2 is a synchronous refusal.
  */
 async function refuseWorktree(args: string[]): Promise<number> {
   const at = startedAt();
@@ -227,6 +228,14 @@ export async function runHook(args: string[]): Promise<number> {
   const [event, ...rest] = args;
   if (!event) {
     process.stderr.write(`usage: cland hook <event> --session <name> [--hub-file <path>]\n`);
+    return 2;
+  }
+  if (event === 'literal-rm') {
+    let input: unknown;
+    try { input = JSON.parse(await readStdin(2000)); } catch { return 0; }
+    const refusal = literalRmRefusal(input);
+    if (refusal === null) return 0;
+    process.stderr.write(refusal);
     return 2;
   }
   if (event === 'bridge') return bridge(rest);

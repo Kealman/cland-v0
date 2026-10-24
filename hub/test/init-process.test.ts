@@ -10,6 +10,7 @@ import { once } from 'node:events';
 import { chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { HOOK_EVENTS } from '../src/adapters/claude-code.ts';
 import { connectUi, eventually, fakeClaude, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { ownProcess, onCleanup } from './process-cleanup.ts';
@@ -21,26 +22,38 @@ test('the project hook runs `cland hook` from the PATH for a session started by 
   await gitRepo(root);
   await run(root, 'init');
   const settings = JSON.parse(await readFile(join(root, '.claude', 'settings.json'), 'utf8')) as { hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>> };
-  const command = settings.hooks.SessionStart?.[0]?.hooks[0]?.command ?? '';
   // a `cland` on the PATH that records how it was called
   const bin = join(root, '.tmp-bin');
   await mkdir(bin);
   const calls = join(root, '.tmp-calls');
-  await writeFile(join(bin, 'cland'), `#!/bin/sh\necho "$@" >> '${calls}'\n`);
+  await writeFile(join(bin, 'cland'), `#!/bin/sh\necho "$@" >> '${calls}'\nif [ "$2" = literal-rm ]; then exec "$CLAND_TEST_NODE" "$CLAND_TEST_CLI" "$@"; fi\n`);
   await chmod(join(bin, 'cland'), 0o755);
   const path = `${bin}:${dirname(process.execPath)}:/usr/bin:/bin`;
 
-  const byHand = await sh(root, command, { PATH: path, CLAND_SESSION_NAME: '' });
-  assert.equal(byHand.code, 0, byHand.stderr);
-  assert.equal(await readFile(calls, 'utf8'), 'hook session-start\n');
+  const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+  const payload = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'rm -rf \"$target\"' } });
+  let recorded = '';
+  for (const [event, exitCode] of [['SessionStart', 0], ['PreToolUse', 2]] as const) {
+    const hook = settings.hooks[event]?.[0]?.hooks[0]?.command ?? '';
+    const command = `printf '%s' '${payload}' | { ${hook}\n}`;
+    const byHand = await sh(root, command, { PATH: path, CLAND_SESSION_NAME: '', CLAND_TEST_NODE: process.execPath, CLAND_TEST_CLI: cli });
+    assert.equal(byHand.code, exitCode, byHand.stderr);
+    if (event === 'PreToolUse') {
+      assert.match(byHand.stderr, /every path written out literally/);
+      assert.equal(byHand.stdout, '');
+      assert.doesNotMatch(byHand.stderr, /no running hub/);
+    }
+    recorded += `hook ${event === 'SessionStart' ? 'session-start' : 'literal-rm'}\n`;
+    assert.equal(await readFile(calls, 'utf8'), recorded);
 
-  const launched = await sh(root, command, { PATH: path, CLAND_SESSION_NAME: 'coord' });
-  assert.equal(launched.code, 0);
-  assert.equal(await readFile(calls, 'utf8'), 'hook session-start\n', 'the launch injected its own hooks: the project one does nothing');
+    const launched = await sh(root, command, { PATH: path, CLAND_SESSION_NAME: 'coord' });
+    assert.equal(launched.code, 0);
+    assert.equal(await readFile(calls, 'utf8'), recorded, 'the injected hooks own the launched session');
 
-  const noCland = await sh(root, command, { PATH: '/usr/bin:/bin', CLAND_SESSION_NAME: '' });
-  assert.equal(noCland.code, 0, 'cland not installed: the hook does nothing and fails nothing');
-  assert.equal(noCland.stderr, '');
+    const noCland = await sh(root, command, { PATH: '/usr/bin:/bin', CLAND_SESSION_NAME: '' });
+    assert.equal(noCland.code, 0, 'cland not installed: the hook does nothing and fails nothing');
+    assert.equal(noCland.stderr, '');
+  }
 });
 
 test('a Claude Code session launched in the initialised project gets the project hooks and reads AGENTS.md: directly, and through the import once CLAUDE.md exists', async (t) => {

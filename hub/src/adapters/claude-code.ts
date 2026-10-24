@@ -83,8 +83,9 @@ export const CLAUDE_CODE_CAPABILITIES: Capabilities = {
 /** Keep background sessions in the project's working copy (spec v0.1.4 §3.2). */
 export const BG_ISOLATION = 'none';
 
-/** The hook events cland listens to, and the `cland hook` event each one runs. */
+/** Managed Claude hook events and their CLI handlers, including the local Bash guard. */
 export const HOOK_EVENTS: Readonly<Record<string, string>> = {
+  PreToolUse: 'literal-rm',
   SessionStart: 'session-start',
   UserPromptSubmit: 'turn-start',
   Stop: 'turn-end',
@@ -398,8 +399,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const mcp = { mcpServers: { cland: { type: 'stdio', command: this.#host.node, args: [this.#host.spoke], env: spokeEnv } } };
     const hooks: Record<string, unknown[]> = {};
     for (const [hookEvent, event] of Object.entries(HOOK_EVENTS)) {
-      // async: a hook never holds the session up; each signal carries its time, so order is restored at the hub
-      hooks[hookEvent] = [{ hooks: [{ type: 'command', command: this.#hookCommand(event, name, sessionId), async: true, timeout: 10 }] }];
+      // The Bash guard is synchronous: exit 2 refuses the tool. Signals stay async.
+      hooks[hookEvent] = [{ ...(hookEvent === 'PreToolUse' ? { matcher: 'Bash' } : {}), hooks: [{ type: 'command', command: this.#hookCommand(event, name, sessionId), ...(hookEvent === 'PreToolUse' ? {} : { async: true }), timeout: 10 }] }];
     }
     // not async: its exit status is the refusal
     if (worktree !== null) hooks.WorktreeCreate = [{ hooks: [{ type: 'command', command: `${this.#hookCommand('worktree-create', name, sessionId)} --worktree ${sq(worktree)}`, timeout: 10 }] }];

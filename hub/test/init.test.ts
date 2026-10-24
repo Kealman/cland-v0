@@ -225,7 +225,9 @@ test('cland init on a repository with its own AGENTS.md, CLAUDE.md, settings, do
   const settings = JSON.parse(await readFile(join(root, '.claude', 'settings.json'), 'utf8')) as typeof ownSettings & { hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>> };
   assert.deepEqual(settings.permissions, ownSettings.permissions);
   assert.equal(settings.model, 'opus');
-  assert.deepEqual(settings.hooks.PreToolUse, ownSettings.hooks.PreToolUse);
+  assert.deepEqual(settings.hooks.PreToolUse[0], ownSettings.hooks.PreToolUse[0]);
+  assert.equal(settings.hooks.PreToolUse.length, 2);
+  assert.match(settings.hooks.PreToolUse[1]?.hooks[0]?.command ?? '', /cland hook literal-rm # managed by cland/);
   assert.equal(settings.hooks.Stop?.length, 2);
   assert.deepEqual(settings.hooks.Stop?.[0], ownSettings.hooks.Stop[0]);
   assert.match(settings.hooks.Stop?.[1]?.hooks[0]?.command ?? '', /cland hook turn-end # managed by cland/);

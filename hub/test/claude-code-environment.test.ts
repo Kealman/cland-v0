@@ -55,6 +55,9 @@ test('Claude launch settings defer to either project settings file', { timeout: 
       const settings = JSON.parse(readFileSync(args[args.indexOf('--settings') + 1]!, 'utf8'));
       assert.deepEqual(settings.worktree, row.fallback ? { bgIsolation: 'none' } : undefined, row.name);
       assert.ok(settings.hooks.SessionStart, 'hooks survive');
+      assert.deepEqual(settings.hooks.PreToolUse, [{ matcher: 'Bash', hooks: [{
+        type: 'command', command: "'/fixture/node' '/fixture/cland' 'hook' 'literal-rm' '--session' 'plain' '--launch' '" + settings.env.CLAND_SESSION_ID + "' '--hub-file' '" + host.discoveryFile + "'", timeout: 10,
+      }] }], 'launch injects the same synchronous Bash guard');
       assert.equal(settings.env.CLAND_SESSION_NAME, 'plain');
       if (row.settings !== undefined) assert.equal(await readFile(settingsFile, 'utf8'), row.settings);
       if (row.local !== undefined) assert.equal(await readFile(localFile, 'utf8'), row.local);

@@ -8,6 +8,13 @@ metadata:
 
 Implement the work described by the user in the spec or tickets.
 
+Claude Code's managed Bash `PreToolUse` guard refuses computed rm/rmdir targets
+(command substitutions, named variables and xargs) before native approval stalls
+the session. Read its reason, print the path if needed, and retry with every path
+written literally. Init/update install it for hand-started sessions when `cland`
+is on PATH; hub launches/relaunches inject it. Literal paths, `git rm` and heredoc
+bodies pass; the guard needs no running hub.
+
 When working as a custom role, read `docs/agents/session-permissions.md#custom-roles` for the own-claim review/verification path and route completion to the Coordinator.
 
 When editing a kept upstream skill, append the change and item as a new line in its sibling `CHANGES`; keep `metadata.changes: CHANGES` stable.

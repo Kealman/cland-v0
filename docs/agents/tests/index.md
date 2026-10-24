@@ -173,3 +173,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/dev-t3-search-component.test.ts`](../../../hub/test/dev-t3-search-component.test.ts) | [Notes](hub-test-dev-t3-search-component.test.ts.md) |
 
 | [`hub/test/verifier-routing.test.ts`](../../../hub/test/verifier-routing.test.ts) | [Notes](hub-test-verifier-routing.test.ts.md) |
+| [`hub/test/literal-rm.test.ts`](../../../hub/test/literal-rm.test.ts) | [Notes](hub-test-literal-rm.test.ts.md) |
+| [`hub/test/literal-rm-cli.test.ts`](../../../hub/test/literal-rm-cli.test.ts) | [Notes](hub-test-literal-rm-cli.test.ts.md) |
+| [`hub/test/init-settings.test.ts`](../../../hub/test/init-settings.test.ts) | [Notes](hub-test-init-settings.test.ts.md) |
+| [`hub/test/init.test.ts`](../../../hub/test/init.test.ts) | [Notes](hub-test-init.test.ts.md) |
+| [`hub/test/init-process.test.ts`](../../../hub/test/init-process.test.ts) | [Notes](hub-test-init-process.test.ts.md) |

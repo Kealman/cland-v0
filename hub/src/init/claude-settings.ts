@@ -48,8 +48,8 @@ export function mergeHooks(settings: Record<string, unknown>): Record<string, un
   }
   for (const [hookEvent, event] of Object.entries(HOOK_EVENTS)) {
     const entries = Array.isArray(hooks[hookEvent]) ? (hooks[hookEvent] as unknown[]) : [];
-    // async: a hook never holds the session up, as the hooks injected at launch
-    hooks[hookEvent] = [...entries, { hooks: [{ type: 'command', command: hookCommand(event), async: true, timeout: 10 }] }];
+    // The Bash guard must finish before the tool runs; signal hooks stay async.
+    hooks[hookEvent] = [...entries, { ...(hookEvent === 'PreToolUse' ? { matcher: 'Bash' } : {}), hooks: [{ type: 'command', command: hookCommand(event), ...(hookEvent === 'PreToolUse' ? {} : { async: true }), timeout: 10 }] }];
   }
   return { ...settings, hooks };
 }

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/literal-rm.mjs\"",
+            "command": "[ -n \"$CLAND_SESSION_NAME\" ] || ! command -v cland >/dev/null 2>&1 || cland hook literal-rm # managed by cland 0.2.0",
             "timeout": 10
           }
         ]
