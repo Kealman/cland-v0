@@ -3,7 +3,7 @@ id: T-1158
 kind: task
 title: Rendered Mermaid diagrams in the web workbench
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-947
 branch: t/T-1158-rendered-mermaid-diagrams-in-the-web
 created: 2026-10-22T23:41:27.072Z
-updated: 2026-10-24T09:23:51.146Z
+updated: 2026-10-24T09:35:21.654Z
 ---
 
 ## Summary
@@ -118,3 +118,7 @@ Lead209b7fed reports post-fetch origin/deva9a76af4 read-only merge-tree exit0/no
 Durable review A-10647.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-24T09:35:15.860Z
+
+Decision (human, General 2026-10-24 09:34Z, answer to ask 8e773d6e): use mermaid 12.2.0 now; the two-week minimum age for this package is waived. 12.1.0 carried the low KaTeX advisory GHSA-238p-pmpm-9mq7 through its ^0.16.47 range; 12.2.0 takes a patched KaTeX.

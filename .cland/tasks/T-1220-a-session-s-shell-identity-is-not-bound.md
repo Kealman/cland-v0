@@ -3,19 +3,20 @@ id: T-1220
 kind: task
 title: A session's shell identity is not bound to a per-session credential
 state: open
-status: backlog
+status: in progress
 size: M
+criterion_seq: 3
 labels:
   - bug
   - security
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1197
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T09:32:51.634Z
+updated: 2026-10-24T09:35:52.214Z
 ---
 
 ## Summary
@@ -27,5 +28,5 @@ Trust model today: every session runs as the same OS user on one machine. This g
 ## Acceptance criteria
 
 - [ ] C1. A shell CLI call is attributed to a session only when it presents that session's own per-session credential; a call presenting another session's identity is refused, shown in a sealed real-hub test.
-- [ ] C2. The rule for a shell that presents no session identity is decided by the human and recorded as a decision (keep acting as the human, refuse, or require an explicit human credential); the implementation and docs match it.
+- [ ] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
 - [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
