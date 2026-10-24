@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-778
 blocked_by: []
-topic: null
+topic: topic-954
 branch: t/T-780-the-install-script-at-cland-app-install
 created: 2026-10-18T06:04:23.227Z
-updated: 2026-10-24T09:39:45.535Z
+updated: 2026-10-24T09:42:07.386Z
 ---
 
 ## Summary
@@ -31,6 +31,15 @@ The landing, the README and the install docs tell Linux users to run `curl -fsSL
 
 ## Acceptance criteria
 
-- [ ] On a clean Ubuntu LTS and a clean Fedora, the one-line command installs a working `cland` and `cland doctor` runs
-- [ ] Running the script again updates to the newest release
-- [ ] docs/install.md describes the paths the script uses and how to remove them
+- [ ] C1. Against a local fake release (file:// tarball or local HTTP, sealed scratch HOME and prefix), the script installs a working `cland` from the tag source, including the built web client, without sudo, and prints where it put the command (test).
+- [ ] C2. Running the script again against a newer fake release updates the install in place (test).
+- [ ] C3. With Node missing or outside `>=24.13 <25`, the script stops before changing anything and says how to get Node 24 (test).
+- [ ] C4. docs/install.md describes the paths the script uses and how to remove them (docs).
+
+Landing evidence, not a merge condition: the one-line command on a clean Ubuntu LTS and a clean Fedora droplet, recorded under E-778 C2.
+
+## Comments
+
+### impl-780 · 2026-10-24T09:41:34.209Z
+
+Implementation started. Assigned test seam: POSIX installer CLI against sealed local fake releases with scratch HOME/PREFIX, proving install, update, and Node rejection. Checking release artifact contract because tagged source omits web/dist; clean Ubuntu/Fedora runs remain post-landing evidence per launch brief.

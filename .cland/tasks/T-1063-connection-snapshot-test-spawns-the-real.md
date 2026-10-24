@@ -2,8 +2,8 @@
 id: T-1063
 kind: task
 title: connection-snapshot test spawns the real account poller instead of injecting accountReader
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-949
 branch: t/T-1063-connection-snapshot-test-spawns-the-real
 created: 2026-10-21T14:26:07.116Z
-updated: 2026-10-24T09:39:29.426Z
+updated: 2026-10-24T09:46:43.858Z
+closed: 2026-10-24T09:46:43.858Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ The existing test `hub/test/connection-snapshot.test.ts` "snapshot contains each
 
 - [x] C1. The test injects the existing `accountReader` port for its named account, and a targeted Linux run of the file reports no `child_process.spawn` tripwire finding for it.
   - done: oc-1063 · 2026-10-24T09:11:41.446Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1063-final · 2026-10-24T09:41:00.848Z · commit 7fdbe7bacce6e023e631a6e811ad4227330bc9cd
 - [x] C2. The test's assertions are unchanged and pass.
   - done: oc-1063 · 2026-10-24T09:11:41.647Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1063-final · 2026-10-24T09:41:00.848Z · commit 7fdbe7bacce6e023e631a6e811ad4227330bc9cd
 
 ## Comments
 
@@ -71,3 +74,37 @@ Durable review A-10623.
 ### oc-1063 · 2026-10-24T09:39:19.744Z
 
 Review clear at 7fdbe7ba (rev-20261024-1063-source, rev-23, no findings; A-10623). Mode-free verify 9638c392-8f81-446d-927d-51eb18765675: auto exit 0, 2865/2865 pass, T1/T2/Web all exit 0, droplet c-8 lon1 linux x64, log A-10672. `git merge-tree --write-tree origin/dev HEAD` at 7fdbe7ba vs origin/dev 0a57d8bf: tree 7a9ad01f, exit 0, no conflicts. Sent ready T-1063 to Coordinator; not merged.
+
+### rev-23 · 2026-10-24T09:41:00.848Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1063-final
+commit: 7fdbe7bacce6e023e631a6e811ad4227330bc9cd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1063 final identity-bound same-head evidence — clear
+
+Head7fdbe7bacce6e023e631a6e811ad4227330bc9cd/treec4a70112e653e9c91e35f9f652e717901f80bd3d, origin task ref unchanged. Source A-10623 remains accepted. Run rev-20261024-1063-final; scope evidence; findings [].
+
+Identity-bound configured9638c392-8f81-446d-927d-51eb18765675/A-10672 names this head and finishes exit0. Actual ordinary records:2865 tests/419files, all pass, zero failure/cancellation/skip. Five additional actual inherited test-docs load repetitions pass; they are not connection-snapshot repetition proof. T1, fallback all T2 in both hub/Neovim and complete Web44files/223tests finished exit0. Linux x64 6.8.0-142-generic droplet c-8lon1 cland-v0-68a25090, Node24.21.0/Neovim0.12.5, workers2/Web4, lifetime648s/$0.0450. Host check stdout retained; gate6db0079c3712c1a9bfb9a65e30c3c131966644b0 independently tree object, reused not repeated remotely.
+
+C1 verified: connection-snapshot.test.ts has13 actual passing test completions and a passing file completion2.120983990s. The exact target snapshot case passes0.128277455s. No runtime tier-mismatch record names the file/test (in particular no child_process.spawn);17 other runtime records confirm report capture. This is Linux file-specific no-spawn evidence with the injected reader, not inference from suite totals.
+
+C2 verified: source diff established all assertions byte-unchanged; all13 now pass in the same-head Linux receipt. Named account, domain frames, compact verdict rounds, history and closed-topic assertions remain active. No new test identity or timing allowance added.
+
+Native suite walls55.05/338.06/147.91s differ from phase envelopes59/342/152s and projections; actual Web shard147.81s. Budgets/lint/ratchet remain report-only:133 findings/60files, two missing baselines, unrelated duration/Web-wall warnings and incomplete ratchet base. No T3/T4 or QA claim.
+
+A-10624 preserves local macOS before/after report-only spawn diagnostic and13/13 results with original tail/pipeline/native-exit limits. Prior human-attributed0a1983d0/A-10657 is separately audited in A-10660; it is not reattributed or used as this final identity-bound receipt. No cancellation/refusal workaround. Lead0d170e93 reports post-fetch dev0a57d8bf read-only merge-tree exit0/tree7a9ad01f171f9a9de1ace4d3079548d28ac691b0 and clean unchanged head; final source ref independently still matches. Any later integration would require fresh source review/verification.
+
+All C1/C2 verified at this exact head. QA none/after-stage. Reviewer static artifact/Git inspection only, no tests/probes/installs/edits/GUI/merge/delegation. Standards/evidence clear; Spec/evidence clear.
+Durable review A-10676.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T09:46:43.858Z
+
+Merged 355d3c62bcfd457940cbd3ab06fcabfad6ef34a0 onto dev.

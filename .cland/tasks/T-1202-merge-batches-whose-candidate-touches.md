@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-948
 branch: t/T-1202-merge-batches-whose-candidate-touches
 created: 2026-10-24T06:46:04.922Z
-updated: 2026-10-24T09:37:49.950Z
+updated: 2026-10-24T09:50:06.103Z
 ---
 
 ## Summary

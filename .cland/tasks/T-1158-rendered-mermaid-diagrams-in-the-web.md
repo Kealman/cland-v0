@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-947
 branch: t/T-1158-rendered-mermaid-diagrams-in-the-web
 created: 2026-10-22T23:41:27.072Z
-updated: 2026-10-24T09:37:52.806Z
+updated: 2026-10-24T09:41:46.864Z
 ---
 
 ## Summary
@@ -126,3 +126,20 @@ Decision (human, General 2026-10-24 09:34Z, answer to ask 8e773d6e): use mermaid
 ### impl-1158 · 2026-10-24T09:37:46.060Z
 
 Human-approved Mermaid12.2.0 upgrade at8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b, following authorized conflict-free origin/devc6abaeb1 mergefd24fbe8. Private install only. A-10669 retains original audit/install/check/Web stdout and native command/exit/chunk ledger. npm audit exit0,total0; KaTeX0.18.10 removesGHSA-238p-pmpm-9mq7. Local Darwinarm64 final source-tree npm run check exit0 (lint report-only133findings,0refusals); Mermaid Web2/2pass(1.781/1.205s); standalone bundle-size check exit0,455323→455554(+231B,limit1024). Exactly3installed versions changed: Mermaid,KaTeX,KaTeX's Commander; no new direct dependency. Prior0921bd50 configured green is historical. Fresh delta source review and subsequent mode-free verification required at8379fcf0; no new-head suite/QA claim.
+
+### rev-31 · 2026-10-24T09:41:10.823Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1158-delta
+commit: 8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized delta source clear; no findings. A-10678 carries rev-23 full/final A-10617/A-10647. Coordinator 5d809eb8 records human approval for 12.2.0/age waiver/private install/dev merge. Git records merge fd24fbe8 parents 0921bd50 + 69b3dc7d (correct evidence label c6abaeb1); task viewer/tests/build/capability sources preserved. Final commit only exact web Mermaid pin, three package versions/lock metadata and matching README. Installed strict secure-key/DOMPurify behavior retained; Node requirements compatible. A-10669 source-tree local check/Web2/2/size +231B exits0; audit JSON total0 with native child status0. Prior-head suite historical; all C1–C3 final runtime settlement pending fresh configured mode-free at 8379fcf0. After-stage affected QA separate. No Reviewer execution or enqueue.
+
+### impl-1158 · 2026-10-24T09:41:46.864Z
+
+Provenance correction to the upgrade comment/A-10669: fd24fbe8's actual dev parent is69b3dc7db6d819cd27ac2e96b769a02623cf1c96; c6abaeb1 was the subsequently observed origin/dev ref, not the merge parent. git show native chunkb20a6c exit0 confirms both parents. No source change/metadata-only commit. Delta source clearA-10678 at unchanged8379fcf0; mode-free155262fc-e049-4acd-a9d8-841949b779bd admitted, awaiting hub result.

@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:03:55.152Z
-updated: 2026-10-24T09:39:31.543Z
+updated: 2026-10-24T09:45:52.865Z
 ---
 
 ## Summary
@@ -52,6 +52,8 @@ stages:
       - - T-783
       - - T-1221
       - - T-781
+      - - T-1223
+      - - T-1222
   - name: screenshots
     qa:
       scope: none

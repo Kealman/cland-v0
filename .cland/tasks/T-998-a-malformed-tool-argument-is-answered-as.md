@@ -2,8 +2,8 @@
 id: T-998
 kind: task
 title: A malformed tool argument is answered as a permission refusal (forbidden)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-939
 branch: t/T-998-a-malformed-tool-argument-is-answered-as
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-24T09:40:04.675Z
+updated: 2026-10-24T09:46:57.751Z
+closed: 2026-10-24T09:46:57.751Z
 ---
 
 ## Summary
@@ -31,16 +32,20 @@ Seen 2026-10-20 16:47Z: impl-975 called `task.criterion` with `action: "done"`, 
 
 - [x] C1. `task.criterion` with an unknown field or a missing `op` answers a non-`forbidden` validation code that names the field and the accepted values (test).
   - done: impl-998 · 2026-10-24T08:04:53.216Z
+  - verified: rev-26 [reviewer] · run rev-20261024-998-final-1 · 2026-10-24T09:41:05.260Z · commit 866eeac8237d4cebbc4273e935ffb3329ff4c01b
 - [x] C2. Every spoke tool's argument validation failure uses the validation code, and a role refusal still answers `forbidden` (test over the tool table).
   - done: impl-998 · 2026-10-24T09:27:32.469Z
+  - verified: rev-26 [reviewer] · run rev-20261024-998-final-1 · 2026-10-24T09:41:05.260Z · commit 866eeac8237d4cebbc4273e935ffb3329ff4c01b
 - [x] C3. A validation failure is not posted to the Agents topic as a refusal (test).
   - done: impl-998 · 2026-10-24T08:04:53.496Z
+  - verified: rev-26 [reviewer] · run rev-20261024-998-final-1 · 2026-10-24T09:41:05.260Z · commit 866eeac8237d4cebbc4273e935ffb3329ff4c01b
 - [x] C4. The MCP server instructions and `hub/README.md` say a validation error may be corrected and retried, unlike `forbidden`.
   - done: impl-998 · 2026-10-24T08:04:53.588Z
   - verified: rev-23 [reviewer] · run rev-20261024-998-source3 · 2026-10-24T08:23:09.451Z · commit 47fd9660d25c9e530118f4001da1646b0cc49ded
   - verified: rev-23 [reviewer] · run rev-20261024-998-source4 · 2026-10-24T08:52:45.657Z · commit ebc9a04dd9cfdd4a848500b7c688b6a3051a7e91
   - verified: rev-26 [reviewer] · run rev-20261024-998-source-5 · 2026-10-24T09:08:07.849Z · commit e4dc52f0109a2afd5ba9661eb8fe32470cf670a6
   - verified: rev-26 [reviewer] · run rev-20261024-998-source-6 · 2026-10-24T09:28:55.431Z · commit 866eeac8237d4cebbc4273e935ffb3329ff4c01b
+  - verified: rev-26 [reviewer] · run rev-20261024-998-final-1 · 2026-10-24T09:41:05.260Z · commit 866eeac8237d4cebbc4273e935ffb3329ff4c01b
 
 ## Comments
 
@@ -315,3 +320,43 @@ finding_counts: {"high":0,"medium":0,"low":0}
 M7 delta source clear, A-10656; no findings. Coordinator e763142d supersedes earlierfixturemigrationremedy: productionfree-onlyMCPasks preserve optional/default[] via existing spoke normalization; rawwire stillrequiresconcretestring[] withnegativecontrol. NewT2MCPtest observes exact[]wireframe/success; originalphonecalls/allnotificationfocus/suppressionassertions retained, onlyerrordiagnosticsadded. C4docs/sourceverified, priorM1–M6carryunchanged. A-10653originallocalcorrectiontreephone6/6,table9/9,finalspoke/docs4/4/check0(reportlint132/59/0refusals),TSredretained; notexactcommitconfiguredpass. Proceedmodefreeunchanged866eeac8; C1–C3runtimepending,oldA-10634remainsfailed.
 
 Criteria: C4 verified.
+
+### rev-26 · 2026-10-24T09:41:05.260Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-998-final-1
+commit: 866eeac8237d4cebbc4273e935ffb3329ff4c01b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-998 final evidence settlement
+Head 866eeac8237d4cebbc4273e935ffb3329ff4c01b; tree 60561f137dc3549188349374c40bda8c1196d1e8. Scope evidence; run rev-20261024-998-final-1. Source-6 A-10656 remains clear; findings [].
+
+## Standards
+Same-head mode-free run 12b5bf02-cd7e-447f-ac8c-b548d9c8bbc2 / original A-10675 finishes exit 0. Deduplicated native finish records contain 2823 ordinary test passes and 420 ordinary file passes, no failure, cancellation or skip. Separately, 55 actual load-gate test/file executions pass: five sequential repetitions of each of nine T1 tool-table identities and two T2 spoke identities. These repetitions are not added to the ordinary total.
+
+T1, fallback all T2 in hub and Neovim, and actual Web completed exit 0. Linux x64 6.8.0-142-generic droplet c-8 lon1, cland-v0-5ee180cb, Node 24.21.0, Neovim 0.12.5; two machine workers, T1 serial, Web four. Lifetime 600 s / $0.0417. Host typecheck gate ccc9dadfcc4018c1f380205db020ff760f2562d0 is a Git tree object and was reused, not repeated remotely; captured check output reports zero lint refusals. Lint 132 findings / 59 files, duration/tier budgets, three missing baselines and incomplete ratchet-base diagnostics are report-only. Native suite walls T1 62.23 s, T2 310.01 s, Web 132.30 s (Web shard 132.21 s); projections and phase envelopes are separate quantities. Web exceeds its 40 s report budget. No enforcing-budget pass or T3/T4 execution is claimed; deferred notices are not process receipts.
+
+New T1 ordinary maximum 0.058604311 s; loaded maximum 0.117416773 s. New T2 ordinary maximum 0.049657619 s; loaded maximum 0.074579567 s. No new identity reaches the allowance threshold.
+
+## Spec
+C1: the criterion typo/missing/invalid-op regression passes, asserting invalid_argument, named fields and the accepted operation values.
+C2: all nine table/authorization tests plus both actual MCP/socket tests pass. Unknown/missing/wrong-type/enumerated and conditional inputs, legacy aliases, fixed role prohibitions, custom grants and Lead-root precedence retain coverage. The table checks exact equality with the tool inventory. Role refusals remain forbidden. Existing permissions 14/14 and Lead-launch 4/4 also pass.
+C3: criterion/table regressions retain the negative Agents-refusal-history assertions and positive actual-role-refusal control; they pass ordinarily and 5/5 under load.
+C4: carried forward from source-6: MCP instructions and README distinguish correctable invalid_argument retries from forbidden, and explain optional MCP ask options versus concrete wire options.
+
+Prior M7 Web failure is resolved by the Coordinator-directed compatibility correction, not by changing the original phone callers: the actual free-only MCP regression passes at 0.013219212 s and observes exactly one outgoing frame with options:[] and free:true. Its 5/5 loaded samples pass. All six phone-notifications tests pass (1.072–2.218 s); exact Inbox row, single worker delivery, focus and held-registration suppression assertions remain. The only phone source changes are two diagnostic assertion messages. The prior fixture-only remedy was superseded by Coordinator e763142d and source-6 A-10656; no old failed receipt is relabelled.
+
+All C1–C4 verified against accepted source and this same-head result. Original local correction receipts remain A-10653 with their working-tree/macOS scope and explicit timing limits; no transcription reruns. QA none/after-stage, no QA claim. Lead should complete the normal current-dev conflict check before ready; no Reviewer merge.
+
+Reviewer performed read-only source, Git and artifact/log parsing only; no tests, probes, edits, process execution or delegation. Standards findings 0; Spec findings 0.
+Durable final review A-10679.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-24T09:46:57.751Z
+
+Merged 3830f7fc7d18497934afb0713b32f350e876dcd2 onto dev.

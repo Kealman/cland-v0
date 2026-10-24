@@ -2,8 +2,8 @@
 id: T-1020
 kind: task
 title: qa-shipped.test.ts keeps the shipped-case catalogue on one line, so every case addition conflicts
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-950
 branch: t/T-1020-qa-shipped-test-ts-keeps-the-shipped
 created: 2026-10-20T18:14:40.036Z
-updated: 2026-10-24T09:39:48.192Z
+updated: 2026-10-24T09:50:35.421Z
+closed: 2026-10-24T09:50:35.421Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ One case per line (or per-feature lists) so independent additions merge cleanly,
 - [x] C1. The shipped catalogue lists one case per line, and two branches that each add a different case merge without conflict (demonstrated with a scratch merge in the item topic).
   - done: oc-1020 · 2026-10-24T09:23:10.168Z
   - verified: rev-31 [reviewer] · run rev-20261024-1020-source2 · 2026-10-24T09:24:13.837Z · commit 93c922131ebd63730c327b484b8245924780d22a
+  - verified: rev-31 [reviewer] · run rev-20261024-1020-final · 2026-10-24T09:42:32.831Z · commit 93c922131ebd63730c327b484b8245924780d22a
 - [x] C2. qa-shipped.test.ts runs the same cases as before (test).
   - done: oc-1020 · 2026-10-24T09:23:10.267Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1020-final · 2026-10-24T09:42:32.831Z · commit 93c922131ebd63730c327b484b8245924780d22a
 
 ## Comments
 
@@ -82,3 +85,22 @@ Criteria: C1 verified.
 ### oc-1020 · 2026-10-24T09:39:48.192Z
 
 Verify run 9e969299-f28c-4910-b8c9-065047f590f6 passed at 93c922131ebd63730c327b484b8245924780d22a (artifact A-10673): mode-free task run on a droplet c-8 lon1, Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, 2 workers, 737 s, $0.0512. T1 exit 0 (811 tests), T2 exit 0 (1738, task fallback all T2), Web exit 0 (223): 2867/2867 pass, 0 fail, 0 skipped. T3 deferred to periodic dev and integrated occasions (batch tiers exclude it, queue enabled); the local macOS arm64 T4 walk is 31/31 at the same head (A-10644), reported separately because the host defers T4. Report-only duration and lint lines unchanged (133 findings), no gate. No conflicts: git merge-tree --write-tree origin/dev HEAD exit 0 (tree 519ac3ee) against origin/dev c6abaeb1. Ready reported to the Coordinator; C2's verified mark requested from rev-31.
+
+### rev-31 · 2026-10-24T09:42:32.831Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1020-final
+commit: 93c922131ebd63730c327b484b8245924780d22a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear at 93c92213/tree da653a82; no findings. A-10682 audits A-10673/9e969299 exit0 and independently counts 2867 ordinary passing finishes, no failures/cancellations/skips. T1/all fallback hub+Neovim T2/Web completed on reported Linux c-8 lon1. Both new T1 identities have ordinary pass plus five distinct load-gate passes and explicit5/5. Carries A-10648 source and separate same-head local Darwin arm64 31/31 actual T4 walk A-10644 (12.392710625 s); host did not run T4. All original cases/names/PASS/exit assertions preserved. Host T0 not repeated remotely; budgets/lint remain report-only, zero refusals. No Linux T4/integrated/stage QA or Reviewer runtime/enqueue claim.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T09:50:35.421Z
+
+Merged 8dceca4f4569d0d714e7dec95b449e68ff7c28ec onto dev.
