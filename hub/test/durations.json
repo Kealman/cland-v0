@@ -48,9 +48,11 @@
       "A-10210",
       "A-10214",
       "A-10254",
-      "A-10252"
+      "A-10252",
+      "A-10290",
+      "A-10294"
     ],
-    "commit": "9ef54e9f98f466e5fac49b7dbcadd278fbf92dc5"
+    "commit": "733a709e2e71d0ae7206c5ae2485aa8ca1a91f42"
   },
   "budget": {
     "testSeconds": 5,
@@ -2511,6 +2513,14 @@
     "web/test/phone-notifications.test.ts": {
       "seconds": 7.408648,
       "tests": 6
+    },
+    "hub/test/web-readme.test.ts": {
+      "seconds": 0.041096,
+      "tests": 3
+    },
+    "web/test/readme.test.ts": {
+      "seconds": 4.690979,
+      "tests": 1
     }
   },
   "tests": {
@@ -6465,7 +6475,11 @@
     "web/test/phone-notifications.test.ts::hidden phone ask goes once through the worker and its message opens the exact Inbox row": 1.400198,
     "web/test/phone-notifications.test.ts::phone More subscribes on a tap with root worker scope and shared switches without Web Push": 1.871593,
     "web/test/phone-notifications.test.ts::phone subscription denial turns saved switches off and explains browser settings without registering": 0.944229,
-    "web/test/phone-notifications.test.ts::waiting plan and TUI-bound Claude approval each notify through the phone worker": 1.125075
+    "web/test/phone-notifications.test.ts::waiting plan and TUI-bound Claude approval each notify through the phone worker": 1.125075,
+    "hub/test/web-readme.test.ts::hub README documents exactly the accepted web config keys and executable values": 0.002585,
+    "hub/test/web-readme.test.ts::hub README documents exactly the web parser options, including short aliases": 0.016867,
+    "hub/test/web-readme.test.ts::README grep rejects stale feature wording and keeps operational pending states": 0.021644,
+    "web/test/readme.test.ts::the README fresh clone builds, starts its own hub and signs a Headless Shell context in": 4.690979
   },
   "allow": {
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
