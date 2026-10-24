@@ -10,6 +10,42 @@ import { Tracker, DEBOUNCE_MS, type ItemChange } from '../src/tracker/tracker.ts
 import { FakeClock } from './fake-clock.ts';
 import { handleTaskRequest, type TaskRequest } from '../src/tracker/requests.ts';
 import { tempProject } from './harness.ts';
+import { TrackerIndex } from '../src/tracker/index-db.ts';
+import { sqliteProbe } from './sqlite-probe.ts';
+
+test('index lists build own ids from selected rows and only look up referenced kinds', t => {
+  const database = sqliteProbe();
+  const index = new TrackerIndex(':memory:', ['task', 'epic', 'release', 'question', 'spec', 'map', 'category', 'initiative'], database.open);
+  t.after(() => index.close());
+  const kinds = ['task', 'epic', 'release', 'question', 'spec', 'map', 'category', 'initiative'];
+  const items = kinds.map((kind, i) => parseItem(`---\nid: T-${i + 1}\nkind: ${kind}\ntitle: Row ${i + 1}\n---\n`, undefined, [['release', 'category'], 'epic', 'initiative']));
+  const put = (item: ReturnType<typeof parseItem>) => index.put(item, { file: `${item.fm.id}-item.md`, hash: 'fixture', source: 'hand', indexedAt: 0 });
+  for (const item of items) put(item);
+  const reads: Array<{ sql: string; bindings: unknown[] }> = [];
+  database.trace(t, (sql, method, bindings) => { if (method === 'get' || method === 'all') reads.push({ sql, bindings }); });
+  const ownIds = ['T-1', 'E-2', 'R-3', 'Q-4', 'S-5', 'M-6', 'C-7', 'I-8'];
+  const plain = index.list();
+  const plainReads = reads.splice(0);
+
+  // Legacy prefixes, an indexed target of another kind, and missing targets retain today's resolution.
+  put({ ...items[0]!, fm: { ...items[0]!.fm, parent: 'T-2', blocked_by: ['T-3', 'T-99'], follows: ['T-2', 'T-100'], regression_of: 'T-4' } });
+  reads.length = 0;
+  const linked = index.list();
+  const linkedReads = reads.splice(0);
+  const kindReads = (queries: typeof reads) => queries.filter(read => /^select kind from tracker_items where n = \?$/i.test(read.sql));
+  t.diagnostic(`N=${items.length}: unlinked ${plainReads.length} reads/${kindReads(plainReads).length} kind lookups; linked ${linkedReads.length} reads/${kindReads(linkedReads).length} kind lookups (6 references)`);
+
+  assert.deepEqual(plain.map(item => item.id), ownIds);
+  assert.deepEqual(linked.map(item => item.id), ownIds);
+  assert.equal(linked[0]!.parent, 'E-2');
+  assert.deepEqual(linked[0]!.blocked_by, ['R-3', 'T-99']);
+  assert.deepEqual(linked[0]!.follows, ['E-2', 'T-100']);
+  assert.equal(linked[0]!.regression_of, 'Q-4');
+  assert.equal(plainReads.length, 1, 'unlinked list needs only its selected rows');
+  assert.equal(kindReads(plainReads).length, 0, 'no own-id kind lookups');
+  assert.equal(linkedReads.length, 7, 'one list read and six reference lookups');
+  assert.deepEqual(kindReads(linkedReads).map(read => read.bindings), [[4], [2], [3], [99], [2], [100]]);
+});
 
 for (const source of ['clean', 'changed', 'unvalidated', 'legacy'] as const) test(`startup recovery preserves the live item and handles a ${source} source`, async t => {
   const root = await tempProject(t);

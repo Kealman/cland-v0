@@ -457,7 +457,7 @@ export class TrackerIndex {
   #hydrate(r: Row): IndexedItem {
     const id = r.id as string;
     const item: IndexedItem = {
-      id: this.#canonical(id),
+      id: `${prefixOf(r.kind as string)}-${r.n as number}`,
       kind: r.kind as Kind,
       rank: effectiveRank({ id, rank: r.rank as number | null }),
       ...(r.rank !== null ? { rank_set: true as const } : {}),
