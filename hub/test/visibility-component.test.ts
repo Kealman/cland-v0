@@ -1,11 +1,12 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { assertDefaultEventVisibility } from './visibility-events.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import type { EventsPage, Inbox } from '../src/protocol.ts';
 
@@ -163,7 +164,7 @@ test('artifact placement keeps the author role at publication across a later rol
   const socket = join(root, 'hub.sock');
   let edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(() => edge.close());
-  const ui = await connectUi(t, { socket, secret: TEST_SECRET });
+  const ui = await connectUi(t, { socket, secret: TEST_SECRET, root });
   const coord = await inProcessSpoke(t, { hub, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -183,7 +184,7 @@ test('artifact placement keeps the author role at publication across a later rol
   await hub.close();
   hub = await startHub({ ...options, store: new Store(join(root, 'hub.db')) });
   edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  const restarted = await connectUi(t, { socket, secret: TEST_SECRET });
+  const restarted = await connectUi(t, { socket, secret: TEST_SECRET, root });
   const after = (await restarted.request({ type: 'artifact.list' })).value as { artifacts: Array<{ id: string; layer: string }> };
   assert.equal(after.artifacts.find(a => a.id === result.artifact.id)?.layer, 'now');
 });

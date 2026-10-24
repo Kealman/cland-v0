@@ -1,10 +1,11 @@
 // T2: snapshot replacement, refusal and recovery rules use a scripted provider/transport.
 // Native image bytes, shell setup, key boot hooks and hub-stop drain stay in executor-prepare.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, clandWithEnv, connectUi, tempProject, inProcessSpoke, eventually, flushProjectLogs } from './harness.ts';
+import { projectHub, tempProject, inProcessSpoke, eventually, flushProjectLogs } from './harness.ts';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';

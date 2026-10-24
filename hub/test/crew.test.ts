@@ -1,4 +1,5 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { componentCrewWithEnv } from './component-task.ts';
 import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { parseCrew, renderCrew, type CrewConfig } from '../src/crew.ts';
-import { clandWithEnv, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 type View = { config: CrewConfig; summary: string };
 

@@ -89,7 +89,7 @@ third argument of `fixtureEnvironment` and the first argument of
 `accountFixtureEnvironment`, including renamed imports and captured const extras. Fresh runner children use
 `runnerFixtureEnvironment(root, inherited)` instead: it filters the inherited base
 and retains only `CLAND_SUITE_*`, `CLAND_TEST_*`, `CLAND_LOAD_GATE_*`,
-`CLAND_COVERAGE_*`, hub admission FILE/URL/SECRET and session NAME/ID/ROLE
+`CLAND_COVERAGE_*`, hub admission FILE/URL/SECRET and session NAME/ID/ROLE/LAUNCH_TOKEN
 controls. HOME, XDG,
 Claude/Codex/fake profiles and executor state still come from the disposable root. A local
 const alias is accepted only when used directly as a native launch's `env`;
@@ -1671,6 +1671,20 @@ doctor may report a missing-root hint as unowned, but never signals it. Other
 receipt errors still fail startup. The RPC client fixture still requires a
 writable temporary directory before creating its receipt; read-only QA launches
 Neovim directly rather than through that fixture.
+
+## Authenticated session fixtures
+
+Permission and dispatch fixtures opt in to `session-credential-fixture.ts` clients.
+These provision synthetic session credentials in the disposable store and attach
+them to known-session actors in both request and send frames; they preserve provisional identities rather than
+adopting them. `sessionShell` supplies the matching fixture environment for direct
+CLI children. They test authorization after authentication, not credential
+admission. Credential admission tests use raw `harness.ts` clients and the real
+CLI, with credentials obtained from the fixture adapter's launch request.
+See [shell credentials](tests/hub-test-cli-session-credential.test.ts.md).
+Onboarding's tokenless CLI fixtures instead establish an owned spoke, await its
+credential-ready receipt, and pass both session ID and name to the raw CLI. They
+exercise file migration and must not acquire credentials from the synthetic helper.
 
 ## Cover-quiet
 

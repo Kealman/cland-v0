@@ -1,11 +1,12 @@
 // T3: Codex/OpenCode native launch and attach environment contracts; retained native conversations are re-found after hub teardown.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { accountBinaries } from './account-fixture-env.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nativeProjectHub as projectHub, cland, clandWithEnv, connectUi, eventually, killDaemon, spawnSpoke, tempProject } from './harness.ts';
+import { nativeProjectHub as projectHub, cland, eventually, killDaemon, spawnSpoke, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { ScratchAccountPaths } from './fixture-environment.ts';

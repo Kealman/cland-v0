@@ -5,6 +5,9 @@ import { componentHub } from './subscription-hub.ts';
 // Archive through the real hub, a real spoke and the human CLI; fakes sit at the harness boundary.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import files from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { sessionRunDirectory } from '../../shared/session-credential.ts';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -18,6 +21,40 @@ import type { HarnessProcessView } from '../src/protocol.ts';
 import { cland, connectUi, eventually, inProcessSpoke, tempProject, startHub, dispatcherUi } from './harness.ts';
 
 type List = { processes: HarnessProcessView[]; archived: number };
+
+test('reopening an item during owned archive removal refreshes eligibility before publication', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[sessions]\narchive_after_item = "2s"\narchive_after_stop = "1d"\n');
+  const records: Array<Record<string, unknown>> = [];
+  const { discovery, clock } = await componentHub(t, root, {}, { log: entry => records.push(entry) });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ size: 'M', type: 'task.create', title: 'Reopened during cleanup' });
+  const launch = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'codex', item: 'T-1' });
+  assert.equal(launch.ok, true, launch.error);
+  const process = (launch.value as { process: HarnessProcessView }).process;
+  assert.equal((await ui.request({ type: 'session.stop', session: 'worker' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: 'T-1' })).ok, true);
+  const directory = sessionRunDirectory(join(root, '.cland'), process.sessionId);
+  const release = Promise.withResolvers<void>();
+  let removing = false;
+  const remove = files.rm;
+  t.mock.method(files, 'rm', async (...args: Parameters<typeof files.rm>) => {
+    if (args[0] === directory) { removing = true; await release.promise; }
+    return remove(...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    await clock.advance(2000);
+    await eventually('owned archive removal entered', () => removing || undefined);
+    const sweeps = records.filter(entry => entry.event === 'session-archive-sweep').length;
+    assert.equal((await ui.request({ type: 'task.edit', item: 'T-1', state: 'open' })).ok, true);
+    release.resolve();
+    await eventually('archive revalidation completed', () => records.filter(entry => entry.event === 'session-archive-sweep').length > sweeps || undefined);
+    assert.equal(((await ui.request({ type: 'session.list', archived: true })).value as List).archived, 0);
+    assert.deepEqual(((await ui.request({ type: 'session.list' })).value as List).processes.map(p => p.name), ['worker']);
+  } finally { release.resolve(); }
+});
 
 for (const equalHeldAt of [false, true]) test(equalHeldAt
   ? 'equal heldAt instants archive Reviewer and QA with the latest held item'
@@ -157,12 +194,13 @@ for (const stopWindow of ['1s', '11s']) test(`failed resume cleanup wakes a pres
     pid: null, harnessId: null, sessionId: 'retained-id', harnessSessionId: 'conversation', startedAt: clock.now().toISOString(), status: 'stopped' });
   const undoFile = join(root, 'deferred-undo');
   const records: Array<Record<string, unknown>> = [];
+  let onSweep = () => {};
   // This smaller fixture owns Sessions' native recovery schedule without replacing global I/O timers.
   const hub = await startHub({ clock, env });
   const sessions = new Sessions({ core: hub.core, table, root, env, recoveryClock: clock,
     cleanup: { archiveAfterItemMs: 3600000, archiveAfterStopMs: stopWindow === '1s' ? 1000 : 11000 },
-    log: entry => records.push(entry) });
-  onCleanup(t, async () => { sessions.close(); table.close(); await hub.close(); });
+    log: entry => { records.push(entry); if (entry.event === 'session-archive-sweep') onSweep(); } });
+  onCleanup(t, async () => { await sessions.close(); table.close(); await hub.close(); });
   const host = sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' });
   const adapter = fakeHarness('codex', { host, clock });
   // File rollback cannot finish until this scratch file is made available.
@@ -170,7 +208,7 @@ for (const stopWindow of ['1s', '11s']) test(`failed resume cleanup wakes a pres
     { children: [], undo: [{ kind: 'truncate', path: undoFile, size: 0 }] }, () => {}, new Error('deferred resume cleanup')); };
   sessions.register(adapter);
   hub.dispatcher.useSessions(sessions);
-  sessions.sweepArchive();
+  await sessions.sweepArchive();
   const ui = await dispatcherUi(t, hub.dispatcher, root);
   const failed = await ui.request({ type: 'session.resume', session: 'retained', relaunch: true });
   assert.equal(failed.ok, false);
@@ -180,6 +218,8 @@ for (const stopWindow of ['1s', '11s']) test(`failed resume cleanup wakes a pres
   assert.equal(pending.pendingStops.length, 1, 'failed cleanup survives normal lifecycle release');
   assert.equal(pending.archived, 0);
   const before = records.filter(r => r.event === 'session-archive-sweep').length;
+  let sweepCompleted = false;
+  onSweep = () => { sweepCompleted = true; };
   await writeFile(undoFile, 'pending rollback');
   await clock.advance(5000);
   await eventually('durable cleanup settled without an unrelated event', async () => {
@@ -188,6 +228,7 @@ for (const stopWindow of ['1s', '11s']) test(`failed resume cleanup wakes a pres
   });
   assert.equal(await readFile(undoFile, 'utf8'), '', 'rollback actually completed');
   await clock.advance(0);
+  await eventually('recovery archive sweep completion receipt', () => sweepCompleted || undefined);
   assert.equal(records.filter(r => r.event === 'session-archive-sweep').length, before + 1, 'recovery settlement wakes the archive sweep');
   if (stopWindow === '11s') {
     await clock.advance(3999);

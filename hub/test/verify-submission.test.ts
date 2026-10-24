@@ -1,11 +1,12 @@
 // T2: the public verify CLI over a real socket and projectHub dispatcher. A held
 // response and complete fake clocks prove the deadline without a wall-clock wait.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Socket } from 'node:net';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, connectUi, inProcessSpoke, tempProject, eventually } from './harness.ts';
+import { projectHub, inProcessSpoke, tempProject, eventually } from './harness.ts';
 import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 import { runSuiteCommand } from '../src/cli/suite.ts';

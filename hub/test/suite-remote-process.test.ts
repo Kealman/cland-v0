@@ -1,13 +1,14 @@
 // T3: delivered remote workers exit before their receipts release provider capacity.
 // Real shell completion with failed spend settlement proves the process receipt
 // boundary; unconfirmed deletion policy lives in suite-accounting (T2).
+import { sessionShell, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture, remoteEventually as eventually } from './remote-fixture.ts';
-import { cland, clandWithEnv, nativeProjectHub as projectHub, spawnSpoke } from './harness.ts';
+import { cland, nativeProjectHub as projectHub, spawnSpoke } from './harness.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 
@@ -22,7 +23,7 @@ async function caller(t: TestContext, f: Fixture, name: string) {
   onCleanup(t, () => spoke.close()); await spoke.waitForPresence([name]);
   const item = JSON.parse((await cland(f.root, 'task', 'create', '--size', 'M', name, '--assignee', name, '--json')).stdout).item.id as string;
   const topic = ((await f.ui.request({ type: 'topic.create', item, title: name })).value as { topic: { id: string } }).topic.id;
-  const actor = { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: `budget-${name}` };
+  const actor = sessionShell(f.root, { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: `budget-${name}` });
   const submit = (executor?: 'local' | 'droplet') => clandWithEnv(cwd, { ...actor, CLAND_HUB_FILE: join(f.root, '.cland/hub.json') }, 'verify', '--fresh', ...(executor ? ['--executor', executor] : []), '--report', topic, '--to', name, '--json');
   const launch = async (executor?: 'local' | 'droplet') => {
     const r = await submit(executor);

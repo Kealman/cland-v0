@@ -1,9 +1,10 @@
 // T2: ask outcomes through public socket frames; projectHub by default, no-journal hub for rapid answers.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AskCard, Inbox, Topic, TopicMessage } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
-import { connectUi, connectWsUi, inProcessSpoke, projectHub, startHub, tempProject, type FrameClient } from './harness.ts';
+import { inProcessSpoke, projectHub, startHub, tempProject, type FrameClient } from './harness.ts';
 
 async function ok<T>(ui: FrameClient, frame: Record<string, unknown> & { type: string }): Promise<T> {
   const result = await ui.request(frame);

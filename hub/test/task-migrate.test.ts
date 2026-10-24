@@ -1,4 +1,5 @@
 // T3: offline lock/PID admission, real restart ID recovery and Git landing of pre-migration branches.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -11,7 +12,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, killDaemon, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { cland, eventually, flushProjectLogs, killDaemon, pidAlive, startDaemon, tempProject } from './harness.ts';
 import type { MigrationPlan } from '../src/tracker/migrate.ts';
 
 async function migrate(root: string, ...args: string[]) {

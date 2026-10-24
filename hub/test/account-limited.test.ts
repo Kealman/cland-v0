@@ -2,6 +2,7 @@
 // Deferred eligibility uses FakeClock; permission permutations are T1 in account-permissions.test.ts.
 // The early first-turn hit is driven by the sessionless launcher's hub/report brief;
 // the fake must consume that brief before publishing the native launch response.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { accountBinaries, accountClaude, accountCodex } from './account-fixture-env.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -10,7 +11,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, killDaemon, nativeProjectHub as projectHub, tempProject, type FrameClient } from './harness.ts';
+import { cland, eventually, killDaemon, nativeProjectHub as projectHub, tempProject, type FrameClient } from './harness.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 

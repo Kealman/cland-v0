@@ -35,7 +35,7 @@ for (const operation of ['session.launch', 'session.resume'] as const) {
     hub.core.assignRole('coord', 'coordinator');
     const table = new ProcessTable();
     const sessions = new Sessions({ core: hub.core, table, root });
-    t.after(() => { sessions.close(); table.close(); });
+    t.after(async () => { await sessions.close(); table.close(); });
     let starts = 0;
     let stops = 0;
     const fake = fakeHarness('claude-code');
@@ -46,11 +46,12 @@ for (const operation of ['session.launch', 'session.resume'] as const) {
     if (operation === 'session.resume') table.put({ name: 'target', harness: 'claude-code', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: 'target-id', harnessSessionId: null, startedAt: '', status: 'running' });
     hub.dispatcher.useSessions(sessions);
     const answers: Array<Record<string, unknown>> = [];
-    const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
+    hub.core.store.rememberSessionCredential('unknown', 'fixture-session-authority');
+  const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
     t.after(() => conversation.closed());
     conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
     armed = true;
-    conversation.receive(JSON.stringify({ type: operation, id: 'operation', as: { name: 'coord' }, ...(operation === 'session.launch' ? { name: 'target', role: 'reviewer', harness: 'claude-code' } : { session: 'target', relaunch: true }) }));
+    conversation.receive(JSON.stringify({ type: operation, id: 'operation', as: { name: 'coord', credential: 'fixture-session-authority' }, ...(operation === 'session.launch' ? { name: 'target', role: 'reviewer', harness: 'claude-code' } : { session: 'target', relaunch: true }) }));
     await reading;
     if (operation === 'session.launch') {
       assert.equal(hub.core.store.roleOf('target'), null, 'admission reserves the role without publishing it before the fresh read');

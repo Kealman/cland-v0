@@ -1,11 +1,12 @@
 // T2: real send frames prove queued assignment and recorded delivery through fake adapters.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message, SendOutcome } from '../src/protocol.ts';
 import { componentProject, human } from './merge-component-support.ts';
 

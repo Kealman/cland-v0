@@ -424,7 +424,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     log({ event: 'hub-startup-step', step: 'restoring sessions', pid: process.pid });
     adapters = projectSessions({ ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.useSessions(adapters.sessions);
-    adapters.sessions.sweepArchive();
+    await adapters.sessions.sweepArchive();
   } catch (error) {
     try { await stop(); }
     catch (cleanup) { throw new AggregateError([error, cleanup], 'hub adapter startup failed', { cause: error }); }

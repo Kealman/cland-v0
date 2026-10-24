@@ -5,7 +5,8 @@ import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import type { Artifact, TopicMessage } from '../../shared/wire/index.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
-import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
+import { inProcessSpoke } from '../../hub/test/harness.ts';
+import { sessionUi as connectUi } from '../../hub/test/session-credential-fixture.ts';
 import { pageUntil, webFixture } from './harness.ts';
 
 test('notes and prompts open rendered Markdown with literal HTML and a raw source toggle', async t => {

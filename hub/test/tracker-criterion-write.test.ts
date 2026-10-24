@@ -1,10 +1,11 @@
 // T2: criterion writes and permission tables use in-process spokes/dispatcher; persistence reopens the tracker.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi, sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, inProcessSpoke, dispatcherUi, projectHub, startHub, tempProject } from './harness.ts';
+import { cland, inProcessSpoke, projectHub, startHub, tempProject } from './harness.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 import { call, value } from './validation-support.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { isClientRequest, isSpokeRequest, type Artifact, type TopicMessage } from '../src/protocol.ts';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 
 test('only the human can delete artifact bytes; the index and topic chip retain the deletion', async t => {
   const root = await tempProject(t);

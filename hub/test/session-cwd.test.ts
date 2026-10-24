@@ -30,7 +30,7 @@ test('relaunch refuses a removed cwd with a fresh launch suggestion only for an 
   const table = new ProcessTable(':memory:', clock);
   const tracker = new Tracker({ root, db: ':memory:', git: async () => null });
   const sessions = new Sessions({ core, table, root, tracker });
-  t.after(async () => { sessions.close(); tracker.stop(); table.close(); core.close(); core.store.close(); await rm(root, { recursive: true, force: true }); });
+  t.after(async () => { await sessions.close(); tracker.stop(); table.close(); core.close(); core.store.close(); await rm(root, { recursive: true, force: true }); });
   const fake = fakeHarness('codex', { clock });
   sessions.register(fake);
   const actor = { id: 'human', name: 'human', role: null };

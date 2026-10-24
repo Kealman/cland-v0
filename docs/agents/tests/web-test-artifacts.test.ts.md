@@ -1,5 +1,9 @@
 # web/test/artifacts.test.ts
 
+The local setup client uses the explicit authenticated-session fixture for its
+agent artifact creator. Browser actions retain their authenticated human Web
+connection. Keep the keyboard, kept-state readback and final navigation assertions.
+
 `web/test/artifacts.test.ts` uses the same sealed hub/Headless Shell seam for
 Mine/Kept/By role/Archived counts and saved folds, physical `k` versus ↑,
 keep/unkeep with fresh hub inventory readback, human archive without deletion,

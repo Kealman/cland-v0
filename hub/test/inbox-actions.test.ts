@@ -1,4 +1,5 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -7,7 +8,7 @@ import test from 'node:test';
 import { Store } from '../src/hub/store.ts';
 import { isClientRequest, type Inbox } from '../src/protocol.ts';
 import { decide } from '../src/roles/permissions.ts';
-import { cland, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 async function ok<T>(ui: Awaited<ReturnType<typeof connectUi>>, frame: Record<string, unknown> & { type: string }): Promise<T> {
   const result = await ui.request(frame);

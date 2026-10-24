@@ -1153,7 +1153,7 @@ export class CodexAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -1194,7 +1194,7 @@ export class CodexAdapter implements HarnessAdapter {
       try {
         yield* wait(this.#checkVersion(p.cwd, p.accountEnv, resumed));
         const policy = yield* wait(this.#threadPolicy(p.cwd, options.policy ?? {}, files, resumed));
-        ({ pid, client } = yield* wait(this.#startServer(p, socket, policy.overrides, files, resumed, undefined, options.authorize)));
+        ({ pid, client } = yield* wait(this.#startServer(p, socket, policy.overrides, files, resumed, options.launchToken, options.authorize)));
         this.#attach(live, client);
         const r = yield* wait(this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}), ...policy.thread }, resumed));
         if (this.#snapshotIsCurrent(live, r)) this.#updateState(live, r.state);

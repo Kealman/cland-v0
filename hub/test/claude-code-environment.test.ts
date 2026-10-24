@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -51,7 +52,7 @@ test('Claude launch settings defer to either project settings file', { timeout: 
       calls.length = 0;
       await adapter.spawn({ name: 'plain', cwd: root, role: null, model: null });
       const args = calls.find(args => args[0] === '--bg')!;
-      const settings = JSON.parse(args[args.indexOf('--settings') + 1]!);
+      const settings = JSON.parse(readFileSync(args[args.indexOf('--settings') + 1]!, 'utf8'));
       assert.deepEqual(settings.worktree, row.fallback ? { bgIsolation: 'none' } : undefined, row.name);
       assert.ok(settings.hooks.SessionStart, 'hooks survive');
       assert.equal(settings.env.CLAND_SESSION_NAME, 'plain');
@@ -66,7 +67,7 @@ test('Claude launch settings defer to either project settings file', { timeout: 
     calls.length = 0;
     await adapter.spawn({ name: 'plain', cwd: root, role: null, model: null });
     const args = calls.find(args => args[0] === '--bg')!;
-    assert.deepEqual(JSON.parse(args[args.indexOf('--settings') + 1]!).worktree, { bgIsolation: 'none' });
+    assert.deepEqual(JSON.parse(readFileSync(args[args.indexOf('--settings') + 1]!, 'utf8')).worktree, { bgIsolation: 'none' });
   } finally { adapter.close(); }
 });
 
@@ -90,7 +91,7 @@ test('Claude rereads task worktree settings on launch and resume', { timeout: 20
   const adapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), agentsMs: 0, env: { HOME: root } });
   const settings = () => {
     const args = calls.at(-1)!;
-    return JSON.parse(args[args.indexOf('--settings') + 1]!);
+    return JSON.parse(readFileSync(args[args.indexOf('--settings') + 1]!, 'utf8'));
   };
   try {
     const request = { name: 'impl', cwd, role: 'implementer', item: 'T-1', model: null };
@@ -125,7 +126,9 @@ test('Claude permission flags stay exclusive across launch, fresh resume and rel
   });
   syncBuiltinESMExports();
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  const host: AdapterHost = { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  const launchRoot = await mkdtemp(join(tmpdir(), 'cland-native-settings-'));
+  t.after(() => rm(launchRoot, { recursive: true, force: true }));
+  const host: AdapterHost = { root: '/fixture', discoveryFile: join(launchRoot, 'hub.json'), node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
   const adapter = new ClaudeCodeAdapter(host, { agentsMs: 0, env: { HOME: '/fixture/home' } });
   try {
     for (const permissions of ['auto', 'skip', null, undefined] as const) {
@@ -168,7 +171,9 @@ test('Claude environment composition preserves implicit, pathless, pinned and in
     loggedOut = false;
     const expected = selection === 'pinned account' ? pinned : selection === 'inherited directory' ? inherited : null;
     const events: Array<Record<string, unknown>> = [];
-    const host: AdapterHost = { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: e => { events.push(e); }, signal: () => {}, recordPid: () => {}, exited: () => {} };
+    const launchRoot = await mkdtemp(join(tmpdir(), 'cland-native-settings-'));
+    t.after(() => rm(launchRoot, { recursive: true, force: true }));
+    const host: AdapterHost = { root: '/fixture', discoveryFile: join(launchRoot, 'hub.json'), node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: e => { events.push(e); }, signal: () => {}, recordPid: () => {}, exited: () => {} };
     const adapter = new ClaudeCodeAdapter(host, { agentsMs: 0, env: { HOME: home, ...(selection === 'inherited directory' ? { CLAUDE_CONFIG_DIR: inherited } : {}) } });
     try {
       const account = selection.includes('account') ? selection === 'pinned account' ? 'pinned' : 'pathless' : null;
@@ -217,7 +222,9 @@ test('Claude relaunch repairs a pre-T-603 default-directory row without changing
   });
   syncBuiltinESMExports();
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  const host: AdapterHost = { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  const launchRoot = await mkdtemp(join(tmpdir(), 'cland-native-settings-'));
+  t.after(() => rm(launchRoot, { recursive: true, force: true }));
+  const host: AdapterHost = { root: '/fixture', discoveryFile: join(launchRoot, 'hub.json'), node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
   const legacy: HarnessProcess = {
     name: 'coord', harness: 'claude-code', account: null, accountEnv: { CLAUDE_CONFIG_DIR: '/fixture/home/.claude' },
     role: 'coordinator', model: null, cwd: '/fixture', pid: null, harnessId: 'old-background',
@@ -276,5 +283,33 @@ test('an installer-only Claude selection launches the executable found outside P
     await adapter.spawn({ name: 'aide', cwd: root, role: 'aide', model: launch.model, effort: launch.effort, permissions: launch.permissions });
     assert.ok(commands.length > 0);
     assert.ok(commands.every(command => command === bin), `launched ${commands.join(', ')} instead of discovered ${bin}`);
+  } finally { adapter.close(); }
+});
+
+test('Claude background settings carry only their own shell credential through launch and relaunch', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-claude-credential-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const calls: string[][] = [];
+  t.mock.method(cp, 'execFile', (_bin: string, args: string[], _options: cp.ExecFileOptions, callback: (error: null, stdout: string, stderr: string) => void) => {
+    calls.push(args);
+    queueMicrotask(() => callback(null, args[0] === 'agents' ? '[]' : 'claude attach abcdef12', ''));
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  const adapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), agentsMs: 0, env: { HOME: root, CLAND_LAUNCH_TOKEN: 'unrelated-parent-credential' } });
+  try {
+    for (const name of ['one', 'two']) {
+      const credential = `fixture-${name}-credential`;
+      const launched = await adapter.spawn({ name, cwd: root, role: 'implementer', model: null, launchToken: credential });
+      await adapter.resume(launched, { relaunch: true, launchToken: credential });
+      for (const args of calls.filter(args => args[0] === '--bg' && args[args.indexOf('--name') + 1] === name)) {
+        assert.equal(args.some(arg => arg.includes(credential)), false, 'credentials never enter argv');
+        const settings = JSON.parse(await readFile(args[args.indexOf('--settings') + 1]!, 'utf8'));
+        assert.equal(settings.env.CLAND_LAUNCH_TOKEN === credential, true, 'background shells inherit the owned credential');
+        const mcp = JSON.parse(await readFile(args[args.indexOf('--mcp-config') + 1]!, 'utf8'));
+        assert.equal(mcp.mcpServers.cland.env.CLAND_LAUNCH_TOKEN === credential, true, 'the own spoke receives the same credential');
+      }
+    }
   } finally { adapter.close(); }
 });

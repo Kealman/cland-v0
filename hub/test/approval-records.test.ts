@@ -1,4 +1,5 @@
 // T2: approval records through the public frame seam, using the sealed in-process adapter.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createConnection } from 'node:net';
@@ -6,7 +7,7 @@ import { once } from 'node:events';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
-import { cland, connectUi, frameClient, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { cland, frameClient, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { ApprovalOutcome, Inbox } from '../src/protocol.ts';

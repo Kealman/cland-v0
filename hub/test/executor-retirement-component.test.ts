@@ -1,10 +1,11 @@
 // T2: retirement probes authenticate real project sockets; control routing uses
 // the embedded hub and CLI, without provider resources or a hub subprocess.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { projectHub, tempProject, connectUi, inProcessSpoke, clandWithEnv } from './harness.ts';
+import { projectHub, tempProject, inProcessSpoke } from './harness.ts';
 import { scratchMachine, legacyLedger } from './init-machine.ts';
 import { spendPath, retireLegacySpend } from '../src/executor/droplet/spend.ts';
 import { registeredHubSpendStatus } from '../src/executor/droplet/spend-hubs.ts';

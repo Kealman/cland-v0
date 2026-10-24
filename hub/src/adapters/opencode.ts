@@ -670,7 +670,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -702,7 +702,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason, alive: yield* wait(processAlive(p, resumed, this.#processEnv)) };
       yield* wait(this.stop(p, options.resumed));
-      const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, true, resumed, undefined, options.authorize));
+      const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, true, resumed, options.launchToken, options.authorize));
       return { found: true, process: process_, state: 'unknown' as SessionState };
     }).call(this), options.resumed ?? untimed);
   }

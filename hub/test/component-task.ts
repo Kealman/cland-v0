@@ -1,5 +1,6 @@
 // T2: the production task CLI parser/formatter over its real socket, with explicit IO and environment.
 // Native entrypoint/process coverage stays in the calling files; input tables need no new Node child.
+import { sessionShell } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { runCrew } from '../src/cli/crew.ts';
 import { runTask } from '../src/cli/task.ts';
@@ -10,7 +11,10 @@ export async function componentTask(cwd: string, command: string, ...args: strin
   let stdout = '', stderr = '';
   const io = { out: (text: string) => { stdout += text; }, err: (text: string) => { stderr += text; } };
   try {
-    const code = await runTask(args, cwd, io, {});
+    const index = args.indexOf('--as');
+    const name = index >= 0 ? args[index + 1] : undefined;
+    const shell = name ? sessionShell(cwd, { CLAND_SESSION_NAME: name }) : {};
+    const code = await runTask(args, cwd, io, shell.CLAND_LAUNCH_TOKEN ? shell : {});
     return { code, stdout, stderr };
   } catch (error) {
     return { code: 1, stdout, stderr: stderr + `cland: ${error instanceof Error ? error.message : String(error)}\n` };
@@ -28,7 +32,7 @@ export async function componentCrewWithEnv(cwd: string, env: NodeJS.ProcessEnv, 
   assert.equal(command, 'crew');
   let stdout = '', stderr = '';
   try {
-    const code = await runCrew(args, cwd, { out: text => { stdout += text; } }, env);
+    const code = await runCrew(args, cwd, { out: text => { stdout += text; } }, sessionShell(cwd, Object.fromEntries(Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined))));
     return { code, stdout, stderr };
   } catch (error) {
     stderr += `cland: ${error instanceof Error ? error.message : String(error)}\n`;

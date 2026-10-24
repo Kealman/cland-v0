@@ -1,5 +1,6 @@
 // T2: one real CLI/socket frame proof for cover permissions, queue/status rendering
 // and reload. Seeded suite receipts avoid workers; class permutations live in T1.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import { verificationFixture } from './verification-fixture.ts';
@@ -7,7 +8,7 @@ import assert from 'node:assert/strict';
 import { lstat, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { compatibilityHolder, sweep } from '../src/suite-lock.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';

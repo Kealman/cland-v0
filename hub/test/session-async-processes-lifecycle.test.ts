@@ -1,4 +1,5 @@
 // T3: real file-backed stderr and native session spawn/list/resume/stop instrumentation prove async process I/O.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import cp from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { syncBuiltinESMExports } from 'node:module';
-import { connectSocket, connectUi, eventually, fakeCodex, nativeProjectHub, startDaemon, tempProject } from './harness.ts';
+import { connectSocket, eventually, fakeCodex, nativeProjectHub, startDaemon, tempProject } from './harness.ts';
 
 test('production CLI with file-backed stderr sends request audits through the async file logger', async t => {
   const root = await tempProject(t);

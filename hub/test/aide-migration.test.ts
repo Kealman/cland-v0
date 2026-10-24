@@ -1,4 +1,5 @@
 // T2: startup migration through real frames, with an in-process hub and fake harnesses.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { parseRoles } from '../src/roles/config.ts';
 import { FakeClock } from './fake-clock.ts';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 const oldRestriction = '- You cannot ask the human, resolve a topic\'s wait, launch, stop or resume sessions, merge, hand over a role, release, sync or `cland push`: the Coordinator owns those operations.';
 const oldTools = ['rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'];

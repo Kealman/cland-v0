@@ -1,9 +1,10 @@
 // T2: role launch CLI and hub rules through projectHub; launch settings observed on in-process adapters.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, projectHub, tempProject } from './harness.ts';
+import { cland, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { PERMISSIONS } from '../src/adapters/contract.ts';
 

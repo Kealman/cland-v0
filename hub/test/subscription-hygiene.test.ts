@@ -1,4 +1,5 @@
 // T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import { sessionWsUi as connectWsUi, sessionCland as cland, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
@@ -11,7 +12,7 @@ import { fixedRoles } from '../src/roles/config.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { FakeClock } from './fake-clock.ts';
 import { FAKE_FLAVOURS } from './fakes/harness.ts';
-import { cland, clandWithEnv, connectUi, connectWsUi, eventually, inProcessSpoke, startHub, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, startHub, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { componentHub, launchedSpoke, stopComponentHub } from './subscription-hub.ts';
 

@@ -1,10 +1,11 @@
 // T2: dispatcher permission tables; MCP/socket proofs retain real edges and in-process spokes.
+import { sessionUi as connectUi, sessionDispatcherUi as dispatcherUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { cland, clandWithEnv, connectUi, dispatcherUi, eventually, inProcessSpoke, projectHub, tempProject, waitForAbsence, type Discovery, type FrameClient, type Session } from './harness.ts';
+import { cland, eventually, inProcessSpoke, projectHub, tempProject, waitForAbsence, type Discovery, type FrameClient, type Session } from './harness.ts';
 import { value, dispatcherSpoke } from './validation-support.ts';
 import { DEFAULT_PERMISSIONS } from '../src/roles/permissions.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';

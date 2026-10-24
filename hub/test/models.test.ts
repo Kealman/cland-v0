@@ -1,12 +1,13 @@
 // T3 integration: native Codex/OpenCode probe process startup, RPC/HTTP discovery and confirmed
 // teardown before scratch-directory removal. Real CLI and fake harness binaries are necessary
 // here to prove their catalog protocol, CLI output and the account environment seen by the child.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { fileURLToPath } from 'node:url';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { cland, clandWithEnv, connectUi, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, nativeProjectHub as projectHub, tempProject } from './harness.ts';
+import { cland, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { ModelList } from '../src/models.ts';
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 

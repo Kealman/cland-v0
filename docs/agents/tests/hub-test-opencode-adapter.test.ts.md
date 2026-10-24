@@ -22,6 +22,7 @@ admission and attribution only; it runs no package checks or suites. Compare
 the shell identity with the unchanged MCP environment and independently assert
 the launch's name, id, role, discovery path and nonempty launch token.
 
+The owned shell credential contract emits only a SHA-256 comparison digest, never the token. Claim setup uses the fixture session's private MCP configuration. After relaunch, check rotation and run a real shell task read through the new server environment.
 The port-retry contract (T-1092) keeps the collision fixture's chosen port open
 until the adapter's readiness request against it has been answered, recording
 `collided-served` before the fake exits. The test asserts that receipt next to

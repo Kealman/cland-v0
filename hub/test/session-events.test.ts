@@ -17,7 +17,7 @@ test('rename before the spoke welcome waits; after welcome its process event sur
   t.after(() => hub.close());
   const table = new ProcessTable();
   const sessions = new Sessions({ core: hub.core, table, root });
-  t.after(() => { sessions.close(); table.close(); });
+  t.after(async () => { await sessions.close(); table.close(); });
   table.put({ name: 'coord', harness: 'test', role: 'coordinator', model: null, cwd: root,
     pid: null, pidStarted: null, harnessId: null, sessionId: 'held-coord', harnessSessionId: null,
     startedAt: new Date().toISOString(), status: 'running' });
@@ -37,6 +37,7 @@ test('rename before the spoke welcome waits; after welcome its process event sur
   const spoke = await spawnSpoke({ hub, name: 'coord', sessionId: 'held-coord', role: 'coordinator' });
   t.after(() => spoke.close());
   await ui.waitFor(f => f.type === 'presence' && presence(f).some(p => p.sessionId === 'held-coord'));
+  await eventually('credential-ready welcome captured by the held transport', () => releaseWelcome);
   assert.ok(releaseWelcome, 'the hub welcomed the spoke, but the transport holds that frame');
   let settled = false;
   const pending = spoke.call<{ ok: boolean; name?: string; error?: string }>('rename', { name: 'renamed-coord' }).then(value => { settled = true; return value; });

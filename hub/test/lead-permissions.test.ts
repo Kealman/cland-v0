@@ -1,5 +1,6 @@
 // T3: native Git worktree creation/pruning and merge callback barriers preserve Lead authority.
 // Component authority cases live in lead-permissions-component.test.ts.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,7 +9,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { connectUi, inProcessSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev } from '../src/territory-push.ts';

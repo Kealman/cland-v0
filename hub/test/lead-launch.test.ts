@@ -1,8 +1,9 @@
 // T2: launch admission and Lead claims need no native harness process.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';

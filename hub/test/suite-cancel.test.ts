@@ -1,11 +1,12 @@
 // T3: cancellation terminates real suite workers and descendants; hub restart recovers worker death and reports once.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { verificationFixture } from './verification-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
+import { cland, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';

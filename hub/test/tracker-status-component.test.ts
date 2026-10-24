@@ -1,4 +1,5 @@
 // T2 component: tracker rules at public APIs, sockets, CLI and in-process MCP.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, inProcessSpoke, projectHub, startHub, tempProject } from './harness.ts';
+import { cland, inProcessSpoke, projectHub, startHub, tempProject } from './harness.ts';
 
 // Persistence proofs close and reopen the hub/store in this process.
 const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();

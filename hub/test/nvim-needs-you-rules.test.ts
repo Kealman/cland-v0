@@ -1,4 +1,5 @@
 // T2: injected hub inbox classification; screen assertions live in nvim/test/needs-you.test.ts.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import type { Inbox, EventsPage } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
 import { STUB_NOW } from '../../nvim/test/fixtures/clock.ts';
 import { Store } from '../src/hub/store.ts';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { cases } from '../../nvim/test/needs-you-fixture.ts';
 
 for (const scenario of cases) {

@@ -1,5 +1,6 @@
 // T2: release admission and cache notices through projectHub sockets, with
 // durable fake receipts. No provider, Git or worker process is started.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { join } from 'node:path';
 import { Store } from '../src/hub/store.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import type { TopicMessage } from '../src/protocol.ts';
-import { clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { verificationFixture } from './verification-fixture.ts';

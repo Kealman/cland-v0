@@ -1,9 +1,10 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { decide, DEFAULT_PERMISSIONS, KNOWN_TOOLS } from '../src/roles/permissions.ts';
 import type { Artifact, Message } from '../src/protocol.ts';

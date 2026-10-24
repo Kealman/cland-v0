@@ -1,5 +1,6 @@
 // T2 fixture: production sockets, dispatcher and Suites; candidate facts and local
 // executor receipts are injected. No package command or infrastructure process runs.
+import { sessionShell, sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -12,7 +13,7 @@ import { checkTestLint, TestLintError } from '../src/test-lint-policy.ts';
 import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import { FakeClock } from './fake-clock.ts';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import type { ResultMessage } from './suite-fixture.ts';
 import { verificationFixture } from './verification-fixture.ts';
 
@@ -99,7 +100,7 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
     return result.value as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };
   };
   return { root, facts, trees, candidate, clock, legacyKeys, durationContext, topic, spoke, executions, receipts, results, launch, settle,
-    env: { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' },
+    env: sessionShell(root, { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' }),
     get ui() { return ui; },
     code(value: number) { workerCode = value; },
     beforeCapture(barrier: () => Promise<void>) { captureBarrier = barrier; },

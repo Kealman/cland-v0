@@ -21,7 +21,7 @@ test('an hour of failed idle retries backs off with one log per pending message'
   const core = new HubCore({ clock, log });
   const table = new ProcessTable(':memory:', clock);
   const sessions = new Sessions({ core, table, root, log });
-  t.after(() => { sessions.close(); table.close(); core.close(); core.store.close(); });
+  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   const fake = fakeHarness('claude-code', { clock, host: sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' }) });
   sessions.register(fake);
   const process = await fake.spawn({ name: 'impl', role: 'implementer', model: null, cwd: root });

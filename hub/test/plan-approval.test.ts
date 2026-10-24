@@ -1,4 +1,5 @@
 // T2: approval, inbox and lane drafting with injected adapters; reopen the store for persistence.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
@@ -6,7 +7,7 @@ import { FakeClock } from './fake-clock.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
-import { eventually, cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { eventually, cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { fileURLToPath } from 'node:url';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';

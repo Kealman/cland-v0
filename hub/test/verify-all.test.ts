@@ -1,4 +1,5 @@
 // T3: native Git diff admission through the real verify CLI reserves all before queue or worker startup.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectSocket, connectUi, nativeProjectHub as projectHub, tempProject } from './harness.ts';
+import { cland, connectSocket, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 
 // The hand holder keeps admitted requests observable without launching a package process.

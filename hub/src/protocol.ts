@@ -48,7 +48,7 @@ export type SubscriptionRequest = (
   | { type: 'event.subscribe'; id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest?: 'turn' | 'now'; threshold?: UsageThreshold }
   | { type: 'event.unsubscribe'; id: string; subscription: string }
   | { type: 'event.subscriptions'; id: string }
-) & { as?: { name: string; sessionId?: string; shell?: boolean } };
+) & { as?: { name: string; sessionId?: string; shell?: boolean; credential?: string } };
 export function isHeldDelivery(message: { kind?: string | undefined; detail?: Record<string, unknown> }): boolean {
   return message.kind === 'progress' || (message.kind === 'event' && message.detail?.digest !== 'now');
 }
@@ -733,8 +733,8 @@ export type ClientRequest =
   | { type: 'hygiene.unmute'; id: string; a: string; b: string }
 
   /** The human answers an ask with an option (1-based) or a free text: `{ message: TopicMessage, outcomes }`. */
-  | { type: 'approval.answer'; id: string; approval: string; choice: ApprovalChoice; note?: string; as?: { name: string; sessionId?: string; shell?: boolean } }
-  | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string; declined?: boolean; reason?: string; as?: { name: string; sessionId?: string; shell?: boolean } }
+  | { type: 'approval.answer'; id: string; approval: string; choice: ApprovalChoice; note?: string; as?: { name: string; sessionId?: string; shell?: boolean; credential?: string } }
+  | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string; declined?: boolean; reason?: string; as?: { name: string; sessionId?: string; shell?: boolean; credential?: string } }
   /** The inbox: `Inbox`. */
   | { type: 'inbox.list'; id: string; archive?: boolean }
   /** Human-only row actions, returning Inbox. */

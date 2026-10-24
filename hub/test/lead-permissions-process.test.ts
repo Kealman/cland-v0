@@ -1,7 +1,8 @@
 // T3: real worker launch and CLI stop enforce live-subtree authority and reparenting.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clandWithEnv, connectUi, fakeClaude, spawnSpoke, nativeProjectHub as projectHub, tempProject, withDiscoveredPid, eventually } from './harness.ts';
+import { fakeClaude, spawnSpoke, nativeProjectHub as projectHub, tempProject, withDiscoveredPid, eventually } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 test('Lead launches and stops only sessions serving its live subtree', async t => {

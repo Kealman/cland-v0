@@ -1,4 +1,5 @@
 // T3: real Git territory publication and shell identity; native push/refusal flows share one fixture seed.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
@@ -7,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, inProcessSpoke, projectHub as embeddedProjectHub, spawnSpoke, nativeProjectHub as projectHub, startHub, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, inProcessSpoke, projectHub as embeddedProjectHub, spawnSpoke, nativeProjectHub as projectHub, startHub, tempProject, type CliResult } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev, type PushResult } from '../src/territory-push.ts';
 import { withTerritoryLockAsync } from '../src/territory.ts';

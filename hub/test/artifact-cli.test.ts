@@ -1,9 +1,10 @@
 // T2: artifact CLI subprocess subjects against an in-process hub and permission-probe spoke.
+import { sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { Artifact } from '../src/protocol.ts';
 

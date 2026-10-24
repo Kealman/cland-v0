@@ -1,10 +1,11 @@
 // T2: pool admission, retention policy and live crew clauses over in-process adapters.
 // Native cwd/thread/history and merge process stops: session-native-lifecycle.test.ts pending T-708.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, inProcessSpoke, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, tempProject } from './harness.ts';
 import { ruleHub } from './rule-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { FAKE_FLAVOURS } from './fakes/harness.ts';

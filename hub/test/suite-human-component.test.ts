@@ -1,12 +1,13 @@
 // T2: real socket frames prove human-slot TTL and integrated/human/item queue order.
 // FakeClock and semantic local completion receipts replace package workers; native
 // compatibility leases, --force, fallback and signals stay in suite-human.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, connectUi, tempProject, inProcessSpoke, eventually } from './harness.ts';
+import { projectHub, tempProject, inProcessSpoke, eventually } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';

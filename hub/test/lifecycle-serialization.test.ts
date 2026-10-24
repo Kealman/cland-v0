@@ -1,5 +1,6 @@
 // T1: fake adapters and deferred dispatcher operations prove serialization and rollback without child processes or sockets.
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
@@ -25,7 +26,7 @@ async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) =>
   const hub = createHubBase({ clock, secret: 'test', roles: { get: () => roles } });
   const table = new ProcessTable(':memory:', clock);
   const sessions = new Sessions({ core: hub.core, table, root, ...(log ? { log } : {}) });
-  t.after(() => { sessions.close(); table.close(); hub.close(); });
+  t.after(async () => { await sessions.close(); table.close(); hub.close(); });
   const p = { name: 'impl', harness: 'test', role: null, model: null, cwd: root, pid: null, pidStarted: null, harnessId: null, sessionId: 'stable-id', harnessSessionId: 'conversation', startedAt: '', status: 'stopped' as const };
   table.put(p);
   sessions.register({
@@ -132,6 +133,8 @@ test('a Coordinator CLI stop queued behind relaunch rechecks a revoked grant bef
     return { found: true, process: { ...p, harnessSessionId: 'replacement', status: 'running' }, state: 'unknown' };
   } });
   f.hub.core.assignRole('coord', 'coordinator');
+  const credential = randomUUID();
+  f.hub.core.store.rememberSessionCredential('unknown', credential);
   f.hub.dispatcher.useSessions(f.sessions);
   const answers: Array<Record<string, unknown>> = [];
   const completion = Promise.withResolvers<Record<string, unknown>>();
@@ -139,7 +142,7 @@ test('a Coordinator CLI stop queued behind relaunch rechecks a revoked grant bef
   t.after(() => cli.closed());
   cli.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
   const resume = f.sessions.resume('impl', true); await entered.promise;
-  cli.receive(JSON.stringify({ type: 'session.stop', id: 'stop', session: 'impl', as: { name: 'coord' } }));
+  cli.receive(JSON.stringify({ type: 'session.stop', id: 'stop', session: 'impl', as: { name: 'coord', credential } }));
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(stops, 0);
   assert.equal(answers.some(frame => frame.id === 'stop'), false, 'the granted request waits in the lifecycle queue');

@@ -1,5 +1,9 @@
 # hub/test/custom-roles-component.test.ts
 
+Manual local-client claims opt in to the authenticated-session fixture. Keep
+the raw own-spoke custom-role launch/reconnect and permission controls, along
+with exact role-name routing and closed-item lead fallback assertions.
+
 T2 seam: sealed `tempProject`/`projectHub`, fake adapters and in-process spokes.
 T-781 observes the fake adapter's launch settings, exact role-clause events on
 initial connection and reconnect, role-list holders and permitted/refused spoke

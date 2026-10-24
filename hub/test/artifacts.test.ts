@@ -1,10 +1,11 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { mkdir,readdir,readFile,rm,symlink,writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import type { Artifact,TopicMessage } from '../src/protocol.ts';
-import { cland,connectUi,eventually,inProcessSpoke,projectHub,tempProject } from './harness.ts';
+import { cland,eventually,inProcessSpoke,projectHub,tempProject } from './harness.ts';
 
 test('a spoke creates a persistent diagram and publishes its structured chip in the topic', async (t) => {
   const root = await tempProject(t);

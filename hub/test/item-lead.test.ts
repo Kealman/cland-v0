@@ -1,4 +1,5 @@
 // T2: item identities, authority and persistence use in-process hubs and spokes.
+import { sessionWsUi as connectWsUi, sessionClient, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
@@ -6,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { connectUi, connectWsUi, inProcessSpoke, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { inProcessSpoke, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -76,7 +77,7 @@ test('a human claim falls back to Coordinator and item addressing preserves ordi
   roles.set('reviewer', { ...reviewer, permissions: { tools: ['send:human', 'who'] } });
   const hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, roles: fixedRoles(roles) });
   onCleanup(t, () => hub.close());
-  const ui = await connectWsUi(t, hub);
+  const ui = sessionClient(await connectWsUi(t, hub), hub.core.store);
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
   await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
   const coord = await inProcessSpoke(t, { hub, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -106,7 +107,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     const reading = new Promise<void>(resolve => { entered = resolve; });
     const gate = new Promise<void>(resolve => { release = resolve; });
     onCleanup(t, () => release());
-    const hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, roles: fixedRoles(),
+    const hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, store: new Store(join(root, '.cland/hub.db')), roles: fixedRoles(),
       env: { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state') },
       readArtifact: async path => { const bytes = await readFile(path); entered(); await gate; return bytes; },
       control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
@@ -115,7 +116,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     const socket = join(root, 'hub.sock');
     const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
     onCleanup(t, () => edge.close());
-    const ui = await connectUi(t, { socket, secret: TEST_SECRET });
+    const ui = await connectUi(t, { socket, secret: TEST_SECRET, root });
     for (const [session, role] of [['first', 'implementer'], ['second', 'implementer'], ['rev', 'reviewer'], ['coord', 'coordinator']]) {
       assert.equal((await ui.request({ type: 'role.set', session, role })).ok, true);
     }
@@ -168,7 +169,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     onCleanup(t, () => tracker.stop());
     let hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, store: new Store(db), roles: fixedRoles() });
     onCleanup(t, () => hub.close());
-    let ui = await connectWsUi(t, hub);
+    let ui = sessionClient(await connectWsUi(t, hub), hub.core.store);
     await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });
     await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
     const made = await ui.request({ size: 'M', type: 'task.create', title: 'Provisional lead', assignee: 'impl' });
@@ -218,7 +219,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db });
     tracker.start();
     hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, store: new Store(db), roles: fixedRoles() });
-    ui = await connectWsUi(t, hub);
+    ui = sessionClient(await connectWsUi(t, hub), hub.core.store);
     impl = await inProcessSpoke(t, { hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
     rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
     await rev.waitForPresence(['renamed', 'rev']);
@@ -243,7 +244,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
       tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db });
       tracker.start();
       hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, store: new Store(db), roles: fixedRoles() });
-      ui = await connectWsUi(t, hub);
+      ui = sessionClient(await connectWsUi(t, hub), hub.core.store);
       impl = await inProcessSpoke(t, { hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
       rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
       await rev.waitForPresence(['renamed', 'rev']);

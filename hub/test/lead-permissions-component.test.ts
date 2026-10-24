@@ -1,5 +1,6 @@
 // T2: Lead authority across in-process adapter, role-read and stop barriers.
 // Git's no-territory answer is injected; native worktree/merge proofs stay in T3.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -12,7 +13,7 @@ import { LaunchFiles } from '../src/adapters/launch-files.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { heldOperations } from './lead-permissions-support.ts';

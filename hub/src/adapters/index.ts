@@ -28,7 +28,7 @@ const positive = (raw: string | undefined): number | undefined => {
 
 export type AdapterFactory = (host: AdapterHost, clock: Clock) => HarnessAdapter;
 
-export type ProjectSessions = { sessions: Sessions; close: () => void };
+export type ProjectSessions = { sessions: Sessions; close: () => void | Promise<void> };
 
 export function projectSessions(options: { openDatabase?: (path: string) => DatabaseSync; core: HubCore; root: string; db?: string; adapters?: AdapterFactory[]; discoveryFile: string; log: LogFn; env?: NodeJS.ProcessEnv; tracker?: Tracker | undefined; cleanup?: ProjectConfig['sessions'] | undefined }): ProjectSessions {
   const env = options.env ?? process.env;
@@ -43,16 +43,22 @@ export function projectSessions(options: { openDatabase?: (path: string) => Data
     unregistered.delete(adapter);
     sessions.register(adapter);
   };
-  const close = () => {
+  const close = (): void | Promise<void> => {
     const failures: unknown[] = [];
-    try { sessions.close(); } catch (error) { failures.push(error); }
+    let draining: void | Promise<void> = undefined;
+    try { draining = sessions.close(); } catch (error) { failures.push(error); }
     for (const adapter of unregistered) {
       try { adapter.close(); } catch (error) { failures.push(error); }
     }
     unregistered.clear();
-    try { table.close(); } catch (error) { failures.push(error); }
-    if (failures.length) throw new AggregateError(failures, 'adapter cleanup failed');
+    const finish = () => {
+      try { table.close(); } catch (error) { failures.push(error); }
+      if (failures.length) throw new AggregateError(failures, 'adapter cleanup failed');
+    };
+    if (draining) return draining.then(finish, error => { failures.push(error); finish(); });
+    finish();
   };
+
   try {
     const pollMs = positive(env.CLAND_ADAPTER_POLL_MS);
     const reexecGraceMs = positive(env.CLAND_TEST_CLAUDE_REEXEC_GRACE_MS);
@@ -97,7 +103,10 @@ export function projectSessions(options: { openDatabase?: (path: string) => Data
     sessions.releaseInterruptedLaunches();
     return { sessions, close };
   } catch (error) {
-    try { close(); }
+    try {
+      const draining = close();
+      if (draining) void draining.catch(() => options.log({ event: 'adapter-construction-cleanup-failed' }));
+    }
     catch (cleanup) { throw new AggregateError([error, cleanup], 'adapter construction and cleanup failed'); }
     throw error;
   }

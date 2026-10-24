@@ -1,11 +1,12 @@
 // T2: CLI remote selection and the UI/shell boundary against an in-process hub; real publication lives in push.test.ts.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FakeClock } from './fake-clock.ts';
-import { clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 async function fakeGithub(root: string) {
   const fixture = join(root, 'github.json');

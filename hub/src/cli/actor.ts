@@ -5,7 +5,7 @@ export { sessionOf, type FrameActor } from '../../../shared/frame-actor.ts';
 /**
  * In a launched session's shell (`$CLAND_SESSION_ID` or `$CLAND_SESSION_NAME` set) it is always that session:
  * `--as` and `--role` cannot make it the human or another session, and naming another one only earns a note on
- * stderr; the hub checks the call by the session id. Outside a session (the human) `--as` names who the call is
+ * stderr; the hub checks the session id against its credential. Outside a session (the human) `--as` names who the call is
  * written as and `--role` its role. What remains open: a shell that unsets both variables is the human's, as any
  * process holding the hub's socket is (the CLI's identity is its environment).
  */

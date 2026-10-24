@@ -1,10 +1,11 @@
 // T2: config CLI argument handling requires the CLI against an in-process project hub.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, symlink, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
-import { cland, clandWithEnv, connectUi, eventually, projectHub, tempProject } from './harness.ts';
+import { cland, eventually, projectHub, tempProject } from './harness.ts';
 import { writeAtomic } from '../src/init/files.ts';
 
 async function fixture(t: Parameters<typeof tempProject>[0]) {

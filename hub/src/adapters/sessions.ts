@@ -1,3 +1,4 @@
+import { removeSessionRunDirectory, writeSessionCredential } from '../../../shared/session-credential.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { AccountLimited, codexWindows, type AccountReading } from '../accounts/limits.ts';
 import { artifactEntry } from '../hub/artifact-folder.ts';
@@ -18,7 +19,7 @@ import { artifactEntry } from '../hub/artifact-folder.ts';
 import { readFile, stat } from 'node:fs/promises';
 import { sessionCwdRefusal } from './session-cwd.ts';
 import { randomUUID } from 'node:crypto';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { nameRefusal, withRole } from '../names.ts';
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, Message, SessionState } from '../protocol.ts';
@@ -28,6 +29,7 @@ import { ProcessTable, processStarted, type PendingStop } from './processes.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText, projectRulesText } from '../roles/clause.ts';
 import { roleLaunchPolicy } from '../roles/config.ts';
+import { ToolForbidden } from '../roles/permissions.ts';
 import { systemProcesses } from '../system-processes.ts';
 import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
 import type { Tracker } from '../tracker/tracker.ts';
@@ -140,6 +142,11 @@ export class Sessions {
   #archiveTimer: ClockTimer | null = null;
   #archiveTick: ReturnType<typeof setImmediate> | null = null;
   #sweeping = false;
+  #archiveAgain = false;
+  #archivePublishing = false;
+  #archiveWork: Promise<void> | null = null;
+  readonly #credentialTasks = new Map<string, Promise<void>>();
+  readonly #credentialRemoving = new Set<string>();
   readonly #archiveItems = new Map<string, string | null>();
   #untracker: (() => void) | undefined;
 
@@ -316,7 +323,13 @@ export class Sessions {
       const claim = change.item?.claim;
       const claimant = claim && this.#table.bySessionId(claim.sessionId);
       if (claimant?.status === 'running' && claimant.role === 'implementer' && claimant.cleanupItem !== change.id) this.#table.update(claimant.name, { cleanupItem: change.id });
-      if (this.#archiveItems.has(change.id) && this.#archiveItems.get(change.id) !== (this.#tracker?.closedAt(change.id) ?? null)) this.#scheduleArchive();
+      if (this.#archiveItems.has(change.id)) {
+        const closed = this.#tracker?.closedAt(change.id) ?? null;
+        if (this.#archiveItems.get(change.id) !== closed) {
+          this.#archiveItems.set(change.id, closed);
+          this.#scheduleArchive();
+        }
+      }
     });
     // Recovery must select the persisted recipient's delivery mode before recording its final event.
     this.#core.eventSteering(id => { const p = this.#table.bySessionId(id); return p?.harness === 'codex' || p?.harness === 'opencode'; });
@@ -346,9 +359,16 @@ export class Sessions {
       if (accepted && name) return { name, sessionId: accepted, prove: () => {} };
       return null;
     });
+    this.#core.shellCredential((id, credential) => this.#credentialTask(id, async () => {
+      if (this.#closed) throw new Error('the hub is closing');
+      if (id === UNKNOWN_SESSION) return;
+      if (this.#credentialRemoving.has(id) || this.#table.bySessionId(id)?.archivedAt) throw new Error('the session is being archived');
+      const retained = this.#core.store.sessionCredential(id) ?? (credential || randomUUID());
+      this.#core.store.rememberSessionCredential(id, retained);
+      await writeSessionCredential(join(this.#root, '.cland'), id, retained);
+    }));
     this.#unhello = this.#core.onSessionHello((_name, _id, credential) => {
-      if (!credential) return;
-      this.#firstHello.delete(credential);
+      if (credential) this.#firstHello.delete(credential);
     });
     this.#core.pendingLaunch(id => {
       return [...this.#pendingStops.values()].find(entry => (!entry.ownership && entry.process.sessionId === id) || entry.ownership?.sessionIds.includes(id) || (entry.priorSessionId ?? entry.rollback?.previousSessionId) === id)?.process.name
@@ -603,53 +623,107 @@ export class Sessions {
     return this.#table.archivedCount() - [...this.#pendingStops.values()].filter(p => this.#table.bySessionId(p.process.sessionId)?.archivedAt).length;
   }
 
+  /** Serialize every private-directory writer and remover for the stable session identity. */
+  #credentialTask(id: string, operation: () => Promise<void>): Promise<void> {
+    const previous = this.#credentialTasks.get(id);
+    const work = (previous ? previous.catch(() => {}) : Promise.resolve()).then(operation);
+    const tracked = work.finally(() => { if (this.#credentialTasks.get(id) === tracked) this.#credentialTasks.delete(id); });
+    this.#credentialTasks.set(id, tracked);
+    void tracked.catch(() => {}); // The requester handles failure; close still owns the drain.
+    return tracked;
+  }
+
   #scheduleArchive(): void {
-    if (this.#closed || this.#sweeping || this.#archiveTick) return;
+    if (this.#closed || this.#archivePublishing || this.#archiveTick) return;
+    if (this.#sweeping) { this.#archiveAgain = true; return; }
     this.#archiveTick = setImmediate(() => {
       this.#archiveTick = null;
-      this.sweepArchive();
+      void this.sweepArchive().catch(() => this.#log({ event: 'session-archive-cleanup-failed' }));
     });
   }
 
-  /** Startup and coalesced lifecycle/timer triggers share one bounded, batched sweep. */
-  sweepArchive(): void {
-    if (this.#closed) return;
+  /** Startup and coalesced lifecycle/timer triggers share one owned, batched sweep. */
+  sweepArchive(): Promise<void> {
+    if (this.#closed) return Promise.resolve();
+    if (this.#archiveWork) { this.#archiveAgain = true; return this.#archiveWork; }
+    this.#sweeping = true;
+    this.#archiveAgain = false;
+    const work = this.#sweepArchive();
+    this.#archiveWork = work;
+    const finish = (failed: boolean) => {
+      if (this.#archiveWork === work) this.#archiveWork = null;
+      this.#sweeping = false;
+      if (failed) {
+        this.#archiveAgain = false;
+        if (!this.#closed && !this.#archiveTimer) {
+          this.#archiveTimer = this.#core.clock.setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, 1000);
+          this.#archiveTimer.unref();
+        }
+      } else if (this.#archiveAgain) this.#scheduleArchive();
+    };
+    void work.then(() => finish(false), () => finish(true));
+    return work;
+  }
+
+  #archiveDue(p: HarnessProcess, now: number): { deadline: number; rule: string } | null {
+    if (p.archivedAt || p.role === 'aide' || p.status === 'running' || this.#pendingStops.has(p.sessionId)) return null;
+    const item = p.role === 'implementer' ? p.cleanupItem ?? p.item : ['reviewer', 'qa'].includes(p.role ?? '') ? p.cleanupItem : null;
+    if (item && !this.#archiveItems.has(item)) this.#archiveItems.set(item, this.#tracker?.closedAt(item) ?? null);
+    const closed = item ? this.#archiveItems.get(item) ?? null : null;
+    return { deadline: closed ? Date.parse(closed) + this.#cleanup.archiveAfterItemMs : Date.parse(p.stoppedAt ?? new Date(now).toISOString()) + this.#cleanup.archiveAfterStopMs, rule: closed ? 'item' : 'stop' };
+  }
+
+  async #sweepArchive(): Promise<void> {
     if (this.#archiveTick) clearImmediate(this.#archiveTick);
     this.#archiveTick = null;
     if (this.#archiveTimer) this.#core.clock.clearTimeout(this.#archiveTimer);
     this.#archiveTimer = null;
-    this.#sweeping = true;
+    const now = this.#core.clock.now().getTime(), at = new Date(now).toISOString();
+    let next = Infinity;
+    const dated: HarnessProcess[] = [];
+    const due: HarnessProcess[] = [];
+    this.#archiveItems.clear();
+    const rows = this.#table.all();
+    for (const p of rows) {
+      if (p.status === 'running' || this.#pendingStops.has(p.sessionId)) continue;
+      if (!p.stoppedAt) dated.push(p);
+      const timing = this.#archiveDue(p, now);
+      // Hold each eligible lifecycle before starting I/O; a resume cannot overtake cleanup.
+      if (!timing || this.#lifecycle.has(p.sessionId)) continue;
+      if (timing.deadline <= now) due.push(p);
+      else next = Math.min(next, timing.deadline);
+    }
+    const slots = due.map(p => {
+      this.#credentialRemoving.add(p.sessionId);
+      return { id: p.sessionId, slot: this.#lifecycleSlot(p.sessionId) };
+    });
     try {
-      const now = this.#core.clock.now().getTime(), at = new Date(now).toISOString();
-      let next = Infinity;
-      const dated: string[] = [];
-      const due: Array<{ process: HarnessProcess; rule: string }> = [];
-      const times = this.#archiveItems;
-      times.clear();
-      const rows = this.#table.all();
-      for (const p of rows) {
-        if (p.status === 'running' || this.#pendingStops.has(p.sessionId)) continue;
-        if (!p.stoppedAt) dated.push(p.name);
-        if (p.archivedAt || p.role === 'aide') continue;
-        const item = p.role === 'implementer' ? p.cleanupItem ?? p.item : ['reviewer', 'qa'].includes(p.role ?? '') ? p.cleanupItem : null;
-        if (item && !times.has(item)) times.set(item, this.#tracker?.closedAt(item) ?? null);
-        const closed = item ? times.get(item) : null;
-        const rule = closed ? 'item' : 'stop';
-        const deadline = closed ? Date.parse(closed) + this.#cleanup.archiveAfterItemMs : Date.parse(p.stoppedAt ?? at) + this.#cleanup.archiveAfterStopMs;
-        // Lifecycle completion schedules another pass; never poll a held overdue row.
-        if (this.#lifecycle.has(p.sessionId)) continue;
-        if (deadline <= now) due.push({ process: p, rule });
-        else next = Math.min(next, deadline);
-      }
-      if (dated.length || due.length) this.#table.archiveBatch(dated, due.map(d => d.process.name), at);
-      for (const { process: p, rule } of due) this.#log({ event: 'session-archived', session: p.name, sessionId: p.sessionId, by: 'rule', rule });
-      this.#log({ event: 'session-archive-sweep', rows: rows.length, dated: dated.length, archived: due.length, batches: dated.length || due.length ? 1 : 0 });
+      if (due.length) await Promise.all(due.map(p => this.#credentialTask(p.sessionId, () => removeSessionRunDirectory(join(this.#root, '.cland'), p.sessionId))));
+      if (this.#closed) return;
+      const observedAt = this.#core.clock.now().getTime();
+      const currentDue = due.flatMap(p => {
+        const current = this.#table.bySessionId(p.sessionId);
+        const timing = current ? this.#archiveDue(current, observedAt) : null;
+        return current && timing && timing.deadline <= observedAt ? [{ process: current, rule: timing.rule }] : [];
+      });
+      const currentDated = dated.flatMap(p => {
+        const current = this.#table.bySessionId(p.sessionId);
+        return current && current.status !== 'running' && !current.stoppedAt ? [current.name] : [];
+      });
+      this.#archivePublishing = true;
+      try { if (currentDated.length || currentDue.length) this.#table.archiveBatch(currentDated, currentDue.map(d => d.process.name), at); }
+      finally { this.#archivePublishing = false; }
+      for (const { process: p, rule } of currentDue) this.#log({ event: 'session-archived', session: p.name, sessionId: p.sessionId, by: 'rule', rule });
+      this.#log({ event: 'session-archive-sweep', rows: rows.length, dated: currentDated.length, archived: currentDue.length, batches: currentDated.length || currentDue.length ? 1 : 0 });
       if (Number.isFinite(next)) {
-        // Node clamps delays beyond its signed 32-bit range to 1 ms.
-        this.#archiveTimer = this.#core.clock.setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, Math.min(2 ** 31 - 1, Math.max(1, next - now)));
+        this.#archiveTimer = this.#core.clock.setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, Math.min(2 ** 31 - 1, Math.max(1, next - this.#core.clock.now().getTime())));
         this.#archiveTimer.unref();
       }
-    } finally { this.#sweeping = false; }
+    } finally {
+      this.#archivePublishing = true;
+      try { for (const { id, slot } of slots) { this.#credentialRemoving.delete(id); slot.release(); } }
+      finally { this.#archivePublishing = false; }
+    }
   }
 
   #stopItem(p: HarnessProcess): string | null {
@@ -1123,21 +1197,29 @@ export class Sessions {
     authorize();
     const identity = this.#process(name).sessionId;
     const slot = this.#lifecycleSlot(identity);
+    const current = () => {
+      if (this.#closed) throw new Error('the hub is closing');
+      authorize();
+      const p = this.#table.bySessionId(identity);
+      if (!p) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+      if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${p.name}" is still supervised; cleanup is pending`);
+      if (p.status === 'running') throw new Error(`session "${p.name}" is running; stop it first`);
+      return p;
+    };
     try {
       if (slot.ready) await slot.ready;
+      resumed(current);
+      this.#credentialRemoving.add(identity);
+      await this.#credentialTask(identity, () => removeSessionRunDirectory(join(this.#root, '.cland'), identity));
       return resumed(() => {
-        authorize();
-        const p = this.#table.bySessionId(identity);
-        if (!p) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
-        if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${p.name}" is still supervised; cleanup is pending`);
-        if (p.status === 'running') throw new Error(`session "${p.name}" is running; stop it first`);
+        const p = current();
         if (!p.archivedAt) {
           this.#table.update(p.name, { archivedAt: this.#core.clock.now().toISOString(), archivedBy: 'hand' });
           this.#log({ event: 'session-archived', session: p.name, sessionId: identity, by: 'hand', actor });
         }
         return this.view(this.#process(p.name));
       });
-    } finally { resumed(() => slot.release()); }
+    } finally { resumed(() => { this.#credentialRemoving.delete(identity); slot.release(); }); }
   }
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
@@ -1166,7 +1248,7 @@ export class Sessions {
           if (item?.state === 'open') work.notes.push(`launch a fresh session for ${item.id}: cland session launch <new-name>${current.role ? ` --role ${current.role}` : ''} --item ${item.id}`);
           return { found: false, reason: cwdRefusal, process: this.view(current), ...work };
         }
-        return this.#resume(current.name, relaunch, resumed);
+        return this.#resume(current.name, relaunch, resumed, authorize);
       });
     } finally { resumed(() => { this.#resuming--; slot.release(); }); }
   }
@@ -1192,7 +1274,7 @@ export class Sessions {
     });
   }
 
-  async #resume(name: string, relaunch: boolean, resumed: Resumed): Promise<SessionResumeAnswer> {
+  async #resume(name: string, relaunch: boolean, resumed: Resumed, authorize: () => void): Promise<SessionResumeAnswer> {
     let p = this.#process(name);
     const adapter = this.adapter(p.harness);
     if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
@@ -1211,24 +1293,58 @@ export class Sessions {
     // the row as it is now, by the session's id: while the adapter works the session may rename itself (the
     // Coordinator does), and its row then stands under the new name
     const row = (): HarnessProcess => this.#table.bySessionId(p.sessionId) ?? p;
-    let resuming: Promise<ResumeResult>;
-    if (relaunch && p.status === 'running') {
-      await adapter.stop(p, resumed);
-      resuming = resumed(() => {
-        this.#table.update(row().name, { status: 'stopped' });
-        this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
-        p = row();
-        // The adapter's synchronous prefix belongs to this stretch, up to its next await.
-        this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
-        return adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role, p.harness) });
+    const authorizeResume = () => {
+      if (this.#closed) throw new Error('the hub is closing');
+      authorize();
+      const current = this.#table.bySessionId(p.sessionId);
+      if (!current) throw new Error(`session "${p.name}" was replaced while resuming`);
+      p = current;
+      if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
+    };
+    const launchToken = relaunch ? randomUUID() : this.#core.store.sessionCredential(p.sessionId) ?? undefined;
+    const provision = async () => {
+      if (!relaunch || !launchToken) return;
+      await this.#credentialTask(p.sessionId, async () => {
+        resumed(() => {
+          authorizeResume();
+          this.#core.store.rememberSessionCredential(p.sessionId, launchToken);
+        });
+        await writeSessionCredential(join(this.#root, '.cland'), p.sessionId, launchToken);
       });
-    } else {
-      resuming = adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role, p.harness) });
-    }
+    };
     let r: ResumeResult;
-    try { r = await resuming; }
-    catch (cause) {
-      if (cause instanceof AccountLimited) throw cause;
+    let nativeEntered = false;
+    try {
+      let resuming: Promise<ResumeResult>;
+      if (relaunch && p.status === 'running') {
+        await adapter.stop(p, resumed, authorizeResume);
+        resumed(() => {
+          this.#table.update(row().name, { status: 'stopped' });
+          this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
+          p = row();
+        });
+        await provision();
+        resuming = resumed(() => {
+          authorizeResume();
+          nativeEntered = true;
+          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness) });
+        });
+      } else {
+        await provision();
+        resuming = resumed(() => {
+          authorizeResume();
+          nativeEntered = true;
+          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness) });
+        });
+      }
+      r = await resuming;
+    } catch (cause) {
+      if (!nativeEntered || cause instanceof AccountLimited || cause instanceof ToolForbidden) {
+        resumed(() => {
+          if (reservation && desiredRole) this.#core.releaseLaunchRole(row().name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
+        });
+        throw cause;
+      }
       if (cause instanceof LaunchRecoveryPending) {
         const entry = resumed(() => {
           const child = cause.files.children[0];
@@ -1688,7 +1804,7 @@ export class Sessions {
     return { retried: true };
   }
 
-  close(): void {
+  close(): void | Promise<void> {
     this.#closed = true;
     this.#earlyLimitHits.clear();
     for (const sessionId of this.#unconfirmed.keys()) this.#clearUnconfirmed(sessionId);
@@ -1706,12 +1822,16 @@ export class Sessions {
     this.#core.launchedRole(null);
     this.#core.pendingLaunch(null);
     this.#core.launchIdentity(null);
+    this.#core.shellCredential(null);
     this.#unhello();
     this.#unsubscribe();
     this.#unprocess();
     for (const timer of this.#usageTimers.values()) this.#core.clock.clearTimeout(timer);
     this.#usageTimers.clear();
     this.#unrename();
-    if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed');
+    const drain = [...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
+    const finish = () => { if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed'); };
+    if (drain.length) return Promise.all(drain.map(work => work.catch(() => {}))).then(finish);
+    finish();
   }
 }

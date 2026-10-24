@@ -1,4 +1,5 @@
 // T3: verdict-gated native Git merge publication; retained write/grant race regressions.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
@@ -6,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, nativeProjectHub as projectHub, startHub, tempProject } from './harness.ts';
+import { cland, spawnSpoke, nativeProjectHub as projectHub, startHub, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';

@@ -108,6 +108,13 @@ test('onboarding stages explicit files and performs start and import without hum
   }
 });
 
+// Own-spoke readiness provisions the real file; CLI calls below stay tokenless.
+async function aideShell(t: import('node:test').TestContext, root: string) {
+  const aide = await inProcessSpoke(t, { cwd: root, discover: true, name: 'onboarding-aide', role: 'aide', sessionId: 'onboarding-aide-id' });
+  await aide.call('who');
+  return { CLAND_SESSION_NAME: 'onboarding-aide', CLAND_SESSION_ID: 'onboarding-aide-id' };
+}
+
 test('the onboarding Aide sets human epic plan approval through the config CLI', async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/config.toml');
@@ -115,12 +122,11 @@ test('the onboarding Aide sets human epic plan approval through the config CLI',
   config.verification.lockPath = join(root, 'suite.lock');
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(path, renderConfig(config));
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  await projectHub(t, root);
+  const env = await aideShell(t, root);
   assert.equal(parseConfig(await readFile(path, 'utf8'), root).plan.approval, 'none');
 
-  const result = await clandWithEnv(root, { CLAND_SESSION_NAME: 'onboarding-aide' },
+  const result = await clandWithEnv(root, env,
     'config', 'set', 'plan.approval', 'human', '--json');
 
   assert.equal(result.code, 0, result.stderr);
@@ -135,16 +141,15 @@ test('the onboarding Aide records the stack verification commands verbatim throu
   config.verification.lockPath = join(root, 'suite.lock');
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(path, renderConfig(config));
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  await projectHub(t, root);
+  const env = await aideShell(t, root);
 
   for (const [key, value] of [
     ['test', 'python3 -m unittest'],
     ['check', 'python3 -m compileall -q .'],
     ['prepare', 'true'],
   ] as const) {
-    const result = await clandWithEnv(root, { CLAND_SESSION_NAME: 'onboarding-aide' },
+    const result = await clandWithEnv(root, env,
       'config', 'set', `verification.${key}`, value, '--json');
     assert.equal(result.code, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout), { key: `verification.${key}`, value, applies: 'now' });
@@ -157,8 +162,7 @@ test('the onboarding Aide records staffing through the crew CLI', async t => {
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
-  const env = { CLAND_SESSION_NAME: 'onboarding-aide' };
+  const env = await aideShell(t, root);
   // Start away from the recommended values so the readback proves each change.
   for (const [key, value] of [['reviewer.size', 2], ['leads', ['epic']], ['aide.subagents', false]] as const) {
     assert.equal((await ui.request({ type: 'crew.set', key, value })).ok, true);
@@ -179,10 +183,8 @@ test('the onboarding Aide records launch fields through the role CLI', async t =
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/roles.toml'), rolesTemplate(['claude-code']));
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
-  const env = { CLAND_SESSION_NAME: 'onboarding-aide' };
+  await projectHub(t, root);
+  const env = await aideShell(t, root);
   for (const args of [
     ['implementer', '--harness', 'codex', '--model', '', '--effort', 'high'],
     ['coordinator', '--permissions', 'skip'],
@@ -198,10 +200,9 @@ test('the onboarding Aide records launch fields through the role CLI', async t =
 
 test('the onboarding Aide own launch change returns the next-launch note', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
-  const result = await clandWithEnv(root, { CLAND_SESSION_NAME: 'onboarding-aide' },
+  await projectHub(t, root);
+  const env = await aideShell(t, root);
+  const result = await clandWithEnv(root, env,
     'role', 'launch', 'aide', '--permissions', 'skip');
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, /applies from the role's next launch; your own session keeps its settings until its next launch/);
@@ -254,17 +255,17 @@ test('the onboarding Aide plans imported open GitHub issues in its first release
   }));
   const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  const env = await aideShell(t, root);
   const release = await ui.request({ type: 'task.create', kind: 'release', title: 'What next' });
   assert.equal(release.ok, true, release.error);
   assert.equal((release.value as { item: { id: string } }).item.id, 'R-1');
-  const env = {
-    CLAND_SESSION_NAME: 'onboarding-aide',
+  const importEnv = {
+    ...env,
     PATH: [fileURLToPath(new URL('./fixtures/fake-gh/', import.meta.url)), dirname(process.execPath), process.env.PATH ?? ''].join(':'),
     FAKE_GH_FIXTURE: fixture, FAKE_GH_LOG: log,
   };
   const run = async (...args: string[]) => {
-    const result = await clandWithEnv(root, env, 'task', ...args);
+    const result = await clandWithEnv(root, importEnv, 'task', ...args);
     assert.equal(result.code, 0, result.stderr);
     return result.stdout;
   };

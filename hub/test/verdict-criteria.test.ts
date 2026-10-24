@@ -1,7 +1,8 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { sessionCland as cland } from './session-credential-fixture.ts';
 
 // Persistence proofs close and reopen the hub/store in this process.
 const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();

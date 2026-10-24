@@ -1,11 +1,12 @@
 // T3: UI writer death/lock recovery, serving-path responsiveness and native death event.
 
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeClaude, killDaemon, nativeProjectHub as projectHub, tempProject, withDiscoveredPid } from './harness.ts';
+import { eventually, fakeClaude, killDaemon, nativeProjectHub as projectHub, tempProject, withDiscoveredPid } from './harness.ts';
 import type { EventsPage, Inbox } from '../src/protocol.ts';
 
 test('layout saves and human choices serialize through the shared UI lock', async t => {

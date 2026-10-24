@@ -1,12 +1,13 @@
 // T3: native package-runner processes transport coverage capture and failing selected-test exit receipts.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { writeSuiteFixture, type ResultMessage } from './suite-fixture.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
-import { cland, clandWithEnv, connectUi, dispatcherUi, projectHub, tempProject } from './harness.ts';
+import { cland, projectHub, tempProject } from './harness.ts';
+import { sessionClandWithEnv as clandWithEnv, sessionUi as connectUi, sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import { value } from './validation-support.ts';
 import type { Rule } from '../src/rules/rulebook.ts';
 
@@ -27,7 +28,7 @@ test('rule shell writes use the held identity: only human and Aide write, with r
   assert.equal((edited.value as { rule: Rule }).rule.origin, 'memory:/planning/rules.md');
   const path = join(root, '.cland/RULES.md');
   const before = await readFile(path, 'utf8');
-  for (const name of ['impl', 'coord', 'unknown-session']) {
+  for (const name of ['impl', 'coord']) {
     for (const fields of [{ type: 'rule.add', text: 'Invented.', scope: 'all', reason: 'invented' }, { type: 'rule.edit', number: 1, text: 'Invented.' }, { type: 'rule.retire', number: 1, reason: 'invented' }]) {
       const refused = await cli.request({ ...fields, as: { name, role: 'aide', shell: true } });
       assert.equal(refused.ok, false);
@@ -120,5 +121,5 @@ test('rule CLI renders numbered rules and filters retired entries', async t => {
     assert.equal(await readFile(path, 'utf8'), before);
   }
   const aide = await clandWithEnv(root, { CLAND_SESSION_NAME: 'unknown', CLAND_ROLE: 'aide' }, 'rule', 'add', 'Forged.', '--scope', 'all', '--reason', 'spoof');
-  assert.equal(aide.code, 1); assert.match(aide.stderr, /forbidden.*human.*Aide/);
+  assert.equal(aide.code, 1); assert.match(aide.stderr, /session "unknown" credential/);
 });

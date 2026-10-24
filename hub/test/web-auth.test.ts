@@ -181,11 +181,11 @@ test('/ws refuses a spoke hello and closes its socket', async t => {
 test("web.link refuses a session's shell even with an unknown identity", async t => {
   const root = await tempProject(t);
   const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
-  await assert.rejects(askHubFrame(hub.discovery, { type: 'web.link' }, 3000, { CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }), /only the human/);
+  await assert.rejects(askHubFrame(hub.discovery, { type: 'web.link' }, 3000, { CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }), /session "session" credential/);
   const result = await clandWithEnv(root, { ...await openers(root), CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }, 'web', '--no-open');
   assert.equal(result.code, 1);
   assert.equal(result.stdout, '');
-  assert.match(result.stderr, /only the human/);
+  assert.match(result.stderr, /only the human|session "session" credential/);
 });
 
 test('cland web opens the printed link using a scratch platform opener', async t => {
@@ -432,13 +432,13 @@ for (const type of ['web.sessions', 'web.revoke'] as const) {
   test(`${type} refuses browser and session-shell requests`, async t => {
     const { root, hub, origin, cookie } = await signIn(t);
     const frame = type === 'web.revoke' ? { type, session: 'unknown' } : { type };
-    await assert.rejects(askHubFrame(hub.discovery, frame, 3000, { CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }), /only the human/);
+    await assert.rejects(askHubFrame(hub.discovery, frame, 3000, { CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }), /session "session" credential/);
     const flags = type === 'web.revoke' ? ['--revoke', 'unknown'] : ['--sessions'];
     const env = await openers(root);
     const result = await clandWithEnv(root, { ...env, CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }, 'web', ...flags);
     await assert.rejects(readFile(join(root, 'opened')), { code: 'ENOENT' });
     assert.equal(result.code, 1);
-    assert.match(result.stderr, /only the human/);
+    assert.match(result.stderr, /only the human|session "session" credential/);
     const { client } = await browser(t, origin, cookie);
     const welcome = client.waitFor(frame => frame.type === 'welcome');
     client.send({ type: 'hello', protocol: 2, client: 'web' });

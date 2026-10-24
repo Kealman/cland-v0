@@ -1,7 +1,8 @@
 // T2: executor permissions through the dispatcher, with no hub or spoke process.
+import { sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { dispatcherUi, frameClient, projectHub, tempProject } from './harness.ts';
+import { frameClient, projectHub, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 

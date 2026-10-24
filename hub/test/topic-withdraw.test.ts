@@ -1,9 +1,10 @@
 // T2: public human frames and a fake spoke/adapter; no native harness or real clock waits.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PROTOCOL_VERSION, type HarnessProcessView, type TopicMessage } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
-import { connectSocket, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { connectSocket, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 test('withdraw removes a busy session message and leaves the next turn intact', async t => {
   const root = await tempProject(t);

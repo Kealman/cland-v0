@@ -1,5 +1,6 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Sibling rank through the agreed hub frame, CLI and MCP seams (T-122).
+import { sessionWsUi as connectWsUi, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { componentTask } from './component-task.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
@@ -16,7 +17,7 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, inProcessSpoke, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { cland, inProcessSpoke, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 // Persistence proofs close and reopen the hub/store in this process.
 const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();

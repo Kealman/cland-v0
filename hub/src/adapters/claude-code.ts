@@ -30,13 +30,14 @@ import { processAlive } from './processes.ts';
 //            the same flags (they are not restored by the harness).
 //
 // Not used: the session's inbox socket (its message format is undocumented) and channels (a research preview).
+import { sessionRunDirectory } from '../../../shared/session-credential.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { accountPrefix } from '../accounts/registry.ts';
@@ -411,9 +412,17 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       hooks,
       ...(configuredIsolation.some(Boolean) ? {} : { worktree: { bgIsolation: BG_ISOLATION } }),
       // what the mod reads to find its session and the hub
-      env: { DISABLE_AUTOUPDATER: '1', CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
+      env: { DISABLE_AUTOUPDATER: '1', CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}), CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
     };
-    return ['--mcp-config', JSON.stringify(mcp), '--settings', JSON.stringify(settings), '--plugin-dir', MOD_DIR];
+    // --bg does not retain the launcher's environment. Private settings survive native re-exec;
+    // the command line carries only paths, never the session credential.
+    const directory = sessionRunDirectory(dirname(this.#host.discoveryFile), sessionId);
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    const mcpFile = join(directory, 'mcp.json');
+    const settingsFile = join(directory, 'settings.json');
+    await writeFile(mcpFile, JSON.stringify(mcp), { mode: 0o600 });
+    await writeFile(settingsFile, JSON.stringify(settings), { mode: 0o600 });
+    return ['--mcp-config', mcpFile, '--settings', settingsFile, '--plugin-dir', MOD_DIR];
   }
 
   /** The background id `claude --bg` printed (`claude attach <id>`). */
@@ -723,7 +732,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       // Pre-T-603 unpinned rows froze the bookkeeping fallback as an explicit profile,
@@ -779,7 +788,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         return { found: false, reason: entry ? 'listed by claude agents, but its process identity could not be verified' : 'not listed by claude agents --json', alive };
       }
       yield* wait(this.stop(p, options.resumed));
-      const process = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv, name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, p.effort ?? null, resumed, undefined, options.authorize ?? (() => {}), options.policy?.permissions ?? null));
+      const process = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv, name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, p.effort ?? null, resumed, options.launchToken, options.authorize ?? (() => {}), options.policy?.permissions ?? null));
       return { found: true, process, state: 'unknown' };
     }).call(this), options.resumed ?? untimed);
   }

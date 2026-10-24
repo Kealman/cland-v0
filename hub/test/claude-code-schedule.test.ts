@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { setImmediate as yieldIO } from 'node:timers/promises';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost, HarnessProcess } from '../src/adapters/contract.ts';
@@ -55,9 +56,11 @@ async function receipt<T>(work: Promise<T>): Promise<T> {
   } finally { clearTimeout(timer); }
 }
 
-function memoryHost(): AdapterHost {
+async function memoryHost(t: TestContext): Promise<AdapterHost> {
+  const root = await mkdtemp(join(tmpdir(), 'cland-claude-schedule-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
   const state = new Map<string, string>();
-  return { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {}, adapterState: { read: key => state.get(key) ?? null, write: (key, value) => { state.set(key, value); } } };
+  return { root, discoveryFile: join(root, 'hub.json'), node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {}, adapterState: { read: key => state.get(key) ?? null, write: (key, value) => { state.set(key, value); } } };
 }
 const request = (name: string) => ({ name, cwd: '/fixture', role: null, model: null });
 const options = (clock: FakeClock) => ({ clock, processStarted: async () => 'fixture-start', bin: 'fixture-claude', env: { HOME: '/fixture/home', CLAUDE_CONFIG_DIR: '/fixture/claude' } });
@@ -67,7 +70,7 @@ test('Claude discovery misses retain liveness without accepting a conflicting na
   native.knownPid = true;
   const clock = new FakeClock();
   let started: string | null = 'fixture-start';
-  const adapter = new ClaudeCodeAdapter(memoryHost(), { ...options(clock), agentsMs: 1, processStarted: async () => started });
+  const adapter = new ClaudeCodeAdapter(await memoryHost(t), { ...options(clock), agentsMs: 1, processStarted: async () => started });
   t.after(() => adapter.close());
   const p = await adapter.spawn(request('recover'));
   assert.equal(p.pid, process.pid, 'only observe the test process; never signal it');
@@ -104,7 +107,7 @@ test('Claude discovery and watch share the default schedule across adapter resta
   const native = cli(t);
   const clock = new FakeClock();
   const events: Array<Record<string, unknown>> = [];
-  const host = { ...memoryHost(), log: (event: Record<string, unknown>) => { events.push(event); } };
+  const host = { ...await memoryHost(t), log: (event: Record<string, unknown>) => { events.push(event); } };
   let adapter = new ClaudeCodeAdapter(host, options(clock));
   t.after(() => adapter.close());
   assert.ok(events.some(e => e.event === 'claude-schedule' && e.agentsMs === 30_000));
@@ -193,7 +196,7 @@ test('hub-launched Claude disables auto-update in both the filtered CLI environm
   const bg = f.native.calls.find(call => call.args[0] === '--bg')!;
   assert.equal(bg.env.DISABLE_AUTOUPDATER, '1');
   assert.equal(bg.env.DIGITALOCEAN_TOKEN, undefined);
-  const settings = JSON.parse(bg.args[bg.args.indexOf('--settings') + 1]!);
+  const settings = JSON.parse(await readFile(bg.args[bg.args.indexOf('--settings') + 1]!, 'utf8'));
   assert.equal(settings.env.DISABLE_AUTOUPDATER, '1', 'the supervised background harness does not inherit CLI env');
 });
 
@@ -206,7 +209,11 @@ for (const [role, reconnectAt, identity] of [['implementer', 5000, 'known'], ['c
   const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'impl', role });
   assert.equal(result.ok, true, result.error);
   const launched = (result.value as { process: HarnessProcess }).process;
-  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'impl', assignRole: false, sessionId: launched.sessionId });
+  const launchArgs = f.native.calls.find(call => call.args[0] === '--bg')!.args;
+  const settings = JSON.parse(await readFile(launchArgs[launchArgs.indexOf('--settings') + 1]!, 'utf8'));
+  const credential = settings.env.CLAND_LAUNCH_TOKEN as string;
+  assert.equal(typeof credential === 'string' && credential.length > 0, true);
+  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'impl', assignRole: false, sessionId: launched.sessionId, launchToken: credential });
   const first = await peer();
   await first.waitForPresence(['impl']);
   const made = await ui.request({ type: 'task.create', title: 'Re-exec work', size: 'S', assignee: 'impl' });
@@ -264,6 +271,8 @@ for (const [role, reconnectAt, identity] of [['implementer', 5000, 'known'], ['c
   await receipt(updated);
   rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
   const row = rows.processes.find(p => p.name === 'impl')!;
+  const shellRead = await ui.request({ type: 'inbox.list', as: { name: 'impl', sessionId: launched.sessionId, shell: true, credential } });
+  assert.equal(shellRead.ok, true, shellRead.error);
   assert.equal(row.pid, 91002);
   assert.equal(row.status, 'running');
   assert.equal(row.sessionId, launched.sessionId);

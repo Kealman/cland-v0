@@ -1,10 +1,11 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import type { Hub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
 import { FakeClock } from './fake-clock.ts';
-import { connectUi, connectWsUi, eventually, inProcessSpoke, projectHub, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { eventually, inProcessSpoke, projectHub, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 
 type Topic = { id: string; title: string; status: string; item: string | null };
 type Card = { question: string; options: string[]; free: boolean; state: string; answer?: string; option?: number };

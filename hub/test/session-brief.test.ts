@@ -35,7 +35,7 @@ async function fixture(t: TestContext, root: string, options: { deferHello?: boo
   const close = async () => {
     if (closed) return;
     closed = true;
-    sessions.close();
+    await sessions.close();
     table.close();
     await edge.close();
     await hub.close();

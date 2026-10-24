@@ -1,4 +1,5 @@
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { sessionShell, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import type { SuiteCandidate } from '../src/hub/suite-candidate.ts';
 import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
@@ -13,7 +14,7 @@ import { parseArgs, promisify } from 'node:util';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { availableParallelism, loadavg } from 'node:os';
-import { cland, clandWithEnv, connectUi, eventually, inProcessSpoke, spawnSpoke, projectHub, startDaemon, tempProject, testWaitMs } from './harness.ts';
+import { cland, eventually, inProcessSpoke, spawnSpoke, projectHub, startDaemon, tempProject, testWaitMs } from './harness.ts';
 import { beforeDirectories, cleanupProcesses, ownProcess, onCleanup } from './process-cleanup.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
@@ -169,7 +170,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
   const spoke = scripted || embedded ? await inProcessSpoke(t, { discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' }) : await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
   onCleanup(t, () => spoke.close()); await spoke.waitForPresence(['impl']);
-  const actor = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'remote-impl', CLAND_ROLE: 'implementer' };
+  const actor = sessionShell(root, { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'remote-impl', CLAND_ROLE: 'implementer' });
   const item = scripted ? ((await ui.request({ type: 'task.create', size: 'M', title: 'Remote fixture', assignee: 'impl' })).value as { item: { id: string } }).item.id : JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'Remote fixture', '--assignee', 'impl', '--json')).stdout).item.id as string;
   const topic = ((await ui.request({ type: 'topic.create', item, title: 'Remote run' })).value as { topic: { id: string } }).topic.id;
   const launch = async (...args: string[]) => {

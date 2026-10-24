@@ -1,9 +1,10 @@
 // Real CLI/socket fixture shared with its subprocess teardown regression.
+import { sessionShell, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, projectHub, startDaemon, spawnSpoke, tempProject } from './harness.ts';
+import { cland, eventually, projectHub, startDaemon, spawnSpoke, tempProject } from './harness.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
@@ -20,7 +21,7 @@ export async function fixture(t: import('node:test').TestContext, testScript: st
   // Native after hooks stop at the first failure; share ownership teardown instead.
   onCleanup(t, () => spoke.close());
   await spoke.waitForPresence(['impl']);
-  const env = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' };
+  const env = sessionShell(root, { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' });
   const created = JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'fixture', '--assignee', 'impl', '--json')).stdout) as { item: { id: string } };
   const topicResult = await ui.request({ type: 'topic.create', title: 'Suite fixture', item: created.item.id });
   assert.equal(topicResult.ok, true, topicResult.error);

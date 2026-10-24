@@ -6,9 +6,16 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { inProcessSpoke, assignRole, connectSocket, connectUi, connectWsUi, eventually, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
-import { FAKE_FLAVOURS } from './fakes/harness.ts';
+import { FAKE_FLAVOURS, type FakeHarness } from './fakes/harness.ts';
 import { PROTOCOL_VERSION, type Message, type HarnessProcessView } from '../src/protocol.ts';
 import { WebSocket } from 'ws';
+
+function roleInputAccepted(fake: FakeHarness, sessionId: string) {
+  // The fake records its accepted native input as it resolves inject(); role
+  // notices are topicless, so Agents topic history cannot supply this receipt.
+  return eventually('initial role input accepted before digest measurement', () => fake.injections.some(input =>
+    input.process.sessionId === sessionId && input.message.kind === 'role' && input.outcome === 'accept') || undefined);
+}
 
 test('progress stays queued and reaches the spoke in one ordered digest with the next report', async (t) => {
   const root = await tempProject(t);
@@ -60,7 +67,10 @@ test('progress holds until one ordered digest is injected across flavours', asyn
     const p = (launched.value as { process: HarnessProcessView }).process;
     const receiver = await inProcessSpoke(t, { cwd: root, discover: true, name, sessionId: p.sessionId });
     await sender.waitForPresence(['impl', name]);
+    await receiver.call('who'); // Own credential-ready welcome, rather than another spoke's presence.
+    const initialized = roleInputAccepted(fakes[harness]!, p.sessionId);
     fakes[harness]!.idle(name);
+    await initialized;
     const mark = fakes[harness]!.injections.length;
     const notes = ['first note', 'second note', 'third note'].map(text => `${harness} ${text}`);
     for (const text of notes) await sender.call('send', { to: [name], text, kind: 'progress' });
@@ -142,8 +152,11 @@ test('uncertain digest membership survives later reports until an explicit retry
     const p = (launch.value as { process: HarnessProcessView }).process;
     const receiver = await inProcessSpoke(t, { cwd: root, discover: true, name, sessionId: p.sessionId });
     await sender.waitForPresence(['impl', name]);
+    await receiver.call('who');
     const fake = fakes[harness]!;
+    const initialized = roleInputAccepted(fake, p.sessionId);
     fake.idle(name);
+    await initialized;
     fake.scriptInject(name, 'uncertain');
     const mark = fake.injections.length;
     await sender.call('send', { to: [name], text: 'old progress', kind: 'progress' });

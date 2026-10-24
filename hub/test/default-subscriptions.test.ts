@@ -1,9 +1,10 @@
 // T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { envelope } from '../src/adapters/contract.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
-import { connectUi, eventually, inProcessSpoke, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, tempProject } from './harness.ts';
 import { componentHub, launchedSpoke, stopComponentHub } from './subscription-hub.ts';
 
 test('default item subscriptions follow claims and explicit subscriptions widen them', async t => {

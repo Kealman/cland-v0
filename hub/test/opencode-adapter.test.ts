@@ -14,6 +14,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readdir, readFile, realpath, stat, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -34,13 +35,15 @@ test('OpenCode shell tools inherit session identity and admit two separately own
   await writeSuiteFixture(root, 'true', 'true', { stack: 'other', check: 'true', test: 'true', verification: 'executor="local"' });
   await writeFile(join(root, 'shell-probe.mjs'), `
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 const [cli, recipient, topic] = process.argv.slice(2);
-const keys = ['CLAND_HUB_FILE', 'CLAND_SESSION_ID', 'CLAND_SESSION_NAME', 'CLAND_LAUNCH_TOKEN', 'CLAND_ROLE'];
+const keys = ['CLAND_HUB_FILE', 'CLAND_SESSION_ID', 'CLAND_SESSION_NAME', 'CLAND_ROLE'];
+const credentialDigest = createHash('sha256').update(process.env.CLAND_LAUNCH_TOKEN ?? '').digest('hex');
 const identity = Object.fromEntries(keys.map(key => [key, process.env[key] ?? null]));
 // cland-allow-child-env: the fake shell seals its environment before this native CLI inheritance probe.
 execFile(process.execPath, [cli, 'verify', '--report', topic, '--to', recipient, '--json'],
   { timeout: 10000 }, (error, stdout, stderr) => {
-    console.log(JSON.stringify({ identity, code: error ? error.code : 0, stdout, stderr }));
+    console.log(JSON.stringify({ identity, credentialDigest, code: error ? error.code : 0, stdout, stderr }));
   });
 `);
   // Admission/ownership is the subject; an occupied executor prevents any package commands.
@@ -57,7 +60,9 @@ execFile(process.execPath, [cli, 'verify', '--report', topic, '--to', recipient,
     const made = await ui.request({ type: 'task.create', title: session.name, size: 'S', assignee: session.name });
     assert.equal(made.ok, true, made.error);
     const item = (made.value as { item: { id: string } }).item.id;
-    const claimed = await ui.request({ type: 'task.claim', item, as: { name: session.name, sessionId: session.sessionId, shell: true } });
+    const config = JSON.parse(await readFile(join(root, '.cland/opencode', session.name, 'opencode.json'), 'utf8'));
+    const credential = config.mcp.servers.cland.environment.CLAND_LAUNCH_TOKEN as string;
+    const claimed = await ui.request({ type: 'task.claim', item, as: { name: session.name, sessionId: session.sessionId, shell: true, credential } });
     assert.equal(claimed.ok, true, claimed.error);
     const topic = await ui.request({ type: 'topic.create', title: session.name, item });
     assert.equal(topic.ok, true, topic.error);
@@ -68,18 +73,18 @@ execFile(process.execPath, [cli, 'verify', '--report', topic, '--to', recipient,
     const command = [process.execPath, join(root, 'shell-probe.mjs'), CLI_ENTRY, session.name, topics[index]!].map(quote).join(' ');
     const { data } = await api(session, root, 'POST', '/test/shell', { command }) as { data: { code: number; stdout: string; stderr: string } };
     assert.equal(data.code, 0, data.stderr);
-    return JSON.parse(data.stdout) as { identity: Record<string, string | null>; code: number; stdout: string; stderr: string };
+    return JSON.parse(data.stdout) as { identity: Record<string, string | null>; credentialDigest: string; code: number; stdout: string; stderr: string };
   }));
   for (const [index, probe] of probes.entries()) {
     const session = sessions[index]!;
     const config = JSON.parse(await readFile(join(root, '.cland/opencode', session.name, 'opencode.json'), 'utf8'));
-    const { CLAND_DELIVERY: _delivery, ...identity } = config.mcp.servers.cland.environment;
-    assert.deepEqual(probe.identity, identity, 'the shell and MCP carry the same five identity variables');
+    const { CLAND_DELIVERY: _delivery, CLAND_LAUNCH_TOKEN: credential, ...identity } = config.mcp.servers.cland.environment;
+    assert.deepEqual(probe.identity, identity, 'the shell and MCP carry the same identity variables');
     assert.equal(probe.identity.CLAND_HUB_FILE, join(root, '.cland/hub.json'));
     assert.equal(probe.identity.CLAND_SESSION_ID, session.sessionId);
     assert.equal(probe.identity.CLAND_SESSION_NAME, session.name);
     assert.equal(probe.identity.CLAND_ROLE, 'implementer');
-    assert.ok(probe.identity.CLAND_LAUNCH_TOKEN);
+    assert.equal(probe.credentialDigest === createHash('sha256').update(credential).digest('hex'), true, 'the shell holds its own credential');
     assert.equal(probe.code, 0, probe.stderr);
   }
   const jobs = probes.map(probe => JSON.parse(probe.stdout) as { id: string });
@@ -97,6 +102,14 @@ execFile(process.execPath, [cli, 'verify', '--report', topic, '--to', recipient,
     assert.equal(receipt.state, 'queued');
     assert.equal(waiters.find(waiter => waiter.id === job.id)?.session, sessions[index]!.name);
   }
+  const resumed = await ui.request({ type: 'session.resume', session: 'shell-a', relaunch: true });
+  assert.equal(resumed.ok, true, resumed.error);
+  const resumedProcess = (resumed.value as { process: Harness }).process;
+  const config = JSON.parse(await readFile(join(root, '.cland/opencode/shell-a/opencode.json'), 'utf8'));
+  assert.equal(createHash('sha256').update(config.mcp.servers.cland.environment.CLAND_LAUNCH_TOKEN).digest('hex') !== probes[0]!.credentialDigest, true, 'native relaunch receives a rotated credential');
+  const command = [globalThis.process.execPath, CLI_ENTRY, 'task', 'view', 'T-1', '--json'].map(quote).join(' ');
+  const shell = await api(resumedProcess, root, 'POST', '/test/shell', { command }) as { data: { code: number; stdout: string; stderr: string } };
+  assert.equal(shell.data.code, 0, shell.data.stderr);
 });
 
 test('the first OpenCode native prompt carries the role clause before the launch brief', async (t) => {

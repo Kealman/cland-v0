@@ -1,7 +1,8 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject, type Session } from './harness.ts';
+import { cland, inProcessSpoke, projectHub, tempProject, type Session } from './harness.ts';
 import { value } from './validation-support.ts';
 
 type InboxAsk = { id: string; topic: { id: string; title: string; item?: string | null }; question: string; options: string[]; free: boolean; from: string; label: string };

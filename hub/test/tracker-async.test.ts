@@ -1,4 +1,5 @@
 // T3: SIGKILL during tracker rename, six-second live serving, fatal exit and bounded hub stop.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
@@ -10,7 +11,7 @@ import { join } from 'node:path';
 import { type ImportedIssue } from '../src/tracker/import-github.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { cland, clandWithEnv, connectUi, connectWsUi, eventually, pidAlive, readDiscovery, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, eventually, pidAlive, readDiscovery, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
 const human = { id: 'human', name: 'human', role: null };

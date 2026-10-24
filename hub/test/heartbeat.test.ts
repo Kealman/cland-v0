@@ -1,9 +1,10 @@
 // T2 component: FakeClock drives hub rules; only the project fixtures retain real socket edges.
+import { sessionClient, sessionUi as connectUi, sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, dispatcherUi, frameClient, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { frameClient, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { createHubBase, type HubBase } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
 import { beforeDirectories, onCleanup } from './process-cleanup.ts';
@@ -96,7 +97,8 @@ async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeou
     try { await hub.close(); }
     finally { try { await crew.stop(); } finally { await tracker.stop(); } }
   });
-  const ui = await dispatcherUi(t, hub.dispatcher, root);
+  const { dispatcherUi: rawDispatcherUi } = await import('./harness.ts');
+  const ui = sessionClient(await rawDispatcherUi(t, hub.dispatcher, root), hub.core.store);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await session(t, hub, root, ui, 'coord', 'coordinator', 'stable-coord');
   if (options.sentinel) {

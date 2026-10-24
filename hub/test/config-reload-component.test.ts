@@ -1,11 +1,12 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ProjectConfiguration } from '../src/hub/configuration.ts';
 import { layout } from '../src/project.ts';
-import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, projectHub, tempProject } from './harness.ts';
+import { cland, eventually, flushProjectLogs, projectHub, tempProject } from './harness.ts';
 
 const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;
 

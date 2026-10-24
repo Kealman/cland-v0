@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { createConnection } from 'node:net';
 import { PROTOCOL_VERSION, parseFrame } from './protocol-frame.ts';
 import type { Discovery } from './project-discovery.ts';
+import { dirname, join } from 'node:path';
+import { readSessionCredential } from './session-credential.ts';
+import { hubDiscovery } from './project-discovery.ts';
 import { sessionOf } from './frame-actor.ts';
 import { realClock, type Clock } from './clock.ts';
 
@@ -23,19 +26,27 @@ const PLUMBING: ReadonlySet<string> = new Set(['session.signal', 'session.bridge
  * One request frame of any type (its `id` is added here) over the socket. In a launched session's shell the frame
  * says whose it is (`as`, from `sessionOf`), unless the caller already named an actor.
  */
-export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { type: string } & Record<string, unknown>, timeoutMs = 3000, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<unknown> {
+export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: { type: string } & Record<string, unknown>, timeoutMs = 3000, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<unknown> {
   return exchange(d, frame, timeoutMs, env, clock);
 }
 
 /** An authenticated welcome proves liveness without collecting a full status.
  * This handshake also works with older hubs that have no dedicated ping frame. */
-export async function probeHub(d: Pick<Discovery, 'socket' | 'secret'>, timeoutMs = 3000): Promise<void> {
+export async function probeHub(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, timeoutMs = 3000): Promise<void> {
   await exchange(d, null, timeoutMs, {}, realClock);
 }
 
-function exchange(d: Pick<Discovery, 'socket' | 'secret'>, frame: ({ type: string } & Record<string, unknown>) | null, timeoutMs: number, env: NodeJS.ProcessEnv, clock: Clock): Promise<unknown> {
+function exchange(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: ({ type: string } & Record<string, unknown>) | null, timeoutMs: number, env: NodeJS.ProcessEnv, clock: Clock): Promise<unknown> {
   const session = frame && frame.as === undefined && !PLUMBING.has(frame.type) ? sessionOf(env) : undefined;
-  const request = session ? { ...frame, as: session } : frame;
+  let request: ({ type: string } & Record<string, unknown>) | null = session && frame ? { ...frame, as: session } : frame;
+  const actor = request?.as;
+  if (actor && typeof actor === 'object' && !Object.hasOwn(actor, 'credential')) {
+    const own = sessionOf(env);
+    const clandDir = d.root ? join(d.root, '.cland') : dirname(hubDiscovery(process.cwd(), env));
+    const credential = env.CLAND_LAUNCH_TOKEN !== undefined ? env.CLAND_LAUNCH_TOKEN
+      : own?.sessionId ? readSessionCredential(clandDir, own.sessionId) : undefined;
+    if (credential !== undefined && request) request = { ...request, as: { ...actor, credential } };
+  }
   return new Promise((resolve, reject) => {
     const socket = createConnection(d.socket);
     const id = randomUUID();

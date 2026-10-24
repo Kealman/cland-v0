@@ -1,11 +1,12 @@
 import { envelope } from '../src/adapters/contract.ts';
 // T2: ask routing and provenance through real frames, in-process peers and fake adapters.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, flushProjectLogs, connectUi, connectWsUi, inProcessSpoke, startHub, projectHub, tempProject } from './harness.ts';
+import { cland, flushProjectLogs, inProcessSpoke, startHub, projectHub, tempProject } from './harness.ts';
 import type { Session } from './harness.ts';
 import type { TopicMessage, Inbox, Topic } from '../src/protocol.ts';
 

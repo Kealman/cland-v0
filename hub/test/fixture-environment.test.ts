@@ -77,14 +77,14 @@ test('runner child environments retain execution controls without inherited prof
     'CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'FAKE_CLAUDE_HOME', 'FAKE_CODEX_HOME', 'FAKE_OPENCODE_HOME',
     'CLAND_EXECUTOR_STATE', 'GIT_CONFIG_GLOBAL', 'DIGITALOCEAN_TOKEN', 'OPENAI_API_KEY'].map(key => [key, '/poison']));
   Object.assign(base, { CLAND_SUITE_LEASE: 'fixture-lease', CLAND_TEST_TIMING_RECEIPTS: '1',
-    CLAND_SESSION_NAME: 'fixture-session', CLAND_LOAD_GATE_START: '/scratch/phase/start', CLAND_HUB_FILE: '/scratch/project/hub.json', PATH: '/test-bin', TMPDIR: root });
+    CLAND_SESSION_NAME: 'fixture-session', CLAND_LAUNCH_TOKEN: 'fixture-session-credential', CLAND_LOAD_GATE_START: '/scratch/phase/start', CLAND_HUB_FILE: '/scratch/project/hub.json', PATH: '/test-bin', TMPDIR: root });
   const env = runnerFixtureEnvironment(root, base);
   for (const [key, suffix] of Object.entries({ HOME: 'home', XDG_CONFIG_HOME: 'config', XDG_DATA_HOME: 'opencode',
     XDG_STATE_HOME: 'state', XDG_CACHE_HOME: 'cache', CLAUDE_CONFIG_DIR: 'claude', CODEX_HOME: 'codex',
     FAKE_CLAUDE_HOME: 'fake-claude', FAKE_CODEX_HOME: 'fake-codex', FAKE_OPENCODE_HOME: 'fake-opencode', CLAND_EXECUTOR_STATE: 'executor-state' })) {
     assert.ok(env[key] === `${root}/${suffix}`, key);
   }
-  for (const key of ['CLAND_SESSION_NAME', 'CLAND_SUITE_LEASE', 'CLAND_TEST_TIMING_RECEIPTS', 'CLAND_LOAD_GATE_START', 'CLAND_HUB_FILE', 'PATH', 'TMPDIR']) assert.ok(env[key] === base[key], key);
+  for (const key of ['CLAND_SESSION_NAME', 'CLAND_LAUNCH_TOKEN', 'CLAND_SUITE_LEASE', 'CLAND_TEST_TIMING_RECEIPTS', 'CLAND_LOAD_GATE_START', 'CLAND_HUB_FILE', 'PATH', 'TMPDIR']) assert.ok(env[key] === base[key], key);
   for (const key of ['DIGITALOCEAN_TOKEN', 'OPENAI_API_KEY']) assert.ok(!Object.hasOwn(env, key), key);
   assert.ok(base.XDG_CONFIG_HOME === '/poison', 'parent unchanged');
 });

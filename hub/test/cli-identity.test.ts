@@ -1,9 +1,10 @@
 // T3: SIGSTOP hub-down CLI fallback proves no signal is sent without acknowledgement; confirmed hub.stop reaps its PID.
+import { sessionUi as connectUi, sessionDispatcherUi as dispatcherUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, fakeCodex, pidAlive, readDiscovery, inProcessSpoke, nativeProjectHub as projectHub, connectUi, dispatcherUi, eventually, fakeClaude, startDaemon, tempProject, type Session } from './harness.ts';
+import { cland, flushProjectLogs, fakeCodex, pidAlive, readDiscovery, inProcessSpoke, nativeProjectHub as projectHub, eventually, fakeClaude, startDaemon, tempProject, type Session } from './harness.ts';
 
 import { NO_PS } from './native-process.ts';
 import { value } from './validation-support.ts';
@@ -52,16 +53,15 @@ test('cland topic answer from a session\'s shell retains its typed refusal and i
   for (const as of [{ name: 'coord', sessionId: 'sess-coord', shell: true }, { name: 'ghost', sessionId: 'sess-nobody', shell: true }, { name: 'ghost', shell: true }]) {
     const own = await cli.request({ type: 'topic.answer', ask: asked.ask, option: 1, as });
     assert.equal(own.ok, false);
-    assert.match(own.error ?? '', new RegExp(`only the human may do this; this call is ${as.name}${as.name === 'coord' ? ' \\[Coordinator\\]' : ''}'s`));
+    if (as.name === 'ghost' && !as.sessionId) assert.match(own.error ?? '', /session "ghost" credential/);
+    else assert.match(own.error ?? '', new RegExp(`only the human may do this; this call is ${as.name}${as.name === 'coord' ? ' \\[Coordinator\\]' : ''}'s`));
   }
   const nameOnly = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'topic', 'answer', asked.ask, '1');
   assert.notEqual(nameOnly.code, 0);
-  assert.match(nameOnly.stderr, /forbidden: topic\.answer \(only the human may do this; this call is ghost's/);
-  const [ghost] = (await audits(t, root, 'topic.answer')).slice(-1);
-  assert.deepEqual([ghost?.session, ghost?.role, ghost?.outcome], ['ghost', null, 'forbidden']);
+  assert.match(nameOnly.stderr, /session "ghost" credential is missing or invalid/);
   const ghostTask = await cli.request({ type: 'task.create', size: 'M', title: 'From nobody', as: { name: 'ghost', shell: true } });
   assert.equal(ghostTask.ok, false);
-  assert.match(ghostTask.error ?? '', /forbidden: task\.create \(a session with no role has no tools\)/);
+  assert.match(ghostTask.error ?? '', /session "ghost" credential is missing or invalid/);
   const inboxCli = await cland(root, 'inbox');
   assert.equal(inboxCli.code, 0, inboxCli.stderr);
   assert.match(inboxCli.stdout, new RegExp(`^ask ${asked.ask} `, 'm'));

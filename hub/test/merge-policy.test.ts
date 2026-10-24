@@ -1,4 +1,5 @@
 // T3: native Git worktrees, refs and rebases prove merge admission and repository landing boundaries.
+import { sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
@@ -6,7 +7,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, dispatcherUi, eventually, inProcessSpoke, nativeProjectHub as projectHub } from './harness.ts';
+import { cland, eventually, inProcessSpoke, nativeProjectHub as projectHub } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { value, call } from './validation-support.ts';

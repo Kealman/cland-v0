@@ -586,7 +586,6 @@ export class Dispatcher {
    */
   #asSession(frame: Record<string, unknown>): Caller | null {
     const core = this.#options.core;
-    if (!core.roles) return null;
     const as = frame.as as { name?: unknown; sessionId?: unknown; shell?: unknown } | undefined;
     if (!as || typeof as !== 'object' || typeof as.name !== 'string') return null;
     const sessionId = typeof as.sessionId === 'string' && as.sessionId !== '' ? as.sessionId : null;
@@ -607,6 +606,20 @@ export class Dispatcher {
     // made-up identity is a roleless session, never promoted to the human
     if (id === null && role === null && !own) return null;
     return { name: as.name, sessionId: id ?? UNKNOWN_SESSION, role };
+  }
+
+  /** Authenticate external client claims before replay, audit, permission checks or writes. */
+  #sessionCredentialRefusal(frame: Record<string, unknown>): string | null {
+    const as = frame.as as { name?: unknown; sessionId?: unknown; shell?: unknown; credential?: unknown } | undefined;
+    if (!as || typeof as !== 'object') return null;
+    const caller = this.#asSession(frame);
+    const claimed = as.shell === true || (typeof as.sessionId === 'string' && as.sessionId !== '');
+    if (!caller && !claimed) return null;
+    const id = caller?.sessionId ?? (typeof as.sessionId === 'string' ? as.sessionId : '');
+    const expected = this.#options.core.store.sessionCredential(id);
+    if (caller && expected && typeof as.credential === 'string' && secretMatches(as.credential, expected)) return null;
+    const name = typeof as.name === 'string' ? as.name : caller?.name ?? 'session';
+    return `session "${name}" credential is missing or invalid; reconnect this session's own MCP spoke to provision its shell credential, or resume with --relaunch`;
   }
 
   /**
@@ -1043,6 +1056,7 @@ export class Dispatcher {
     let client = '';
     let kind: 'spoke' | 'client' | null = null;
     let done = false;
+    let credentialPending = false;
     let humanSlot = false;
     let name: string | null = null;
     let spoke: SpokeSocket | null = null;
@@ -1382,11 +1396,10 @@ export class Dispatcher {
       peer.close(4000, code);
     };
     const helloTimer = setTimeout(() => {
-      if (kind === null) refuse('bad-hello', 'no hello received');
+      if (kind === null || credentialPending) refuse('bad-hello', credentialPending ? 'session credential preparation timed out; reconnect its own MCP spoke' : 'no hello received');
     }, this.#options.helloTimeoutMs ?? 5000);
 
     const hello = (frame: Record<string, unknown>) => {
-      clearTimeout(helloTimer);
       if (!transport.authenticated && !(typeof frame.secret === 'string' && secretMatches(frame.secret, this.#options.secret))) {
         log({ event: 'refused', edge: transport.edge, code: 'unauthorized' });
         return refuse('unauthorized', "the secret does not match this project's hub");
@@ -1395,14 +1408,15 @@ export class Dispatcher {
         return refuse('bad-hello', 'the web edge accepts only a client hello');
       }
       if (isHello(frame)) {
+        credentialPending = true;
         const deliver = (message: Message): boolean => {
-          if (!peer.isOpen()) return false;
+          if (credentialPending || !peer.isOpen()) return false;
           const topic = message.topic !== undefined ? core.topicRef(message.topic) : null;
           peer.send({ type: 'deliver', id: message.id, message, ...(topic ? { topic } : {}) });
           return true;
         };
         const deliverRole = (message: Message, clause: RoleClause): boolean => {
-          if (!peer.isOpen()) return false;
+          if (credentialPending || !peer.isOpen()) return false;
           peer.send({ type: 'role', id: message.id, message, ...clause });
           return true;
         };
@@ -1417,11 +1431,30 @@ export class Dispatcher {
         name = result.name;
         connection = result.connection;
         spoke = result.spoke;
-        peer.send({ type: 'welcome', name, presence: core.presence(), ...(connection.role !== null ? { role: connection.role } : {}) });
-        core.flushQueued(name);
+        const finish = () => {
+          if (done || !peer.isOpen()) return;
+          if (!core.isCurrent(result.connection)) return refuse('bad-hello', 'the session changed during credential preparation; reconnect its own MCP spoke');
+          credentialPending = false;
+          clearTimeout(helloTimer);
+          name = result.connection.name;
+          peer.send({ type: 'welcome', name, presence: core.presence(), ...(result.connection.role !== null ? { role: result.connection.role } : {}) });
+          core.flushQueued(name);
+        };
+        const resumed = this.#guard.resumer('hello', result.name);
+        try {
+          const preparing = core.prepareShellCredential(result.connection.sessionId, frame.launchToken);
+          if (preparing) void preparing.then(() => resumed(finish), () => resumed(() => {
+            log({ event: 'session-credential-unavailable', sessionId: result.connection.sessionId });
+            refuse('bad-hello', `session "${result.name}" credential preparation failed; reconnect its own MCP spoke`);
+          }));
+          else finish();
+        } catch {
+          refuse('bad-hello', `session "${result.name}" credential preparation failed; reconnect its own MCP spoke`);
+        }
         return;
       }
       if (isClientHello(frame)) {
+        clearTimeout(helloTimer);
         if (frame.protocol !== PROTOCOL_VERSION) return refuse('version', `protocol ${frame.protocol} is not the hub's ${PROTOCOL_VERSION} — ${transport.edge === 'web' ? 'restart the hub to use this page' : UPDATE_HINT}`);
         // the human's side comes over the Unix socket or stdio: the spokes' WebSocket never makes a client (with
         // the spokes' bearer secret, a session would otherwise act as the human, unrestricted by its role). A hub with
@@ -1967,6 +2000,8 @@ export class Dispatcher {
             return peer.send(refusal);
           }
         }
+        const credentialRefusal = this.#sessionCredentialRefusal(frame);
+        if (credentialRefusal) return peer.send(Dispatcher.#failure(String(frame.id), new Error(credentialRefusal)));
         if (replayed(frame)) return;
         // a CLI call acting as a session the hub knows (`as`): checked against that session's role and audited as it,
         // exactly as the session's own tool call would be
@@ -2255,6 +2290,7 @@ export class Dispatcher {
         if (done) return;
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
+        if (credentialPending) return refuse('bad-hello', 'session credentials are still being prepared');
         if (kind === null) {
           // A browser cannot carry an actor even on its initial hello. Keep the
           // hello deadline armed until a valid, actor-free hello is received.

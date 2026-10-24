@@ -1,4 +1,5 @@
 // T2 component: tracker rules at public APIs, sockets, CLI and in-process MCP.
+import { sessionCland as cland, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { componentTask, componentTaskJson } from './component-task.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { cland, flushProjectLogs, connectSocket, connectUi, readDiscovery, eventually as observe, inProcessSpoke, projectHub, tempProject, type CliResult } from './harness.ts';
+import { flushProjectLogs, connectSocket, readDiscovery, eventually as observe, inProcessSpoke, projectHub, tempProject, type CliResult } from './harness.ts';
 
 // Persistence proofs close and reopen the hub/store in this process.
 const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();

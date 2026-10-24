@@ -1,5 +1,9 @@
 # web/test/session-drawer.test.ts
 
+The local setup client's manual worker claim uses the authenticated-session
+fixture. The browser composer remains the human's Web connection. Retain the
+durable injected message and exact item/General destination assertions.
+
 `web/test/session-drawer.test.ts` owns the selected session → thread/card/composer
 seam through sealed `webFixture`, fake Codex harnesses and public hub frames.
 Keep both directions of cross-topic history, exclusive numeric page boundaries,

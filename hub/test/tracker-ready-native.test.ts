@@ -1,4 +1,5 @@
 // T3: hub crash after stop, durable adoption across restart, and real Git worktree/merge gate boundaries.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -10,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import nativeFiles from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import files, { readFile, writeFile } from 'node:fs/promises';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, pidAlive, inProcessSpoke, projectHub, startDaemon } from './harness.ts';
+import { cland, eventually, fakeClaude, pidAlive, inProcessSpoke, projectHub, startDaemon } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { Presence } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
@@ -21,7 +22,7 @@ import { serveProject } from '../src/hub/daemon.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { agentsRecord } from '../src/hub/agents-topic.ts';
 import { fixedRoles } from '../src/roles/config.ts';
-import { connectWsUi, startHub, tempProject } from './harness.ts';
+import { startHub, tempProject } from './harness.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
 

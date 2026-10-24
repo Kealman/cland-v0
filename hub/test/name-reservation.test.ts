@@ -1,4 +1,5 @@
 // T2: reservation rules through native SQLite and real frames; fixture-owned faults.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -16,7 +17,7 @@ import { fixedRoles } from '../src/roles/config.ts';
 import type { Subscription } from '../src/protocol.ts';
 import type { LogFn } from '../src/log.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { inProcessSpoke, connectSocket, connectUi, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { inProcessSpoke, connectSocket, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 
 async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
@@ -34,7 +35,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const socket = join(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
-  const ui = await connectUi(t, { socket, secret: TEST_SECRET });
+  const ui = await connectUi(t, { socket, secret: TEST_SECRET, root });
   await ui.request({ type: 'role.set', session: 'session-1', role: 'implementer' });
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Pending claimant', assignee: 'session-1' });
   const item = (made.value as { item: { id: string } }).item.id;
@@ -57,7 +58,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const probes = { started: async (_pid: number): Promise<string | null> => 'current-start', rows: async () => [{ pid: process.pid, parent: 0, group: 0, started: 'current-start', state: 'S', command: 'fixture' }] };
   const sessions = new Sessions({ processStarted: pid => probes.started(pid), processRows: async () => probes.rows(), root, core: hub.core, table, ...(log ? { log } : {}) });
   let sessionsClosed = false;
-  const closeSessions = () => { if (sessionsClosed) return; sessionsClosed = true; sessions.close(); table.close(); };
+  const closeSessions = async () => { if (sessionsClosed) return; sessionsClosed = true; await sessions.close(); table.close(); };
   onCleanup(t, closeSessions);
   const starts: string[] = [];
   const watched: string[] = [];
@@ -1177,7 +1178,7 @@ test('pending-stop ownership and accepted-row quarantine are durable before awai
 async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendingAlias>>, refuseStop: boolean) {
   await f.owner.close();
   f.ui.close();
-  f.closeSessions();
+  await f.closeSessions();
   await f.edge.close();
   await f.closeHub();
   await f.tracker.stop();
@@ -1205,7 +1206,7 @@ async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendi
     },
   });
   hub.dispatcher.useSessions(sessions);
-  const ui = await connectUi(t, { socket, secret: TEST_SECRET });
+  const ui = await connectUi(t, { socket, secret: TEST_SECRET, root: f.root });
   return { hub, table, sessions, stopped, watched, disposed, ui };
 }
 

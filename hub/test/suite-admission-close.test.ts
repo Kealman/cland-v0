@@ -1,10 +1,11 @@
 // T2: real CLI and MCP frames close during gated inspection; no worker or native process runs.
+import { sessionShell, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectSocket, connectUi, projectHub, tempProject } from './harness.ts';
+import { connectSocket, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { Suites } from '../src/hub/suites.ts';
 import type { HubStatus, Message } from '../src/protocol.ts';
@@ -64,8 +65,9 @@ for (const [transport, change] of [['cli', 'none'], ['mcp', 'none'], ['mcp', 'ro
     client.send({ type: 'hello', protocol: 2, secret: hub.discovery.secret, client: 'cli' });
     assert.equal((await client.next()).type, 'welcome');
   }
+  const shell = sessionShell(root, { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'submitter' });
   client.send({ type: 'suite.start', id: 'submission', mode: change === 'reserved' ? 'all' : 'auto', cwd: root, report: topic, to: ['reviewer'],
-    ...(transport === 'cli' ? { as: { name: 'impl', sessionId: 'submitter', shell: true } } : {}) });
+    ...(transport === 'cli' ? { as: { name: 'impl', sessionId: 'submitter', shell: true, credential: shell.CLAND_LAUNCH_TOKEN } } : {}) });
   await entered.promise;
   client.close(); await closed.promise;
   if (change === 'role') assert.equal((await ui.request({ type: 'role.clear', session: 'impl' })).ok, true);

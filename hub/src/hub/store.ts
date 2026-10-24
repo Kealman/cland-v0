@@ -23,6 +23,9 @@ export type ReleasedDigest = { trigger: string; session: string; notes: string[]
 
 export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
 const SCHEMA = `
+create table if not exists session_credentials (
+  session_id text primary key, credential text not null
+);
 create table if not exists web_sessions (
   id text primary key, cookie_hash text not null unique,
   created_at integer not null, last_used_at integer not null
@@ -550,6 +553,7 @@ export class Store implements HygieneMemory {
       this.#prepare('delete from sessions where name = ? and (session_id = ? or session_id is null)').run(name, sessionId);
       this.#prepare('delete from launch_reservations where name = ?').run(name);
       this.#prepare('delete from subscription_usage where session_id = ?').run(sessionId);
+      this.#prepare('delete from session_credentials where session_id = ?').run(sessionId);
       for (const prefix of ['pending-verification:', 'subscription-terminal:', 'pool-handoff:']) this.clearMeta(prefix + sessionId);
       this.#prepare("delete from meta where key like 'session-alias:%' and value = ?").run(sessionId);
       this.#prepare("delete from meta where key like 'verifier-request:%' and json_extract(value, '$.sessionId') = ?").run(sessionId);
@@ -654,6 +658,16 @@ export class Store implements HygieneMemory {
         this.#prepare("update role_state set value = json_set(value, '$.noteToId', ?) where json_extract(value, '$.noteToId') = ?").run(sessionId, `name:${n}`);
       }
     });
+  }
+
+  /** Private launch authority, retained across hub restart; never included in session views. */
+  rememberSessionCredential(sessionId: string, credential: string): void {
+    this.#prepare('insert into session_credentials (session_id, credential) values (?, ?) on conflict (session_id) do update set credential = excluded.credential').run(sessionId, credential);
+  }
+
+  sessionCredential(sessionId: string): string | null {
+    const row = this.#prepare('select credential from session_credentials where session_id = ?').get(sessionId) as Row | undefined;
+    return (row?.credential as string | undefined) ?? null;
   }
 
   sessionIdOf(name: string): string | null {

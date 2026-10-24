@@ -1,5 +1,6 @@
 // T3: native Git lifecycle regressions: rejected atomic pushes, restart recovery and conflicting sync.
 // The atomic release/sync core lives in scenarios/release.test.ts.
+import { sessionWsUi as connectWsUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { releaseCover } from './release-support.ts';
 import { ensureAccountFixture } from './account-fixture-env.ts';
@@ -9,7 +10,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectWsUi, projectHub, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, projectHub, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';

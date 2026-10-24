@@ -1,4 +1,5 @@
 // T2: verifier holds, identity adoption and readiness scheduling at public tracker/frame seams.
+import { sessionWsUi as connectWsUi, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { FakeClock } from './fake-clock.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
@@ -6,7 +7,7 @@ import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import files, { mkdir, writeFile } from 'node:fs/promises';
-import { connectUi, eventually, inProcessSpoke, projectHub, connectWsUi, startHub, tempProject } from './harness.ts';
+import { eventually, inProcessSpoke, projectHub, startHub, tempProject } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
 import { join } from 'node:path';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';

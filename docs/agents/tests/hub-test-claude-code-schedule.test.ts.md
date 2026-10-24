@@ -34,3 +34,9 @@ Vacancy shutdown coverage retains the connected-Coordinator `projectHub.stop`
 and zero-timer assertions in `project-clock.test.ts`. The core/store regression
 closes both before delivering a late disconnect, then checks no database access,
 no lifecycle publication and no timer rearming across the notice deadline.
+
+The fake-clock replacement matrix retains the credential from the launch's
+private settings, reconnects the own spoke, observes the exact replacement PID
+receipt and proves an authenticated shell frame still succeeds. It covers
+Coordinator and Implementer roles, discovery/hook identities and held probes.
+The standalone scripted native edge uses scratch launch-file storage.

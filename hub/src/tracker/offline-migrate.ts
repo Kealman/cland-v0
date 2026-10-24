@@ -12,7 +12,7 @@ import { acquireLockAsync, HubLocked } from '../hub/lock.ts';
 import { Journal, journalPath, readJournal } from '../hub/journal.ts';
 import { jsonLinesLog } from '../log.ts';
 import { defaultConfig, parseConfig } from '../init/config.ts';
-import { askHubFrame } from '../cli/socket-client.ts';
+import { probe } from '../cli/socket-client.ts';
 import type { FrameActor } from '../cli/actor.ts';
 import { validTimestamp } from './criteria.ts';
 import { parseItemReference } from './prefixes.ts';
@@ -28,7 +28,7 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
   if (!existsSync(l.tasks)) throw new Error('task migrate requires an existing tracker; run cland init before migrating');
   const discovery = readDiscovery(l.discovery);
   if (discovery) {
-    const answering = await askHubFrame(discovery, { type: 'hub.status' }, 1000).then(() => true, () => false);
+    const answering = await probe(discovery, 1000);
     if (answering) throw new Error('the hub is running; stop the hub before task migrate');
   }
   let lock;

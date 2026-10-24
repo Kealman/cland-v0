@@ -104,11 +104,11 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   const calls = (await readFile(join(fake.home, 'invocations.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { args: string[]; DISABLE_AUTOUPDATER: string | null });
   assert.ok(calls.every(call => call.DISABLE_AUTOUPDATER === '1'), 'the fake native CLI receives the filtered launch environment');
   const bg = calls.find(c => c.args.includes('--bg'))!.args;
-  assert.equal(JSON.parse(bg[bg.indexOf('--settings') + 1]!).env.DISABLE_AUTOUPDATER, '1');
+  assert.equal(JSON.parse(await readFile(bg[bg.indexOf('--settings') + 1]!, 'utf8')).env.DISABLE_AUTOUPDATER, '1');
   assert.equal(bg[bg.indexOf('--permission-mode') + 1], 'auto');
   assert.ok(!bg.includes('--dangerously-skip-permissions'));
   // Precedence permutations live at T2 in claude-code-environment.test.ts; prove the binary frame once.
-  assert.deepEqual(JSON.parse(bg[bg.indexOf('--settings') + 1]!).worktree, { bgIsolation: 'none' });
+  assert.deepEqual(JSON.parse(await readFile(bg[bg.indexOf('--settings') + 1]!, 'utf8')).worktree, { bgIsolation: 'none' });
   assert.match(await hubLog(root, ui), /"event":"session-launched".*"early":1/, 'the early SessionStart was kept and replayed');
   // the session's first turn is its role clause, injected as soon as the launch's bridge and SessionStart are in
   await clauseAnswered(ui, 'coord');

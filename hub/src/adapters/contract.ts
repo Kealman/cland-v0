@@ -247,7 +247,7 @@ export interface HarnessAdapter {
    * what the harness says it is doing. With `relaunch`, a process that is gone is started again on its own
    * conversation id, under `policy` (its role's launch defaults as they are now).
    */
-  resume(process: HarnessProcess, options?: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed }): Promise<ResumeResult>;
+  resume(process: HarnessProcess, options?: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed }): Promise<ResumeResult>;
   /** The hub stops: timers end; the harness processes keep running (they outlive the hub). */
   close(): void;
 }

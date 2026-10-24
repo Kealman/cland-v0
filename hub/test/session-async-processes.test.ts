@@ -1,5 +1,6 @@
 // T2: dispatch and post-await logging budgets with fake harnesses and complete fake time.
 // Native process instrumentation and file-backed CLI stderr are in the lifecycle split.
+import { sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +15,7 @@ import { RequestGuard } from '../src/hub/budget.ts';
 import { projectSessions } from '../src/adapters/index.ts';
 import { FakeClock } from './fake-clock.ts';
 import { FAKE_FLAVOURS, fakeHarness } from './fakes/harness.ts';
-import { dispatcherUi, eventually, projectHub, startHub, tempProject } from './harness.ts';
+import { eventually, projectHub, startHub, tempProject } from './harness.ts';
 import type { AdapterFactory } from '../src/adapters/index.ts';
 
 // The stop edge reports completion after its await, just like the native endProcess contract.
@@ -41,6 +42,11 @@ test('in-process dispatch avoids synchronous filesystem and process calls for al
   assert.ok(answers.some(frame => frame.type === 'welcome'));
   conversation.receive(JSON.stringify({ type: 'role.set', id: 'role', session: 'impl', role: 'implementer' }));
   assert.equal((await eventually('role assigned', () => answers.find(frame => frame.id === 'role'))).ok, true);
+  // Authenticate the synthetic provisional caller before arming the no-sync observer.
+  const { Store } = await import('../src/hub/store.ts');
+  const store = new Store(join(root, '.cland/hub.db'));
+  store.rememberSessionCredential('unknown', 'fixture-session-authority');
+  store.close();
   const originalsFs = { statSync: fs.statSync, readFileSync: fs.readFileSync, writeSync: fs.writeSync };
   const originalsCp = { spawnSync: cp.spawnSync, execFileSync: cp.execFileSync, execSync: cp.execSync };
   const calls: string[] = [];
@@ -52,7 +58,7 @@ test('in-process dispatch avoids synchronous filesystem and process calls for al
   syncBuiltinESMExports();
   try {
     for (const [id, type] of [['allowed', 'task.list'], ['refused', 'task.close'], ['human', 'hub.status']]) {
-      conversation.receive(JSON.stringify({ type, id, ...(id === 'human' ? {} : { as: { name: 'impl' } }), item: 'T-1' }));
+      conversation.receive(JSON.stringify({ type, id, ...(id === 'human' ? {} : { as: { name: 'impl', credential: 'fixture-session-authority' } }), item: 'T-1' }));
       await eventually(`${id} answered`, () => answers.find(frame => frame.id === id));
     }
     assert.deepEqual(calls, []);

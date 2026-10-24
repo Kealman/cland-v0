@@ -283,7 +283,7 @@ export async function createHub(options: HubOptions): Promise<Hub> {
     edge = await createWebSocketEdge(base.dispatcher, { ...options, clock: options.transportClock ?? realClock });
   } catch (err) {
     // nothing may outlive a hub that never listened
-    try { sessions?.close(); }
+    try { await sessions?.close(); }
     finally { await base.close(); }
     throw err;
   }
@@ -294,7 +294,7 @@ export async function createHub(options: HubOptions): Promise<Hub> {
     close: async () => {
       try { await edge.close(); }
       finally {
-        try { sessions?.close(); }
+        try { await sessions?.close(); }
         finally { await base.close(); }
       }
     },

@@ -1,11 +1,12 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { mkdir, open, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import type { EventRow, EventsPage } from '../src/protocol.ts';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 test('a real spoke verdict produces one event on pushes and journal pages, including after restart', async t => {
   let stop = async () => {};

@@ -434,6 +434,7 @@ export class HubCore {
    *  row keeps (a relaunch takes it back). A hello's role is honoured for it. */
   #launchedRole: ((name: string, sessionId: string, launchToken?: string) => LaunchedRole | null) | null = null;
   #pendingLaunch: ((sessionId: string) => string | null) | null = null;
+  #shellCredential: ((sessionId: string, credential?: string) => Promise<void>) | null = null;
   #launchIdentity: ((credential: string, sessionId: string) => LaunchIdentityBinding | null) | null = null;
   /** Clause and brief already carried by the launch's first turn, recorded as injected: notified once at flush. */
   readonly #carriedNotice = new Map<string, string[]>();
@@ -1435,6 +1436,7 @@ export class HubCore {
     // Only a validated new hello proves launch ownership. A join returned above;
     // refused names and roles likewise cannot enter a launch's rollback targets.
     launchIdentity?.prove();
+    if (launchIdentity && hello.launchToken) this.#store.rememberSessionCredential(hello.sessionId, hello.launchToken);
     const spoke: SpokeSocket = { deliver, deliverRole, close };
     const connection: Connection = {
       name,
@@ -2100,6 +2102,14 @@ export class HubCore {
     this.#launchIdentity = lookup;
   }
 
+  /** Private shell migration runs on every accepted own spoke connection, including joins. */
+  shellCredential(writer: ((sessionId: string, credential?: string) => Promise<void>) | null): void { this.#shellCredential = writer; }
+
+  /** The dispatcher holds welcome until this owned asynchronous write is complete. */
+  prepareShellCredential(sessionId: string, credential?: string): Promise<void> | null {
+    return this.#shellCredential?.(sessionId, credential) ?? null;
+  }
+
   /** Stable identities already recorded by the hub, including durable aliases and live sessions. */
   sessionIds(): Set<string> {
     const ids = new Set(this.#store.sessionNames().map(name => this.#store.sessionIdOf(name)).filter((id): id is string => id !== null));
@@ -2119,6 +2129,7 @@ export class HubCore {
     this.#store.transaction(() => {
       this.#store.rememberSession(name, this.#now().getTime());
       this.#store.rememberSessionId(name, sessionId);
+      this.#store.rememberSessionCredential(sessionId, credential);
     });
   }
 

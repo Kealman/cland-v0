@@ -1,4 +1,5 @@
 // Real hub frames and the daily job seam, with only filesystem/SQLite system boundaries faulted.
+import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
@@ -11,7 +12,7 @@ import { Store } from '../src/hub/store.ts';
 import { ArtifactLifecycle, type ArtifactFiles } from '../src/hub/artifact-lifecycle.ts';
 import { PROTOCOL_VERSION, type Message, type Artifact } from '../src/protocol.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
-import { connectSocket, connectUi, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { connectSocket, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 function deferred() {
   let resolve!: () => void;
@@ -36,7 +37,7 @@ async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays 
   const socket = join(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(() => edge.close());
-  const ui = await connectUi(t, { socket, secret: TEST_SECRET }, 'cli');
+  const ui = await connectUi(t, { socket, secret: TEST_SECRET, root }, 'cli');
   const topic = ((await ui.request({ type: 'topic.create', title: 'Design' })).value as { topic: { id: string } }).topic.id;
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
   const a = ((await ui.request({ type: 'artifact.create', as: { name: 'coord' }, kind: 'note', title: 'Design', content: 'original bytes', topic, ...(folder ? { folder: true } : {}) })).value as { artifact: Artifact }).artifact;
@@ -313,7 +314,7 @@ test('event publication faults preserve reopened artifact bytes and the whole tu
   await f.ui.request({ type: 'topic.close', topic: f.topic });
   const table = new ProcessTable();
   const sessions = new Sessions({ core: f.hub.core, table, root: f.root });
-  t.after(() => { sessions.close(); table.close(); });
+  t.after(async () => { await sessions.close(); table.close(); });
   for (const [name, digest] of [['held', 'turn'], ['steered', 'now']] as const) {
     if (digest === 'now') table.put({ name, sessionId: `${name}-id`, harness: 'codex', role: 'reviewer', model: null, cwd: f.root, pid: null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running', item: null });
     await f.ui.request({ type: 'role.set', session: name, role: 'reviewer' });
@@ -343,7 +344,7 @@ test('failure recording the now group rolls back every recipient and their event
   const f = await fixture(t, fs, 30, 1);
   const table = new ProcessTable();
   const sessions = new Sessions({ core: f.hub.core, table, root: f.root });
-  t.after(() => { sessions.close(); table.close(); });
+  t.after(async () => { await sessions.close(); table.close(); });
   for (const [name, digest] of [['held', 'turn'], ['steered', 'now']] as const) {
     if (digest === 'now') table.put({ name, sessionId: `${name}-id`, harness: 'codex', role: 'reviewer', model: null, cwd: f.root, pid: null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running', item: null });
     await f.ui.request({ type: 'role.set', session: name, role: 'reviewer' });

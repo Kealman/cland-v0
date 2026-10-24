@@ -1,7 +1,8 @@
 // Web: selected session drawer through sealed fake harnesses and public hub frames.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
+import { inProcessSpoke } from '../../hub/test/harness.ts';
+import { sessionUi as connectUi } from '../../hub/test/session-credential-fixture.ts';
 import type { HarnessProcessView, SessionHistoryResult, TopicMessage } from '../../shared/wire/index.ts';
 import { until } from '../../hub/test/until.ts';
 import { pageUntil, webFixture } from './harness.ts';
