@@ -3,18 +3,17 @@ id: T-1189
 kind: task
 title: "Production dependency advisories: zod below 4.6.6 (high) and ip-address 10.7.3 (moderate)"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
-  - needs-triage
-  - needs-human
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1192
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1189-production-dependency-advisories-zod
 created: 2026-10-23T21:49:58.684Z
-updated: 2026-10-23T21:49:58.684Z
+updated: 2026-10-24T06:31:15.452Z
 ---
 
 ## Summary
