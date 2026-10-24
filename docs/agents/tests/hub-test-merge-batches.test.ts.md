@@ -1,5 +1,14 @@
 # hub/test/merge-batches.test.ts
 
+For Web regressions use the same `diagnostic.steps` seam: a real Web-capable
+candidate plan, two members with passing individual Web receipts and a red
+combined repeat. Assert the full Web phase survives selection transport (no
+browser starts), the original report's named duration and unresolved refusals.
+A missing/conflicting green Web receipt holds across reopen. Successful Web
+step diagnosis still requires the original pinned full plan after config changes.
+Also fail T1 before Web starts: both unique omission and passing file-repeat
+recovery must select a tree for full Web-containing confirmation before landing.
+
 Use the T1 `MergeBatches` + `Suites` seam with `FakeClock`, candidate-tree facts
 and semantic executor receipts. No Git, compiler, worker or provider process runs.
 For T0 regressions, use two members whose individual trees receive passing check

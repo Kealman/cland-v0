@@ -147,7 +147,7 @@ selected tier plan; queued runs keep those commands after a config reload.
 | Run | Commands after check |
 | --- | --- |
 | Task with hosting merge queue enabled | `test_unit`, `test_component` |
-| Merge batch | Commands matching `merge.batch_tiers` (default unit/integration; this repo unit only) |
+| Merge batch | Commands matching `merge.batch_tiers` (default unit/integration; this repo unit only), plus Web after T1 for web/ diffs |
 | Periodic `dev-t3` | `test_integration` |
 | Integrated dev, explicit all, or task without batch protection | unit, component, integration |
 | Stage, epic, release or nightly soak | all four |
@@ -196,7 +196,7 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Run kind | Plan after T0 |
 | --- | --- |
 | Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 files and mapped T4 guards once |
-| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; this repository T1); five repetitions of T3 identities absent from the last green batch or stage receipt |
+| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; this repository T1), plus Web after T1 for web/ diffs; five repetitions of T3 identities absent from the last green batch or stage receipt |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
 | Periodic dev (`dev-t3`) | T2 and T3, one droplet; no load repetitions |
@@ -389,8 +389,8 @@ runtime tiers. Droplet batches record the same timed step at the host gate;
 the worker reuses it only for the matching candidate tree and command, otherwise
 it runs T0 again. A failed check stops the tiers and makes the batch red.
 Batch results retain the executed step names and durations. A successful original
-or recovered batch with a configured check requires a passing T0 receipt; missing
-or conflicting T0 proof holds as inconclusive, never a zero-duration pass.
+or recovered batch requires passing receipts for its configured T0 and planned Web;
+missing or conflicting step proof holds as inconclusive, never a zero-duration pass.
 
 On green, each member lands through the existing merge receipt, checkout,
 territory publication and cleanup path. Dev movement reuses green candidate
@@ -403,11 +403,11 @@ Queue and batch state survive reopening the hub store. `cland merge queue` and
 `cland verify queue` show the current batch and its members. Results and logs go
 to Agents and each member's requester and item lead. A
 red batch of one refuses its member with `merge-bisected`, naming the failed
-tests or T0. Larger red batches rerun only the failing files or failed T0 step on each leave-one-out
+tests or T0/Web. Larger red batches rerun only the failing files or failed T0/Web step on each leave-one-out
 tree, pinned to the original integration base. A unique green removal refuses
-that member and lets the others land on the green tree. Otherwise those files
+that member and selects the green tree for the others. Otherwise those files
 rerun once on the original batch tree: completed passing receipts for every
-original failure let it land, while red or incomplete proof refuses every
+original failure select that tree, while red or incomplete proof refuses every
 member with `merge-bisect-unresolved` and sends the Coordinator one evidence
 notice. File jobs retain their run, tree, log, seconds and provider cost, use the
 same queue, and supply no full-suite cache proof.
@@ -419,6 +419,16 @@ repeat only selects a candidate: the hub starts a full confirmation batch on tha
 exact head/tree before landing. It retains the original batch's pinned commands
 and tier selection across config changes and restart. A later red runtime tier
 is handled as a red batch; static success never substitutes for those tiers.
+Web runs only when a candidate diff path starts with `web/` and the candidate
+supports the named Web command. It follows T1 (or the configured tiers if T1 is
+absent), runs once without load repetitions, and retains its timed `tier Web`
+receipt. A red Web step uses the same `diagnostic.steps` list as T0: rerun the
+complete Web tier on leave-one-out trees, then the original tree if needed.
+Two members green alone and red together are refused after a red repeat.
+A green step diagnosis or file-only diagnosis of a Web-containing plan requires
+the original pinned full-plan confirmation (T1 can fail before Web starts);
+Web not-run/missing/conflicting success receipts hold the batch as inconclusive.
+Batches with no web/ path retain their existing tiers and add no Web wall time.
 Test-identity flakes keep their separate quarantine observation rules.
 Aborted, timed-out, unavailable or otherwise inconclusive original runs or file
 jobs hold the batch with their retained receipts and one Coordinator notice. They establish
@@ -1721,7 +1731,8 @@ It keeps the suite's joint lease and never runs in load-gate repetition lanes.
 A diff wholly under `web/**` selects `web-only`: all Web tests plus `HUB_SMOKE`
 and `NVIM_SMOKE`. Other reduced modes include `web/test/smoke.test.ts`; protocol,
 shared wire, web edge and mixed web/non-web paths force full. Queue-enabled task
-runs keep Web beside all T1 and selected T2. Hub-owned merge batches exclude Web;
+runs keep Web beside all T1 and selected T2. Hub-owned merge batches add Web
+after T1 when their candidate diff touches web/;
 periodic dev (`dev-t3`), integrated, stage, epic, release and soak runs include it.
 The candidate's `supportsWebPhase` runner capability adds a recorded Web command
 to tier-based verification; other projects and older candidates retain their

@@ -15,7 +15,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh
                   queued remote-budget local fallbacks reclaim free remote slots; --executor local stays local
                   occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
                   release cache: same effective executor/OS and full coverage; cache notices name original occasion/executor
-                  Web: task and integrated/periodic/occasion runs, excluded from merge batches; web/** selects web-only; missing browser/libs: Web not run (reason retained)
+                  Web: tasks, integrated/periodic/occasion runs, and web/-touching merge batches after T1; web/** selects web-only; missing browser/libs: Web not run (reason retained)
                   provider capacity refusal: unavailable (periodic: not run); no executor, region or size fallback
                   task: T0–T2 + Web + changed T3/T4 files and tiers.json mapped T4 guards once; >=80% T3 budget prints 1.5x allowances; T4 has no budget
                   periodic dev T3 is hub-owned: bundles its captured commit; delivery failures are infrastructure, retried next interval
@@ -154,7 +154,7 @@ export const MERGE_USAGE = `  merge <T-id> [--json]   queue a reviewed head when
                           a root with core.bare=true refuses as merge-bare; inspect and restore its shared Git config
                           changed package manifests/lockfiles require npm install in the root after shared readers stop
   merge queue [--json]  list queued heads in FIFO order, including required dependency installs
-                          batches run check (T0) before batch_tiers; a red check bisects the members
+                          batches run check (T0) before batch_tiers, adding Web after T1 for web/ diffs; red T0/Web bisects members
     --cancel              drop a queued request; supervising Lead, Coordinator or human
     --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria
                           allowed: .cland/tasks/**, .cland/RULES.md, docs/**, GLOSSARY.md, README.md files, qa/briefs/**

@@ -34,10 +34,10 @@ export class BatchRefusal extends Error {
   readonly reason: string;
   constructor(entry: MergeQueueEntry, reason: string) { super(reason); this.entry = entry; this.reason = reason; }
 }
-/** Completed static steps and measured, file-addressable failures drive diagnosis. */
+/** Completed gate steps and measured, file-addressable failures drive diagnosis. */
 function batchFailures(log: string): { failures: string[]; budgetLines: string[]; steps: VerificationStep['name'][] } {
   const failures = new Set(failingTests(log));
-  const steps = [...new Set(verificationStepResults(log).filter(step => step.name === 'check' && step.code !== 0).map(step => step.name))];
+  const steps = [...new Set(verificationStepResults(log).filter(step => (step.name === 'check' || step.name === 'Web') && step.code !== 0).map(step => step.name))];
   for (const step of steps) failures.add(verificationStepLabel(step));
   const budgetLines = new Set<string>();
   for (const line of log.replace(/\x1b\[[0-9;]*m/g, '').split('\n')) {
@@ -154,7 +154,9 @@ export class MergeBatches {
       this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
       batch.reportedRun = job.id; this.#save(batch);
     }
-    const original = diagnosticResult(evidence.job, evidence.log, evidence.job.commands?.check === '' ? [] : ['check']);
+    const requiredSteps: VerificationStep['name'][] = evidence.job.commands?.check === '' ? [] : ['check'];
+    if (evidence.job.commands?.plan?.some(step => step.name === 'Web')) requiredSteps.push('Web');
+    const original = diagnosticResult(evidence.job, evidence.log, requiredSteps);
     if (original.result === 'inconclusive') {
       const artifact = this.store.resolveArtifact(evidence.job.artifact!);
       if (!artifact) throw new Error('original batch log artifact unavailable');
@@ -173,9 +175,9 @@ export class MergeBatches {
       }
       candidate = await this.#diagnose(batch);
       if (!candidate) return;
-      // A failed static gate stopped every runtime tier. Static bisection only
-      // selects a candidate; the original pinned batch plan must still pass.
-      if (batch.diagnosis?.steps?.length) {
+      // Step bisection and file-only recovery of a Web-containing plan select
+      // a candidate; neither proves every command on that selected tree ran.
+      if (batch.diagnosis?.steps?.length || requiredSteps.includes('Web')) {
         await this.#cleanup(batch);
         const members = batch.members.filter(entry => !batch!.diagnosis!.excluded?.includes(entry.item));
         this.#save({ id: randomUUID(), members, candidate, planFrom: batch.run });
@@ -214,7 +216,8 @@ export class MergeBatches {
       const artifact = this.store.resolveArtifact(job.artifact!);
       if (!artifact) throw new Error('batch failure log artifact unavailable');
       batch.diagnosis = { failure: { run: job.id, tree: batch.candidate!.tree, log: { artifact: artifact.id, path: artifact.path } },
-        failures, budgetLines, files: [...new Set(failures.filter(identity => !steps.some(step => verificationStepLabel(step) === identity)).map(identity => identity.split('::')[0]!))], ...(steps.length ? { steps } : {}), jobs: [] };
+        failures, budgetLines, files: [...new Set(failures.filter(identity => !steps.some(step => verificationStepLabel(step) === identity)
+          && !(steps.includes('Web') && identity.startsWith('web/'))).map(identity => identity.split('::')[0]!))], ...(steps.length ? { steps } : {}), jobs: [] };
       this.#save(batch);
     }
     const diagnosis = batch.diagnosis;

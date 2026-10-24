@@ -77,6 +77,68 @@ const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/ex
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
 
+async function webBatch(f: Awaited<ReturnType<typeof suiteUnit>>) {
+  await writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="npm run check"\ntest_unit="unit"\n');
+  await writeFile(join(f.root, 'hub/test/run-suite.ts'), '// inheritedLease; supportsWebPhase = true');
+  await mkdir(join(f.root, 'web/test'), { recursive: true });
+  await writeFile(join(f.root, 'web/test/smoke.test.ts'), '');
+  await writeFile(join(f.root, 'hub/test/example.test.ts'), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/example.test.ts': 'T1', 'web/test/smoke.test.ts': 'Web' } }));
+  f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T1"]');
+  f.candidate.selection.files = ['web/src/Shell.tsx'];
+}
+
+for (const webReceipt of ['', 'tier Web: exit 1; duration 3 s; output tail: conflicting Web\n']) test(`an exit-zero Web batch holds with ${webReceipt ? 'conflicting' : 'missing'} Web proof across reopen`, async t => {
+  const state = await fixture(t);
+  const { f, landed, dropped } = state;
+  await webBatch(f);
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 0, t0Green + webReceipt + passLog);
+  await state.reopen(); await state.runner.tick();
+  assert.deepEqual(landed, []);
+  assert.deepEqual(dropped, []);
+  assert.match(state.runner.snapshot()?.failed ?? '', /original.*inconclusive.*passing step receipt/);
+  assert.equal(f.suites.status().length, 1);
+});
+
+test('two members green on Web alone are bisected and refused when their combined Web step stays red', async t => {
+  const { f, runner, entries, boundary, dropped, landed, reports } = await fixture(t);
+  entries.splice(2);
+  await webBatch(f);
+  const build = boundary.build;
+  boundary.build = async (id, members, base) => {
+    const candidate = await build(id, members, base);
+    candidate.tree = members.length === 2 ? 'combined-web-error' : `green-${members[0]!.item}`;
+    f.candidate.tree = candidate.tree;
+    return candidate;
+  };
+  const red = 'suite test failures [{"file":"web/test/smoke.test.ts","name":"renders combined members"}]\n'
+    + 'tier Web: exit 1; duration 7 s; output tail: combined members fail\n';
+  await f.clock.advance(600_000);
+  await runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 1, t0Green + 'tier T1: exit 0; duration 2 s; output tail: unit passed\n' + red);
+  assert.deepEqual((await f.suites.receipt(original.id)).job.commands?.plan?.map(step => step.name), ['check', 'T1', 'Web']);
+  await runner.tick();
+  for (let index = 0; index < 3; index++) {
+    const job = f.suites.status().at(-1)!;
+    assert.deepEqual(job.batch?.diagnostic, { key: index === 2 ? 'repeat' : `omit-${index}`, files: [], steps: ['Web'] });
+    assert.equal(job.tree, index === 2 ? 'combined-web-error' : `green-T-${2 - index}`);
+    const selection = selectionFromEnv(selectionTransport(job.selection, join(f.root, 'selection.json')).env)!;
+    assert.deepEqual((await packageShards(f.root, selection.mode, selection.shard, selection)).flatMap(phase => phase.targets), ['web/test/smoke.test.ts']);
+    await f.finish(job.id, index === 2 ? 1 : 0, index === 2 ? red : 'tier Web: exit 0; duration 3 s; output tail: member passes alone\n');
+    assert.deepEqual((await f.suites.receipt(job.id)).job.commands?.plan, [{ name: 'Web', command: 'node hub/test/run-suite.ts --tier Web' }]);
+    await runner.tick();
+  }
+  assert.equal(f.suites.status().length, 4, 'original, two green individual trees, red combined repeat');
+  assert.deepEqual(landed, []);
+  assert.equal(dropped.length, 2);
+  assert.ok(dropped.every(reason => /merge-bisect-unresolved:.*Web/s.test(reason)));
+  assert.match(reports[0]!, /Web: exit 1; duration 7 s/);
+  assert.equal(runner.snapshot(), null);
+});
+
 for (const log of [passLog, t0Red + passLog]) test(`recovered exit-zero batch holds with ${log === passLog ? 'missing' : 'conflicting'} T0 proof`, async t => {
   const state = await fixture(t);
   const { f, landed, dropped, boundary } = state;
@@ -99,12 +161,15 @@ for (const log of [passLog, t0Red + passLog]) test(`recovered exit-zero batch ho
   assert.equal(notices.length, 1, 'the durable hold is not republished after restart');
 });
 
-for (const path of ['unique omission', 'passing repeat']) for (const tierCode of [0, 1]) test(`T0 ${path} requires its full pinned plan before landing: later tier exit ${tierCode}`, async t => {
+for (const step of ['T0', 'Web']) for (const path of ['unique omission', 'passing repeat']) for (const tierCode of [0, 1]) test(`${step} ${path} requires its full pinned plan before landing: later tier exit ${tierCode}`, async t => {
   const state = await fixture(t);
   const { f, entries, boundary, landed } = state;
   entries.splice(2);
   await writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="npm run check"\ntest_unit="unit"\n');
   f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T1"]');
+  if (step === 'Web') await webBatch(f);
+  const stepRed = step === 'T0' ? t0Red : 'tier Web: exit 1; duration 3 s; output tail: web failure\n';
+  const stepGreen = step === 'T0' ? t0Green : 'tier Web: exit 0; duration 2 s; output tail: web passed\n';
   const build = boundary.build;
   boundary.build = async (id, members, base) => {
     const candidate = await build(id, members, base);
@@ -115,13 +180,13 @@ for (const path of ['unique omission', 'passing repeat']) for (const tierCode of
   await f.clock.advance(600_000);
   await state.runner.tick();
   const original = f.suites.status()[0]!;
-  await f.finish(original.id, 2, t0Red); await state.runner.tick();
+  await f.finish(original.id, 2, stepRed); await state.runner.tick();
   for (let index = 0; index < (path === 'unique omission' ? 2 : 3); index++) {
     const red = path === 'unique omission' && index === 1;
-    await f.finish(f.suites.status().at(-1)!.id, red ? 2 : 0, red ? t0Red : t0Green);
+    await f.finish(f.suites.status().at(-1)!.id, red ? 2 : 0, red ? stepRed : stepGreen);
     await state.runner.tick();
   }
-  assert.deepEqual(landed, [], 'passing only static bisection cannot authorize landing');
+  assert.deepEqual(landed, [], 'passing only step bisection cannot authorize landing');
   const selected = state.runner.snapshot()!.candidate!;
   await writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="wrong check"\ntest_integration="wrong integration"\n');
   f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T3"]');
@@ -130,12 +195,50 @@ for (const path of ['unique omission', 'passing repeat']) for (const tierCode of
   assert.equal(confirmation.occasion, 'batch');
   assert.equal(confirmation.batch?.diagnostic, undefined);
   assert.equal(confirmation.head, selected.head); assert.equal(confirmation.tree, selected.tree);
-  await f.finish(confirmation.id, tierCode, t0Green + `tier T1: exit ${tierCode}; duration 1 s; output tail: unit\n` + (tierCode ? failureLog : passLog));
+  await f.finish(confirmation.id, tierCode, t0Green + `tier T1: exit ${tierCode}; duration 1 s; output tail: unit\n` + (tierCode ? failureLog : passLog + (step === 'Web' ? stepGreen : '')));
   const receipt = await f.suites.receipt(confirmation.id);
-  assert.deepEqual(receipt.job.commands?.plan, [{ name: 'check', command: 'npm run check' }, { name: 'T1', command: 'unit' }], 'the original batch commands survive config reload and reopen');
+  assert.deepEqual(receipt.job.commands?.plan, [{ name: 'check', command: 'npm run check' }, { name: 'T1', command: 'unit' },
+    ...(step === 'Web' ? [{ name: 'Web', command: 'node hub/test/run-suite.ts --tier Web' }] : [])], 'the original batch commands survive config reload and reopen');
   assert.deepEqual(receipt.job.selection?.tiers, ['T1']);
   await state.runner.tick();
   assert.deepEqual(landed, tierCode ? [] : path === 'unique omission' ? ['T-2'] : ['T-1', 'T-2']);
+});
+
+for (const path of ['unique omission', 'passing repeat']) test(`T1 ${path} confirms the original Web plan before landing`, async t => {
+  const state = await fixture(t);
+  const { f, entries, boundary, landed } = state;
+  entries.splice(2);
+  await webBatch(f);
+  const build = boundary.build;
+  boundary.build = async (id, members, base) => {
+    const candidate = await build(id, members, base);
+    candidate.tree = [...landed, ...members.map(member => member.item)].sort().join('+');
+    f.candidate.tree = candidate.tree;
+    return candidate;
+  };
+  await f.clock.advance(600_000);
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 1, t0Green + 'tier T1: exit 1; duration 1 s; output tail: unit failed\n' + failureLog);
+  await state.runner.tick();
+  for (let index = 0; index < (path === 'unique omission' ? 2 : 3); index++) {
+    const job = f.suites.status().at(-1)!;
+    assert.deepEqual(job.batch?.diagnostic?.files, ['hub/test/example.test.ts'], state.runner.snapshot()?.failed);
+    assert.equal(job.batch?.diagnostic?.steps, undefined, 'T1 stopped execution before Web');
+    const red = path === 'unique omission' && index === 1;
+    await f.finish(job.id, red ? 1 : 0, red ? failureLog : passLog);
+    await state.runner.tick();
+  }
+  assert.deepEqual(landed, [], 'green file diagnostics supply no Web proof');
+  const selected = state.runner.snapshot()!.candidate!;
+  await state.runner.tick();
+  const confirmation = f.suites.status().at(-1)!;
+  assert.equal(confirmation.batch?.diagnostic, undefined);
+  assert.equal(confirmation.head, selected.head); assert.equal(confirmation.tree, selected.tree);
+  await f.finish(confirmation.id, 0, t0Green + passLog + 'tier T1: exit 0; duration 1 s; output tail: unit passed\ntier Web: exit 0; duration 2 s; output tail: web passed\n');
+  assert.deepEqual((await f.suites.receipt(confirmation.id)).job.commands?.plan?.map(step => step.name), ['check', 'T1', 'Web']);
+  await state.runner.tick();
+  assert.deepEqual(landed, path === 'unique omission' ? ['T-2'] : ['T-1', 'T-2']);
 });
 
 test('two individually typechecking members with a red combined T0 are bisected and refused after a red repeat', async t => {

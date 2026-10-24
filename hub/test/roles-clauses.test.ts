@@ -67,7 +67,7 @@ for (const [source, definitions] of sources) {
       }
       if (role === 'implementer') {
         assert.match(clause, /Mark every criterion done before requesting the final review/);
-        assert.match(clause, /Tasks: T0–T2, Web, changed T3\/T4 once; batches omit Web/);
+        assert.match(clause, /Tasks: T0–T2, Web, changed T3\/T4 once; web\/ batches add Web/);
         assert.match(testProcedures, /Changed T3\/T4 files and mapped T4 guards run once; remaining T3 smoke runs in batches and integrated runs/);
         assert.match(clause, /docs\/agents\/tests\.md#implementer-test-selection/);
         assert.match(clause, /fallback all T2; changed T3\/T4 once, remaining T3 deferred/);

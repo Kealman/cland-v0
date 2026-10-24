@@ -81,16 +81,20 @@ test('this repository names its tier commands for every mode', async t => {
     await f.finish(job.id);
   }
   f.configure('[merge]\nqueue=true\nbatch_tiers=["T1"]');
-  const batch = await f.launch({ mode: 'all', occasion: 'batch', fresh: true });
-  const delivered = f.delivered.get(batch.id)!;
-  assert.equal(delivered.cwd, f.root, 'execute the combined candidate checkout');
-  assert.deepEqual(recordedCommands(delivered).plan, [
-    { name: 'check', command: 'npm run check' }, { name: 'T1', command: 'node hub/test/run-suite.ts --tier T1' },
-  ]);
-  const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-  assert.match(pkg.scripts.check, /^npm run typecheck && .*npm run test:lint$/);
-  assert.match(pkg.scripts['test:lint'], /^npm run test:static && /);
-  await f.finish(batch.id);
+  for (const paths of [['hub/src/parser.ts'], ['hub/src/parser.ts', 'web/src/Shell.tsx']]) {
+    f.candidate.selection.files = paths;
+    const batch = await f.launch({ mode: 'all', occasion: 'batch', fresh: true });
+    const delivered = f.delivered.get(batch.id)!;
+    assert.equal(delivered.cwd, f.root, 'execute the combined candidate checkout');
+    assert.deepEqual(recordedCommands(delivered).plan, [
+      { name: 'check', command: 'npm run check' }, { name: 'T1', command: 'node hub/test/run-suite.ts --tier T1' },
+      ...(paths.includes('web/src/Shell.tsx') ? [{ name: 'Web', command: 'node hub/test/run-suite.ts --tier Web' }] : []),
+    ]);
+    const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+    assert.match(pkg.scripts.check, /^npm run typecheck && .*npm run test:lint$/);
+    assert.match(pkg.scripts['test:lint'], /^npm run test:static && /);
+    await f.finish(batch.id);
+  }
 });
 
 test('a red batch host check retains the timed T0 receipt without creating a droplet', async t => {

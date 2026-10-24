@@ -2941,7 +2941,7 @@ Project test commands are configured under `[verification]`: `test_unit` (T1),
 `test_component` (T2), `test_integration` (T3), and `test_soak` (T4).
 Each is a POSIX shell command; empty means unset. Use
 `cland config set verification.test_unit '<command>'` to store it verbatim.
-Tasks with hosting batch protection run `check`, unit and component; merge batches run `check` (T0) before commands matching `merge.batch_tiers` (default unit/integration; this repo unit only); periodic `dev-t3` runs integration;
+Tasks with hosting batch protection run `check`, unit and component; merge batches run `check` (T0) before commands matching `merge.batch_tiers` (default unit/integration; this repo unit only), adding Web after T1 for web/ candidate diffs; periodic `dev-t3` runs integration;
 integrated dev, explicit `all` and tasks without batch protection run T1–T3; occasions and nightly soak run all
 four. Tier lines report exit, duration and output tail. Admission records the
 commands so config reloads cannot change queued evidence. With only `test` set,
@@ -3855,15 +3855,16 @@ keeps each task in the batch and rechecks the candidate against the retained gre
 receipt. Documentation/tracker-only movement may reuse that receipt; code changes
 require a new run. A task-head change drops that member, with the prepared and
 current heads in its notice (a deleted ref is `missing`). Red batches rerun
-failing files or the failed T0 check on leave-one-out trees: `merge-bisected` rejects a unique culprit
+failing files or the failed T0/Web step on leave-one-out trees: `merge-bisected` rejects a unique culprit
 (or a red singleton). Without a unique green removal, one original-tree repeat
 can supply green proof; otherwise `merge-bisect-unresolved` rejects every member
 and notifies the Coordinator. Inconclusive runs hold the batch for its decision.
-Results name T0 with its measured duration, including a red host check before
-droplet creation. Static bisection selects a candidate for the original pinned
-full-plan confirmation before landing; missing or conflicting successful T0 proof
+Results name T0 and Web with their measured durations, including a red host check before
+droplet creation. Step bisection and file-only recovery of Web-containing plans
+select a candidate for the original pinned
+full-plan confirmation before landing; missing or conflicting successful T0/Web proof
 holds the batch. See [queued merge batches](../docs/agents/tests.md#queued-merge-batches)
-for step receipts and combined-tree typecheck bisection.
+for step receipts and combined-tree T0/Web bisection.
 `merge-conflict` and `merge-budget` go to the item lead for a fix and renewed
 review/verification. See the [merge skill](../.agents/skills/merge/SKILL.md) for
 refusal ownership and recovery.
@@ -4853,7 +4854,9 @@ Clause procedure (defaults coordinator, project coordinator):
 
 The Web phase is outside T0–T3 and runs after hub phases: machine resource, two
 local workers, four droplet workers. Task verification includes it, even under
-the ordinary T0–T2 plan; merge batches exclude it. Periodic dev and integrated/occasion
+the ordinary T0–T2 plan; merge batches add it after T1 when the candidate diff
+touches web/ (after configured tiers if T1 is absent). Other batches keep their
+existing tiers. Periodic dev and integrated/occasion
 runs include it. Reduced hub/Neovim modes include the Web smoke. Close shards
 carry Web with Neovim once. Tier commands infer Web only for candidates declaring
 `supportsWebPhase` in the cland runner; pinned commands and result/cache identity

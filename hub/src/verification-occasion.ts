@@ -10,7 +10,7 @@ export function occasionSelection(selection: SuiteSelection, occasion?: VerifyOc
   }
   if (occasion === 'batch') {
     const { tests: _tests, nvimTests: _nvimTests, shard: _shard, ...full } = selection;
-    return { ...full, mode: 'full', web: 'none', tiers: [...batchTiers], soak: batchTiers.includes('T4'), loadGate: true };
+    return { ...full, mode: 'full', web: selection.files.some(path => path.startsWith('web/')) ? 'all' : 'none', tiers: [...batchTiers], soak: batchTiers.includes('T4'), loadGate: true };
   }
   if (occasion === 'dev-t3') {
     const { tests: _tests, nvimTests: _nvimTests, shard: _shard, ...full } = selection;

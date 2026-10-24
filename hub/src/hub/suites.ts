@@ -470,7 +470,8 @@ export class Suites {
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
     let selection: SuiteSelection = files
       ? { mode: 'full', files, reason: input.devT3Probe ? 'periodic dev T3 failing-file rerun' : 'batch failing-file rerun', loadGate: false, soak: false,
-        shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length) },
+        shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length || diagnosticSteps?.includes('Web')) },
+        ...(diagnosticSteps?.includes('Web') ? { web: 'all' as const, ...(!files.length ? { tiers: [] } : {}) } : {}),
         ...(nvimTests?.length ? { nvimTests } : {}) }
       : runner ? occasionSelection(admitted, input.occasion, config?.merge.batchTiers) : admitted;
     const commandSelection = runner || !commands.tiers ? selection : occasionSelection(taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, config?.merge.queue ?? false), input.occasion, config?.merge.batchTiers);

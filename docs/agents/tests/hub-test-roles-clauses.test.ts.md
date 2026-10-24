@@ -1,5 +1,8 @@
 # hub/test/roles-clauses.test.ts
 
+The Implementer cadence names Web for web/-touching batches. Replace existing
+wording within its byte reserve; retain both default/project and reserve checks.
+
 Keep the T1 wording and byte-reserve checks aligned for shipped defaults and
 the project role file. Merge-routing clauses describe T0 before configured batch
 tiers; no extra clause lines are needed. Operational receipt and bisection

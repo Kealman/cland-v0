@@ -21,8 +21,13 @@ export function pinVerificationPlan(commands: TierCommands, run: { branch: strin
     : run.occasion || run.selection?.soak ? ['T1', 'T2', 'T3', 'T4']
     : run.branch.startsWith('t/') && run.mode !== 'all' && run.queueEnabled !== false ? ['T1', 'T2'] : ['T1', 'T2', 'T3']);
   const plan: VerificationStep[] = commands.check ? [{ name: 'check', command: commands.check }] : [];
-  for (const tier of tiers) if (commands.tiers[tier]) plan.push({ name: tier, command: commands.tiers[tier]! });
-  if (commands.tiers.Web && run.occasion !== 'batch' && run.selection?.web !== 'none' && (!run.selection?.shard || run.selection.shard.nvim)) plan.push({ name: 'Web', command: commands.tiers.Web });
+  const web = commands.tiers.Web && run.selection?.web !== 'none' && (!run.selection?.shard || run.selection.shard.nvim)
+    && (run.occasion !== 'batch' || run.selection?.web === 'all');
+  for (const tier of tiers) {
+    if (commands.tiers[tier]) plan.push({ name: tier, command: commands.tiers[tier]! });
+    if (web && run.occasion === 'batch' && tier === 'T1') plan.push({ name: 'Web', command: commands.tiers.Web! });
+  }
+  if (web && (run.occasion !== 'batch' || !tiers.includes('T1'))) plan.push({ name: 'Web', command: commands.tiers.Web! });
   return { ...commands, plan };
 }
 

@@ -76,3 +76,4 @@ T-1203: include tiers.json mapped T4 read-path guards in task verification; shar
 T-1144: Distinguish provider capacity not-run receipts from executed failures and document no automatic fallback.
 T-1144 M1: Keep capacity unavailable through size/spend admission as well as acquisition.
 - T-998: distinguish correctable invalid_argument results from forbidden permission refusals and point to session-permission guidance.
+conditional merge-batch Web step, receipts and bisection (T-1202)

@@ -65,7 +65,7 @@ test('Web is a separate machine phase after hub with two local and four remote w
   for (const mode of ['hub-only', 'nvim-only'] as const) assert.deepEqual((await packageShards(root, mode)).find(phase => phase.name === 'Web smoke')!.targets, WEB_SMOKE);
 });
 
-test('tasks keep Web through T0-T2 caps; batches exclude it and periodic and occasion runs include it', async t => {
+test('tasks keep Web through T0-T2 caps; web-touching batches include it', async t => {
   const root = await sources(t);
   const full = { mode: 'full' as const, files: [], reason: 'shared' };
   const task = taskSuiteSelection(full, 't/T-991', 'auto', true);
@@ -79,11 +79,13 @@ test('tasks keep Web through T0-T2 caps; batches exclude it and periodic and occ
     const phases = await packageShards(root, selection.mode, undefined, selection);
     assert.equal(phases.some(phase => phase.name === 'Web'), occasion !== 'batch', occasion);
   }
+  const webBatch = occasionSelection({ ...full, files: ['web/src/Shell.tsx', 'hub/src/parser.ts'] }, 'batch', ['T1']);
+  assert.ok((await packageShards(root, webBatch.mode, undefined, webBatch)).some(phase => phase.name === 'Web'));
   assert.equal(loadGateRepetitions('web/test/smoke.test.ts::browser fact', { ...full, loadGate: true }, {}), 0);
   assert.deepEqual(TIER_BUDGETS.Web, { testSeconds: 4, fileSeconds: 40, wallSeconds: 40 });
 });
 
-test('candidate Web capability pins one Web command and never adds it to batch plans', async t => {
+test('candidate Web capability pins Web after batch T1 only for web-touching diffs', async t => {
   const root = await sources(t);
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest_unit="unit"\ntest_component="component"\ntest_integration="integration"\n');
@@ -92,6 +94,8 @@ test('candidate Web capability pins one Web command and never adds it to batch p
   assert.equal(commands.tiers?.Web, 'node hub/test/run-suite.ts --tier Web');
   assert.deepEqual(pinVerificationPlan(commands, { branch: 't/T-991', mode: 'auto' }).plan!.map(step => step.name), ['T1', 'T2', 'Web']);
   assert.deepEqual(pinVerificationPlan(commands, { branch: 'dev', mode: 'all', occasion: 'batch' }).plan!.map(step => step.name), ['T1', 'T3']);
+  const selection = occasionSelection({ mode: 'full', files: ['web/src/Shell.tsx'], reason: 'candidate diff' }, 'batch');
+  assert.deepEqual(pinVerificationPlan(commands, { branch: 'dev', mode: 'all', occasion: 'batch', selection }).plan!.map(step => step.name), ['T1', 'Web', 'T3']);
   await writeFile(join(root, 'hub/test/run-suite.ts'), '// old runner');
   assert.equal((await verificationCommands(root, root, {})).tiers?.Web, undefined);
 });

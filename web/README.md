@@ -1384,7 +1384,7 @@ workers and four droplet workers. Web is outside T0–T3. A `web/**` diff select
 `web-only`: Web plus hub and Neovim smoke. Other package selections retain
 `web/test/smoke.test.ts`. Protocol, shared wire, edge and mixed web/package diffs
 force full. Task verification includes Web even with the T0–T2 cap; merge batches
-exclude it. Periodic dev, integrated, stage, epic, release and soak runs include it.
+add Web after T1 when their candidate diff touches web/. Periodic dev, integrated, stage, epic, release and soak runs include it.
 The root check builds `web/dist` once; a hand-run package suite reuses that source
 receipt or builds once before workers if it is missing/stale.
 
