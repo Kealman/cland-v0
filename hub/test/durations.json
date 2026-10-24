@@ -9138,6 +9138,13 @@
       "added": "2026-10-24",
       "expires": "2026-11-23",
       "reason": "T-1179 (E-417 stage 4) added this held-slot regression: a scratch project hub holds an integrated cover, and the sealed fixture-worker child launched under runnerFixtureEnvironment must admit its cover lease and start its detached fixture hub. It spawns a real hub and a node:test worker, so it is process-bound. Linux x64 c-8 lon1 stage cover c110635c at 1f199894 (A-10010, shard-1) observed this assertion-green identity at 4.67 s, under the 5 s T3 bound but within its noise. The 7 s cap is about 1.5 times that sample, sized for headroom; no wait bound, assertion or teardown is relaxed. Owned by E-880. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
+    },
+    "hub/test/homebrew-publication.test.ts::release preview, download failure and lost tap reply recover the pinned formula once": {
+      "seconds": 10.5,
+      "owner": "E-778",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "T-779 added this T3 identity: one sealed release transaction covering preview, a failed archive download and a lost tap push reply, recovering the pinned formula exactly once against a local bare tap. Its Linux droplet samples stayed under 5 s, but the macOS arm64 stage cover 0ab35c7d at 5d1fa288 (A-11377), with workers 2 and peak 1-minute load 15.66, observed the assertion-green identity at 6.936 s and failed the enforced T3 budget. The 10.5 s cap is about 1.5 times that worst passing sample; no wait bound, assertion or teardown is relaxed. Owned by E-778 until its fixture cost is reduced."
     }
   }
 }

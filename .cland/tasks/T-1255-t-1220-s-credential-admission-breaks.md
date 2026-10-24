@@ -2,8 +2,8 @@
 id: T-1255
 kind: task
 title: T-1220's credential admission breaks seven T3 tests whose fixtures act as sessions without their own credential
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-992
 branch: t/T-1255-t-1220-s-credential-admission-breaks
 created: 2026-10-24T17:14:10.058Z
-updated: 2026-10-24T18:02:46.147Z
+updated: 2026-10-24T19:23:55.724Z
+closed: 2026-10-24T19:23:55.724Z
 ---
 
 ## Summary
@@ -27,8 +28,10 @@ The Linux stage cover d41e7321 at da2d0e6f (A-11286) failed seven T3 tests that 
 
 - [x] C1. All seven listed cases pass on a Linux droplet and on macOS, with each fixture actor migrated to its own credential and no relaxed assertion or production admission change (test).
   - done: impl-1255 · 2026-10-24T17:23:41.429Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1255-final · 2026-10-24T19:17:47.315Z · commit d04f0291425b935406643ecbe1eacb15b8e21ff9
 - [x] C2. Named-session fixtures in other T3 files are inventoried statically, with the narrowed list on the item, and a coordinator-submitted verify all on a Linux droplet at the reviewed head passes every T3 file (test).
   - done: impl-1255 · 2026-10-24T18:02:46.147Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1255-final · 2026-10-24T19:17:47.315Z · commit d04f0291425b935406643ecbe1eacb15b8e21ff9
 
 ## Comments
 
@@ -138,3 +141,58 @@ A-11305 atOLDd64e5773 remains failed partial Coordinator all evidence:3937ordina
 Clear corrected source permits lead to report source clear to Coordinator200541cc/55ab72df for one Coordinator-submitted Linux cland verify all at exactunchangedd04f0291. Lead submits no separate mode-free run. Return original receipt for evidence review, preserving platform skip/partial/enforce-report limits and local macOS source attribution. No per-itemQA(none/after-stage), stage or landing claim. Standards0remaining findings; Spec0findings.
 
 Durable audit A-11313.
+
+### impl-1255 · 2026-10-24T19:14:26.409Z
+
+Coordinator all1e7e5d01 at reviewed d04f0291 passes (original A-11345). Parsed4349 ordinary passes,8skips,0fail/cancel;100 separate load passes. T0 host check,T1/T2/T3/Web complete; T4 did not run. All seven original generated cases,both rollback controls and corrected legacy-holder case pass; all73 inventoried files have completed ordinary receipts. Exact case names/outcomes/platform/browser/gate limits in A-11347. Linuxx64c-8lon1,workers2,lifetime2036s,$0.1414; Chrome Headless Shell156.0.8078.4/v1248. Lint/durations/ratchet/Webwall report-only. Eight skipped platform/binary cases remain skips. Source2 unchanged; final evidence review requested before fresh read-only dev merge-tree/ready report.
+
+### rev-23 · 2026-10-24T19:17:47.315Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1255-final
+commit: d04f0291425b935406643ecbe1eacb15b8e21ff9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1255 final evidence review — clear
+
+Exact source-cleared head d04f0291425b935406643ecbe1eacb15b8e21ff9/tree cce734d7a91f268ce2a66b266431dd80b97e464e; unchanged since full source2 rev-20261024-1255-source2/A-11313. Evidence scope, run rev-20261024-1255-final. Reviewer inspected original native log, manifest, source attribution and tracker statically; no execution, mutation, browser work or delegation.
+
+Coordinator-submitted verify all 1e7e5d01-0b10-4442-b932-e946d5f9300c/A-11345 finished exit0 at this head. This is the specifically authorized all run (Coordinator200541cc/55ab72df), not an Implementer mode-free task run. Independently parsed ordinary finishes: 4349 test passes,8 skips,0 failures/cancellations;620 file passes. Another100 load-gate test passes/100 load file passes are separate extras. All188 manifest T3 files have ordinary completed file-pass receipts, including every73-file named-session inventory entry in A-11295. File pass does not turn skipped nested cases into passes.
+
+Coverage: host T0 npm run check exit0,25.063s; Linux T1/T2/full T3/Web all exit0 (tier envelopes66/367/1350/158s; actual suite walls61.90/362.46/1345.64/153.73s). T4 did not run. T0 full typecheck/build/lint is host evidence; fa958cdfff03ab7f8d0f052a62bc93e8848de80c is a Git tree marker, not a commit or repeated Linux typecheck. Runtime Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, c-8 lon1 droplet cland-v0-1c7286e9,workers2(Web4), lifetime2036s/cost$0.1414. Browser prepared: Chrome Headless Shell156.0.8078.4, Playwright chromium-headless-shell v1248, /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248; shipped harness uses prerequisite.executablePath headlessly. Web census records browser groups reaped to0;0new Web files/0repetitions required.
+
+Required ordinary generated receipts, all pass; seconds are native individual durations:
+- hub/test/merge-gate.test.ts::the gate refuses in order: item/branch, missing or file-only review, wrong writer role, claimant, not clear, stale, and missing QA —4.093804562.
+- hub/test/scenarios/stage-close.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo —7.290024331.
+- hub/test/subscription-frame.test.ts::Claude Code consumes one ordered subscription digest through the native frame —3.201991801.
+- hub/test/suite-human.test.ts::session-shell and inherited-worker package runners never request a human slot —4.192609604.
+- hub/test/adapter-native-boundary.test.ts::ClaudeCodeAdapter: failure at bg leaves no session files or live child —0.007851408.
+- hub/test/adapter-native-boundary.test.ts::ClaudeCodeAdapter: failure at log leaves no session files or live child —0.021136024.
+- hub/test/request-guard.test.ts::session relaunch: 200 ms publication plus 200 ms lifecycle work after an adapter await is timed once as resumed —0.490795647.
+- hub/test/adapter-native-boundary.test.ts::ClaudeCodeAdapter: partial private settings failure removes new files while preserving credentials and peers —0.009251020.
+- Same file::ClaudeCodeAdapter: partial private settings failure restores previous files while preserving credentials and peers —0.009924309.
+- hub/test/suite-runner-contract.test.ts::verify queue preserves a live UTC package holder across observer timezones —6.110006556.
+- Same file::verify queue preserves a live legacy package holder across observer timezones —5.108717104.
+Whole affected files: merge7/7,stage1/1,subscription1/1,suite-human6/6,adapter67/67,request12/12,queue-contract6/6. Owned credentials, admission negatives, stop-before-rollback, credential/peer bytes/modes, one resumed event>=400ms, exact-PID queue/owner-token/post-release assertions remain as source-audited.
+
+Eight explicit skips, none counted passing: edges.test.ts sandbox stdio case and spawn-census.test.ts denied-census-write case need macOS sandbox-exec; nvim/test/qa.test.ts three network/file-denial cases need sandbox-exec; executor-droplet.test.ts macOS idle-sleep inhibitor is marked skip without a reason; opencode-database.test.ts P3 real-service sweep needs installed real OpenCode; orphan-servers.test.ts real OpenCode serve sweep has absent/unrunnable binary. These are platform/native prerequisites, not the seven required repaired cases. No native OpenCode or skipped sandbox enforcement claim.
+
+Separate macOS evidence: A-11292 corrected six files94/94 plus docs3/3, precommit corrected working source based on da2d0e6f, not captured per-run commit/tree hashes; original seven source unchanged through current head. A-11309 queue delta6/6 and docs3/3 exit0 on precommit source subsequently committed d04f0291. A-11308 controlled observer red/green has diagnostic delay absent from shipping source. These retained provenance limits are not replaced with exact-head execution claims. Static lint A-11310 exit0/zero refusals/133report-only findings in60files. Earlier d64e5773 all run74230bda/A-11305 remains failed partial historical evidence, not reclassified.
+
+General lint/duration/T3-ratchet/Web-wall gates report-only; warnings retained, no enforced timing pass. No hard duration-budget failure found. C1 satisfied by original seven native Linux passes plus separately attributed macOS receipts and preserved source assertions. C2 satisfied by static73-file inventory and Coordinator all run completing every188 T3file, with8prerequisite skips explicit. Verify C1/C2 at this head. Findings0. No per-item QA(none/after-stage), stage/release/landing verdict or merge authorization implied; Coordinator owns enqueue/merge.
+
+Durable audit A-11350.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1255 · 2026-10-24T19:18:43.647Z
+
+Ready confirmed after final evidence clear A-11350; C1/C2verified. Unchanged reviewed d04f0291425b935406643ecbe1eacb15b8e21ff9. Fresh fetch origin/dev8fd6195fd9fb83d0e50db635e4508e9e429689c2; read-only merge-tree exits0 with only8189f82e27246d934dcb8855ef5dacdebfa51cea, no conflicts, clean tree. Ready receipt A-11352; Coordinator notified in topic-992. No actual merge/head change; claim retained. Assigned brief ends at ready.
+
+### coord · 2026-10-24T19:23:55.724Z
+
+Merged 8c9e064d0fa00aa6ada9855df63cec2927fd6dcd onto dev.
