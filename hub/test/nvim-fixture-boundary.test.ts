@@ -51,6 +51,19 @@ test('timestamp occurrences keep the same key across coincident and adjacent clo
   assert.deepEqual(b.restore(b.input), adjacent, 'each occurrence restores its own wire timestamp');
 });
 
+test('recordings match both macOS temp aliases for root and parent paths', () => {
+  const expected = { attach: '@parent@/keylog', cwd: '@root@' };
+  for (const [privateBase, publicBase] of [['/private/tmp', '/tmp'], ['/private/var/tmp', '/var/tmp']]) {
+    for (const base of [privateBase, publicBase]) for (const wireBase of [privateBase, publicBase]) {
+      const root = `${base}/cland-sh-abc123/proj-shell`;
+      const frame = { cwd: `${wireBase}/cland-sh-abc123/proj-shell`, attach: `${wireBase}/cland-sh-abc123/keylog` };
+      const normalized = canonical(frame, root);
+      assert.deepEqual(normalized.input, expected, `root ${base}, wire ${wireBase}`);
+      assert.deepEqual(normalized.restore(expected), frame, 'replay preserves the original wire spelling');
+    }
+  }
+});
+
 test('an unmatched recording names its operation and protocol request', () => {
   assert.throws(() => replayFrame('frame', { requestType: 'missing.request', frame: { type: 'result', value: 'not recorded' } }), /unrecorded protocol frame.*operation=frame.*request=missing.request.*key=/);
 });

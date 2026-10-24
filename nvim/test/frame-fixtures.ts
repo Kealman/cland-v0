@@ -22,10 +22,14 @@ export function selectRecordings(recordings: Record<string, Recording>, keys: It
   }));
 }
 export function canonical(value: unknown, root: string, at = STUB_NOW) {
-  const substitutions: Array<[string, string]> = [['@root@', root], ['@root@', root.replace(/^\/private(?=\/var\/)/, '')], ['@repo@', fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '')], ['@node@', process.execPath]];
+  // Neovim may resolve /tmp or /var through /private while the test keeps the
+  // other spelling. Bind both without requiring the recorded paths to exist.
+  const aliases = (path: string): string[] => /^\/(?:private\/)?(?:tmp|var)(?:\/|$)/.test(path)
+    ? [path, path.startsWith('/private/') ? path.slice('/private'.length) : `/private${path}`].sort((a, b) => b.length - a.length) : [path];
+  const substitutions: Array<[string, string]> = aliases(root).map(path => ['@root@', path]);
+  substitutions.push(['@repo@', fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '')], ['@node@', process.execPath]);
   if (basename(dirname(root)).startsWith('cland-')) {
-    substitutions.push(['@parent@', dirname(root)]);
-    substitutions.push(['@parent@', dirname(root).replace(/^\/private(?=\/var\/)/, '')]);
+    for (const path of aliases(dirname(root))) substitutions.push(['@parent@', path]);
   }
   const bindings = new Map<string, string>();
   const values = new Map<string, string>();
