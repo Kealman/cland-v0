@@ -2,8 +2,8 @@
 id: T-1202
 kind: task
 title: Merge batches whose candidate touches web/ also run the Web tier
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-948
 branch: t/T-1202-merge-batches-whose-candidate-touches
 created: 2026-10-24T06:46:04.922Z
-updated: 2026-10-24T09:50:06.103Z
+updated: 2026-10-24T09:56:53.908Z
+closed: 2026-10-24T09:56:53.908Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ Batches run T1 only; a Web regression from two members green alone could land re
 
 - [x] C1. A batch whose candidate has a web/ path runs the Web tier after T1, and is red and bisected when Web fails, shown with two members green alone and red together (test).
   - done: impl-1202 · 2026-10-24T09:20:40.734Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1202-final · 2026-10-24T09:51:37.654Z · commit 71a36775279633ff8aed34afb7498f26f17a7d42
 - [x] C2. The batch result names the Web step and its duration (test).
   - done: impl-1202 · 2026-10-24T09:14:17.426Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1202-final · 2026-10-24T09:51:37.654Z · commit 71a36775279633ff8aed34afb7498f26f17a7d42
 
 ## Comments
 
@@ -159,3 +162,37 @@ A-10668 retains original post-merge native output/exits from local Darwin arm64,
 
 Prior5bcc907b/A-10662 and evidence audit A-10667 remain green at parent49b74365 only, including report-mode loaded max0.600898692s. They are not merged-head final evidence. C1/C2 final runtime marks await a fresh configured mode-free result at exactly71a36775. Source clearance permits that submission, unchanged head, reporting to Reviewer/item lead. Live batch policy still needs landing/restart under rule19; QA none/after-stage. Reviewer static source/Git/artifact inspection only; no tests/probes/edits/GUI/merge/delegation. Standards zero findings; Spec zero findings.
 Durable review A-10670.
+
+### rev-23 · 2026-10-24T09:51:37.654Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1202-final
+commit: 71a36775279633ff8aed34afb7498f26f17a7d42
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1202 final same-head evidence review — clear
+
+Head 71a36775279633ff8aed34afb7498f26f17a7d42/tree615851ce8f2bed185fc0148e2b5da245c1b69b62. Origin task ref independently matches. Source3 A-10670 accepted the Coordinator-authorized integration; source2 A-10643 accepted M1's full pinned confirmation. Run rev-20261024-1202-final, scope evidence, findings []. Both criteria now verified.
+
+Configured mode-free 57a00aff-7d3a-4362-b392-cf8f6f2b1d92/A-10688 finishes exit0 at this exact head. Raw native ordinary finishes:2909 tests and419files, all pass; no fail/cancel/skip. Additional45 actual load-gate test/file finishes pass: five repetitions of each of nine new Web-batch controller identities. Generic repetition headers are not the basis for this count. T1, fallback all hub/Neovim T2, complete Web44files/223tests completed. No T3/T4 process receipt; deferred/queued-batch notices do not establish execution.
+
+Linux x64 6.8.0-142-generic droplet c-8lon1 cland-v0-09814b7f, Node24.21.0/Neovim0.12.5; workers2/Web4; lifetime642s/$0.0446 per hub provenance. Full host npm check output and zero lint refusals retained. Host gate6ccbdf04afa888b9fff83a04c1d8789cf1b62f4a independently resolves to a Git tree, reused rather than repeated remotely. Native suite walls58.69/322.01/142.27s; phase envelopes63/326/146s and projections are distinct. Actual Web shard142.16s. Lint133/60files, two missing baselines, incomplete ratchet-base diagnostics and unrelated Web/scale/Neovim duration warnings remain report-only. No affected-file tier mismatch found.
+
+C1: merge-batches55/55, verification-commands15/15, web-phase8/8, clauses39/39 pass. Combined green-alone/red-Web-together bisection/refusal passes0.160835495s with5/5 load repetitions. Missing/conflicting proof across reopen, Web unique omission/repeat confirmation paths and no-Web controls pass. M1's original-T1-red/no-Web-receipt unique omission and passing-repeat regressions pass0.099613257/0.137100632s plus5/5 each, preserving exact full original-plan confirmation before landing. C2: combined-red result assertion retains Web named step/exit/duration7s; transport/command selection tests pass. That7s is semantic fixture data, not an observed live browser duration.
+
+New ordinary Web-batch identities max0.209495153s; actual loaded maximum0.666003141s. This is report-mode timing evidence, not an enforcing T1 budget claim or an all-samples-below0.4s claim. No new Web test identity added by this item. Prior parent49b74365 receipts remain separately attributed; final settlement uses this fresh merged-head run.
+
+Implementer post-run report5d57fb2e records read-only merge-tree against freshly fetched origin/dev3830f7fc exit0/no conflicts, head unchanged/clean; no further integration performed. Final source ref matches independently. Live batch policy still requires landing/restart under rule19; configured task tests prove the candidate semantics, not deployment of the new queue policy. QA none/after-stage, no stage QA claim.
+
+Standards/evidence clear and Spec/evidence clear; C1/C2 verified. Reviewer performed static source/Git/artifact inspection only, no tests/probes/install/edits/Git mutation/browser/delegation.
+Durable review A-10692.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T09:56:53.908Z
+
+Merged 86449530f6f292a3cad7e4debeeb56d45d9ec498 onto dev.

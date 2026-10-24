@@ -2,8 +2,8 @@
 id: T-1158
 kind: task
 title: Rendered Mermaid diagrams in the web workbench
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-947
 branch: t/T-1158-rendered-mermaid-diagrams-in-the-web
 created: 2026-10-22T23:41:27.072Z
-updated: 2026-10-24T09:41:46.864Z
+updated: 2026-10-24T10:00:48.878Z
+closed: 2026-10-24T10:00:48.878Z
 ---
 
 ## Summary
@@ -30,12 +31,15 @@ A Mermaid diagram artifact opens rendered in the sandboxed viewer, with its sour
 - [x] C1. A `.mmd` diagram artifact opens rendered in a sandboxed iframe from a capability URL, and its source stays available one key away (Web test).
   - verified: rev-23 [reviewer] · run rev-20261024-1158-final · 2026-10-24T09:23:51.037Z · commit 0921bd5014e7d89bfa622e35c8806057ce76e5a2
   - done: impl-1158 · 2026-10-24T09:37:45.363Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1158-final2 · 2026-10-24T09:54:58.219Z · commit 8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b
 - [x] C2. `mermaid` is a pinned dependency of the web workspace only, loaded lazily on first `.mmd` open; the shell's initial bundle size is unchanged within 1 KB, shown in a test or build check.
   - verified: rev-23 [reviewer] · run rev-20261024-1158-final · 2026-10-24T09:23:51.037Z · commit 0921bd5014e7d89bfa622e35c8806057ce76e5a2
   - done: impl-1158 · 2026-10-24T09:37:45.564Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1158-final2 · 2026-10-24T09:54:58.219Z · commit 8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b
 - [x] C3. Diagram text cannot execute script (strict security level) and a parse error shows the error with the source, both shown in Web tests.
   - verified: rev-23 [reviewer] · run rev-20261024-1158-final · 2026-10-24T09:23:51.037Z · commit 0921bd5014e7d89bfa622e35c8806057ce76e5a2
   - done: impl-1158 · 2026-10-24T09:37:45.868Z
+  - verified: rev-31 [reviewer] · run rev-20261024-1158-final2 · 2026-10-24T09:54:58.219Z · commit 8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b
 
 ## Comments
 
@@ -143,3 +147,26 @@ Authorized delta source clear; no findings. A-10678 carries rev-23 full/final A-
 ### impl-1158 · 2026-10-24T09:41:46.864Z
 
 Provenance correction to the upgrade comment/A-10669: fd24fbe8's actual dev parent is69b3dc7db6d819cd27ac2e96b769a02623cf1c96; c6abaeb1 was the subsequently observed origin/dev ref, not the merge parent. git show native chunkb20a6c exit0 confirms both parents. No source change/metadata-only commit. Delta source clearA-10678 at unchanged8379fcf0; mode-free155262fc-e049-4acd-a9d8-841949b779bd admitted, awaiting hub result.
+
+### impl-1158 · 2026-10-24T09:53:45.562Z
+
+Fresh mode-free155262fc-e049-4acd-a9d8-841949b779bd passed at unchanged reviewed8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b. Original logA-10698: hub totals2901tests/2901pass,0fail/cancelled/skipped. T0 host check passed (gate167170d6 not repeated remotely), all T1+fallback all T2 across hub/Neovim+Web on Linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0,Neovim0.12.5; lifetime667s,cost$0.0463. Mermaid render/source3.389s and hostile/parse3.787s passed, below4s allowance trigger. Actual Web shard151.00s exceeds40s report-only budget; unrelated report-only lint/duration warnings remain. T3 deferred periodic dev/integrated and absent configured batch tiers; no T3/T4/after-stage QA claim. Audit0 remains inA-10669. Final evidence settlement pending.
+
+### rev-31 · 2026-10-24T09:54:58.219Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1158-final2
+commit: 8379fcf09f5a29aa8a78b26c6e0ee0cbb263394b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1–C3 clear at 8379fcf0/tree 300461a4; no findings. A-10700 audits A-10698/155262fc exit0 and 2901 ordinary passing finishes, no fail/cancel/skip, Linux c-8 lon1 T1/all fallback hub+Neovim T2/Web. Actual capability and Mermaid viewer/security tests pass; Web times 3.389380986/3.786557503 s <4s. Carries prior full source A-10617 and authorized upgrade delta A-10678; current web-only pin/lazy entry, size +231<=1024/native exit0 and audit total0/native child0 retained in A-10669. A-10680 corrects merged dev parent to69b3dc7d without source change. Host T0 not repeated remotely; budget/lint/ratchet warnings report-only, zero refusals. No Mermaid repetition, T3/T4/integrated/stage QA or Reviewer execution/enqueue claim. Affected after-stage QA remains separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-24T10:00:48.878Z
+
+Merged 91f542988ef521b526177885b6f5089bca7c380e onto dev.
