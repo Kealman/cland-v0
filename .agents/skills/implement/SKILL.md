@@ -100,6 +100,9 @@ An explicit `--size` override absent from the provider catalog is invalid input:
 submission exits 1 with an "unavailable" error and creates no job or droplet.
 Listed unavailable sizes or sizes absent from configured regions retain the
 provider-capacity outcome; configured catalog absence remains a capacity refusal.
+For sharded cover outcomes, use the sealed scheduler and public-notice seams in
+`docs/agents/tests.md`: preserve each unexecuted shard's cause, distinguish an
+entirely unexecuted group from partial execution, and retain executed results.
 
 Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers and add Web after T1 for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 

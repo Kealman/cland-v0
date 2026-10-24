@@ -6683,6 +6683,13 @@
     "web/test/session-launch.test.ts::a custom role is selectable with its own defaults and appears in the crew after launch": 1.52439
   },
   "allow": {
+    "hub/test/suite-cover.test.ts::all capacity-refused shards preserve a not-run cover receipt and never start culprit search": {
+      "seconds": 1.5,
+      "owner": "E-1194",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "T-1211 retains sealed scheduler setup, two refused shard receipts, durable parent result, no-cover/no-search assertions and scheduler reopen. Targeted local Darwin arm64 working-tree samples measured 0.518, 0.508, 0.228, 0.317, 0.952 and 0.355 s; 1.5 s rounds up about 1.5x the worst observed sample. These are targeted assertion runs, not full-suite or load-gate receipts; the cold fixture setup accounts for the spread. No sleep or weakened assertion is added."
+    },
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
       "seconds": 22,
       "owner": "E-880",

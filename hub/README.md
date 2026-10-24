@@ -3081,8 +3081,14 @@ The hub atomically reserves the whole group's estimated lifetime cost against
 the shared daily ledger ($3 here) before creating machines. When the cap cannot
 cover every shard, or fewer than two remote slots are free, it runs whole on one
 slot with one warn notice: `sharding skipped: daily spend cap $3 would be exceeded`
-or `sharding skipped: fewer than 2 remote slots free`. A provider failure after
-sharded admission fails the run; shards are not silently retried or run locally.
+or `sharding skipped: fewer than 2 remote slots free`. Shards are not silently
+retried or run locally after admission. If every shard is refused before execution,
+the group finishes unavailable, retaining each shard's cause: provider capacity
+when all refusals are capacity, infrastructure when bundle admission, acquisition
+or delivery fails before worker submission. Restored delivered leases and failed
+start acknowledgements retain their uncertain execution outcome. An unexecuted group creates
+no red/green cover or culprit search. A partially executed group retains the
+executed counts and failures, names each unexecuted shard, and cannot pass.
 
 One merged result sums counts, labels failed/lost shards, lists each machine,
 size, duration and cost, total cost, and wall from admission to final collection.

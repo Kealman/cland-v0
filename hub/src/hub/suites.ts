@@ -159,6 +159,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   const executedTiers = tierLines.filter(line => /^tier (?:T[0-4]|Web): exit /.test(line));
   const webPhase = unavailableWebPhase(text);
   const priority = [
+    ...lines.filter(line => line.startsWith('shard not run ')),
     ...(webPhase ? [webUnavailableLine(webPhase)] : []),
     ...executedTiers,
     ...lines.filter(line => /^(?:duration check:|duration allowance stanza )/.test(line)),
@@ -710,6 +711,7 @@ export class Suites {
   }
   async #launch(job: SuiteJob): Promise<void> {
     job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
+    let remotePreExecution = false;
     try {
       if (job.shards) { await this.#launchShards(job); return; }
       // Once remote collection starts, local bytes would count as remote output.
@@ -726,6 +728,9 @@ export class Suites {
           const restored = (await readLeases(this.#root)).find(lease => lease.run === job.id && lease.state !== 'released');
           if (restored) job.lease = restored;
         }
+        // Undelivered leases cannot have submitted a worker. A restored delivered
+        // lease may have lost its start acknowledgement, so remains uncertain.
+        remotePreExecution = !job.lease || !(job.lease as DropletLease).execution?.delivered;
         if (job.lease && Date.parse(job.lease.deadline) <= this.#clock.now().getTime()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
           if (!job.lease && !committedOnly && (!job.tree || await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
@@ -744,6 +749,12 @@ export class Suites {
                 job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
                 throw error;
               }
+              // Acquisition never submits a worker start. Later start errors can
+              // be ambiguous and must retain their executed-or-unknown outcome.
+              if (job.parentRun) {
+                job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
+                throw error;
+              }
               if (job.requireRemote && !job.parentRun && error instanceof RemoteBudgetFull) {
                 job.state = 'queued';
                 delete job.admittedAt; delete job.remoteAcquireAttempted; delete job.config;
@@ -757,7 +768,7 @@ export class Suites {
           this.#save(job);
           try { await this.#droplet.deliver(job.lease as DropletLease, run, committedOnly); }
           catch (error) {
-            if (committedOnly) job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
+            if (committedOnly || job.parentRun) job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
             throw error;
           }
         }
@@ -765,6 +776,7 @@ export class Suites {
         job.remoteLogStart ??= (await stat(job.log)).size;
         this.#save(job);
         if (job.cancelled) throw new Error('cancelled');
+        remotePreExecution = false; // From this call onward a failed reply cannot prove non-execution.
         if (!lease.execution?.started) await this.#droplet.start(lease, run);
         if (!lease.execution?.started) { job.nextPoll = this.#clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env); this.#save(job); return; }
       } else {
@@ -786,7 +798,8 @@ export class Suites {
         if (lease) job.lease = lease;
       }
       // Keep the failure receipt: the inspector only terminates identity-verified processes.
-      job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save(job);
+      job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error),
+        ...(job.parentRun && remotePreExecution && !job.cancelled ? { notRun: 'infrastructure' as const } : {}) }; this.#save(job);
     } finally { this.#launching.delete(job.id); if (job.cancelled) void this.#inspectJob(job); }
   }
   #shouldPlanShards(job: SuiteJob): boolean {
@@ -847,7 +860,16 @@ export class Suites {
     }
     // Repeat only an interrupted host gate; provider acquisition is reconciled per child.
     if (!shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
-    if (await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
+    if (await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) {
+      const cause = 'dirty or changed integrated dev candidate';
+      // A restored group may already have submitted workers. Only untouched
+      // shards prove this parent fence refused every child before execution.
+      if (!job.cancelled && !job.outcome && shards.every(shard => !shard.remoteAcquireAttempted && !shard.lease)) {
+        for (const shard of shards) shard.outcome = { code: 1, cause, notRun: 'infrastructure' };
+        job.outcome = { code: 1, cause: shards.map(shard => `${shard.shardName}: ${cause}`).join('; '), notRun: 'infrastructure' };
+      }
+      throw new Error(cause);
+    }
     if (job.cancelled || job.outcome) throw new Error(job.outcome?.cause ?? 'cancelled');
     if (job.hostGate) for (const shard of shards) shard.hostGate = job.hostGate;
     this.#save(job);
@@ -879,7 +901,10 @@ export class Suites {
       ...(shard.machine.name ? { name: shard.machine.name } : {}), ...(shard.machine.size ? { size: shard.machine.size } : {}), ...(shard.machine.region ? { region: shard.machine.region } : {}),
     } : null, health: shard.health ?? null }));
     delete job.health;
-    job.outcome ??= { code: failures.length ? 1 : 0, cause: failures.map(shard => `${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('; ') };
+    const notRun = shards.every(shard => shard.outcome?.notRun)
+      ? shards.some(shard => shard.outcome?.notRun === 'infrastructure') ? 'infrastructure' : 'provider-capacity'
+      : undefined;
+    job.outcome ??= { code: failures.length ? 1 : 0, cause: failures.map(shard => `${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('; '), ...(notRun ? { notRun } : {}) };
     const platform = shards.find(shard => shard.platform)?.platform;
     if (platform) job.platform = platform;
     job.finished = this.#clock.now().toISOString();
@@ -893,7 +918,9 @@ export class Suites {
       `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${seconds(shard.finished ? elapsed(shard.admittedAt, Date.parse(shard.finished)) : null)} · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}; admission through remote finish`,
       `shard collection ${shard.shardName} ${seconds(shard.collectedAt ? elapsed(shard.finished, Date.parse(shard.collectedAt)) : null)}; remote finish through collection complete`,
     ]);
-    await aggregateSuiteLogs(job.log, shards, `${job.occasion ? `occasion ${job.occasion}\n` : ''}${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
+    await aggregateSuiteLogs(job.log, shards, `${job.occasion ? `occasion ${job.occasion}\n` : ''}${failures.map(shard => shard.outcome?.notRun
+      ? `shard not run ${shard.shardName}: ${shard.outcome.notRun}; ${shard.outcome.cause}`
+      : `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
     await rename(job.log + '.shards.tmp', job.log);
     job.groupMerged = true; job.cleaned = true; this.#save(job);
     return true;

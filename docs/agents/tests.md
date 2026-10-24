@@ -1113,6 +1113,17 @@ A remote close run or ordinary Coordinator integrated full run uses the free rem
 
 One result sums counts, labels failures by shard, and includes each machine, size, duration and cost, total cost, and wall time from admission through final collection. Each `shard duration` spans admission through the durable remote finish, for successful and failed receipts alike; live polling and restored receipts use the same boundary. A separate `shard collection` line spans remote finish through final log/coverage collection and machine release (or the bounded accounting wait). Missing timestamps are labelled `unavailable`. Collection completion is persisted independently, so reporting retries do not extend it. The merged `suite duration` remains the overall wall from parent admission through collection of every shard. Recovery downtime never extends a finished run’s `runMs` or the queue estimates based on it. Each shard has a log artifact beside the merged log. A failed or lost shard fails the run without an automatic retry; cleanup must be confirmed before its slot is released. At $0.25/hour per c-8, two ten-minute droplet lifetimes estimate $0.0833 total (provisioning and cleanup count too); read the measured cost in the result. Cache reuse requires identical tree, mode and soak coverage, so an ordinary T1–T3 integrated run cannot satisfy a T1–T4 occasion; stage requests additionally match executor/platform and require stage provenance for Linux cache hits.
 
+An entirely unexecuted shard group finishes unavailable with every shard's cause:
+`provider-capacity` when all refusals are capacity, `infrastructure` when any
+bundle admission, acquisition or delivery fails before worker submission. Restored
+delivered leases and start acknowledgement failures retain their
+executed-or-unknown outcome. An unexecuted group supplies no red/green cover or
+culprit search. Partial execution
+keeps executed counts/failures and `shard not run` causes in the summary, including
+the compact priority summary, and never passes. Use the sealed T1 scheduler seam
+in [suite-cover.test.ts](tests/hub-test-suite-cover.test.ts.md); the T2
+`suite-close-component.test.ts` pre-lease refusal case retains the public notice.
+
 Before the first source review, fetch and merge `origin/dev` into the task branch, then commit and push the head to review. After that review, take dev changes only through shared fixes posted by the Coordinator; merge dev again only on its request or after a merge-conflict refusal. Request source review first. Only after a clear source verdict, run `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. The Reviewer settles the final verdict when the same-head result arrives; source-only criteria may be verified earlier, while run-dependent criteria stay unverified until then. The CLI prints the run id, worker PID (null while queued) and hub queue position, then exits. Go idle: the hub delivers one result with the exit code, test counts, failures, branch/head and durable log artifact.
 
 If the CLI writes a submission but receives no reply within 15 seconds, it exits

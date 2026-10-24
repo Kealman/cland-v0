@@ -10,7 +10,7 @@ import { eventually } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { caseDeadlines } from './case-deadlines.ts';
-import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { DropletExecutor, ProviderCapacityUnavailable } from '../src/executor/droplet/droplet.ts';
 import { Store } from '../src/hub/store.ts';
 import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 
@@ -128,7 +128,12 @@ test('pre-lease shard failures retain reservation release through executor resta
   await writeFile(path, '{"version":0,"entries":[]}');
   f.api.sizes[0]!.available = false;
   release.resolve();
-  assert.match((await result).text, /exit 1/);
+  const message = await result;
+  assert.match(message.text, /all unavailable: provider capacity/);
+  assert.match(message.text, /No tests executed\./);
+  assert.match(message.text, /shard-1: droplet size c-8 is unavailable/);
+  assert.match(message.text, /shard-2: droplet size c-8 is unavailable/);
+  assert.doesNotMatch(message.text, /exit 1|\bred\b|Failures:|shard failure/);
   assert.deepEqual(await readLeases(f.root), [], 'no real lease can own these synthetic reservations');
   assert.equal((await f.messages(job.id)).length, 1);
   assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).remote, []);
@@ -150,6 +155,29 @@ test('pre-lease shard failures retain reservation release through executor resta
   const store = new Store(join(f.root, '.cland/hub.db'));
   try { assert.equal(store.topicMessages(f.topic, 50).filter(message => message.id === `suite:${job.id}`).length, 1); }
   finally { store.close(); }
+});
+
+for (const mixed of [false, true]) test(`generic pre-execution shard acquisition publishes unavailable infrastructure (mixed capacity: ${mixed})`, async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('isolated close fixture', () => integrated(run.fixtures, '', 2, undefined, { machine: 'scripted' }));
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  t.mock.method(DropletExecutor.prototype, 'acquire', async (...[ref]: Parameters<DropletExecutor['acquire']>) => {
+    if (mixed && ref.id.endsWith('shard-1')) throw new ProviderCapacityUnavailable('size c-8 unavailable in lon1');
+    throw new Error(`snapshot unavailable for ${ref.id.endsWith('shard-1') ? 'one' : 'two'}`);
+  });
+  const job = await run.wait('stage admission', () => f.launch('all', '--fresh', '--occasion', 'stage'));
+  await run.wait('acquisition I/O', () => f.verificationSettled());
+  const reported = f.result(job.id);
+  await f.clock.advance(1000);
+  const message = await run.wait('public merged refusal', () => drive(f, reported));
+  assert.match(message.text, /all unavailable: infrastructure/);
+  assert.match(message.text, mixed ? /shard-1: size c-8 unavailable in lon1/ : /shard-1: snapshot unavailable for one/);
+  assert.match(message.text, /shard-2: snapshot unavailable for two/);
+  assert.match(message.text, /No tests executed\./);
+  assert.doesNotMatch(message.text, /exit 1|\bred\b|Failures:|shard failure/);
+  assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
+  assert.deepEqual(await readLeases(f.root), []);
+  assert.equal((await f.messages(job.id)).length, 1);
 });
 
 test('a Coordinator integrated batch reserves two shards without stage provenance', async t => {
