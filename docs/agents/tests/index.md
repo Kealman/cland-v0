@@ -121,3 +121,4 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-human-queue.test.ts`](../../../hub/test/suite-human-queue.test.ts) | [Notes](hub-test-suite-human-queue.test.ts.md) |
 | [`hub/test/suite-tiers.test.ts`](../../../hub/test/suite-tiers.test.ts) | [Notes](hub-test-suite-tiers.test.ts.md) |
 | [`hub/test/item-lead.test.ts`](../../../hub/test/item-lead.test.ts) | [Notes](hub-test-item-lead.test.ts.md) |
+| [`hub/test/install-script.test.ts`](../../../hub/test/install-script.test.ts) | [Notes](hub-test-install-script.test.ts.md) |

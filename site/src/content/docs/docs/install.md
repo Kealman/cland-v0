@@ -15,15 +15,43 @@ cland runs on **macOS** and **Linux**. Windows is not supported.
 brew install cland
 ```
 
-### Linux: install script
+### Linux or macOS without Homebrew: install script
 
 ```sh
 curl -fsSL https://cland.app/install.sh | sh
 ```
 
+The script needs **Node >=24.13.0 <25**, npm, curl, tar and Git. If Node is missing,
+install Node 24 LTS from [nodejs.org](https://nodejs.org/en/download), put `node`
+and `npm` on your PATH, and run the command again.
+
+It fetches the newest stable `vX.Y.Z` tag from the public repository, downloads
+that tag's source tarball, installs its locked build dependencies with lifecycle
+scripts disabled, builds the web workbench, and removes development dependencies.
+It prints each step and never uses `sudo`. Download or build failures leave the
+current installation in place. An interrupted update restores the old version
+and prints any retained staging or recovery path; keep that path until recovery
+is complete.
+
+| Path | What the script installs |
+| --- | --- |
+| `~/.local/bin/cland` | A symlink to the CLI. Add `~/.local/bin` to your PATH if the script asks. |
+| `~/.local/lib/cland/` | The released source, runtime dependencies and built web workbench. |
+
+To choose another writable prefix or a specific released tag:
+
+```sh
+curl -fsSL https://cland.app/install.sh | PREFIX="$HOME/tools" sh
+curl -fsSL https://cland.app/install.sh | CLAND_VERSION=v0.2.0 sh
+```
+
+With a custom prefix, the paths become `<prefix>/bin/cland` and
+`<prefix>/lib/cland/`. Reuse that prefix when updating. The script refuses to
+replace a command or directory it does not manage.
+
 ### From source
 
-Requires Node 24.
+Requires Node >=24.13.0 <25.
 
 ```sh
 git clone https://github.com/Kealman/cland-v0 cland
@@ -52,7 +80,7 @@ cland doctor
 | At least one harness | Claude Code (`claude`), Codex (`codex`) or OpenCode (`opencode`). Each one a role uses must be installed and signed in. |
 | `gh`, signed in | Only when the project has a GitHub remote, and for importing GitHub issues. |
 | A terminal | The Neovim workbench and the harness logins. Any modern terminal works; Ghostty, kitty, WezTerm, iTerm2 and tmux are fine. |
-| Node 24 | Only for the source install. |
+| Node >=24.13.0 <25 | The install script and source install. |
 
 You do not need Neovim installed or configured. cland downloads its own pinned Neovim release on first use, checks it against a pinned SHA-256 digest and starts it with a clean configuration, so your own Neovim setup is never loaded and never changed.
 
@@ -135,7 +163,17 @@ brew uninstall cland
 npm unlink -g cland     # then delete the clone
 ```
 
-For the install script, delete the `cland` command it installed (`command -v cland` shows where).
+For the install script with its default prefix, remove both the command and the
+installation directory:
+
+```sh
+rm ~/.local/bin/cland
+rm -rf ~/.local/lib/cland
+```
+
+For a custom `PREFIX`, remove `<prefix>/bin/cland` and `<prefix>/lib/cland/`
+instead. `command -v cland` shows the command path. The script uses npm's shared
+cache (normally `~/.npm/`); that cache is shared with other Node tools.
 
 Remove cland from a project:
 

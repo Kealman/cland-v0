@@ -2,11 +2,33 @@
 
 ## Start a project with cland
 
-You need Node 24 and Git. Install cland from the release checkout:
+You need Node >=24.13.0 <25, npm, Git, curl and tar. On Linux and macOS without
+Homebrew, install the latest stable released tag:
 
 ```sh
-git clone --depth 1 --branch v0.1.4 https://github.com/Kealman/cland-v0.git ~/.local/share/cland && npm --prefix ~/.local/share/cland ci && npm install -g ~/.local/share/cland
+curl -fsSL https://cland.app/install.sh | sh
 ```
+
+The POSIX installer in `site/public/install.sh` discovers stable tags with
+`git ls-remote --tags --refs`, downloads a tag's source from codeload, and works
+in a staging directory. It runs `npm ci --include=dev --ignore-scripts`,
+`npm run build`, then `npm prune --omit=dev --ignore-scripts`; it does not install
+the test browser. The build-time lockfile and its mtime are restored after prune
+so doctor keeps accepting the web build receipt. The resulting source, runtime
+dependencies and `web/dist` live
+in `~/.local/lib/cland`, with `~/.local/bin/cland` linked to the CLI. Rerun to
+update. No sudo is used; failed downloads/builds retain the old installation.
+Interrupted publication restores the previous install; a failed restore reports
+the preserved backup path. Signal cleanup retains staging while build children
+may still be unwinding.
+
+`PREFIX` chooses another writable absolute prefix; `CLAND_VERSION=vX.Y.Z` pins a
+released tag and skips discovery. `CLAND_RELEASE_URL` accepts an HTTPS or file URL
+to an equivalent source tarball (used by sealed offline tests). `sh install.sh
+--help` lists these inputs. See the [install docs](../site/src/content/docs/docs/install.md)
+for PATH and removal instructions. `cland release` needs no asset-upload change:
+it must continue publishing stable `vX.Y.Z` tags containing the lockfile, build
+sources and executable `hub/bin/cland.ts`.
 
 In your project folder, initialise cland:
 
@@ -15,7 +37,7 @@ cd /path/to/your-project
 cland init
 ```
 
-Use an empty folder or a full clone of an existing project. A shallow project clone is refused: the territory needs the full history. The shallow checkout above installs cland itself.
+Use an empty folder or a full clone of an existing project. A shallow project clone is refused: the territory needs the full history.
 
 Then run setup in that same project folder:
 
@@ -113,8 +135,9 @@ Message Markdown uses the pure token parser in `web/src/markdown.ts`; renderers
 create elements from its tokens. Web typecheck rejects named raw-HTML sinks
 (`dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`) with
 seeded source fixtures. See [Message Markdown](../web/README.md#message-markdown).
-Keep development dependencies installed: the prepare hook needs Vite even for a
-release checkout. Root `npm install` builds `web/dist` through `prepare`. Verification's `npm run check`
+Keep development dependencies installed in development checkouts: the prepare hook
+needs Vite. The install script builds before pruning them. Root `npm install`
+builds `web/dist` through `prepare`. Verification's `npm run check`
 runs the shared strict typecheck, builds the bundle, then static/test lint, on local
 and remote executors. Remote `verification.prepare` still handles dependencies
 and Neovim; it is not the local bundle build hook. `web/dist` stays ignored.
