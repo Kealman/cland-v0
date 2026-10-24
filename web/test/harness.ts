@@ -32,12 +32,11 @@ export async function pageUntil(page: Page, predicate: () => boolean, what: stri
   assert.equal(await page.evaluate(predicate), true, what);
 }
 
-/** Drive paused retry timers without racing real socket I/O or the handshake. */
+/** Drive paused retries; the enclosing test timeout bounds the real Live receipt. */
 export async function reconnectUntilLive(page: Page): Promise<void> {
   const live = () => document.querySelector('[aria-label="Hub connection"]')?.textContent?.trim() === 'Live';
   let advanced = 0;
-  await until(async () => {
-    if (await page.evaluate(live)) return true;
+  while (!await page.evaluate(live)) {
     // The retry cap is 10 s and the handshake deadline is 5 s. Never
     // advance beyond that ceiling, even while awaiting the final real receipt.
     if (advanced < 15_000) {
@@ -48,10 +47,9 @@ export async function reconnectUntilLive(page: Page): Promise<void> {
     // before advancing again, so a slow connection gets time to complete.
     const pollDeadline = performance.now() + 100;
     do {
-      if (await page.evaluate(live)) return true;
+      if (await page.evaluate(live)) break;
     } while (performance.now() < pollDeadline);
-    return false;
-  }, { what: 'fake-clock hub reconnect is Live', timeoutMs: 15_000 });
+  }
   assert.equal(await page.evaluate(live), true, 'fake-clock hub reconnect is Live');
 }
 
