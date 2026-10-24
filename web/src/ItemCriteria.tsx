@@ -6,6 +6,7 @@ import s from './ItemCriteria.module.css';
 // The card reads criterion details only when opened, through task.view.
 type Criterion = { id: string | null; text: string; checked: boolean; marks: Array<{ kind: string; by: string }> };
 type CriteriaView = { item: { criteria: Criterion[] } };
+type CriterionOp = 'add' | 'edit' | 'remove' | 'done' | 'normalize';
 
 export function ItemCriteria({ item, connection, readOnly = false }: { item: ExplorerSummary; connection: ConnectionState; readOnly?: boolean }) {
   const id = item.id;
@@ -25,7 +26,7 @@ export function ItemCriteria({ item, connection, readOnly = false }: { item: Exp
     }, reason => { if (!cancelled && request === serial.current) setError(String(reason)); });
     return () => { cancelled = true; };
   }, [id, item, open, command, connection.live]);
-  const mutate = async (op: 'add' | 'edit' | 'remove' | 'done', criterion?: string, draft?: string) => {
+  const mutate = async (op: CriterionOp, criterion?: string, draft?: string) => {
     if (readOnly || busy || !connection.live || !command) return false;
     if (draft !== undefined && (!draft.trim() || /[\r\n]|^\s*C[1-9]\d*\./.test(draft))) {
       setError('Use one line of criterion text without a Ck. label'); return false;
@@ -47,9 +48,12 @@ export function ItemCriteria({ item, connection, readOnly = false }: { item: Exp
         ? <div key={criterion.id ?? index} className={s.row}><span>{criterion.checked ? '✓' : '○'} {criterion.id} {criterion.text}</span></div>
         : criterion.id
         ? <CriterionRow key={criterion.id} criterion={criterion} id={criterion.id} disabled={busy || !connection.live} mutate={mutate} />
-        : <div key={`legacy:${index}`} data-criterion-legacy className={s.row} title="This criterion has no persisted id. Add a criterion here or use task.criterion in the CLI to assign ids before editing.">
+        : <div key={`legacy:${index}`} data-criterion-legacy className={s.row} title="This criterion has no persisted id. Assign ids in edit mode or with the CLI normalize operation before editing it here.">
           <small>No id</small><span>{criterion.checked ? '✓' : '○'} {criterion.text}</span>
         </div>) : <span>Loading…</span>}
+      {!readOnly && !!criteria?.some(criterion => !criterion.id) && <div className={s.normalize}>
+        <button type="button" data-criteria-normalize disabled={busy || !connection.live} title="Assign stable ids to the criteria that have none; their text and marks stay as they are." onClick={() => { void mutate('normalize'); }}>Assign ids</button>
+      </div>}
       {!readOnly && <form className={s.add} onSubmit={event => { event.preventDefault(); void mutate('add', undefined, text).then(ok => { if (ok) setText(''); }); }}>
         <label>New criterion<input aria-label="New criterion" value={text} onChange={event => setText(event.target.value)} disabled={busy || !connection.live} /></label>
         <button disabled={busy || !connection.live || !criteria || !text.trim()}>Add criterion</button>
@@ -59,7 +63,7 @@ export function ItemCriteria({ item, connection, readOnly = false }: { item: Exp
   </section>;
 }
 
-function CriterionRow({ criterion, id, disabled, mutate }: { criterion: Criterion; id: string; disabled: boolean; mutate: (op: 'add' | 'edit' | 'remove' | 'done', id?: string, text?: string) => Promise<boolean> }) {
+function CriterionRow({ criterion, id, disabled, mutate }: { criterion: Criterion; id: string; disabled: boolean; mutate: (op: CriterionOp, id?: string, text?: string) => Promise<boolean> }) {
   const [draft, setDraft] = useState<string>();
   const [saved, setSaved] = useState(false);
   const text = draft ?? criterion.text;

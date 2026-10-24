@@ -982,8 +982,9 @@ field and are never reused after removal. A done mark names `human`; it cannot
 be unchecked here. Opening the block reads `task.view` for the full criteria;
 item deltas refresh the open block. Failed writes retain drafts and show their
 reason in a tooltip; writes are disabled offline and never retried automatically.
-Legacy criteria without persisted ids are read-only; their tooltip explains
-that Add or a CLI criterion write assigns ids before they become editable.
+Legacy criteria without persisted ids are read-only; their tooltip explains the
+normalize path, and **Assign ids** sends `task.criterion` `normalize` so they
+become editable without an add.
 Labels, body, status, rank and all other item fields remain read-only in Items;
 labels and body are edited in Neovim. Messages and plan approval are separate actions.
 

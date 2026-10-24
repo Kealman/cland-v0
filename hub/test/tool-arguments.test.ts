@@ -21,7 +21,7 @@ test('criterion typos, missing op and invalid op are correctable validation erro
     assert.equal(result.ok, false);
     assert.equal(result.code, 'invalid_argument', JSON.stringify(result));
     assert.match(String(result.reason), /op/);
-    for (const value of ['done', 'verify', 'fail', 'add', 'edit', 'remove']) assert.ok(String(result.reason).includes(value));
+    for (const value of ['done', 'verify', 'fail', 'add', 'edit', 'remove', 'normalize']) assert.ok(String(result.reason).includes(value));
     if ('action' in args) assert.match(String(result.reason), /action/);
     if ('operation' in args) assert.match(String(result.reason), /operation/);
   }

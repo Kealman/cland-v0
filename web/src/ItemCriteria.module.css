@@ -1,6 +1,8 @@
 .block { margin-top: 20px; }
 .block h3 button { border: 0; padding: 4px 0; background: none; color: var(--text-soft); text-transform: uppercase; }
 .row, .add { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+.normalize { display: flex; justify-content: flex-start; margin: 12px 0; }
+.normalize button { padding: 4px 8px; border: 1px solid var(--control-border); background: var(--control); color: var(--text); }
 .row label, .add label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-soft); }
 .block input { min-width: 0; padding: 6px; border: 1px solid var(--control-border); background: var(--control); color: var(--text); }
 .actions { display: flex; gap: 8px; align-items: center; }

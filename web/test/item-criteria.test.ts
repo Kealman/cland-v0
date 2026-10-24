@@ -28,6 +28,8 @@ test('criteria edits on the card', async t => {
     }, '## Summary\n\nKeep summary.\n\n## Details\n\nKeep agents text.\n\n## Acceptance criteria\n\n- [ ] C1. First boundary\n- [ ] C2. Second boundary\n- [ ] C3. Third boundary');
     for (const [id, sequence] of [['T-900004', 1], ['T-900005', 12]] as const) await seedItem(root, id, 'task', 'Legacy criteria', { criterion_seq: sequence },
       '## Acceptance criteria\n\n- [ ] Legacy boundary\n- [x] C1. Stable keeper\n  - done: keeper · 2026-10-20T12:00:00Z');
+    await seedItem(root, 'T-900006', 'task', 'Normalize criteria', { criterion_seq: 4 },
+      '## Acceptance criteria\n\n- [ ] Legacy boundary\n- [x] C1. Stable keeper\n  - done: keeper · 2026-10-20T12:00:00Z\n- [ ] Another legacy');
   } });
   const view = async (id: string) => {
     const reply = await cland(fixture.root, 'task', 'view', id, '--json');
@@ -124,6 +126,38 @@ test('criteria edits on the card', async t => {
       assert.deepEqual(current[0], keeper, 'edit/done/remove leave the explicit row text, marks and identity untouched');
     }
   }));
+  await t.test('legacy criteria become editable after assigning ids on the card', async t => {
+    const sent: Record<string, unknown>[] = [];
+    await fixture.pageCase(t, async page => {
+      const before = (await view('T-900006')).criteria;
+      assert.deepEqual(before.map(c => c.id), [null, 'C1', null]);
+      const card = await openCriteria(page, 'T-900006');
+      const legacy = card.locator('[data-criterion-legacy]');
+      const legacyRendered = legacy.first().waitFor();
+      void legacyRendered.catch(() => {});
+      await legacyRendered;
+      assert.equal(await legacy.count(), 2, 'the id-less rows wait for normalization');
+      assert.equal(await card.getByLabel('Criterion C5', { exact: true }).count(), 0);
+      const assign = card.getByRole('button', { name: 'Assign ids', exact: true });
+      assert.equal(await assign.getAttribute('title'), 'Assign stable ids to the criteria that have none; their text and marks stay as they are.');
+      const editable = pageUntil(page, () => document.querySelectorAll('[data-criterion-legacy]').length === 0
+        && document.querySelector('input[aria-label="Criterion C5"]') !== null
+        && document.querySelector('input[aria-label="Criterion C6"]') !== null, 'both assigned criteria are editable inputs');
+      void editable.catch(() => {});
+      await assign.click();
+      await editable;
+      assert.deepEqual((await view('T-900006')).criteria.map(c => [c.id, c.text]), [['C5', 'Legacy boundary'], ['C1', 'Stable keeper'], ['C6', 'Another legacy']]);
+      assert.deepEqual((await view('T-900006')).criteria[1]!.marks, before[1]!.marks, 'normalization keeps the explicit row marks');
+      await card.getByLabel('Criterion C6', { exact: true }).fill('Edited after normalization');
+      const saved = card.locator('[data-criterion-id="C6"]').getByRole('status').waitFor();
+      void saved.catch(() => {});
+      await card.getByRole('button', { name: 'Save C6', exact: true }).click();
+      await saved;
+      assert.deepEqual((await view('T-900006')).criteria.map(c => [c.id, c.text]), [['C5', 'Legacy boundary'], ['C1', 'Stable keeper'], ['C6', 'Edited after normalization']]);
+      assert.equal(sent.filter(frame => frame.type === 'task.criterion' && frame.item === 'T-900006' && frame.op === 'add').length, 0, 'no add was needed to edit');
+      assert.equal(sent.filter(frame => frame.type === 'task.criterion' && frame.item === 'T-900006' && frame.op === 'normalize').length, 1);
+    }, page => { page.on('websocket', socket => socket.on('framesent', event => sent.push(JSON.parse(String(event.payload))))); });
+  });
   await t.test('C2 done is recorded as the human', async t => fixture.pageCase(t, async page => {
     const card = await openCriteria(page, 'T-900002');
     const marked = pageUntil(page, () => document.querySelector('[data-criterion-id="C1"]')?.textContent?.includes('human') === true, 'human done receipt rendered');

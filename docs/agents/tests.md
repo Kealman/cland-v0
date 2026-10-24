@@ -1808,6 +1808,10 @@ The T0 `lint-web-workspace.ts` guard rejects raw same-time install/pause pairs,
 including pairs separated by comments or other statements; already-ahead pauses
 remain valid. Keep existing DOM and socket receipts before advancing paused time.
 
+## Criterion write fixtures
+
+See [hub/test/tracker-criterion-write.test.ts](tests/hub-test-tracker-criterion-write.test.ts.md) and the [per-test index](tests/index.md).
+
 ## Human marks fixtures
 
 See [hub/test/human-marks.test.ts](tests/hub-test-human-marks.test.ts.md) and the [per-test index](tests/index.md).

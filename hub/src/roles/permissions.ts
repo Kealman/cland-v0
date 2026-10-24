@@ -10,7 +10,7 @@
 //   task.claim:own       claim or release only the session's own item
 //   task.criterion:done   done (claimant Implementer, Coordinator or Aide)
 //   task.criterion:verify verify or fail (Reviewer or QA)
-//   task.criterion:manage add, edit or remove (Coordinator or Aide)
+//   task.criterion:manage add, edit, remove or normalize (Coordinator or Aide)
 //   task.edit:review     set only review on the Implementer's claimed item, with no other edits
 //   task.comment:own     plain comments (not verdicts) only on the session's own item
 //   task.comment:verdict verdict comments (the verdict header: verdict, result, run) on any item

@@ -113,6 +113,85 @@ test('add edit remove retain unrelated prose and never reuse an id after restart
   assert.match(await readFile(join(root, final.path), 'utf8'), /criterion_seq: 10/);
 });
 
+test('normalize assigns ids in body order above criterion_seq and keeps text and marks', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  const created = ((await ui.request({ size: 'M', type: 'task.create', title: 'Normalize legacy', body: '## Acceptance criteria\n\n- [ ] Legacy first\n- [x] C3. Stable keeper\n  - done: keeper · 2026-10-20T12:00:00Z\n- [ ] Legacy third\n\n## Notes\nKeep this.' })).value as { item: ItemView }).item;
+  const path = join(root, created.path);
+  await writeFile(path, (await readFile(path, 'utf8')).replace(/^state:/m, 'criterion_seq: 12\nstate:'));
+  const before = ((await ui.request({ type: 'task.view', item: created.id })).value as { item: ItemView }).item.criteria;
+  assert.deepEqual(before.map(c => c.id), [null, 'C3', null]);
+  const normalized = await value<{ item: ItemView }>(ui, { type: 'task.criterion', item: created.id, op: 'normalize' });
+  assert.deepEqual(normalized.item.criteria.map(c => [c.id, c.text, c.checked]), [
+    ['C13', 'Legacy first', false], ['C3', 'Stable keeper', true], ['C14', 'Legacy third', false],
+  ]);
+  assert.deepEqual(normalized.item.criteria[1]!.marks, before[1]!.marks, 'normalize keeps the existing criterion marks');
+  const text = await readFile(path, 'utf8');
+  assert.ok(text.includes('- [ ] C13. Legacy first\n- [x] C3. Stable keeper\n  - done: keeper · 2026-10-20T12:00:00Z\n- [ ] C14. Legacy third'), text);
+  assert.match(text, /criterion_seq: 14/);
+  assert.ok(text.includes('## Notes\nKeep this.'), 'normalize leaves unrelated prose alone');
+  const cli = await cland(root, 'task', 'criterion', created.id, 'normalize', '--json');
+  assert.equal(cli.code, 0, cli.stderr);
+  const again = (JSON.parse(cli.stdout) as { item: ItemView }).item;
+  assert.deepEqual(again.criteria.map(c => c.id), ['C13', 'C3', 'C14']);
+  assert.equal(await readFile(path, 'utf8'), text, 'a second normalize writes nothing');
+  assert.equal(again.updated, normalized.item.updated, 'a second normalize leaves the item untouched');
+});
+
+test('normalize is a no-op on an item whose criteria all have ids', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  const created = ((await ui.request({ size: 'M', type: 'task.create', title: 'Identified', body: '## Acceptance criteria\n\n- [ ] C1. First\n- [x] C2. Second\n  - done: keeper · 2026-10-20T12:00:00Z' })).value as { item: ItemView }).item;
+  const path = join(root, created.path);
+  const bytes = await readFile(path, 'utf8');
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  onCleanup(t, () => coord.close());
+  const normalized = await coord.call<{ item: ItemView }>('task.criterion', { id: created.id, op: 'normalize' });
+  assert.deepEqual(normalized.item.criteria.map(c => [c.id, c.text, c.checked]), [['C1', 'First', false], ['C2', 'Second', true]]);
+  assert.equal(await readFile(path, 'utf8'), bytes, 'no id, text, mark or criterion_seq change');
+  assert.equal(normalized.item.updated, created.updated, 'no write and no updated timestamp');
+});
+
+test('normalize leaves an id-complete hand-written noncanonical file byte for byte', async t => {
+  const root = await tempProject(t);
+  const raw = [
+    '---',
+    'title: "Hand written, quoted"',
+    'id: T-1',
+    'kind: task',
+    'state: open',
+    'status: backlog',
+    'criterion_seq: 2',
+    'created: 2026-10-01T00:00:00Z',
+    'updated: 2026-10-01T00:00:00Z',
+    '---',
+    '',
+    '## Acceptance criteria',
+    '',
+    '- [ ] C1. Kept first   ',
+    '- [x] C2. Kept second',
+    '  - done: keeper · 2026-10-02T00:00:00Z',
+    '',
+    '## Notes',
+    '',
+    'Trailing spaces stay   ',
+    '',
+    '',
+  ].join('\n');
+  const path = join(root, '.cland/tasks/T-1-hand-written.md');
+  await files.mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(path, raw);
+  await projectHub(t, root);
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  onCleanup(t, () => coord.close());
+  const normalized = await coord.call<{ item: ItemView }>('task.criterion', { id: 'T-1', op: 'normalize' });
+  assert.deepEqual(normalized.item.criteria.map(c => [c.id, c.checked]), [['C1', false], ['C2', true]]);
+  assert.equal(await readFile(path, 'utf8'), raw, 'serialization style, trailing spaces and marks stay untouched');
+  assert.equal(normalized.item.updated, '2026-10-01T00:00:00Z', 'no assigned id means no write and no updated bump');
+});
+
 test('each role is limited to its criterion operations and done requires a live claim', async t => {
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
@@ -127,9 +206,9 @@ test('each role is limited to its criterion operations and done requires a live 
       await spoke.waitForPresence([name]);
       assert.equal((await ui.request({ type: 'role.clear', session: name })).ok, true);
     }
-    for (const op of ['done', 'verify', 'fail', 'add', 'edit', 'remove']) {
-      const shouldAllow = role === 'coordinator' || role === 'aide' ? ['done', 'add', 'edit', 'remove'].includes(op) : role === 'reviewer' || role === 'qa' ? ['verify', 'fail'].includes(op) : false;
-      const result = await call<{ ok?: boolean; code?: string; reason?: string; item?: ItemView }>(ui, name, `cli:${name}`, 'task.criterion', { id: item.id, op, criterion: ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item.criteria[0]!.id, run: 'r-1', note: 'Failed', text: 'First' });
+    for (const op of ['done', 'verify', 'fail', 'add', 'edit', 'remove', 'normalize']) {
+      const shouldAllow = role === 'coordinator' || role === 'aide' ? ['done', 'add', 'edit', 'remove', 'normalize'].includes(op) : role === 'reviewer' || role === 'qa' ? ['verify', 'fail'].includes(op) : false;
+      const result = await call<{ ok?: boolean; code?: string; reason?: string; item?: ItemView }>(ui, name, `cli:${name}`, 'task.criterion', { id: item.id, op, ...(op === 'normalize' ? {} : { criterion: ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item.criteria[0]!.id }), run: 'r-1', note: 'Failed', text: 'First' });
       if (shouldAllow) {
         assert.ok(result.item, `${role} ${op}: ${JSON.stringify(result)}`);
         if (op === 'remove') assert.equal((await ui.request({ type: 'task.criterion', item: item.id, op: 'add', text: 'First' })).ok, true);

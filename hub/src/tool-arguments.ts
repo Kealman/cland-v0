@@ -59,7 +59,7 @@ export function validateToolArguments(tool: string, args: Record<string, unknown
     if (args.op !== 'set' && args.allow_large !== undefined) throw new InvalidArgument('allow_large is only for task.plan set');
   }
   if (tool === 'task.criterion') {
-    if (args.op !== 'add' && !/^C[1-9]\d*$/.test(String(args.criterion ?? ''))) throw new InvalidArgument('criterion must be an id such as C1');
+    if (args.op !== 'add' && args.op !== 'normalize' && !/^C[1-9]\d*$/.test(String(args.criterion ?? ''))) throw new InvalidArgument('criterion must be an id such as C1');
     if (args.op === 'verify' && !/^\S+$/.test(String(args.run ?? ''))) throw new InvalidArgument('verify needs a run id (no whitespace)');
     if (args.op === 'fail' && (!(args.note as string | undefined)?.trim() || /[\r\n]/.test(args.note as string))) throw new InvalidArgument('fail needs a note (one line)');
     if (['add', 'edit'].includes(args.op as string) && !(args.text as string | undefined)?.trim()) throw new InvalidArgument(`${args.op} needs criterion text`);

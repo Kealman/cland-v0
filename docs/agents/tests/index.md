@@ -43,6 +43,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/spoke-artifact-budget.test.ts`](../../../hub/test/spoke-artifact-budget.test.ts) | [Notes](hub-test-spoke-artifact-budget.test.ts.md) |
 | [`hub/test/stage-qa.test.ts`](../../../hub/test/stage-qa.test.ts) | [Notes](hub-test-stage-qa.test.ts.md) |
 | [`hub/test/tracker-summary.test.ts`](../../../hub/test/tracker-summary.test.ts) | [Notes](hub-test-tracker-summary.test.ts.md) |
+| [`hub/test/tracker-criterion-write.test.ts`](../../../hub/test/tracker-criterion-write.test.ts) | [Notes](hub-test-tracker-criterion-write.test.ts.md) |
 | [`hub/test/startup-ready-component.test.ts`](../../../hub/test/startup-ready-component.test.ts) | [Notes](hub-test-startup-ready-component.test.ts.md) |
 | [`hub/test/startup-replies-scale.test.ts`](../../../hub/test/startup-replies-scale.test.ts) | [Notes](hub-test-startup-replies-scale.test.ts.md) |
 | [`hub/test/suite-duration-budget.test.ts`](../../../hub/test/suite-duration-budget.test.ts) | [Notes](hub-test-suite-duration-budget.test.ts.md) |

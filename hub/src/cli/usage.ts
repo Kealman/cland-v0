@@ -112,6 +112,8 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [-
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
   task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
   task criterion <id> add <text>
+  task criterion <id> normalize       assign ids above criterion_seq to every id-less criterion,
+                  in list order; text and marks stay as they are, and an item with ids is unchanged.
                   web card: e on Criteria opens one-line text fields without the Ck. label; done records human.
                   claimant: mark every criterion done before the final review; ready needs done and verified.
                   uncontested writes leave no .conflict; a concurrent save refusal names its recovery source.

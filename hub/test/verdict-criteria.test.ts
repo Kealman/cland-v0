@@ -61,7 +61,8 @@ test('not-clear QA verdicts fail criteria with notes, reopen and persist the rep
   const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'qa-1', role: 'qa' });
   t.after(() => qa.close());
   for (const criterion of ['C1', 'C2']) await ui.request({ type: 'task.criterion', item: item.id, op: 'done', criterion });
-  await qa.call('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'qa-pass', verified: 'all' });
+  const passed = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'qa-pass', verified: 'all' });
+  assert.equal(passed.ok, true, passed.error);
   await ui.request({ type: 'task.close', item: item.id });
   const failed = await qa.call<{ ok: boolean; item: ItemView }>('task.comment', { id: item.id, verdict: 'qa', result: 'not clear', run: 'qa-fail', failed: [{ criterion: 'C2', note: 'Reconnect drops the clause', op: 'remove' }] });
   assert.equal(failed.ok, true);

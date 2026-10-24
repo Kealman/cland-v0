@@ -117,9 +117,9 @@ export function criterionRefusal(op: unknown, actor: { role: string | null; huma
     ? null : 'done requires the live claimant Implementer, Coordinator, Aide or human';
   if (op === 'verify' || op === 'fail') return !actor.human && (actor.role === 'reviewer' || actor.role === 'qa')
     ? null : 'verify and fail require Reviewer or QA';
-  if (op === 'add' || op === 'edit' || op === 'remove') return actor.human || actor.role === 'coordinator' || actor.role === 'aide'
-    ? null : 'add, edit and remove require Coordinator, Aide or human';
-  return 'criterion operation must be done, verify, fail, add, edit or remove';
+  if (op === 'add' || op === 'edit' || op === 'remove' || op === 'normalize') return actor.human || actor.role === 'coordinator' || actor.role === 'aide'
+    ? null : 'add, edit, remove and normalize require Coordinator, Aide or human';
+  return 'criterion operation must be done, verify, fail, add, edit, remove or normalize';
 }
 
 /** Exact-build evidence: legacy marks without a commit remain readable but cannot verify a build. */

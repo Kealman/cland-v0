@@ -2564,7 +2564,7 @@ export class Tracker {
   }
 
   /** Called only with the tracker queue held: always read the latest committed file. */
-  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, skipUnchanged = false, planReason?: string): Promise<ItemView> {
+  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, skipUnchanged = false, planReason?: string, unchanged?: () => boolean): Promise<ItemView> {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let fd: FileHandle;
@@ -2599,7 +2599,9 @@ export class Tracker {
             if (landed) throw new TrackerError(`${id} is already merged: create a follow-up task with cland task create "<title>"${item.fm.parent ? ` --parent ${item.fm.parent}` : ''}; reference ${id} in its body`);
           });
         } : beforeRename;
-        if (skipUnchanged && serializeItem(item) === text) return Promise.resolve(item);
+        // skipUnchanged compares bytes; unchanged is the caller's semantic answer, so a valid hand-written
+        // file keeps its own frontmatter style, trailing spaces and updated timestamp when nothing changes.
+        if ((skipUnchanged && serializeItem(item) === text) || unchanged?.()) return Promise.resolve(item);
         item.fm.updated = this.#now().toISOString();
         return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, prepare, actor, planReason);
       });
@@ -2838,7 +2840,7 @@ export class Tracker {
         if (sha) v.commit = sha;
       }
       if (marking) {
-        const criteria = this.#prepareCriteria(item).criteria;
+        const criteria = this.#prepareCriteria(item).parsed.criteria;
         const verified = input?.verified === 'all' ? criteria.map(c => c.id!) : input?.verified?.split(',') ?? [];
         for (const id of new Set(verified)) {
           this.#changeCriterion(item, actor, { op: 'verify', criterion: id, run: v!.run, ...(v!.commit ? { commit: v!.commit } : {}) });
@@ -2857,7 +2859,7 @@ export class Tracker {
       }
     }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(this.#referenceId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined, beforeRename);
     return resumed(() => {
-      for (const c of marked) this.#criterionEvent(view.id, c.id, c.mark);
+      for (const c of marked) this.#criterionEvent(view.id, `criterion marked ${c.id} ${c.mark}`);
       // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
       // as one (its header lines), so every verdict on record is a notification
       const recorded = view.comments.at(-1)?.verdict;
@@ -3040,39 +3042,43 @@ export class Tracker {
     }, resumed, { operation: 'edit', item: this.#referenceId(rawId) ?? rawId });
   }
 
-  #criterionEvent(id: string, criterion: string, mark: string): void {
+  #criterionEvent(id: string, text: string): void {
     for (const listener of [...this.#changeListeners]) {
-      try { listener({ id, item: this.summary(id), events: [`criterion marked ${criterion} ${mark}`] }); }
+      try { listener({ id, item: this.summary(id), events: [text] }); }
       catch (err) { this.#log({ event: 'task-listener-error', id, error: String(err) }); }
     }
   }
 
-  #prepareCriteria(item: Item) {
+  #prepareCriteria(item: Item, repairSequence = true): { parsed: ReturnType<typeof criteriaSource>; assigned: string[] } {
     if (item.fm.kind !== 'task' && !this.ladder.containers.includes(item.fm.kind)) throw new TrackerError('criteria operations require a task or container');
-    const parsed = criteriaSource(item.body, this.ladder.containers.includes(item.fm.kind));
-    if (parsed.criteriaWarnings.length) throw new TrackerError('fix malformed criterion sub-items before changing criteria');
-    const ids = parsed.criteria.flatMap(c => c.id ? [c.id] : []);
+    const source = criteriaSource(item.body, this.ladder.containers.includes(item.fm.kind));
+    if (source.criteriaWarnings.length) throw new TrackerError('fix malformed criterion sub-items before changing criteria');
+    const ids = source.criteria.flatMap(c => c.id ? [c.id] : []);
     if (new Set(ids).size !== ids.length) throw new TrackerError('duplicate criterion ids; fix the section first');
+    // Normalize only assigns missing ids: an item that has them all is untouched, criterion_seq included.
+    if (!repairSequence && !source.criteria.some(c => !c.id)) return { parsed: source, assigned: [] };
     let sequence = Math.max(item.fm.criterion_seq ?? 0, ...ids.map(id => Number(id.slice(1))));
+    const assigned: string[] = [];
     const allocate = () => {
       sequence++;
       if (!Number.isSafeInteger(sequence)) throw new TrackerError('criterion ids exhausted');
       return `C${sequence}`;
     };
     const lines = item.body.split(/\r?\n/);
-    for (const [index, c] of parsed.criteria.entries()) {
+    for (const [index, c] of source.criteria.entries()) {
       if (c.id) continue;
       c.id = allocate();
-      const source = parsed.sources[index]!;
-      lines[source.start] = lines[source.start]!.replace(/^( *[-*+] \[[ xX]\])(?:[ \t]+)?/, `$1 ${c.id}. `);
+      assigned.push(c.id);
+      const at = source.sources[index]!;
+      lines[at.start] = lines[at.start]!.replace(/^( *[-*+] \[[ xX]\])(?:[ \t]+)?/, `$1 ${c.id}. `);
     }
     item.fm.criterion_seq = sequence;
     item.body = lines.join('\n');
-    return criteriaSource(item.body, this.ladder.containers.includes(item.fm.kind));
+    return { parsed: criteriaSource(item.body, this.ladder.containers.includes(item.fm.kind)), assigned };
   }
 
   #changeCriterion(item: Item, actor: Actor, input: { op: string; criterion?: string; text?: string; note?: string; run?: string; commit?: string }): string {
-    const parsed = this.#prepareCriteria(item);
+    const { parsed } = this.#prepareCriteria(item);
     if (input.op === 'add' && parsed.insertionInFence) throw new TrackerError('cannot add a criterion inside an unclosed Markdown code fence; close the fence first');
     const lines = item.body.split(/\r?\n/);
     const id = item.fm.id;
@@ -3127,7 +3133,7 @@ export class Tracker {
         if (reason) throw new TrackerError(reason);
       };
       check();
-      if (input.op !== 'add' && !/^C[1-9]\d*$/.test(input.criterion ?? '')) throw new TrackerError('criterion must be an id such as C1');
+      if (input.op !== 'add' && input.op !== 'normalize' && !/^C[1-9]\d*$/.test(input.criterion ?? '')) throw new TrackerError('criterion must be an id such as C1');
       if (input.op === 'verify' && !/^\S+$/.test(input.run ?? '')) throw new TrackerError('verify needs a run id (no whitespace)');
       if (input.op === 'fail' && (!input.note?.trim() || /[\r\n]/.test(input.note))) throw new TrackerError('fail needs a note (one line)');
       if (input.op === 'add' || input.op === 'edit') {
@@ -3144,11 +3150,15 @@ export class Tracker {
         }
       }
       let criterion = input.criterion!;
+      let assigned: string[] = [];
       const view = await this.#mutate(id, actor, 'criterion', item => {
-        criterion = this.#changeCriterion(item, actor, { ...input, ...(commit ? { commit } : {}) });
-      }, resumed, undefined, check);
+        if (input.op === 'normalize') assigned = this.#prepareCriteria(item, false).assigned;
+        else criterion = this.#changeCriterion(item, actor, { ...input, ...(commit ? { commit } : {}) });
+      }, resumed, undefined, check, undefined, undefined, false, undefined, input.op === 'normalize' ? () => assigned.length === 0 : undefined);
       return resumed(() => {
-        this.#criterionEvent(id, criterion, input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op);
+        if (input.op === 'normalize') {
+          if (assigned.length) this.#criterionEvent(id, `criteria normalized ${assigned.join(', ')}`);
+        } else this.#criterionEvent(id, `criterion marked ${criterion} ${input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op}`);
         return view;
       });
     }, resumed, { operation: 'criterion', item: this.#referenceId(rawId) ?? rawId });
