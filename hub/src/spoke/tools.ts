@@ -45,7 +45,7 @@ const BASE_TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        to: { ...sendToSchema, description: 'string | string[]: one recipient string or an array of strings. Session names, globs, roles, `all` or `lead T-<n>` (the nearest lead up the open item chain, skipping the sender’s own claims, then Coordinator); omit or use [] to write to the human. Malformed values are validation errors.' },
+        to: { ...sendToSchema, description: 'string | string[]: one recipient string or an array of strings. Session names, globs, roles, `all` or `lead T-<n>` (the nearest lead up the open item chain, skipping the sender’s own claims, then the Coordinator; a closed item has no lead and resolves to the Coordinator); omit or use [] to write to the human. Malformed values are validation errors.' },
         text: { type: 'string', description: 'The message' },
         kind: { type: 'string', enum: SEND_KINDS, description: 'progress waits for the next turn in a digest; report (default), question and decision start a turn' },
         request: { type: 'string', enum: ['review', 'qa', 'handover'], description: 'Required with kind request, addressed only to the human; any session may send one' },

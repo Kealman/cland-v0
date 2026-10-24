@@ -116,7 +116,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
     onCleanup(t, () => edge.close());
     const ui = await connectUi(t, { socket, secret: TEST_SECRET });
-    for (const [session, role] of [['first', 'implementer'], ['second', 'implementer'], ['rev', 'reviewer']]) {
+    for (const [session, role] of [['first', 'implementer'], ['second', 'implementer'], ['rev', 'reviewer'], ['coord', 'coordinator']]) {
       assert.equal((await ui.request({ type: 'role.set', session, role })).ok, true);
     }
     const made = await ui.request({ size: 'M', type: 'task.create', title: 'Deferred lead', assignee: 'first' });
@@ -126,7 +126,9 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'first' } })).ok, true);
     const rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
     onCleanup(t, () => rev.close());
-    await rev.waitForPresence(['rev']);
+    const coord = await inProcessSpoke(t, { hub, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    onCleanup(t, () => coord.close());
+    await rev.waitForPresence(['rev', 'coord']);
     const madeArtifact = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Review', topic, content: 'Review evidence' });
     assert.equal(madeArtifact.ok, true, madeArtifact.error);
     const artifact = (madeArtifact.value as { artifact: Artifact }).artifact;
@@ -144,12 +146,12 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     await recipient.waitForPresence([change === 'claim' ? 'second' : 'first', 'rev']);
     release();
     const sent = await sending;
-    assert.equal(sent.ok, change !== 'close', sent.error);
     const history = await ui.request({ type: 'topic.history', topic });
     const recorded = (history.value as { messages: Message[] }).messages.find(m => m.text === text);
     if (change === 'close') {
-      assert.match(sent.error!, new RegExp(`${item.id} is closed: address coordinator instead`));
-      assert.equal(recorded, undefined);
+      assert.equal(sent.ok, true, sent.error);
+      assert.deepEqual(recorded?.to, ['coord'], 'a closed item has no lead: the report goes to the Coordinator');
+      await coord.waitForEvent(e => e.params.content.includes(text));
     } else {
       assert.deepEqual(recorded?.to, [change === 'claim' ? 'second' : 'first']);
       await recipient.waitForEvent(e => e.params.content.includes(text));
@@ -304,7 +306,7 @@ test('a recorded lead recipient survives claim replacement and hub restart', asy
   assert.deepEqual(messages.find(m => m.text === 'second next turn')?.to, ['second']);
 });
 
-test('human @lead mentions reach the claimant, with explicit errors for closed, unknown and malformed items', async t => {
+test('human @lead mentions reach the claimant, a closed item falls to the Coordinator, and unknown or malformed items are refused', async t => {
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
@@ -327,6 +329,79 @@ test('human @lead mentions reach the claimant, with explicit errors for closed, 
   }
   await coord.call('task.close', { id: item.id });
   const closed = await ui.request({ type: 'topic.send', topic: 'general', text: `@lead ${item.id} late report` });
-  assert.equal(closed.ok, false);
-  assert.match(closed.error!, new RegExp(`${item.id} is closed: address coordinator instead`));
+  assert.equal(closed.ok, true, closed.error);
+  assert.deepEqual((closed.value as { message: Message }).message.to, ['coord']);
+  await coord.waitForEvent(e => e.params.content === `@lead ${item.id} late report`);
 });
+
+test('a question from a closed release topic reaches the Coordinator by role or literal name', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const qa = await inProcessSpoke(t, { cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => qa.close());
+  await qa.waitForPresence(['coord', 'qa-one']);
+  const { item: release } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Closed release', kind: 'release' });
+  const opened = await ui.request({ type: 'topic.create', title: 'Closed release topic', item: release.id });
+  assert.equal(opened.ok, true, opened.error);
+  const topic = (opened.value as { topic: { id: string } }).topic.id;
+  assert.equal((await ui.request({ type: 'task.close', item: release.id })).ok, true);
+  const closed = await ui.request({ type: 'topic.history', topic });
+  assert.equal((closed.value as { topic: { status: string } }).topic.status, 'closed', 'the release topic is closed before the send');
+
+  // the sender the issue named: a question to the role address from a closed release's topic
+  const byRole = await qa.call<{ ok: boolean; error?: string; outcomes: Array<{ to: string; outcome: string }> }>('send',
+    { to: ['coordinator'], topic, kind: 'question', text: 'preview id from the role address?' });
+  assert.equal(byRole.ok, true, JSON.stringify(byRole));
+  assert.deepEqual(byRole.outcomes, [{ to: 'coordinator', outcome: 'delivered' }]);
+  const roleEvent = await coord.waitForEvent(e => e.params.content.includes('preview id from the role address?'));
+  assert.equal(roleEvent.params.meta?.to, 'coord');
+
+  // the literal session name is an ordinary address, even in the same closed topic
+  const byName = await qa.call<{ ok: boolean; error?: string; outcomes: Array<{ to: string; outcome: string }> }>('send',
+    { to: ['coord'], topic, kind: 'question', text: 'preview id from the literal name?' });
+  assert.equal(byName.ok, true, JSON.stringify(byName));
+  assert.deepEqual(byName.outcomes, [{ to: 'coord', outcome: 'delivered' }]);
+  const nameEvent = await coord.waitForEvent(e => e.params.content.includes('preview id from the literal name?'));
+  assert.equal(nameEvent.params.meta?.to, 'coord');
+
+  const history = await ui.request({ type: 'topic.history', topic });
+  const messages = (history.value as { messages: Message[] }).messages;
+  assert.deepEqual(messages.find(m => m.text === 'preview id from the role address?')?.to, ['coord']);
+  assert.deepEqual(messages.find(m => m.text === 'preview id from the literal name?')?.to, ['coord']);
+  const reopened = await ui.request({ type: 'topic.history', topic });
+  assert.equal((reopened.value as { topic: { status: string } }).topic.status, 'waiting for agent', 'the question reopens the closed topic as an agent ask, never the release');
+  assert.equal(await okItemState(ui, release.id), 'closed');
+});
+
+test('a send to lead T-n for a closed item falls back to the Coordinator, not its old claimant', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const qa = await inProcessSpoke(t, { cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close()); onCleanup(t, () => qa.close());
+  await qa.waitForPresence(['coord', 'impl', 'qa-one']);
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Closed task', assignee: 'impl' });
+  assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: item.id })).ok, true);
+
+  const text = `post-release report ${item.id}`;
+  const sent = await qa.call<{ ok: boolean; error?: string; outcomes: Array<{ to: string; outcome: string }> }>('send',
+    { to: [`lead ${item.id}`], text });
+  assert.equal(sent.ok, true, JSON.stringify(sent));
+  assert.deepEqual(sent.outcomes, [{ to: `lead ${item.id}`, outcome: 'delivered' }]);
+  const delivered = await coord.waitForEvent(e => e.params.content.includes(text));
+  assert.equal(delivered.params.meta?.to, 'coord');
+  assert.equal(impl.events.some(e => e.params.content.includes(text)), false, 'the closed item\'s old claimant is not the lead');
+  const history = await ui.request({ type: 'topic.history', topic: 'agents' });
+  assert.deepEqual((history.value as { messages: Message[] }).messages.find(m => m.text === text)?.to, ['coord']);
+});
+
+async function okItemState(ui: Awaited<ReturnType<typeof connectUi>>, item: string): Promise<string> {
+  const view = await ui.request({ type: 'task.view', item });
+  assert.equal(view.ok, true, view.error);
+  return (view.value as { item: { state: string } }).item.state;
+}

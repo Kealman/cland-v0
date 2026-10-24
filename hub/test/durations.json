@@ -3384,7 +3384,7 @@
     "hub/test/item-lead.test.ts::attachment I/O resolves the item lead after the identity changes, immediately before recording": 0.060585,
     "hub/test/item-lead.test.ts::failed adoption preserves the renamed claimant across restart and releases the alias after interrupted cleanup": 0.208674,
     "hub/test/item-lead.test.ts::failed adoption preserves the renamed claimant across restart and releases the alias after normal cleanup": 0.203851,
-    "hub/test/item-lead.test.ts::human @lead mentions reach the claimant, with explicit errors for closed, unknown and malformed items": 0.140197,
+    "hub/test/item-lead.test.ts::human @lead mentions reach the claimant, a closed item falls to the Coordinator, and unknown or malformed items are refused": 0.140197,
     "hub/test/item-lead.test.ts::verdict events use the lead explicit subscription and QA reports use the same item address": 0.145936,
     "hub/test/journal-async.test.ts::Core journals released digest membership, message kinds and batch control transitions": 0.048406,
     "hub/test/journal-async.test.ts::SIGKILL loses accepted records still queued behind an unfinished append; a restart keeps completed lines": 0.165323,

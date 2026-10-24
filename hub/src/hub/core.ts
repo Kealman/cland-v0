@@ -1335,7 +1335,9 @@ export class HubCore {
     item = this.#items?.resolveId?.(item) ?? item;
     const found = this.#items?.lead(item);
     if (!found) throw new Error(`no item ${item}: address coordinator instead`);
-    if (found.state === 'closed') throw new Error(`${item} is closed: address coordinator instead`);
+    // A closed item has no lead left to address: `lead T-n` falls through to the Coordinator (null),
+    // rather than refusing the whole send and stranding a report from the item's own topic.
+    if (found.state === 'closed') return null;
     // Reports from a node's own lead climb to the next lead. Other senders address
     // the nearest owner, including inherited ownership for unclaimed descendants.
     const nodes = this.#items?.get ? new Map((this.#items.ancestry?.(item) ?? [item]).flatMap(id => { const node = this.#items?.get?.(id); return node ? [[node.id, node] as const] : []; })) : this.#defaultItemSet();
