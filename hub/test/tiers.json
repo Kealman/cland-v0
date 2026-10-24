@@ -474,6 +474,8 @@
     "hub/test/territory-lock.test.ts": "T3",
     "hub/test/test-admission-outcome.test.ts": "T1",
     "hub/test/test-admission.test.ts": "T2",
+    "hub/test/test-docs-merge.test.ts": "T3",
+    "hub/test/test-docs.test.ts": "T1",
     "hub/test/test-lint-policy.test.ts": "T2",
     "hub/test/test-lint.test.ts": "T1",
     "hub/test/thread-runs-store.test.ts": "T1",

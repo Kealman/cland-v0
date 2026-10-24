@@ -1,5 +1,7 @@
 # Running tests
 
+Per-test guidance lives in the [test-file index](tests/index.md). Add test-specific paragraphs to the file named after the repository test path (slashes become hyphens, followed by `.md`). Keep shared tiers, budgets, cover-quiet and conventions here.
+
 The root `npm run typecheck` uses native TypeScript 7.0.2 for the hub's bin, src
 and test files, Neovim's bin and test files, and the web workspace, through their respective
 `tsconfig.json` files. It also checks `shared/wire/tsconfig.json` with DOM libraries
@@ -423,73 +425,9 @@ HUB_SMOKE selects hub-lifecycle, startup-smoke and message-tracer. NVIM_SMOKE se
 
 ### Neovim workbench startup budget (T-1010)
 
+See [nvim/test/startup-budget.test.ts](tests/nvim-test-startup-budget.test.ts.md) and the [per-test index](tests/index.md).
+
 Correctness regressions bound counted operations, allocations or bytes; keep instrumentation inside a measured callback bounded too. Machine-speed ratios belong in deliberately unloaded benchmarks. Preserve the existing budget guards rather than raising them to accommodate a change (A-8634 R5; T-963, T-1007, T-1010, T-1003, T-983, T-1037, T-1038, T-1045).
-
-`nvim/test/startup-budget.test.ts` is T3: real headless Neovim consumes the
-production socket protocol from `projectHub`; there are zero hub or harness
-subprocesses. T1 tracker-summary and T2 shell-component cover projection and
-settling rules. It belongs to `NVIM_SMOKE`, including reduced hub-only and
-coverage-selected hub runs; web-only diffs retain this smoke baseline too.
-Queue-enabled task verification still defers all T3 to the configured process
-occasions; smoke membership does not override that tier filter.
-
-The fixture generates 1,000 Markdown items in a disposable project: 200 open,
-800 closed (200 releases, 200 epics and 400 tasks), a release/epic/task tree,
-roughly 1.7 KB bodies, two criteria and an
-implementation comment per item. No generated tracker is committed. Hub,
-Neovim and spoke fixtures use scratch HOME/XDG/Git/account state with credentials
-filtered from launch environments. The Coordinator and Implementer spokes run
-in-process and are pinned so both session rows remain visible. Before connecting,
-the test places Sessions left of the explorer; no GUI or harness starts.
-
-The hard limits are **3,000 ms**, **131,072 bytes (128 KiB)** for the first item reply, **262,144 bytes (256 KiB)** per startup reply and **1,048,576 bytes (1 MiB)** across the eight startup reads. A transparent
-socket relay counts UTF-8 bytes of the *first task.list response*, including the
-JSON result envelope and trailing newline. It also checks that exactly one
-open-summary request with `include_containers:true` returns precisely the open
-items and their ancestor chain (including closed ancestors of open work), and that Neovim
-installs them all. `hub/test/startup-budget.test.ts` exercises these shared probe
-assertions at T1, including missing ancestors, fully closed subtrees, extra and duplicate wire or installed rows.
-The generated fixture and copied-live manual probe also assert a 120 KiB first-item
-margin while retaining the hard 128 KiB budget policy.
-The startup clock runs from delivery of the authenticated
-hub welcome to observation of the explorer item row, Coordinator header,
-header session count and both session rows in their physical screen columns.
-All downstream frames wait behind the welcome until the screen observer is
-armed, preserving order. Process/RPC/hub/fixture setup has separate bounds;
-the completed render has a ten-second observation bound, followed by the
-three-second assertion. These are elapsed startup measurements, not fake time
-or a pending-callback/title-only receipt, and the hard limits are not load-scaled.
-
-Measured on local macOS arm64 at the T-1010 working tree based on `5453c280`
-(Neovim 0.12.5, 160×45 headless screen): the generated baseline rendered in
-27.4 ms with 67,588 bytes. A copy of the live tracker (1,020 items, 106 open)
-rendered in 48.2 ms with 42,344 bytes. These are warm, quiet scratch-hub
-connection-to-render measurements, excluding fixture/hub/process setup and
-production crew/indexer load. The three-second limit preserves E-1006's
-acceptance target with substantial measured headroom; 128 KiB is about 1.9×
-the generated baseline and 3.1× the copied tracker payload.
-
-Two negative fixtures feed the same measurement and budget checker as the normal
-case: withholding task.list for 3,100 ms must complete rendering then fail the
-time check, with bytes still in budget; adding the generated real bodies to its
-rows must fail the byte check, with startup still in budget. Initial local values
-were 3,118.4 ms / 67,588 bytes and 27.8 ms / 415,880 bytes respectively.
-The negative tests assert the named budget failure, rather than counting an
-unrelated setup timeout as proof.
-
-For a fresh local C4 receipt run (headless, macOS only):
-
-```sh
-node nvim/test/startup-budget-probe.ts /absolute/project/.cland/tasks
-```
-
-The probe reads each matching item once and writes that text into its scratch
-tracker before creating a hub. It copies no live database, discovery, config,
-conflict captures, run state or accounts, and never starts against the source
-tracker. Its output reports total/open counts, connection-to-render milliseconds
-and first response bytes. Post the original output with head/tree, platform and
-executor attribution; a local receipt supplies no Linux, full-suite or loaded
-production-workbench claim.
 
 ### Test lint reports
 
@@ -594,17 +532,7 @@ identity-based cleanup and belongs at T3.
 
 ### Neovim recorded frames
 
-Panel placement is covered by `nvim/test/panel-placement-component.test.ts` at T2, using the palette, `:Cland panel <kind> left|right`, `gm`, native closes, buffer keys and committed stub frames. It also covers toggles after moving, chip and `gp` openers, scoped palette actions, action audits and Normal/Terminal focus with an in-memory terminal (no harness process). `qa.state().panels` retains `left` as a visibility boolean, `right` as a kind and `dock` as a visibility boolean; its additive `kinds.left` and `kinds.right` fields identify either side's visible panel. Use these fields for side-neutral QA. `qa/cases/PANELS-017.lua` reads the swapped headers and a live session-row change from their physical grid columns. `qa/cases/PANELS-018.lua` moves Items right and Inbox left with `gm` and reads both headers and rows from their physical grid columns. The local targeted T3 `ui.test.ts` and `shell.test.ts` runs cover native resize/close ordering and cold starts; T1-only merge batches supply no T3 evidence.
-
-The same T2 panel file covers optional version-2 homes/occupants, legacy preference files, invalid-assignment fallback without losing other preferences, restart snapshot/restore, home-aware presets and both reset entry points. Reset clears side widths, keeps dock height and open panels, and leaves colliding occupants in place while restoring their homes. `PANELS-019` saves swapped panels, reloads UI state in-process and rebuilds, then asserts headers and rows in their physical grid columns. Targeted local `ui.test.ts` covers a real cold restart with swapped panels; `shell.test.ts` keeps the swap through real `:restart` and terminal reattachment. Run these headless with scratch HOME/XDG/Git state and the shared credential filter. T-1002 adds per-side manual width/move/view/preset/reload checks and Topics dock geometry, uniqueness and retained height to the T2 panel file. The T2 explorer component checks each of the four right occupants is covered on narrowing and restored on widening or leaving the explorer, keeping homes unchanged. `PANELS-020` repeats the shipped manual-size walk with Items right and Sessions left; `PANELS-005` and `PANELS-006` remain unchanged. The cold-start swapped-panel case also asserts saved and restored side widths.
-
-Workbench settling tests count outbound frames after completed startup and reconnect snapshots, advance
-a client-local fake deadline clock ten minutes, and retain the final no-list-read assertion. Delayed-read
-cases release the oldest original answer after its retry deadline and observe installed state, then verify
-only the missing read retried with backoff. Waiting for a replacement request alone cannot prove recovery:
-a late original reply must still complete startup. Rendered header and explorer-row assertions cover
-independent session answers and local task-event updates. These use the T2 recorded stub, without crew
-load or real-time latency claims.
+See the [per-test index](tests/index.md) for file-specific coverage and fixtures.
 
 T2 client tests use `nvim/test/stub-client.ts` and `nvim/test/fixture.ts` for
 scratch projects, condition waits and client ownership. Native/T3 callers keep
@@ -747,61 +675,14 @@ resources. `close()` is idempotent and can be called early to test offline routi
 Its `pid` is 0 because there is no child: use `spawnSpoke` in T3 for process signals
 or a real stdio binary contract.
 
-The spoke's `artifact.create` reply budget is 120 s; `artifact.list` retains the
-ordinary 10 s. This is separate from the outer harness/MCP deadline, which may
-expire earlier; a caller using the full creation budget must allow more than
-120 s, plus up to 20 s of readiness and transport overhead. Neither timeout
-cancels the hub's copy. After a timeout, inspect the destination topic with
-`artifact.list` before retrying to avoid a duplicate publication. See
-[Spoke readiness and deadlines](../../hub/README.md#spoke-readiness-and-deadlines).
-`spoke-artifact-budget.test.ts` tests these reply boundaries with `FakeClock`
-and a slow fake hub. Its setup, result receipts and teardown have separate
-failure bounds. After a late result, it waits for an acknowledgement of the
-next frame on that ordered WebSocket before asserting no duplicate request;
-advancing virtual time alone is not evidence that real socket I/O completed.
-
 The fake harness **binaries** in `hub/test/fakes/{claude-code,codex,opencode}`
 are reserved for one real-binary adapter contract file per harness and T3
 scenarios. They are not the default for routing, roles, subscriptions or tracker
 rules. Existing files migrate under E-677; new tests use the in-process adapter.
 
-`fakeClaude` owns every fake CLI invocation, including adapter polls, through a
-home-local process-identity registry. After resource and hub shutdown it closes
-writer admission, reaps session groups (including hooks and spokes), and allows
-in-flight CLIs to exit. After 5 seconds a stuck-writer error names the remaining
-PID/start identities and retains the home, without killing the polls or starting
-removal. Release or stop those writers before retrying cleanup. Only observed OS
-exit permits removal; a delayed `execFile` callback is awaited separately.
-Removal retries ENOTEMPTY/EBUSY for 1 second and reports remaining paths
-if exhausted. A stale fixture environment cannot recreate a closed home.
-`fake-claude-cleanup.test.ts` proves the held-poll late write, delayed callback,
-home retention at the injected-clock drain deadline, orphan hook cleanup,
-closed-home admission and bounded remaining-file diagnostic at the T3 process
-lifecycle seam. The same writer drain applies during signal recovery.
-
 ### Human kinds and queued withdrawal
 
-`topics-component.test.ts` exercises `topic.send` kinds through public frames, history and a second client's message deltas; only a Question starts a wait, and a later Message cannot change its addressee. `topic-withdraw.test.ts` uses sealed `projectHub` fixtures with fake time and a raw fake spoke. Observe accepted delivery before withdrawing across a busy transition, then send a late acknowledgement and require the next retained message's injected receipt. Keep assertions that the withdrawn input was never injected and its held progress was delivered once. Adapter submission is a durable exclusion fence, even without confirmation; test refusal at that boundary and after injection. `hub/src/hub/store.test.ts` reopens the Store in-process to prove withdrawal and its cleared Question wait persist without replay. `web-authority.test.ts` keeps the authenticated human edge proof. Neovim's recorded `thread.test.ts` checks the terminal glyph/colour and rejects older delivery stages; refresh only its recording when adding frame inputs. No browser or live hub is needed for this hub-side slice.
-
-The sender-specific native admission paths stay covered in `opencode-adapter.test.ts`
-(T3 HTTP/SSE contract) and `codex-native.test.ts` (T2 scripted RPC): a human
-message sent in state `busy` waits, an agent report steers the running turn,
-and the human input starts a new native turn after completion. Hold the native
-turn explicitly, observe the agent's injected receipt before asserting the
-human input has not reached the adapter, then release and require the human's
-injected receipt. OpenCode's fake `/test/turn` endpoint holds execution without
-changing the busy state. Existing human steering during `waiting for approval`
-is a different state and remains covered by the Codex contract/reconciliation tests.
-
-Exact delivery observers in `store.test.ts`, `topics-component.test.ts` and the
-stdio `topics.test.ts` retain their full objects including optional eligibility:
-the direct core admits an accepted delivery, while a bare spoke refuses recall.
-Native Codex/OpenCode/Claude contract receipts retain acceptance, submission and
-confirmation events, including the repeated delivered stage and eligibility
-true/false/false. Non-human brief deliveries retain their original stage sequence.
-`human-routing.test.ts` waits for the aggregate-queued eligibility receipt before
-advancing TTL, rejects any premature stage advancement, and retains expired-input
-non-delivery and delivered/dropped final receipts.
+See [hub/test/topics-component.test.ts](tests/hub-test-topics-component.test.ts.md) and the [per-test index](tests/index.md).
 
 ### Waiting for an observable condition
 
@@ -892,6 +773,8 @@ map, before/after file seconds and process-start call sites in the review eviden
 
 ## Fixtures
 
+See the [per-test index](tests/index.md) for file-specific coverage and fixtures.
+
 Cleanup requires positive ownership receipts: a child-owning helper settles after its process and pipes close, including deadline and spawn-error paths. Close writer admission before draining a process-backed fixture, and register each invocation before its first write; regressions cover both present and missing ownership evidence. Missing evidence does not authorize orphan cleanup; see rule 12 for directory removal (A-8634 R7; T-552, T-972, T-974, T-1035).
 
 Tests consuming generated assets, build outputs or copied projects declare and check their own prerequisites on every shard, with fixture-owned output directories for present and missing cases. Resolve paths and lists from shipped scripts and workspace metadata. Put static wording/size contracts at T1 and only delivery at the live boundary; runner prerequisites name the consuming worker (A-8634 R11; T-955, T-978, T-1019, T-1023, T-1031; A-9063 R8 source T-1096).
@@ -940,11 +823,6 @@ after sealing the hub environment. Provider fixtures must pass their typed
 `syntheticProvider` dependency again on daemon restart; env extras alone do not
 preserve its sentinel token.
 
-Bare-root merge admission uses the hub's injected read-only Git probe in component
-fixtures; the production boundary runs native Git. `project-probes.test.ts` proves
-the injected bare fact still refuses while imports, merge preflight and cleanup
-retain the zero-child census.
-
 The pure T1 poisoned-parent/overlay test is `fixture-environment.test.ts`.
 The native T3 bare-init/clone proof in `territory-cli.test.ts` compares the scratch
 parent's config bytes after each operation, including clone from a linked cwd.
@@ -981,40 +859,6 @@ protocols. Pass environment overrides to the fixture; never temporarily mutate
 `process.env` for one hub. Teardown stops the served hub, disposes the fixture's
 owned processes, then fails on surviving owned handles, timers or process
 listeners, with `process.getActiveResourcesInfo()` diagnostics.
-
-Web-edge component tests use `projectHub` discovery (`webPort`), HTTP requests
-and `hub.status.web` frames. `hub/test/web-edge.test.ts` is T2: its restarts
-exercise listener port persistence without starting a daemon process. Bundle
-fixtures live inside the disposable project, selected through `[web] dist`;
-missing-bundle cases use a missing fixture directory/index, so building the real
-`web/dist` cannot change their expected result. An occupied web port leaves the
-spoke and Unix-socket edges available; inspect the `web-unavailable` log and
-`cland doctor` warning rather than expecting a hub startup failure. Set
-`[web] port` or `[web] dist` before startup; both require a restart to apply.
-The T2 `hub-status-component.test.ts` checks available and unavailable web details
-in the CLI's hub block, before `sessions: N`. The T3 hub-lifecycle scenario keeps
-the discovery `webPort` contract and checks that session rows follow that heading
-directly. The compiler contract fixture in `typecheck.test.ts` includes each root
-typecheck project, including `shared/wire/tsconfig.json` and a browser-safe source.
-
-Events subscription tests use the same frame seam: `events.test.ts` covers a
-warning filter's first page and live rows beside an unfiltered client;
-`connection-snapshot.test.ts` changes kind/subject filters without reconnecting,
-checks inherited pagination and snapshot fallback, and verifies contiguous live
-and replay cursors via row-free `model.advance` deltas. An omitted filter resets
-the subscription; an explicit `events.list` filter overrides only that read.
-
-Approval record changes use `hub/test/approval-records.test.ts`: sealed `projectHub`, real frame clients and the in-process fake's `raiseApproval`/`closeApproval`. Observe the `approval` delta before advancing the fake clock for its coalesced inbox publication. The same file covers snapshots, per-request counts, UTF-8 subject limits, archive persistence and the CLI. For the human-only `approval.answer` gate, script the fake's `scriptApproval('accept'|'fail'|'hold')`, observe `answering` before `settleApproval`, and assert the adapter answer plus the closed delta/archive. Cover competing clients, unoffered/TUI choices, all agent roles (Aides included), failure-to-pending with a journal warning, native note delivery or item-topic/General fallback (including byte-cap refusal before any native answer), and no answer after 24 virtual hours. For that long suspension, `FakeClock.block` followed by `advance(0)` runs overdue callbacks once; missed interval ticks do not replay. `clock.test.ts` checks that wakeup behaviour. The authenticated-cookie gate case is in `web-authority.test.ts`. `nvim/test/inbox-actions.test.ts` checks Enter's `session.attach` request on a recorded Claude Code row, with attachment refused at the stub edge to avoid a T2 shell; T3 terminal transport remains in the existing session scenarios. The same recorded-frame/headless file covers Neovim approval keys in the panel and full-width inbox: once, always/unoffered choices, denial notes, TUI-only refusals, live answering/pending/closed deltas and a refused race resolved from the archived outcome. Observe the exact outbound `approval.answer` and the rendered fold; a selected fold survives the confirming inbox departure until the human leaves the inbox. Keep the fold while moving between rows, retire it on leave/reopen, and hold a race lookup across newer approval/inbox pushes to prove it consumes only the winner without replacing current rows or counts. The scripted stub reply carries recorded gate results, without duplicating gate rules. Refresh its slice and the inbox recordings through the Neovim recording workflow above.
-
-The Codex relay uses `hub/test/codex-native.test.ts` at T2 with the scripted app-server double: native response ids and decisions, matching file-item readback, malformed-field TUI fallback, external resolution on two frame clients, note fallback and reconnect replay. File approval params name a turn/item; paths and diffs come from that item's `thread/read {includeTurns: true}` result. Keep arbitrary tool input out of the record. `hub/test/codex-adapter.test.ts` is the T3 fake-binary contract: the same request id reaches existing and late subscribers, Approve once produces the command's filesystem receipt, and Deny completes the turn without that receipt or a command-run log. The fake's `approve` file and SIGUSR1 resolve through the same decision path as another client. Run this contract file explicitly when changing its relay; task verification's T0–T2 selection does not supply this process evidence.
-
-Codex file-read races stay at that same native frame seam: hold `thread/read` after reconnect and refuse answers until validation completes, including failed/malformed reads. Resolve an initial file request while its read is held and require a closed-first delta on both clients plus its exact archive outcome, with no pending resurrection, even if the native connection drops before readback settles. Keep unresolved stale reads suppressed and request-start time no later than the outcome. The optional internal `ApprovalRequest.outcome` and `since` provide atomic publication with the observed chronology; the internal host admission receipt keeps early closed outcomes until watch can replay them, and known terminal process rows admit only closed-first history. Cover the real `session.stop` frame while a resolved file lookup is held and native first-turn events before process publication; pending records stay running-only. Other adapters keep their existing path. Test complete authorization subjects at the exact 64 KiB serialized UTF-8 boundary and a distinct operation beyond it: oversized subjects are TUI-only, their clipped text informational, and their native answers refused. Failure paths retain the same public-field allowlist.
-
-The OpenCode relay uses `hub/test/opencode-native.test.ts` and its scripted HTTP/SSE transport: assert human `approval.answer` frames against native `decision`/`message` receipts, child endpoint routing, external reply outcomes on two clients, reconnect identity and disappearance, and TUI-only shape fallback with a warn-level log. Hold the command lookup to prove an early native reply still closes the exact request without changing a later waiting episode. Plant private metadata in failed native HTTP replies and assert safe status/category, pending/no-outcome and a later native close. Check complete commands at the serialized 64 KiB UTF-8 boundary and oversized ASCII/multibyte commands staying TUI-only with no endpoint call. Private permission metadata must never enter frames. The existing `hub/test/opencode-adapter.test.ts` permission scenario adds the T3 binary proof: Deny with a note must appear in the fake's durable `permission-reply` log as `reject` with that message; keep this targeted contract receipt separate from mode-free task verification's T0–T2/Web coverage.
-
-Approval races use those same T2 scripted native/frame seams: hold Codex's response write, resolve externally before its receipt and assert a refused Deny plus one harness outcome on both clients and in the archive. Its own resolution echo follows completed delivery; a synchronous pre-receipt echo is indistinguishable from an external winner. Hold OpenCode's HTTP response and report an attached-client reply before its 404, including reject against reject, to prove attribution is not inferred from equal choices.
-
-`hub/test/approval-restart.test.ts` is T3 because it restarts actual scratch hub processes while all three fake harnesses stay alive. It checks native replay/snapshot and Claude's state-only waiting episode against the original ids and subjects, answers the replayed Codex request and observes the command's filesystem receipt, then answers Codex and OpenCode through their fake TUI paths while the hub is down. A further restart must close those missing requests as `answered in the harness` and retain the previous human outcome in the archive. Keep the fake `approve` file and attached-client HTTP reply receipts, the hub PID-reaped boundary, and observed harness teardown. Hold Codex's native resume and prove disk-restored rows precede the `approval-rebuilt` native-validation journal receipt; release recovery, wait for that exact request's receipt, then send the single answer. The OpenCode T2 restart regression preserves a pre-existing child's pending id/subject and native child reply endpoint without replaying `session.created`. Its authorization regression also holds a replayed command lookup, requires `approval.answer` to refuse with no native endpoint call, releases a malformed lookup and checks the same id/since as TUI-only with empty choices, then reconnects with a changed valid command and checks refreshed public authorization before one native reply. The fake-adapter frame case also refreshes native authorization during an answering attempt and requires the latest TUI fields to survive its failure reset without another adapter call. This file requires explicit T3 evidence beyond mode-free task verification; its reasoned duration allowance covers native startup/restarts, without time-based assertions.
 
 Hub scheduling tests pass one complete clock at the fixture boundary:
 `projectHub(t, root, env, { clock: new FakeClock() })` (`hub/test/fake-clock.ts`).
@@ -1654,49 +1498,9 @@ registered project list. Neither a discovery version nor the new path alone prov
 Never-registered hubs and later downgrades are outside that check: upgrade and
 register every hub before confirming, and do not downgrade afterwards.
 
-Retirement preserves the legacy file in place and publishes `spend-retirement.json`
-with its bytes beside the new ledger before activating retirement. Tests exercise
-this boundary at T1 with injected hub responses, fake time and a scratch HOME/XDG
-state directory (`hub/test/executor-spend.test.ts`); socket authentication and
-command routing belong at T2. Never exercise this command against the human's
-actual state. See [the operational contract](../../hub/README.md#retiring-legacy-spend-write-through).
-
 ### Rendered artifact checks
 
-`nvim/test/artifact-render.test.ts` exercises the T2 recorded-client boundary:
-read-only thread projections, exact editable raw source, rendered-on-open defaults,
-and a 2,000-line artifact’s bounded first paint: only visible rows plus four source
-rows are parsed before the first rendered grid; the remaining parse is deferred.
-The T2 load gate keeps a 200 ms gross guard. The 50 ms target is measured separately
-as a median of several local macOS runs on a quiet machine, reported in the item
-topic with head/tree and individual samples. Its parser counter
-is read after the final rendered screen is observed; unchanged file versions
-(path, mtime and size) reuse the cached projection. Unsaved raw edits are separate
-buffer versions. `qa/cases/ARTIFACT-001.lua` checks the visible Markdown features,
-block quote, raw toggle, help and palette through the headless grid. Prompt and
-browser compatibility remain in `nvim/test/artifacts.test.ts`. T-1005 adds T2
-recorded-client proofs in `artifact-render.test.ts` for folder entry/`.md`/`.markdown`
-children selected in the browser, palette `CTRL-v` with unequal centre/split widths
-and independent toggles, and both `␣ps`/`␣pa` sending exact saved Markdown bytes
-with the correct attachment flag. These assert rendered grids, editable raw
-source and protocol receipts, without timing targets. The headless-grid case
-`qa/cases/ARTIFACT-002.lua` reads a rendered folder child and palette split side
-by side, then checks that a split raw toggle leaves the centre rendered. It is
-appended to the shipped T4 catalogue; E-795 after-stage QA remains separate.
-
-The same T2 file covers artifact-event refresh with an already-loaded raw buffer,
-raw saves replacing a cached version, 120→80→120 table relayout against the thread
-projection, source-line cursor mapping across a stacked table and deferred table
-completion, rendered-on-restart snapshot/restore, and a recorded move into a folder
-followed by a save on the rebound raw path. These assert grids, exact source lines,
-buffer identity/options and final decoration receipts; they add no timing targets.
-The shared projector returns a one-based `source_line` on each metadata row,
-including table rows and their generated separators. Artifact refreshes consume
-this mapping without changing mode; unchanged versions keep their cursor row.
-
-The 20,000-line scenario in that T2 file also observes a `j` key and its cursor movement before rendering finishes, then waits for the final decoration receipt before checking start/middle/end grids and zero new parsers on reopen. Parser instrumentation asserts continuous Markdown region extensions of at most 128 rows and injected-language batches of at most 64 regions; scheduled-callback instrumentation records every artifact/projector/native-parser turn, including synchronous reused-parser and query-only turns, and asserts at most 256 extraction/projection steps, 128 buffer rows and 256 decorations per slice. A one-second gross slice guard catches a stalled callback under load. Source-row counting stops after first paint: scanning the full source inside a timing spy would introduce unbounded work of its own. The context case covers a fence and table spanning many batches, a reference resolved from the end of the document, recursive Markdown and Vim-in-Lua injections, combined/include-children and child-excluding injection ranges, comparison of text, canonical spans, link metadata and applied extmark styles with the unsliced thread projection, and a superseded-version callback barrier. A reused-parser regression requires every synchronous parse turn to appear in the timing audit.
-
-The 16 ms target is a quiet local macOS measurement, separate from load-gate repetitions. Report five fresh-client runs' maximum render-callback times, their median, head/tree, queue state and machine load/idle evidence in the item topic. Include initial projection-buffer construction as well as every native parser callback, extraction/projection and buffer decoration turn. The full first-paint open/redraw/grid observation is also reported separately. Timing includes the observation wrappers; it is diagnostic in T2 and never substitutes for the deterministic work assertions.
+See [nvim/test/artifact-render.test.ts](tests/nvim-test-artifact-render.test.ts.md) and the [per-test index](tests/index.md).
 
 ## Browser sign-in fixtures
 
@@ -1742,246 +1546,27 @@ Use fake adapters for launches and fake time for sign-in expiry; do not probe
 these requests against the live hub. The T1 authority file classifies the two
 reads and refuses every own `session.launch.cwd` field before dispatch.
 
-`web-auth-unit.test.ts` covers digest storage, one-time spending and expiry with
-an injected clock at T1. It also reads the explicit acceptance row to verify
-cookie hash-only persistence and last-use updates across store reopenings.
-`web-auth.test.ts` restarts an in-process hub twice on one disposable project to
-prove cookie persistence; no process lifecycle assertion requires a daemon.
-Its executable `web --sessions`/`--revoke` tests count sockets, arm close observers
-before revoking, assert the server `web-session-socket-closed` receipts by CLI
-return, and separately bound client closure plus cookie refusal. It also
-covers HTTP upgrade checks, client/spoke admission and secret leakage at T2
-with an in-process project hub. Its standalone prerequisite uses the shared
-web-build helper to build a missing or stale bundle once before tests; the leak
-scan requests every file of the actual installed bundle. Suite shards containing
-any `installedBundleReaders` entry in `hub/test/run-suite.ts` build before workers,
-even without a Web phase or an available browser. That list includes this file
-and all real-doctor bundle readers, including `doctor-cli.test.ts`; targeted
-standalone doctor CLI runs require a current build.
-Doctor component fixtures inject the installation bundle check; the separate
-`web-bundle.test.ts` retains missing/stale/current diagnosis on scratch files.
-The tests use scratch HOME/XDG/Git configuration
-and filtered environments through the shared fixtures. Both `open` and
-`xdg-open` are stubbed on scratch PATH even for `--no-open`, so a regression
-cannot launch the human's browser or touch its keychain. Real browser checks
-belong to the dedicated headless web phase (T-991/T-992).
-
-`web-artifacts.test.ts` exercises `artifact.url` on a cookie-authenticated web
-client and cookie-free HTTP reads at T2. It covers extension types, file/folder
-confinement, traversal and symlink refusal, HTML sandbox headers, relative
-stylesheets, revocation and the fixed session expiry with an injected clock.
-It also restarts the in-process hub to prove capability persistence and covers
-moved-file owning-folder substitution. The injected filesystem open port swaps
-a folder parent at the final open boundary: Linux must serve the already-anchored
-file, macOS must refuse the symlink, and neither can return the outside bytes.
-The T2 fixture keeps an explicit symlinked project ancestor on every platform:
-authorized reads must succeed while artifact and nested-folder symlink swaps
-remain refused. Only the trusted project prefix is resolved once by the web
-edge; artifact paths outside it retain full-path no-follow checks.
-`web-artifacts-unit.test.ts` checks outside-prefix no-follow reads, digest-only database rows and cascading
-removal on revocation and expiry at T1. The frame is web-only; local test clients create source artifacts and manage
-sessions through the Unix socket. Capability digests persist beside their cookie sessions across hub restarts.
-
 ### README startup and reference contracts
 
-`hub/test/web-readme.test.ts` checks stale feature-status wording and compares the
-hub README's complete `cland web` option/alias and `[web]` key references with the
-actual parser/default inventories at T1. Live pending states and human answer
-attribution remain valid terminology.
-
-`web/test/readme.test.ts` follows the web README's single getting-started block
-through a local clone of a disposable source seed, the production build, real
-detached hub startup and CLI-minted `web --no-open` link into a fresh Headless
-Shell context. Its explicit `npm install` substitution symlinks the root install,
-as task worktrees do; no registry or browser download runs. Source copying
-excludes live Git metadata, tracker/runtime state and generated output. HOME,
-XDG, Git and child account/provider environments are sealed; openers and harness
-binaries are stubbed, browser HTTP/WebSocket traffic is confined to the scratch
-loopback edge, and cleanup observes the browser group and hub PID gone before
-removing roots. It uses a real hub process because the README's hub-start lifecycle
-is the subject. Build first, then run both new files, web-auth.test.ts and
-web-tunnel-guide.test.ts targeted before mode-free verification.
+See [hub/test/web-readme.test.ts](tests/hub-test-web-readme.test.ts.md) and the [per-test index](tests/index.md).
 
 ### HTTPS tunnel guide contract
 
-`hub/test/web-tunnel-guide.test.ts` reads the literal TOML block from
-`web/README.md`'s HTTPS phone guide and starts a sealed scratch `projectHub`
-with that exact configuration. At T2 it runs the executable `cland web --qr`,
-decodes the printed QR, redeems the link on loopback with the documented Host
-and Origin, then observes an authenticated WebSocket welcome and status reply.
-Both platform browser openers are scratch stubs; HOME/XDG/Git and account
-variables use the shared sealed fixtures. No Tailscale process, external network,
-live hub or real browser is used. This checks configuration and admission, not
-Tailscale provisioning or real phone installation. Build first, then run
-web-auth.test.ts, web-edge.test.ts and web-tunnel-guide.test.ts targeted before
-mode-free verification. A new passing identity reaching 80% of its tier budget
-needs a dated, reasoned E-880 allowance citing the run, about 1.5× its worst sample.
+See [hub/test/web-tunnel-guide.test.ts](tests/hub-test-web-tunnel-guide.test.ts.md) and the [per-test index](tests/index.md).
 
 ## Thread history pages
 
-`hub/src/hub/store.test.ts` covers numeric `topic.history` pagination at T1 through
-`HubCore` and the store: 450 rows in three pages each way, exclusive cursors,
-interleaved writes, timestamp-independent sequence order, cursor validation and
-unchanged no-cursor/message-id history. `TopicMessage.seq`, `TopicHistoryFilter`
-and the request fields are checked against `shared/wire` by the T0 conformance
-assertions. Neovim's thread tests exercise the unchanged message-id archive reader.
-The existing monotonic store sequence is reused; no new migration/backfill is
-needed for an already numbered database. Measure upgrades only on a consistent
-SQLite backup in a disposable root with the shared fixture environment, never on
-the live file; report copy size, row count, startup duration, writes, head/tree and
-platform separately from suite evidence.
-
-`hub/test/thread-runs.test.ts` proves the additive history/live-frame seam at T2
-with a disposable `projectHub`, in-process Implementer/Reviewer/Aide peers and a
-complete fake clock: four-message facts, a fifth message's same-id delta without
-a history read, tracked ask/answer/verdict/human/Aide boundaries, the hub-local
-midnight rule, queued verifier assignment with a later run member, and full first-three/+N metadata on mid-run numeric/message-id
-pages. Observers are armed before sends; final run/count/identity assertions
-remain. A late client reads a suffix without seeing the run's first message.
-`thread-runs-store.test.ts` is T1: store reopen, role-at-send boundaries,
-transaction rollback, retention rebuild with a surviving former-Aide boundary, lazy backfill across 405 existing
-messages and byte-capped run pages. No new native process is involved. Wire conformance checks `ThreadRun`
-and `TopicMessage`; run facts count toward the existing history reply cap.
+See [hub/src/hub/store.test.ts](tests/hub-src-hub-store.test.ts.md) and the [per-test index](tests/index.md).
 
 ## Implementer test selection
 
-Archived merged session reads use the public `session.list`/snapshot seam in
-`connection-snapshot.test.ts` at T2. A sealed project with a fake clock compares
-merged rows against the snapshot, archives a stopped process, and checks the
-archived-only result and byte-identical legacy fields with unmanaged presence
-connected. `web-authority-unit.test.ts` covers the archived read at T1, and
-`wire-conformance.ts` checks `SessionListRows` at T0. Existing process lists,
-counts, snapshot membership and startup observers remain unchanged.
-
-Startup explorer regressions use `item-summary-scale.test.ts` at T2: a thousand
-durable rows with a planned epic and retained verdicts count recompute batches.
-The serving case arms the existing task-write gate before startup, observes the
-listening and serving receipts separately, and keeps an unscaled two-second
-monotonic gap assertion. It then observes the held planned write, proves a status
-reply while it is held, releases it and observes the planned status. Fixture
-setup has its own bound. No real daemon or browser is needed. The diagnostic
-`hub/scripts/measure-startup.ts` copies durable live inputs into a sealed scratch
-root; its measurements are diagnostic evidence, not a suite receipt.
-
-Lease-recovery startup coverage uses `startup-ready-component.test.ts` at T2:
-persist a releasing lease before `projectHub`, hold the scripted fake DigitalOcean
-provider list, inject executor lock process facts through `droplet.processes`,
-observe listening separately from session restoration and serving,
-and retain the unscaled two-second listening-to-serving bound. Recovery admission
-(`executor-recovery-started`) must follow serving. A status socket reply while
-the provider is held proves responsiveness; release the gate and observe both
-`executor-sweep` and the durable released lease. Separate coverage checks every
-named start/completion pair between binding and serving and finite nonnegative
-monotonic `durationMs`. No provider credentials, daemon, browser or real machine
-are involved; the synthetic provider uses the sealed fixture environment.
-
-Claude re-exec ownership uses the frame/MCP seam in
-`claude-code-schedule.test.ts`: the production adapter reads a scripted native
-CLI boundary, synthetic PID/start facts and a fake clock in a sealed scratch
-project. Production grace is one second from the first missing-PID observation;
-a dedicated expiry callback observes native identity before finalizing death,
-without waiting for the next liveness tick. Default-window tests prove prompt
-genuine exit, reconnect-before-missing-PID ordering and expiry cleanup at stop.
-Race fixtures inject a longer virtual window with `ClaudeCodeOptions.reexecGraceMs`.
-Native fixture timing uses `fakeClaude(t, { reexecGraceMs: 100 })` via the internal
-`CLAND_TEST_CLAUDE_REEXEC_GRACE_MS` hook; the native crash contract advances its
-clock only after observing OS exit. Integration tests retain their existing
-event/row/screen bounds and final assertions; no death wait is lengthened.
-Tests retain the published replacement PID, role, claim and absence of
-revocation, with hello before the first missing-PID poll and after both that
-poll and the last scheduled native snapshot. A
-distinct native id is also learned after launch through discovery and hooks;
-a held launch query crosses the grace boundary before the replacement PID is
-published, retaining role and claim. Known-PID hook coverage independently
-changes the native identity before replacement. Held process-start probes,
-with known and unavailable results, cannot overwrite a newer hook identity or
-revoke ownership before the next poll reconciles it. A held native query also
-returns its earlier snapshot after a newer hook, proving that the same fence
-covers discovery as well as process-start probes. A
-conflicting native conversation cannot inherit a reused background id and the
-original process exits after the grace. `store.test.ts` checks the ten-minute
-General decision and cancellation with fake time, including store reopen with
-an absent remembered holder, deadline recovery and durable alarm deduplication.
-The native Claude contract
-keeps the actual process-exit assertion and advances only the hub watcher's
-grace after the OS has reaped the fixture PID.
-Vacancy shutdown coverage retains the connected-Coordinator `projectHub.stop`
-and zero-timer assertions in `project-clock.test.ts`. The core/store regression
-closes both before delivering a late disconnect, then checks no database access,
-no lifecycle publication and no timer rearming across the notice deadline.
-
-For session archive scheduling, `session-archive.test.ts` uses 250 durable rows
-in a scratch `projectHub` with fake time. It retains scan-count and public
-`session.list` archive receipts across ten idle minutes, the exact dated
-threshold, unrelated item updates, stop/close transitions and reopening. Deferred
-failed-resume rollback retains its stopped row across lifecycle release, then
-proves recovery settlement archives an overdue row or arms its future deadline.
-These two smaller Sessions fixtures share the hub fake clock with an explicitly
-owned `recoveryClock`; production native cleanup retries retain real time.
-`node hub/scripts/measure-idle.ts /absolute/project/.cland/tasks` copies canonical
-tracker files into a sealed scratch hub with 250 synthetic stopped session rows.
-It measures ten real minutes of process CPU after startup, reports archive sweep
-counts and separately times the hourly P90 calculation on 10,000 scalar receipts.
-This is local diagnostic evidence, not a suite pass. Run on a quiet machine,
-record the implementation head/tree and platform, and publish the output through
-`artifact.create`. Adapters and native probes are fixture substitutes; it makes
-no claim about native harness idle load or the live workbench.
-
-Freshness scheduling and Git batching have native contracts in
-`follows-native.test.ts`: generate 1,000 commits, hold a demo history read, then
-require the settled ancestor/contains receipt within two seconds. Each native
-repository-setup Git command, including fast-import, has a five-second timeout;
-demo entry has its own five-second observation bound. These setup bounds are
-separate from the unscaled two-second foreground bound. The test prints the
-observed foreground time, retains both final
-cache assertions and requires the demo to remain outstanding until that receipt.
-It then observes demo completion and counts two history reads, with no per-commit
-`diff-tree` calls. A native merge/side-branch/rename/revert case keeps exact
-conflict commit/path results. Closed-demo restart reads and pending-tree cover
-filtering use T2 injected facts.
-
-For copied-live diagnostic evidence, `node hub/scripts/measure-freshness.ts
-/absolute/project` copies tracker, durable finished suite history and private Git
-objects/refs into a disposable project, starts a `projectHub` with sealed fixture
-accounts/config and observes E-412 stage 3 through the `task.plan show` request.
-This repository-specific probe retains the Linux and macOS cover IDs. Source
-hooks, remotes, provider credentials, PIDs and queued workers are excluded; the
-fake hub clock suppresses schedules, while timings use the real monotonic clock.
-`--recompute` additionally removes only the scratch derived stage-closure
-checkpoints, recreating a restart before closure persistence. Label that stronger
-case separately. Output records elapsed time, Git invocation counts and history
-scan ranges; publish it with source head/tree and platform. This is a diagnostic,
-not a suite receipt. Let other local measurements finish before comparing times.
+See the [per-test index](tests/index.md) for file-specific coverage and fixtures.
 
 For remote watchdog regressions, use the executor fake with a shared fake clock:
 emit an in-flight receipt, observe its mirrored bytes, stop output, then assert
 the terminal timeout receipt and released resource. Exercise status replies
 without bytes, failed log reads, new-byte renewal, and restart at both sides of
 the output-checkpoint/append boundary without resetting the admitted limit.
-
-For hub shutdown, `daemon.test.ts` runs a real `hub serve` with the web edge
-enabled and a scratch epic-demo freshness Git command held at its batched raw history read.
-It arms the durable `stopped` log observer before stopping, then separately
-bounds process exit to two seconds and asserts both hub and Git PIDs are gone.
-The background-drain regression holds conflict-retention native I/O outside the
-storage operation queue. After its entry receipt, it requires an idle operation
-queue, an abandonment event with `operations: []`, a durable `stopped` receipt,
-exit code 1 and a reaped hub PID. The normal-stop case retains exit code 0 and
-asserts that no abandonment event was recorded.
-Provisioning shutdown uses the fake DigitalOcean HTTP API: hold create after its
-durable lease is armed, observe `stopped` and OS exit within an unscaled three
-seconds of `hub.stop`, then release the late create and confirm reconciliation
-deletes the owned resource while preserving a foreign-tagged one. Separate
-SIGTERM cases retain that exit bound, including a native socket-close callback
-held through the CLI's two-second signal deadline (exit 1 with incomplete cleanup).
-`executor-safety-component.test.ts` covers detached create replies after store
-closure and interrupted provider cleanup on fake time at T2. Preparation's
-restart test waits for the durable released lease before its empty-resource
-assertions; the outcome notice alone is not a deletion receipt.
-The CLI diagnostic case keeps a fully stopped process alive deliberately and
-advances only its stop deadline after the shutdown receipt. It expects exit 1
-and `stopped, lock released, process still alive`, with no signal after lock
-release; the unrelated-PID case retains its separate safety assertion.
 
 Clause procedure (defaults implementer, project implementer):
 
@@ -1993,483 +1578,21 @@ Clause procedure (defaults implementer, project implementer):
 
 ## Web phase
 
-`web/test/phone-install.test.ts` owns the install-entry, Badging API and QR sign-in
-seams through the sealed 390×844 touch/mobile fixture. Read the actual manifest's
-start URL after persisting Sessions, observe Inbox and `/`, and keep ordinary
-reload persistence. Stub badge methods before navigation and follow the hub's
-needs-you count through public ask/answer frames to zero; explicitly remove the
-API in the fallback case. `cliLink: 'qr'` runs the executable CLI with a synthetic
-tunnel origin, decodes the QR against its printed link, and redeems its exact
-token on the scratch loopback edge in a fresh phone context. Observe the auth
-response, 30-day cookie and live authenticated socket. `web-auth.test.ts` checks
-the project-named manifest, token theme, HTML links and PNG signatures/dimensions
-at T2. Build first; run web-auth, phone*.test.ts, shell and web typecheck guards
-before mode-free task verification. The full Chromium demo checks installability
-through DevTools and one service-worker notification. Real badges, install
-prompts and standalone windows are the human's dogfooding on a device. New
-passing identities reaching their tier's 80%
-threshold need dated, reasoned E-880 allowances at about 1.5× the worst sample.
-
-`web/test/phone-approvals.test.ts` owns phone approval presentation through the
-sealed 390×844 touch/mobile `webFixture`, fake Codex/Claude Code adapters and
-public hub frames. Keep complete command/file subjects and session facts,
-full-width 44 px choices, optional Deny notes on the label row, visual-viewport
-resize receipt, physical Escape/close/scrim/swipe without any answer, TUI-only
-Claude and payload fallback marks without a sheet, exact frame/archive outcomes
-and a held losing answer recovering the native winner. Reuse `ApprovalCard`'s
-gate/recovery and `BottomSheet`'s field context; do not add native processes or
-touch the live hub. Build first; run phone*.test.ts, inbox, session-drawer and
-key-contexts targeted before mode-free verification. New passing Web identities
-reaching 4 s need a dated, reasoned E-880 allowance at about 1.5× the worst sample,
-citing its run.
-
-`web/test/phone-thread.test.ts` uses the sealed 390×844 touch/mobile context and
-public hub frames for full-screen Topics, read-only card return at the exact
-message position, two-line run facts and pinned expansion, full-screen HTML
-chips and 390 px verdict/long-id/code layout. Keep the shared thread mounted
-behind detail views, suspend covered read receipts and restore focus on Back.
-Observe `data-phone` after resizing before measuring the desktop boundary.
-Build first; run phone*, topics, thread-runs, thread-artifacts, key-contexts and
-palette as targeted neighbors before mode-free task verification. New passing
-Web identities reaching 4 s on any platform need a dated, reasoned E-880
-allowance near 1.5 times the worst passing sample, citing its run.
-
-`web/test/phone-asks.test.ts` uses the existing sealed phone `webFixture`, public
-frames and fake asker seam. Keep 48 px full-width numbered options, 44 px options
-and a three-line question after field focus with a resized visual viewport,
-label-row Decline with a required reason and an exact asker receipt, physical
-Escape from both field and option, close/scrim and CDP swipe no-answer readback,
-independent-context settlement with the confirmed Inbox departure and leave
-rule, and thread Answer opening the same sheet. Build first; run phone*, inbox,
-asks, key-contexts and palette targeted before mode-free verification. A new
-passing Web identity reaching four seconds on any platform needs the dated,
-reasoned E-880 allowance described below before verification.
-
-`web/test/phone-inbox.test.ts` owns the phone Inbox home seam through the sealed
-`webFixture` touch/mobile context at 390×844 and public hub frames with a fake
-sender. Keep the four ordered full-width 44 px fold buttons, zero counts and
-saved folds, empty/check title and a live ask's count, two-line rows, inline
-message/request replies with per-topic reload drafts and exact sender/topic
-receipts, the waiting plan's counts without Plan controls or Enter navigation,
-and the 44 px Events/Archive controls with in-place archive and Events entry.
-Build first; run phone, phone-more, inbox, composer, events, key-contexts and
-palette as targeted neighbors before mode-free task verification. Existing
-desktop cases keep their desktop expectations; migrate any phone-width
-assumptions to the phone surface rather than restoring desktop actions there.
-
-`web/test/phone.test.ts` owns the phone-frame seam through sealed `webFixture`
-and Headless Shell. `pageCase`'s fourth argument `{ phone: true }` selects
-390×844 with touch/mobile and five-slot bar readiness; existing desktop contexts
-still wait for seven rail areas. Keep 640/639 live resizing, touch controls,
-More's physical Escape/outside/selection dismissal, complete shared last-look
-counts, exact Inbox row selection with inline actions and no independent drawer,
-and the saved desktop split across a phone reload. Build first; run
-area-slots, shell, key-contexts, palette, sessions and inbox as targeted neighbors
-before mode-free task verification. New passing Web identities reaching four
-seconds on any platform need a dated, reasoned E-880 allowance at roughly 1.5
-times the worst sample, citing the run without relaxing assertions or bounds.
-
-`web/test/phone-more.test.ts` uses that same phone context and sealed public
-hub/CLI seam for More's read-only Items, Artifacts and Accounts. Keep exact card
-and viewer identities, both back controls, phone-key no-write CLI readback,
-desktop physical keys and the 640 px boundary, account window facts and absent
-phone notification switches. Saved desktop planning views must yield to the
-phone tree. Hold a public item-summary read across both Back paths, then observe
-the exact target's arrival before asserting that the list stays open. Build
-first; run phone, items, artifacts, accounts, key-contexts, palette and plan
-as targeted neighbors before mode-free task verification. The same
-dated E-880 allowance rule applies to each new passing identity reaching 4 s.
-
-`web/test/session-drawer.test.ts` owns the selected session → thread/card/composer
-seam through sealed `webFixture`, fake Codex harnesses and public hub frames.
-Keep both directions of cross-topic history, exclusive numeric page boundaries,
-the exact older rows and live messages after a held history reply, and the reading
-anchor. The reusable `SessionRecentThread` feeds the shared `Thread`; the existing
-Inbox same-session/new-approval held-read regression must still pass. Session
-selection refresh failures retry the recent page even after older history is
-complete; retain the actual retry request and its held successful reply. Approval
-drawers in Inbox forward the same thread controls: physical j/k focus exact recent
-message ids and Escape returns to the selected approval row. Approval
-answers retain the fake native receipt and folded human outcome; drive the fake's
-post-answer state explicitly before asserting Waiting departure. TUI-only cards
-have no controls. Composer routing is proven by the fake adapter's injected
-message and topic, both for an item's topic and General. Arm focus observers
-before physical Enter or Open thread and observe the exact log/row; no elapsed
-frame wait proves focus. Shared composer/key routing changes also run composer,
-topics, thread-runs and shell alongside area-slots, key-contexts, palette, inbox
-and the Sessions files. Build first. New passing Web identities reaching four
-seconds on any platform require a dated, reasoned E-418 allowance near 1.5 times
-the worst passing sample, without relaxing assertions or request/DOM bounds.
+See the [per-test index](tests/index.md) for file-specific coverage and fixtures.
 
 ### phone-notifications.test.ts
 
-`web/test/phone-notifications.test.ts` uses the sealed 390×844 touch/mobile
-`webFixture` with `{ serviceWorkers: 'allow' }` in the context options. The default
-remains blocked for other cases. Stub permission, registration showNotification
-and PushManager.subscribe before navigation; registration and activation are real,
-notifications are fixture receipts. Prove More's shared switches/reload, tap-only
-root registration without push, denial clearing both switches with its tooltip,
-ask/plan/TUI approval delivery and exact row focus through worker messages and a
-cold URL entry. Hold getRegistration through a focus or switch-off transition,
-then release its real lookup receipt and assert both worker/page delivery stay silent.
-Public frames and fake adapters supply work. No live hub or human
-browser is used; real notifications remain QA's full-Chromium demo.
-`web-edge.test.ts` checks worker MIME, root scope, CSP and revalidation at T2;
-`web-auth.test.ts` checks the built worker is served. Build first, then run phone*,
-notifications, web-notifications, web-edge and web-auth targeted before mode-free
-verification. New passing identities reaching 80% of their tier budget need dated,
-reasoned E-880 allowances about 1.5× their worst passing sample, citing the run.
+See [web/test/phone-notifications.test.ts](tests/web-test-phone-notifications.test.ts.md) and the [per-test index](tests/index.md).
 
 ### web-notifications.test.ts
 
-`hub/test/web-notifications.test.ts` owns the T1 pure notification eligibility,
-text and target seam, including all Inbox row kinds and pre-transition task layers.
-Its VM-loaded production worker tests notificationclick/waitUntil through fake
-client boundaries, retaining no-fetch, focus+message and encoded openWindow targets.
-`web/test/notifications.test.ts` uses sealed `webFixture` and fake sender frames
-with `Notification`, visibility and focus stubs: hidden ask text/tag/click,
-including an active secondary pane and open palette with exact ask-id row focus
-while browser animation time is paused (mount is observed separately from focus),
-visible+focused/off/watch suppression, snapshot no-replay, finished task/card
-(including a split and open palette), shared per-browser Profile switches in
-Accounts (Finished off after reload and cross-tab updates), palette action absence,
-first-enabling permission and denied/revoked tooltips. Observe the exact Inbox
-row, item card or completed-item count before absence/duplicate assertions;
-watch-layer rows retain their exact browser socket receipt. No actual browser
-notification, service worker, live hub or human browser is used. Build first;
-run area-slots, key-contexts, palette, accounts and inbox as targeted neighbors before the
-mode-free task verification. New passing Web identities reaching four seconds on
-any platform need the dated, reasoned E-417 allowance at roughly 1.5 times the
-worst sample; batch independent serial setup first.
-
-`web/test/events.test.ts` owns the authenticated Events journal seam through
-sealed `webFixture`, fake hub/browser clocks and Headless Shell. Literal local-day
-labels, bounded 200-row pages and rendered ids prove paging; real `subscribe`
-and `events.list` frames prove kind/warning/subject filters, including reload.
-Peer `marks.get` and the exact `marks` push prove a visit's last look before the
-Inbox zero assertion. Retain bookkeeping/coalescing facts, physical `za` and
-subject navigation, including an artifact outside the first inventory page.
-Hold an older-page or obsolete-filter reply before a live burst; retain every
-coalescing replacement and the visible paging boundary, focused identity and
-older rows after the receipt. The filtered subscription uses a separate cookie
-socket so a split Inbox still counts events outside the filter. Keep the actual
-rail target in the key regression: digits navigate, Sessions action keys remain
-local, and focused Events rows filter. Run `session-launch.test.ts`,
-`sessions.test.ts` and `shell.test.ts` alongside the named neighboring files
-after changing shared context routing. The launch native-control regression
-dispatches document Enter at focused Cancel, retains the unprevented receipt,
-then observes native cancellation and a public session list with zero launches. Batch independent
-serial setup before considering the dated E-417 Web-duration allowance policy.
-
-`web/test/withdraw.test.ts` owns the authenticated thread → `topic.withdraw`
-seam with a sealed `webFixture`, fake clock, in-process spoke and busy fake
-adapter. Hold the successful receipt to assert shared pending state across topic
-navigation, no duplicate writes and no early restoration; then retain the exact
-restored text before newer typing, reload persistence and the fake's next injected
-message with zero withdrawn inputs. A controlled busy→idle step proves the
-injected stage removes Withdraw. For refusal, hold the outgoing withdrawal while
-the fake takes the input, withhold its injected browser delta, then release the
-real request: assert the hub's actual injected-stage refusal tooltip, unchanged
-draft/message and later delta application. That race strips optional eligibility
-to exercise an older hub. A two-recipient broadcast retains aggregate queued but
-loses Withdraw after one recipient submits; history/reload retain false eligibility.
-A visibility refresh held before submission is applied after its delivery delta;
-the new layer must render without restoring Withdraw. A fresh refresh includes
-current eligibility. Visibility replacements retain newer delivery/ask patches.
-A single batched fixture covers older A withdrawn while newer B is pending and C
-is typed: refusal and uncertain reload recover A/B/C, success keeps A/C, and edits
-before/after the pending boundary retain order. No live hub or native harness is used.
-
-`web/test/composer.test.ts` owns the authenticated composer → `topic.send` seam:
-sealed `webFixture`, fake Coordinator and second in-process session, rendered
-kinds plus peer frame history, default role addressing and the `@` session picker,
-physical Enter/newline/command Enter, palette focus/draft retention and `~`
-artifact chips. Artifacts from another topic or the archive are excluded; a
-batched 101-artifact setup proves selection beyond the initial inventory page.
-Per-topic reload and fresh-epoch disconnect checks retain drafts, disable offline
-writes, and prove zero replay. The peer reads the exact sent message's `readSeq`.
-Controlled browser time drives reconnect retries up to the existing retry cap and
-handshake deadline, retaining the final Live assertion. A held real outbound send
-crosses topic navigation; archiving its artifact before release produces an actual
-hub refusal and restores text/chips before newer typing. A held successful receipt
-retains the newer draft, and reload recovers uncertain text without a second send.
-Pending state is checked
-before release and the refusal receipt before restored-state assertions. No live
-hub, real harness or human browser participates.
-
-`web/test/inbox.test.ts` also owns the reusable approval-card seam (T-1129):
-complete command and file-change subjects, session/harness/since, once and always
-answers, attributed frame/archive outcome, optional denial notes and Escape's
-no-answer boundary, Claude Code and adapter/payload fallback without controls,
-and held native delivery with failure-to-pending and manual retry. The selected
-approval drawer reads the session's recent messages through `session.history`;
-retain the exact rendered message id, refresh on a different approval from the
-same session, and hold the prior history result across that selection to prove
-it cannot replace the new message. All use sealed fake adapters and the
-authenticated isolated browser; no live hub or native binary is needed.
-
-`web/test/inbox.test.ts` owns the four Now sections through the sealed
-`webFixture`, a fake Coordinator sender, fake native approvals and authenticated
-Headless Shell. Literal DOM assertions cover section order, counts, the five-row
-cap and oldest wait, saved folds and controlled browser age updates. Request
-decline waits for the fake sender's delivery and the folded outcome in its original DOM row;
-message removal retains a peer Inbox read proving the other message survives.
-Enter navigation loads an exact message older than the latest history page and
-focuses it in the thread; the plan case waits for the rendered stage heading.
-The empty Inbox's Events footer compares real journal rows and shared last-look
-marks, including warning counts beyond the first 200 rows. Held successful
-read/decline replies retain newer pushed Inbox rows/counts after the action's
-pending marker clears. An older-than-five ask link reveals saved folds and
-focuses the secondary-pane card while the primary copy remains mounted. Exact-id
-approval recovery covers a peer answer while offline across a new hub epoch and
-a real refused answer; a held archive reply cannot replace newer rows/counts or
-a later same-id authorization delta. Approval controls use the native record's
-choices and Neovim's keys; TUI-only rows have no answer controls. Existing
-`asks.test.ts` retains multi-client winner, receipt, failure and reconnect checks.
-`palette.test.ts` retains shell number keys outside answer rows and now expects
-the handled Inbox navigation, reply, archive and removal actions in help.
-The drawer test keeps row focus while following the exact message, exercises
-Split/Close and sends a one-line physical `r` reply to the fake sender with its
-original `reply_to` while the split remains open; bounded focus observers are armed before each `r`. A split native approval remains visible after another area takes focus, then follows same-id revalidation and the fake native peer's durable closed outcome, compared with fresh archive state. The existing older-than-history-page case also observes the
-drawer's bounded scroll before Enter navigation. The visit test waits for the
-exact ask departure and checks both area re-entry and focus into a non-Inbox
-pane; completed rows and selection clear even while Inbox remains mounted.
-The archive test blocks fake time across eight days (without replaying every
-periodic tick), retains a recent answered outcome and excludes the older one,
-then checks its footer below four empty sections. Browser clocks are controlled
-where needed so incidental one-second thread read receipts cannot settle action
-targets before the action under test. New passing Web identities need a dated,
-reasoned E-417 allowance only if any platform's sample reaches four seconds;
-batch serial setup before sizing it at roughly 1.5 times the worst sample.
+See [hub/test/web-notifications.test.ts](tests/hub-test-web-notifications.test.ts.md) and the [per-test index](tests/index.md).
 
 
-
-`web/test/asks.test.ts` owns the shared ask-card seam through the sealed
-`webFixture`, a fake Coordinator asker and authenticated Headless Shell contexts.
-It covers physical option keys with a Cyrillic key value, thread and Inbox cards,
-required decline reasons, free-answer failure/draft retention, pending/offline
-write suppression, the Inbox link, context help and thread navigation. C2 mounts
-Inbox and thread in two panes of a second independent cookie context against the
-same hub; the observer is armed before answering, and the explicit one-second
-criterion starts at the first browser's successful answer receipt. Final DOM
-assertions retain the hub option, answerer and exact timestamp. C5 holds a real
-outbound answer until a second context has won, withholds the winning ask delta,
-then observes the actual refusal and the history-recovered fold. A peer hub read
-proves the topic read mark reaches the ask without viewing its thread. Fresh-epoch
-recovery uses the existing in-process hub restart and controlled browser clock;
-it asserts disabled offline writes and zero replayed answers. No native harness
-or live project participates. A second competing-client regression moves the
-answer beyond the seven-day archive and more than 100 later messages, then
-asserts exactly two one-row history reads, the winner's exact outcome and
-unchanged newer Inbox rows/counts. The secondary-thread Inbox-link regression
-keeps another copy in the primary pane and asserts destination list and focus.
-The existing fold tests name the exact outer Inbox list and Fold Inbox button,
-separately from its nested Asks and approvals fold. Existing held-history/live
-Topics cases anchor asks by message id and assert the card's state attribute and
-chosen outcome; question text disappears on folding. Their pagination, viewport
-anchor, cross-pane persistence and zero-extra-read assertions remain intact.
-
-`web/test/thread-artifacts.test.ts` owns the authenticated thread → inline HTML
-artifact seam: the exact `artifact.url` reply as frame source, 240 px geometry,
-the script-only sandbox, posted and live-attached pages, file/folder chips and an
-unservable page's reason tooltip. The hostile script records its completed parent
-document read and top-navigation attempts; observe that receipt before asserting
-that both were refused and the workbench stayed put. Open full observes the new
-page and no opener, while Open in a pane retains the thread beside a full-height
-artifact older than the initial inventory page. Use the shared sealed Headless
-Shell fixture with CSP intact. A public move delta after opening from the thread
-must remove the top-level artifact row and list the child only under its folder;
-viewer selection metadata must never repopulate the authoritative inventory.
-
-`web/test/thread-runs.test.ts` owns the hub-history/delta → rendered run seam:
-verbatim hub fold lines, click/Enter/physical `za`, inline expansion with the
-original viewport anchor, sticky anchor geometry and collapse, and protected
-ask/answer/verdict/human/Aide messages. A real new message frame supplies the
-expected replacement fold line for both closed and open growth; no browser-side
-count is an oracle. Context help/palette and native item-link Enter retain the
-same production dispatcher. Use the shared sealed Headless Shell fixture.
-Partial-run paging retains the first actual message's offset while the anchor
-stays pinned. Controlled browser time proves that toggling without scrolling
-reschedules the visible read mark; open runs exclude their offscreen tail, and a
-closed anchor represents the last loaded member. The final peer read receipt
-still proves hub application.
-
-`web/test/messages.test.ts` owns the authenticated history/delta → rendered P12
-message seam: headers, role gutters, human/Aide bands, watch text, recorded
-verdict criteria, safe Markdown elements, whole-item navigation and artifact
-chips. The shared isolated Headless Shell fixture retains CSP and observes
-cleanup. Thread paging tests capture each message's actual pre-load offset,
-including a date separator, and retain the final anchor assertion; tall read-mark
-fixtures use Markdown paragraphs so their offscreen tail stays offscreen.
-
-Message Markdown has a lower-tier seam: `hub/test/web-markdown.test.ts` (T1)
-imports the pure `web/src/markdown.ts` parser. Literal contracts cover blocks,
-inline tokens, configured whole item ids, message-local fences and hostile
-HTML/images/URL schemes. No browser or hub fixture is needed for parsing.
-Web typecheck runs `web/check-html.ts` (T0): seeded source fixtures exercise the
-same AST guard that scans `web/src`, refusing named raw-HTML sink references
-(`dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`).
-Renderers still need their own element/navigation/browser evidence.
 
 Edge fixtures bind only loopback aliases. Revocation checks observe socket-close receipts after admission closes; no-follow filesystem regressions also prove an authorized read beneath a symlinked trusted ancestor on every supported OS (A-8634 R9; T-966, T-981, T-982, T-987, T-988, T-1042).
 
 Standalone generated-asset and bundle consumers declare their build prerequisites and check them themselves, independent of prior files or shard order; use fixture-owned present/missing output directories and derive asset lists from shipped scripts and workspace metadata (A-8634 R11; T-955, T-978, T-1019, T-1023, T-1031; A-9063 R8 source T-1096).
-
-`web/test/key-contexts.test.ts` covers T-1115 through the production shell: an
-explicit composer field reserves its Enter chords while ordinary fields inside
-a declared block keep native input; stand-in area selection, drawers and split
-content remain intact; Sessions launch actions appear in help and palette alongside navigation, session
-actions and archive;
-and a handled Items palette action runs after modal focus restoration. The pure
-resolver cases stay in T1 `hub/test/web-keymap.test.ts`. Existing shell, palette,
-fold and Items Web tests retain their existing coverage.
-
-`web/test/artifacts.test.ts` uses the same sealed hub/Headless Shell seam for
-Mine/Kept/By role/Archived counts and saved folds, physical `k` versus ↑,
-keep/unkeep with fresh hub inventory readback, human archive without deletion,
-on-demand folder files, and three bounded inventory pages without duplicate ids.
-Its opening cases assert the capability iframe's exact `allow-scripts` sandbox,
-a script's direct parent-document/cookie denial, full drawer height and split
-opening; capability text, named binary download completion, folder-child paths
-and missing bytes; and HTML/SVG diagrams versus raw Mermaid source plus download.
-Notes/prompts assert rendered Markdown, literal HTML and the source toggle's
-native Enter. This topic follows thread opening and survives reload; physical
-`s` preserves draft text, and public topic history retains the sent artifact.
-Refusals retain the draft for archived/other-topic artifacts and no writable
-topic. A split thread keeps an unfinished ask answer untouched while the shared
-composer gains one deduplicated chip.
-`area-slots.test.ts` holds capability reads across the artifact slot/identity
-checks, so asynchronous file/download content cannot supply identity by accident.
-The fixtures create all source bytes in the disposable root; no live project,
-GUI browser or added hub process is used.
-`hub/test/web-area-state.test.ts` keeps the lower-tier callback proof for live
-artifact changes raced against a page and reconnect replacement.
-
-`web/test/sessions.test.ts` owns the Sessions list seams against fake harnesses:
-group/header counts, browser-only fold persistence, merged row facts and live
-hold/request changes, full waiting commands and human-ask topics, visible-row
-physical navigation, stopped/archived inventories and `gs` into a folded group.
-Archive reads consume the additive hub-merged `session.list.rows` field.
-The merged-facts case checks P22 geometry at 1440 px and P27's 52 px two-line
-rows at a test-set 600 px viewport, including the pending command, hold/request
-facts, page-only metadata and absent list actions.
-
-`hub/test/web-verification-model.test.ts` is the pure T1 queue presentation seam,
-using recorded sealed scratch frames in `web/test/fixtures/verification.json`.
-`web/test/verification.test.ts` covers the Sessions verification line and in-place
-queue with hand-run reservations in a sealed `projectHub`: physical Enter,
-executor-status read per opening, no-frame ageing with the browser fake clock,
-replacement receipt and browser-only fold persistence. It runs no suite worker
-or real droplet. The explicit recording refresh is
-`node --test web/test/record-verification.ts`; its executor and machine receipts
-are fake, and its public executor-status read uses a second sealed scratch hub.
-
-`web/test/session-actions.test.ts` owns Stop confirmation/cancellation, Resume
-identity/role/claim retention, Archive, adapter capabilities and missing adapters,
-the session page at desktop and narrow widths, and the fresh-launch brief after
-unavailable resume. It uses sealed in-process fake harnesses and Headless Shell,
-with CLI `session list` readback for Stop/Resume. The held fake Stop observes
-adapter submission with a separate bound, checks duplicate Enter is inert until
-the receipt, releases the gate in cleanup and retains the final stopped row.
-The narrow-page case checks Stop cancellation, Esc back to the same focused row,
-inert list action keys, Enter re-entry and archived-row return with the toggle retained. Failed actions retain the hub's reason.
-No real harness or live hub is used.
-
-`web/test/session-launch.test.ts` owns the inline launcher seam through the
-sealed authenticated Headless Shell fixture: Aide defaults and Enter, role and
-harness changes, selected-account model catalog visits, limited-account reset
-refusals, physical keys and palette dispatch, pending duplicate prevention,
-offline drafts and session-page routing. Setup waits for the enabled launch
-action, which fences authenticated status and the role snapshot; form observers
-are armed before shortcuts. A held initial role snapshot proves this readiness
-boundary independently of the rail and connection label. The fake adapters receive all launches;
-CLI `session list` proves the Aide role and project-root directory after the
-Yours row appears. The item/brief case forwards the item and artifact id without
-`cwd`; the no-territory fixture keeps its root, while the existing hub worktree
-seam covers actual worktree creation. Model discovery replies are scripted at the
-WebSocket harness boundary so no installed account or provider binary is probed;
-all other frames reach the scratch hub. A held old catalog reply cannot replace
-current choices. No real session or live project is used.
-
-`web/test/item-criteria.test.ts` owns T-1078's three card-edit seams, one Web
-case per criterion against one sealed scratch hub and Headless Shell. C1 adds,
-edits and removes with `cland task view` readback, preserving other ids and
-proving a removed id is not reused; fields exclude the `Ck.` label and refused
-text retains its draft. Mixed legacy/explicit-id and retained high-water
-fixtures keep id-less rows read-only until an Add receipt supplies persisted ids;
-subsequent edit/done/remove CLI readbacks preserve the untouched row's id,
-text and marks. C2 observes the rendered done receipt and reads the
-`human` writer through the CLI, checking the outgoing frame has no `as` field.
-C3 checks the available fields, read-only agents' text and inert `e` outside
-the block, unchanged full item readback and absence of other item write frames.
-Rendered acknowledgements are armed before actions and retain final assertions;
-fresh contexts and observed browser/hub teardown use the shared fixture.
-
-`web/test/items-actions.test.ts` owns the three Items interaction seams: selecting
-three rows, switching to Board and sending one General message received by an in-process fake
-Coordinator, creating and reusing a missing item topic, and scope/breadcrumb/back
-navigation plus closed-item links. It uses the shared isolated Headless Shell
-fixture, observes the actual message/DOM receipts before asserting, and checks
-`gi`, `gt`, `gs` through the shared physical-code dispatcher. The marked selection
-keeps its composer when the cursor moves to an unmarked row. A browser-edge held
-summary reply proves that later area/row navigation survives after the loaded
-lookup target appears in the palette; the Board cases retain later epic and All
-tab choices too. A non-first epic selected in Tree remains the Board x/s target.
-By-id summary pages
-carry a complete compact tree row so closed links need no body fetch. Board
-and Graph share the scope breadcrumbs and physical selection keys; item links
-from either view open Tree to reveal their ancestor chain. The Graph interaction
-case checks x/Shift-j, a selection quick message, Escape, s and back.
-
-`web/test/plan.test.ts` proves T-1077 through one sealed hub/Headless Shell:
-`a` approves a waiting plan and the real CLI reads approval by the human; changes
-paint with the watch token, entry durably advances the shared mark and live
-updates preserve the visit's earlier receipt; resizing below 1280 px removes
-approval and makes `a` inert, including at phone width. The approval case also
-checks stage gates, summary facts and the Lead-topic discussion receipt. A
-Plan-first entry with done hidden proves a closed member is absent from the open
-snapshot, loads its title/done/fraction/verdict through a bounded by-id summary,
-retains a later closed-member delta and sends no body read for that member.
-Opening through a selected live task and closing it under the same done filter
-keeps the epic, mounted visit and closed-row facts without another marks write. Fresh
-contexts isolate the criteria; browser and scratch-hub teardown is observed.
-
-`web/test/graph.test.ts` proves T-1076's three criteria with one sealed hub/browser:
-a Graph-first release loads a closed epic from its parent page and displays hub
-progress/work and token done colours without reading that epic's children;
-Tree/Graph round trips retain scope/filter/selection, node navigation selects the
-matching tree row and card return restores focus; the source colour guard and
-computed SVG paints retain the shared tokens. Cases use fresh contexts and
-observe browser/hub teardown. The typecheck retains the token-only source guard.
-
-`web/test/board.test.ts` proves T-1075's three criteria through the sealed browser
-fixture: scoped Tree → Board → Tree retains filter and selection; release epics
-retain hub done/total before closed-child pages arrive and unfold into status
-sections; keyboard and mouse expose no rank/move action. Epic-tab narrowing keeps
-the release's authoritative next. The final read-only task list retains unchanged
-ranks and parents after inert rank chords and drag gestures. One hub/browser
-serves the file, with a fresh context per criterion and observed teardown.
-
-`web/test/item-card.test.ts` observes real Headless Shell DOM and outgoing frames
-against a sealed scratch hub: ten selected rows send zero `task.view`, opening
-agents’ text sends one body request, Enter/Esc/`h` preserves the tree row, and a
-closed card reads by-id summary facts and refreshes on a task delta. Split/Swap
-focus round trips and a closed container with an open verdict owner retain the
-matching owner reason/round/scope through a real verdict delta. The hub's
-T1 tracker-summary test checks compact verification and open/closed transport;
-the copied-live Lua oracle retains the snapshot byte cap. Ordinary summary lists
-omit card-only transport fields while snapshots opt in, and the native
-`startup-budget.test.ts` keeps the 128 KiB limit with a tighter 120 KiB margin
-assertion for the 1,000-item fixture.
-
-
-`web-auth.test.ts` exercises liveness on an injected clock at T2 (30-second
-ping, 60-second silence, incoming traffic renewal), binary close 4003, the exact
-1 MiB UTF-8 JSON boundary and oversize close 1009, welcome build stamps and
-protocol restart instructions, plus `terminal: 'none'` through `session.list`.
-`web/test/connection.test.ts` uses the isolated Headless Shell to prove a stale
-page reloads to the current digest and that protocol refusal renders **Restart hub**
-without retries. Frame navigation and final live DOM state are separate receipts.
 
 For human-only sign-in, session management and web authority policy tests, follow
 [Browser sign-in fixtures](#browser-sign-in-fixtures).
@@ -2537,101 +1660,17 @@ The probe checks the pinned executable and, on Linux, the shell and bundled shar
 libraries with bounded `ldd` calls in a sealed scratch environment. It launches
 no browser; the fixture launches exactly its returned executable.
 
-`web/test/shell.test.ts` proves the rail/top-strip boundary through ordinary
-frames from a disposable hub holding an ask and a busy fake session. It observes
-rendered attention/title changes, manual and responsive 60 px collapse,
-release/rail persistence, physical-code navigation with Cyrillic key values,
-storage denial, and computed focus/hover/id layout. One browser and hub serve
-the file; each case has a fresh context. `hub/test/web-keymap.test.ts` is T1:
-the pure shortcut resolver keeps exact modifiers and browser-reserved chords
-unbound. Neither file is a timing claim.
-
-`web/test/folds.test.ts` proves chevron and physical left/right folding through
-the rendered shell, reload persistence under the area's versioned local key,
-zero outgoing fold frames, independent browser contexts/areas, synchronized
-panes, retained preference fields, malformed state and denied storage. Its
-mechanical `web/test/prose.ts` detector rejects visible text nodes ending in a
-full stop or exceeding six words; planted header fixtures must fail while the
-shell passes. Hidden text, title attributes, role tooltips and the marked `?`
-help panel are excluded. These are Web checks, not hub persistence tests: folds
-never enter the hub or Neovim's `ui.json`.
-
-`web/test/items.test.ts` copies the tracker files into its disposable root before
-starting `projectHub`, then observes the Items tree at 1440×900 in Headless Shell.
-Deterministic additional rows retain stage groups, cell/proportional bars, rank
-and ordinal facts, claims, holds, verdict rounds, category previews and archives.
-CLI status mutations are fenced by the rendered changed row and ancestor meter;
-the task keeps focus and selection when it moves. Folds, `D` and `A` persist in
-browser-only preferences and are independent between contexts. A separate exact
-300-item fixture asserts a completed `cland.items.rebuild` PerformanceMeasure
-below 15 ms after a CLI delta: synchronous tree-model work only, excluding setup,
-transport and React commit. The durable DOM assertions remain separate.
-The test arms each affected ancestor observer before mutation, then retains its
-final DOM assertion. It also checks verdict rounds after status/verdict deltas.
-`web/test/items-order.test.ts` checks sibling ordering after a rank event followed
-by ordinary rank/reparent file changes, using a separate seven-item scratch hub
-with unchanged request/DOM bounds and authoritative sibling comparisons. The
-copied-tracker fixture owns large-model coverage rather than adding an unrelated
-full-tracker rescan to the ordering regression. The 300-item transition preserves every rebuild measure and compares
-that buffer with an independently armed PerformanceObserver capture.
-
 ### phone-composer.test.ts
 
-`web/test/phone-composer.test.ts` uses the sealed phone `webFixture` at 390×844,
-touch/mobile Headless Shell and public frames with a fake Coordinator and busy
-session. Keep the two rows of 44 px controls docked above the bar, default
-Coordinator and session-chip routing, 44 px addressee clearing with implicit
-hub routing and reload persistence, physical Return/Shift/Command newlines
-with zero sends until Send, exact multiline/kind history receipts, and matching
-palette keys without phone send/attach actions. The checked kind sheet remains
-inline, reduces history by its occupied height and leaves history reachable
-without a modal or scrim. Withdrawal waits for the held successful receipt
-before restoring text ahead of newer typing; a test-controlled idle transition
-removes Withdraw at submission. Per-topic text and kinds survive navigation and
-reload without sending. Build first; run phone*, composer, withdraw, topics and
-key-contexts targeted before mode-free verification. New passing Web identities
-reaching four seconds need dated, reasoned E-880 allowances before verification,
-at roughly 1.5 times the worst observed passing sample and citing its run.
+See [web/test/phone-composer.test.ts](tests/web-test-phone-composer.test.ts.md) and the [per-test index](tests/index.md).
 
 ### phone-sessions.test.ts
 
-`web/test/phone-sessions.test.ts` uses the sealed 390×844 touch/mobile
-`webFixture` and Headless Shell. Fake Codex sessions exercise public adapter
-signals (including the optional command on `waitingForApproval`), source usage
-and public launch/queue frames; all CLI reads target that fixture's scratch hub.
-It checks the four header counts, registry-ordered account cells on one row,
-worst-window/missing readings, two-line rows without visible actions, group
-folds and a cell tap into read-only Accounts. The shared queue opens in a modal
-full-height sheet, with Close and physical Escape restoring summary focus.
-The session page retains the complete waiting command, model, account and
-usage, while both Back paths restore the exact row focus, including after Stop
-moves the selected row into a saved folded Stopped
-group: the test observes the expanded group and focused row for both Back paths.
-Stop and Archive confirm in place, cancellation leaves the page open, and scratch CLI receipts
-prove their persisted outcomes; all four lifecycle/capability controls and
-confirmation buttons meet 44 px. No live hub, real harness or GUI browser runs.
-Build first; run phone*.test.ts, sessions.test.ts, session-actions.test.ts,
-session-launch.test.ts, accounts.test.ts and key-contexts.test.ts targeted.
-After any resize, observe `data-phone` before measuring. New passing Web
-identities reaching four seconds need a dated E-880 allowance with the run and
-about 1.5× its worst passing sample.
+See [web/test/phone-sessions.test.ts](tests/web-test-phone-sessions.test.ts.md) and the [per-test index](tests/index.md).
 
 ### phone-disconnected.test.ts
 
-`web/test/phone-disconnected.test.ts` uses the sealed 390×844 touch/mobile
-`webFixture`, public frames and fake sessions. Stop and observe the scratch
-hub’s closed socket before testing the phone strip, stable dropped-at and
-last-applied times, countdown, immediate Retry and reset backoff. Observe each
-failed real socket close before advancing its next timer; use
-`reconnectUntilLive` for paused-clock reconnects. Wait for `data-phone` after
-resizing before checking the desktop boundary. Keep the retained Inbox rows,
-stale time, all disabled answer/reply controls and unsent reply label. A forced
-offline submit sends no frame; after restart, compare the resume cursor, new
-snapshot epoch, exact raised ask row and durable topic history, retaining the
-draft and document identity. Never stop the live hub. Build first; run phone*,
-connection, inbox, asks, composer and withdraw targeted before mode-free task
-verification. New passing Web identities reaching 4 s need dated, reasoned
-E-880 allowances at about 1.5× the worst sample, citing its run.
+See [web/test/phone-disconnected.test.ts](tests/web-test-phone-disconnected.test.ts.md) and the [per-test index](tests/index.md).
 
 ### Paused page clocks
 
@@ -2646,236 +1685,26 @@ remain valid. Keep existing DOM and socket receipts before advancing paused time
 
 ## Human marks fixtures
 
-`web/test/topics.test.ts` uses the isolated Headless Shell and disposable
-`projectHub` frame seam for topic grouping, browser-only group folds, a
-300-message numeric history traversal and item links. It holds real history
-replies while an ask is answered and a message arrives, then retains the final
-ordered identities and prepend anchor assertions against fresh history pages.
-A rejected earlier page stays failed after another scroll event; a later live
-DOM row fences that event before asserting the error and absence of another
-request. Explicit Retry followed by a held reply retains the old top message
-and complete ordered identities. A real public resume request forces a fresh
-snapshot across a held initial read: the replacement request must arrive before
-the stale reply is released, and a later live DOM row fences that stale reply.
-A held fake-adapter injection proves delivery-stage updates without another
-history or topic-list read. Reconnect tests retain cached history during ring
-replay and require a new history read after a restarted hub's snapshot.
-Browser-controlled time proves the one-second read threshold; a controlled
-document visibility boundary cancels incomplete intervals and keeps hidden
-messages unread. A second frame client checks the hub's unread count, including
-a viewport whose last visible message precedes the thread's end. These are Web
-checks, with no native hub process or GUI browser.
-
-The partial-viewport read case holds the outgoing read frame, checks the unread
-count before applying it, then arms a second client's exact topic read-sequence
-and unread receipt before release. The final list assertion follows that receipt;
-observing only a browser-sent frame cannot fence another client's list request.
-Topics also asserts its registered pane/page surfaces after area-module integration.
-`hub/test/web-area-state.test.ts` retains topic and artifact visibility replacements
-in one frame and asserts no inventory reads through the public connection callback.
-
-`hub/test/human-marks.test.ts` proves cross-client monotonic events timestamps,
-plan-history receipts and topic read positions through real frame clients. Its
-persistence case stops and reopens `projectHub` in-process, retaining the exact
-marks, topic position and one-time import receipt; it makes no OS-process
-restart claim. `nvim/test/human-marks-component.test.ts` uses the headless recorded
-stub and a second scripted frame peer for the Events visit, shared topic reads,
-one-time legacy import and stale-copy cleanup. A held initial marks reply and a separately deferred preference write prove that startup without validated legacy keys makes no write attempt, preserving the original invalid-file notice. Peer marks updates must reach an
-already connected editor, including a delta that precedes a held older
-`marks.get` response. The Events visit observer starts before navigation and
-waits for the exact peer-visible timestamp; cold-start replacement waits for
-editor close and owned process-group disappearance. Its HOME/XDG/Git paths are scratch
-and child launch applies the shared credential filter. Refresh its recording
-slice and only other changed consumers with
-`npm run test:nvim-fixtures -- --slice <test-file>`; startup mark frames have no
-visibility projection context, so the same recording serves unchanged consumers.
-The recorded mark merge calls the production function through the T3 recorder;
-T2 never imports hub runtime code. `plan.test.ts` retains the native plan/restart
-contract and reads receipts from the hub rather than `ui.json`.
+See [hub/test/human-marks.test.ts](tests/hub-test-human-marks.test.ts.md) and the [per-test index](tests/index.md).
 
 ## Connection snapshots
+
+See the [per-test index](tests/index.md) for file-specific coverage and fixtures.
 
 While client derivations or cross-client ports remain, retain an independent differential oracle (for example Lua against TypeScript), with a stated removal condition. Pair each delta-rebuilt row assertion with a fresh snapshot comparison, including hub totals while rows remain unloaded (A-8634 R4; T-979, T-1044, T-1061, T-1053, T-1052, T-1072, T-1058, T-1071; A-9063 R7 sources T-1075, T-1076, T-1056).
 
 Pagination regressions include tied and backdated timestamps, traverse at least two pages, race a state change against a held page and retain the final one-row-per-identity assertion after replay (A-8634 R8; T-984, T-985, T-986, T-989, T-992, T-1046, T-1055; A-9063 R4; T-1073, T-1081).
 
-`item-summary.test.ts` also proves card verdict reasons/rounds/scopes, Decision
-previews and agents' text outlines through snapshots and mutation deltas, without
-body/comment reads. Closing a task removes its row from the open snapshot; its final delta still
-carries the compact closed row. Closing other rows removes card facts from their
-snapshot and delta; a bounded by-id page restores them without a body/comment payload. Scoped
-verdict history must not emit posted-verdict notifications on close/reopen; the
-frame regression retains one genuine new-verdict subscription delivery. The
-copied-live boundary asserts its measured items size at or below 50% of 1 MiB. Stage summaries and cover-settlement deltas retain complete
-merged/total/status counts; closed tasks without landing receipts do not count
-as merged. `progress-counts-component.test.ts` renders unloaded closed stage
-members in the plan, explorer and card, then observes a stage-count delta. The
-thousand-item startup guard includes card facts and preserves both the eight
-reply budgets and the full 1 MiB items-snapshot cap.
-
-`item-summary.test.ts` exercises summaries, provenance, roll-ups, claims/holds,
-verdicts, topic activity and bounded closed-text pages through `projectHub` frames
-at T2. It also retains the stage-only delta on platform-cover settlement and
-checks next through closed-ancestor reopening and reparenting. The ordinary
-mutation assertion retains only changed task/ancestor deltas; existing
-logger diagnostics record which rows were recomputed. `item-summary-scale.test.ts`
-uses 1,000 durable rows and bounds their three-row recomputation at 100 ms,
-excluding setup, I/O, transport and freshness probes. This is a local synchronous
-measurement, not a whole-request latency claim. T-1038's eight startup byte guards
-remain in `startup-replies-scale.test.ts`.
-
-`item-summary-lua.test.ts` is T3 because its independent oracle executes the real
-Lua through headless Neovim. It copies every live tracker file into a disposable
-project, adds a guaranteed closed-release/open-epic/planned-task regression,
-recursively restores closed containers and tasks through bounded parent pages,
-deduplicating retained ancestors by identity, then compares every summary
-and the Lua roll-up rules with the snapshot plus bounded by-id closed-text reads, and asserts the copied items
-frame fits 1 MiB.
-It also feeds separate plan reads to Lua's stage selector. The dated E-880
-allowance preserves this all-body differential guard. Neither the source tracker
-nor the human's HOME, accounts or Git configuration is used for execution.
-
-
-`item-summary.test.ts` tests parent cursors, limits, closed-ancestor retention and
-the close-delta/open-set boundary through public frames. The recorded stdio stub
-returns every closed kind on parent pages as well; its
-legacy full-list scenarios retain closed container and question identities through
-archive replacement. Its summary mode retains open rows and their ancestor
-chain, including closed legacy parents. The many-closed-container forest asserts
-a first-item reply at or below 120 KiB independently of task density,
-complete release roll-ups, bounded container pages and nested task retrieval. A second client that
-has never fetched closed pages observes an unloaded closed task's removal and
-its authoritative done total, then compares a fresh snapshot. `nvim/test/closed-pages.test.ts`
-copies the live tracker into a disposable project and renders 105 paged closed
-children in a real headless explorer, board and card. It also keeps release counts
-while a closed epic is unloaded, unfolds that epic and recursively discovers a
-closed release/epic/task archive without duplicate identities. It is T3 for the real client
-boundary. `web/test/items.test.ts` observes a 105-child page continuation, close
-delta and reload through the real browser. Its separate 105-closed-epic fixture
-asserts release progress before loading, container cursor continuation, nested
-closed tasks, archived roots and unique rows after reload. A D-hidden regression holds closed
-rows unloaded while asserting stage merged/state and global done totals, then
-reopens a closed child and retains the final fraction/state assertions. New closed-page screen frames can be
-recorded by naming their individual component file; regenerate existing Neovim
-protocol/live fixtures with `npm run test:nvim-fixtures -- --from-recordings`.
-
-
-Resume coverage adds `model-ring.test.ts` (T1 fake-clock age/UTF-8 byte bounds,
-including terminal close after a late disconnect publication) and
-`model-output.test.ts` (T1 stalled transport at exactly/past 4 MiB).
-`connection-resume.test.ts` uses real Unix clients of `projectHub` for five
-missed item changes, expiry/foreign-epoch snapshots, request-frame exclusion
-from replay and two hub starts. `connection-resync.test.ts` uses a stalled
-in-memory dispatcher peer for exact replay continuity and a real paused Unix
-reader for the outgoing queue boundary. It also races a synchronous action
-against replay and retains the final replay-then-live order assertion. Explicit
-resume during another subscriber's fan-out also proves that replaced callbacks
-cannot resend either the current or a queued publication. All
-projects, homes, Git configuration and account environments come from the sealed
-fixture. These tests add no hub child process. Clients resume from their last
-applied cursor; a completed request after replay/drain fences preceding writes.
-
-`hub/test/computed-sessions.test.ts` exercises the same disposable T2 frame seam
-for authoritative unread/last-message values, `topic.read`, merged session
-snapshots and row replacements. Fake time proves waiting age without timer-only
-updates; the row carries approval command, account, usage, newest verifier hold
-and +N, or accepted requested work. A later snapshot is compared with each
-presence/process/rename/disconnect delta, and an ordered request fences the
-single-row assertion. Snapshot-only subscribers also receive unmanaged rows and
-removals; unknown identities remain separate by name. No new process is used.
-
-`hub/test/connection-snapshot.test.ts` uses a disposable `projectHub` at T2 for
-feature negotiation, the seven domain frames and end marker, legacy compatibility,
-UTF-8 overflow fallback, and a model change raced against the first snapshot
-frame. The observer is armed before the hello/change, and final assertions retain
-the complete contiguous transaction and the later change receipt.
-The same file proves numbered model continuity across tracker, topic, session and
-inbox changes, slim task layers (including other items affected by a release
-change), pin/mute row re-projection, and one serialization per feature set with
-three clients. An in-memory dispatcher peer proves that a synchronous action
-during fan-out cannot invert the order another client receives. These tests use
-the existing frame seam; they add no process. `suite-queue.test.ts` proves with
-fake time that elapsed timing does not republish a held queue, while holder and
-waiter changes do and explicit reads keep current timing.
-Pin/mute/toggle-off also compare pushed topic-owned artifacts with a fresh read.
-A scratch pre-extension store with 401 affected older messages and unrelated
-history proves attachment-reference backfill, complete affected-row delivery and
-bounded wire chunks. The snapshot cursor equality uses `FakeClock` so a legitimate
-coalesced inbox publication cannot race the no-number-consumed assertion.
-The cross-topic move case compares old-thread creation chips with fresh history
-through pin/mute/toggle-off of the destination topic.
-`hub/test/snapshot-framing.test.ts` proves each domain cap and the exact-byte
-boundary at T1. The wire conformance check keeps the browser leaf aligned.
-
-For copied-live-tracker evidence, run
-`node hub/scripts/measure-snapshot.ts /path/to/project/.cland/tasks`.
-Only source files are copied; the tracker and hub open in the script's disposable
-root with a filtered environment and fake Git/clock. The output labels other
-domains as default scratch state and excludes setup/copy/transport from the five
-compose/framing samples. Publish that output through `artifact.create` and name
-the implementation head/tree and platform; it is a measurement, not a suite pass.
-
 
 ### Startup reply byte budgets (T-1038)
+
+See the [per-test index](tests/index.md) for file-specific coverage and fixtures.
 
 Count UTF-8 bytes at the consuming boundary, including framing, with a separate budget for every startup reply; keep the budget guard unchanged (A-8634 R5; T-963, T-1007, T-1010, T-1003, T-983, T-1037, T-1038, T-1045).
 
 Before compacting a reply, inventory readers, count/wait assertions, QA brief waits and startup probes; use rule 19 for migration and capability landing order. Check budgets against a copied live tracker and synthetic fixtures varying closed-container density independently of task count. Add small probe-assertion fixtures for each retained state/kind and cover changed row kinds through both real stdio hub and recorded stub (A-8634 R3; T-1025, T-991, T-999, T-1027, T-1038, T-993; A-9063 R1; T-1088, T-1089, T-1091).
 
 When expanding verification phases, prove the command plans are unchanged when no file is classified into the new phase; use rule 19 before dependent work is enqueued (A-8634 R3; T-1025, T-991).
-
-The startup relay records exact UTF-8 JSON result frames, with envelope and
-newline, for status, rules, General history, artifacts, open item summaries,
-events, sessions and accounts. It retains the rendered completion assertion and
-waits separately for the eight reply receipts. An oversized rule reply exercises
-the per-reply failure guard without depending on an oversized item list.
-`hub-status-component.test.ts` checks compact/default and opt-in historical
-status, complete-message before-id pages, artifact cursor pages and all eight
-budgets on a small durable fixture. It uses the smoke's shared pure byte guard,
-including per-reply and total oversize controls. Timing still requires the
-rendered Neovim receipt.
-
-`startup-replies-scale.test.ts` retains the eight byte assertions on 1,000 tasks,
-8,163 artifacts, 200 General messages and 200 event records. It also restores
-1,645 completed suite receipts, 217 stopped sessions, four plans with 250 children
-each, and 800 closed topics. T-1094 enforces deterministic work through the first
-completed status socket reply, excluding fixture creation: one suite checkpoint
-visits the 1,645 retained jobs once, at most four explorer recomputation batches
-run, and all 1,004 item files are read at most twice each (the initial scan plus
-plan validation). Native `readFileSync` and `readFile` observers are armed before
-startup; the existing explorer log and `verification-checkpoint { jobs }` completion
-log count work even when cached serialized snapshots avoid database writes.
-The checkpoint receipt is emitted after its transaction and in-memory publication;
-it counts jobs visited, not rows changed. Reintroducing per-stopped-session
-`#save()` calls must fail the checkpoint count, independent of the machine clock.
-
-First-status process CPU, wall time, work counts and named startup-step wall
-durations remain diagnostic. The attempted fixed CPU budget failed on Linux at
-10,558.0 ms CPU / 9,603.4 ms wall (A-9776), so it is no longer a performance gate.
-A gross **30-second wall guard** catches startup hangs through the completed
-status receipt; the 120-second whole-test watchdog bounds completion. Neither
-is the computational scaling gate. Byte limits remain unchanged. These counts
-guard the known save/recompute/read regressions; arbitrary CPU work or blocking
-I/O inside a counted unit is outside them. The separate copied-state CLI
-measurement retains its five-second end-to-end target.
-Every restored plan must retain its children. This Coordinator-approved T3 scale seam adds no
-native process; task verification defers it to periodic and integrated runs.
-T-1039 removes the C-325 duration allowance after the expanded file ran in
-2.768 seconds on local Darwin arm64; this is targeted local T3 evidence, not
-a new Linux or integrated receipt. A-8181's original 6.636-second Linux T2 result
-remains historical evidence.
-At startup, unbranched non-ready tasks with retained verdicts skip readiness I/O:
-the merge gate cannot promote them without a branch. A branchless `ready` row
-still runs its check and demotes. `startup-ready-component.test.ts` observes both
-filesystem boundaries and final frame statuses; `startup-replies-scale.test.ts`
-retains the original durable-scale fixture and measures first completed status.
-
-
-The recorded artifact screen file checks browser/palette page reads and General
-archive continuation when byte-capped pages contain fewer than 200 messages.
-It also opens older-page rendered centre/split folder-child views, holds detail
-reads across reconnect and visibility reset, and proves both rendered/raw views
-retain their artifact identities before those detail receipts arrive.
 
 Status readers that assert completed-suite receipts, covers or harness launch
 rows explicitly request `history: true` (`cland hub status --history` for CLI
@@ -2902,28 +1731,3 @@ A serving receipt precedes requests, each has a 60-second bound, and a failed
 request is recorded before continuing. Shutdown completes before root removal.
 Publish the output as an artifact with head/tree and platform. This is diagnostic
 measurement, not suite evidence; local runs require cover-quiet admission.
-
-
-`hub/test/ask-outcomes.test.ts` covers E-413's answered asks at the T2 public
-frame seam with `FakeClock`: C1 retains the chosen option, answerer and time in
-live cards and later history; C2 compares the same outcome in the inbox departure
-and archive. Both use a disposable `projectHub`. C3 uses the existing `startHub`
-frame fixture without a journal, so an incidental journal projection cannot read
-the inbox before its rapid free-text/stand-in answer. It observes exactly one
-matching departure/archive outcome, then checks that the next inbox publication
-does not repeat the departure. Observers are armed before answering. A T1 test
-in `hub/src/hub/store.test.ts` proves option/free-text outcomes survive Store
-reopen, without restarting a hub. These cases add no native process.
-
-
-T-1059's decline cases in `hub/test/ask-outcomes.test.ts` use the same T2
-public-frame seam: a fake Implementer's question is forwarded by the Coordinator,
-declined by the human, and returned through `ask.answer`; the topic admits the
-next question. Missing/blank reasons leave the ask open, and the thread,
-departure and archive retain the declined reason, answerer and FakeClock time.
-`nvim/test/declined-ask-component.test.ts` is T2: headless Neovim consumes only
-recorded frames and asserts a single folded row with the reason on history and
-live updates. Refresh only its recording with
-`npm run test:nvim-fixtures -- --slice nvim/test/declined-ask-component.test.ts`.
-The shipped-role wording regression and unchanged byte reserve run at T1 in
-`hub/test/roles-clauses.test.ts`. A declined ask is a decision and never consent.

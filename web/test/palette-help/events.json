@@ -1,0 +1,11 @@
+{
+  "count": 24,
+  "actions": {
+    "events-kind-2": {
+      "label": "Filter task events"
+    },
+    "events-clear": {
+      "key": "⇧F"
+    }
+  }
+}

@@ -2,6 +2,7 @@
 import test from 'node:test';
 import type { Page } from 'playwright-core';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { connectUi } from '../../hub/test/harness.ts';
 import { until } from '../../hub/test/until.ts';
 import { webFixture, pageUntil } from './harness.ts';
@@ -14,6 +15,14 @@ async function physical(page: Page, chord: string) {
         }, stroke);
 }
 
+
+type HelpExpectation = {
+  count: number;
+  keys?: string[];
+  actions?: Record<string, { key?: string; label?: string }>;
+  groups?: Record<string, string[]>;
+};
+const areaHelp = (area: string): HelpExpectation => JSON.parse(readFileSync(new URL(`./palette-help/${area.toLowerCase()}.json`, import.meta.url), 'utf8'));
 
 test('the palette and area keys help', async t => {
   const fixture = await webFixture(t);
@@ -109,7 +118,7 @@ test('the palette and area keys help', async t => {
       const help = page.getByRole('dialog', { name: 'Inbox keys', exact: true });
       await help.waitFor();
       assert.deepEqual(await help.locator('[data-key-action="split"] kbd').evaluate(node => Array.from(node.textContent!, character => character.codePointAt(0))), [8984, 92], 'command plus exactly one backslash');
-      assert.deepEqual(await help.locator('kbd').allTextContents(), ['1', '2', '3', '4', '5', '6', '7', '⌘K / Space p', '?', '⌘\\', '⌘Enter', 'Esc', '←', '→', 'A', 'r', 'j / ↓', 'k / ↑', 'Enter', 'd']);
+      assert.deepEqual(await help.locator('kbd').allTextContents(), areaHelp('Inbox').keys);
       await physical(page, 'Escape');
       await help.waitFor({ state: 'detached' });
       for (const [index, area] of ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'].entries()) {
@@ -118,25 +127,17 @@ test('the palette and area keys help', async t => {
         await physical(page, 'Shift+Slash');
         const localHelp = page.getByRole('dialog', { name: `${area} keys`, exact: true });
         await localHelp.waitFor();
-        assert.equal(await localHelp.locator('kbd').count(), area === 'Inbox' ? 20 : area === 'Items' ? 33 : area === 'Topics' ? 18 : area === 'Sessions' || area === 'Events' ? 24 : area === 'Artifacts' ? 21 : 14);
-        if (area === 'Artifacts') assert.equal(await localHelp.locator('[data-key-action="artifact-compose"] kbd').textContent(), 's');
-        if (area === 'Events') {
-          assert.equal(await localHelp.locator('[data-key-action="events-kind-2"] dt').innerText(), 'Filter task events');
-          assert.equal(await localHelp.locator('[data-key-action="events-clear"] kbd').innerText(), '⇧F');
+        const expected = areaHelp(area);
+        assert.equal(await localHelp.locator('kbd').count(), expected.count);
+        for (const [action, facts] of Object.entries(expected.actions ?? {})) {
+          const row = localHelp.locator(`[data-key-action="${action}"]`);
+          if (facts.key !== undefined) assert.equal(await row.locator('kbd').innerText(), facts.key);
+          if (facts.label !== undefined) assert.equal(await row.locator('dt').innerText(), facts.label);
         }
-        if (area === 'Topics') {
-          assert.deepEqual(await localHelp.locator('[data-key-action^="topic-"] dt').allTextContents(), [
-            'Next topic or group', 'Previous topic or group', 'Enter thread or unfold group', 'Fold topic group',
-          ]);
+        for (const [prefix, labels] of Object.entries(expected.groups ?? {})) {
+          assert.deepEqual(await localHelp.locator(`[data-key-action^="${prefix}"] dt`).allTextContents(), labels);
         }
         assert.equal(await localHelp.locator('[data-key-action="dismiss"]').count(), 1, 'one contextual row per action');
-        if (area === 'Sessions') {
-          assert.deepEqual(await localHelp.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Open session thread, page or queue', 'Launch a session', 'New Aide', 'Stop session', 'Resume session', 'Archive session', 'Capabilities', 'Show archived sessions']);
-        }
-        if (area === 'Items') {
-          assert.equal(await localHelp.locator('[data-key-action="accept"] kbd').textContent(), 'Enter');
-          assert.equal(await localHelp.locator('[data-key-action="dismiss"] dt').textContent(), 'Return from card or close drawer');
-        }
         await physical(page, 'Escape');
         await localHelp.waitFor({ state: 'detached' });
       }

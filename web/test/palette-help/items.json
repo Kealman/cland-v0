@@ -1,0 +1,11 @@
+{
+  "count": 33,
+  "actions": {
+    "accept": {
+      "key": "Enter"
+    },
+    "dismiss": {
+      "label": "Return from card or close drawer"
+    }
+  }
+}

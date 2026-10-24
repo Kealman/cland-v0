@@ -1,0 +1,17 @@
+{
+  "count": 24,
+  "groups": {
+    "session-": [
+      "Next session",
+      "Previous session",
+      "Open session thread, page or queue",
+      "Launch a session",
+      "New Aide",
+      "Stop session",
+      "Resume session",
+      "Archive session",
+      "Capabilities",
+      "Show archived sessions"
+    ]
+  }
+}
