@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { join } from 'node:path';
+import { mkdir, readFile } from 'node:fs/promises';
+import { completeJournalLines } from './journal-lines.ts';
 import { fixture } from './remote-fixture.ts';
 import { eventually, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -11,6 +13,9 @@ import { drive, remoteWaits } from './remote-clock.ts';
 import { cancelAndDrain, type OwnedRemoteRun } from './remote-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { FakeClock } from './fake-clock.ts';
+import { scratchMachine, legacyLedger, ledger } from './init-machine.ts';
+import { rememberProject, spendPath } from '../src/executor/droplet/spend.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
 const processes: LockProcessTable = { alive: pid => pid === process.pid, started: () => null };
@@ -33,6 +38,12 @@ async function admissionCase(t: TestContext, kind: 'spend' | 'executor', failBef
   // Finish startup reconciliation before taking the held lock; periodic sweeps
   // are outside this admission proof and must not race its fixture setup.
   assert.equal((await f.ui.request({ type: 'executor.status' })).ok, true);
+  const startup = await eventually('initial executor sweep durably completed', async () => {
+    assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    const records = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
+    return records.find(record => record.event === 'executor-sweep');
+  });
+  assert.equal(startup.failures, 0);
   const path = kind === 'spend' ? join(state, 'spend.json.lock') : join(f.root, '.cland/run/executor/budget.lock');
   const lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
   let held = true;
@@ -80,4 +91,60 @@ for (const kind of ['spend', 'executor'] as const) test(`remote admission surviv
 
 test('assertion failures drain acquisitions asleep on either admission lock', { timeout: 30000 }, async t => {
   for (const kind of ['spend', 'executor'] as const) await assert.rejects(admissionCase(t, kind, true), new RegExp(`controlled ${kind} assertion failure`));
+});
+
+for (const source of ['primary', 'legacy migration']) test(`registry sweep ${source} contention uses the executor wait and drains before shutdown`, { timeout: 2000 }, async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const clock = new FakeClock();
+  await mkdir(join(machine.root, '.cland'));
+  await rememberProject(machine.root, machine.env, processes, clock);
+  if (source === 'legacy migration') await legacyLedger(machine, []);
+  const lock = await acquireLockAsync(`${spendPath(machine.env)}.lock`, undefined, undefined, 'UTC', processes);
+  const delays: number[] = [];
+  const executor = new DropletExecutor(machine.root, undefined, () => {}, machine.env, undefined, {
+    clock, processes, wait: async ms => { delays.push(ms); await lock.release(); },
+  });
+  let sweeping: Promise<void> | undefined;
+  onCleanup(t, async () => {
+    await lock.release();
+    // Failure cleanup releases the held fixture lock before advancing a retry.
+    // No directory disappears beneath an outstanding sweep writer.
+    await clock.advance(1000);
+    await sweeping;
+    await executor.close();
+  });
+  sweeping = executor.sweep();
+  await sweeping;
+  await executor.close();
+  assert.deepEqual(delays, [25], 'the first contended lock retry is delivered to the injected executor wait');
+  assert.deepEqual((await ledger(machine)).projects, [machine.root]);
+});
+
+test('shutdown drains a registry sweep waiting on another ledger holder', { timeout: 2000 }, async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const clock = new FakeClock();
+  await mkdir(join(machine.root, '.cland'));
+  await rememberProject(machine.root, machine.env, processes, clock);
+  const before = await readFile(spendPath(machine.env), 'utf8');
+  const lock = await acquireLockAsync(`${spendPath(machine.env)}.lock`, undefined, undefined, 'UTC', processes);
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const events: Record<string, unknown>[] = [];
+  const executor = new DropletExecutor(machine.root, undefined, event => events.push(event), machine.env, undefined, {
+    clock, processes, wait: async () => { entered.resolve(); await release.promise; },
+  });
+  let sweeping: Promise<void> | undefined;
+  onCleanup(t, async () => {
+    release.resolve();
+    await lock.release();
+    await clock.advance(1000);
+    await sweeping;
+    await executor.close();
+  });
+  sweeping = executor.sweep();
+  await entered.promise;
+  await executor.close();
+  await sweeping;
+  assert.equal(await readFile(spendPath(machine.env), 'utf8'), before, 'shutdown completes without taking the other holder’s ledger');
+  assert.ok(events.some(event => event.event === 'executor-sweep'));
+  assert.ok(events.some(event => event.event === 'executor-reconcile-failed' && event.reason === 'project registry sweep deferred'));
 });

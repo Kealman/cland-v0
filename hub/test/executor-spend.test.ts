@@ -3,12 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { hostLeases, inspectSpend, releaseShardSpend, reserveShardSpend, reserveSpend, settleSpend, spendPath, retireLegacySpend } from '../src/executor/droplet/spend.ts';
+import { hostLeases, inspectSpend, rememberProject, releaseShardSpend, reserveShardSpend, reserveSpend, settleSpend, spendPath, retireLegacySpend } from '../src/executor/droplet/spend.ts';
 import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import { scratchMachine, legacyLedger, ledger, type SpendEntry } from './init-machine.ts';
 import { FakeClock } from './fake-clock.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 
 const clock = new FakeClock();
 const processes = { alive: () => true, started: () => 'fixture identity' };
@@ -16,6 +17,137 @@ const entry = (lease: string, cost: number | null = 2): SpendEntry => ({
   project: '/fixture/project', lease, run: lease, size: 'c-8', reservation: 1, cost,
   created: '2026-10-16T10:00:00Z', deadline: '2026-10-16T11:00:00Z',
   ...(cost === null ? {} : { released: '2026-10-16T11:00:00Z' }),
+});
+
+test('project registration refuses filesystem roots, HOME and non-project paths before writing a ledger', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const file = join(machine.root, 'file');
+  await writeFile(file, 'not a directory');
+  await mkdir(join(machine.home, '.cland'));
+  const rootAlias = join(machine.root, 'root-alias'), homeAlias = join(machine.root, 'home-alias');
+  await symlink('/', rootAlias);
+  await symlink(machine.home, homeAlias);
+  for (const root of ['/', rootAlias, machine.home, homeAlias, file, machine.root, join(machine.root, 'missing'), 'relative']) {
+    await assert.rejects(rememberProject(root, machine.env, processes), /executor project must be an existing project directory/);
+    await assert.rejects(readFile(spendPath(machine.env)), { code: 'ENOENT' });
+  }
+  await mkdir(join(machine.root, '.cland'));
+  await rememberProject(machine.root, machine.env, processes);
+  const projectAlias = join(machine.root, 'project-alias');
+  await symlink(machine.root, projectAlias);
+  await rememberProject(projectAlias, machine.env, processes);
+  assert.deepEqual((await ledger(machine)).projects, [machine.root]);
+});
+
+test('an unreadable project defers its sweep without pruning or forgiving spend', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const clock = new FakeClock();
+  await mkdir(join(machine.root, '.cland'));
+  await rememberProject(machine.root, machine.env, processes, clock);
+  const before = await readFile(spendPath(machine.env), 'utf8');
+  const events: Record<string, unknown>[] = [];
+  const nativeStat = fs.stat;
+  const fault = t.mock.method(fs, 'stat', (...args: Parameters<typeof fs.stat>) => {
+    if (args[0] === machine.root) return Promise.reject(Object.assign(new Error('permission denied'), { code: 'EACCES' }));
+    return nativeStat(...args);
+  });
+  syncBuiltinESMExports();
+  const executor = new DropletExecutor(machine.root, undefined, event => events.push(event), machine.env, undefined, { clock, processes });
+  try { clock.block(48 * 3600000); await executor.sweep(); }
+  finally { await executor.close(); fault.mock.restore(); syncBuiltinESMExports(); }
+  assert.equal(await readFile(spendPath(machine.env), 'utf8'), before);
+  assert.deepEqual(events.filter(event => event.event === 'executor-project-pruned'), []);
+  assert.ok(events.some(event => event.event === 'executor-reconcile-failed' && event.reason === 'project registry sweep deferred'));
+});
+
+test('a sweep prunes invalid legacy registrations immediately without dropping accounting entries', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const clock = new FakeClock();
+  await mkdir(join(machine.root, '.cland'));
+  await mkdir(join(machine.home, '.cland'));
+  const ordinary = join(machine.root, 'ordinary'), file = join(machine.root, 'file'), alias = join(machine.root, 'root-alias');
+  await mkdir(ordinary);
+  await writeFile(file, 'not a directory');
+  await symlink('/', alias);
+  const invalid = ['/', machine.home, ordinary, file, alias, 'relative'];
+  await legacyLedger(machine, [{ ...entry('pending', null), project: '/' }]);
+  const old = join(machine.home, '.cland/executor/spend.json');
+  const legacy = JSON.parse(await readFile(old, 'utf8'));
+  legacy.projects = [machine.root, ...invalid];
+  await writeFile(old, JSON.stringify(legacy));
+  const events: Record<string, unknown>[] = [];
+  const executor = new DropletExecutor(machine.root, undefined, event => events.push(event), machine.env, undefined, { clock, processes });
+  try { await executor.sweep(); } finally { await executor.close(); }
+  assert.deepEqual((await ledger(machine)).projects, [machine.root]);
+  assert.deepEqual(JSON.parse(await readFile(old, 'utf8')).projects, [machine.root]);
+  const pruned = events.filter(event => event.event === 'executor-project-pruned');
+  assert.deepEqual(pruned.map(event => event.project), invalid);
+  assert.ok(pruned.every(event => event.reason === 'invalid project directory'));
+  assert.equal((await inspectSpend(10, machine.env, clock, processes)).reserved, 1);
+  assert.deepEqual(await hostLeases(machine.root, machine.env, processes), []);
+});
+
+test('an initialised project between hub runs survives registry sweeps beyond the missing-root grace', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const clock = new FakeClock();
+  await mkdir(join(machine.root, '.cland'));
+  await writeFile(join(machine.root, '.cland/config.toml'), '[project]\nname="stopped-project"\n');
+  for (const name of ['hub.json', 'hub.lock']) await assert.rejects(readFile(join(machine.root, '.cland', name)), { code: 'ENOENT' });
+  await rememberProject(machine.root, machine.env, processes, clock);
+  const events: Record<string, unknown>[] = [];
+  const executor = new DropletExecutor(machine.root, undefined, event => events.push(event), machine.env, undefined, { clock, processes });
+  try {
+    await executor.sweep();
+    clock.block(48 * 3600000);
+    await executor.sweep();
+  } finally { await executor.close(); }
+  assert.deepEqual((await ledger(machine)).projects, [machine.root]);
+  assert.deepEqual(events.filter(event => event.event === 'executor-project-pruned'), []);
+});
+
+test('a sweep gives missing projects a restart-safe grace, resets it on restoration and journals pruning', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const clock = new FakeClock();
+  const gone = join(machine.root, 'gone'), moved = join(machine.root, 'moved');
+  await mkdir(join(machine.root, '.cland'));
+  await mkdir(join(gone, '.cland'), { recursive: true });
+  await rememberProject(machine.root, machine.env, processes, clock);
+  await rememberProject(gone, machine.env, processes, clock);
+  await reserveShardSpend(gone, ['pending'], 'c-8', 1, 3600000, 10, machine.env, clock, processes);
+  // Exercise mixed-version write-through as well as the primary ledger.
+  await legacyLedger(machine, []);
+  const events: Record<string, unknown>[] = [];
+  const sweep = async () => {
+    const executor = new DropletExecutor(machine.root, undefined, event => events.push(event), machine.env, undefined, { clock, processes });
+    try { await executor.sweep(); } finally { await executor.close(); }
+  };
+  await rename(gone, moved); // No process or other writer owns either directory.
+  await sweep();
+  clock.block(24 * 3600000 - 1);
+  await sweep();
+  assert.ok((await ledger(machine)).projects!.includes(gone));
+  assert.deepEqual(events.filter(event => event.event === 'executor-project-pruned'), []);
+  await rename(moved, gone);
+  await sweep();
+  await rename(gone, moved);
+  await sweep();
+  clock.block(1);
+  await sweep();
+  assert.ok((await ledger(machine)).projects!.includes(gone), 'restoration resets the original grace');
+  clock.block(24 * 3600000 - 1);
+  await sweep();
+  assert.deepEqual((await ledger(machine)).projects, [machine.root]);
+  assert.deepEqual(JSON.parse(await readFile(join(machine.home, '.cland/executor/spend.json'), 'utf8')).projects, [machine.root]);
+  assert.deepEqual(events.filter(event => event.event === 'executor-project-pruned').map(event => event.project), [gone]);
+  assert.equal((await inspectSpend(10, machine.env, clock, processes)).reserved, 1, 'pruning never forgives unsettled spend');
+  assert.deepEqual(await hostLeases(machine.root, machine.env, processes), []);
+  await sweep();
+  assert.equal(events.filter(event => event.event === 'executor-project-pruned').length, 1, 'a restarted sweep does not re-import a legacy registration');
+  await rename(moved, gone);
+  await sweep();
+  assert.deepEqual((await ledger(machine)).projects, [machine.root, gone], 'a returning project restores ownership scans before provider cleanup');
+  await rememberProject(gone, machine.env, processes, clock);
+  assert.deepEqual((await ledger(machine)).projects, [machine.root, gone], 'registration remains idempotent after return');
 });
 
 test('retirement requires explicit confirmation and every registered live hub on the same new path', async t => {

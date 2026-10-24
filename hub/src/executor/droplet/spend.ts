@@ -1,14 +1,15 @@
 import { realClock, type Clock } from '../../hub/clock.ts';
 // The first per-user cland state: all project hubs reserve against the same ledger.
-import { mkdir, readFile, stat } from 'node:fs/promises';
-import { dirname, isAbsolute, join } from 'node:path';
+import { mkdir, readFile, realpath, stat } from 'node:fs/promises';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable, type LockRetryTiming } from '../../hub/lock.ts';
 import { durableJson, readLeases, type DropletLease } from './lease.ts';
 import { registeredHubSpendStatus, type SpendHubStatus } from './spend-hubs.ts';
 
 type Entry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
-type Ledger = { version: 1; entries: Entry[]; projects?: string[]; legacyRetired?: true };
+type MissingProject = { project: string; since: string; pruned?: true };
+type Ledger = { version: 1; entries: Entry[]; projects?: string[]; missingProjects?: MissingProject[]; legacyRetired?: true };
 export const spendPath = (env: NodeJS.ProcessEnv = process.env): string => join(env.CLAND_EXECUTOR_STATE ?? join(env.XDG_STATE_HOME || join(env.HOME ?? homedir(), '.local/state'), 'cland'), 'spend.json');
 const legacyPath = (env: NodeJS.ProcessEnv): string | null => env.CLAND_EXECUTOR_STATE !== undefined ? null : join(env.HOME ?? homedir(), '.cland/executor/spend.json');
 async function readExisting(path: string): Promise<Ledger | null> {
@@ -45,6 +46,11 @@ function reconcile(current: Ledger, legacy: Ledger): Ledger {
   const actualRuns = new Set([...entries.values()].filter(e => e.lease !== `reserved:${e.run}`).map(e => JSON.stringify([e.project, e.run])));
   const result: Ledger = { version: 1, entries: [...entries.values()].filter(e => e.lease !== `reserved:${e.run}` || e.cost !== null || !actualRuns.has(JSON.stringify([e.project, e.run]))) };
   if (current.projects || legacy.projects) result.projects = [...new Set([...(current.projects ?? []), ...(legacy.projects ?? [])])];
+  const missing = new Map([...(legacy.missingProjects ?? []), ...(current.missingProjects ?? [])].map(record => [record.project, record]));
+  if (missing.size) {
+    result.missingProjects = [...missing.values()];
+    if (result.projects) result.projects = result.projects.filter(project => !missing.get(project)?.pruned);
+  }
   return result;
 }
 function totals(ledger: Ledger, clock: Clock) {
@@ -170,13 +176,73 @@ export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process
   return { path: spendPath(env), ...totals(ledger, clock), cap };
 }
 
+class InvalidProject extends Error {
+  constructor() { super('executor project must be an existing project directory, outside the filesystem root and HOME'); }
+}
+async function projectDirectory(project: string, env: NodeJS.ProcessEnv): Promise<string> {
+  if (!isAbsolute(project)) throw new InvalidProject();
+  const root = await realpath(project);
+  const home = await realpath(env.HOME ?? homedir()).catch(error => { if (error.code === 'ENOENT') return resolve(env.HOME ?? homedir()); throw error; });
+  if (root === dirname(root) || root === home || !(await stat(root)).isDirectory()) throw new InvalidProject();
+  try {
+    if (!(await stat(join(root, '.cland'))).isDirectory()) throw new InvalidProject();
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new InvalidProject(); throw error; }
+  return root;
+}
+
 /** Register hubs, including pre-ledger leases, before their first automatic sweep. */
 export async function rememberProject(project: string, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable, clock: Clock = realClock, wait?: (ms: number) => Promise<void>): Promise<void> {
-  await locked(ledger => { ledger.projects ??= []; if (!ledger.projects.includes(project)) ledger.projects.push(project); }, env, { clock, wait, ...(processes ? { processes } : {}) }, 1000);
+  try { project = await projectDirectory(project, env); } catch { throw new InvalidProject(); }
+  await locked(ledger => {
+    ledger.projects ??= [];
+    if (!ledger.projects.includes(project)) ledger.projects.push(project);
+    if (ledger.missingProjects) ledger.missingProjects = ledger.missingProjects.filter(record => record.project !== project);
+  }, env, { clock, wait, ...(processes ? { processes } : {}) }, 1000);
+}
+
+/** A missing mount or temporarily renamed project gets a full day to return.
+ * Keep tombstones for accounting-only roots so retained spend cannot revive a scan. */
+export async function sweepProjects(env: NodeJS.ProcessEnv, clock: Clock, log: (event: Record<string, unknown>) => void, processes?: LockProcessTable, wait?: (ms: number) => Promise<void>): Promise<void> {
+  const timing = { clock, wait, ...(processes ? { processes } : {}) };
+  const observed = await load(env, timing, 1000);
+  if (!observed.projects?.length && !observed.entries.length && !observed.missingProjects?.length) return;
+  const pruned = await locked(async ledger => {
+    const missing = new Map((ledger.missingProjects ?? []).map(record => [record.project, record]));
+    const pruned: (MissingProject & { reason: string })[] = [];
+    const projects = [...new Set([...(ledger.projects ?? []), ...ledger.entries.map(entry => entry.project), ...missing.keys()])];
+    for (const project of projects) {
+      try {
+        await projectDirectory(project, env);
+        if (missing.get(project)?.pruned) {
+          ledger.projects ??= [];
+          if (!ledger.projects.includes(project)) ledger.projects.push(project);
+        }
+        missing.delete(project);
+      }
+      catch (error) {
+        // Unreadable paths are never evidence that a project is gone.
+        const invalid = error instanceof InvalidProject || (error as NodeJS.ErrnoException).code === 'ENOTDIR';
+        if (!invalid && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        if (missing.get(project)?.pruned) continue;
+        const record = missing.get(project) ?? { project, since: clock.now().toISOString() };
+        missing.set(project, record);
+        if (invalid || clock.now().getTime() - Date.parse(record.since) >= 24 * 3600000) {
+          record.pruned = true;
+          pruned.push({ ...record, reason: invalid ? 'invalid project directory' : 'missing directory' });
+        }
+      }
+    }
+    ledger.missingProjects = [...missing.values()];
+    if (ledger.projects) ledger.projects = ledger.projects.filter(project => !missing.get(project)?.pruned);
+    return pruned;
+  }, env, timing, 1000);
+  // Publication, including legacy write-through, precedes each prune receipt.
+  for (const record of pruned) log({ event: 'executor-project-pruned', project: record.project, since: record.since, reason: record.reason });
 }
 export async function hostLeases(project: string, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable): Promise<DropletLease[]> {
   const ledger = await load(env, processes ? { processes } : undefined, 1000);
-  const projects = [...new Set([project, ...(ledger.projects ?? []), ...ledger.entries.map(e => e.project)])].filter(isAbsolute);
+  const pruned = new Set(ledger.missingProjects?.filter(record => record.pruned).map(record => record.project));
+  const projects = [...new Set([project, ...(ledger.projects ?? []), ...ledger.entries.map(e => e.project)])].filter(root => isAbsolute(root) && !pruned.has(root));
   // An unreadable project is not proof that its keys are orphaned. Fail the sweep safely.
   return (await Promise.all(projects.map(root => readLeases(root)))).flat();
 }

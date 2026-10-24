@@ -14,6 +14,8 @@ import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { machineAccounting, type SuiteJob } from '../src/hub/suites.ts';
 import { machineHealthSummary } from '../src/executor/droplet/health.ts';
 import { until } from './until.ts';
+import { legacyLedger, scratchMachine, snapshot } from './init-machine.ts';
+import { spendPath } from '../src/executor/droplet/spend.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -22,6 +24,37 @@ async function running(f: Fixture, id: string) {
   await f.suites.settled();
 }
 const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+
+for (const overlay of ['partial', 'explicit hostile paths'] as const) test(`${overlay} fixture env cannot write hostile scratch HOME ledgers during executor accounting`, async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  await legacyLedger(machine, []);
+  await mkdir(join(machine.env.XDG_STATE_HOME!, 'cland'), { recursive: true });
+  await writeFile(spendPath(machine.env), JSON.stringify({ version: 1, entries: [], projects: [] }));
+  const before = await snapshot(machine.home);
+  // os.homedir() is also scratch-owned when an incomplete explicit env falls back.
+  const ambient = { HOME: machine.home, XDG_STATE_HOME: machine.env.XDG_STATE_HOME!, CLAND_EXECUTOR_STATE: join(machine.root, 'host-override') };
+  const previous = Object.fromEntries(Object.keys(ambient).map(key => [key, process.env[key]]));
+  Object.assign(process.env, ambient);
+  let f: Fixture | undefined;
+  try {
+    const extra = overlay === 'partial' ? {} : { ...machine.env, ...ambient };
+    f = await suiteUnit(t, { executor: 'droplet', env: { ...extra, DIGITALOCEAN_TOKEN: 'suite-unit-token', CLAND_TEST_DROPLET_POLL_MS: '1' } }, '', true);
+    for (const [key, suffix] of Object.entries({ HOME: 'home', XDG_CONFIG_HOME: 'config', XDG_DATA_HOME: 'opencode', XDG_STATE_HOME: 'state', XDG_CACHE_HOME: 'cache' })) {
+      assert.equal(f.env[key], join(f.root, suffix), `${key} remains fixture-owned after explicit overlays`);
+    }
+    const job = await remote(f);
+    await running(f, job.id);
+    await f.finish(job.id);
+    const ledger = JSON.parse(await readFile(join(f.root, '.cland/executor-state/spend.json'), 'utf8'));
+    assert.ok(ledger.entries.length > 0, 'the executor really touched its fixture ledger');
+    await f.close();
+    assert.deepEqual(await snapshot(machine.home), before, 'both primary and legacy HOME state must remain byte-for-byte unchanged');
+    await assert.rejects(readFile(join(ambient.CLAND_EXECUTOR_STATE, 'spend.json')), { code: 'ENOENT' });
+  } finally {
+    await f?.close();
+    for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+  }
+});
 
 for (const scenario of ['live', 'restart', 'failed notice restart']) test(`a local fallback waiter returns to the freed remote budget in queue order (${scenario})`, { timeout: 10000 }, async t => {
   const restart = scenario !== 'live';

@@ -8,9 +8,11 @@ import { Store } from '../src/hub/store.ts';
 import { Suites, type SuiteJob } from '../src/hub/suites.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import { FakeClock } from './fake-clock.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 async function fixture(t: test.TestContext, count: number, reported: boolean, options: { job?: Partial<SuiteJob>; onJob?: (job: Readonly<SuiteJob>) => void } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'suite-persistence-'));
+  const env = fixtureEnvironment(root, process.env);
   const database = join(root, 'hub.db');
   const store = new Store(database), clock = new FakeClock();
   t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
@@ -29,9 +31,9 @@ async function fixture(t: test.TestContext, count: number, reported: boolean, op
   }
   store.setMeta('suite-jobs', JSON.stringify(jobs));
   let reports = 0, allowed = false;
-  const suites = new Suites(store, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env: { CLAND_EXECUTOR_STATE: join(root, 'state') }, ...(options.onJob ? { onJob: options.onJob } : {}) });
+  const suites = new Suites(store, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env, ...(options.onJob ? { onJob: options.onJob } : {}) });
   t.after(async () => { await suites.close(); store.close(); await rm(root, { recursive: true, force: true }); });
-  return { store, suites, clock, database, reports: () => reports, allowReports: () => { allowed = true; } };
+  return { root, env, store, suites, clock, database, reports: () => reports, allowReports: () => { allowed = true; } };
 }
 
 test('six permanently forbidden finished reports perform no writes on later inspect ticks', async t => {
@@ -48,7 +50,7 @@ test('930 finished jobs migrate out of the hot snapshot and survive reopening', 
   assert.ok(Buffer.byteLength(f.store.meta('suite-jobs')!) < 1_000_000);
   const reopened = new Store(f.database);
   t.after(() => reopened.close());
-  const suites = new Suites(reopened, '/', async () => {}, { clock: f.clock, env: {} });
+  const suites = new Suites(reopened, f.root, async () => {}, { clock: f.clock, env: f.env });
   t.after(() => suites.close());
   assert.equal(suites.status().length, 930);
 });

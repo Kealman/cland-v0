@@ -3159,7 +3159,21 @@ reap each other's in-flight keys. Legacy `cland-<name>-` keys are removed only
 when no live lease registered on this host names them and their known lease
 creation/import time is older than lifetime plus ten minutes. Unknown-age legacy
 keys are preserved: DigitalOcean's [SSH key schema](https://docs.digitalocean.com/reference/api/reference/ssh-keys/) has no creation timestamp. Hubs register their project roots
-in the shared ledger so cleanup can inspect other projects' durable leases. Both commands belong
+in the shared ledger so cleanup can inspect other projects' durable leases.
+Registration requires an existing directory with a `.cland` directory; filesystem
+roots, HOME itself and their aliases are refused before any ledger write. Roots
+are canonicalised so aliases register once. Sweeps also remove invalid legacy
+registrations immediately, with `executor-project-pruned` and reason
+`invalid project directory`; this includes `/` even though it exists. Each
+automatic sweep records when a
+registered directory first disappears. After 24 continuous hours missing, it
+removes that root from `projects` and journals `executor-project-pruned` with
+`project` and `since`. A return during the grace resets it; unreadable paths defer
+the sweep. Missing-project records persist across restarts and legacy write-through.
+Pruning retains all spend entries and outstanding reservations, and prevents those
+entries from reviving lease-directory scans while the root is gone. A returning
+valid project is restored before provider cleanup and can register again.
+Both commands belong
 to the human and the Coordinator; reap requires the token.
 
 #### Run and result

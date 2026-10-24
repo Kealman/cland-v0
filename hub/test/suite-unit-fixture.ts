@@ -19,12 +19,14 @@ import { FakeClock } from './fake-clock.ts';
 import { verificationFixture } from './verification-fixture.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 
 export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean } = {}, source = '', accounting = false) {
   const root = await mkdtemp(join(tmpdir(), 'suite-unit-'));
   await verificationFixture(root);
   const clock = new FakeClock();
-  const token = 'suite-unit-token';
+  const token = 'cland-test-suite-unit-token';
   const api = await fakeDigitalOcean(token, { machine: 'scripted', clock });
   api.faults.activeAfter = 0;
   const key = { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: 'b'.repeat(64), base: 'c'.repeat(40) };
@@ -96,6 +98,12 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   let beforeReport = async (_job: Readonly<SuiteJob>) => {};
   const manifest = { version: 1 as const, source: { artifacts: [], commit: candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
   const durationContext: DurationBudgetContext = { manifest, tiers: {}, base: { manifest, tiers: {}, retained: [], sources: {} } };
+  // Partial controls may tune the executor; XDG directories belong to this fixture.
+  const controls = Object.fromEntries(Object.entries(options.env ?? {}).filter(([key]) => !key.startsWith('XDG_')));
+  const env = syntheticProviderEnvironment(fixtureEnvironment(root, process.env, {
+    CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_RUN_POLL_MS: '1', CLAND_TEST_DROPLET_MACHINE_MS: '20', CLAND_TEST_DROPLET_RELEASE_MS: '20',
+    ...controls, CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'),
+  }), { token, api: api.provider }, api.provider);
   const make = () => new Suites(store, root, async (job, checkpoint) => {
     await beforeReport(job);
     const artifact = store.registerArtifact(id => ({ id, title: job.id, kind: 'file', path: job.log, creator: 'hub', time: clock.now().toISOString(), topic: job.topic, status: 'shared' }), () => {});
@@ -104,9 +112,9 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     head: async () => candidate.head,
     tree: async () => candidate.tree,
     inspect: async () => { await inspectBarrier(); return { ...structuredClone(candidate), tierPlan: [], budgetBase: undefined }; },
-  }, projectConfig: () => config, env: { DIGITALOCEAN_TOKEN: token, CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_RUN_POLL_MS: '1', CLAND_TEST_DROPLET_MACHINE_MS: '20', CLAND_TEST_DROPLET_RELEASE_MS: '20' },
+  }, projectConfig: () => config,
   dropletServices: { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: 'npm run typecheck', code: 0 }) },
-  log: entry => { logs.push(entry); publish(); }, onFallback: job => { notices.push(job.id); publish(); }, onShardingSkipped: (_job, cause) => { shardingNotices.push(cause); publish(); }, onJob: publish, onQueue: publish, ...options });
+  log: entry => { logs.push(entry); publish(); }, onFallback: job => { notices.push(job.id); publish(); }, onShardingSkipped: (_job, cause) => { shardingNotices.push(cause); publish(); }, onJob: publish, onQueue: publish, ...options, env });
   let suites = make();
   const releases = new Set<() => void>();
   const submissions = new Set<Promise<unknown>>();
@@ -168,7 +176,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     });
     suites = make();
   }
-  return { root, clock, api, machine, acquisitions, candidate, logs, notices, shardingNotices, reports, delivered, receipts, when, launch, tick, result, status, finish, reopen, close,
+  return { root, env, clock, api, machine, acquisitions, candidate, logs, notices, shardingNotices, reports, delivered, receipts, when, launch, tick, result, status, finish, reopen, close,
     ownIO(release: () => void) { releases.add(release); },
     get suites() { return suites; }, get store() { return store; }, get config() { return config; },
     beforeReport(barrier: typeof beforeReport) { beforeReport = barrier; },

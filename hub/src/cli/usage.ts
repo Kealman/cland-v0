@@ -33,6 +33,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh
 export const EXECUTOR_USAGE = `  executor status [--json]  token presence, live droplet leases and today's cost
   executor prepare [--report <topic>] [--json]  submit snapshot preparation
   executor reap [--json]    delete orphaned and expired cland droplets
+                          automatic sweeps prune invalid registrations and projects missing for 24h; retain spend
   executor retire-legacy --confirm-registered-hubs [--json]
                           verify every registered hub supports the retirement marker and shared new spend path;
                           stop legacy write-through, retain legacy bytes and snapshot them in new state

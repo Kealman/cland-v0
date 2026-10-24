@@ -4,6 +4,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/account-fixture-env.test.ts`](../../../hub/test/account-fixture-env.test.ts) | [Notes](hub-test-account-fixture-env.test.ts.md) |
 | [`hub/src/hub/store.test.ts`](../../../hub/src/hub/store.test.ts) | [Notes](hub-src-hub-store.test.ts.md) |
 | [`hub/test/approval-records.test.ts`](../../../hub/test/approval-records.test.ts) | [Notes](hub-test-approval-records.test.ts.md) |
 | [`hub/test/approval-restart.test.ts`](../../../hub/test/approval-restart.test.ts) | [Notes](hub-test-approval-restart.test.ts.md) |
@@ -20,6 +21,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/events.test.ts`](../../../hub/test/events.test.ts) | [Notes](hub-test-events.test.ts.md) |
 | [`hub/test/executor-run.test.ts`](../../../hub/test/executor-run.test.ts) | [Notes](hub-test-executor-run.test.ts.md) |
 | [`hub/test/executor-spend.test.ts`](../../../hub/test/executor-spend.test.ts) | [Notes](hub-test-executor-spend.test.ts.md) |
+| [`hub/test/executor-admission-lock.test.ts`](../../../hub/test/executor-admission-lock.test.ts) | [Notes](hub-test-executor-admission-lock.test.ts.md) |
+| [`hub/test/suite-accounting.test.ts`](../../../hub/test/suite-accounting.test.ts) | [Notes](hub-test-suite-accounting.test.ts.md) |
 | [`hub/test/fake-claude-cleanup.test.ts`](../../../hub/test/fake-claude-cleanup.test.ts) | [Notes](hub-test-fake-claude-cleanup.test.ts.md) |
 | [`hub/test/follows-native.test.ts`](../../../hub/test/follows-native.test.ts) | [Notes](hub-test-follows-native.test.ts.md) |
 | [`hub/test/hub-status-component.test.ts`](../../../hub/test/hub-status-component.test.ts) | [Notes](hub-test-hub-status-component.test.ts.md) |

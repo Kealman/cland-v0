@@ -16,7 +16,7 @@ import { testTiming } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
-import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend } from './spend.ts';
+import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
 import type { Executor, Released, RunRef } from '../executor.ts';
 
@@ -437,6 +437,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     this.#sweepState = 'reconciling';
     let reapedDroplets = 0, reapedKeys = 0, failures = 0;
     try { await this.reconcile(restart); } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' }); }
+    try { await sweepProjects(this.#env, this.clock, this.logger, this.dependencies.processes, ms => this.#wait(ms)); } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'project registry sweep deferred' }); }
     this.#sweepState = 'sweeping';
     if (!this.#closing && this.#env.DIGITALOCEAN_TOKEN) try {
       const result = await this.reap(); reapedDroplets = result.deleted.length; reapedKeys = result.deletedKeys.length;

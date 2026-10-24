@@ -29,6 +29,7 @@ test('a starved owner releases its lock without another acquisition deadline', a
 
 test('failed reconcile ledger publication releases ownership before next admission', async t => {
   const machine = await scratchMachine(t, { identity: false });
+  await fs.mkdir(join(machine.root, '.cland'));
   const path = spendPath(machine.env);
   const rename = fs.rename;
   const fault = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
@@ -57,6 +58,7 @@ test('restart takes a stale ledger lock whose holder is dead', async t => {
 
 test('legacy lock deferral releases the current ledger before retrying admission', async t => {
   const machine = await scratchMachine(t, { identity: false });
+  await fs.mkdir(join(machine.root, '.cland'));
   await legacyLedger(machine, []);
   const legacy = await acquireLockAsync(join(machine.home, '.cland/executor/spend.json.lock'), undefined, Date.now() + 1000, 'UTC', processes);
   try { await assert.rejects(rememberProject(machine.root, machine.env, processes), /another hub holds/); }
