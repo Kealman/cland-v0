@@ -17,6 +17,8 @@ import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { decodeTerminalQr } from '../../hub/test/qr-decode.ts';
 
 const traces = fileURLToPath(new URL('../test-results/', import.meta.url));
+// Multiple fixtures in this worker share the PID and output directory.
+let traceSerial = 0;
 
 /** Leave a minute of install-to-pause headroom while preserving the exact target. */
 export async function pausePageClock(page: Page, time: Date): Promise<void> {
@@ -113,7 +115,6 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean | 
   const profile = child.spawnargs.find(arg => arg.startsWith('--user-data-dir='));
   assert.ok(profile?.startsWith(`--user-data-dir=${root}/`), 'profile belongs to the scratch root');
   browser = await chromium.connect(server.wsEndpoint(), { timeout: 15_000 });
-  let serial = 0;
   const tracePaths: string[] = [];
   const contexts = new Set<unknown>();
   async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>, device: { phone?: boolean; serviceWorkers?: 'allow' | 'block' } = {}) {
@@ -173,7 +174,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean | 
         if (tracing && passed) await context.tracing.stop();
         else if (tracing) {
           await mkdir(traces, { recursive: true });
-          const path = join(traces, `${process.pid}-${serial++}.zip`);
+          const path = join(traces, `${process.pid}-${traceSerial++}.zip`);
           await context.tracing.stop({ path });
           tracePaths.push(path);
           t.diagnostic(`Web failure trace: ${path}`);

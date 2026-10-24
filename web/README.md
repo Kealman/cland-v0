@@ -1426,10 +1426,13 @@ there. T0 rejects raw install/pause pairs with the same time because the running
 clock can pass the pause target between browser commands under load.
 
 A failed case writes a Playwright trace ZIP under ignored `web/test-results/` and
-closes its context. Publish the file with `artifact.create` when reporting a
-failure. Teardown explicitly closes the browser, observes its process exit and
-an empty process-group census, then stops the scratch hub before removing roots.
-The smoke includes a planted failure to prove trace writing and context disposal.
+closes its context. Filenames combine the worker PID with a worker-wide serial,
+so separate fixtures in one worker retain separate traces. Publish the file with
+`artifact.create` when reporting a failure. Teardown explicitly closes the browser,
+observes its process exit and an empty process-group census, then stops the scratch
+hub before removing roots.
+The smoke includes two failing fixtures to prove distinct diagnostic paths,
+retained trace contents and context disposal.
 The budgets are 4 seconds per top-level test and 40 seconds for the phase, currently
 reported under the repository's duration report mode. A 60-second gross hang
 guard reaps a stuck phase. Web never receives load-gate repetitions; browser

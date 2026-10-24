@@ -109,6 +109,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`web/test/session-launch.test.ts`](../../../web/test/session-launch.test.ts) | [Notes](web-test-session-launch.test.ts.md) |
 | [`web/test/sessions.test.ts`](../../../web/test/sessions.test.ts) | [Notes](web-test-sessions.test.ts.md) |
 | [`web/test/shell.test.ts`](../../../web/test/shell.test.ts) | [Notes](web-test-shell.test.ts.md) |
+| [`web/test/smoke.test.ts`](../../../web/test/smoke.test.ts) | [Notes](web-test-smoke.test.ts.md) |
 | [`web/test/thread-artifacts.test.ts`](../../../web/test/thread-artifacts.test.ts) | [Notes](web-test-thread-artifacts.test.ts.md) |
 | [`web/test/thread-runs.test.ts`](../../../web/test/thread-runs.test.ts) | [Notes](web-test-thread-runs.test.ts.md) |
 | [`web/test/topics.test.ts`](../../../web/test/topics.test.ts) | [Notes](web-test-topics.test.ts.md) |
