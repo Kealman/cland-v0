@@ -1,285 +1,104 @@
 // Shared help text: keep this module free of command implementation imports.
-export const IMPORT_USAGE = `  task import-github [--repo owner/name] [--all]
-                  GitHub Issues → items, through \`gh\`; open issues (--all: closed too); re-runs update in place
-`;
+// Keep each top-level command on its own complete string row with a blank
+// separator. Legacy grouped exports below compose those independent entries.
+export const IMPORT_USAGE = "  task import-github [--repo owner/name] [--all]\n                  GitHub Issues → items, through `gh`; open issues (--all: closed too); re-runs update in place\n";
 
-export const ACCOUNT_USAGE = `  account list [--refresh] [--json]   list the user-level account names, harnesses, paths and limit windows\n  account clear <name>              lift an account's limited mark by hand\n`;
+const commandUsage = {
+  ACCOUNT_USAGE: "  account list [--refresh] [--json]   list the user-level account names, harnesses, paths and limit windows\n  account clear <name>              lift an account's limited mark by hand\n",
 
-export const OPEN_USAGE = `  open [dir] [nvim args…]  start the project's hub if none runs, then the workbench in Neovim
-                  (what \`cland\` with no command does on a terminal)
-                  arguments after dir go unchanged to Neovim: e.g. --headless, -u NONE, "+lua …"
-`;
+  OPEN_USAGE: "  open [dir] [nvim args…]  start the project's hub if none runs, then the workbench in Neovim\n                  (what `cland` with no command does on a terminal)\n                  arguments after dir go unchanged to Neovim: e.g. --headless, -u NONE, \"+lua …\"\n",
 
-export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh] [--executor local|droplet] [--workers N] [--size <slug>] [--occasion stage|epic|release|soak] --report <topic|session> [--to <session>] [--json]
-                  run the project's check and test detached; post one artifact-backed result
-                  queued remote-budget local fallbacks reclaim free remote slots; --executor local stays local
-                  occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
-                  release cache: same effective executor/OS and full coverage; cache notices name original occasion/executor
-                  Web: tasks, integrated/periodic/occasion runs, and web/-touching merge batches after T1; web/** selects web-only; missing browser/libs: Web not run (reason retained)
-                  provider capacity refusal: unavailable (periodic: not run); no executor, region or size fallback
-                  all shards unexecuted: unavailable with per-shard causes; partial execution retains results and unexecuted shards, never passes
-                  --size must name a provider-listed slug; an unknown override refuses submission without a job
-                  task: T0–T2 + Web + changed T3/T4 files and tiers.json mapped T4 guards once; >=80% T3 budget prints 1.5x allowances; T4 has no budget
-                  periodic dev T3 is hub-owned: bundles its captured commit; delivery failures are infrastructure, retried next interval
-  suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result
-  verify cancel [<suite id>] [--json]
-                  cancel your active suite (human: any explicit id); post its cancelled result
-  verify --dry-run      print admission, selection and tier projections without queueing (--report optional)
-  verify --dry-run --diagnostics   also compute report-only reachability (up to 120 s)
-  verify queue [--json]
-                  show local holder, remote runs, executor waiters, waits, admission ETA and recent timing metrics
-  verify classify <run> load-flake --note <text> [--json]
-                  Coordinator or human: reclassify a red cover, retaining its derived cause and tests
-`;
+  SUITE_USAGE: "  verify [all|hub|nvim] [--dry-run] [--all] [--fresh] [--executor local|droplet] [--workers N] [--size <slug>] [--occasion stage|epic|release|soak] --report <topic|session> [--to <session>] [--json]\n                  run the project's check and test detached; post one artifact-backed result\n                  queued remote-budget local fallbacks reclaim free remote slots; --executor local stays local\n                  occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot\n                  release cache: same effective executor/OS and full coverage; cache notices name original occasion/executor\n                  Web: tasks, integrated/periodic/occasion runs, and web/-touching merge batches after T1; web/** selects web-only; missing browser/libs: Web not run (reason retained)\n                  provider capacity refusal: unavailable (periodic: not run); no executor, region or size fallback\n                  all shards unexecuted: unavailable with per-shard causes; partial execution retains results and unexecuted shards, never passes\n                  --size must name a provider-listed slug; an unknown override refuses submission without a job\n                  task: T0–T2 + Web + changed T3/T4 files and tiers.json mapped T4 guards once; >=80% T3 budget prints 1.5x allowances; T4 has no budget\n                  periodic dev T3 is hub-owned: bundles its captured commit; delivery failures are infrastructure, retried next interval\n  suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result\n  verify cancel [<suite id>] [--json]\n                  cancel your active suite (human: any explicit id); post its cancelled result\n  verify --dry-run      print admission, selection and tier projections without queueing (--report optional)\n  verify --dry-run --diagnostics   also compute report-only reachability (up to 120 s)\n  verify queue [--json]\n                  show local holder, remote runs, executor waiters, waits, admission ETA and recent timing metrics\n  verify classify <run> load-flake --note <text> [--json]\n                  Coordinator or human: reclassify a red cover, retaining its derived cause and tests\n",
 
-export const EXECUTOR_USAGE = `  executor status [--json]  token presence, live droplet leases and today's cost
-  executor prepare [--report <topic>] [--json]  submit snapshot preparation
-  executor reap [--json]    delete orphaned and expired cland droplets
-                          automatic sweeps prune invalid registrations and projects missing for 24h; retain spend
-  executor retire-legacy --confirm-registered-hubs [--json]
-                          verify every registered hub supports the retirement marker and shared new spend path;
-                          stop legacy write-through, retain legacy bytes and snapshot them in new state
-                          confirmation asserts the registry covers all your hubs; later downgrades are unsafe
-`;
+  EXECUTOR_USAGE: "  executor status [--json]  token presence, live droplet leases and today's cost\n  executor prepare [--report <topic>] [--json]  submit snapshot preparation\n  executor reap [--json]    delete orphaned and expired cland droplets\n                          automatic sweeps prune invalid registrations and projects missing for 24h; retain spend\n  executor retire-legacy --confirm-registered-hubs [--json]\n                          verify every registered hub supports the retirement marker and shared new spend path;\n                          stop legacy write-through, retain legacy bytes and snapshot them in new state\n                          confirmation asserts the registry covers all your hubs; later downgrades are unsafe\n",
 
-export const QA_USAGE = `  --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]
-                  run one QA case in a headless workbench on a fixture project; prints one JSON line
-                  (case, result, duration_ms, build, hub, evidence) and exits 0 (PASS), 1 (FAIL) or
-                  2 (INCONCLUSIVE, BLOCKED). --out: the screen and state dumps go there as files,
-                  else they are printed inline. --hub: the hub the case runs against, whatever it names
-`;
+  QA_USAGE: "  --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]\n                  run one QA case in a headless workbench on a fixture project; prints one JSON line\n                  (case, result, duration_ms, build, hub, evidence) and exits 0 (PASS), 1 (FAIL) or\n                  2 (INCONCLUSIVE, BLOCKED). --out: the screen and state dumps go there as files,\n                  else they are printed inline. --hub: the hub the case runs against, whatever it names\n",
 
-export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the current directory) for cland: .cland/,
-                  skills, docs/agents/, AGENTS.md's block, hooks and local git territory; idempotent (--json)
-                  --undo restores the territory's remotes/root branch; --force discards territory-only refs
-  update [dir]    rewrite what cland manages in an initialised project to this version; nothing else
-`;
+  INIT_USAGE: "  init [dir]      prepare the project (dir, else the current directory) for cland: .cland/,\n                  skills, docs/agents/, AGENTS.md's block, hooks and local git territory; idempotent (--json)\n                  --undo restores the territory's remotes/root branch; --force discards territory-only refs\n",
 
-export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-accounts] [--no-aide] [--attach]
-                  check the project, install harnesses on yes, report logins and choose the human's favourite harness
-                  --install <harness> runs its installer without asking, even without a terminal
-                  without a terminal, --yes or --harness permits the favourite choice
-                  --yes accepts harmless defaults and starts the hub; the Aide and logins need a terminal
-                  --no-accounts skips account discovery; accounts are machine-wide and default to No
-                  --no-aide skips the hub and Aide; cland starts the hub with the workbench
-                  opens the workbench on aide-1; --attach uses the harness's attach in this terminal instead
-`;
+  UPDATE_USAGE: "  update [dir]    rewrite what cland manages in an initialised project to this version; nothing else\n",
 
-export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub/web edge and what cland init provisioned; one line per
-                  check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers, deleted-project hubs and fixtures)
-                  web network: warns about plain HTTP without [web] origin (cookie in clear; no phone install/notifications)
-                  web bundle: compare the installed web/dist build stamp with its source inputs; npm run build refreshes it
-                  tracker conflicts counts live .conflict captures and names differing bytes; read-only, including --fix
-                  hub retention prunes finalized captures after seven days at startup and hourly; recover differences before expiry
-                  deleted-project hubs retain the orphan hub classification even with fixture ownership
-`;
+  SETUP_USAGE: "  setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-accounts] [--no-aide] [--attach]\n                  check the project, install harnesses on yes, report logins and choose the human's favourite harness\n                  --install <harness> runs its installer without asking, even without a terminal\n                  without a terminal, --yes or --harness permits the favourite choice\n                  --yes accepts harmless defaults and starts the hub; the Aide and logins need a terminal\n                  --no-accounts skips account discovery; accounts are machine-wide and default to No\n                  --no-aide skips the hub and Aide; cland starts the hub with the workbench\n                  opens the workbench on aide-1; --attach uses the harness's attach in this terminal instead\n",
 
-export const HUB_USAGE = `  hub start       start the project's hub in the background (idempotent)
-                  serves before executor recovery; startup steps log durations
-                  --autostart: honor the deliberate-stop grace period; --client cli|nvim|other identifies the starter
-  hub subscriptions list every session's event subscriptions (--json for JSON)
-  hub reload      validate and reload config.toml and roles.toml (also SIGHUP)
-  hub status      show the running hub (including web edge availability), then connected sessions (--json for JSON; --history includes full suite/cover history and harness rows)
-  hub stop        stop the project's hub
-                  interrupt provisioning and retain unresolved executor leases for restart reconciliation
-                  an acknowledged stop with a released lock but live pid reports it and exits 1; the pid is left running
-  hub serve       run the hub in the foreground (what start runs)
-                  SIGTERM/SIGINT allow two seconds for cleanup, then exit 1 if it is incomplete
-                  --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;
-                    when the listeners cannot bind (a sandbox), it goes on over stdio alone
-                  --stdio --no-listen: stdio alone, binding nothing
-  hub audit       every tool call the hub answered, allowed or refused (.cland/log/hub.log)
-                  --session <name> (human: the UI and the CLI), --since <ISO time | 30m, 2h, 1d>, --json
-  hub unmute <a> <b>
-                  lift the loop breaker's mute of two sessions before its cool-down ends
-  hub journal     the journal (.cland/journal.jsonl), oldest first
-                  --since <ISO date | 30s | 10m | 2h | 1d>, --kind <event>[,<event>…], --json (the lines as they are)
-`;
+  DOCTOR_USAGE: "  doctor [dir]    check the harnesses, gh, Neovim, the hub/web edge and what cland init provisioned; one line per\n                  check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers, deleted-project hubs and fixtures)\n                  web network: warns about plain HTTP without [web] origin (cookie in clear; no phone install/notifications)\n                  web bundle: compare the installed web/dist build stamp with its source inputs; npm run build refreshes it\n                  tracker conflicts counts live .conflict captures and names differing bytes; read-only, including --fix\n                  hub retention prunes finalized captures after seven days at startup and hourly; recover differences before expiry\n                  deleted-project hubs retain the orphan hub classification even with fixture ownership\n",
 
-export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [--regression-of <id>] [--found-by review|cover|droplet|qa|human] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
-                  [--parent <id>] [--blocked-by <id>]… [--follows <id>]… [--topic t] [--branch b]
-  task view <id> (any kind prefix in either case, or a bare number)
-    Text output shows criteria counts, closing time and latest verification only when supplied by the hub.
-  task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)
-  task plan migrate (retire qa-required labels, report policy fallbacks)
-  task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text] [--allow-large <id>=<reason>]…
-    show distinguishes pending stage tree/ancestry checks from missing platform covers.
-    Closed done tasks with no branch, landing receipt or dev Item trailer count toward stage completion.
-  task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
-  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--scope full|delta|evidence] [--stage <name>] [--finding high|medium|low:text[@file:line]]… [--verified C1,C3|all | --failed "C1=note"]…]
-  task edit <id> [--found-by review|cover|droplet|qa|human|none] [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L] [--state s] [--status s] [--label l]…
-                  [--add-label l]… [--remove-label l]… [--assignee a|none]
-  task close <id> [--comment t] [--override reason (human shell only)]
-  task link <id> [--regression-of <id>|none] [--parent <id>|none] [--blocked-by <id>]… [--follows <id>]… [--unblock <id>]… [--unfollow <id>]… [--topic t|none] [--branch b|none]
-  task hold <id> [--release] (Reviewer or QA verification beside the claim)
-  task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
-  task criterion <id> add <text>
-  task criterion <id> normalize       assign ids above criterion_seq to every id-less criterion,
-                  in list order; text and marks stay as they are, and an item with ids is unchanged.
-                  web card: e on Criteria opens one-line text fields without the Ck. label; done records human.
-                  claimant: mark every criterion done before the final review; ready needs done and verified.
-                  uncontested writes leave no .conflict; a concurrent save refusal names its recovery source.
-  task rank <id> <--top | --before <id> | --after <id>>
-  task claim <id> [--release] [--force]
-                  claiming an open task in a project with a territory makes (or reuses) its branch
-                  t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>
-                  links root node_modules when absent; reports stale own installs or links without replacing them
-${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: "human"). In a
-                  launched session's shell ($CLAND_SESSION_ID / $CLAND_SESSION_NAME) the call is always
-                  that session's, checked against its role as its own tools are; --as cannot change it.
-                  The human acting --as a session the hub knows is checked against that session's role
-`;
+  HUB_USAGE: "  hub start       start the project's hub in the background (idempotent)\n                  serves before executor recovery; startup steps log durations\n                  --autostart: honor the deliberate-stop grace period; --client cli|nvim|other identifies the starter\n  hub subscriptions list every session's event subscriptions (--json for JSON)\n  hub reload      validate and reload config.toml and roles.toml (also SIGHUP)\n  hub status      show the running hub (including web edge availability), then connected sessions (--json for JSON; --history includes full suite/cover history and harness rows)\n  hub stop        stop the project's hub\n                  interrupt provisioning and retain unresolved executor leases for restart reconciliation\n                  an acknowledged stop with a released lock but live pid reports it and exits 1; the pid is left running\n  hub serve       run the hub in the foreground (what start runs)\n                  SIGTERM/SIGINT allow two seconds for cleanup, then exit 1 if it is incomplete\n                  --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;\n                    when the listeners cannot bind (a sandbox), it goes on over stdio alone\n                  --stdio --no-listen: stdio alone, binding nothing\n  hub audit       every tool call the hub answered, allowed or refused (.cland/log/hub.log)\n                  --session <name> (human: the UI and the CLI), --since <ISO time | 30m, 2h, 1d>, --json\n  hub unmute <a> <b>\n                  lift the loop breaker's mute of two sessions before its cool-down ends\n  hub journal     the journal (.cland/journal.jsonl), oldest first\n                  --since <ISO date | 30s | 10m | 2h | 1d>, --kind <event>[,<event>…], --json (the lines as they are)\n",
 
-export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--account name] [--effort e] [--cwd dir | --item T-<n>] [--brief text|A-<n>]
-                  launch a harness session through the hub; a role's launch defaults
-                  (.cland/roles.toml) fill the harness, model, effort and account not given; custom roles use
-                  --role <name> from [custom.<name>]. --item starts an
-                  Implementer or custom worker in its task worktree, or a Lead on an open epic/release at the root, with its claim;
-                  --brief delivers text or an artifact's content once after the role clause
-  session list [--archived]    launched sessions and the archived count (--json for JSON); --archived shows only the archive
-                  read-only: built-in roles have session.list by default; custom roles grant it explicitly
-  session archive <name>  archive a stopped or exited session
-  session prune --older-than <duration> [--dry-run]  remove old archived session records; keep the journal
-  session attach <name>   print the command that attaches a terminal to the session
-  session stop <name>     stop the session through its harness
-  session resume <name> [--relaunch | --fresh]   re-find the session's process; --relaunch starts a new one on the same
-                  conversation, stopping the old one first when it still runs (keeps its role and valid item claim); --fresh starts a new
-                  conversation with the recorded brief when native resume cannot
-  session retry <name> <message id>    send again a message whose inject got no answer
-                  (its delivery is uncertain: the turn may have started; never retried on its own)
-`;
+  TASK_USAGE: "  task create <title> [--kind k] [--size XS|S|M|L] [--regression-of <id>] [--found-by review|cover|droplet|qa|human] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]\n                  [--parent <id>] [--blocked-by <id>]… [--follows <id>]… [--topic t] [--branch b]\n  task view <id> (any kind prefix in either case, or a bare number)\n    Text output shows criteria counts, closing time and latest verification only when supplied by the hub.\n  task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)\n  task plan migrate (retire qa-required labels, report policy fallbacks)\n  task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text] [--allow-large <id>=<reason>]…\n    show distinguishes pending stage tree/ancestry checks from missing platform covers.\n    Closed done tasks with no branch, landing receipt or dev Item trailer count toward stage completion.\n  task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]\n  task comment <id> <text> [--verdict review|qa --result clear|\"not clear\" --run <id> [--commit <sha>] [--scope full|delta|evidence] [--stage <name>] [--finding high|medium|low:text[@file:line]]… [--verified C1,C3|all | --failed \"C1=note\"]…]\n  task edit <id> [--found-by review|cover|droplet|qa|human|none] [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L] [--state s] [--status s] [--label l]…\n                  [--add-label l]… [--remove-label l]… [--assignee a|none]\n  task close <id> [--comment t] [--override reason (human shell only)]\n  task link <id> [--regression-of <id>|none] [--parent <id>|none] [--blocked-by <id>]… [--follows <id>]… [--unblock <id>]… [--unfollow <id>]… [--topic t|none] [--branch b|none]\n  task hold <id> [--release] (Reviewer or QA verification beside the claim)\n  task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]\n  task criterion <id> add <text>\n  task criterion <id> normalize       assign ids above criterion_seq to every id-less criterion,\n                  in list order; text and marks stay as they are, and an item with ids is unchanged.\n                  web card: e on Criteria opens one-line text fields without the Ck. label; done records human.\n                  claimant: mark every criterion done before the final review; ready needs done and verified.\n                  uncontested writes leave no .conflict; a concurrent save refusal names its recovery source.\n  task rank <id> <--top | --before <id> | --after <id>>\n  task claim <id> [--release] [--force]\n                  claiming an open task in a project with a territory makes (or reuses) its branch\n                  t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>\n                  links root node_modules when absent; reports stale own installs or links without replacing them\n" + IMPORT_USAGE + "                  every task command takes --json, and --as <name> [--role r] (default: \"human\"). In a\n                  launched session's shell ($CLAND_SESSION_ID / $CLAND_SESSION_NAME) the call is always\n                  that session's, checked against its role as its own tools are; --as cannot change it.\n                  The human acting --as a session the hub knows is checked against that session's role\n",
 
-export const WORKTREE_USAGE = `  worktree list   the task worktrees (.cland/worktrees/T-<n>): item, branch, the item's state, the commits
-                  its base lacks and the sessions standing inside (--json for JSON)
-  worktree prune [--yes]   the human's: each closed item's worktree with its unmerged commits, removed with
-                  its branch after a y (--yes: all); refused from a session's shell
-`;
+  SESSION_USAGE: "  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--account name] [--effort e] [--cwd dir | --item T-<n>] [--brief text|A-<n>]\n                  launch a harness session through the hub; a role's launch defaults\n                  (.cland/roles.toml) fill the harness, model, effort and account not given; custom roles use\n                  --role <name> from [custom.<name>]. --item starts an\n                  Implementer or custom worker in its task worktree, or a Lead on an open epic/release at the root, with its claim;\n                  --brief delivers text or an artifact's content once after the role clause\n  session list [--archived]    launched sessions and the archived count (--json for JSON); --archived shows only the archive\n                  read-only: built-in roles have session.list by default; custom roles grant it explicitly\n  session archive <name>  archive a stopped or exited session\n  session prune --older-than <duration> [--dry-run]  remove old archived session records; keep the journal\n  session attach <name>   print the command that attaches a terminal to the session\n  session stop <name>     stop the session through its harness\n  session resume <name> [--relaunch | --fresh]   re-find the session's process; --relaunch starts a new one on the same\n                  conversation, stopping the old one first when it still runs (keeps its role and valid item claim); --fresh starts a new\n                  conversation with the recorded brief when native resume cannot\n  session retry <name> <message id>    send again a message whose inject got no answer\n                  (its delivery is uncertain: the turn may have started; never retried on its own)\n",
 
-export const MERGE_USAGE = `  merge <T-id> [--json]   queue a reviewed head when [merge] queue=true, otherwise land on dev; Coordinator or supervising Lead
-                          a root with core.bare=true refuses as merge-bare; inspect and restore its shared Git config
-                          changed package manifests/lockfiles require npm install in the root after shared readers stop
-  merge queue [--json]  list queued heads in FIFO order, including required dependency installs
-                          batches run check (T0) before batch_tiers, adding Web after T1 for web/ diffs; red T0/Web bisects members
-                          recoverable landing blocks retry automatically once resolved; other held failures need human or Coordinator action
-    --cancel              drop a queued request; supervising Lead, Coordinator or human
-    --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria
-                          allowed: .cland/tasks/**, .cland/RULES.md, docs/**, GLOSSARY.md, README.md files, qa/briefs/**
-                          other paths require review; conflicts still refuse
-`;
+  WORKTREE_USAGE: "  worktree list   the task worktrees (.cland/worktrees/T-<n>): item, branch, the item's state, the commits\n                  its base lacks and the sessions standing inside (--json for JSON)\n  worktree prune [--yes]   the human's: each closed item's worktree with its unmerged commits, removed with\n                  its branch after a y (--yes: all); refused from a session's shell\n",
 
-export const PUSH_USAGE = '  push [--json]         fast-forward territory dev to root dev; Coordinator’s or Aide’s shell, or human\n';
+  MERGE_USAGE: "  merge <T-id> [--json]   queue a reviewed head when [merge] queue=true, otherwise land on dev; Coordinator or supervising Lead\n                          a root with core.bare=true refuses as merge-bare; inspect and restore its shared Git config\n                          changed package manifests/lockfiles require npm install in the root after shared readers stop\n  merge queue [--json]  list queued heads in FIFO order, including required dependency installs\n                          batches run check (T0) before batch_tiers, adding Web after T1 for web/ diffs; red T0/Web bisects members\n                          recoverable landing blocks retry automatically once resolved; other held failures need human or Coordinator action\n    --cancel              drop a queued request; supervising Lead, Coordinator or human\n    --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria\n                          allowed: .cland/tasks/**, .cland/RULES.md, docs/**, GLOSSARY.md, README.md files, qa/briefs/**\n                          other paths require review; conflicts still refuse\n",
 
-export const RELEASE_USAGE = `  publish <branch> --item T-n [--dry-run] [--json]   publish approved marketing commits to GitHub main and site, merge and sync dev
-  release <vX.Y.Z> [--dry-run] [--json]   publish dev as GitHub main and an annotated tag atomically; Coordinator's shell or human
-  release --item T-n [<vX.Y.Z>] [--dry-run] [--json]   publish the release item's version and notes, then close it
-  sync [--json]          fetch GitHub main and replay unreleased dev commits; never pushes to GitHub
-`;
+  PUSH_USAGE: "  push [--json]         fast-forward territory dev to root dev; Coordinator’s or Aide’s shell, or human\n",
 
-export const ROLE_USAGE = `  role set <session> <role>   assign a built-in role or a [custom.<name>] role from roles.toml to a session,
-                  live or not yet connected; the session gets the role's clause
-                  --note-file <file>  with a handover note (Markdown: Goals now, Work in flight, Open decisions,
-                                      Waiting on); the Coordinator moves from its holder, who is told to stop
-                  --move              move the Coordinator from its holder without a note
-                  --item T-n         move this Lead node to the receiver (with --move or --note-file)
-  role clear <session>        revoke the session's role
-  role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]
-                  save launch settings; applies from the role's next launch
-                  --model "" and --account "" use the harness's default
-  role list       the roles, their launch defaults and holders (--json for JSON)
-                  Codex sandbox defaults: Implementer/Aide workspace-write, Reviewer read-only,
-                  Coordinator/Lead/QA danger-full-access; override sandbox/writable_roots in roles.toml
-`;
+  PUBLISH_USAGE: "  publish <branch> --item T-n [--dry-run] [--json]   publish approved marketing commits to GitHub main and site, merge and sync dev\n",
 
-export const CREW_USAGE = `  crew show       effective staffing policy and summary (--json)
-  crew set <role>.<key> <value>  validate and save staffing; leads takes a TOML list
-  crew set idle_from <id|list>  open categories in order; [] means never
-`;
+  RELEASE_USAGE: "  release <vX.Y.Z> [--dry-run] [--json]   publish dev as GitHub main and an annotated tag atomically; Coordinator's shell or human\n  release --item T-n [<vX.Y.Z>] [--dry-run] [--json]   publish the release item's version and notes, then close it\n",
 
-export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and approvals, plan approvals, requests to you, messages to you
-                          newest first, all rows with ids, subjects, senders and waiting ages;
-                          approvals: state, choices or 'answer in Neovim'; last 'needs you: <n>'
-                          (--json for the hub's Inbox frame)
-                          --archive prints departures from the last seven days, newest first, with when and why;
-                          closed approvals include outcome, who answered and when
-                          approvals are answered by the human in Neovim or the web; TUI-only rows say answer in Neovim
-`;
+  SYNC_USAGE: "  sync [--json]          fetch GitHub main and replay unreleased dev commits; never pushes to GitHub\n",
 
-export const TOPIC_USAGE = `  topic create <title> [--item T-n] [--json] [--as <name>]
-                          open a topic, optionally bound to an item; Implementers may open only their own item's topic
-  topic answer <ask id> <option number> [--as <stand-in name>]
-                          answer an ask with its option n (1-based): prints
-                          'answered <ask id> in <topic title>: <the answer>'
-    topic answer <ask id> --text "<free answer>" [--as <stand-in name>]
-                          answer an ask with a free answer; the hub's refusals (an ask not open, an option
-                          out of range, a free answer to an options-only ask) print 'cland: <error>', exit 1
-`;
+  ROLE_USAGE: "  role set <session> <role>   assign a built-in role or a [custom.<name>] role from roles.toml to a session,\n                  live or not yet connected; the session gets the role's clause\n                  --note-file <file>  with a handover note (Markdown: Goals now, Work in flight, Open decisions,\n                                      Waiting on); the Coordinator moves from its holder, who is told to stop\n                  --move              move the Coordinator from its holder without a note\n                  --item T-n         move this Lead node to the receiver (with --move or --note-file)\n  role clear <session>        revoke the session's role\n  role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]\n                  save launch settings; applies from the role's next launch\n                  --model \"\" and --account \"\" use the harness's default\n  role list       the roles, their launch defaults and holders (--json for JSON)\n                  Codex sandbox defaults: Implementer/Aide workspace-write, Reviewer read-only,\n                  Coordinator/Lead/QA danger-full-access; override sandbox/writable_roots in roles.toml\n",
 
-export const HOOK_USAGE = `  hook <event>    from inside a launched session (its hooks, the cland mod): post a signal to the hub
-                  --session <name> --launch <id> --hub-file <path>; the harness's JSON payload on stdin
-                  (worktree-create --worktree <path>: refuses the harness's own worktree, exit 2)
-`;
+  CREW_USAGE: "  crew show       effective staffing policy and summary (--json)\n  crew set <role>.<key> <value>  validate and save staffing; leads takes a TOML list\n  crew set idle_from <id|list>  open categories in order; [] means never\n",
 
-export const ARTIFACT_USAGE = `  artifact new --kind prompt|note|page|diagram|file --title <title> --topic <topic>
-                  --path <file|directory> | --content <text> | --content-file <file|-> (stdin with -)
-                  [--folder] [--entry <relative-file>] (create is an alias for new)
-  artifact promote <A-id> <project-relative-path> [--json]
-  artifact open <A-id> [--json] (VISUAL, EDITOR, else nvim; --json resolves without an editor)
-  artifact keep <A-id> [--release] [--json]
-  artifact move <A-id> <folder-A-id> [--name <filename>] [--json]
-  artifact archive <A-id> [--json]
-  artifact list [--topic <topic>] [--before <A-n>] [--json]
-                  newest first, at most 100 per page; use the returned before cursor for older entries
-                  persistent files shown in topics; all commands accept --json
-`;
+  INBOX_USAGE: "  inbox [--json] [--archive] four sections: asks and approvals, plan approvals, requests to you, messages to you\n                          newest first, all rows with ids, subjects, senders and waiting ages;\n                          approvals: state, choices or 'answer in Neovim'; last 'needs you: <n>'\n                          (--json for the hub's Inbox frame)\n                          --archive prints departures from the last seven days, newest first, with when and why;\n                          closed approvals include outcome, who answered and when\n                          approvals are answered by the human in Neovim or the web; TUI-only rows say answer in Neovim\n",
 
-export const SUBSCRIPTIONS_USAGE = `  subscribe <session|item|topic|role|subtree> <subject> --event <session.state|task|topic|usage|artifact> [--event e]… [--digest turn|now] [--cost USD|--tokens N]
-  unsubscribe <subscription id>
-  subscriptions  list the caller's subscriptions
-                  --as <session> from the human CLI; launched shells use their own identity; --json
-`;
+  TOPIC_USAGE: "  topic create <title> [--item T-n] [--json] [--as <name>]\n                          open a topic, optionally bound to an item; Implementers may open only their own item's topic\n  topic answer <ask id> <option number> [--as <stand-in name>]\n                          answer an ask with its option n (1-based): prints\n                          'answered <ask id> in <topic title>: <the answer>'\n    topic answer <ask id> --text \"<free answer>\" [--as <stand-in name>]\n                          answer an ask with a free answer; the hub's refusals (an ask not open, an option\n                          out of range, a free answer to an options-only ask) print 'cland: <error>', exit 1\n",
 
-export const RULE_USAGE = `  rule add <text> --scope <roles>|all --reason <text> [--title t] [--origin memory:<path>]
-  rule edit <n> [--title t] [--text t] [--scope s] [--reason r]
-  rule retire <n> --reason <text>
-  rule list [--all] [--role r]
-  rule show <n>   read one rule; every rule command takes --json
-                  writes belong to the human shell or an Aide; other sessions propose to the Coordinator
-`;
+  HOOK_USAGE: "  hook <event>    from inside a launched session (its hooks, the cland mod): post a signal to the hub\n                  --session <name> --launch <id> --hub-file <path>; the harness's JSON payload on stdin\n                  (worktree-create --worktree <path>: refuses the harness's own worktree, exit 2)\n",
 
-export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease a demo droplet
-  demo exec <epic> -- <command…>              run in the delivered tree
-  demo stop <epic> [--json]                  release the demo droplet
-  demo status <epic> [--commit <sha>] [--json]  show state, commit, lifetime and cost
-                  provisioning until delivery completes; active accepts demo exec
-`;
+  ARTIFACT_USAGE: "  artifact new --kind prompt|note|page|diagram|file --title <title> --topic <topic>\n                  --path <file|directory> | --content <text> | --content-file <file|-> (stdin with -)\n                  [--folder] [--entry <relative-file>] (create is an alias for new)\n  artifact promote <A-id> <project-relative-path> [--json]\n  artifact open <A-id> [--json] (VISUAL, EDITOR, else nvim; --json resolves without an editor)\n  artifact keep <A-id> [--release] [--json]\n  artifact move <A-id> <folder-A-id> [--name <filename>] [--json]\n  artifact archive <A-id> [--json]\n  artifact list [--topic <topic>] [--before <A-n>] [--json]\n                  newest first, at most 100 per page; use the returned before cursor for older entries\n                  persistent files shown in topics; all commands accept --json\n",
 
-export const MODELS_USAGE = `  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n`;
+  SUBSCRIBE_USAGE: "  subscribe <session|item|topic|role|subtree> <subject> --event <session.state|task|topic|usage|artifact> [--event e]… [--digest turn|now] [--cost USD|--tokens N]\n",
 
-export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value
-                  verification.coverage_map_retention: positive pointer count (default 10); applies on next map publication after reload
-                  web.port: 0 keeps the first free port; 1–65535 overrides it; a taken port disables only the web edge
-                  web.bind: IPv4/IPv6 address (default 127.0.0.1); only the web edge binds there
-                  web.origin: HTTPS tunnel origin (empty: none); Host + Origin match sets Secure; forwarded headers ignored
-                  web.dist: bundle directory (empty: installed web/dist); web settings apply after a hub restart
-`;
+  UNSUBSCRIBE_USAGE: "  unsubscribe <subscription id>\n",
 
-export const QA_LINT_USAGE = `  qa lint <brief>   check a QA brief against this build's help and built-in roles, without executing commands
-                  checks table ids/surfaces, commands/flags in code, and variable rm operands
-                  surfaces: headless-grid, tmux, web-terminal, hub-api, real-browser
-                  exits 0 when clean, 1 with one file:line finding per line, 2 for usage/read errors
-  qa lint --help|-h  print brief lint help
-`;
+  SUBSCRIPTIONS_USAGE: "  subscriptions  list the caller's subscriptions\n                  --as <session> from the human CLI; launched shells use their own identity; --json\n",
 
-export const WEB_USAGE = `  web [--no-open]  print a one-time browser sign-in link from the running hub
-                  opens with open (macOS) or xdg-open (Linux); --no-open only prints
-                  human shell only; link expires in five minutes and is spent on first use
-  web --qr        print the phone's link and a half-block QR; never opens a browser
-                  uses [web] origin (HTTPS tunnel), otherwise [web] bind's LAN address; loopback alone refuses
-  web --sessions  list cookie session ids, creation, last use and open socket counts
-  web --revoke <id> revoke a cookie session and close its sockets before returning
-                  --qr accepts --no-open, but cannot be combined with --sessions or --revoke
-                  sessions survive restarts; expire 30 days after creation (last use is /ws admission)
-                  --no-open, --sessions and --revoke are mutually exclusive; all use the Unix socket
-                  web actions follow the deny-by-default authority table in hub/README.md
-                  cli-neovim-only refusals name actions to run in the CLI and Neovim
-`;
+  RULE_USAGE: "  rule add <text> --scope <roles>|all --reason <text> [--title t] [--origin memory:<path>]\n  rule edit <n> [--title t] [--text t] [--scope s] [--reason r]\n  rule retire <n> --reason <text>\n  rule list [--all] [--role r]\n  rule show <n>   read one rule; every rule command takes --json\n                  writes belong to the human shell or an Aide; other sessions propose to the Coordinator\n",
+
+  DEMO_USAGE: "  demo start <epic> [--commit <sha>] [--json]  lease a demo droplet\n  demo exec <epic> -- <command…>              run in the delivered tree\n  demo stop <epic> [--json]                  release the demo droplet\n  demo status <epic> [--commit <sha>] [--json]  show state, commit, lifetime and cost\n                  provisioning until delivery completes; active accepts demo exec\n",
+
+  MODELS_USAGE: "  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n",
+
+  CONFIG_USAGE: "  config set <section.key> <value> [--json]  validate and save one managed config.toml value\n                  verification.coverage_map_retention: positive pointer count (default 10); applies on next map publication after reload\n                  web.port: 0 keeps the first free port; 1–65535 overrides it; a taken port disables only the web edge\n                  web.bind: IPv4/IPv6 address (default 127.0.0.1); only the web edge binds there\n                  web.origin: HTTPS tunnel origin (empty: none); Host + Origin match sets Secure; forwarded headers ignored\n                  web.dist: bundle directory (empty: installed web/dist); web settings apply after a hub restart\n",
+
+  QA_LINT_USAGE: "  qa lint <brief>   check a QA brief against this build's help and built-in roles, without executing commands\n                  checks table ids/surfaces, commands/flags in code, and variable rm operands\n                  surfaces: headless-grid, tmux, web-terminal, hub-api, real-browser\n                  exits 0 when clean, 1 with one file:line finding per line, 2 for usage/read errors\n  qa lint --help|-h  print brief lint help\n",
+
+  WEB_USAGE: "  web [--no-open]  print a one-time browser sign-in link from the running hub\n                  opens with open (macOS) or xdg-open (Linux); --no-open only prints\n                  human shell only; link expires in five minutes and is spent on first use\n  web --qr        print the phone's link and a half-block QR; never opens a browser\n                  uses [web] origin (HTTPS tunnel), otherwise [web] bind's LAN address; loopback alone refuses\n  web --sessions  list cookie session ids, creation, last use and open socket counts\n  web --revoke <id> revoke a cookie session and close its sockets before returning\n                  --qr accepts --no-open, but cannot be combined with --sessions or --revoke\n                  sessions survive restarts; expire 30 days after creation (last use is /ws admission)\n                  --no-open, --sessions and --revoke are mutually exclusive; all use the Unix socket\n                  web actions follow the deny-by-default authority table in hub/README.md\n                  cli-neovim-only refusals name actions to run in the CLI and Neovim\n",
+};
+
+export const {
+  ACCOUNT_USAGE,
+  OPEN_USAGE,
+  SUITE_USAGE,
+  EXECUTOR_USAGE,
+  QA_USAGE,
+  SETUP_USAGE,
+  DOCTOR_USAGE,
+  HUB_USAGE,
+  TASK_USAGE,
+  SESSION_USAGE,
+  WORKTREE_USAGE,
+  MERGE_USAGE,
+  PUSH_USAGE,
+  ROLE_USAGE,
+  CREW_USAGE,
+  INBOX_USAGE,
+  TOPIC_USAGE,
+  HOOK_USAGE,
+  ARTIFACT_USAGE,
+  RULE_USAGE,
+  DEMO_USAGE,
+  MODELS_USAGE,
+  CONFIG_USAGE,
+  QA_LINT_USAGE,
+  WEB_USAGE,
+} = commandUsage;
+
+export const INIT_USAGE = commandUsage.INIT_USAGE + commandUsage.UPDATE_USAGE;
+export const RELEASE_USAGE = commandUsage.PUBLISH_USAGE + commandUsage.RELEASE_USAGE + commandUsage.SYNC_USAGE;
+export const SUBSCRIPTIONS_USAGE = commandUsage.SUBSCRIBE_USAGE + commandUsage.UNSUBSCRIBE_USAGE + commandUsage.SUBSCRIPTIONS_USAGE;

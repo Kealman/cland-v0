@@ -1,0 +1,9 @@
+# hub/test/cli-usage-merge.test.ts
+
+`hub/src/cli/usage.ts` keeps a complete escaped string on each command's table row, with a blank line between rows. Edit the owning row when changing help; keep the separators and avoid wrapping strings into multiline blocks. `IMPORT_USAGE` is a shared single-line entry composed into the task row. Named exports and the CLI's import graph stay stable.
+
+Distinct top-level commands also have separate rows when a legacy export groups them: init/update, publish/release/sync, and subscribe/unsubscribe/subscriptions. Compose their unchanged public exports below the table.
+
+The T3 test copies the shipped source to a disposable Git repository, commits independent edits to the adjacent verify/executor rows and the formerly shared init/update pair, and checks both native `merge-tree` and `merge`. Git runs synchronously with the shared sealed fixture environment; no writer remains at cleanup. No union merge attribute or Git configuration change is needed.
+
+The T1 `cli-usage-compatibility.test.ts` freezes every named export; T2 `cli-help.test.ts` checks actual `cland --help` bytes in a sealed disposable cwd. Their fixtures were captured before this refactor. The full-help fixture stores the original block order and surrounding bytes using named placeholders, expanded only from the frozen export data (never from production exports). Frozen command rows in `commands.json` also retain blank separators, so future independent help edits do not conflict in a second golden-output file. The frozen `exports.json` stores only the original export composition, while `commands.json` owns the command bytes. Deliberate help changes update only the owning frozen command row; ordering or surrounding text changes update the full-help template. Only the version header follows the current version. Existing help and CLI import guards remain unchanged.
