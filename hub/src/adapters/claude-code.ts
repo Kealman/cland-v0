@@ -34,7 +34,7 @@ import { sessionRunDirectory } from '../../../shared/session-credential.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import { LaunchFiles } from './launch-files.ts';
 import type { Resumed } from '../hub/worktrees.ts';
-import { execFile } from 'node:child_process';
+import { execFile, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -222,6 +222,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #agentsMs: number;
   readonly #configDir: string;
   #closed = false;
+  #closing: Promise<void> | undefined;
+  readonly #commands = new Set<{ cancel: () => void; settled: Promise<void> }>();
   readonly #directories = new Map<string, DirectorySchedule>();
   readonly #stopGraceMs: number;
   readonly #env: NodeJS.ProcessEnv;
@@ -303,14 +305,22 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- the harness's CLI
 
   #run(args: string[], cwd: string, p: Pick<HarnessProcess, 'account' | 'accountEnv'>, timeoutMs = 30_000, resumed: Resumed = untimed, launchToken?: string): Promise<{ code: number; stdout: string; stderr: string }> {
+    if (this.#closed) return Promise.reject(new Error('the Claude adapter is closed'));
     const env = withoutExecutorCredentials({ ...this.#env, ...p.accountEnv });
     if (p.account) for (const key of AUTH_VARIABLES) delete env[key];
-    return new Promise((resolve, reject) => {
-      execFile(this.#bin, args, { cwd, env: { ...env, DISABLE_AUTOUPDATER: '1', ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {
+    let child: ChildProcess | undefined;
+    const work = new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
+      child = execFile(this.#bin, args, { cwd, env: { ...env, DISABLE_AUTOUPDATER: '1', ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {
         if (err && typeof err.code !== 'number') reject(new Error(`${this.#bin} ${args[0] ?? ''}: ${err.message}`));
         else resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
       }));
     });
+    // execFile's callback follows child close and clears its native deadline.
+    // Retain ownership through that receipt, including failed commands.
+    const command = { cancel: () => { child?.kill('SIGKILL'); }, settled: work.then(() => {}, () => {}) };
+    this.#commands.add(command);
+    void command.settled.then(() => this.#commands.delete(command));
+    return work;
   }
 
   #saveSchedule(d: DirectorySchedule): void {
@@ -805,7 +815,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }).call(this), options.resumed ?? untimed);
   }
 
-  close(): void {
+  close(): void | Promise<void> {
+    if (this.#closed) return this.#closing;
     this.#closed = true;
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
@@ -820,5 +831,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       pending.reject(new Error('the hub is stopping'));
     }
     this.#pending.clear();
+    const commands = [...this.#commands];
+    for (const command of commands) command.cancel();
+    if (commands.length) this.#closing = Promise.all(commands.map(command => command.settled)).then(() => {});
+    return this.#closing;
   }
 }

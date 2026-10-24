@@ -45,17 +45,18 @@ export function projectSessions(options: { openDatabase?: (path: string) => Data
   };
   const close = (): void | Promise<void> => {
     const failures: unknown[] = [];
-    let draining: void | Promise<void> = undefined;
-    try { draining = sessions.close(); } catch (error) { failures.push(error); }
+    const drains: Promise<void>[] = [];
+    const retain = (drain: void | Promise<void>) => { if (drain) drains.push(drain.catch(error => { failures.push(error); })); };
+    try { retain(sessions.close()); } catch (error) { failures.push(error); }
     for (const adapter of unregistered) {
-      try { adapter.close(); } catch (error) { failures.push(error); }
+      try { retain(adapter.close()); } catch (error) { failures.push(error); }
     }
     unregistered.clear();
     const finish = () => {
       try { table.close(); } catch (error) { failures.push(error); }
       if (failures.length) throw new AggregateError(failures, 'adapter cleanup failed');
     };
-    if (draining) return draining.then(finish, error => { failures.push(error); finish(); });
+    if (drains.length) return Promise.all(drains).then(finish);
     finish();
   };
 

@@ -24,6 +24,7 @@ function cli(t: TestContext) {
   let knownPid = false;
   let pid = process.pid;
   const pending: Array<() => void> = [];
+  const killed: string[] = [];
   t.mock.method(cp, 'execFile', (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
     assert.equal(bin, 'fixture-claude', 'no native command escapes the scripted edge');
     calls.push({ args, configDir: options.env?.CLAUDE_CONFIG_DIR, env: { ...options.env } });
@@ -40,10 +41,11 @@ function cli(t: TestContext) {
     };
     if (hold && args[0] === 'agents') pending.push(finish);
     else queueMicrotask(finish);
+    return { kill: (signal: string) => { killed.push(signal); return true; } };
   });
   syncBuiltinESMExports();
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  return { calls, sessions, pending, set loggedOut(value: boolean) { loggedOut = value; }, set hold(value: boolean) { hold = value; }, set knownPid(value: boolean) { knownPid = value; }, set pid(value: number) { pid = value; }, agents: () => calls.filter(c => c.args[0] === 'agents') };
+  return { calls, sessions, pending, killed, set loggedOut(value: boolean) { loggedOut = value; }, set hold(value: boolean) { hold = value; }, set knownPid(value: boolean) { knownPid = value; }, set pid(value: number) { pid = value; }, agents: () => calls.filter(c => c.args[0] === 'agents') };
 }
 
 // Native socket/MCP completion is bounded in real time while hub time stays fixed.
@@ -64,6 +66,37 @@ async function memoryHost(t: TestContext): Promise<AdapterHost> {
 }
 const request = (name: string) => ({ name, cwd: '/fixture', role: null, model: null });
 const options = (clock: FakeClock) => ({ clock, processStarted: async () => 'fixture-start', bin: 'fixture-claude', env: { HOME: '/fixture/home', CLAUDE_CONFIG_DIR: '/fixture/claude' } });
+
+test('Claude close cancels a held native query and drains its callback before releasing ownership', async t => {
+  const native = cli(t);
+  const clock = new FakeClock();
+  const adapter = new ClaudeCodeAdapter(await memoryHost(t), options(clock));
+  t.after(() => adapter.close());
+  try {
+    await adapter.spawn(request('held-query'));
+    native.hold = true;
+    await clock.advance(30_000);
+    assert.equal(native.pending.length, 1, 'the native query has entered the scripted hold');
+    const closing = adapter.close();
+    assert.deepEqual(native.killed, ['SIGKILL'], 'only the in-flight CLI is cancelled');
+    let closed = false;
+    const drained = Promise.resolve(closing).then(() => { closed = true; });
+    await yieldIO();
+    assert.equal(closed, false, 'sending a signal is not the native close receipt');
+    native.pending.shift()!();
+    await receipt(drained);
+    assert.equal(closed, true);
+    const calls = native.calls.length;
+    await clock.advance(60_000);
+    assert.equal(native.calls.length, calls, 'no later polling restarts a native query');
+  } finally {
+    // Assertion failures must release the only native completion receipt before
+    // after hooks close the adapter again or restore the scripted command edge.
+    const closing = adapter.close();
+    for (const finish of native.pending.splice(0)) finish();
+    await receipt(Promise.resolve(closing));
+  }
+});
 
 test('Claude discovery misses retain liveness without accepting a conflicting native or process identity', async t => {
   const native = cli(t);

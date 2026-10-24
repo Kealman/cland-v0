@@ -5,11 +5,13 @@ import { fixtureEnvironment } from '../fixture-environment.ts';
 // CLI lifecycle seam: a real bridge, real project hub, and OS process exit.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { CLI_ENTRY, connectUi, eventually, fakeClaude, pidAlive, nativeProjectHub as projectHub, tempProject, withDiscoveredPid } from '../harness.ts';
 import { systemProcesses } from '../../src/system-processes.ts';
 import { ownProcess } from '../process-cleanup.ts';
+import { hubResources } from '../hub-resources.ts';
 
 test('a bridge exits after its real hub stops even while its parent and stdout remain alive', { timeout: 20_000 }, async t => {
   const root = await tempProject(t);
@@ -31,9 +33,17 @@ test('a bridge exits after its real hub stops even while its parent and stdout r
   ui.close();
   await hub.stop();
   // The same bridge reads the new discovery and attaches after a short restart.
-  const restarted = await projectHub(t, root, fake.env);
+  const stoppedResources = hubResources();
+  t.after(() => stoppedResources.cancel());
+  const restarted = await stoppedResources.run(() => projectHub(t, root, fake.env));
   await eventually('bridge reattached after restart', () => output.split('"type":"bridged"').length >= 3 ? true : undefined);
+  const configDir = (await fake.calls()).find(call => call.args[0] === 'agents')!.configDir;
+  await writeFile(join(configDir, 'agents-hold'), '');
+  const queryPid = Number(await eventually('native agents query entered its hold', () => readFile(join(configDir, 'agents-started'), 'utf8').catch(() => undefined)));
+  ownProcess(t, queryPid);
   await restarted.stop();
+  await stoppedResources.check();
+  assert.equal(pidAlive(queryPid), false, 'hub stop reaps the held agents query and clears its execFile deadline');
   await eventually('bridge exits within its test reconnect grace plus polling tolerance', () => child.exitCode !== null ? true : undefined, 5000);
   assert.match(output, /"type":"bridge-expired"/);
   assert.equal(child.exitCode, 0);

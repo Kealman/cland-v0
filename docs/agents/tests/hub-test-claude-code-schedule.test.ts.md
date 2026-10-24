@@ -1,5 +1,14 @@
 # hub/test/claude-code-schedule.test.ts
 
+`Claude close cancels a held native query and drains its callback before releasing
+ownership` is the T2 shutdown regression (T-1261). The scripted `execFile` edge
+holds an agents query and records cancellation. Close must remain pending until
+the native callback is released; advancing fake time afterwards must start no
+new command. The real native timer/PID boundary remains in
+[`scenarios/hook-bridge.test.ts`](hub-test-scenarios-hook-bridge.test.ts.md).
+An unconditional `finally` releases any held callbacks and awaits close before
+after hooks restore the native edge, so a failed assertion cannot strand teardown.
+
 Claude re-exec ownership uses the frame/MCP seam in
 `claude-code-schedule.test.ts`: the production adapter reads a scripted native
 CLI boundary, synthetic PID/start facts and a fake clock in a sealed scratch

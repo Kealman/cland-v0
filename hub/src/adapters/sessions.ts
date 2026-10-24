@@ -1814,8 +1814,12 @@ export class Sessions {
     if (this.#stopRetry) this.#recoveryClock.clearInterval(this.#stopRetry);
     this.#stopRetry = null;
     const failures: unknown[] = [];
+    const adapterDrains: Promise<void>[] = [];
     for (const adapter of this.#adapters.values()) {
-      try { adapter.close(); } catch (error) { failures.push(error); }
+      try {
+        const drain = adapter.close();
+        if (drain) adapterDrains.push(drain.catch(error => { failures.push(error); }));
+      } catch (error) { failures.push(error); }
     }
     this.#core.onDelivered(null);
     this.#core.onWithdrawalCheck(null);
@@ -1829,7 +1833,7 @@ export class Sessions {
     for (const timer of this.#usageTimers.values()) this.#core.clock.clearTimeout(timer);
     this.#usageTimers.clear();
     this.#unrename();
-    const drain = [...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
+    const drain = [...adapterDrains, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
     const finish = () => { if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed'); };
     if (drain.length) return Promise.all(drain.map(work => work.catch(() => {}))).then(finish);
     finish();

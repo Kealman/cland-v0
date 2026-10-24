@@ -25,6 +25,12 @@ Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 
+For adapter shutdown, preserve both synchronous and promise-returning `close`
+implementations. Drain transient native CLI callbacks before releasing storage;
+use the scripted close/drain regression and held real-query resource check in
+`docs/agents/tests/hub-test-claude-code-schedule.test.ts.md` and
+`docs/agents/tests/hub-test-scenarios-hook-bridge.test.ts.md`.
+
 For local verification cancellation or compatibility recovery, use the sealed cancellation, recreated-root quarantine and blocked-queue seams in `docs/agents/tests.md`. Observe exact descendant death before root cleanup; retain the quarantine journal's old/new inodes and next-run admission receipt. Live machine locks are outside the fixture.
 
 For startup lease recovery and phase timing, follow the sealed T2 fake-provider receipts in `docs/agents/tests.md#implementer-test-selection`. The T3 retained-history scale guard counts suite checkpoints, explorer batches and per-item native reads through the first completed status reply; retain CPU/wall/step diagnostics, the gross hang guard and red count-based historical controls as `docs/agents/tests.md#startup-reply-byte-budgets-t-1038` describes.

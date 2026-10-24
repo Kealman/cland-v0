@@ -94,6 +94,7 @@ T-1204: Point copied-tracker work to the T0 literal-id guard, explicit seeded ow
 T-976 M1: document partial known-platform exclusions, retained reasons/platform and exact comparison controls.
 
 T-1257: Document Agents report defaults, explicit item-worker routing and General recovery notices.
+T-1261: Document synchronous/async adapter close compatibility and transient native command drain regressions.
 T-1206: Document the T0 closed-item wording check and reason-required line exemptions for README/docs edits.
 T-1187: Document startup-only web config, atomic reload refusal and the sealed CLI/projectHub regression seam.
 

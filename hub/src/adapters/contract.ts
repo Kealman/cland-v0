@@ -248,8 +248,9 @@ export interface HarnessAdapter {
    * conversation id, under `policy` (its role's launch defaults as they are now).
    */
   resume(process: HarnessProcess, options?: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed }): Promise<ResumeResult>;
-  /** The hub stops: timers end; the harness processes keep running (they outlive the hub). */
-  close(): void;
+  /** The hub stops: timers end and transient CLI children drain before completion.
+   * The harness session processes keep running (they outlive the hub). */
+  close(): void | Promise<void>;
 }
 
 /**
