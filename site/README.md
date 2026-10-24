@@ -30,7 +30,7 @@ npm run preview   # serve the built dist/ locally
 | `src/log.ts` | `getPosts()` (newest first) and the post URLs. |
 | `src/content/docs/docs/*.md` | The documentation, served by Starlight under `/docs/`. `docs/index.md` is the Introduction at `/docs/`. |
 | `src/content.config.ts` | The content collections: Starlight's `docs` and the build log's `log`. |
-| `src/components/Screenshot.astro`, `src/screens.ts` | Screenshots by number, on the landing and in the docs (`.mdx`). A screenshot whose file is in `src/assets/screens/` shows as an image; otherwise it shows a placeholder with its number, target size and description. [SCREENSHOTS.md](SCREENSHOTS.md) is the list still to make. |
+| `src/components/Screenshot.astro`, `src/screens.ts` | Screenshots by number, on the landing and in the docs (`.mdx`). A screenshot whose file is in `src/assets/screens/` shows as an image; otherwise it shows a placeholder with its number, target size and description. [SCREENSHOTS.md](SCREENSHOTS.md) lists the images and the sealed web/phone capture procedure. |
 | `src/plugins/mermaid.mjs` | Renders ```` ```mermaid ```` blocks in the docs to inline SVG at build time with `beautiful-mermaid`: no browser in CI, no script in the page. The colours are the `--cland-diagram-*` properties in `starlight.css`, so diagrams follow the dark and light theme. |
 | `src/components/starlight/SocialIcons.astro` | A Starlight override that adds the "Log" link beside the GitHub icon in the docs header. |
 | `astro.config.mjs` | Site URL, Starlight options and the sidebar. The sidebar lists only the docs pages that exist. |

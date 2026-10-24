@@ -356,6 +356,7 @@
       "tier": "T3",
       "scenario": "ticket-flow"
     },
+    "hub/test/screenshot-capture.test.ts": "T1",
     "hub/test/selection-replay-package.test.ts": "T1",
     "hub/test/send-input.test.ts": "T1",
     "hub/test/session-archive-merge.test.ts": "T3",

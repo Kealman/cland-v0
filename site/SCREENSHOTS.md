@@ -1,6 +1,6 @@
-# Screenshots to make
+# Screenshots
 
-Every screenshot on the landing and in the docs, by number. Most exist; web.png and phone.png still show a placeholder with the number, the size and the description until their file is there. The verification queue and the release are drawn as diagrams instead of screenshots.
+Every screenshot on the landing and in the docs, by number. Every listed image is present. The verification queue and the release are drawn as diagrams instead of screenshots.
 
 **How to add one.** Save the PNG under the file name below in `site/src/assets/screens/` and rebuild. The `Screenshot` component (`src/components/Screenshot.astro`) finds the file by name and shows the image in place of the placeholder, on every page that uses the number: no page needs editing. The description becomes the image's alt text. The list itself lives in `src/screens.ts`; change a description there and here together.
 
@@ -12,8 +12,8 @@ Every screenshot on the landing and in the docs, by number. Most exist; web.png 
 | --- | --- | --- | --- | --- |
 | 1 | `hero.png` | 2881×1675 | Landing: hero (below the crew window); Docs: The workbench | exists |
 | 2 | `accounts.png` | 1601×1200 | Landing: “Get more from every plan you pay for”; Landing: features carousel, slide 5 (Accounts); Docs: Accounts and limits; Docs: Sessions and harness access | exists |
-| 3 | `web.png` | 2400×1500 | Landing: “In the terminal, the browser or your pocket”; Docs: Web and phone, The layout | to make |
-| 4 | `phone.png` | 1170×2532 | Landing: “In the terminal, the browser or your pocket”; Docs: Web and phone, What the phone shows | to make |
+| 3 | `web.png` | 2400×1500 | Landing: “In the terminal, the browser or your pocket”; Docs: Web and phone, The layout | exists |
+| 4 | `phone.png` | 1170×2532 | Landing: “In the terminal, the browser or your pocket”; Docs: Web and phone, What the phone shows | exists |
 | 5 | `explorer.png` | 2940×1716 | Landing: features carousel, slide 1 (Items); Docs: Items and the tracker, top | exists |
 | 6 | `inbox.png` | 1377×800 | Landing: features carousel, slide 4 (Inbox); Docs: Topics and the inbox, The inbox | exists |
 | 7 | `attach.png` | 2934×1683 | Landing: features carousel, slide 3 (Harness access); Docs: Sessions and harness access, top | exists |
@@ -38,7 +38,7 @@ The cland workbench in Neovim, dark theme: on the left the items panel with a re
 
 The cland sessions panel up close: the Accounts block on top shows two plans with their 5-hour and weekly limit windows, and the crew's sessions are listed below with harness, model and account.
 
-## 3. `web.png`
+## 3. `web.png` (exists)
 
 - **Size:** 2400×1500
 - **Save as:** `site/src/assets/screens/web.png`
@@ -46,13 +46,13 @@ The cland sessions panel up close: the Accounts block on top shows two plans wit
 
 The browser workbench, dark. The rail on the left, the Items explorer in the centre with a release unfolded into epics and tasks, the drawer on the right with an epic's card: progress, plan stage, latest verdict. Inbox badge shows 2.
 
-## 4. `phone.png`
+## 4. `phone.png` (exists)
 
 - **Size:** 1170×2532
 - **Save as:** `site/src/assets/screens/phone.png`
 - **Shown on:** Landing: “In the terminal, the browser or your pocket”; Docs: Web and phone, What the phone shows
 
-The installed phone app: the inbox, with the Coordinator's ask "Start epic Checkout flow?" open as a bottom sheet with Approve and Decline with a reason.
+The phone workbench in a mobile viewport: the inbox, with the Coordinator's ask "Start epic Checkout flow?" open as a bottom sheet with Approve, Review the plan first, a free answer and Decline.
 
 ## 5. `explorer.png` (exists)
 
@@ -110,3 +110,42 @@ The web workbench with a topic thread in the drawer: the Coordinator's message w
 
 The terminal workbench with the topics panel on the right (groups needs you, open and closed, with unread badges) and a task's topic in the centre: the Coordinator's brief, a folded run of agent-to-agent messages shown as one line such as "impl-42 → rev-1 · 4 messages", a review verdict, and an ask with numbered options. The composer sits under the thread.
 
+## Refreshing the web and phone captures
+
+From the repository root, run `npm run build`, then
+`node site/scripts/capture-screenshots.ts`. The manual capture uses the existing
+Web fixture's admission check, a disposable project and its own in-process hub,
+and the lockfile-pinned Chrome Headless Shell with a scratch user-data-dir. It
+uses the shared sealed HOME, XDG, account and Git environment builders. All items,
+messages and the Coordinator session are synthetic; it reads no live project or
+real session content. No GUI browser opens.
+
+The desktop viewport is 1600×1000 at 1.5×, producing 2400×1500 pixels. The mobile
+viewport is 390×844 at 3×, producing 1170×2532 pixels. The phone image demonstrates
+the responsive app, without browser chrome; it is not evidence of installation
+on a physical phone. The mobile sheet offers Decline; tapping it asks for a reason.
+
+The capture waits for Live, the selected epic's rendered card and verdict, and
+the phone's exact ask sheet. It waits for fonts before capturing. Positive-control
+secret scans reject planted bearer text and a planted hub secret, then check
+rendered text and PNG bytes before writing. Failures keep a rejected outcome but
+emit only a fixed phase diagnostic: original messages, stacks, causes, assertion
+values and custom fields never reach the reporter. Navigation and fixture cleanup
+use the same boundary. Pure T1 controls exercise the actual spec and TAP reporter
+output with planted bearer, token and sign-in link values; run
+`node --test hub/test/screenshot-capture.test.ts` without recapturing images.
+The export directory contains only
+`web.png`, `phone.png` and `receipt.json` (platform, browser revision/version,
+dimensions and SHA-256 hashes). It excludes HOME, traces, environment files,
+cookies and one-use sign-in URLs. Teardown observes the browser process group
+empty and the scratch hub stopped before removing fixture directories.
+
+Inspect both images visually, then copy only the two PNGs from
+`.tmp/workbench-capture/` into `site/src/assets/screens/`. Rebuild the standalone
+site with `cd site && npm run build`; confirm that the landing workbench section
+and `/docs/web-and-phone/` render images rather than placeholders. Refresh the
+matching descriptions in this file and `src/screens.ts` when the visible app changes.
+
+The committed captures were made on macOS arm64 using Headless Shell
+156.0.8078.4, Playwright revision 1248. No physical phone or real-device install
+check was run. These captures document the interface, not a complete Web test run.

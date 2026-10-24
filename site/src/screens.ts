@@ -41,7 +41,7 @@ const list: Screen[] = [
     n: 4,
     file: 'phone.png',
     size: '1170×2532',
-    desc: 'The installed phone app: the inbox, with the Coordinator\'s ask "Start epic Checkout flow?" open as a bottom sheet with Approve and Decline with a reason.',
+    desc: 'The phone workbench in a mobile viewport: the inbox, with the Coordinator\'s ask "Start epic Checkout flow?" open as a bottom sheet with Approve, Review the plan first, a free answer and Decline.',
   },
   {
     n: 5,
