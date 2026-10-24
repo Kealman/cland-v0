@@ -150,7 +150,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   const probes = {
     syntheticProvider: scriptedProvider,
     // Scripted hubs cannot inspect historical Git objects without explicit repository facts.
-    devT3Repository: options.devT3Repository ?? { identity: async () => null, checkout: async () => { assert.fail('no scripted historical checkout fact'); }, remove: async () => {} },
+    devT3Repository: options.devT3Repository ?? { contains: async () => { assert.fail('no scripted historical file fact'); }, identity: async () => null, checkout: async () => { assert.fail('no scripted historical checkout fact'); }, remove: async () => {} },
     clock, droplet: dependencies, harnesses: 'fake' as const, probes: 'fake' as const, candidate: facts, durationContext,
     // Freshness and demo ancestry consume the same branch facts as admission.
     git: options.git ?? (async (args: string[]) => {

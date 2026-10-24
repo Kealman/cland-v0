@@ -53,7 +53,7 @@ export async function retainedLoadProofs(path: string): Promise<string[]> {
 /** Records consumed by summaries, timings, failures, quarantine and interruption reports.
  * Storage scales with test receipts/diagnostics, not ordinary command output.
  */
-const evidence = /^(?:suite (?:web phase |timing |progress |interruption |test failures |quarantine |admission timeouts |machine health |duration |budget overhead |command excerpt )|(?:#|ℹ) (?:tests|pass|fail|cancelled|skipped|todo) \d+\s*$|\s*not ok \d+|✖ |test at |duration (?:budget:|regression |check:|allowance stanza )|shard[- ]|verification queue wait |total cost |occasion |--- close shards ---|tier |typecheck: |load gate|quarantine load gate: |test lint |budget|T3 ratchet)/;
+const evidence = /^(?:suite (?:web phase |timing |progress |skip |interruption |test failures |quarantine |admission timeouts |machine health |duration |budget overhead |command excerpt )|(?:#|ℹ) (?:tests|pass|fail|cancelled|skipped|todo) \d+\s*$|\s*not ok \d+|✖ |test at |duration (?:budget:|regression |check:|allowance stanza )|shard[- ]|verification queue wait |total cost |occasion |--- close shards ---|tier |typecheck: |load gate|quarantine load gate: |test lint |budget|T3 ratchet)/;
 export class SuiteLogEvidence {
   readonly #records: string[] = [];
   readonly #commands = new Map<string, { name: string; line: string; tail: string[]; blanks: string[] }>();

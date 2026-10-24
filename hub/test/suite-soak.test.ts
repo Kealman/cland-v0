@@ -261,8 +261,8 @@ test('periodic T2/T3 failures reach Bug filing through the culprit search', asyn
     report: report => reportDevT3Search(core, tracker, report),
   });
   search.accept(result);
-  for (let i = 0; i < 5; i++) await search.tick();
-  assert.deepEqual(probes, files.flatMap(file => [{ head: second.head, file }, { head: first.head, file }]));
+  for (let i = 0; i < 9; i++) await search.tick();
+  assert.deepEqual(probes, files.flatMap(file => [{ head: second.head, file }, { head: first.head, file }, { head: first.head, file }, { head: second.head, file }]));
   const bugs = tracker.list().filter(item => item.labels.includes(`dev-t3-${second.head}`));
   assert.equal(bugs.length, 1, 'one Bug groups T2 and T3 failures at the same culprit merge');
   assert.equal(tracker.list().find(item => item.id === bugs[0]!.parent)!.title, 'Bugs');

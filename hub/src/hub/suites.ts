@@ -30,7 +30,7 @@ import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
-import { taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
+import { diagnosticTestFile, taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, mergeCoverageFiles } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
@@ -464,7 +464,7 @@ export class Suites {
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     const projectTest: SuiteSelection | undefined = runner ? undefined : { mode: 'full', files: [], reason: 'project test runs in full' };
-    const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers, projectTest, !runner && Boolean(input.occasion && input.occasion !== 'batch'));
+    const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers, projectTest, !runner && Boolean(input.occasion && input.occasion !== 'batch'), Boolean(input.devT3Probe));
     const { head, branch, tree, budgetBase } = candidate;
     let admitted = projectTest ? { ...projectTest, ...(candidate.selection.fetchedDev ? { fetchedDev: candidate.selection.fetchedDev } : {}) } : candidate.selection;
     // The hosting hub owns landing. A candidate-local opt-in cannot promise
@@ -477,7 +477,7 @@ export class Suites {
     if (runner && commands.tiers && config?.merge.queue && !admitted.tiers) admitted = taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, true);
     const files = runner ? (input.devT3Probe?.files ?? input.batch?.diagnostic?.files) : undefined;
     const diagnosticSteps = input.batch?.diagnostic?.steps;
-    if (files && (!files.length && !diagnosticSteps?.length || files.some(file => !/^(?!.*(?:^|\/)\.\.\/)(hub\/(test|src)|nvim\/test|web\/test)\/.*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
+    if (files && (!files.length && !diagnosticSteps?.length || files.some(file => !diagnosticTestFile(file)))) throw new Error('invalid batch diagnostic files');
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
     const webDiagnostic = Boolean(files?.some(file => file.startsWith('web/')) || diagnosticSteps?.includes('Web'));
     let selection: SuiteSelection = files
@@ -498,7 +498,7 @@ export class Suites {
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
     if (!pinned && runner && input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
     if (runner && !input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
-    const tierPlan = !runner ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
+    const tierPlan = !runner || input.devT3Probe ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
     if (runner && input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
     if (runner && input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
@@ -535,6 +535,7 @@ export class Suites {
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    if (input.devT3Probe) await appendFile(job.log, 'Historical probe: hosting hub manifest and test lint skipped; candidate commands retained; tier projections unavailable\n');
     if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;

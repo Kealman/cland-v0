@@ -83,6 +83,8 @@ conditional merge-batch Web step, receipts and bisection (T-1202)
 T-1231: Document bounded coverage loading, pointer metadata/retention and deterministic loader ownership tests.
 T-1228: Distinguish unknown explicit size overrides from listed or configured provider-capacity refusals.
 T-1098: point Web periodic culprit-search changes to the sealed fake-executor component seam.
+T-976: document historical probe lint/absence receipts, fresh boundary-pair confirmation and added droplet runs.
 T-1211: Point sharded not-run outcome changes to the sealed scheduler/public-notice seams and partial-execution reporting contract.
 
 T-1204: Point copied-tracker work to the T0 literal-id guard, explicit seeded owners and measured byte-budget headroom.
+T-976 M1: document partial known-platform exclusions, retained reasons/platform and exact comparison controls.

@@ -287,13 +287,31 @@ A red periodic result starts a separate durable culprit search for T2 and T3
 failures alike, retaining the `DevT3Result` interface above. Each failing file
 reruns at the red head first (an executed pass is a flake), then at the pinned
 last green head (a failure is pre-existing), then bisects the intervening landed
-commits. Hub and Neovim probes run only that file; `web/test/*.test.ts`
+commits. Before filing a culprit, it repeats only the adjacent green/red boundary
+with fresh run ids. A changed result is inconclusive (flaky boundary). This adds
+at most two droplet runs per failing file reaching a boundary; it stops on the
+first changed or unavailable receipt. A file absent from the pinned commit has
+an explicit `absent` receipt with head/tree and null run/artifact/path; it is
+not executed and supplies no passing runtime evidence. Absence narrows the green
+side so an immediately failing new file lands at its introducing commit.
+Confirming an absent predecessor adds only the red-side droplet run. Hub and Neovim probes run only that file; `web/test/*.test.ts`
 probes select the Web tier on each candidate, requiring the requested file's own
 execution receipt. All retain test-root and parent-traversal checks, with no load
 repetitions or full-suite cache proof, through the shared droplet budget and queue.
 Interrupted or missing execution, unavailable baselines/ranges and preparation
 failures are inconclusive;
-they never assign blame. Search state and probe receipts survive restart. The
+they never assign blame. The known Linux `needs macOS sandbox-exec` exclusion
+requires matching skip finish and reason records. Such receipts remain `partial`,
+retaining the excluded identities/reasons, full executor platform and the
+executed subset outcome. The search uses that subset only when the exact
+exclusion set and OS/architecture match across both ends and their confirmations.
+For partial receipts, changed, missing or unknown exclusions, an absent compared
+file, missing platform facts and all-skipped green files remain inconclusive. Skips supply no passing
+runtime or load evidence. Probe admission skips the hosting hub's manifest and test lints and tier
+projections, explicitly recorded in each log; detached candidate commands,
+including its own check and runner rules, still execute. Ordinary verification
+and batch diagnostics retain hosting admission lint. Search state and probe
+receipts survive restart, including the two boundary confirmation phases. The
 hub files one Bugs item per culprit merge, retaining both heads, files, run ids
 and artifact paths, and reports in General to the Coordinator and the merge's
 last claimant if live. Merges continue while the search runs. Filing errors

@@ -276,7 +276,7 @@ export class Dispatcher {
     const devT3Probes = root && this.#suites ? new DevT3Probes(options.core.store, this.#suites, root, options.env ?? process.env, options.devT3Repository) : null;
     this.#devT3Search = devT3Probes && options.tracker ? new DevT3Search(options.core.store, {
       log: this.#log,
-      probe: (input, head, file) => devT3Probes.probe(input, head, file),
+      probe: (input, head, file, repetition) => devT3Probes.probe(input, head, file, repetition),
       report: report => reportDevT3Search(options.core, options.tracker!, report),
       blocked: (input, reason) => { options.core.noticeTo(GENERAL.id, { id: `dev-t3-search-blocked:${input.run}`, kind: 'report', to: ['coordinator'], text: options.core.boundedText(`Periodic dev T3 search ${input.run} blocked: ${reason}`), detail: { event: 'verification-dev-t3-search-blocked', run: input.run, reason } }); },
     }) : null;

@@ -1,7 +1,14 @@
 import type { HubCore } from './core.ts';
 import { GENERAL } from './core.ts';
 import type { Tracker } from '../tracker/tracker.ts';
-import type { SearchReport } from './dev-t3-search.ts';
+import type { ProbeReceipt, SearchReport } from './dev-t3-search.ts';
+
+function probeEvidence(receipt: ProbeReceipt): string {
+  if (receipt.result === 'absent') return `Absent at head ${receipt.head}; tree ${receipt.tree}; ${receipt.file}; not executed`;
+  const exclusions = receipt.result === 'partial'
+    ? ` (${receipt.executed} executed subset; ${receipt.platformSkips.length} known platform exclusions; not executed: ${receipt.platformSkips.map(skip => `${skip.name}: ${skip.reason}`).join(', ')}; platform ${receipt.platform.os}/${receipt.platform.arch})` : '';
+  return `Run ${receipt.run}; head ${receipt.head}; ${receipt.result}${exclusions}; log ${receipt.artifact}: ${receipt.path}`;
+}
 
 /** Tracker writes are serialized by Tracker. Deterministic labels also recover the
  * file-write / hub-checkpoint crash window without filing another Bug. */
@@ -13,7 +20,7 @@ export async function reportDevT3Search(core: HubCore, tracker: Tracker, report:
   const evidence = [`Periodic run ${input.run}; red head ${input.head}; tree ${input.tree ?? 'unavailable'}`,
     `Last green run ${input.previousGreenRun ?? 'unavailable'}; head ${input.previousGreenHead ?? 'unavailable'}`,
     `Original log ${input.artifact}: ${input.path}`,
-    ...files.map(file => `${file.file}: ${file.result}${file.culprit ? ` at ${file.culprit.head} ${file.culprit.subject}` : ''}${file.reason ? ` (${file.reason})` : ''}\n${file.receipts.map(r => `Run ${r.run}; head ${r.head}; ${r.result}; log ${r.artifact}: ${r.path}`).join('\n')}`)].join('\n');
+    ...files.map(file => `${file.file}: ${file.result}${file.culprit ? ` at ${file.culprit.head} ${file.culprit.subject}` : ''}${file.reason ? ` (${file.reason})` : ''}\n${file.receipts.map(probeEvidence).join('\n')}`)].join('\n');
   for (const merge of new Set(files.flatMap(file => file.culprit?.head ?? []))) {
     const label = `dev-t3-${merge}`;
     let bug = tracker.list().find(item => item.labels.includes(label));

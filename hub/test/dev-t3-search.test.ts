@@ -44,14 +44,15 @@ test('search bisects each failing file and excludes pre-existing failures across
   }, report: async (report: SearchReport) => { reports.push(report); } };
   let search = new DevT3Search(store, boundary);
   search.accept(redResult());
-  await search.tick();
+  for (let i = 0; i < 6; i++) await search.tick();
+  // Reopen after the green boundary confirmation; only the red side remains.
   store.close(); store = new Store(join(root, 'hub.db')); search = new DevT3Search(store, boundary);
   for (let i = 0; i < 20 && !reports.length; i++) await search.tick();
   assert.equal(reports.length, 1);
   assert.deepEqual(reports[0]!.files.map(f => [f.file, f.result, f.culprit?.head]), [
     ['hub/test/regression.test.ts', 'culprit', 'm5'], ['nvim/test/pre-existing.test.ts', 'pre-existing', undefined],
   ]);
-  assert.deepEqual(calls.filter(c => c.file.startsWith('hub/')).map(c => c.head), ['m8', 'baseline', 'm4', 'm6', 'm5']);
+  assert.deepEqual(calls.filter(c => c.file.startsWith('hub/')).map(c => c.head), ['m8', 'baseline', 'm4', 'm6', 'm5', 'm4', 'm5']);
   assert.deepEqual(calls.filter(c => c.file.startsWith('nvim/')).map(c => c.head), ['m8', 'baseline']);
   search.accept(redResult()); await search.tick();
   assert.equal(reports.length, 1, 'replayed result never files or reports twice');
@@ -99,7 +100,7 @@ test('a reopened probe observes its admitted worker receipt without another chec
   const f = await suiteUnit(t, { executor: 'droplet', machineReceiptsOnly: true });
   const input = redResult(), file = input.failingFiles[0]!;
   let checkouts = 0, removals = 0;
-  const repository = { identity: async () => f.candidate.tree, checkout: async () => { checkouts++; f.candidate.head = input.head; }, remove: async () => { removals++; } };
+  const repository = { contains: async () => true, identity: async () => f.candidate.tree, checkout: async () => { checkouts++; f.candidate.head = input.head; }, remove: async () => { removals++; } };
   let probes = new DevT3Probes(f.store, f.suites, f.root, {}, repository);
   assert.equal(await probes.probe(input, input.head, file), null);
   const id = f.suites.status()[0]!.id;
@@ -110,4 +111,49 @@ test('a reopened probe observes its admitted worker receipt without another chec
   const result = await probes.probe(input, input.head, file);
   assert.equal(result!.result, 'red'); assert.equal(result!.run, id);
   assert.equal(f.suites.status().length, 1); assert.equal(checkouts, 1); assert.equal(removals, 1);
+});
+
+
+test('probe proof keeps known Linux exclusions partial and rejects missing or unexplained skip evidence', async () => {
+  const { probeResult } = await import('../src/hub/dev-t3-probe.ts');
+  const { suiteEvidence } = await import('../src/suite-log.ts');
+  const file = 'nvim/test/qa.test.ts';
+  const platform = { os: 'linux', arch: 'x64', release: 'fixture', node: 'v24.13.0', nvim: 'v0.12.5' };
+  const job = { state: 'finished' as const, outcome: { code: 0, cause: '' }, platform };
+  const finish = (id: string, name: string, outcome: string) => `suite progress ${JSON.stringify({ event: 'finish', id, file, name, at: 1, nesting: 0, type: 'test', outcome, seconds: 0.01 })}\n`;
+  const pass = finish('pass', 'executed test', 'pass');
+  const skip = finish('skip', 'sandbox test', 'skip');
+  const detail = (reason: string, name = 'sandbox test') => `suite skip ${JSON.stringify({ file, name, reason })}\n`;
+  const reason = 'needs macOS sandbox-exec';
+  assert.deepEqual(probeResult(job, suiteEvidence(pass + skip + detail(reason)), file), {
+    result: 'partial', executed: 'green', platform, platformSkips: [{ name: 'sandbox test', reason }],
+  });
+  for (const log of [pass + skip, pass + detail(reason), skip + detail(reason), pass + skip + detail('test marked skip without a reason'),
+    pass + skip + detail('network unavailable'), pass + skip + detail(reason, 'different test'), pass + skip + 'suite skip {broken}\n']) {
+    assert.equal(probeResult(job, log, file).result, 'inconclusive', log);
+  }
+  assert.equal(probeResult({ ...job, platform: { ...platform, os: 'darwin' } }, pass + skip + detail(reason), file).result, 'inconclusive');
+  assert.equal(probeResult({ state: job.state, outcome: job.outcome }, pass + skip + detail(reason), file).result, 'inconclusive');
+});
+
+
+test('search refuses identical exclusions observed on different executor architectures', async t => {
+  const store = new Store(); t.after(() => store.close());
+  const platform = { os: 'linux', arch: 'x64', release: 'fixture', node: 'v24.13.0', nvim: 'v0.12.5' };
+  const reports: SearchReport[] = [];
+  let sequence = 0;
+  const search = new DevT3Search(store, {
+    probe: async (_input, head, file) => ({ head, file, run: `probe-${++sequence}`, artifact: 'A-1', path: '/log',
+      result: 'partial', executed: head === 'baseline' ? 'green' : 'red',
+      platform: { ...platform, arch: head === 'baseline' ? 'arm64' : 'x64' },
+      platformSkips: [{ name: 'sandbox test', reason: 'needs macOS sandbox-exec' }],
+    }),
+    report: async report => { reports.push(report); },
+  });
+  search.accept({ ...redResult(), failingFiles: ['nvim/test/qa.test.ts'] });
+  for (let i = 0; i < 4 && !reports.length; i++) await search.tick();
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0]!.files[0]!.result, 'inconclusive');
+  assert.match(reports[0]!.files[0]!.reason!, /platform changed/);
+  assert.equal(reports[0]!.files[0]!.culprit, undefined);
 });

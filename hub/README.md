@@ -4060,7 +4060,15 @@ periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
 Red results search candidate merges with detached diagnostic probes; Web test
 files select the Web tier and require their own execution receipts. Test-root
-and parent-traversal validation also applies to these probes. See
+and parent-traversal validation also applies to these probes. Historical admission
+skips and logs hosting manifest/test lint and tier projections while retaining
+candidate commands. Pinned-tree absence narrows the search without executing
+the missing file. Culprits require a fresh repeated boundary pair; a flip is
+inconclusive (flaky). Known Linux sandbox exclusions retain identities, reasons
+and executor platform as partial evidence; only identical sets on the same
+OS/architecture permit comparison of the executed subset. Changed, missing or
+unexplained skips stay inconclusive. Only that pair repeats: at most two extra droplet runs per
+failing file, or one when the predecessor is absent. See
 [periodic culprit search](../docs/agents/tests.md#periodic-dev-t2t3-and-release-gate).
 
 After admission, periodic delivery uses the captured commit's objects, so later
