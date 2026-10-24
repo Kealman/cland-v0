@@ -2,10 +2,12 @@ import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { MergeBatchStatus, MergeQueueEntry } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
+import { MERGE_USAGE } from './usage.ts';
 
 export { MERGE_USAGE } from './usage.ts';
 export async function runMerge(args: string[], cwd = process.cwd()): Promise<number> {
-  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' }, override: { type: 'string' }, cancel: { type: 'boolean' } } });
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { help: { type: 'boolean', short: 'h' }, json: { type: 'boolean' }, override: { type: 'string' }, cancel: { type: 'boolean' } } });
+  if (values.help) { process.stdout.write(MERGE_USAGE); return 0; }
   if (positionals.length !== 1) throw new Error('usage: cland merge <T-id> [--override <reason> | --cancel] [--json], or cland merge queue [--json]');
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');

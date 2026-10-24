@@ -1749,6 +1749,10 @@ version at most 10; task list and hub status within their measured budgets).
 The guard is in the machine shard and also checks command import failures keep
 their existing error lines and exit codes.
 
+`cland release`, `sync`, `publish`, `push` and `merge` accept `--help` or `-h`:
+they print usage and exit 0 before argument requirements, hub discovery or any
+Git/network operation. Release, sync and publish share the release usage block.
+
 The root `package.json` owns cland's version. `src/version.ts` reads it for
 `cland --version`, the spoke's MCP server info, hub discovery and every managed
 mark. `hub/package.json` has no version. `CLAND_VERSION_OVERRIDE` is for tests

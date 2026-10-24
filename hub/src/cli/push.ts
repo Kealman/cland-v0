@@ -2,10 +2,12 @@ import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { PushResult } from '../territory-push.ts';
 import { askHubFrame } from './socket-client.ts';
+import { PUSH_USAGE } from './usage.ts';
 
 export { PUSH_USAGE } from './usage.ts';
 export async function runPush(args: string[], cwd = process.cwd()): Promise<number> {
-  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' } } });
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { help: { type: 'boolean', short: 'h' }, json: { type: 'boolean' } } });
+  if (values.help) { process.stdout.write(PUSH_USAGE); return 0; }
   if (positionals.length) throw new Error('usage: cland push [--json]');
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');

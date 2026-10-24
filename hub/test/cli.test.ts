@@ -28,6 +28,34 @@ test('cland with no command off a terminal prints the help; an unknown command i
   assert.match(bad.stderr, /unknown command "serve"/);
 });
 
+test('release help prints usage without a project hub or release work', async t => {
+  const root = await tempProject(t);
+  for (const flag of ['--help', '-h']) {
+    const result = await cland(root, 'release', flag);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stderr, '');
+    assert.match(result.stdout, /release <vX\.Y\.Z> \[--dry-run\] \[--json\]/);
+    assert.match(result.stdout, /release --item T-n/);
+  }
+});
+
+for (const [command, usage] of [
+  ['sync', /sync \[--json\]/],
+  ['publish', /publish <branch> --item T-n/],
+  ['push', /push \[--json\]/],
+  ['merge', /merge <T-id> \[--json\]/],
+] as const) {
+  test(`${command} help prints usage without a project hub or command work`, async t => {
+    const root = await tempProject(t);
+    for (const flag of ['--help', '-h']) {
+      const result = await cland(root, command, flag);
+      assert.equal(result.code, 0, result.stderr);
+      assert.equal(result.stderr, '');
+      assert.match(result.stdout, usage);
+    }
+  });
+}
+
 test('task view headings include release versions once, including in a child ancestry', async t => {
   const root = await tempProject(t);
   const dir = join(root, '.cland/tasks');
