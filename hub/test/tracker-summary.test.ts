@@ -13,6 +13,64 @@ import { tempProject } from './harness.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 
+test('tip moves do not hydrate unrelated tracker rows or announce unchanged answers', async t => {
+  const root = await tempProject(t), database = sqliteProbe();
+  let refresh!: () => Promise<void>;
+  let head = 'a'.repeat(40);
+  const tracker = new Tracker({ root, db: ':memory:', clock: new FakeClock(), openDatabase: database.open,
+    git: async () => `${head} refs/heads/dev\n${head} refs/heads/t/branched`, readBase: async () => 'dev',
+    scheduleTips: read => { refresh = read; return { poke() {}, stop() {} }; }, watch: () => ({ close() {} }),
+  });
+  try {
+    for (let i = 1; i <= 65; i++) await writeFile(join(root, `.cland/tasks/T-${i}-fixture.md`),
+      `---\nid: T-${i}\nkind: task\ntitle: ${i === 65 ? 'Branched' : 'Unrelated'}\n${i === 65 ? 'branch: t/branched\n' : ''}---\n`);
+    tracker.start();
+    const changes: ItemChange[] = [];
+    tracker.onChange(change => changes.push(change));
+    await refresh();
+    changes.length = 0;
+    let unrelated = 0;
+    database.trace(t, (_sql, _method, _bindings, result) => {
+      const rows = Array.isArray(result) ? result : [result];
+      unrelated += rows.filter(row => row && typeof row === 'object' && 'title' in row && row.title === 'Unrelated').length;
+    });
+    head = 'b'.repeat(40);
+    await refresh();
+    assert.equal(unrelated, 0, 'a tip move selects freshness ids without hydrating unrelated rows');
+    assert.deepEqual(changes, [], 'a moved tip with unchanged projected answers emits no task changes');
+  } finally { await tracker.stop(); }
+});
+
+test('index selects freshness-dependent ids in rank order without hydrating unrelated items', t => {
+  const database = sqliteProbe();
+  const index = new TrackerIndex(':memory:', ['task', 'epic', 'release', 'question', 'initiative', 'feature'], database.open);
+  t.after(() => index.close());
+  const levels = ['release', ['epic', 'feature'], 'initiative'];
+  const sources = [
+    'kind: task\nbranch: t/branched\nrank: 90',
+    'kind: epic\nrank: 5',
+    'kind: feature\nstate: closed\nrank: 5',
+    'kind: question\nstate: closed',
+    'kind: task\nstatus: ready',
+    'kind: initiative',
+    'kind: release',
+    'kind: task',
+  ];
+  for (const [i, source] of sources.entries()) {
+    const item = parseItem(`---\nid: T-${i + 1}\ntitle: Row ${i + 1}\n${source}\n---\n`, undefined, levels);
+    if (i === 0 || i === 3) item.comments.push({ author: 'rev', at: '2026-01-01T00:00:00.000Z', text: 'checked',
+      verdict: { verdict: 'qa', result: 'clear', by: 'rev', run: 'fixture' } });
+    index.put(item, { file: `${i + 1}.md`, hash: 'fixture', source: 'hand', indexedAt: 0 });
+  }
+  const reads: string[] = [];
+  database.trace(t, (sql, method) => { if (method === 'get' || method === 'all') reads.push(sql); });
+  assert.deepEqual(index.freshnessIds(['epic', 'feature']), ['E-2', 'F-3', 'Q-4', 'T-5', 'T-1']);
+  assert.equal(reads.length, 1, 'selection needs one index query, without per-item hydration or kind lookups');
+  reads.length = 0;
+  assert.deepEqual(index.freshnessIds([]), ['Q-4', 'T-5', 'T-1'], 'no planning level still selects branches, verdicts and ready rows');
+  assert.equal(reads.length, 1);
+});
+
 test('index lists build own ids from selected rows and only look up referenced kinds', t => {
   const database = sqliteProbe();
   const index = new TrackerIndex(':memory:', ['task', 'epic', 'release', 'question', 'spec', 'map', 'category', 'initiative'], database.open);

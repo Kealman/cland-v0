@@ -1,5 +1,13 @@
 # hub/test/tracker-summary.test.ts
 
+T-539's public Tracker tip-refresh seam warms the summary projection, moves an
+injected Git tip through the `scheduleTips` callback, and observes fixture-owned SQLite results:
+no unrelated rows are hydrated and unchanged answers emit no task event. The
+TrackerIndex seam checks freshness-dependent ids in rank/id order with one query,
+including multiple configured planning kinds, closed rows, verdict-only rows,
+branched rows and stale ready rows. An empty planning level still selects the
+other cases. Both use `sqliteProbe`; do not replace SQLite builtins or prototypes.
+
 T1: tracker list/view projections, recovery and watcher filtering use fake time
 and Git. Run the file with `node --test hub/test/tracker-summary.test.ts`.
 

@@ -1,5 +1,6 @@
 // T2: stage rules through injected Git, store reopen and in-process spoke/socket edges.
 import { completeJournalLines } from './journal-lines.ts';
+import { sqliteProbe } from './sqlite-probe.ts';
 import test from 'node:test';
 import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -278,12 +279,12 @@ test('valid hand plans and offline plan changes move only newly joined current-s
 });
 
 test('stage landing and ten close frames keep a fixed query budget with unrelated items and plans (in-process)', async t => {
-  const { DatabaseSync } = await import('node:sqlite');
+  const database = sqliteProbe();
   const root = await tempProject(t);
   // Native watcher delivery is independent of the SQL work being measured.
   // Index editor setup explicitly so a delayed watch cannot enter the measurement.
   // This case measures SQLite query work; persistence cases keep file-backed indexes.
-  const daemon = await planStageHub(t, root, undefined, { memory: true, watch: () => ({ close() {} }) });
+  const daemon = await planStageHub(t, root, undefined, { memory: true, openDatabase: database.open, watch: () => ({ close() {} }) });
   t.after(() => daemon.stop());
   assert.ok(daemon.discovery);
   const ui = await connectUi(t, daemon.discovery);
@@ -331,28 +332,15 @@ test('stage landing and ten close frames keep a fixed query budget with unrelate
   let ticker: NodeJS.Immediate;
   const tick = () => { turn++; ticker = setImmediate(tick); ticker.unref(); };
   tick(); t.after(() => clearImmediate(ticker));
-  const prepare = DatabaseSync.prototype.prepare;
-  // Observe native calls without retaining thousands of mock call records.
-  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
-  DatabaseSync.prototype.prepare = function(this: InstanceType<typeof DatabaseSync>, ...args: Parameters<typeof prepare>) {
-    if (observing && args[0].includes('tracker_')) queries++;
-    const statement = prepare.apply(this, args);
-    if (args[0] === 'select criteria_ids from tracker_items where id = ?') {
-      const get = statement.get;
-      statement.get = function(this: typeof statement, ...bindings: unknown[]) {
-        if (observing && refusedChildren.includes(String(bindings[0]))) refusedReads++;
-        return Reflect.apply(get, this, bindings);
-      };
-    }
-    if (args[0] === 'select value from tracker_meta where key = ?') {
-      const get = statement.get;
-      statement.get = function(this: typeof statement, ...bindings: unknown[]) {
-        if (observing && String(bindings[0]).startsWith('planned-entry:')) checks.push({ key: String(bindings[0]), turn });
-        return Reflect.apply(get, this, bindings);
-      };
-    }
-    return statement;
-  };
+  // Trace only this fixture's tracker connection, without replacing native prototypes.
+  database.trace(t, (sql, method, bindings) => {
+    if (!observing) return;
+    if (sql.includes('tracker_')) queries++;
+    if (method === 'get' && sql === 'select criteria_ids from tracker_items where id = ?'
+      && refusedChildren.includes(String(bindings[0]))) refusedReads++;
+    if (method === 'get' && sql === 'select value from tracker_meta where key = ?'
+      && String(bindings[0]).startsWith('planned-entry:')) checks.push({ key: String(bindings[0]), turn });
+  });
   observing = true;
   const merged = await daemon.merge(first.id); assert.equal(merged.ok, true, merged.error);
   await eventually('next stage planned', async () => (await read(later.at(-1)!.id)).status === 'planned' ? true : undefined);

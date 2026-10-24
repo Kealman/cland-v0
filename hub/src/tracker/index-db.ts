@@ -372,6 +372,17 @@ export class TrackerIndex {
     return (this.#db.prepare('select id from tracker_items order by n').all() as Row[]).map((r) => this.#canonical(r.id as string));
   }
 
+  /** Tip changes affect branches, planning containers, retained verdicts and ready rows. */
+  freshnessIds(planningKinds: readonly string[]): string[] {
+    const rows = this.#db.prepare(`select i.kind, i.n from tracker_items i
+      where (i.branch is not null and i.branch != '')
+        ${planningKinds.length ? `or i.kind in (${planningKinds.map(() => '?').join(', ')})` : ''}
+        or exists (select 1 from tracker_verdicts v where v.item_id = i.id)
+        or i.status = 'ready'
+      order by coalesce(i.rank, i.n * 10), i.n`).all(...planningKinds) as Row[];
+    return rows.map(row => `${prefixOf(row.kind as string)}-${row.n as number}`);
+  }
+
   /** The highest item number ever indexed: an id is never handed out twice, even after its file is gone. */
   highWater(): number {
     const r = this.#db.prepare("select value from tracker_meta where key = 'high_water'").get() as Row | undefined;

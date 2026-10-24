@@ -576,7 +576,7 @@ export class Tracker {
     for (const listener of this.#tipListeners) {
       try { listener(); } catch (error) { this.#log({ event: 'task-tip-listener-failed', error: String(error) }); }
     }
-    const ids = this.list().filter(item => item.branch || isPlanningContainer(item.kind, this.ladder) || item.verdicts.length || item.status === 'ready').map(item => item.id);
+    const ids = this.#index.freshnessIds(this.ladder.planning);
     this.#announceBatch(ids);
     for (const id of ids) this.#scheduleReady(id);
   }
