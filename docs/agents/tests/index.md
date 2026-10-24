@@ -6,6 +6,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | --- | --- |
 | [`hub/test/config-set.test.ts`](../../../hub/test/config-set.test.ts) | [Notes](hub-test-config-set.test.ts.md) |
 | [`hub/test/config-reload-component.test.ts`](../../../hub/test/config-reload-component.test.ts) | [Notes](hub-test-config-reload-component.test.ts.md) |
+| [`hub/test/accounts.test.ts`](../../../hub/test/accounts.test.ts) | [Notes](hub-test-accounts.test.ts.md) |
 | [`hub/test/suite-runner-contract.test.ts`](../../../hub/test/suite-runner-contract.test.ts) | [Notes](hub-test-suite-runner-contract.test.ts.md) |
 | [`hub/test/request-guard.test.ts`](../../../hub/test/request-guard.test.ts) | [Notes](hub-test-request-guard.test.ts.md) |
 | [`hub/test/adapter-native-boundary.test.ts`](../../../hub/test/adapter-native-boundary.test.ts) | [Notes](hub-test-adapter-native-boundary.test.ts.md) |

@@ -220,13 +220,13 @@ for (const harness of ['codex', 'opencode']) test(`${harness} retained Implement
   const create = async () => (await coord.call<{ item: { id: string } }>('task.create', { title: 'Keep the account at handoff', size: 'XS', body: '## Summary\nPool fixture' })).item.id;
   const first = await create();
   const second = await create();
-  const p = await f.launch('pool-impl', { role: 'implementer', item: first });
+  const p = await f.launch('pool-impl', { role: 'implementer', item: first, brief: 'Exercise the saved account before the pool handoff.' });
   assert.equal((await f.ui.request({ type: 'merge', item: first, override: 'Exercise account retention at the pool boundary' }, 30000)).ok, true);
   await eventually('implementer first turn completed and claim released after merge', async () => {
     const rows = ((await f.ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
     const row = rows.find(row => row.sessionId === p.sessionId);
-    // OpenCode's initial idle snapshot can precede its spoke hello and role-clause injection.
-    // Usage proves that first turn ran; idle with no holds then permits the pool handoff.
+    // OpenCode installs a clause-only launch as an instruction without running a turn.
+    // The explicit brief produces usage; idle with no holds then permits the pool handoff.
     return row?.state === 'idle' && (row.usage?.total?.totalTokens ?? 0) > 0 && row.holds?.length === 0 || undefined;
   });
   await writeFile(join(f.root, '.cland', 'roles.toml'), '[implementer.launch]\nharness = "codex"\naccount = "codex-a"\n');
