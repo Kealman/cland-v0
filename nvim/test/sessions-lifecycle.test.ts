@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { connectUi, fakeClaude, killDaemon, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
+import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -59,7 +60,9 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   const claude = await fakeClaude(t, { reexecGraceMs: 100 });
   const codexHome = await fakeHome(t, 'fake-codex-');
   const opencodeHome = await fakeHome(t, 'fake-opencode-');
-  const env = {
+  // Launch and attach must share account identity as well as fake state homes.
+  // Each child still applies its final sealing filter to these explicit inputs.
+  const env = await accountFixtureEnvironment({
     ...claude.env,
     PATH: `${FAKE_CODEX_DIR}:${FAKE_OPENCODE_DIR}:${claude.env.PATH}`,
     FAKE_CODEX_HOME: codexHome,
@@ -67,10 +70,14 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
     FAKE_CODEX_REFUSE_MS: '150',
     FAKE_OPENCODE_HOME: opencodeHome,
     FAKE_OPENCODE_TURN_MS: '30',
-  };
+  });
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   const c = await startClient(t, bin, root, { ...env, CLAND_REFRESH_MS: '500' });
+  const clientEnv = await c.lua<Record<string, string>>('return vim.fn.environ()');
+  for (const key of ['FAKE_CLAUDE_HOME', 'FAKE_CODEX_HOME', 'FAKE_OPENCODE_HOME', 'CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME']) {
+    assert.equal(clientEnv[key], env[key], `${key} is shared by launch and attach`);
+  }
   await c.waitScreen((x) => x.includes('SESSIONS') && statusLine(x).includes('hub: connected'), 'the workbench, connected');
   await waitInitialSnapshots(c);
   await c.input('<Esc>');
