@@ -2,8 +2,8 @@
 id: T-1190
 kind: task
 title: Duration allowances expire overnight with no warning and fail every shard plan
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-925
 branch: t/T-1190-duration-allowances-expire-overnight
 created: 2026-10-24T00:03:56.390Z
-updated: 2026-10-24T07:18:10.677Z
+updated: 2026-10-24T07:36:13.613Z
+closed: 2026-10-24T07:36:13.613Z
 ---
 
 ## Summary
@@ -33,8 +34,10 @@ Planning still refuses an expired entry, but the refusal names every expired key
 
 - [x] C1. An allowance expiring within 48 hours appears in the periodic dev run report and the Coordinator's heartbeat, naming the test and owner (test).
   - done: impl-1190 · 2026-10-24T07:16:56.939Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1190-final · 2026-10-24T07:31:08.812Z · commit 3f515957d0629a2347b88a2225d4a6910a5d96cc
 - [x] C2. A shard-planning refusal for expired allowances lists every expired key, not only the first (test).
   - done: impl-1190 · 2026-10-24T06:52:05.168Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1190-final · 2026-10-24T07:31:08.812Z · commit 3f515957d0629a2347b88a2225d4a6910a5d96cc
 
 ## Comments
 
@@ -205,3 +208,51 @@ Task worktree is tracked-clean at reviewed head. A-10359 records diagnosis and a
 
 Standards: zero findings. Spec: zero findings.
 Durable source review A-10361.
+
+### rev-23 · 2026-10-24T07:31:08.812Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1190-final
+commit: 3f515957d0629a2347b88a2225d4a6910a5d96cc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1190 final configured evidence — clear
+
+Head 3f515957d0629a2347b88a2225d4a6910a5d96cc; tree 05b62c562e2753eb4718c28c56e6637e657c4309. Source clearance A-10361 carries forward. Mode-free run 08d6af7a-7d8c-4522-8e41-cc9ab59879fd / A-10376 exits 0. Run rev-20261024-1190-final; findings []; C1 and C2 verified.
+
+## Standards
+
+No outstanding findings. Independent parsing of raw suite-progress finish records confirms 2,792 ordinary tests and 417 ordinary files passed. Actual load-gate scope additionally records 40 passing tests / 40 file completions: five repetitions each for eight new identities. There are zero ordinary/load failures, skipped or cancelled tests. The ordinary total and load total are separate; phase-plan summary counts are not added to invent another aggregate.
+
+The new Coordinator expiry-window case passes at 0.257779244 s; five load repetitions all pass, maximum 0.270910071 s. Held-manifest midnight case passes at 0.065566135 s, load maximum 0.123193864 s. The five M1 identity/eligibility cases all pass ordinary and 5/5 load; largest load sample is 0.132287405 s. T1 expired-key planning case passes at 0.011902992 s, load maximum 0.014117972 s. No allowance is required and no amount/reason/manifest is changed.
+
+No tier-mismatch records name heartbeat.test.ts, suite-tiers.test.ts or suite-soak-component.test.ts. Existing report-only diagnostics elsewhere remain visible. Source lifecycle, serialization, closed-hub fence and stable-id revalidation remain as reviewed.
+
+## Spec and criteria
+
+C1 verified: configured heartbeat warning delivery passes at the inclusive 48-hour UTC window, including native injection and all 12 named keys/owners. The held-read case verifies completion-time clock sampling at exact midnight. Rename, role clear, terminal process, prune and crew disable races pass, with overdue schedule preservation checks. All previously failed existing heartbeat digest/lease/independent-schedule assertions pass at this head with their exact publication receipts and retained final assertions. The configured periodic dev-T3 report component case passes at 0.168632628 s and checks the published warning/test/owner while excluding later/date-free legacy entries. It is T2 report wiring evidence; it does not mean a real periodic T3 occasion ran.
+
+C2 verified: public packageShards regression passes and its five actual repetitions pass, retaining both expired keys (including exact midnight), excluding the future key and checking ShardManifestError. Shared date interpretation and reviewed renewal hint remain.
+
+Earlier A-10347 at 90114a41 remains failed evidence: four ordinary heartbeat failures plus five failed expiry-window repetitions and Web unobserved. It is not relabelled green or used as a passing duration basis. Corrected local diagnostic/red-green and 115 targeted passes remain attributed to their original Darwin arm64 source states in A-10354–59; the new Linux configured result supplies the missing final evidence.
+
+## Provenance and remaining limits
+
+Actual Linux x64 6.8.0-142-generic droplet cland-v0-36fe0b59, c-8 lon1, Node 24.21.0 / Neovim 0.12.5, workers 2 and Web runner 4, lifetime 632 s / $0.0439. T1 completed (133 files), fallback all T2 completed across hub/Neovim (240 files), Web completed (44 files). Actual suite wall durations are 51.34 / 333.23 / 143.60 s; Web shard 143.49 s. Projected phase wall figures are not execution wall times.
+
+Complete host npm run check output is retained in A-10376, including zero lint refusals and 132 report-only findings in 59 files. Gate ed30c1d2f67d7d245ed1dbb88071bcd7ad9adb20 is independently confirmed as a Git tree object; matching host check was reused, not repeated on Linux. Generic duration/lint/ratchet and projected Web wall diagnostics remain report-only; no failed assertion or enforced new-identity gate remains. Task occasion deferred T3 to periodic/integrated policy and did not run T4; no integrated/after-stage QA claim.
+
+Tracked task worktree remains clean and at reviewed head. A-10377 reports a post-result fetch of origin/dev d9ffa830 and conflict-free merge-tree exit 0 without changing head. Its wording that hub/README.md was untouched is inaccurate: this feature intentionally updates that guide, as reviewed; durations.json, tests.md and role clauses remain untouched. This does not change source or test evidence. Normal readiness conflict policy remains the lead's responsibility.
+
+QA policy none/after-stage, no per-item brief/criteria. Reviewer performed raw artifact/source/Git inspection only, no tests/probes, browser, edits, fetch/merge or delegation. Standards: zero findings. Spec: zero findings; both criteria verified at this head.
+Durable review A-10378.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T07:36:13.613Z
+
+Merged d9cc5312950d163f71c8612443f37db08236e660 onto dev.

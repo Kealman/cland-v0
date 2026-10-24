@@ -3,17 +3,17 @@ id: T-422
 kind: task
 title: Tests register temporary projects in the real host executor ledger
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1194
 blocked_by: []
-topic: null
-branch: null
+topic: topic-936
+branch: t/T-422-tests-register-temporary-projects-in-the
 created: 2026-10-14T16:43:00.822Z
-updated: 2026-10-24T06:46:50.493Z
+updated: 2026-10-24T07:38:04.886Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1148
 kind: task
 title: run-suite crashes on an empty quarantine receipt and hides the Web phase's real failure
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - bug
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1194
 blocked_by: []
-topic: null
-branch: null
+topic: topic-937
+branch: t/T-1148-run-suite-crashes-on-an-empty-quarantine
 created: 2026-10-22T17:21:01.416Z
-updated: 2026-10-24T06:46:50.902Z
+updated: 2026-10-24T07:38:07.235Z
 ---
 
 ## Summary

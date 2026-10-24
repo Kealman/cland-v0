@@ -3,17 +3,17 @@ id: T-1015
 kind: task
 title: Periodic dev T3 goes red when dev moves while it bundles the root
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1194
 blocked_by: []
-topic: null
-branch: null
+topic: topic-935
+branch: t/T-1015-periodic-dev-t3-goes-red-when-dev-moves
 created: 2026-10-20T17:26:44.017Z
-updated: 2026-10-24T06:46:50.310Z
+updated: 2026-10-24T07:37:58.143Z
 ---
 
 ## Summary
