@@ -25,12 +25,19 @@ test('MCP envelope errors name arguments, and tool validation stays typed throug
   });
   await receipt(once(server, 'listening'), 'stub hub listens');
   const requests: string[] = [];
+  let mergeFrame: { override?: string } | undefined;
   const reason = 'op must be done, verify, fail, add, edit or remove';
   server.on('connection', peer => peer.on('message', data => {
-    const frame = JSON.parse(String(data)) as { type: string; id: string };
+    const frame = JSON.parse(String(data)) as { type: string; id: string; override?: string };
     if (frame.type === 'hello') peer.send(JSON.stringify({ type: 'welcome', protocol: 2, name: 'fixture', presence: [] }));
     else if (frame.type !== 'ack') {
       requests.push(frame.type);
+      if (frame.type === 'merge') {
+        mergeFrame = frame;
+        const reason = 'only the human may override verdicts';
+        peer.send(JSON.stringify({ type: 'result', id: frame.id, ok: false, code: 'forbidden', error: `forbidden: merge (${reason})`, permission: 'merge', role: 'coordinator', reason }));
+        return;
+      }
       peer.send(JSON.stringify(frame.type === 'who'
         ? { type: 'result', id: frame.id, ok: true, value: {} }
         : { type: 'result', id: frame.id, ok: false, code: 'invalid_argument', error: reason, reason }));
@@ -52,6 +59,15 @@ test('MCP envelope errors name arguments, and tool validation stays typed throug
   assert.match(String(local.reason), /action/);
   assert.match(String(local.reason), /op.*done.*verify.*fail.*add.*edit.*remove/);
   assert.deepEqual(requests, ['who', 'task.criterion'], 'invalid tool arguments never reach the hub');
+  const refused = await receipt(spoke.call<Record<string, unknown>>('merge', { item: 'T-1', override: 'rescue' }), 'human-only merge refusal');
+  assert.equal(mergeFrame?.override, 'rescue', 'the spoke preserves the permission-dependent field');
+  assert.equal(refused.code, 'forbidden');
+  assert.equal(refused.permission, 'merge');
+  assert.match(String(refused.reason), /only the human may override/);
+  const unknown = await receipt(spoke.call<Record<string, unknown>>('merge', { item: 'T-1', overide: 'rescue' }), 'unknown merge field');
+  assert.equal(unknown.code, 'invalid_argument');
+  assert.match(String(unknown.reason), /unknown field overide/);
+  assert.deepEqual(requests, ['who', 'task.criterion', 'merge'], 'unknown merge arguments stay local');
 });
 
 test('a free-only MCP ask succeeds and supplies concrete empty options to the hub', async t => {

@@ -9,6 +9,26 @@ import { validateToolArguments } from '../src/tool-arguments.ts';
 import { TOOLS } from '../src/spoke/tools.ts';
 import { FakeClock } from './fake-clock.ts';
 
+test('merge override reaches the human-only refusal while unknown fields remain invalid arguments', async t => {
+  const roles = parseRoles(DEFAULT_ROLES_TOML);
+  const hub = createHubBase({ secret: 'fixture', env: {}, clock: new FakeClock(), roles: { get: () => roles } });
+  t.after(() => hub.close());
+  hub.core.assignRole('coord', 'coordinator');
+  const spoke = await dispatcherSpoke(t, hub.dispatcher, '/virtual/project', 'coord', 'coord-id');
+  const before = hub.core.topicHistory('agents').messages.length;
+  const unknown = await spoke.call<Record<string, unknown>>('merge', { item: 'T-1', overide: 'rescue' });
+  assert.equal(unknown.code, 'invalid_argument');
+  assert.match(String(unknown.reason), /unknown field overide/);
+  assert.equal(hub.core.topicHistory('agents').messages.length, before);
+  const refused = await spoke.call<Record<string, unknown>>('merge', { item: 'T-1', override: 'rescue' });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.code, 'forbidden');
+  assert.equal(refused.permission, 'merge');
+  assert.match(String(refused.reason), /only the human may override/);
+  assert.equal(hub.core.topicHistory('agents').messages.length, before + 1);
+  assert.equal(hub.core.topicHistory('agents').messages.at(-1)?.kind, 'refusal');
+});
+
 test('criterion typos, missing op and invalid op are correctable validation errors without refusal notices', async t => {
   const roles = parseRoles(DEFAULT_ROLES_TOML);
   const hub = createHubBase({ secret: 'fixture', env: {}, clock: new FakeClock(), roles: { get: () => roles } });

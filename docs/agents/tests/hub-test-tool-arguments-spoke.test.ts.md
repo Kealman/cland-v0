@@ -5,3 +5,7 @@
 Run `node --test hub/test/tool-arguments-spoke.test.ts`. Close the spoke and all stub sockets before test cleanup.
 
 A free-only MCP ask omits `options`, succeeds, and reaches the stub hub with concrete `options: []`. Keep this compatibility receipt separate from raw wire validation, which still requires a string array.
+
+The merge control observes the exact `override` string on the outgoing frame
+and preserves the stub's typed human-only refusal. A misspelled merge field
+fails locally without another outgoing request.

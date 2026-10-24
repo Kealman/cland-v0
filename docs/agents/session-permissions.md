@@ -28,6 +28,12 @@ guidance: correct the arguments and retry. Validation failures produce no Agents
 refusal notice. A `forbidden` reply is a role or permission refusal: follow rule 5,
 stop that action and escalate through the lead chain when needed.
 
+Permission-dependent fields remain known to validation even when the caller
+cannot use them. `merge.override` is a string in the shared schema and the spoke
+preserves it: a session with merge access receives `forbidden` with
+`only the human may override verdicts`. A misspelling such as `overide` still
+returns `invalid_argument`. Tool availability continues to run first.
+
 MCP task tools retain the legacy `item` locator alias for canonical `id`.
 CLI task frames continue to carry `item`; legacy task-list item context is ignored.
 MCP `ask` retains omitted `options` as a free-only question: the spoke supplies `[]`

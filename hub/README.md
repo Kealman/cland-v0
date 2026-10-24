@@ -1300,6 +1300,8 @@ An unknown tool or scope makes the file unreadable (the last good version stays 
 
 The hub checks role/tool availability first (`forbidden` when absent), then validates arguments against the shared MCP tool table and declared conditional requirements, then checks argument-dependent scopes (for example, `task.plan set` needs `id` and `yaml`; `show` and `approve` need `id`, while `migrate` does not). Unknown fields, missing required fields and invalid enum values return `code: "invalid_argument"` with `ok: false`, `error` and `reason` naming the field and accepted values. Correct the arguments and retry. These validation failures are audited as errors and do not post refusal notices to Agents. The reply remains additive for callers reading `ok` and `reason`. The spoke retains its local MCP validation and preserves typed hub diagnostics; malformed MCP envelopes keep the SDK’s JSON-RPC error naming `arguments`.
 
+Permission-dependent fields stay in the shared schema: `merge.override` accepts a string and the spoke forwards it to the hub's human-only gate. A session with merge access receives `forbidden` (`only the human may override verdicts`); a misspelled field such as `overide` remains `invalid_argument`. Declaring the field grants no override authority; tool availability still runs first.
+
 Only a role or permission refusal returns `forbidden`: stop that action under rule 5, follow its reason or escalate. A refused call is answered with a typed result, which the spoke hands the model as the tool's result (`isError`), and the hub posts a notice into the Agents topic, which the UI shows there:
 
 ```json

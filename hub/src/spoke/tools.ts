@@ -24,7 +24,7 @@ const BASE_TOOLS = [
     allOf: [{ if: { properties: { diagnostics: { const: true } }, required: ['diagnostics'] }, then: { properties: { dryRun: { const: true } }, required: ['dryRun'] } }] },
   },
   { name: 'merge.queue', description: 'List durable merge queue entries in FIFO order.', inputSchema: { type: 'object', properties: {} } },
-  { name: 'merge', description: 'Queue or land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator or a supervising Lead within its scheduled subtree; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' }, cancel: { type: 'boolean' } }, required: ['item'] } },
+  { name: 'merge', description: 'Queue or land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator or a supervising Lead within its scheduled subtree; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' }, cancel: { type: 'boolean' }, override: { type: 'string', description: 'Human shell only: skip verdicts and criteria with an audited reason; sessions cannot override.' } }, required: ['item'] } },
   {
     name: 'artifact.create',
     description: 'Show work through a persistent artifact in a topic. Give a file or directory path (copied), content, or folder: true with optional entry and content. Returns the artifact id and absolute path; posts its chip into the topic.',
