@@ -8,12 +8,13 @@ import { failingTests } from './shared-defects.ts';
 import type { TopicNotice } from './core.ts';
 import { recordBatchFlakes } from './batch-flakes.ts';
 import { verificationStepLabel, verificationStepResults, type VerificationStep } from '../verification-plan.ts';
+import { MergeError } from '../merge.ts';
 
 export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[] };
 type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
 export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; budgetLines?: string[]; files: string[]; steps?: VerificationStep['name'][]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
-export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; failed?: string; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
+export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; failed?: string; retryLanding?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
 export type BatchBoundary = {
   changed?(): void;
   entries(): MergeQueueEntry[];
@@ -28,6 +29,7 @@ export type BatchBoundary = {
   notice(notice: TopicNotice): void;
 };
 export class BatchRebuild extends Error {}
+class RetryLanding extends Error {}
 
 export class BatchRefusal extends Error {
   readonly entry: MergeQueueEntry;
@@ -89,7 +91,8 @@ export class MergeBatches {
       const batch = this.snapshot();
       if (batch) {
         batch.failed = error instanceof Error ? error.message : String(error);
-        this.#save(batch); this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}`);
+        batch.retryLanding = error instanceof RetryLanding;
+        this.#save(batch); this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}\n${batch.retryLanding ? 'The queue retries automatically on a later tick once the cause is resolved.' : 'Waiting for human or Coordinator action before retrying.'}`);
       }
     }).finally(() => { this.#work = null; });
   }
@@ -129,7 +132,7 @@ export class MergeBatches {
       if (batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry)) continue;
       if (!this.boundary.entries().some(current => current.item === entry.item && current.head === entry.head && current.enqueued === entry.enqueued)) throw new BatchRefusal(entry, 'queued request changed or cancelled');
     }
-    if (batch.failed) return;
+    if (batch.failed && !batch.retryLanding) return;
     if (!batch.candidate) {
       batch.candidate = await this.boundary.build(batch.id, batch.members);
       this.#save(batch);
@@ -198,7 +201,12 @@ export class MergeBatches {
         batch = { id: randomUUID(), members: remaining, candidate: current };
         this.#save(batch); return;
       }
-      await this.boundary.land(entry, current);
+      try { await this.boundary.land(entry, current); }
+      catch (error) {
+        if (error instanceof MergeError && ['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) throw new RetryLanding(error.message);
+        throw error;
+      }
+      delete batch.failed; delete batch.retryLanding;
       (batch.completed ??= []).push(entry.item); this.#save(batch);
     }
     await this.#cleanup(batch);

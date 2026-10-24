@@ -1,6 +1,6 @@
 // T1: batch policy at the durable controller/Suites seam, FakeClock and in-process executor receipts.
 import { join } from 'node:path';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { MergeError } from '../src/merge.ts';
@@ -661,9 +661,10 @@ test('batch preparation reports the pinned and current heads when a task ref mov
   });
 });
 
-async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task') {
+async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task' | 'dirty') {
   const { f, runner, landed, reports, boundary, entries, dropped } = await fixture(t);
   let moved = false;
+  if (movement === 'dirty') await writeFile(join(f.root, 'root-note.txt'), 'clean');
   // Exercise the real receipt and finishMerge path with Git represented by
   // immutable object/ref facts. Worktree removal returns an OS-edge receipt.
   const heads = new Map(entries.map(entry => [entry.branch, entry.head])); heads.set('dev', 'a'.repeat(40));
@@ -691,8 +692,11 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
   const worktrees = { serial: async <T>(work: () => Promise<T>) => work(), prune: async () => ({ removed: [], failed: [] }), pruneMerged: async () => ({ removed: [], failed: [] }) };
   const merges = new TaskMerges(tracker, worktrees, () => {}, undefined, {}, async (_root, operation) => operation(), queue,
     async (_root, branch, message, _resumed, prepared) => {
+      if (movement === 'dirty' && await readFile(join(f.root, 'root-note.txt'), 'utf8') !== 'clean') {
+        throw new MergeError('merge-dirty', 'uncommitted changes in root-note.txt', ['root-note.txt']);
+      }
       const tip = heads.get(branch)!, base = heads.get('dev')!;
-      if (movement !== 'none' && !moved) { moved = true; heads.set(movement === 'dev' ? 'dev' : branch, 'f'.repeat(40)); }
+      if ((movement === 'dev' || movement === 'task') && !moved) { moved = true; heads.set(movement === 'dev' ? 'dev' : branch, 'f'.repeat(40)); }
       const text = await message(tip, 'dev', base, ['hub/src/parser.ts']);
       assert.match(text, /Reviewed-by: reviewer \(batch-review\)/);
       const commit = String(landed.length + 4).repeat(40);
@@ -713,7 +717,7 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
     } catch (error) {
       // Match the hub boundary: base races rebuild; ordinary gate refusals drop.
       if (error instanceof MergeError && error.code === 'merge-changed' && /(?:batch|integration) base moved/.test(error.message)) throw new BatchRebuild(error.message);
-      if (error instanceof MergeError) throw new BatchRefusal(entry, error.message);
+      if (error instanceof MergeError && !['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) throw new BatchRefusal(entry, error.message);
       throw error;
     }
     await land(entry, candidate);
@@ -725,7 +729,18 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
   assert.deepEqual(run.selection?.tiers, ['T1', 'T3']);
   assert.deepEqual(landed, [], 'no entry lands before green');
   assert.equal(runner.snapshot()?.members.length, 3);
-  await f.finish(run.id); await runner.tick();
+  await f.finish(run.id);
+  if (movement === 'dirty') await writeFile(join(f.root, 'root-note.txt'), 'dirty');
+  await runner.tick();
+  if (movement === 'dirty') {
+    assert.deepEqual(landed, []);
+    assert.match(runner.snapshot()?.failed ?? '', /merge-dirty: uncommitted changes in root-note.txt/);
+    assert.equal(runner.snapshot()?.run, run.id);
+    await runner.tick();
+    assert.deepEqual(landed, [], 'the root remains dirty');
+    await writeFile(join(f.root, 'root-note.txt'), 'clean');
+    await runner.tick();
+  }
   if (movement === 'dev') await runner.tick();
   if (movement === 'task') {
     assert.deepEqual(headDrops, [`T-1: branch head changed or deleted; prepared head ${'1'.repeat(40)}, current head ${'f'.repeat(40)}`]);
@@ -748,6 +763,7 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
 }
 
 test('three queued heads run once on a single candidate before landing FIFO', t => queuedLanding(t, 'none'));
+test('a dirty root blocks then automatically lands the same green batch once clean', t => queuedLanding(t, 'dirty'));
 for (const movement of ['dev', 'task'] as const) test(`queued heads handle ${movement} movement during preparation after green`, t => queuedLanding(t, movement));
 
 for (const trackerOnly of [true, false]) test(`${trackerOnly ? 'tracker-only' : 'code'} dev movement ${trackerOnly ? 'keeps' : 'rebuilds'} the green candidate`, async t => {
@@ -857,6 +873,52 @@ test('a landing base race retains the green run for the next comparison', async 
   assert.equal(runner.snapshot()?.run, first.id);
   await runner.tick();
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(f.suites.status().length, 1);
+});
+
+for (const code of ['merge-dirty', 'merge-checkout', 'merge-git', 'merge-unpublished', 'merge-recovery'] as const) test(`${code} retries after reopen without repeating completed members or the green suite`, async t => {
+  const state = await fixture(t);
+  const { f, boundary, landed, dropped, reports } = state;
+  const land = boundary.land;
+  let blocked = true;
+  boundary.land = async (entry, candidate) => {
+    if (entry.item === 'T-2' && blocked) throw new MergeError(code, 'fixture landing obstruction');
+    return land(entry, candidate);
+  };
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id); await state.runner.tick();
+  assert.deepEqual(landed, ['T-1']);
+  assert.match(reports.at(-1)!, new RegExp(`${code}: fixture landing obstruction`));
+  assert.match(reports.at(-1)!, /queue retries automatically/i);
+  await state.reopen(); await state.runner.tick();
+  assert.deepEqual(landed, ['T-1'], 'the cause still blocks landing after reopen');
+  assert.equal(state.runner.snapshot()?.run, original.id);
+  assert.deepEqual(dropped, []);
+  blocked = false;
+  await state.runner.tick();
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.deepEqual(dropped, []);
+  assert.equal(f.suites.status().length, 1, 'retry reuses the original green receipt');
+  assert.equal(state.runner.snapshot(), null);
+});
+
+test('an untyped landing failure stays blocked across reopen and requests human or Coordinator action', async t => {
+  const state = await fixture(t);
+  const { f, boundary, landed, reports } = state;
+  const land = boundary.land;
+  // Text resembling a recoverable code is not a typed recoverable landing.
+  boundary.land = async () => { throw new Error('merge-dirty: unexpected landing invariant'); };
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id); await state.runner.tick();
+  assert.match(reports.at(-1)!, /merge-dirty: unexpected landing invariant/);
+  assert.match(reports.at(-1)!, /Waiting for human or Coordinator action/);
+  assert.doesNotMatch(reports.at(-1)!, /retries automatically/);
+  boundary.land = land;
+  await state.reopen(); await state.runner.tick(); await state.runner.tick();
+  assert.deepEqual(landed, []);
+  assert.match(state.runner.snapshot()?.failed ?? '', /unexpected landing invariant/);
   assert.equal(f.suites.status().length, 1);
 });
 

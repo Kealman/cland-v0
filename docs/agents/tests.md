@@ -402,6 +402,11 @@ documentation/tracker allowlist, the same policy that selects immediate merges.
 Other changed paths rebuild and rerun, with a notice naming the forcing commit.
 The reused receipt retains its original head and tree. Conflicts or
 landing gate refusals drop their member with a reason and rebuild the rest.
+Recoverable landing errors (`merge-dirty`, `merge-checkout`, `merge-git`,
+`merge-unpublished`, `merge-recovery`) retain members, completed landings and
+green evidence across restart. The notice names the cause and automatic retry;
+later ticks recheck the candidate and retry without cancelling a member.
+Other held failures name the required human or Coordinator action.
 Queue and batch state survive reopening the hub store. `cland merge queue` and
 `cland verify queue` show the current batch and its members. Results and logs go
 to Agents and each member's requester and item lead. A

@@ -3945,7 +3945,13 @@ candidate before its runtime tiers, on one slot using
 `["T1", "T3"]`; this repository sets `["T1"]` (D67). When T3 is selected,
 identities absent from the last green batch or stage receipt get five
 repetitions. A green T1-only batch supplies no T3 receipt.
-Green candidates land in FIFO order. Integration-base movement during preparation
+Green candidates land in FIFO order. Recoverable landing errors (`merge-dirty`,
+`merge-checkout`, `merge-git`, `merge-unpublished`, `merge-recovery`) retain the
+batch, completed members and green receipt across restart. The blocked notice
+names the cause; the queue retries on later ticks once it is resolved, rechecking
+the candidate against the retained evidence. Other held failures wait for human
+or Coordinator action, as their notice states.
+Integration-base movement during preparation
 keeps each task in the batch and rechecks the candidate against the retained green
 receipt. Documentation/tracker-only movement may reuse that receipt; code changes
 require a new run. A task-head change drops that member, with the prepared and

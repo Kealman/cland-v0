@@ -28,4 +28,12 @@ The T1 landing regression composes MergeBatches, Suites, the real Tracker, Merge
 
 The fixture uses a FakeClock and the scripted executor; no native Git, harness or hub process runs. The boundary routes base-movement errors like the hub dispatcher so the regression reaches the landing guard that caused T-1184.
 
+T-1213 uses that landing seam to dirty then clean a file in the disposable root.
+The Git boundary returns a typed `merge-dirty` while the file is dirty; real
+TaskMerges/Tracker receipts prove every member lands FIFO after cleaning, with
+the original green suite. Controller/Suites cases cover all five recoverable
+landing codes across reopen after one completed member, and an untyped failure
+whose message resembles a code still holds for human or Coordinator action.
+Assert the named cause and automatic-retry or action-required notice.
+
 T-542 M3: the T1 FIFO landing fixture supplies immutable landed-commit paths for the new dependency report through its existing Git-fact seam (`diff-tree`). Keep the three-head FIFO, landing receipt and closed-item assertions. Missing Git facts now appear in the assertion diagnostics. No timing change, native Git or process boundary is needed.

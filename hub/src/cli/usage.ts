@@ -159,6 +159,7 @@ export const MERGE_USAGE = `  merge <T-id> [--json]   queue a reviewed head when
                           changed package manifests/lockfiles require npm install in the root after shared readers stop
   merge queue [--json]  list queued heads in FIFO order, including required dependency installs
                           batches run check (T0) before batch_tiers, adding Web after T1 for web/ diffs; red T0/Web bisects members
+                          recoverable landing blocks retry automatically once resolved; other held failures need human or Coordinator action
     --cancel              drop a queued request; supervising Lead, Coordinator or human
     --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria
                           allowed: .cland/tasks/**, .cland/RULES.md, docs/**, GLOSSARY.md, README.md files, qa/briefs/**
