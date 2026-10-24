@@ -6821,9 +6821,9 @@
     "hub/test/executor-run.test.ts::shell project prepares its snapshot before rebuilding ignored outputs": {
       "seconds": 10,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "Keeps the real builder, prepared snapshot, delivery and green worker receipt in one native scenario; reduce native lifecycle cost (T-670)."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Keeps the real builder, prepared snapshot, delivery and green worker receipt in one native scenario; reduce native lifecycle cost (T-670). Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": {
       "seconds": 22.6,
@@ -6849,9 +6849,9 @@
     "hub/test/cli-identity.test.ts::a launched session cannot borrow another identity with `--as`: neither the human nor the Coordinator, it stays itself": {
       "seconds": 3.303098,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retains the real launched Claude Bash-shell identity/--as proof with three CLI invocations and audited launch identity. Linux x64 c-8, workers 2: 5.457659001 s in run 9012d29f (A-4514), behavior and all five load repetitions passed; cap includes process-start variance under suite load."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Retains the real launched Claude Bash-shell identity/--as proof with three CLI invocations and audited launch identity. Linux x64 c-8, workers 2: 5.457659001 s in run 9012d29f (A-4514), behavior and all five load repetitions passed; cap includes process-start variance under suite load. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/cli-identity.test.ts::cland hub stop from a session's shell signals nothing when the hub does not answer: only a confirmed request, or the human, may fall back to the signal": {
       "seconds": 10.795906,
@@ -6932,9 +6932,9 @@
     "hub/test/durations-runner.test.ts::one load-gate fixture distinguishes all seven prerequisite receipt shapes": {
       "seconds": 13.6,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "T-706 retains positive-only exit-zero skips plus seven real Node reporter receipt shapes in one fixture with two invocations. T-720 diagnostic retention adds failed-repetition formatting; post-merge Mac 5/5 peak is 7.957 s. D71/D72 enforce migration: observed peak 10.853787287 s in A-6792; cap 13.6 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-706 retains positive-only exit-zero skips plus seven real Node reporter receipt shapes in one fixture with two invocations. T-720 diagnostic retention adds failed-repetition formatting; post-merge Mac 5/5 peak is 7.957 s. D71/D72 enforce migration: observed peak 10.853787287 s in A-6792; cap 13.6 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/durations-runner.test.ts::task load gate bounds eight new tests with parallel lanes and five sequential repetitions each": {
       "seconds": 13.6,
@@ -6968,9 +6968,9 @@
     "hub/test/executor-run.test.ts::host check failure creates no machine; remote typecheck stops tests and failed tests retain failures": {
       "seconds": 16.476,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "T-668 renamed the host typecheck failure identity to host check failure; retains nested verification workers and fake provider/SSH failure paths. A-6763/A-6767 observed up to 13.73 s; allow 20% headroom."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-668 renamed the host typecheck failure identity to host check failure; retains nested verification workers and fake provider/SSH failure paths. A-6763/A-6767 observed up to 13.73 s; allow 20% headroom. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/executor-run.test.ts::incremental byte logs survive SSH failure and hub restart and report once": {
       "seconds": 15.4,
@@ -7157,16 +7157,16 @@
     "hub/test/inbox-workload-soak.test.ts::archive startup and event bursts retain bounded work at large-seed scale": {
       "seconds": 25.943296,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "T4 scale proof indexes 2000 task files and 3000 retained messages, archives 256 remembered processes and coalesces 100 holds; A-4846 measured 34.736 s on a slow Linux droplet. T2 retains the same assertions with 16 items/messages and 8 processes/events."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T4 scale proof indexes 2000 task files and 3000 retained messages, archives 256 remembered processes and coalesces 100 holds; A-4846 measured 34.736 s on a slow Linux droplet. T2 retains the same assertions with 16 items/messages and 8 processes/events. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/inbox-workload-soak.test.ts::startup inbox queries stay bounded with large retained history and protocol bursts": {
       "seconds": 1.203761,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "T4 retains the original 256-process, 300-message-pair, 100-request seed and two 100-event bursts with real indexed SQLite queries. Its pre-move Linux receipt A-4846 measured 5.166 s; the representative T2 seed is reduced with the same query-plan/coalescing assertions."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T4 retains the original 256-process, 300-message-pair, 100-request seed and two 100-event bursts with real indexed SQLite queries. Its pre-move Linux receipt A-4846 measured 5.166 s; the representative T2 seed is reduced with the same query-plan/coalescing assertions. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/inbox-workload.test.ts::a protocol stop burst does bounded indexed work despite unrelated retained task items": {
       "seconds": 1.860722,
@@ -7226,16 +7226,16 @@
     "hub/test/lead-handover-process.test.ts::a committed Lead handover recovers its node claim after a crash without touching another Lead": {
       "seconds": 12.990823,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retains a real hub crash after the durable Lead handover commit, restarts it, and checks isolated node-claim recovery."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Retains a real hub crash after the durable Lead handover commit, restarts it, and checks isolated node-claim recovery. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/lead-permissions-process.test.ts::Lead launches and stops only sessions serving its live subtree": {
       "seconds": 16.7,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retains real own/foreign worker launches, Lead CLI stop authority, and confirmed OS disappearance of the stopped worker PID. D71/D72 enforce migration: observed peak 13.335144045 s in A-6792; cap 16.7 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Retains real own/foreign worker launches, Lead CLI stop authority, and confirmed OS disappearance of the stopped worker PID. D71/D72 enforce migration: observed peak 13.335144045 s in A-6792; cap 16.7 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/lead-permissions.test.ts::lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse": {
       "seconds": 11.696307,
@@ -7247,9 +7247,9 @@
     "hub/test/lead-routing-process.test.ts::long idle and death climb from item to epic to release; stopped Leads leave inherited routing": {
       "seconds": 13.3,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retains three real harness sessions, SIGKILL death notification, confirmed stops and inherited hierarchy routing. Linux droplet run 83b8bc38 (A-4357) observed 7.387011 seconds; Mac 5/5 medians were below five seconds. D71/D72 enforce migration: observed peak 10.584649124 s in A-6792; cap 13.3 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Retains three real harness sessions, SIGKILL death notification, confirmed stops and inherited hierarchy routing. Linux droplet run 83b8bc38 (A-4357) observed 7.387011 seconds; Mac 5/5 medians were below five seconds. D71/D72 enforce migration: observed peak 10.584649124 s in A-6792; cap 13.3 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/merge-batches.test.ts::batch and periodic failing-file selections round-trip to exactly the requested package files": {
       "seconds": 0.727301,
@@ -7275,9 +7275,9 @@
     "hub/test/merge-checkout-lifecycle.test.ts::a crash before the integration ref moves retains checkout recovery and can merge after restart": {
       "seconds": 7.812,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "T-896–T-903 process-helper migration isolates the real hub crash/restart and Git checkout recovery lifecycle proof. A-6763/A-6767 observed up to 6.51 s; allow 20% headroom."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-896–T-903 process-helper migration isolates the real hub crash/restart and Git checkout recovery lifecycle proof. A-6763/A-6767 observed up to 6.51 s; allow 20% headroom. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/merge-checkout.test.ts::a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge": {
       "seconds": 4.706272,
@@ -7323,16 +7323,16 @@
     "hub/test/merge-recovery-native.test.ts::a close write failure reports merged follow-up failure; retry closes and prunes without a second commit": {
       "seconds": 6.1788,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "T-896–T-903 process-helper migration retains native Git merge, close-write failure and cleanup retry without a second commit. A-6763/A-6767 observed up to 5.149 s; allow 20% headroom."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-896–T-903 process-helper migration retains native Git merge, close-write failure and cleanup retry without a second commit. A-6763/A-6767 observed up to 5.149 s; allow 20% headroom. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/merge-recovery-native.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": {
       "seconds": 6.9468,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "T-896–T-903 process-helper migration moves the native Git retry proof while retaining staged deletion and reversion assertions. A-6763/A-6767 observed up to 5.789 s; allow 20% headroom."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-896–T-903 process-helper migration moves the native Git retry proof while retaining staged deletion and reversion assertions. A-6763/A-6767 observed up to 5.789 s; allow 20% headroom. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/merge.test.ts": {
       "file": true,
@@ -7408,9 +7408,9 @@
     "hub/test/orphan-servers-perf.test.ts::hub start opens its socket promptly while sixteen TERM-resistant orphans are swept in parallel": {
       "seconds": 6.210659,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "T-706 moves the existing sixteen-process startup and parallel teardown measurement to T4; real resistant-server teardown remains part of its duration."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-706 moves the existing sixteen-process startup and parallel teardown measurement to T4; real resistant-server teardown remains part of its duration. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/orphan-servers.test.ts": {
       "file": true,
@@ -7422,9 +7422,9 @@
     "hub/test/orphan-servers.test.ts::doctor --fix ends leftover servers in each terminal status and preserves a running session": {
       "seconds": 8.753555,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "T-706 retains startup sweeping plus doctor cleanup for three terminal states in one shared real-server lifecycle fixture."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-706 retains startup sweeping plus doctor cleanup for three terminal states in one shared real-server lifecycle fixture. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/orphan-servers.test.ts::doctor --fix preserves a live hub’s server while its launch has no process row yet": {
       "seconds": 13.2,
@@ -7450,9 +7450,9 @@
     "hub/test/orphan-servers.test.ts::stop and relaunch await server death across the harness adapters": {
       "seconds": 10.394449,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "T-706 retains forced stop, relaunch, descendant death and journal assertions for all three real adapter processes in one fixture."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-706 retains forced stop, relaunch, descendant death and journal assertions for all three real adapter processes in one fixture. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/pid-identity.test.ts::Codex: after a crash and a hub restart, neither resume, relaunch nor stop signals a pid that another process reuses": {
       "seconds": 6.628763,
@@ -7650,16 +7650,16 @@
     "hub/test/scenarios/droplet-verify.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": {
       "seconds": 19.4,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 9.047177–14.171858 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults. D71/D72 enforce migration: observed peak 15.484372216 s in A-6792/A-6795; cap 19.4 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Observed 9.047177–14.171858 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults. D71/D72 enforce migration: observed peak 15.484372216 s in A-6792/A-6795; cap 19.4 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/scenarios/droplet-verify.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": {
       "seconds": 12.8,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 5.965037–8.855992 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults. D71/D72 enforce migration: observed peak 10.175884737 s in A-6792; cap 12.8 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Observed 5.965037–8.855992 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults. D71/D72 enforce migration: observed peak 10.175884737 s in A-6792; cap 12.8 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/scenarios/hub-lifecycle.test.ts::fixture startup skips orphan inspection by default; opt-in and production startup still sweep": {
       "seconds": 8.202992,
@@ -7685,9 +7685,9 @@
     "hub/test/scenarios/setup.test.ts::setup provisions a scratch machine, reuses its hub and Aide, and remembers declined installs": {
       "seconds": 27.4,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "Named setup process scenario: real CLI/PTY install and login, short-lived Codex trust server, one detached hub/Aide, two idempotent reruns, and a second scratch machine for remembered installer declines. Corrected teardown proves current scratch-root ownership, including before discovery; Mac observed 11.265835125 s including confirmed process teardown. D71/D72 enforce migration: observed peak 21.916121033 s in A-6792/A-6795/A-6796; cap 27.4 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Named setup process scenario: real CLI/PTY install and login, short-lived Codex trust server, one detached hub/Aide, two idempotent reruns, and a second scratch machine for remembered installer declines. Corrected teardown proves current scratch-root ownership, including before discovery; Mac observed 11.265835125 s including confirmed process teardown. D71/D72 enforce migration: observed peak 21.916121033 s in A-6792/A-6795/A-6796; cap 27.4 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/scenarios/stage-close.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": {
       "seconds": 12.676761,
@@ -7699,9 +7699,9 @@
     "hub/test/scenarios/ticket-flow.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
       "seconds": 14.5,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 8.740475–11.960485 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow. D71/D72 enforce migration: observed peak 11.581775208 s in A-6795; cap 14.5 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Observed 8.740475–11.960485 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow. D71/D72 enforce migration: observed peak 11.581775208 s in A-6795; cap 14.5 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/scenarios/ticket-flow.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
       "seconds": 12.934038,
@@ -7770,9 +7770,9 @@
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=true)": {
       "seconds": 12.7,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 7.010713 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. D71/D72 enforce migration: observed peak 10.136178817 s in A-6792; cap 12.7 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 7.010713 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. D71/D72 enforce migration: observed peak 10.136178817 s in A-6792; cap 12.7 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=false)": {
       "seconds": 7.880564,
@@ -7854,9 +7854,9 @@
     "hub/test/setup-machine.test.ts::setup machine keeps inherited harness state untouched": {
       "seconds": 22.4,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "Runs the installer, profile-login and Codex EOF self-tests in a poisoned-HOME child so no harness account from the host is read; includes three real cland init processes and bounded, owned subprocess teardown. Initial Mac measurement 8.30 s. D71/D72 enforce migration: observed peak 17.892537758 s in A-6792/A-6796; cap 22.4 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Runs the installer, profile-login and Codex EOF self-tests in a poisoned-HOME child so no harness account from the host is read; includes three real cland init processes and bounded, owned subprocess teardown. Initial Mac measurement 8.30 s. D71/D72 enforce migration: observed peak 17.892537758 s in A-6792/A-6796; cap 22.4 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/shared-defects-report.test.ts::only distinct task branches raise one shared-defect notice with both logs and dev file history": {
       "seconds": 14.440036,
@@ -7995,9 +7995,9 @@
     "hub/test/suite-accounting.test.ts::50 parallel acquirers refuse the spend cap after a stalled budget publication": {
       "seconds": 2.792889,
       "owner": "E-880",
-      "added": "2026-10-18",
-      "expires": "2026-10-25",
-      "reason": "T-802 C2 requires fifty parallel real executor acquires with injected budget-publication contention. Each contender durably writes and cleans up its lease; the green Mac case measured 4.75 s. Retains the exact executor refusal seam while the clock-driver regression remains a 2 ms T1 test."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-802 C2 requires fifty parallel real executor acquires with injected budget-publication contention. Each contender durably writes and cleans up its lease; the green Mac case measured 4.75 s. Retains the exact executor refusal seam while the clock-driver regression remains a 2 ms T1 test. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/suite-admission-cost.test.ts::cold suite.start refuses a new violating file inside the three-second admission budget": {
       "seconds": 2.786641,
@@ -8191,9 +8191,9 @@
     "hub/test/suite-remote-process.test.ts::finished remote runs free both budget slots despite failed spend settlement": {
       "seconds": 16.7,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Unchanged remote process proof holds provider creation and corrupts spend settlement until both terminal receipts and waiter admissions are observed; focused Mac 11.514 s. D71/D72 enforce migration: observed peak 13.356579506 s in A-6792/A-6795; cap 16.7 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "Unchanged remote process proof holds provider creation and corrupts spend settlement until both terminal receipts and waiter admissions are observed; focused Mac 11.514 s. D71/D72 enforce migration: observed peak 13.356579506 s in A-6792/A-6795; cap 16.7 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/suite-runner-contract.test.ts::a hand-run package holding the old lock occupies admission until it exits": {
       "seconds": 4.816527,
@@ -8424,9 +8424,9 @@
     "hub/test/task-worktrees-lifecycle.test.ts::cland session launch --item starts the Implementer in the worktree with the claim taken over from the Coordinator; its Claude Code refuses a worktree of its own": {
       "seconds": 17.3,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "T-896 retained the native Git worktree, real CLI session launches and Claude Code WorktreeCreate hook refusal in T3 under a new file identity. Periodic Linux run A-6718 measured 6.984 s; these process boundaries exceed the legacy 5 s new-identity gate while fitting the 10 s T3 budget. D71/D72 enforce migration: observed peak 13.822638329 s in A-6792; cap 17.3 s provides 25% headroom rounded up to 0.1 s."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T-896 retained the native Git worktree, real CLI session launches and Claude Code WorktreeCreate hook refusal in T3 under a new file identity. Periodic Linux run A-6718 measured 6.984 s; these process boundaries exceed the legacy 5 s new-identity gate while fitting the 10 s T3 budget. D71/D72 enforce migration: observed peak 13.822638329 s in A-6792; cap 17.3 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "hub/test/termination-ownership.test.ts::doctors from different projects end one deleted hub and its fake harness tree once": {
       "seconds": 14.8,
@@ -8654,9 +8654,9 @@
     "hub/test/visibility-volume.test.ts::hundreds of default verdict, death and idle events leave needsYou zero": {
       "seconds": 7.105165,
       "owner": "E-880",
-      "added": "2026-10-18",
-      "expires": "2026-10-25",
-      "reason": "T4 retains the existing 200-verdict visibility volume claim through the same assertions as the representative T2 case. A-5000 observed 6.263449173 seconds for these assertions; Coordinator disposition 85d1b1c3-5f15-45b3-abad-5a1f091939f7 moves the volume out of T2. E-677 owns this temporary allowance."
+      "added": "2026-10-24",
+      "expires": "2026-11-23",
+      "reason": "T4 retains the existing 200-verdict visibility volume claim through the same assertions as the representative T2 case. A-5000 observed 6.263449173 seconds for these assertions; Coordinator disposition 85d1b1c3-5f15-45b3-abad-5a1f091939f7 moves the volume out of T2. E-677 owns this temporary allowance. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
     },
     "nvim/test/artifact-render.test.ts::a 20,000-line artifact yields to keys, bounds render work and caches the settled projection": {
       "seconds": 8,
