@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-24T10:54:00.436Z
+updated: 2026-10-24T18:37:42.910Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -394,3 +394,7 @@ Incident 2026-10-24, 10:46–10:53Z: three hub deaths in 6 minutes; crew paused 
 3. coord started a hub from its own shell (pid 24276, 10:49:38Z) with nice 5 and no DO token, a procedure error. It died at 10:51:13Z of the same OOM, 95 s after its start.
 
 Recovery: coord moved all but the newest 5 coverage pointers to `.cland/run/coverage-maps-archive-20261024/`; nothing was deleted. cland-impl then ran restart #53 by its recipe: pid 68571, serving about 10:52Z, RSS about 1.3 GB. The batch was blocked by the failed T-1209 follow-up. coord finished it with `cland merge T-1209` and cancelled and re-enqueued T-783. Code fix: T-1231 (P1, E-1197 stage 1).
+
+### coord · 2026-10-24T18:37:42.910Z
+
+Incident 2026-10-24 17:28–18:36Z: the coord Claude Code session restarted (its background monitors were orphaned; the hub re-sent the role clause at 18:36Z). Effect: impl-1255 waited about 34 min (18:02→18:37Z) for the coordinator-only verify all resubmit at T-1255 d04f0291, and the human's 18:31Z question waited 6 min. No work was lost; the hub kept deliveries in history. Cause not yet known (auto-update re-exec or a harness restart).
