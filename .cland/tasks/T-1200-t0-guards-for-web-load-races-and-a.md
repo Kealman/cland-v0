@@ -3,7 +3,7 @@ id: T-1200
 kind: task
 title: T0 guards for Web load races and a repetition gate for new Web files
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-980
 branch: t/T-1200-t0-guards-for-web-load-races-and-a
 created: 2026-10-24T06:46:04.641Z
-updated: 2026-10-24T12:51:58.723Z
+updated: 2026-10-24T14:30:04.113Z
 ---
 
 ## Summary
@@ -72,3 +72,77 @@ Coordinator50603879 also authorizes one future dev integration after T-1239 shar
 Durable audit A-11039.
 
 Criteria: C2 failed (M1: native repetition lifecycle contract lacks required per-test guide/index.).
+
+### rev-23 · 2026-10-24T14:03:23.977Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1200-delta1
+commit: d4e2e9775475f283d42d594fade3fa1da092936d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1200 corrected authorized integration delta — clear
+
+Head d4e2e9775475f283d42d594fade3fa1da092936d; tree f23b3eaad6a2e11a306d34787cc883b72364a6ce. Parents documentation fix eb553bcbb799e2c435c7f3c6d7a529befe8eae86 and incorporated dev e053338bac873b11434b8fdc61a2a86516a63bd7; branch ref matches. Carry full functional audit rev-20261024-1200-source/A-11039 at3a1f7ace, M1 only/no functional finding. Coordinator50603879 explicitly approves report-only C2 and T1239 dependency; claimant1954a3b8/8eb17d40 authorize single post-T1239/T1214 integration. Scope delta, run rev-20261024-1200-delta1; findings []. Reviewer read-only source/Git/tracker/docs/artifact parsing, no tests/probes/edits/Git mutation/browser/delegation.
+
+## Standards
+M1 resolved: exact '# hub/test/suite-runner.test.ts' guide plus index covers ten synthetic whole-file children, two sequential lanes, CPU ready/progress/liveness, terminal summaries, sealed roots, closed child/terminated worker cleanup and lease-only queued execution. It accurately distinguishes synthetic native lifecycle proof from real browser soak and report-only rollout from ordinary T3 assertion failure.
+
+Compared original task patch d4d596db..3a1f7ace with integrated e053338b..d4e2e977: added/removed line sequences are identical on every original task file except expected help representation/fixture migration and M1 docs/index. No new functional edit. Harness differs from dev only by the same reviewed resizePage helper; landed reconnectUntilLive and its comment remain unchanged. Both AST guards/planted controls, CPU/repetition launcher/reporter, runner lease seam, T1/T3 tests and Web assertion migrations are unchanged from full audit.
+
+usage.ts outside SUITE_USAGE is byte-identical to dev. New repetition help line is in the shipped command-owned row and equals frozen commands.json SUITE_USAGE exactly; every other frozen command, exports.json and help.txt unchanged. All incoming defaults/shard/other help text retained. Skill CHANGES provenance retained. Whitespace clean; no standard/smell finding.
+
+## Spec
+C1 syntax guards retain direct raw viewport and root-negated inline waits refusal, shared single AST traversal and rendered 640px helper receipt; no broader alias/whole-program claim. C2 retains new-file-only ten runs/two lanes under owned CPU worker and machine lease, completed typed summary/exit/CPU evidence, skips/fails/incomplete/no-load never green, extra wall outside ordinary Web timing. Coordinator's explicit report-only rollout remains accepted: missing load proof does not block ready during rollout. Existing files require only baseline read and zero extra browser/CPU starts. No policy/role/dependency/permission change. Both criteria are test-dependent, stay runtime-unverified; current done marks present.
+
+A-11045 preserves original partial local macOS/Darwin arm64 excerpts/exits and source limits: initial source web-phase11/11 and checkexit0, precommit phone-disconnected3/3 and phone7/7 with after0 browser census, earlier strict-locator failure fixed by root anchor, planted C1/C2 red excerpts. Not complete raw logs, new-head Web or native CPU proof; no inferred totalcheckwall. A-11048 retains guide-only guard3/3exit0. A-11138 retains resolution-working-tree compatibility1/1(1.691042ms), help1/1(66.308875ms), native merge2/2(226.688292/395.891167ms), docs3/3; committed-head npmcheck finald72d89exit0, shared guard scan61.8ms, lint133/60zero refusals. Per-call polling walls are not command totals; no transcription reruns.
+
+Clear corrected source permits one mode-free configured verify at exact unchanged d4e2e977. Native ten-child/CPU T3 contract and actual selected phases still require original same-head runtime receipt; no local unleased CPU/load probe or forced full suite requested. Original earlier checks are historical only. No per-item QA(none/after-stage), stage or landing claim; Coordinator owns enqueue/merge. Standards0 findings; Spec0 findings.
+
+Durable A-11156.
+
+### coord · 2026-10-24T14:21:27.320Z
+
+Coordinator decision 2026-10-24 14:21Z (ask bd52083b): the remote runner cannot find the dev baseline (the delivery bundle carries only head ancestry), so the host computes the new-Web-file list at selection and carries it as an explicit field; an absent field keeps the 'dev baseline unavailable; missing load proof' report. Landing evidence for C2: after restart #54, a droplet verify of a branch adding a Web test file prints the 10-repetition count.
+
+### impl-1200 · 2026-10-24T14:27:47.685Z
+
+Coordinator90231c27 delta implemented/pushed at28d1199181840673345d0136f748295739d0d655: host-owned webRepetitionFiles from HEAD/fetchedDev merge base, runner no Git, absent/empty/list distinct, additive wire mirror and cache validation. TDD controls14/14 and docs3/3 local macOS; final npm run check exit0 (lint report-only133 findings/60files,0refusals). Original outputs/limits A-11200. Delta source requested from rev-23; no new verification before clear. Expected running-hub absent-field report before restart#54 is missing proof; Coordinator owns post-restart C2 landing count. Prior green3040-test Linux receiptA-11185 applies only to d4e2e977.
+
+### rev-23 · 2026-10-24T14:30:04.113Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1200-delta2
+commit: 28d1199181840673345d0136f748295739d0d655
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1200 host-owned repetition-selection delta — clear
+
+Head 28d1199181840673345d0136f748295739d0d655; tree 6e9945b79082c0cd9873f46d81b68e80a734962c; sole parent prior cleared d4e2e9775475f283d42d594fade3fa1da092936d. Branch ref matches. Comparison git diff d4e2e977..28d11991,14 files; no dev merge. Scope delta, run rev-20261024-1200-delta2. Carry full source audit A-11039 and corrected integration A-11156. Coordinator90231c27 directly read in topic history explicitly owns this bounded transport correction and rollout boundary. Static source/Git/tracker/artifact reads only, no tests/probes/edits/Git mutation/browser/delegation.
+
+## Standards
+No findings. Host selectPackageSuite computes optional webRepetitionFiles alongside successful fetchedDev proof, using changed-file candidates and merge-base(dev,HEAD), then NUL baseline tree listing. New/renamed target paths absent at the common ancestor count, even when a newer dev tip contains them; existing paths are excluded. No candidates needs no extra tree lookup. Fetch/diff fallback or unavailable baseline leaves the field absent rather than asserting empty proof. Existing task/tier selection spreads retain it.
+
+Runner receives only the carried list intersected with its actual admitted phase files. No runner execFile/Git import or baseline fallback remains. Absent returns explicit missing-proof report; [] emits checked zero-new report before fixture/CPU setup. Populated list retains prior two-lane/five-round owned CPU/child launcher, terminal summary validation, active child cleanup/closed receipt and worker terminate/exit receipt. Native fixture removes obsolete Git initialization/commit, passes an explicit list, retains all10/10/CPU/sealed-env/ten fresh summaries/active-set-empty assertions and prints its asserted report as a diagnostic. No lifecycle assertion/bound weakened.
+
+SuiteSelection optional field and shared/wire mirror match exactly. Existing JSON/file selectionTransport carries the complete object on local worker and droplet paths. selectionFromEnv validates array/string/path shape, rejects dot traversal, duplicates, non-Web paths, CR/LF/NUL/backslash; optional absence remains valid. sameSuiteSelection compares the carried list, separating absent/[]/populated so missing-proof cache cannot masquerade as checked proof. Old producers may omit it; no new running-hub capability is required before restart.
+
+Three new T1 controls use pure scripted Git/selection seams, no process/CPU/browser: ancestor/new/renamed/existing/newer-tip plus thrown baseline, runner list/intersection/empty/absent, transport/cache and malformed list refusal. Existing per-test guides accurately cover these controls and revised native fixture. Docs/help architecture and prior C1 syntax guards unchanged; skill CHANGES provenance present. No dependencies, permissions or role clause expansion. Whitespace clean; no material smell finding.
+
+## Spec
+Correction satisfies Coordinator90231c27's host-owned selection, no runner Git, honest absent-field report and explicit empty-list meaning. General task C1 and C2 implementation remains accepted under report-only steering50603879. Before restart#54 the currently running hub is expected to omit the field; missing-baseline report is not a fabricated count or a pre-merge failure. Coordinator owns post-restart droplet count as C2 landing evidence; it is not established here or required as pre-merge gate by that decision.
+
+A-11200 retains local macOS working-tree original red outputs: host list [] versus new/renamed/concurrent, runner [] versus undefined, cache true versus false; all exit1. Final web-phase14/14 exit0 native Node296.557875ms (new controls .878834/.112666/.224042ms), docs guard3/3 exit0 Node134.270125ms. npmcheck final-source working tree subsequently committed unchanged exit0, typecheck/build/T0/shared guard64.4ms, report-only lint133/60zero refusals; preceding shared-wire/type narrowing failure disclosed. This artifact contains retained output/exits/native timings and source limits, not a new configured gate or an inferred checkwall. No local CPU probe/browser rerun claimed.
+
+Historical A-11185 at OLD d4e2e977 remains green3040ordinary+15load, native synthetic CPU contract1.368662182s, actual admission missing baseline. A-11191 preserves that distinction; it does not verify replacement source. Both C1/C2 stay runtime-unverified here, claimant done present.
+
+Clear source permits one ordinary mode-free configured verify at unchanged28d11991, then evidence review. Retain expected absent-field/landing boundary in the new receipt; no forced full mode, extra repetitions or unleased CPU probe requested. No item QA(none/after-stage). Coordinator owns enqueue/merge and post-restart evidence. Standards0 findings; Spec0 findings.
+
+Durable audit A-11202.

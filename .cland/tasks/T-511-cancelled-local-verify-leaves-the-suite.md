@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-971
 branch: t/T-511-cancelled-local-verify-leaves-the-suite
 created: 2026-10-15T15:58:21.157Z
-updated: 2026-10-24T13:05:35.580Z
+updated: 2026-10-24T14:20:40.115Z
 ---
 
 ## Summary
@@ -25,16 +25,15 @@ Cancelling a local verify can wedge local admission for good. On 2026-10-15 at 1
 
 - [x] C1. A cancel stops the runner's whole process tree, fake harness descendants included, before it removes the suite root. A root recreated after that is still recognised as the run's own by token and owner.
   - verified: rev-23 [reviewer] · run rev-20261024-511-final · 2026-10-24T13:01:39.230Z · commit 2f4067a7e0c7cc513d899f8fd245275233804337
-  - done: impl-511 · 2026-10-24T13:03:21.404Z
+  - done: impl-511 · 2026-10-24T14:13:38.277Z
 - [x] C2. When the holder pid and runner group are dead and the root differs only by identity, recovery releases the locks and quarantines the root (renames it, without deleting it) instead of refusing forever. It journals `suite-recovery-quarantined` with both inodes.
-  - verified: rev-23 [reviewer] · run rev-20261024-511-final · 2026-10-24T13:01:39.230Z · commit 2f4067a7e0c7cc513d899f8fd245275233804337
-  - done: impl-511 · 2026-10-24T13:03:21.659Z
+  - done: impl-511 · 2026-10-24T14:14:53.247Z
 - [x] C3. `cland verify queue` shows a blocked admission with its reason, instead of `local: none` beside a waiting run.
   - verified: rev-23 [reviewer] · run rev-20261024-511-final · 2026-10-24T13:01:39.230Z · commit 2f4067a7e0c7cc513d899f8fd245275233804337
-  - done: impl-511 · 2026-10-24T13:03:22.043Z
+  - done: impl-511 · 2026-10-24T14:13:38.670Z
 - [x] C4. A test cancels a run whose fake child recreates the root after the kill, and the next local run is admitted.
   - verified: rev-23 [reviewer] · run rev-20261024-511-final · 2026-10-24T13:01:39.230Z · commit 2f4067a7e0c7cc513d899f8fd245275233804337
-  - done: impl-511 · 2026-10-24T13:03:22.321Z
+  - done: impl-511 · 2026-10-24T14:13:38.889Z
 
 ## Comments
 
@@ -289,3 +288,88 @@ OldA-11061/e527424e green remains attributed only to2f4067a7; A-11067 settled th
 Coordinator92b9629f explicitly requires NO configured verify yet. Wait for T1214 usage split landing/notification, perform only the authorized second integration and move task help line into command-owned module, then request small exact-head delta review. One combined mode-free configured run follows that clearance. This source verdict does not lift the scheduling hold. C1–C4 remain runtime pending; no per-item QA(none/after-stage). Coordinator owns enqueue/merge. Standards0 findings; Spec0 findings.
 
 Durable A-11073.
+
+### rev-23 · 2026-10-24T14:01:11.691Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-511-delta2
+commit: e8089022b9800d05fcf210e1115e3904bf736156
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-511 second authorized integration delta — clear
+
+Head e8089022b9800d05fcf210e1115e3904bf736156; tree 25a06dd784b2773478e2011bae87139a81a4799b. Parents prior source-clear 2a45fb9b298f7f34c3cc11a2bfefbe0ff1ebee58 and dev e053338bac873b11434b8fdc61a2a86516a63bd7. Branch ref independently matches. Carry full source/final audits A-11029/A-11067 and first integration A-11073. Coordinator 92b9629f already authorized this second post-T1214 integration, claimant cites landing instruction 8eb17d40; T1214's incorporated command-row architecture is present. Scope delta, run rev-20261024-511-delta2; findings []. Reviewer read-only source/Git/tracker/artifact inspection; no tests/probes/edits/Git mutation/browser/delegation.
+
+## Standards
+Compared prior task patch 16a7bbe5..2a45fb9b with candidate patch e053338b..e8089022. Added/removed line sequences match exactly on all task-delta files except the expected usage.ts representation migration and new frozen-command fixture edit. No other task patch difference. Directly inspected integrated source/fixture conflict resolution: source outside SUITE_USAGE row is byte-identical to dev; frozen commands outside SUITE_USAGE are identical to dev. Task SUITE_USAGE exactly equals its frozen JSON value. Only the two previously reviewed cancellation/queue descriptions differ from incorporated dev: reap tree before root cleanup/result and show blocked admission reason. All upstream descriptions, one-command-per-complete-row boundaries, legacy export composition, exports.json/help.txt and native merge tests remain intact.
+
+Thus prior localBlocked/unknown-local-ETA and remote lease/sweep/cache/ETA resolution, independent writer cleanup/quarantine/journal, wire/CLI queue field, fixture cleanup ownership, all six corrected findings and exact E1194 seven-day duration allowances stay unchanged. Dev T1239 reconnect fix is retained as incoming dev; no task assertion, bound, dependency or permission change. Whitespace clean. No standard or smell finding.
+
+## Spec
+C1–C4 remain implemented as previously reviewed; help relocation describes that behavior without changing it. Old verification marks remain stale on this integrated head. Current claimant done marks are present; no runtime mark assigned by this source review.
+
+A-11137 retains partial local macOS/darwin resolution-working-tree output/exits: compatibility 1/1, case 1.455167 ms/Node62.418667 ms; actual help 1/1,58.717417 ms/Node130.662125 ms; native source+golden Git merge/merge-tree2/2,220.15325/222.121167 ms/Node514.421834 ms; hub-only typecheck exit0. These are precommit targeted receipts, no current configured gate or inferred check wall. No transcription reruns.
+
+Prior green A-11061 and final A-11067 apply only to 2f4067a7. First integration had source-only clearance and deliberate no-verify hold until T1214 landed; that authorized dependency is now incorporated. Source clearance permits the requested one combined mode-free configured run at exact unchanged e8089022, then original run/log/head/platform/actual phases for evidence review. Retain report-only T3 growth planning separately from actual runtime. No forced full suite, whole T3/T4, item QA, stage or landing claim. Coordinator owns enqueue/merge. Standards0 findings; Spec0 findings.
+
+Durable A-11146.
+
+### rev-23 · 2026-10-24T14:14:39.952Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261024-511-evidence2
+commit: e8089022b9800d05fcf210e1115e3904bf736156
+scope: evidence
+findings: [{"severity":"medium","text":"M7: new quarantine/released-locks identity passed assertions at5.148276204s but exceeds enforced new-identity5s gate without exact allowance. Review retained samples/headroom/owner/date correction before a fresh configured run.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-511 integrated-head failed evidence disposition
+
+Head e8089022b9800d05fcf210e1115e3904bf736156; source-clear delta2/A-11146. Original mode-free 47e4aebf-c5b1-4dd0-98b1-806096fb8dc3/A-11170 finishes exit1; task.view independently confirms failed exact head. The claimant has now pushed a correction, which is a separate source review; this disposition remains attributed to the failed head.
+
+Standards: M7 medium, hub/test/durations.json. Task-owned new identity 'hub/test/suite-recovery.test.ts::admission quarantines a dead run’s recreated root and releases both compatibility locks' passes assertions at5.148276204s but exceeds enforced new-identity5s gate without an exact allowance. This is the only hard failure; not an assertion failure, capacity refusal or shared defect. Source correction needs measured reasoned headroom/nearest open owner/seven-day dates, preserving assertions/bounds. No unchanged-head retry.
+
+Spec: useful partial proof but not complete runtime clearance. HostT0 29.902s, allT1 and fallbackallT2 exit0. ChangedT3 assertions19/19 pass but phase exits1; Web never executes, noT4 selected. Native finishes2732ordinary passing tests/384files plus20separate load-gate test/file passes, zero assertion failure/cancellation/skip;2752 completed-before-interruption includes load records. Selected changed-phase addedwall37.767s excludes machinewait. Native quarantine5.148276204s is independently parsed from finish record. Existing stale-ps case8.152146761s is separate >=80% headroom recommendation, not this enforced failure; retain printed12.229s E1194 Oct24–31 stanza for measured procedure review rather than declaring it a second failed gate.
+
+Host marker03a6e713cee65a0ac889aec69cf2bff4ef7a7a07 independently Git tree, host retained not remote repeated. Linuxx64c-8lon1 cland-v0-4c010f73,Node24.21/Nvim0.12.5,workers2,lifetime560s/$0.0389,disk9.14ms/SQLite11.83ms. T1/T2/T3 envelopes64/359/42s versus suite60.41/354.06/37.83s. Lint133/60 and unrelated duration diagnostics report-only; ratchet2216.901vs2195.304s(+21.597s), incomplete one-file base, is projection not measuredwall/enforcing failure. E880 unchanged. Earlier A-11061 green does not cover this head. No stage/QA/landing claim.
+
+Evidence not clear at e8089022, M7 only, C2 failed for its quarantine duration gate; C1/C3/C4 remain runtime pending. New allowance head6b0d312a must receive independent source review and fresh mode-free configured run before final evidence. Reviewer only static read-only source/Git/tracker/artifact/log reads, no execution/edits/delegation.
+
+Durable A-11177.
+
+Criteria: C2 failed (M7: new quarantine lifecycle identity exceeds enforced 5 s duration gate; configured run exits1 before Web.).
+
+### rev-23 · 2026-10-24T14:20:40.115Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-511-source5
+commit: 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-511 exact quarantine allowance source review — clear
+
+Head 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0; tree 9e92c2c94c22cc587b82ba2009d148c50f43acbd; sole parent e8089022b9800d05fcf210e1115e3904bf736156. Branch ref matches. Scope full, run rev-20261024-511-source5. Carry prior complete source audits A-10958/A-10971/A-11029 and authorized integration audits A-11073/A-11146. Static Git/JSON/test-source/tracker/artifact reads only; no execution, probes, edits, Git mutation or delegation.
+
+## Standards
+M7 resolved. Exactly one seven-line allowance is added to hub/test/durations.json for the exact new quarantine/released-locks identity. Every existing allow entry and every other top-level JSON value remains equal to parent. Runtime/test source, assertions, deadlines, E-880, existing 7.744/7.987 s caps and incoming dev content are unchanged. No merge.
+
+The 9.339 s cap equals ceil(1.5 * 6.225784709 s to milliseconds). A-10945 retains the macOS/local successful 6225.784709 ms named result from corrected implementation before 0a4d77eb; subsequent recovery-file M5 delta changes only the separate dead-parent cleanup fixture, not this quarantine case. A-11170 retains the Linux droplet ordinary pass and suite timing 5.148276204 s at e8089022, plus the exact enforced new-identity 5 s failure. Multiple retained final-implementation samples support headroom; no transcription rerun claimed. A-11061 earlier Linux pass remains historical additional evidence.
+
+Owner E-1194 is the open nearest container. Added 2026-10-24/expires 2026-10-31 satisfies seven-day nonlegacy lifetime. Reason states real crash/root recreation, writer cleanup, preserved bytes/inode journal, both locks and successor requirement, sample provenance and stage revisit. A-11174 accurately distinguishes partial failed evidence, projected ratchet growth and unchanged-test advisory. No material standards or smell finding.
+
+## Spec
+C1–C4 implementation and lifecycle controls retain earlier accepted full/integration audits. This data correction resolves the sole old-head enforced duration failure without weakening the requested behavior. Source is clear; all four criteria remain dependent on a new original configured runtime receipt at this exact head. Current claimant done marks are present. Old A-11170 is failed partial evidence: T0–T2 pass, 19 changed-T3 assertions pass but phase exits 1, Web absent. It is not promoted to green by the allowance. Unchanged stale-ps 12.229 s printed recommendation is not an enforced failing identity and is not added here. Report-only ratchet +21.597 s with incomplete one-file baseline remains separate Coordinator planning evidence, not measured wall or enforced pass.
+
+One ordinary mode-free configured verify may follow at unchanged 6b0d312a, then evidence review. No forced mode/full cover, extra load repetitions or dev merge requested. No per-item QA (none/after-stage); Coordinator owns enqueue/merge. Standards 0 findings; Spec 0 findings.
+
+Durable audit A-11186.

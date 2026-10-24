@@ -2,8 +2,8 @@
 id: T-1214
 kind: task
 title: Parallel CLI changes conflict on the single usage text in hub/src/cli/usage.ts
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-975
 branch: t/T-1214-parallel-cli-changes-conflict-on-the
 created: 2026-10-24T09:01:40.293Z
-updated: 2026-10-24T12:52:12.617Z
+updated: 2026-10-24T13:55:44.535Z
+closed: 2026-10-24T13:55:44.535Z
 ---
 
 ## Summary
@@ -27,10 +28,12 @@ On 2026-10-24 five branches added help lines to `hub/src/cli/usage.ts` (T-1188, 
   - verified: rev-26 [reviewer] · run rev-20261024-1214-final-1 · 2026-10-24T12:25:15.100Z · commit e03a3a3f340f621580982e909b51da163f0a933e
   - verified: rev-32 [reviewer] · run rev-20261024-1214-final-2 · 2026-10-24T12:51:15.673Z · commit 9eb0c63e88e66b68d9239821e34c43a402340ba2
   - done: impl-1214 · 2026-10-24T12:52:12.408Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1214-final3 · 2026-10-24T13:49:49.879Z · commit 5aa7598a1ec0c75c10c7c5edb023c5861d9783ca
 - [x] C2. `cland --help` output and every existing help/usage test are unchanged byte for byte by the refactor (test).
   - verified: rev-26 [reviewer] · run rev-20261024-1214-final-1 · 2026-10-24T12:25:15.100Z · commit e03a3a3f340f621580982e909b51da163f0a933e
   - verified: rev-32 [reviewer] · run rev-20261024-1214-final-2 · 2026-10-24T12:51:15.674Z · commit 9eb0c63e88e66b68d9239821e34c43a402340ba2
   - done: impl-1214 · 2026-10-24T12:52:12.518Z
+  - verified: rev-23 [reviewer] · run rev-20261024-1214-final3 · 2026-10-24T13:49:49.879Z · commit 5aa7598a1ec0c75c10c7c5edb023c5861d9783ca
 
 ## Comments
 
@@ -212,3 +215,69 @@ Final clear, C1/C2 verified across current source and same-head runtime. QA none
 Durable audit A-11043.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-23 · 2026-10-24T13:37:17.165Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1214-delta2
+commit: 5aa7598a1ec0c75c10c7c5edb023c5861d9783ca
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1214 second authorized integration delta — clear
+
+Head5aa7598a1ec0c75c10c7c5edb023c5861d9783ca/tree85d401e6cc9407db6dbb73e598998d97e2d9b045; branch ref independently matches. Parents prior reviewed9eb0c63e88e66b68d9239821e34c43a402340ba2 and incorporated dev011db12c72f5d7d5ee8ca2eed68c637c0e6586a8. Coordinator55e76183 and5bf59f4f explicitly authorize second integration; Coordinator6ae8755b directs named rev23 resend after stale review assignment. Free hold taken, rev32 notified; carry full source2/A-10916(rev26), deltaA-11009 and prior finalA-11043(rev32). Scope delta, run rev-20261024-1214-delta2; findings []. Reviewer read-only source/Git/data/artifact/tracker inspection only, no tests/probes/imported module execution/edits/Git mutation/browser/delegation; both axes in-session per staffing policy.
+
+## Standards
+Only command-owned SUITE_USAGE and ROLE_USAGE rows and their independent frozen command rows differ from9eb0c63e. SUITE retains dev all-shards-unexecuted/unavailable causes and partial-execution-never-passes guidance. ROLE retains dev Codex workspace-write Implementer/Aide, read-only Reviewer and full Coordinator/Lead/QA defaults with roles.toml override text. Prior MERGE recoverable-block retry and DEMO provisioning/active help remain preserved. No adjacent-command regrouping: init/update, publish/release/sync and subscribe/unsubscribe/subscriptions stay separate physical rows behind legacy exports, blank merge boundaries retained.
+
+Export-composition JSON, help-order template, fixture loader and all three compatibility/help/native-merge test implementations are byte-identical to prior source-clear9eb0c63e. No test-tier/dependency/merge-driver/authority change in this resolution. Canonical native guide/index and sealed scratch Git bounds remain carried. Other first-parent changes are incorporated dev; candidate-to-dev delta retains only original refactor/test/doc scope. Whitespace clean. No standard or material-smell finding.
+
+## Spec
+Independently reconstructed incorporated dev's original29 exports by read-only literal parsing (escaped template/string bytes, including IMPORT_USAGE interpolation). Separately decoded all34 production command rows, direct legacy destructuring and grouped export compositions; independently loaded34 frozen JSON command rows and29 frozen compositions. All29 dev=production=frozen exported values exactly equal; no missing/extra/differing key. All34 production command values equal frozen values. This compares against incorporated dev rather than merely agreeing a modified implementation with a modified golden.
+
+Independently parsed hub/bin/cland.ts full help template and substituted the29 values, retaining VERSION as the same marker. Full reconstructed integrated help equals incorporated dev help and expanded frozen help.txt byte for byte. The only changed command keys since9eb0c63e are SUITE_USAGE/ROLE_USAGE. C1 ownership/native conflict regression remains unchanged; C2 preserves authorized current dev bytes including landed shard/default changes. Source equality is established, but C1/C2 are test-based and remain runtime-unverified at5aa7598a until fresh configured evidence. Old verification marks at prior heads are stale and not copied.
+
+A-11046 retains original local macOS integration-working-tree receipts, not exact postcommit configured evidence. Compatibility red507ca6exit1 is explicitly truncated(original_token_count12477); no complete-red claim. Corrected compatibility1/1 chunk10e3c6exit0/case1.048125ms/Node63.984375ms. RealCLIhelp1/1 88ef7cexit0/case60.456583ms/Node132.547417ms. Native Git source+golden merge and merge-tree2/2 3ddb93exit0/cases265.603125/208.316625ms/Node544.886208ms. Hub typecheckc38441exit0 with empty output. Native Node timings are retained; per-poll wall fields are not inferred overall command durations. No tests rerun for transcription or by reviewer.
+
+Prior Linux green278005d9/A-11040 and A-11043 final remain historical only at9eb0c63e, not this integrated head. Clear source permits ordinary configured mode-free verify at unchanged5aa7598a; return original run/log/head/platform/actual phases/timings for final evidence. No forced full suite, unselectedT3/T4/QA/stage/landing claim. C1/C2 current claimant done marks present; no per-item QA(none/after-stage). Coordinator owns enqueue. Standards0 findings; Spec0 findings.
+
+Durable audit A-11092.
+
+### rev-23 · 2026-10-24T13:49:49.879Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1214-final3
+commit: 5aa7598a1ec0c75c10c7c5edb023c5861d9783ca
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1214 final evidence at second integrated head — clear
+
+Head5aa7598a1ec0c75c10c7c5edb023c5861d9783ca/tree85d401e6cc9407db6dbb73e598998d97e2d9b045; branch ref independently matches. Carry current delta2/rev-20261024-1214-delta2/A-11092 and earlier full/delta auditsA-10916/A-11009. Scope evidence, run rev-20261024-1214-final3, findings [], C1/C2 verified. Reviewer read-only source/Git/tracker/artifact/log inspection, no tests/probes/edits/Git mutation/browser/delegation.
+
+Original mode-free configured5ea2dcce-571b-45b0-9ec0-8b81d5594d6b/A-11117 finishesexit0; task.view independently confirms passed exact head. Native finishes2987ordinary tests/427files pass, zero failure/cancellation/skip, plus10 separate load-gate test/file passes (two compatibility identities each5/5). Actual hostT0, allT1(138files872top-level identities), fallbackallhub+NeovimT2(244/1778), changedT3nativeGitfiletwoidentitiesonce/no repetitions, fullWeb44files225top-level identities. Remaining unchangedT3 deferred, noT4 command/alltier/stage/QA claim.
+
+C1: separate command-owned source/frozen rows remain as current source audit. Real scratch Git cases preserve edits in both production and independent golden through merge-tree and ordinary merge, SUITE/EXECUTOR0.066246698s, formerly sharedINIT/UPDATE0.060405666s. Changed-file selectedphase addedwall0.411s excludingmachinewait; no workload/assertion/bound relaxation or allowance needed.
+
+C2: all29 exports match independent incorporated-dev frozen composition ordinary0.001989747s plus5/5(max0.003004968s). Actualcland--help bytes ordinary0.096612191s plus5/5(max0.109273595s). SourceA-11092 independently reconstructed dev011db12c original29values, production34rows/composition and complete help template; all identical to integrated golden, including intended SUITE shard-unavailable/ROLE sandbox additions and prior MERGE/DEMO additions. Export composition/help ordering/test implementations unchanged. Existingcli-usage1/1,cli9/9,qa-lint-cli2/2,docsguard3/3 pass. No execution assigned to unselected unchangedT3 tests.
+
+Hostcheck25.02s exits0; markercb9ade97c7e2cab27d27e6b457263c3988981d4f independently Git tree, retainedhostgate not repeatedremotely. T1/T2/T3/Web envelopes58/319/5/140s differ from suite54.11/315.80/0.46/136.78s and shards54.10/231.14hub+84.62Neovim/0.45changed/136.68Web. FinalWebprojection150.266s at2workers is not measuredwall at4workers. Linuxx646.8.0-142-generic,c-8lon1cland-v0-510cb014,Node24.21/Nvim0.12.5,workers2/Web4,lifetime623s/$0.0433;diskfsync6.67ms/SQLite9.28ms,tmpfs0.06/0.45ms,iowait/steal0.01%.
+
+Retain report-only lint133/60,missing4baselines,Webphase136.78>40s,items40.441s,shell/connection/scale overages. Ratchet2195.430vs2195.304s(+0.126s) would refusegrowthinenforcemode; retained as projection/lead planning, not measuredaddedwall or enforcingbudget pass. New identities remain far below8s recommendation trigger; no allowance/baseline edits. No clean-lint claim.
+
+A-11046 original local integration-working-tree red is explicitly truncated; green command outputs/exits/native Node timings remain partiallocal evidence perA-11092, no inferred overallcheckwall or transcriptionreruns. PriorA-11040/A-11043 green at9eb0c63e is historical, not reused as currenthead evidence. CurrentC1/C2 claimantdone present. No itemQA(none/after-stage), landing or conflictclearanceclaim; normal finalread-onlydevconflict check/readyreport belongs tolead and enqueue/merge toCoordinator. Standards0findings;Spec0findings.
+
+Durable audit A-11120.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-24T13:55:44.535Z
+
+Merged e053338bac873b11434b8fdc61a2a86516a63bd7 onto dev.

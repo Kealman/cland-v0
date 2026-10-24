@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:45:44.006Z
-updated: 2026-10-24T12:28:06.981Z
+updated: 2026-10-24T13:30:32.740Z
 ---
 
 ## Summary
@@ -57,6 +57,7 @@ stages:
         - T-1204
       - - T-1214
       - - T-1239
+      - - T-1246
   - name: QA tooling and docs drift
     qa:
       scope: none

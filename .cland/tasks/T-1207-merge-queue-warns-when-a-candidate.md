@@ -2,8 +2,8 @@
 id: T-1207
 kind: task
 title: Merge queue warns when a candidate touches files of an epic under demo
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-967
 branch: t/T-1207-merge-queue-warns-when-a-candidate
 created: 2026-10-24T06:46:05.607Z
-updated: 2026-10-24T13:02:00.297Z
+updated: 2026-10-24T14:22:49.990Z
+closed: 2026-10-24T14:22:49.990Z
 ---
 
 ## Summary
@@ -25,6 +26,8 @@ Landing a file an epic's demo covers makes the demo stale (demo freshness); the 
 
 - [x] C1. Enqueueing a candidate whose diff touches files merged by an epic with an active demo lease or unrecorded demo posts a warning naming the epic and files (test).
   - done: impl-1207 · 2026-10-24T13:02:00.201Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1207-final-1 · 2026-10-24T13:45:03.490Z · commit 779a195c2a373c5bf2c460640efcafee510421f3
+  - verified: rev-26 [reviewer] · run rev-20261024-1207-final-2 · 2026-10-24T14:14:07.364Z · commit d2865df1fd7447af5b9d61976d874eff029c340e
 
 ## Comments
 
@@ -153,3 +156,112 @@ Evidence not clear; C1 unverified/failed for the required configured receipt. Pr
 Durable audit A-10977.
 
 Criteria: C1 failed (Required same-head configured receipt failed the Web reconnect assertion; await Coordinator shared-defect disposition and usable replacement evidence.).
+
+### rev-26 · 2026-10-24T13:32:11.094Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1207-source-3
+commit: 779a195c2a373c5bf2c460640efcafee510421f3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1207 shared-fix delta source review — clear
+
+Head779a195c2a373c5bf2c460640efcafee510421f3; tree3bf62bb0a8a119639510f84bd25b513b74cf9850. Exact parent/fixed accepted source769b33c7fcee74069cb1d73b8d3eabb6c4a47a60. One cherry-pick only, no dev merge. Coordinator46ce1562 authorizes shared T-1239/3034ff51;4cd1dc9d explicitly routes this delta to rev-26. Read actual decisions in topic history. task.view showed no competing hold; rev-26 took this review.
+
+## Standards
+No findings. Read complete two-file delta and independently compared extracted reconnectUntilLive function and full guide against reviewed shared fix3034ff51: both byte-equal. The independent15s real-time deadline is removed; paused clock stays capped15000ms, final Live assertion and all caller assertions remain; enclosing Node test timeout supplies the bound. Exact path-headed guide retains instructions for finite standalone timeout and approved temporary probe. No independent Web edit, new process, recording, dependency, authority or product change.
+
+## Spec
+No findings. Carry prior task source A-10917/rev-32 source2 at769b33c7 as accepted basis, not a new full task re-audit. That source repaired optional demo lease/history diagnostic failures without bypassing authorization/lane/freshness gates, and preserved queued warning naming/routing. No T-1207 demo freshness, enqueue, warning, help or permission code changes in this delta.
+The delta addresses only the known shared offline-asks reconnect failure in old run74746609/A-10972. Coordinator reproduced dev failure and supplied this exact fix. My original shared-fix source A-11005 and final A-11066 cover3034ff51/macOS20/20/Linux2962ordinary pass, but are upstream evidence, not configured success on779a195c.
+
+## Evidence limits and disposition
+A-11070 accurately retains old failed769b33c7 receipt and shared-fix scope; no replacement task run claimed. Older task source/local evidence remains scoped as recorded in A-10917; no rerun for transcription. Old failed evidence remains historical.
+Delta source clear,findings[]. C1 remains run-dependent/unverified at this changed head. Proceed ordinary mode-free configured verify unchanged779a195c, then request same-head evidence review and retain current-dev read-only conflict check. Any actual help-split conflict requires only Coordinator-authorized integration and fresh delta review; do not merge dev merely because it moved. QA none/after-stage needs no per-item run. Standards0; Spec0 findings.
+Durable review A-11083.
+
+### rev-26 · 2026-10-24T13:45:03.490Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1207-final-1
+commit: 779a195c2a373c5bf2c460640efcafee510421f3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1207 final same-head evidence review — clear
+
+Head779a195c2a373c5bf2c460640efcafee510421f3; tree3bf62bb0a8a119639510f84bd25b513b74cf9850. Carry accepted full task source A-10917/rev-32 at769b33c7 and current shared-fix delta A-11083/rev-26. Audited original configured A-11104/run d9347900-20e0-4d10-b1b6-24b52e78bd77. task.view confirms exact-head passed result and claimant C1 done.
+
+## Standards
+No findings. Evidence-only read-only review, no runtime/source mutation. A-11083 independently establishes byte-equal authorized T-1239 helper/guide integration and no additional changes. Prior task source and its original local receipts are carried at their actual heads, not independently rerun/relabelled. Failed74746609/A-10972 remains old-head769b33c7 evidence, superseded for runtime disposition only by the fresh current receipt.
+
+## Spec / C1
+C1 verified across accepted task source and exact-head configured public-frame receipts. Merge-queue file28/28 ordinary pass. Exact landed-file warning/routing/nonblocking enqueue case passes0.402887614s; due0.223223773s and recorded-active0.160005837s pass, as do stage-only/building/recorded/expired/released/closed/unlanded/unrelated controls.
+Inspected assertions retain exact epic/id and overlapping hub/src/parser.ts warning text, Coordinator/live claimant routing, successful enqueue reply and durable queue length. Four unavailable-diagnostics cases lease/history-null/history-malformed/history-throw pass0.135361802–0.153534636s, retaining explicit unavailable notice and successful enqueue; no blanket authorization/freshness relaxation.
+All15 new merge-queue warning/control identities have actual5/5 repetitions,75 extra passes separately counted; worst0.544935571s below2s T2 budget. Shared offline-asks reconnect case passes1.577684734s; original Web blocker is resolved on this branch.
+
+## Configured receipt and limits
+Mode-free configured task run,mode full,exit0: T0/allT1/fallback all hub+NeovimT2/Web complete. Native progress deduplicated by id:2966 ordinary test passes,423 file passes,zero fail/cancel/skip;75 extra load-gate test/file pass records for15identities5/5, not folded into ordinary counts. No T3/T4 run; remaining T3 deferred to periodic dev/integrated occasions, no general process cover claim.
+
+Linux x64 6.8.0-142-generic droplet c-8 lon1 cland-v0-8566c92f,Nodev24.21.0,Neovimv0.12.5,configured workers2;lifetime661s,cost$0.0459. T0 host check30.208s; remote log explicitly says host gate20b0a136705c41f36e00c5d2035d5ec64325217b not repeated (Git confirms tree object). No remote repeated-typecheck claim.
+Budget/lint/T3-ratchet diagnostics are report-only:133findings/60files, existing Web shell/items/connection and hub scale/Neovim artifact warnings, projected Web wall>40s. T3 ratchet2195.304s equals base; no enforce-mode budget success inferred.
+
+Final evidence clear,findings[],C1/all verified across full source, reviewed delta and current configured receipt. QA none/after-stage requires no item run. Retain read-only fetched-dev conflict check; Coordinator owns landing and any authorized help-split resolution. Any head change requires fresh delta review and receipt; old run cannot qualify changed source. Standards0; Spec0 findings.
+Durable review A-11111.
+
+Criteria: C1 verified.
+
+### rev-26 · 2026-10-24T13:59:33.377Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1207-source-4
+commit: d2865df1fd7447af5b9d61976d874eff029c340e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1207 authorized dev-integration delta — clear
+
+Head d2865df1fd7447af5b9d61976d874eff029c340e; tree808f0ba8aca11c120e83c1cd522cb7865038967e. Merge parents: accepted779a195c2a373c5bf2c460640efcafee510421f3 and dev e053338bac873b11434b8fdc61a2a86516a63bd7. Coordinator b389bf6f authorizes this one integration after T-1214 to resolve test/help conflicts; named request also cites8eb17d40. Reviewed both-parent comparisons, conflict resolution, task delta against dev, A-11139 originals and current task state. Carry A-10917 full task source and A-11083 shared-fix delta; this is not a new full audit of all upstream changes.
+
+## Standards
+No findings. T-1214's actual blank-separated command-owned row architecture and legacy export composition remain. Independent source/JSON parsing shows only MERGE_USAGE golden key differs from upstream and production row exactly equals it. Only added help lines describe running/due demo overlap and unavailable optional diagnostics. All upstream MERGE_USAGE lines, including recoverable landing retry guidance, remain; exports.json/help.txt are unchanged from dev. No command implementation import or help boundary regression.
+
+## Spec / integration
+No findings. T-1207 merge-queue/TaskMerges implementation is byte-unchanged from accepted779a195c; Dispatcher runtime change relative to that head only carries upstream controller logger injection. All original28 queue tests retain their assertions; the merged file adds upstream HubCore notice-failure regression and its import, yielding29 cases. Both task warning/fault guide and upstream blocked-report guide are present. Checked no upstream or task test titles disappear. Batch controller/retry tests have empty diff against dev, preserving T-1213 recovery behavior.
+Authorized T-1239 reconnect implementation remains unchanged; Web harness auto-merge only carries dev's module-level trace serial change, not another reconnect edit. No independent task/runtime expansion.
+
+## Evidence / disposition
+A-11139 preserves exact-head local macOS original command/chunk/exit results: queue29/29 (native4945.101166ms), frozen export1/1 (2.557125ms), actual full help1/1 (65.073417ms), hub typecheck exit0. Poll waits are not total command wall; targeted checks are not configured/Linux/enforced-budget evidence.
+Old A-11104/A-11111 green at779a195c is historical after merge. Current C1 claimant done retained, verification stale as expected.
+
+Delta source clear,findings[]. C1 runtime remains unverified at changed head. Submit one replacement ordinary mode-free configured verify unchanged d2865df1, then exact-head evidence review. Retain post-result fetched-dev read-only conflict check. Any further source change requires new source review; no additional dev integration merely because dev moves. QA none/after-stage no item run. Standards0; Spec0 findings.
+Durable review A-11143.
+
+### rev-26 · 2026-10-24T14:14:07.364Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1207-final-2
+commit: d2865df1fd7447af5b9d61976d874eff029c340e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-11175 records final same-head evidence audit, carrying source4/A-11143. Mode-free ed0c4042/A-11172 exit0: independently parsed 3006 ordinary test passes,426 ordinary file passes,75 actual load-test repetitions across15 warning/control identities each5/5; no failures/skips/cancellations. Queue29/29, all warning/routing/quiet/fault controls pass; largest warning repetition0.554991898s, no allowance trigger. T0/allT1/fallback all hub+NeovimT2/Web pass; no T3/T4 claim. Host28.536s/tree00f7127f is separate host check, not repeated remote typecheck. Linuxc8lon1life660s/$0.0458. Lint133/60,3 missing baselines/Web and existing timing warnings remain report-only. C1/current all verified; retain claimant's fresh-dev read-only conflict result in ready report. No item QA/landing claim.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-24T14:22:49.990Z
+
+Merged f56fb18a0cb0411fa683aef9a65c8dd5bce1aba4 onto dev.

@@ -3,7 +3,7 @@ id: T-1220
 kind: task
 title: A session's shell identity is not bound to a per-session credential
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T13:00:16.804Z
+updated: 2026-10-24T14:28:02.592Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Trust model today: every session runs as the same OS user on one machine. This g
   - done: impl-1220 · 2026-10-24T10:13:17.395Z
 - [x] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
   - done: impl-1220 · 2026-10-24T10:13:17.528Z
-- [x] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
-  - done: impl-1220 · 2026-10-24T13:00:16.613Z
+- [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
+  - failed: rev-31 [reviewer] · 2026-10-24T14:28:02.592Z · note Configured f5a08d89 exits1 on native launch-publication/account-limit assertion; later mappedT4/Web absent. C1/C2 partial passes do not settle required harness cover.
 
 ## Comments
 
@@ -457,3 +457,121 @@ Criteria: C3 failed (Configured integration still fails two Web fixture actor-au
 ### impl-1220 · 2026-10-24T13:00:16.726Z
 
 Pushed eb1fbfaf Web local-client auth fixture migrations (browser/UI assertions unchanged), then Coordinator-authorized rule11 dev merge e7ca9436f75624947ef8ed75d9b4013945482d18, parents eb1fbfaf +699a44dd. Both conflicts combined: credential directory join + custom-role dynamic names; authenticated item-lead root + Coordinator/closed-item controls. Incoming custom routing manual claim fixture migrated after original7/8 red. A-11064 retains all raw local receipts/provenance: Web12/12+7/7 before merge; integration custom8,item-lead12,credentials9,I/O7,archive14,progress9,verdict4,native-boundary29,docs3 pass; check0 (Darwin arm64, lint report133/60, zero refusals). Request delta source review. Coordinator8fa92a1e explicitly holds configured verification until T-1214 lands, a second authorized merge/help move and small delta review; no run submitted now.
+
+### rev-31 · 2026-10-24T13:34:10.241Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-checkpoint
+commit: e7ca9436f75624947ef8ed75d9b4013945482d18
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1220 authorized integration checkpoint — delta source clear
+
+Head e7ca9436f75624947ef8ed75d9b4013945482d18, tree 383563d5c442db892d57bf17ac4719e9fcdbbf16. Parents eb1fbfaf6797c96cb39a0ee1466b1d285a8e735f (M9/M10 fixes) and dev 699a44dd1741e272ecd883c73c1aeda0215d6dff. Task/origin refs match, task worktree clean, parent-to-head whitespace check clean. Direct named resend 5131181b follows Coordinator fb43538c; free hold taken and prior reviewer rev-32 informed.
+
+Read Coordinator decision 8fa92a1e independently: current-dev merge under rule 11 is authorized, both real-logic conflict sides must remain; source checkpoint review now, configured verification explicitly HELD until T-1214 lands, second authorized integration/help-line migration and another small delta review. This clearance does not release that hold.
+
+Scope delta carries accepted full source5/A-10903 at 518114d1, accepted shared override delta/A-10995 at 80d870e5, and failed evidence4/A-11052. Prior M1–M8 corrections remain carried, not represented as a repeated full audit of incoming dev tasks.
+
+## Standards
+
+No findings. M9/M10 import corrections are confined to the local setup clients in web/test/artifacts.test.ts and web/test/session-drawer.test.ts, plus canonical guide updates. Both explicitly opt in to existing sessionUi; this helper authenticates only frames with an as object, preserving explicitly supplied credentials and leaving actor-free human frames untouched. It reads/writes only the fixture-owned Store. It is not a production credential bypass. The two manual Web actors are artifact-coord artifact.create and item-worker task.claim; existing UI, keep/readback/navigation/composer/destination assertions remain unchanged. Actual browser Web authentication is unchanged.
+
+Incoming custom-role manual claim uses the same explicit helper, changing only its import and canonical guide relative to dev. Raw own-spoke launch/reconnect, self-verdict rejection and permission-refusal controls remain intact; no authentication regression is converted to a fixture-credential positive. Existing cli-session-credential.test.ts and session-credential-io.test.ts use their unchanged raw seams.
+
+Inspected both-parent combined resolution and relevant incoming production diffs:
+- sessions.ts retains join for private credential-directory I/O and resolve, while removing fixed ROLE_NAMES and retaining dynamic this.#core.roleNames() validation. All async credential persistence, current-caller revalidation, reservation rollback and cleanup/drain code is unchanged relative to eb1fbfaf.
+- item-lead fixture retains explicit discovery.root for its authenticated owned Store and adds Coordinator setup/spoke alongside closed-item fallback/delivery assertions from T-1209. No closed-item control is dropped.
+- Incoming core.roleNames integrations preserve stored-role authority and credential-bound admission; custom own-claim verification restrictions and closed-item Coordinator routing remain. Shared credential module, credential fixture, raw CLI/held-I/O tests, progress and archive workload files are unchanged by this merge.
+- Incoming T-1098/T-1211/T-1231 scheduler/coverage work and matching docs are retained as upstream changes, not independently re-reviewed in full here.
+
+Canonical docs for artifacts, drawer and custom-role fixtures accurately distinguish manual authenticated setup from human browser actions and retain raw permission boundaries. No tier, deadline, workload, duration allowance, dependency or role-permission relaxation in this correction. Original task skills/docs and shared override authority remain carried.
+
+## Spec
+
+M9/M10 source corrections resolved; no remaining source findings. The local fixture actors now reach their intended behavior after authenticating, while C1 attribution and C2 actor-free human decision remain unchanged. C3 own-adapter credential transport/rotation, private files, async serving-time lifecycle, dynamic caller checks, launch-failure rollback and archive cleanup are preserved. Dynamic custom role validation combines with credential provisioning; closed-item lead routing combines with owned authentication. No expanded trust model: same-OS-user accidental identity attribution, not a native sandbox isolation claim.
+
+A-11064 inspected original per-command stdout/stderr/receipt files and native source envelopes. The recorded envelopes SHA256 matches provenance abe3dc6c736d10a9c1a167d87204d467ceaa1af6e3f7e57efbef85acdc4619ff. Original truncations remain labelled.
+Premerge working tree based on 80d870e5, committed as eb1fbfaf: isolated pinned Headless Shell artifacts12/12 (native runner11568.791125ms), drawer7/7 (4296.3305ms), docs3/3; check exit0/24559ms collector wall. Browser profile ownership/process census retained in fixture, no human browser.
+Authorized merge working tree later committed unchanged: custom8/8, item-lead12/12, raw credential9/9, I/O7/7, archive14/14, progress9/9, verdict4/4, native-boundary29/29, docs3/3; all native exits0, zero skips/fails. Check exit0/25027ms collector wall; lint report133/60, zero refusals. Receipt source fields correctly identify uncommitted merge source, not exact postcommit reruns.
+Original custom fixture red retains7/8, false!==true on manual task.claim at166 before the import correction. These local Darwin arm64 targeted results support the checkpoint; no new configured result at e7ca9436 exists.
+
+Historical ae8f4f61/A-11047 at80d870e5 remains failed overall: T0–T2/changed T3/mapped T4 passed, Web2 failed on M9/M10. Its90 extra load passes and known-T3 duration recommendations remain separate, not current-head proof or installed allowances. No final criterion marks issued here; C1–C3 claimant done, runtime settlement pending future reviewed head and actual configured result.
+
+Disposition: delta source clear, findings []. Maintain Coordinator's NO CONFIGURED VERIFY hold. Wait for T-1214 landing notice, perform only authorized second merge/help-line move, request the small delta review, then one combined mode-free run after clearance/hold release. Do not enqueue. Reviewer only static source/Git/tracker/artifact reads, no test/build/browser/process or Git mutation/delegation.
+
+Standards: 0 findings. Spec: 0 remaining source findings.
+Durable checkpoint A-11088.
+
+### impl-1220 · 2026-10-24T14:02:41.454Z
+
+Final authorized merge55a993aa67299d3c15c4e12f8ec1c7874e509dda pushed, parents checkpoint-reviewed e7ca9436 + dev e053338b (T-1214/T-1239). T-1214 uses independent command string rows; moved credential guidance into TASK_USAGE/SUBSCRIPTIONS_USAGE entries, with only their frozen commands.json values changed. Export map/help template unchanged; tiers keeps all credential/help declarations. Original local working-tree receipts A-11154: frozen exports1, real CLI help bytes1, scratch Git merge2, existing usage1, raw credential9, docs3 pass; check0 Darwin arm64, lint report133/60 zero refusals. Coordinator8eb17d40 authorizes source delta review then one combined mode-free verify/evidence review/ready report. No suite submitted before verdict.
+
+### rev-31 · 2026-10-24T14:05:09.040Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-final-integration
+commit: 55a993aa67299d3c15c4e12f8ec1c7874e509dda
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1220 final authorized integration delta — clear
+
+Head55a993aa67299d3c15c4e12f8ec1c7874e509dda; tree350259ca1364086ba9dd82a750a6a1405e6c787e. Parents checkpoint-cleared e7ca9436f75624947ef8ed75d9b4013945482d18 and incoming dev e053338bac873b11434b8fdc61a2a86516a63bd7. Pushed task ref matches; claimant reports clean. Scope delta, carrying source checkpoint A-11088, full accepted credential audits and raw Web/coupled integration receipts A-11064. Independently read Coordinator8fa92a1e's two-step integration instruction: first checkpoint review without verify, then T-1214 integration/help migration, small delta review and one combined mode-free run. Claimant cites final landing notice8eb17d40; incoming source independently contains landed T-1214. No runtime execution by Reviewer.
+
+Standards and Spec: no delta findings. T-1214 uses one independent command-owned table row, which its interface permits; this merge preserves that landed implementation instead of imposing a different module layout. Compared with incoming dev, usage.ts changes only commandUsage.TASK_USAGE and commandUsage.SUBSCRIPTIONS_USAGE. Task help retains credential precedence/private session-bound fallback/known-session requirement/refusal recovery/identity-free-human wording; subscription help retains the known-session credential requirement. Against incoming dev, frozen commands.json changes exactly the same two keys; exports.json and help.txt blobs are identical to dev. Legacy named exports and INIT/UPDATE, RELEASE/PUBLISH/SYNC, SUBSCRIBE/UNSUBSCRIBE/SUBSCRIPTIONS composition remain incoming T-1214's architecture. Other command rows, T-1239/dev additions and complete help template survive.
+
+Merged tiers retain every key/value from both parents: task credential CLI/IO tests remainT2; incoming cli-helpT2/compatibilityT1/native-Git-mergeT3 declarations remain. No tier removal/retiering, duration-baseline or allowance changes. The docs/index/README unions retain task credential guidance and incoming reporting/docs entries. Dispatcher differs from the checkpoint only by incoming dev's report-boundary log injection; credential frame/actor logic and prior checkpoint's closed-item/custom-role integration are preserved. No credential lifecycle, adapter, shared credential module, socket authority, raw credential tests, fixture-environment or corrected Web artifact/drawer source changes relative to e7ca9436. Incoming unrelated product changes are carried from dev, not claimed as a new full re-audit.
+
+A-11154 inspected original stdout/stderr/receipt files with explicit precommit source attribution, Darwin arm64/Node24.21. All native receipts exit0/no signal:
+- frozen export compatibility1/1 (body1.783584ms, Node75.027750ms);
+- actual CLI complete help bytes1/1 (body132.387166ms, Node226.372459ms);
+- sealed native Git merge/merge-tree cases2/2 (247.055500/239.658625ms, Node569.595667ms);
+- existing usage1/1, raw credential CLI9/9 (Node2.410897375s), docs3/3;
+- npm check0, collector wall27.109s, report-only lint133/60 and zero refusals.
+The collector's whole-command wall and Node runner/body timings remain distinct. These ran on the uncommitted final merge tree subsequently committed unchanged; no exact-postcommit rerun or native Linux/task-suite pass inferred. A-11064 remains historical first-integration/Web evidence. Prior configured ae8f4f61/A-11047 and earlier failures remain failed overall; recommendations/partial passing phases were not relabelled as current evidence.
+
+Final integration delta source clear, findings[]. C1–C3 claimant done; runtime verification remains outstanding at55a993aa. The prior Coordinator hold was for the T-1214 landing/integration now present; proceed with the single ordinary configured mode-free run covering both authorized integrations, without mode/executor overrides or extra repetitions. Route original result here and request evidence review before ready. Preserve this reviewed head; no further merge/source change without authorization and fresh review. No QA/landing/enqueue claim.
+Durable review A-11159.
+
+### rev-31 · 2026-10-24T14:28:02.592Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-evidence2
+commit: 55a993aa67299d3c15c4e12f8ec1c7874e509dda
+scope: evidence
+findings: [{"severity":"medium","text":"M11: required native first-turn hard-hit identity fails `early hit saved: not within 15000 ms`; current runtime regression unresolved, T4/Web absent. Classify via focused sealed source-attributed controls; no shared-defect/flake exemption established and no unchanged full retry until disposition.","file":"hub/test/account-limited.test.ts","line":241}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-1220 configured evidence disposition — not clear
+
+Head55a993aa67299d3c15c4e12f8ec1c7874e509dda / tree350259ca1364086ba9dd82a750a6a1405e6c787e. Carries final integration source clearance A-11159, checkpoint A-11088 and original local A-11154. Independently inspected task.verify and original A-11196 for configured mode-free f5a08d89-311c-4d2d-9d8c-8bacf1c8898b. Reviewer read-only; no execution or diagnosis-by-rerun.
+
+Actual failing receipt:
+hub/test/account-limited.test.ts::a hard hit before the native first-turn response is retained through launch publication
+Error: early hit saved: not within 15000 ms
+at eventually (hub/test/harness.ts:848:9)
+at TestContext.<anonymous> (hub/test/account-limited.test.ts:241:16)
+Ordinary body17.043006785s; suite test failures explicitly records this identity.
+
+M11 medium: current required changed-T3 native harness coverage contains one unresolved assertion failure. This is not merely a report-only duration warning: the limited mark never satisfied the bounded “early hit saved” observation. The test body at236 onward still launches native first-turn Codex with the limit fixture, then checks retained session/reset/one account-limited event. Against incoming dev, only the file's fixture imports switch to credential-aware sessionUi/sessionClandWithEnv; body/assertions are unchanged. That narrows diagnosis but does not establish cause, a shared baseline defect or a permitted flake. Previous parent success is historical positive evidence, not proof that this failure can be ignored.
+
+Classify with focused sealed receipts and exact source attribution, comparing a valid base/control where needed. Retain original error before interpretation. Keep publication/limit and credential assertions, permissions and bounds intact. No unchanged-head full-suite retry until evidence supports a specific reviewed/Coordinator disposition. Any correction must be committed/pushed and source-reviewed before another configured run. No timeout increase, blanket allowance or permission weakening follows from this failure. Claimant's2b26e0e report starts focused local reproduction and explicitly has no independent base receipt yet.
+
+Actual phase limits: exit1 overall. T0 exit0 (24.557s host gate), allT1 exit0, full fallback hub+NeovimT2 exit0. ChangedT3 phase exit1:184 passing identities/one failing identity across24files, selected phase added233.028s excludes machine wait. T4 mapped inbox-verifier guard and Web have zero execution receipts; absent later phases are not passing cover. Ordinary2912 tests =2911pass/1fail, no cancellations/skips/todo. Eighteen new-identity load groups each5/5 supply90 additional passes; interruption summary3002/3001pass/1fail includes those extras and is not an ordinary total. All9 raw CLI credential identities pass; that partial C1/C2 evidence does not settle the whole task.
+
+Linux x64 6.8.0-142-generic,Node24.21,Neovim0.12.5; droplet c-8lon1 cland-v0-102f9125,workers2,lifetime776s,cost$0.0539. T0 log references reused host-gate tree0e0ab81b9fa0489085550d792dfdae5eda208c0d, not a remote exact-head check. T1envelope65s,T2 373s,T3 237s. Existing duration/test-lint/T3-ratchet notices remain report-only; printed advisory allowance stanzas are not installed source and cannot resolve this assertion failure. No new hard-duration-gate failure inferred from the report-only17s regression.
+
+Evidence not clear. Fail C3 current runtime mark for unresolved native adapter/launch-publication regression and incomplete later selected phases; C1/C2 not independently failed, remain unverified pending final settlement. Existing source clear is retained as source history, not an overall pass. QA/ready/enqueue/landing remain outstanding.
+Durable review A-11201.
+
+Criteria: C3 failed (Configured f5a08d89 exits1 on native launch-publication/account-limit assertion; later mappedT4/Web absent. C1/C2 partial passes do not settle required harness cover.).
