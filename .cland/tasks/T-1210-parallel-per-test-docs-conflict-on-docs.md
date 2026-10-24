@@ -5,15 +5,16 @@ title: Parallel per-test docs conflict on docs/agents/tests/index.md
 state: open
 status: in progress
 size: XS
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1196
 blocked_by: []
-topic: null
+topic: topic-942
 branch: t/T-1210-parallel-per-test-docs-conflict-on-docs
 created: 2026-10-24T08:09:00.298Z
-updated: 2026-10-24T08:12:03.514Z
+updated: 2026-10-24T08:13:16.527Z
 ---
 
 ## Summary
@@ -22,8 +23,8 @@ Since T-1199 (356efd0e) every lane that adds a per-test doc also adds a line to 
 
 ## Acceptance criteria
 
-- [ ] C1. Two branches that each add a different per-test doc and its index entry merge without a conflict, shown with a scratch Git repository (test).
-- [ ] C2. The test-docs check still fails when an index entry is missing, duplicated or out of order, or names a file that does not exist (test).
+- [ ] C1. Two branches that each add a different per-test doc and its index entry, or each extend the same per-test doc, merge without a conflict and the result passes C2 with no follow-up edit, shown with a scratch Git repository (test).
+- [ ] C2. The test-docs check still fails when an index entry is missing or duplicated, or names a file that does not exist; entry order is not checked (test).
 
 ## Comments
 

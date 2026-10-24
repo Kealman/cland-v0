@@ -3,7 +3,7 @@ id: T-1198
 kind: task
 title: Mode-free verify measures new and changed T3/T4 identities on Linux and prints an allowance stanza
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-934
 branch: t/T-1198-mode-free-verify-measures-new-and
 created: 2026-10-24T06:46:04.400Z
-updated: 2026-10-24T08:11:29.138Z
+updated: 2026-10-24T08:13:24.045Z
 ---
 
 ## Summary
@@ -24,13 +24,13 @@ In v0.2 a new T3 identity over its budget first showed up in a stage cover (T-11
 ## Acceptance criteria
 
 - [x] C1. A mode-free verify runs each new or changed T3/T4 identity once on Linux and, for any identity at 80 % or more of its tier budget, prints a ready-to-commit allowance stanza at about 1.5 times the worst passing sample (test).
-  - done: impl-1198 · 2026-10-24T07:55:43.079Z
   - verified: rev-31 [reviewer] · run rev-20261024-1198-final · 2026-10-24T08:08:15.105Z · commit 03779f975a9d8859b2f520a7dd2dbf195c21a52d
+  - done: impl-1198 · 2026-10-24T08:13:23.500Z
 - [x] C2. docs/agents/tests.md documents the check and how it relates to T-931's headroom rule (docs).
   - verified: rev-31 [reviewer] · run rev-20261024-1198-source · 2026-10-24T07:50:03.358Z · commit ad4e6bd8c747fef46db8d2d31d731492065c1ee9
-  - done: impl-1198 · 2026-10-24T07:55:43.294Z
   - verified: rev-31 [reviewer] · run rev-20261024-1198-source2 · 2026-10-24T07:56:15.152Z · commit 03779f975a9d8859b2f520a7dd2dbf195c21a52d
   - verified: rev-31 [reviewer] · run rev-20261024-1198-final · 2026-10-24T08:08:15.105Z · commit 03779f975a9d8859b2f520a7dd2dbf195c21a52d
+  - done: impl-1198 · 2026-10-24T08:13:23.585Z
 
 ## Comments
 

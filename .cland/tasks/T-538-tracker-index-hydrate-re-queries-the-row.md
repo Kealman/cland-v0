@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-941
 branch: t/T-538-tracker-index-hydrate-re-queries-the-row
 created: 2026-10-15T21:15:50.790Z
-updated: 2026-10-24T08:11:24.345Z
+updated: 2026-10-24T08:12:29.987Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ Found aside by impl-469 on T-469 (2026-10-15 21:15Z). In `hub/src/tracker/index-
 ## Acceptance criteria
 - [ ] C1. `#hydrate` builds the row's own canonical id from its selected columns, with no extra query, while reference ids (blockers, parent, follows) still resolve as today.
 - [ ] C2. A query-count test on a landing, or on a list of N items, shows the own-id lookups gone and every existing tracker test passes.
+
+## Comments
+
+### impl-538 · 2026-10-24T08:12:29.987Z
+
+Test-first baseline at dev b49b3d91: new T1 list regression fails with `9 !== 1` (unlinked 8-item list: 9 reads, 8 kind lookups; linked: 15 reads, 14 kind lookups including 6 references). Existing fixture-owned sqliteProbe supplies reusable execution tracing. Hydration now formats its own id from selected kind/n; reference resolver calls unchanged.

@@ -3,7 +3,7 @@ id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-929
 branch: t/T-542-a-merge-that-adds-a-package-leaves-the
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-24T08:11:09.547Z
+updated: 2026-10-24T08:12:14.029Z
 ---
 
 ## Summary
@@ -25,10 +25,13 @@ T-427 merged at 21:28Z (bd2fdba4). It switched the typecheck script to `typescri
 ## Acceptance criteria
 - [x] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
   - done: impl-542 · 2026-10-24T07:57:07.047Z
+  - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
 - [x] C2. A host typecheck that fails with MODULE_NOT_FOUND for a dependency named in the lockfile reports "dependencies out of date: run npm install", not just exit 1.
   - done: impl-542 · 2026-10-24T07:32:19.602Z
+  - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
 - [x] C3. `task claim` leaves a new task worktree resolving the root's dependencies (playwright-core included), or links them, and the report names a stale worktree install (test).
   - done: impl-542 · 2026-10-24T07:38:30.667Z
+  - verified: rev-26 [reviewer] · run rev-20261024-542-final-1 · 2026-10-24T08:12:12.006Z · commit 429165999efae93962d52d84a36ef3f92d837bff
 
 ## Comments
 
@@ -230,3 +233,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at42916599/treed8c4d18f. M5resolved: helper guidance moved to planned-stage.test.ts consumer note/heading/index; docs guard unchanged. Documentation-only delta fromdd8ddb16, no devmerge. M4resolved source assessment A-10457 and accepted product/M3 reviews A-10387/A-10396/A-10412 carried; no findings. A-10461 original local macOS working-tree stdout/exits/native timings inspected:9plan-gate+12planned-stage+15epic-close, plus docs2/2 on later doccorrectiontree; not relabelled exactnewhead. Check excerpt explicitlypartialstdout/exit0/lintreport132/59/0refusals, not totalwallproof. HistoricalA-10437 remainsfailedpartial. A-10462: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10462-t-542-corrected-documentation-at-42916599.md. AllC1/C2/C3 remainpendingfreshsame-headconfiguredreceipt; proceedmode-freeverify. No currentconfiguredgreen/T3T4/Linux/QAclaim.
+
+### rev-26 · 2026-10-24T08:12:12.006Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-542-final-1
+commit: 429165999efae93962d52d84a36ef3f92d837bff
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2/C3 clear atunchanged42916599/treed8c4d18f, accepted source A-10387/A-10396/A-10412/A-10457/A-10462 carried and criterion paths/tests reread. A-10485/f6b6b5b9 exit0: independently parsed2808ordinary/418file passes; load110testfinishes =40top-level repetitions(8identities×5)+70nested,40files pass; nofail/cancel/skip. C1package/lock/workspacechanges name rootnpm install in responses/notices/comments/recovery/queue, sharedreader intact. C2lock-backed missing-package hints and negative controls/no-machine pass. C3Playwright resolution/rootlink, staleown/link/artifact/optionalomission controls pass. FIFO/stage/plan/docs repairedproofs pass; noassertionrelaxation. Newtoploadmax0.905245s belowallowancetrigger. T1/allfallbackT2hub+Neovim/Webexit0 Linuxc8lon1 cland-v0-4d8efb91 Node24.21/Nvim0.12.5 workers2(Web4),736s/$0.0511. Hostcheckstdout/0refusals, remotereusedf33c9188tree/notrepeated. Lint132/59,duration/tier/ratchetreport-only, Web175.14s suite/175s shard>40sreportbudget/1missingbaseline retained. NoT3T4/afterstageQAclaim; oldfailures/localprovenancelimits retained. A-10486: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10486-t-542-final-evidence-at-42916599.md. No findings.
+
+Criteria: C1 verified, C2 verified, C3 verified.
