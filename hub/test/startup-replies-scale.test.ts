@@ -1,15 +1,18 @@
 // T3: first status receipt on a live-size retained-history fixture, including
 // stopped processes, suite receipts and plans. Coordinator-approved scale seam
-// (topic-785, T-1039); no native hub process needed. The smaller byte guard stays T2.
+// (topic-785, T-1039); no native hub process needed. The synthetic byte guard stays T2; the full copied tracker runs here (T-1204, Coordinator-directed).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import files, { mkdir, writeFile } from 'node:fs/promises';
+import files, { cp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import { FakeClock } from './fake-clock.ts';
 import { tempProject, connectSocket } from './harness.ts';
 import {onCleanup} from './process-cleanup.ts';
 import { performance } from 'node:perf_hooks';
+import { assertStartupReplies } from './startup-replies-fixture.ts';
+import { parseItem } from '../src/tracker/item.ts';
+import { join } from 'node:path';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import { withPlan } from '../src/tracker/plan.ts';
@@ -154,4 +157,13 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     assert.equal(item.planError, undefined);
     assert.equal(item.plan.stages[0]!.lanes[0]!.length, 250, 'startup validates plans against the complete index');
   }
+});
+
+// Reuse the established T3 scale seam; never shrink the live tracker for a lower tier.
+test('eight startup replies and byte guards work on a copied live durable fixture', async t => {
+  const root = await tempProject(t);
+  await cp(new URL('../../.cland/tasks', import.meta.url), join(root, '.cland/tasks'), { recursive: true });
+  const rows = await Promise.all((await readdir(join(root, '.cland/tasks'))).filter(name => name.endsWith('.md')).map(async name => parseItem(await readFile(join(root, '.cland/tasks', name), 'utf8'), name)));
+  assert.ok(rows.length > 12, 'copied tracker replaces the small synthetic fixture');
+  await assertStartupReplies(t, root, 'copied live', rows.length, rows.filter(row => row.fm.state === 'open').length);
 });

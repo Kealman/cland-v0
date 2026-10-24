@@ -34,8 +34,8 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     await seedTree(root);
     // A planned open epic under the current release: live epics close, so the stage facts come from a seeded one.
     live = await liveRelease(root);
-    await seedItem(root, 'E-900400', 'epic', 'Live release planned epic', { parent: live.id }, '## Plan\n\n```yaml\nstages:\n  - name: Live fixture stage\n    qa: { scope: none, when: after-stage }\n    lanes:\n      - [T-900401]\n```\n');
-    await seedItem(root, 'T-900401', 'task', 'Live release planned task', { parent: 'E-900400', status: 'planned' });
+    await seedItem(root, 'E-900400', 'epic', 'Live release planned epic', { parent: live.id }, '## Plan\n\n```yaml\nstages:\n  - name: Live fixture stage\n    qa: { scope: none, when: after-stage }\n    lanes:\n      - [T-900401]\n```\n'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+    await seedItem(root, 'T-900401', 'task', 'Live release planned task', { parent: 'E-900400', status: 'planned' }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
   } });
   await fixture.pageCase(t, async page => {
     await page.keyboard.press('2');
@@ -45,7 +45,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     await release.waitFor();
     assert.ok((await release.textContent() ?? '').includes(live.title!), `${live.id} row names its title`);
     assert.equal(await release.getAttribute('aria-expanded'), 'true');
-    const epic = tree.locator('[data-object-id="E-900400"]');
+    const epic = tree.locator('[data-object-id="E-900400"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
     await epic.waitFor();
     assert.equal(await epic.locator('[role="meter"]').count(), 1);
     assert.match(await epic.textContent() ?? '', /S1/);
@@ -55,7 +55,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     await epic.click();
     await page.keyboard.press('l');
     await tree.getByText('Live fixture stage', { exact: true }).waitFor();
-    await tree.locator('[data-object-id="T-900401"]').waitFor();
+    await tree.locator('[data-object-id="T-900401"]').waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
     const output = resolve(import.meta.dirname, '../test-results');
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, 'items-tree.png') });
@@ -72,14 +72,14 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       await page.keyboard.press('2');
       await page.getByLabel('Release', { exact: true }).selectOption('R-900000');
       const tree = page.getByRole('tree', { name: 'Items tree' });
-      const epic = tree.locator('[data-object-id="E-900001"]');
+      const epic = tree.locator('[data-object-id="E-900001"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       assert.match(await tree.locator('[data-tree-key=":direct:R-900000"]').textContent() ?? '', /Direct tasks.*\(1\)/);
       const epics = await tree.locator('[data-object-id^="E-"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
-      assert.deepEqual(epics.slice(-2), ['E-900027', 'E-900026'], 'done epics follow live epics in close order');
+      assert.deepEqual(epics.slice(-2), ['E-900027', 'E-900026'], 'done epics follow live epics in close order'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await epic.click();
       await page.keyboard.press('l');
       await tree.getByText('First stage', { exact: true }).waitFor();
-      const task = tree.locator('[data-object-id="T-900002"]');
+      const task = tree.locator('[data-object-id="T-900002"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await task.click();
       assert.match(await task.textContent() ?? '', /review r2/);
       assert.match(await task.textContent() ?? '', /0\/2/);
@@ -90,21 +90,21 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       const changed = task.locator('[title="Closed"]').waitFor();
       const ancestor = epic.locator('[role="meter"][aria-valuenow="2"]').waitFor();
       void changed.catch(() => {}); void ancestor.catch(() => {});
-      const result = await cland(fixture.root, 'task', 'edit', 'T-900002', '--status', 'done', '--json');
+      const result = await cland(fixture.root, 'task', 'edit', 'T-900002', '--status', 'done', '--json'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       assert.equal(result.code, 0, result.stderr);
       await Promise.all([changed, ancestor]);
       assert.equal(await epic.locator('[role="meter"]').getAttribute('aria-valuenow'), '2');
       assert.equal(await task.evaluate(node => document.activeElement === node), true);
       assert.equal(await task.getAttribute('aria-selected'), 'true');
       const after = await tree.locator('[data-object-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
-      assert.ok(before.indexOf('T-900002') < before.indexOf('T-900003'));
-      assert.ok(after.indexOf('T-900002') > after.indexOf('T-900003'));
+      assert.ok(before.indexOf('T-900002') < before.indexOf('T-900003')); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+      assert.ok(after.indexOf('T-900002') > after.indexOf('T-900003')); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       assert.equal(await tree.locator('[data-object-id="R-900000"] [role="meter"]').getAttribute('data-mode'), 'proportional');
       assert.equal(await epic.locator('[role="meter"]').getAttribute('data-mode'), 'cells');
       assert.deepEqual(await task.locator('[title^="reviewer ·"]').allTextContents(), ['✗ review r2'], 'status delta retains only the latest review and its original round');
       const nextVerdict = task.getByText('✓ review r3', { exact: true }).waitFor();
       void nextVerdict.catch(() => {});
-      const posted = await ui.request({ type: 'task.comment', item: 'T-900002', text: 'Third source review',
+      const posted = await ui.request({ type: 'task.comment', item: 'T-900002', text: 'Third source review', // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
         verdict: { verdict: 'review', result: 'clear', run: 'web-r3', scope: 'full', findings: [] } });
       assert.equal(posted.ok, true, posted.error);
       await nextVerdict;
@@ -117,7 +117,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       await page.keyboard.press('2');
       await page.getByLabel('Release', { exact: true }).selectOption('R-900000');
       const tree = page.getByRole('tree', { name: 'Items tree' });
-      const epic = tree.locator('[data-object-id="E-900001"]');
+      const epic = tree.locator('[data-object-id="E-900001"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await epic.click();
       await page.keyboard.press('l');
       for (const [name, role, tool] of [['tree-worker', 'implementer', 'task.claim'], ['tree-verifier', 'reviewer', 'task.hold']] as const) {
@@ -126,13 +126,13 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
         const session = await inProcessSpoke(t, { discover: true, cwd: fixture.root, name, role, sessionId: (launched.value as { process: { sessionId: string } }).process.sessionId });
         t.after(() => session.close());
         await session.waitForPresence([name]);
-        if (role === 'implementer') assert.equal((await ui.request({ type: 'task.edit', item: 'T-900003', assignee: name })).ok, true);
+        if (role === 'implementer') assert.equal((await ui.request({ type: 'task.edit', item: 'T-900003', assignee: name })).ok, true); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
         const receipt = epic.getByText(role === 'implementer' ? name : `${role} ${name}`, { exact: true }).waitFor();
         void receipt.catch(() => {});
-        const held = await session.call<{ ok: boolean; error?: string }>(tool, { id: 'T-900003' });
+        const held = await session.call<{ ok: boolean; error?: string }>(tool, { id: 'T-900003' }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
         assert.equal(held.ok, true, held.error);
         await receipt;
-        const task = tree.locator('[data-object-id="T-900003"]');
+        const task = tree.locator('[data-object-id="T-900003"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
         assert.match(await task.textContent() ?? '', new RegExp(name));
         assert.match(await epic.textContent() ?? '', new RegExp(name));
       }
@@ -149,33 +149,33 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       const category = tree.locator('[data-object-id="C-900060"]');
       await category.waitFor();
       assert.match(await category.textContent() ?? '', /4 open.*1 done.*idle work/);
-      for (const id of ['T-900061', 'T-900062', 'T-900063', 'T-900065']) await tree.locator(`[data-object-id="${id}"]`).waitFor();
-      assert.equal(await tree.locator('[data-object-id="T-900064"]').count(), 0, 'fourth open item stays behind N more');
+      for (const id of ['T-900061', 'T-900062', 'T-900063', 'T-900065']) await tree.locator(`[data-object-id="${id}"]`).waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+      assert.equal(await tree.locator('[data-object-id="T-900064"]').count(), 0, 'fourth open item stays behind N more'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       const more = tree.locator('[data-tree-key=":more:C-900060"]');
       assert.match(await more.textContent() ?? '', /1 more/);
       await more.focus();
       sent.length = 0;
       await page.keyboard.press('z');
       await page.keyboard.press('a');
-      await tree.locator('[data-object-id="T-900064"]').waitFor();
+      await tree.locator('[data-object-id="T-900064"]').waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await page.keyboard.press('j');
-      assert.equal(await tree.locator('[data-object-id="T-900064"]').evaluate(node => document.activeElement === node), true);
+      assert.equal(await tree.locator('[data-object-id="T-900064"]').evaluate(node => document.activeElement === node), true); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await page.keyboard.press('k');
       assert.equal(await more.evaluate(node => document.activeElement === node), true);
       await page.keyboard.press('h');
       assert.equal(await more.getAttribute('aria-expanded'), 'false');
       await page.evaluate(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'в', shiftKey: true, bubbles: true, cancelable: true })));
-      await tree.locator('[data-object-id="T-900065"]').waitFor({ state: 'detached' });
+      await tree.locator('[data-object-id="T-900065"]').waitFor({ state: 'detached' }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await tree.getByText('D hides 1 done', { exact: true }).waitFor();
       assert.deepEqual(sent, [], 'local folds and filters send no hub requests');
       await page.reload();
       await category.waitFor();
       assert.equal(await categories.getAttribute('aria-expanded'), 'true');
       assert.equal(await more.getAttribute('aria-expanded'), 'false');
-      assert.equal(await tree.locator('[data-object-id="T-900065"]').count(), 0);
+      assert.equal(await tree.locator('[data-object-id="T-900065"]').count(), 0); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await tree.getByText('D hides 1 done', { exact: true }).waitFor();
       await page.keyboard.press('Shift+D');
-      await tree.locator('[data-object-id="T-900065"]').waitFor();
+      await tree.locator('[data-object-id="T-900065"]').waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       const releases = tree.locator('[data-tree-key=":releases"]');
       await releases.focus();
       await page.keyboard.press('l');

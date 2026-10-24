@@ -62,6 +62,20 @@ same or immediately preceding line. The reason is mandatory; strings containing
 the marker do not exempt code. Diagnostics name the source file and line.
 The guard's in-memory compiler cases run as T0 self-checks, without a test worker.
 
+The T0 copied-tracker guard (`hub/test/lint-copied-tracker.ts`) syntax-scans
+`*.test.ts` under hub, web and Neovim. In a `test`/`it` callback containing a
+`cp`/`cpSync` call whose source names `.cland/tasks`, literal E-/T- ids must be
+derived from the copy. Strings, selectors, template fragments and regexp literals
+are checked;
+comments and sibling synthetic tests are excluded. A seeded row may use a real
+same-line or immediately preceding `// cland-allow-tracker-id: <seeding owner>`
+comment. Each exception names the fixture that plants the row; no fixture id
+range is implicitly trusted. Reviewers check those owners. In-memory planted
+negative controls require file/line diagnostics at T0, without a worker or child
+process. `--help` describes the guard. This is a direct-source guard: helper-hidden
+copies and computed ids still require review. Keep copied sources read-only and
+perform all tracker writes under the sealed disposable root.
+
 The T0 child-environment guard (`hub/test/lint-child-environment.ts`) checks
 native Node child-process launches throughout `hub/test` (TypeScript and JavaScript,
 including helpers, fakes and manual tools). Named, renamed, namespace, default,

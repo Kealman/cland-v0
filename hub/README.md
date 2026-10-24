@@ -2932,6 +2932,11 @@ the launch. The guard's `--inventory` lists each recognized call and its reason,
 with file/line diagnostics and no environment values. See
 [fixture isolation and guard scope](../docs/agents/tests.md#fixtures).
 
+Its T0 copied-tracker guard syntax-scans hub/web/Neovim tests for literal E-/T-
+ids in callbacks copying `.cland/tasks`. Derive live ids from the copy; seeded
+rows carry a nearby `cland-allow-tracker-id` comment naming their seeding owner.
+See [guard scope and exceptions](../docs/agents/tests.md#this-repositorys-verification-commands).
+
 Its T0 dictionary membership guard checks `hub/src`: string-indexed records,
 `any`, `unknown`, bare objects and dynamic or undeclared keys use `Object.hasOwn` or `Map.has`.
 Narrowing by a declared finite key stays allowed. Intentional prototype-chain checks

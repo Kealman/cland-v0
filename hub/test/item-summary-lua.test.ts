@@ -83,8 +83,8 @@ test('snapshot summaries and roll-ups equal Lua on every copied live tracker bod
   // Guaranteed legacy boundary: an open epic with planned work below a closed release.
   for (const [id,kind,parent,state,status] of [
     ['R-900001','release',null,'closed',undefined],
-    ['E-900002','epic','R-900001','open',undefined],
-    ['T-900003','task','E-900002','open','planned'],
+    ['E-900002','epic','R-900001','open',undefined], // cland-allow-tracker-id: this tuple is written below as a scratch regression row.
+    ['T-900003','task','E-900002','open','planned'], // cland-allow-tracker-id: this tuple is written below as a scratch regression row.
   ] as const) await writeFile(join(root,`.cland/tasks/${id}-regression.md`),serializeItem({
     fm:{id,kind,title:id,parent,state,...(status?{status,size:'S' as const}:{}),labels:[],assignee:null,blocked_by:[],topic:null,branch:null,created:'2026-10-16T12:00:00Z',updated:'2026-10-16T12:00:00Z'},
     body:'## Summary\n\nAncestor regression.',comments:[],
@@ -114,7 +114,7 @@ test('snapshot summaries and roll-ups equal Lua on every copied live tracker bod
   assert.ok(items.every(item => item.kind !== 'task' || item.state !== 'closed'));
   assert.ok(items.every(item => typeof item.layer === 'string'), 'every snapshot item has its hub layer');
   t.diagnostic(`copied live items snapshot: ${snapshotBytes} bytes; cap 1048576 bytes`);
-  assert.ok(snapshotBytes <= 512*1024, `${snapshotBytes} bytes exceeds T-1081's 50% copied-state ceiling`);
+  assert.ok(snapshotBytes <= 512*1024, `${snapshotBytes} bytes exceeds the 50% copied-state ceiling`);
   assert.ok(snapshotBytes <= 1024*1024, `${snapshotBytes} bytes exceeds the 1 MiB items cap`);
   const ui = await connectUi(t, hub.discovery);
   const restored = new Map(items.map(item => [String(item.id),item]));

@@ -76,6 +76,12 @@ For approval race/restart changes, keep the existing native/frame seams and run 
 
 For ask outcomes, a declined ask is a decision and never consent. Human `topic.answer {ask, declined: true, reason}` requires a non-empty reason, delivers `declined: <reason>` and leaves the topic open; return the unchanged decision down the lead chain with `ask.answer`. Use the public-frame and recorded-headless decline seams in `docs/agents/tests.md`; Neovim does not initiate declines in 0.2.0.
 
+For copied-tracker tests, derive live ids from the scratch copy; name the seeding
+owner beside seeded literal ids with `cland-allow-tracker-id`. Read the T0 guard
+scope in `docs/agents/tests.md` when adding copies or exceptions. Keep payload
+caps above measured copied-state bytes with growth headroom, alongside synthetic
+fixtures.
+
 For native child launches in `hub/test`, use the complete `fixtureEnvironment`
 or `accountFixtureEnvironment` result after explicit owned extras. Fresh runner
 children use `runnerFixtureEnvironment` to filter inherited paths while keeping

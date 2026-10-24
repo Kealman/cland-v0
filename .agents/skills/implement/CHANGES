@@ -84,3 +84,5 @@ T-1231: Document bounded coverage loading, pointer metadata/retention and determ
 T-1228: Distinguish unknown explicit size overrides from listed or configured provider-capacity refusals.
 T-1098: point Web periodic culprit-search changes to the sealed fake-executor component seam.
 T-1211: Point sharded not-run outcome changes to the sealed scheduler/public-notice seams and partial-execution reporting contract.
+
+T-1204: Point copied-tracker work to the T0 literal-id guard, explicit seeded owners and measured byte-budget headroom.

@@ -34,3 +34,23 @@ the merge gate cannot promote them without a branch. A branchless `ready` row
 still runs its check and demotes. `startup-ready-component.test.ts` observes both
 filesystem boundaries and final frame statuses; `startup-replies-scale.test.ts`
 retains the original durable-scale fixture and measures first completed status.
+
+T-1204 adds the full copied-tracker reply-budget case at this existing T3 seam,
+per Coordinator decision 27508150. The complete checkout tracker is copied
+read-only into a sealed disposable project; no rows or bodies are trimmed.
+The original synthetic T2 case in `hub-status-component.test.ts` and this copied
+case call `startup-replies-fixture.ts` for identical eight framed UTF-8 reply
+checks, first-item/per-reply/total caps, count checks and individual/aggregate
+oversize controls. Snapshot and independent Lua guards remain separate.
+The per-reply measurements and conditional growth runway are retained in the
+hub-status guide. Hitting any byte cap requires paging or trimming the reply,
+while keeping the cap unchanged.
+
+The unchanged copied workload first ran at `9a6d8a27` in T2: Linux x64 droplet
+c-8 lon1 run `0c97f1ae` (A-11122) passed its assertions and five load repetitions,
+but exited 1 on the enforced new-identity duration gate. Ordinary native time
+was 17.275973484 seconds, worst passing repetition 18.864933431 seconds.
+The relocated T3 identity has a 28.298-second allowance (1.5x that worst sample,
+rounded upward to milliseconds), owner E-1196, added 2026-10-24 and expiring
+2026-10-31. This is transferred workload evidence, not a claim that T3 or Web
+executed in the failed run; configured exact-head T3 evidence follows review.

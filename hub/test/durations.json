@@ -6682,6 +6682,13 @@
     "web/test/session-launch.test.ts::a custom role is selectable with its own defaults and appears in the crew after launch": 1.52439
   },
   "allow": {
+    "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a copied live durable fixture": {
+      "seconds": 28.298,
+      "owner": "E-1196",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "T-1204 retains the complete copied live tracker and eight real framed startup replies at the existing T3 scale seam, per Coordinator decision 27508150. The unchanged workload previously ran in hub-status-component T2: Linux x64 c-8 lon1 run 0c97f1ae at 9a6d8a27 (A-11122) passed all assertions, ordinary sample 17.275973484 s, worst of five passing load repetitions 18.864933431 s. This allowance rounds 1.5x that worst observed passing sample upward to milliseconds. It covers the same full-copy/shared reply assertions after relocation; no byte cap, fixture size or existing assertion is relaxed. E-1196 owns the seven-day full-copy setup cost."
+    },
     "hub/test/suite-cover.test.ts::all capacity-refused shards preserve a not-run cover receipt and never start culprit search": {
       "seconds": 1.5,
       "owner": "E-1194",
