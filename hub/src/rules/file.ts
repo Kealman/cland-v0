@@ -81,7 +81,7 @@ export class RulebookFile {
         const original = parseRulebook(source, this.#roles()); // Never overwrite a broken hand edit.
         this.#warnCounter(original);
         const rules = change(original);
-        const text = renderRulebook(original, rules);
+        const text = renderRulebook(original, rules).trimEnd() + '\n';
         const book = parseRulebook(text, this.#roles());
         const changed = rules.find((rule, i) => rule !== original.rules[i])!;
         const rule = book.rules.find(rule => rule.number === changed.number)!;

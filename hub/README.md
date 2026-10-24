@@ -1433,7 +1433,8 @@ supply message, workbench or another session's origins.
 
 The hub owns writes, serializes them, and replaces the file atomically. An edit
 rewrites only its rule and the high-water mark, preserving every other entry byte
-for byte. Before replacement it re-reads the source; if a hand edit or merge arrived
+for byte except trailing file whitespace: add, edit and retire leave exactly one
+final newline. Before replacement it re-reads the source; if a hand edit or merge arrived
 during the temporary write, the write refuses with a retry message and leaves that
 edit intact. The hub
 refreshes the file every 500 ms, like `roles.toml`, so hand edits and merges are

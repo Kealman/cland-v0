@@ -23,6 +23,21 @@ async function fixture(t: TestContext, beforeStop: () => void = () => {}) {
   return { path, root, book, clock, records, add, observe: (listener: typeof onLog) => { onLog = listener; } };
 }
 
+for (const operation of ['add', 'edit', 'retire'] as const) {
+  test(`rulebook ${operation} writes exactly one final newline`, async t => {
+    const { path, book, add } = await fixture(t);
+    await add('First rule.');
+    await add('Last sibling.');
+    // Legacy rulebooks carry blank lines even when the last rule is untouched.
+    await writeFile(path, (await readFile(path, 'utf8')) + '\n\n');
+    if (operation === 'add') await add('New rule.');
+    else if (operation === 'edit') await book.edit(1, { text: 'Edited rule.' });
+    else await book.retire(1, 'superseded');
+    const written = await readFile(path);
+    assert.deepEqual(written.subarray(-2), Buffer.from('.\n'));
+  });
+}
+
 test('rulebook writes preserve sibling bytes and retirement provenance', async t => {
   const { path, book, add } = await fixture(t);
   const one = await book.add({ text: 'Run one suite.', title: 'One suite', scope: 'implementer', reason: 'contention', origin: 'shell' });

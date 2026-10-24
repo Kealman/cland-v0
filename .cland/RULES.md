@@ -205,4 +205,3 @@ Origin: message:general/c41bb6da-8f8b-4a96-942a-5c2b09bbdaec
 Reason: E-416 DOD-03 assumed lane order where the product uses rank; the E-417 seed read message ids from a send result; E-419 S1 selectors were guessed before the code existed; E-417 key-encoding errors read as product results. Approved with rule batch 3 (A-11329 R8).
 
 A brief written before it has run marks which selectors, test names and ids it verified and which it inferred from the criteria, and checks the inferred ones against the source at the final build. Each step asserts its own preconditions before the action it tests: it validates seeded identifiers, reads created ids from topic history (never from a `send` result), sets explicitly any order it relies on (rank, lane or close time), and states the tool-specific key syntax it uses, so a setup or encoding fault reads apart from a product failure.
-

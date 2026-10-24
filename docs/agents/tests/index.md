@@ -13,6 +13,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-admission.test.ts`](../../../hub/test/suite-admission.test.ts) | [Notes](hub-test-suite-admission.test.ts.md) |
 | [`hub/test/executor-prepare-component.test.ts`](../../../hub/test/executor-prepare-component.test.ts) | [Notes](hub-test-executor-prepare-component.test.ts.md) |
 | [`hub/test/rule-sessions.test.ts`](../../../hub/test/rule-sessions.test.ts) | [Notes](hub-test-rule-sessions.test.ts.md) |
+| [`hub/test/rulebook-file.test.ts`](../../../hub/test/rulebook-file.test.ts) | [Notes](hub-test-rulebook-file.test.ts.md) |
 | [`hub/test/session-native-lifecycle.test.ts`](../../../hub/test/session-native-lifecycle.test.ts) | [Notes](hub-test-session-native-lifecycle.test.ts.md) |
 | [`hub/test/codex-fake-envelope.test.ts`](../../../hub/test/codex-fake-envelope.test.ts) | [Notes](hub-test-codex-fake-envelope.test.ts.md) |
 | [`hub/test/suite-protocol.test.ts`](../../../hub/test/suite-protocol.test.ts) | [Notes](hub-test-suite-protocol.test.ts.md) |
