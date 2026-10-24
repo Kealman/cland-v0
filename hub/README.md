@@ -1816,17 +1816,26 @@ the human makes and authorizes any account choice.
 ## The cland CLI
 
 Subcommands load lazily: `bin/cland.ts` imports only the command it dispatches.
-Shared help text lives in `src/cli/usage.ts`, so help, version and noninteractive
-no-command invocations load just that module and `version.ts`. Command modules
+Shared help text lives in `src/cli/usage.ts`; `src/cli/help.ts` composes the
+top-level usage and resolves bare help. Help, version and noninteractive
+no-command invocations load only those static modules and `version.ts`. Command modules
 re-export their usage constants for existing callers. `test/cli-imports.test.ts`
 uses a real-process resolve hook to guard the source-module counts (help and
 version at most 10; task list and hub status within their measured budgets).
 The guard is in the machine shard and also checks command import failures keep
 their existing error lines and exit codes.
 
-`cland release`, `sync`, `publish`, `push` and `merge` accept `--help` or `-h`:
-they print usage and exit 0 before argument requirements, hub discovery or any
-Git/network operation. Release, sync and publish share the release usage block.
+Every command and group listed by `cland --help` accepts `--help` or `-h`
+immediately after its name: it prints its usage and exits 0 without a running
+hub or project changes. The executable calls the pure `commandHelp` entry in
+`src/cli/help.ts` before importing command implementations. It uses the
+command-owned entries in `src/cli/usage.ts`; release, sync and publish share
+the release usage block. Other argument paths keep their existing parsing.
+The T1 table in `test/cli-command-help.test.ts` derives its command list from
+that same advertised top-level help and checks both flags in process. Adding
+a listed command without help support fails the table. T2 `test/cli-help.test.ts`
+keeps exactly three real CLI launches: top-level `--help`, `hub --help` and
+`session -h`, checking frozen output and sealed project/profile immutability.
 
 The root `package.json` owns cland's version. `src/version.ts` reads it for
 `cland --version`, the spoke's MCP server info, hub discovery and every managed

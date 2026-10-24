@@ -148,6 +148,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/homebrew-download.test.ts`](../../../hub/test/homebrew-download.test.ts) | [Notes](hub-test-homebrew-download.test.ts.md) |
 | [`hub/test/homebrew-publication.test.ts`](../../../hub/test/homebrew-publication.test.ts) | [Notes](hub-test-homebrew-publication.test.ts.md) |
 | [`hub/test/cli-usage-merge.test.ts`](../../../hub/test/cli-usage-merge.test.ts) | [Notes](hub-test-cli-usage-merge.test.ts.md) |
+| [`hub/test/cli-command-help.test.ts`](../../../hub/test/cli-command-help.test.ts) | [Notes](hub-test-cli-command-help.test.ts.md) |
+| [`hub/test/cli-help.test.ts`](../../../hub/test/cli-help.test.ts) | [Notes](hub-test-cli-help.test.ts.md) |
 | [`hub/test/dev-t3-search-component.test.ts`](../../../hub/test/dev-t3-search-component.test.ts) | [Notes](hub-test-dev-t3-search-component.test.ts.md) |
 
 | [`hub/test/verifier-routing.test.ts`](../../../hub/test/verifier-routing.test.ts) | [Notes](hub-test-verifier-routing.test.ts.md) |

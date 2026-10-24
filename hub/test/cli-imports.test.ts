@@ -98,14 +98,14 @@ test('CLI commands load only their own source closure within the import budgets'
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'cland-cli-counts-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   // Measured with this registerHooks fixture on Node 24, running the real CLI in an
-  // empty temporary project without a hub: task list loads 13 modules; hub status loads 16.
+  // empty temporary project without a hub: task list loads 15 modules; hub status loads 19.
   // Command budgets add a rounded-up 10% margin.
   const commands: Array<{ args: string[]; code: number; budget: number; commands: string[] }> = [
     { args: ['--help'], code: 0, budget: 10, commands: [] },
     { args: ['--version'], code: 0, budget: 10, commands: [] },
     { args: [], code: 0, budget: 10, commands: [] },
-    { args: ['task', 'list', '--json'], code: 1, budget: 15, commands: ['task.ts', 'task-import.ts', 'socket-client.ts', 'actor.ts'] },
-    { args: ['hub', 'status'], code: 1, budget: 18, commands: ['hub.ts', 'socket-client.ts', 'actor.ts'] },
+    { args: ['task', 'list', '--json'], code: 1, budget: 17, commands: ['task.ts', 'task-import.ts', 'socket-client.ts', 'actor.ts'] },
+    { args: ['hub', 'status'], code: 1, budget: 21, commands: ['hub.ts', 'socket-client.ts', 'actor.ts'] },
   ];
   for (const { args, code, budget, commands: allowed } of commands) {
     const { result, urls } = countedCommand(root, args);
@@ -113,7 +113,7 @@ test('CLI commands load only their own source closure within the import budgets'
     t.diagnostic(`cland ${args.join(' ')}: ${urls.length} hub/src modules`);
     assert.ok(urls.length > 0, 'the counter observed source imports');
     assert.ok(urls.length <= budget, `loaded ${urls.length} modules (budget ${budget}): ${urls.join(', ')}`);
-    const cliModules = urls.filter(url => url.includes('/src/cli/') && !url.endsWith('/usage.ts'));
+    const cliModules = urls.filter(url => url.includes('/src/cli/') && !['usage.ts', 'help.ts'].some(name => url.endsWith(`/${name}`)));
     assert.deepEqual(cliModules.map(url => url.slice(url.lastIndexOf('/') + 1)).sort(), [...allowed].sort());
   }
 });

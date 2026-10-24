@@ -1,52 +1,17 @@
 #!/usr/bin/env node
 // The cland CLI.
-import {
-  ACCOUNT_USAGE,
-  MODELS_USAGE,
-  OPEN_USAGE,
-  WEB_USAGE,
-  SUITE_USAGE,
-  EXECUTOR_USAGE,
-  DEMO_USAGE,
-  QA_USAGE,
-  QA_LINT_USAGE,
-  INIT_USAGE,
-  SETUP_USAGE,
-  DOCTOR_USAGE,
-  HUB_USAGE,
-  TASK_USAGE,
-  SESSION_USAGE,
-  WORKTREE_USAGE,
-  MERGE_USAGE,
-  PUSH_USAGE,
-  RELEASE_USAGE,
-  ROLE_USAGE,
-  CREW_USAGE,
-  CONFIG_USAGE,
-  RULE_USAGE,
-  INBOX_USAGE,
-  TOPIC_USAGE,
-  HOOK_USAGE,
-  ARTIFACT_USAGE,
-  SUBSCRIPTIONS_USAGE,
-} from '../src/cli/usage.ts';
+import { commandHelp, usage } from '../src/cli/help.ts';
 import { VERSION } from '../src/version.ts';
-
-const usage = `cland ${VERSION}
-
-usage: cland [<command>]
-
-With no command on a terminal, cland opens the workbench (cland open).
-
-${MODELS_USAGE}${ACCOUNT_USAGE}${OPEN_USAGE}${WEB_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${QA_LINT_USAGE}${INIT_USAGE}${SETUP_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${CONFIG_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
-  --help, -h      print this help
-`;
 
 // no command: the workbench on a terminal, the help anywhere else (a script, a pipe)
 const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 const [command = interactive ? 'open' : '--help', ...rest] = process.argv.slice(2);
 
-switch (command) {
+// Resolve bare help before importing implementations or discovering a project.
+const help = commandHelp(command, rest);
+if (help !== undefined) {
+  process.stdout.write(help);
+} else switch (command) {
   case 'models':
     try {
       const { runModels } = await import('../src/cli/models.ts');
@@ -77,11 +42,6 @@ switch (command) {
   case '-v':
   case 'version':
     process.stdout.write(`${VERSION}\n`);
-    break;
-  case '--help':
-  case '-h':
-  case 'help':
-    process.stdout.write(usage);
     break;
   case 'verify':
   case 'suite':

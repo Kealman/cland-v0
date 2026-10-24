@@ -1,22 +1,24 @@
-// T2: the real CLI's help is the subprocess boundary under test.
+// T2: three real CLI launches prove entry-point wiring; the full table is T1.
 import './cover-quiet.ts';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { test } from 'node:test';
 import { VERSION } from '../src/version.ts';
-import { frozenUsage } from './cli-usage-fixture.ts';
+import { frozenUsage, sealedHelpProject } from './cli-usage-fixture.ts';
 import { clandCliLaunch } from './tier-cli.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 
-test('cland --help retains its pre-refactor output byte for byte', t => {
-  const root = mkdtempSync(join(tmpdir(), 'cland-help-bytes-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const actual = clandCliLaunch(() => execFileSync(process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), '--help'], {
-    cwd: root, env: fixtureEnvironment(root, process.env), timeout: 5000,
+const execCli = promisify(execFile);
+const entry = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+
+test('cland --help retains its pre-refactor output byte for byte', async t => {
+  const fixture = sealedHelpProject(t);
+  const before = fixture.snapshot();
+  const actual = await clandCliLaunch(() => execCli(process.execPath, [entry, '--help'], {
+    cwd: fixture.project, env: fixtureEnvironment(fixture.root, process.env), timeout: 5000,
   }));
   const exports: Record<string, string> = frozenUsage();
   const expected = readFileSync(new URL('./fixtures/cli-usage/help.txt', import.meta.url), 'utf8')
@@ -24,5 +26,22 @@ test('cland --help retains its pre-refactor output byte for byte', t => {
       assert.ok(Object.hasOwn(exports, name), `known frozen help block: ${name}`);
       return exports[name]!;
     });
-  assert.deepEqual(actual, Buffer.from(expected));
+  // execFile resolves only after the real child has exited successfully.
+  assert.equal(actual.stdout, expected);
+  assert.equal(actual.stderr, '');
+  assert.deepEqual(fixture.snapshot(), before);
+});
+
+for (const [command, flag, block] of [
+  ['hub', '--help', 'HUB_USAGE'],
+  ['session', '-h', 'SESSION_USAGE'],
+] as const) test(`cland ${command} ${flag} exits 0 without a hub or project changes`, async t => {
+  const fixture = sealedHelpProject(t);
+  const before = fixture.snapshot();
+  const actual = await clandCliLaunch(() => execCli(process.execPath, [entry, command, flag], {
+    cwd: fixture.project, env: fixtureEnvironment(fixture.root, process.env), timeout: 5000,
+  }));
+  assert.equal(actual.stdout, frozenUsage()[block]);
+  assert.equal(actual.stderr, '');
+  assert.deepEqual(fixture.snapshot(), before);
 });
