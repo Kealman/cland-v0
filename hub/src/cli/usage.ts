@@ -251,6 +251,7 @@ export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease 
 export const MODELS_USAGE = `  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n`;
 
 export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value
+                  verification.coverage_map_retention: positive pointer count (default 10); applies on next map publication after reload
                   web.port: 0 keeps the first free port; 1–65535 overrides it; a taken port disables only the web edge
                   web.bind: IPv4/IPv6 address (default 127.0.0.1); only the web edge binds there
                   web.origin: HTTPS tunnel origin (empty: none); Host + Origin match sets Secure; forwarded headers ignored

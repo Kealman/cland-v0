@@ -31,7 +31,7 @@ import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
 import { taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
-import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
+import { parseCoverageMap, mergeCoverageFiles } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
 import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
@@ -858,21 +858,8 @@ export class Suites {
     if (platform) job.platform = platform;
     job.finished = this.#clock.now().toISOString();
     if (!failures.length && job.selection?.recordCoverage) {
-      const maps = await Promise.all(shards.map(shard => readFile(join(this.#root, '.cland/run/suites', shard.id, 'coverage-map.json'), 'utf8').then(parseCoverageMap)));
-      const merged: CoverageMap = { version: 1, head: job.head, tree: job.tree!, created: this.#clock.now().toISOString(), testFiles: [], files: {} };
-      for (const map of maps) {
-        if (map.head !== merged.head || map.tree !== merged.tree) throw new Error('shard coverage provenance mismatch');
-        merged.testFiles.push(...map.testFiles);
-        for (const [file, entry] of Object.entries(map.files)) {
-          const target = merged.files[file] ??= { functions: [] };
-          for (const fn of entry.functions) {
-            const prior = target.functions.find(f => f.start === fn.start && f.end === fn.end);
-            if (prior) prior.tests = [...new Set([...prior.tests, ...fn.tests])].sort();
-            else target.functions.push(fn);
-          }
-        }
-      }
-      merged.testFiles.sort();
+      const merged = await mergeCoverageFiles(shards.map(shard => join(this.#root, '.cland/run/suites', shard.id, 'coverage-map.json')),
+        { version: 1, head: job.head, tree: job.tree!, created: this.#clock.now().toISOString(), testFiles: [], files: {} });
       await writeFile(join(this.#root, '.cland/run/suites', job.id, 'coverage-map.json'), JSON.stringify(merged), { mode: 0o600 });
     }
     const seconds = (ms: number | null) => ms === null ? 'unavailable' : `${(ms / 1000).toFixed(2)}s`;

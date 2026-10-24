@@ -8,6 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { findPackageJSON } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { chooseSuiteMode, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE } from '../src/suite-selection.ts';
+import { legacyCoverageSelection } from './selection-replay-coverage.ts';
 import { replayCount, replayPackage } from './selection-replay-package.ts';
 
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
@@ -52,7 +53,13 @@ try {
     choose = selector.chooseSuiteMode;
     readImports = selector.nvimHubImports;
     readImporters = selector.nvimHubImporters;
-    selectCoverage = (await import(pathToFileURL(join(scratch, 'hub/src/suite-coverage.ts')).href)).coverageSelection;
+    const coverageSelector = await import(pathToFileURL(join(scratch, 'hub/src/suite-coverage.ts')).href);
+    selectCoverage = coverageSelector.coverageSelection;
+    if (!coverageSelector.mergeCoverageFiles) {
+      const legacy = selectCoverage;
+      selectCoverage = (cwd, files, base, git, age, replay) => legacyCoverageSelection(legacy, cwd, files, base, git, age,
+        replay as Parameters<typeof legacyCoverageSelection>[6]);
+    }
   }
   const imports = await readImports(process.cwd());
   const commits = git('log', '--first-parent', '--format=%H%x09%s', range).trim().split('\n')

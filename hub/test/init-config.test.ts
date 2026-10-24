@@ -169,3 +169,14 @@ test('web bind and HTTPS tunnel origin validate and round-trip', () => {
     assert.throws(() => parseConfig(`[web]\norigin = ${JSON.stringify(origin)}`, 'web'), /web.origin/);
   }
 });
+
+// T1: retention is a positive pointer count, preserved by managed updates.
+test('coverage pointer retention defaults to ten and round-trips a positive configured count', () => {
+  assert.equal(defaultConfig('scratch').verification.coverageMapRetention, 10);
+  const config = parseConfig('[verification]\ncoverage_map_retention = 3', 'scratch', {}, { strict: true });
+  assert.equal(config.verification.coverageMapRetention, 3);
+  assert.equal(parseConfig(renderConfig(config), 'scratch').verification.coverageMapRetention, 3);
+  for (const value of ['0', '-1', '1.5', '"3"']) {
+    assert.throws(() => parseConfig(`[verification]\ncoverage_map_retention = ${value}`, 'scratch', {}, { strict: true }), /verification.coverage_map_retention.*positive integer/);
+  }
+});

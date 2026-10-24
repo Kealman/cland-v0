@@ -1,14 +1,19 @@
 // Coverage artifacts are portable between worktrees and executors; only their
 // durable artifact pointers live in the project's volatile run directory.
-import { readFile, readdir, rename } from 'node:fs/promises';
+import { readFile, readdir, rename, stat, mkdir, writeFile, unlink } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { LogFn } from './log.ts';
 import { projectRoot } from './project.ts';
 
 export type CoveredFunction = { name: string; start: number; end: number; startLine: number; endLine: number; tests: string[] };
 export type CoverageMap = { version: 1; head: string; tree: string; created: string; testFiles: string[]; files: Record<string, { functions: CoveredFunction[] }> };
 export type CoverageRecording = { head: string; tree: string; run: string };
-export type CoveragePointer = { artifact: string; path: string };
+export type CoveragePointer = { artifact: string; path: string; created?: string; head?: string };
+type CoverageCandidate = { pointer: CoveragePointer; created: number } | { pointer: CoveragePointer; map: CoverageMap };
+/** The loader owns one parsed map until release, including selection/diff work. */
+export type CoverageMapReader = { read(path: string): Promise<CoverageMap>; release?(map: CoverageMap): void };
+const mapReader: CoverageMapReader = { read: async path => parseCoverageMap(await readFile(path, 'utf8')) };
 type Git = (...args: string[]) => Promise<string>;
 type Hunk = { old: number; removed: number; added: number; next: number };
 
@@ -43,18 +48,62 @@ export function mergeCoverageMaps(previous: CoverageMap, next: CoverageMap): Cov
   return merged;
 }
 
-export async function coverageMaps(root: string): Promise<Array<{ map: CoverageMap; pointer: CoveragePointer }>> {
+/** Merge shard files into one accumulator, owning one incoming map at a time. */
+export async function mergeCoverageFiles(paths: string[], merged: CoverageMap, reader: CoverageMapReader = mapReader): Promise<CoverageMap> {
+  for (const path of paths) {
+    const map = await reader.read(path);
+    try {
+      if (map.head !== merged.head || map.tree !== merged.tree) throw new Error('shard coverage provenance mismatch');
+      merged.testFiles.push(...map.testFiles);
+      for (const [file, entry] of Object.entries(map.files)) {
+        const target = merged.files[file] ??= { functions: [] };
+        for (const fn of entry.functions) {
+          const prior = target.functions.find(f => f.start === fn.start && f.end === fn.end);
+          if (prior) prior.tests = [...new Set([...prior.tests, ...fn.tests])].sort();
+          else target.functions.push(fn);
+        }
+      }
+    } finally { reader.release?.(map); }
+  }
+  merged.testFiles.sort();
+  return merged;
+}
+
+/** List only small pointers. Never parse artifacts just to order candidates. */
+export async function coverageMaps(root: string): Promise<Array<{ pointer: CoveragePointer; created: number }>> {
+  return (await coveragePointerEntries(root)).map(({ pointer, created }) => ({ pointer, created }));
+}
+
+async function coveragePointerEntries(root: string): Promise<Array<{ path: string; pointer: CoveragePointer; created: number }>> {
   const dir = coveragePointers(root);
   const names = await readdir(dir).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
-  const maps = [];
+  const pointers: Array<{ path: string; pointer: CoveragePointer; created: number }> = [];
   for (const name of names.filter(name => name.endsWith('.json'))) {
     try {
-      const pointer = JSON.parse(await readFile(join(dir, name), 'utf8')) as CoveragePointer;
+      const path = join(dir, name);
+      const pointer = JSON.parse(await readFile(path, 'utf8')) as CoveragePointer;
       if (typeof pointer.artifact !== 'string' || typeof pointer.path !== 'string') continue;
-      maps.push({ pointer, map: parseCoverageMap(await readFile(pointer.path, 'utf8')) });
-    } catch { /* A deleted or damaged artifact is not selection evidence. */ }
+      const created = typeof pointer.created === 'string' ? Date.parse(pointer.created) : NaN;
+      pointers.push({ path, pointer, created: Number.isFinite(created) ? created : (await stat(path)).mtimeMs });
+    } catch { /* A deleted or damaged pointer is not selection evidence. */ }
   }
-  return maps.sort((a, b) => Date.parse(b.map.created) - Date.parse(a.map.created));
+  return pointers.sort((a, b) => b.created - a.created || a.pointer.path.localeCompare(b.pointer.path));
+}
+
+/** Called serially by the hub's publication queue. Artifact files remain owned
+ * by artifact lifecycle/retention; only rebuildable lookup pointers expire. */
+export async function registerCoverageMap(root: string, run: string, pointer: Required<CoveragePointer>, keep: number, log: LogFn): Promise<void> {
+  if (!Number.isSafeInteger(keep) || keep < 1) throw new Error('coverage map retention must be a positive integer');
+  if (!/^[a-zA-Z0-9_-]+$/.test(run)) throw new Error('invalid coverage run id');
+  const dir = coveragePointers(root);
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  const path = join(dir, `${run}.json`);
+  await writeFile(`${path}.tmp`, JSON.stringify(pointer), { mode: 0o600 });
+  await rename(`${path}.tmp`, path);
+  for (const entry of (await coveragePointerEntries(root)).slice(keep)) {
+    await unlink(entry.path);
+    log({ event: 'coverage-pointer-expired', pointer: entry.path, artifact: entry.pointer.artifact, path: entry.pointer.path, retained: keep });
+  }
 }
 
 function hunks(diff: string): Hunk[] {
@@ -73,28 +122,43 @@ function mapLine(line: number, changes: Hunk[]): number | null {
   return line - delta;
 }
 
-export async function coverageSelection(cwd: string, files: string[], mergeBase: string, git: Git, maxAgeMs: number, replay?: { maps: Awaited<ReturnType<typeof coverageMaps>>; at: number; nearest: boolean }): Promise<{ tests: string[]; functions: string[]; map: CoveragePointer & { head: string; retrospective?: boolean }; nvimFull: boolean; notes: string[] } | { fallback: string }> {
+export async function coverageSelection(cwd: string, files: string[], mergeBase: string, git: Git, maxAgeMs: number, replay?: { maps: CoverageCandidate[]; at: number; nearest: boolean }, reader: CoverageMapReader = mapReader): Promise<CoverageSelection> {
   for (const file of files) {
     if (/\.test\.ts$/.test(file) && /^hub\/(?:src|test)\//.test(file)) continue;
     if (!/^hub\/src\/.+\.ts$/.test(file)) return { fallback: `coverage unsupported path ${file}` };
     if (/^hub\/src\/(?:protocol\.ts|adapters\/contract\.ts|suite[^/]*\.ts|verification-tree\.ts|executor\/|hub\/(?:suites|suite-worker)\.ts)/.test(file)) return { fallback: `coverage shared infrastructure ${file}` };
   }
   const maps = replay?.maps ?? await coverageMaps(projectRoot(cwd));
-  if (!maps.length) return { fallback: 'coverage map missing' };
-  let chosen: typeof maps[number] | undefined;
-  let retrospective = false;
+  const created = (candidate: CoverageCandidate) => 'map' in candidate ? Date.parse(candidate.map.created) : candidate.created;
+  let valid = false;
   for (const candidate of maps) {
-    if (replay && Date.parse(candidate.map.created) > replay.at) continue;
-    try { await git('merge-base', '--is-ancestor', candidate.map.head, mergeBase); chosen = candidate; break; }
-    catch { /* Maps from another branch or after the merge base cannot select. */ }
+    let map: CoverageMap;
+    try { map = 'map' in candidate ? candidate.map : await reader.read(candidate.pointer.path); }
+    catch { continue; } // Missing or damaged artifacts cannot provide evidence.
+    try {
+      valid = true;
+      if (replay && Date.parse(map.created) > replay.at) continue;
+      try { await git('merge-base', '--is-ancestor', map.head, mergeBase); }
+      catch { continue; }
+      return await selectCoverageMap(cwd, files, mergeBase, git, maxAgeMs, map, candidate.pointer, replay?.at ?? Date.now(), false);
+    } finally { reader.release?.(map); }
   }
-  if (!chosen && replay?.nearest) {
-    chosen = [...maps].sort((a, b) => Math.abs(Date.parse(a.map.created) - replay.at) - Math.abs(Date.parse(b.map.created) - replay.at))[0];
-    retrospective = true;
+  if (replay?.nearest) {
+    for (const candidate of [...maps].sort((a, b) => Math.abs(created(a) - replay.at) - Math.abs(created(b) - replay.at))) {
+      let map: CoverageMap;
+      try { map = 'map' in candidate ? candidate.map : await reader.read(candidate.pointer.path); }
+      catch { continue; }
+      try { return await selectCoverageMap(cwd, files, mergeBase, git, maxAgeMs, map, candidate.pointer, replay.at, true); }
+      finally { reader.release?.(map); }
+    }
   }
-  if (!chosen) return { fallback: 'coverage map has no ancestor of task merge base' };
-  const { map, pointer } = chosen;
-  const age = retrospective ? 0 : (replay?.at ?? Date.now()) - Date.parse(map.created);
+  return { fallback: valid ? 'coverage map has no ancestor of task merge base' : 'coverage map missing' };
+}
+
+type CoverageSelection = { tests: string[]; functions: string[]; map: CoveragePointer & { head: string; retrospective?: boolean }; nvimFull: boolean; notes: string[] } | { fallback: string };
+
+async function selectCoverageMap(cwd: string, files: string[], mergeBase: string, git: Git, maxAgeMs: number, map: CoverageMap, pointer: CoveragePointer, at: number, retrospective: boolean): Promise<CoverageSelection> {
+  const age = retrospective ? 0 : at - Date.parse(map.created);
   if (age < 0) return { fallback: `coverage map stale (age ${Math.floor(age / 1000)}s; limit ${maxAgeMs / 1000}s)` };
   const notes = new Set<string>();
   if (age > maxAgeMs) notes.add(`coverage map age ${Math.floor(age / 1000)}s exceeds limit ${maxAgeMs / 1000}s; all hunks map`);

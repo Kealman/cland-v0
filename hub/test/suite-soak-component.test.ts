@@ -190,6 +190,8 @@ test('green nightly publishes a coverage map that selects task tests', async t =
   assert.deepEqual(result.to, ['impl']);
   const maps = await coverageMaps(f.root);
   assert.equal(maps.length, 1);
+  assert.equal(maps[0]!.pointer.head, f.candidate.head);
+  assert.equal(maps[0]!.pointer.created, f.clock.now().toISOString());
   const selected = await coverageSelection(f.root, [source], f.candidate.head, async (...args) => {
     if (args[0] === 'merge-base') return '';
     return args.length === 8

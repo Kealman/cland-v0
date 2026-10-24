@@ -46,7 +46,7 @@ import { quarantineResults, recordQuarantineResults, type QuarantineHistory } fr
 import { describeSelection, selectPackageSuite } from '../suite-selection.ts';
 import { isAbsolute, join, resolve } from 'node:path';
 import { readFile, stat, mkdir, writeFile, rename } from 'node:fs/promises';
-import { coveragePointers, parseCoverageMap } from '../suite-coverage.ts';
+import { registerCoverageMap, parseCoverageMap } from '../suite-coverage.ts';
 import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
@@ -851,11 +851,12 @@ export class Dispatcher {
       if (!coverage || coverage.fileDeleted || coverage.status === 'archived') throw new Error('coverage artifact unavailable');
       const map = parseCoverageMap(await readFile(coverage.path, 'utf8'));
       if (map.head !== job.head || map.tree !== job.tree) throw new Error('coverage artifact provenance mismatch');
-      const dir = coveragePointers(this.#options.control!.status().root!);
-      await mkdir(dir, { recursive: true, mode: 0o700 });
-      const path = join(dir, `${job.id}.json`);
-      await writeFile(`${path}.tmp`, JSON.stringify({ artifact: coverage.id, path: coverage.path }), { mode: 0o600 });
-      await rename(`${path}.tmp`, path);
+      const register = () => registerCoverageMap(this.#options.control!.status().root!, job.id,
+        { artifact: coverage!.id, path: coverage!.path, head: map.head, created: map.created },
+        this.#options.projectConfig?.().verification.coverageMapRetention ?? 10, this.#log);
+      const operation = this.#artifactQueue.then(register);
+      this.#artifactQueue = operation.catch(() => {});
+      await operation;
     }
     const artifact = core.store.resolveArtifact(artifactId);
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');

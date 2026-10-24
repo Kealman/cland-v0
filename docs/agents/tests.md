@@ -1041,7 +1041,20 @@ intervening diff. Integrated full runs remain the regression backstop; a selecte
 run can miss a regression which the next batch detects.
 
 Coverage artifacts remain the source of truth; `.cland/run/coverage-maps/` holds
-rebuildable pointers shared by linked task worktrees. Cache reuse for
+rebuildable pointers shared by linked task worktrees.
+Pointers record the artifact's `created` and `head`; ordering uses `created`,
+with the pointer mtime as the fallback for legacy pointers. Admission lists only
+these small pointers, then parses one artifact at a time, newest first, stopping
+at the first valid ancestor. Shard aggregation retains one incoming map beside
+its result accumulator. `[verification].coverage_map_retention` is a positive
+integer (default `10`); after config reload, the next map publication keeps that
+many newest pointers. Each removed pointer emits `coverage-pointer-expired` with
+its pointer path and artifact id. Artifact copies remain governed by ordinary
+artifact retention; pointer expiration never deletes or archives them.
+`hub/test/suite-coverage-selection.test.ts` counts maps parsed and retained at the
+loader seam, asserts the retained pointer set and expiration events, and preserves
+shard attribution. Use these deterministic receipts instead of RSS/GC assertions.
+Cache reuse for
 `hub-selected` also requires the same selected tests and Neovim phase, including
 its explicit importer subset.
 `node hub/test/selection-replay.ts <first-parent-range> --coverage` prints the last

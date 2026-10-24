@@ -21,7 +21,7 @@ export type ProjectConfig = {
   publish: { allowPaths: string[] };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
-  verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -39,7 +39,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   publish: { allowPaths: ['site/**', 'docs/brand/**', 'README.md', 'LICENSE', '.github/workflows/pages.yml'] },
   setup: { declinedInstalls: [], declinedAccounts: [] },
   merge: { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
-  verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -104,8 +104,10 @@ lock_path = ${JSON.stringify(c.verification.lockPath)}
 cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
 # Queue wait p90 target; informational, without changing admission.
 wait_p90_target = "${c.verification.waitP90TargetMs % MINUTE === 0 ? `${minutes(c.verification.waitP90TargetMs)}m` : `${c.verification.waitP90TargetMs / 1000}s`}"
-# Function coverage older than this falls back to package selection.
+# Report function coverage older than this; mapped ancestor hunks still select.
 coverage_max_age = "${c.verification.coverageMaxAgeMs / 1000}s"
+# Newest coverage pointers to keep; artifact retention is independent.
+coverage_map_retention = ${c.verification.coverageMapRetention}
 # Named tests fail at this deadline; silent commands are stopped with their process tree.
 test_timeout = "${c.verification.testTimeoutMs / 1000}s"
 stall_timeout = "${c.verification.stallTimeoutMs / 1000}s"
@@ -269,6 +271,10 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
       if (typeof verification[key] !== 'string') throw new Error('not a duration');
       c.verification[field] = durationMs(verification[key]);
     } catch { throw new Error(`verification.${key} must be a positive duration (s, m, h or d)`); }
+  }
+  if (verification.coverage_map_retention !== undefined) {
+    if (!Number.isSafeInteger(verification.coverage_map_retention) || (verification.coverage_map_retention as number) < 1) throw new Error('verification.coverage_map_retention must be a positive integer');
+    c.verification.coverageMapRetention = verification.coverage_map_retention as number;
   }
   if (verification.load_gate_workers !== undefined) c.verification.loadGateWorkers = workerCount(verification.load_gate_workers, 'verification.load_gate_workers');
   if (verification.workers !== undefined) c.verification.workers = workerCount(verification.workers, 'verification.workers');

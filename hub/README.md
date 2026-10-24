@@ -3582,21 +3582,35 @@ maps merge into one artifact. Task runs never refresh the map.
 
 Admission reads the newest artifact whose head is an ancestor of the task's merge
 base. `[verification].coverage_max_age` is a positive duration, default `"2d"`.
-Missing, invalid, stale or unrelated maps keep the package rules and name the
-reason. Protocol/contract, package, harness, fixture, runner and executor changes,
-unsupported paths, unknown source/functions, untested functions, top-level edits,
-missing covering tests and hunks changed since the map also keep those rules.
+This is a reporting threshold: older ancestor maps still select when every hunk
+maps through the intervening diff, with their age and limit in the report.
+Missing, invalid, future-dated or unrelated maps keep the package rules and name
+the reason. Protocol/contract, package, harness, fixture, runner and executor changes,
+unsupported paths, unknown source files, missing covering tests and hunks changed
+since the map also keep those rules. Top-level edits and edits in untested
+functions of a mapped file widen to every test covering that file; a file with
+no covering tests falls back.
 Unchanged lines are translated from the merge base back to the map across the
 intervening diff. Integrated full runs remain the regression backstop; a selected
 run can miss a regression which the next batch detects.
 
 Coverage artifacts remain the source of truth; `.cland/run/coverage-maps/` holds
-rebuildable pointers shared by linked task worktrees. Cache reuse for
+rebuildable pointers shared by linked task worktrees.
+Pointers record the artifact's `created` and `head`; ordering uses `created`,
+with the pointer mtime as the fallback for legacy pointers. Admission lists only
+these small pointers, then parses one artifact at a time, newest first, stopping
+at the first valid ancestor. Shard aggregation retains one incoming map beside
+its result accumulator. `[verification].coverage_map_retention` is a positive
+integer (default `10`); after config reload, the next map publication keeps that
+many newest pointers. Each removed pointer emits `coverage-pointer-expired` with
+its pointer path and artifact id. Artifact copies remain governed by ordinary
+artifact retention; pointer expiration never deletes or archives them.
+Cache reuse for
 `hub-selected` also requires the same selected tests and Neovim phase.
 `node hub/test/selection-replay.ts <first-parent-range> --coverage` prints the last
 40 task landings, missing-map fallbacks, deciding functions and each selected share
 of hub test-time. `--nearest` explicitly labels retrospective maps that may postdate
-the merge; live admission always requires an ancestor and enforces age. Supply
+the merge; live admission always requires an ancestor and mappable hunks. Supply
 `--failures <json>` to include historical failed test paths keyed by full/short
 merge SHA. The replay also reads retained suite logs by item and names their count; old logs
 without source identities remain unavailable rather than guessed.
