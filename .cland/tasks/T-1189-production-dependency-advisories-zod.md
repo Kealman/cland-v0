@@ -2,8 +2,8 @@
 id: T-1189
 kind: task
 title: "Production dependency advisories: zod below 4.6.6 (high) and ip-address 10.7.3 (moderate)"
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-924
 branch: t/T-1189-production-dependency-advisories-zod
 created: 2026-10-23T21:49:58.684Z
-updated: 2026-10-24T06:57:50.854Z
+updated: 2026-10-24T07:14:42.802Z
+closed: 2026-10-24T07:14:42.802Z
 ---
 
 ## Summary
@@ -36,6 +37,7 @@ With the human's approval:
 
 - [x] C1. `npm audit --omit=dev` reports no high or moderate advisory, and the full suite stays green (test).
   - done: impl-1189 · 2026-10-24T06:56:58.367Z
+  - verified: rev-26 [reviewer] · run rev-20261024-1189-final-1 · 2026-10-24T07:09:31.658Z · commit 6b52783fe3c2936b2b14623a40cabe222392f372
 
 ## Comments
 
@@ -135,3 +137,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear at6b52783f/tree5b3f8cff; no findings on Standards or Spec. Coordinator542b325d/7c72514d explicitly authorizes sharedc4bd17b5; independently compared verbatim single-file patch. seedTree now precedes liveRelease selection, matching the UI's complete fixture release set; all final assertions, bounds and downstream cases preserved. Package manifests/lock and product source unchanged; rev-23 full source A-10326 carries forward. T-1204 retains copied-live explicit selection follow-up per Coordinator. A-10332 actual local Darwin arm64 targeted file8/8 exit0 with corrected installed version manifest records and cleanup; no configured proof yet. Historical A-10329 remains failed at9778912a. C1 remains unverified pending new-head mode-free result and corrected audit/install provenance; integrated postlanding Linux/macOS full coverage separate. No Reviewer runtime or edits. A-10334: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10334-t-1189-shared-fixture-delta-source-at-6b52783f.md.
+
+### impl-1189 · 2026-10-24T07:09:07.296Z
+
+Same-head mode-free verify 141abea1-7248-4b9e-9241-e6302f8b6902 passed at 6b52783fe3c2936b2b14623a40cabe222392f372: Linux x64 droplet c-8 lon1, Node v24.21.0, T1/T2/Web exit 0; 2784 pass, zero failures/skips. Duration/lint budgets report-only; T3 excluded from this task run and reserved to periodic/integrated coverage. A-10345 durable log: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10345-suite-141abea1-7248-4b9e-9241-e6302f8b6902-auto-at-6b52783.log. Reviewer received same-head result for final evidence settlement. Coordinator's full integrated Linux/macOS post-landing coverage remains separate.
+
+### rev-26 · 2026-10-24T07:09:31.658Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-1189-final-1
+commit: 6b52783fe3c2936b2b14623a40cabe222392f372
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at6b52783f/tree5b3f8cff; C1 verified, no findings. A-10326 full source and A-10334 delta carry forward. Independently parsed A-10345/run141abea1 exit0:2784 ordinary passes/417 file passes, no fail/cancel/skip; allT1/fallbackT2hub+Neovim/actualWeb on Linuxx64 c-8lon1 Node24.21/Nvim0.12.5,workers2/Web4. Host full check passes0lintrefusals; gate042cf227 reused, not repeated remotely. Remote preparation explicitly npm ci for changed lock (130 added/133 audited),0 vulnerabilities. Corrected A-10325 actual installed manifests for all5 approved versions precede local check/audit0/50T2passes at9778912a; dependencies unchanged by current shared-fixture-only delta. Old installation claims remain corrected; old A-10329 remains failed. Items parent and all8 cases now pass. Generic budgets/lint/ratchet report-only; measuredWeb139.76s/shard139.65s exceeds40s report target. NoT3/T4/integrated Linux+macOS coverage or repetition claim; deferred Coordinator postlanding covers remain separate. T-1204/T-1208 follow-ups unchanged. NoQA requirement or Reviewer runtime. A-10346: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-10346-t-1189-final-dependency-evidence-at-6b52783f.md.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-24T07:14:42.802Z
+
+Merged a9037c596648524aeb972ae6846983186b8a7b48 onto dev.

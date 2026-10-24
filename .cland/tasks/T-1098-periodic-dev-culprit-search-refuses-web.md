@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T07:52:03.979Z
-updated: 2026-10-24T06:46:18.245Z
+updated: 2026-10-24T07:18:02.231Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ The periodic dev T3 culprit search for run 5c6f3777 (A-9033, red head 74175ef9, 
 
 - [ ] C1. A periodic dev culprit search whose failing file is a `web/test/*.test.ts` file runs the Web tier on the candidate merges, with the same path-safety checks, and names the first red merge (component test with a fake executor).
 - [ ] C2. A diagnostic file outside the allowed test roots is still refused with the existing error (test).
+
+## Comments
+
+### coord · 2026-10-24T07:18:02.231Z
+
+Instance 2026-10-24 07:17Z: periodic dev T3 f00422cf red at 596def62 (last green de29dda8) on web/test/items.test.ts only; culprit search inconclusive with "invalid batch diagnostic files" (hub/src/hub/suites.ts:459 accepts only hub/ and nvim/ test paths). Actual cause found by hand: 04657810 (R-377 closed left no versioned open release), fixed by c4bd17b5. Log A-10360.
