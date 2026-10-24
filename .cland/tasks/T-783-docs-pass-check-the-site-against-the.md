@@ -27,7 +27,7 @@ blocked_by:
 topic: topic-953
 branch: t/T-783-docs-pass-check-the-site-against-the
 created: 2026-10-18T06:04:23.644Z
-updated: 2026-10-24T11:03:21.208Z
+updated: 2026-10-24T11:08:47.428Z
 ---
 
 ## Summary
@@ -53,6 +53,7 @@ Every command, flag, key and default the pages name. These were guessed and need
   - verified: rev-26 [reviewer] · run rev-20261024-783-source-2 · 2026-10-24T10:07:10.819Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
   - verified: rev-26 [reviewer] · run rev-20261024-783-final-1 · 2026-10-24T10:26:28.365Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
   - verified: rev-26 [reviewer] · run rev-20261024-783-source-3 · 2026-10-24T11:03:21.208Z · commit 16c622dcd859d9c33dfad6f2536b0393171d5485
+  - verified: rev-26 [reviewer] · run rev-20261024-783-source-4 · 2026-10-24T11:08:47.428Z · commit 4371f90b04f5f2e48590da0a321166e9aa077929
 - [x] C2. Each command shown in a code block runs as shown on a fresh project
   - done: impl-783 · 2026-10-24T10:00:17.716Z
   - verified: rev-26 [reviewer] · run rev-20261024-783-final-1 · 2026-10-24T10:26:28.365Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
@@ -61,6 +62,7 @@ Every command, flag, key and default the pages name. These were guessed and need
   - verified: rev-26 [reviewer] · run rev-20261024-783-source-2 · 2026-10-24T10:07:10.819Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
   - verified: rev-26 [reviewer] · run rev-20261024-783-final-1 · 2026-10-24T10:26:28.365Z · commit 5e16ec8450df9065e1da1e89790825f1a776c854
   - verified: rev-26 [reviewer] · run rev-20261024-783-source-3 · 2026-10-24T11:03:21.208Z · commit 16c622dcd859d9c33dfad6f2536b0393171d5485
+  - verified: rev-26 [reviewer] · run rev-20261024-783-source-4 · 2026-10-24T11:08:47.428Z · commit 4371f90b04f5f2e48590da0a321166e9aa077929
 
 ## Comments
 
@@ -210,5 +212,38 @@ C1/C3 source verified at16c622dc. C2 pending fresh same-head configured result u
 No new findings. Proceed with one normal mode-free configured verification at this exact head, result routing to Reviewer and item lead. A changed head needs fresh source review. Coordinator69b4632d has reopened merges/local capacity; lead still follows ordinary ready and current-dev conflict-check procedure. QA policy none/after-stage.
 Reviewer used read-only source/Git/artifact inspection only; no edits, tests, probes, browser, installs, merge or delegation. Standards0 findings; Spec0 findings.
 Durable delta review A-10786.
+
+Criteria: C1 verified, C3 verified.
+
+### impl-783 · 2026-10-24T11:07:30.410Z
+
+Second gate conflict recovery at Coordinator request a1464eb5: integrated dev9f385c8c incl. T-780, new head4371f90b04f5f2e48590da0a321166e9aa077929 pushed. install.md conflict was equivalent Node requirement; all T-780 install/update/uninstall paths and options retained. README/Quickstart prerequisites and audit command table refreshed. A-10797: 23-page site build on macOS arm64 local, 62 shell syntax passes, updated source audit. Obsolete f99a9462 cancelled (A-10794), not passing evidence. Replacement delta review requested before new mode-free verify.
+
+### rev-26 · 2026-10-24T11:08:47.428Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261024-783-source-4
+commit: 4371f90b04f5f2e48590da0a321166e9aa077929
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-783 installer-integration delta source review — clear
+Head4371f90b04f5f2e48590da0a321166e9aa077929; treee31e9dd9b5154686a3cf88f168f9ee6d8653a927. Task/origin refs agree. Scope delta, run rev-20261024-783-source-4; findings[]. Previous source A-10786 at16c622dc carries forward except the inspected installer integration.
+
+## Standards
+Coordinatora1464eb5 required dev9f385c8c integration after T-780 landed. Range-diff independently shows the old source-finding fix and prior audit recovery commit unchanged; the first docs patch differs only at equivalent Node requirement context, retaining T-780's installer prerequisite table. Entire T-780 install introduction, prefix/tag/path examples, failure recovery and uninstall instructions retained. Added task edits are README/Quickstart Node/npm prerequisite and audit refresh; no product/test/skill/role changes. Whitespace check clean.
+A-10797 retains replacement-tree macOS arm64 site build23pages/native1.66s and62 current shell-block syntax records, allsyntaxExit0. Syntax is not runtime execution; originals remain at their named baselines in A-10714. A-10794 is cancelled143 at16c622dc, not passing evidence: only recorded hostT0 completed, runtime counts unavailable. OriginalA-10738 remains historical5e16ec84.
+
+## Spec
+Precise Node >=24.13.0 <25/npm requirement agrees with inherited installer source and package contract. Source checks confirm prefix/tag selection and locked install/build/prune flow; public download, package execution and real-device/provider operations remain accepted E-778 launch exceptions, not repeated by this review.
+All previously accepted M1–M3 directory/CLI-identity/conditional-approval fixes and T-1221 Smallest crew survive. The audit now separates shipped installer source from the pending public-install receipt, updates command locations/62-block syntax set and preserves cancellation/source attribution. No incorrect statement or content loss found in the integration.
+C1/C3 source verified at4371f90b. C2 remains pending fresh exact-head configured receipt under Coordinatorae3f5d65's accepted syntax/source plus isolated-runtime scope. No new source findings or changed launch exceptions.
+
+Proceed with normal mode-free configured verification at this head, Reviewer/item-lead routing. Preserve each old receipt at its actual head. Fetch/current-dev read-only conflict check remains normal ready procedure (Coordinator requested checking after T-781); any new integration/head change needs fresh review/verify. QA none/after-stage; no QA, stage closure, launch qualification or publication claim.
+Both axes in-session under role restrictions: read-only source/Git/artifact/stdlib inspection, no tests, probes, browser, edits, installs, merge or delegation. Standards0 findings; Spec0 findings.
+Durable delta review A-10800.
 
 Criteria: C1 verified, C3 verified.

@@ -2,8 +2,8 @@
 id: T-781
 kind: task
 title: Custom roles in roles.toml, or a landing card that claims none
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-956
 branch: t/T-781-custom-roles-in-roles-toml-or-a-landing
 created: 2026-10-18T06:04:23.355Z
-updated: 2026-10-24T10:45:23.504Z
+updated: 2026-10-24T11:13:35.363Z
+closed: 2026-10-24T11:13:35.363Z
 ---
 
 ## Summary
@@ -274,3 +275,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-781 · 2026-10-24T10:45:23.503Z
 
 Final same-head source/evidence review is clear at 604cc53e; C1–C3 verified, hub status ready. Configured droplet run 03acc344/A-10761 passed T0 host gate, all T1, fallback all T2 in both packages, Web and mapped T4 guard; 2939 ordinary test passes, 14 new identities 5/5 load controls. Linux c-8 lon1; lifetime604s/$0.0420; lint/duration report-only, no general T3 or enforcing-budget pass claimed. A-10764 retains final provenance. Fresh read-only merge-tree against origin/dev44f220a5 exits0/no conflicts, clean worktree, task head unchanged. Reported ready to Coordinator, claim retained; no merge. Automatic custom staffing/pools/hierarchy remains agreed separate feature follow-up.
+
+### coord · 2026-10-24T11:13:35.363Z
+
+Merged ea997ee6efbd7ac3b144af1c429f89a512aad720 onto dev.

@@ -3,7 +3,7 @@ id: T-1220
 kind: task
 title: A session's shell identity is not bound to a per-session credential
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T11:00:57.872Z
+updated: 2026-10-24T11:11:17.138Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Trust model today: every session runs as the same OS user on one machine. This g
   - done: impl-1220 · 2026-10-24T10:13:17.395Z
 - [x] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
   - done: impl-1220 · 2026-10-24T10:13:17.528Z
-- [x] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
-  - done: impl-1220 · 2026-10-24T11:00:21.245Z
+- [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
+  - failed: rev-31 [reviewer] · 2026-10-24T11:11:17.138Z · note Async relaunch must recheck caller authority after persistence and roll back role reservations when credential preparation fails.
 
 ## Comments
 
@@ -91,3 +91,46 @@ Criteria: C3 failed (Hub hello/resume/archive credential writes/removal use sync
 ### impl-1220 · 2026-10-24T11:00:21.487Z
 
 M2 correction pushed at 241701ab8f5e50fe523bf903684e694e94ca06a2. Async per-session persistence/removal is owned and drained; welcome waits for readiness, rotation precedes native relaunch, archive follows stop and drains writers before removal/publication, production closure awaits owned I/O before table close. Four exact-source regressions red 0/4 at sealed 54ce1285, green 4/4 on corrected tree; affected targeted files and daemon 18/18 pass locally on macOS arm64. npm run check exit 0, lint report mode 133 findings/60 files, zero refusals. A-10779 preserves original raw receipts, intermediate failures and native source envelopes; A-10742/A-10754 retain prior partial sweep evidence. No dev merge after first source review. Requesting fresh full source review; no verification submitted.
+
+### rev-31 · 2026-10-24T11:11:17.138Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-source2
+commit: 241701ab8f5e50fe523bf903684e694e94ca06a2
+scope: full
+findings: [{"severity":"medium","text":"M3: credential persistence introduces an await before native relaunch without rechecking the caller's dynamic permission. Private #resume drops authorize; resumed only times work. Recheck after held persistence and in native authorization, with a revoked-grant public-frame regression.","file":"hub/src/adapters/sessions.ts","line":1316},{"severity":"medium","text":"M4: reserveLaunchRole occurs before credential provisioning, but await provision lies outside resume failure settlement. A credential I/O rejection leaves the durable launch/role reservation; include preparation in rollback and prove faulted-write cleanup and subsequent admission.","file":"hub/src/adapters/sessions.ts","line":1283}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+T-1220 full corrected source review — not clear
+
+Reviewed 241701ab8f5e50fe523bf903684e694e94ca06a2, tree 8a205ef9369fa7125d0539536b1bb659332fb15d. Origin task ref matches; task worktree is clean. Fixed base 63e0e0b0f7fecb5964ac9a2333e3e8bec1635f1a; 126 changed paths. Carried rev-23's full original-security audit A-10740 and independently inspected credential admission, migration, adapters, actor/wire fields, raw CLI tests, and the complete async correction. Standards and Spec reviewed in-session, without delegation or execution.
+
+Remaining findings
+
+M3 — medium — hub/src/adapters/sessions.ts:1316 (also 1309–1313).
+Recheck the calling session after credential persistence and before native relaunch. Public resume passes the dispatcher's dynamic authorize callback, but calls private #resume without it. Private #resume awaits provision(), then checks only #closed/account limits before adapter.resume; its adapter authorize callback checks only account limits. Resumed is RequestGuard timing, not authorization. Thus a valid Coordinator CLI relaunch of a stopped target can be held in credential rename, have its session.resume grant/role revoked while held, and still enter the native adapter after release. The new asynchronous wait introduces this window even when the target was already stopped. Pass the dynamic authorization through this boundary and subsequent native authorization callbacks; re-read current target/role where needed. Add a public-frame held-rename regression: admit under the grant, await the exact held write, revoke, release, assert forbidden and zero native resumes, retaining the existing positive persistence-before-resume proof. This is a static control-flow finding, not an executed reproduction.
+
+M4 — medium — hub/src/adapters/sessions.ts:1283 and 1316–1323.
+Credential preparation failures bypass relaunch rollback. A stopped session with a role calls reserveLaunchRole, which durably writes the role and reservation. await provision() is outside the try/catch that settles unsuccessful resume, and outer resume finally releases only the lifecycle slot. An asynchronous mkdir/write/rename failure therefore rejects the request without releaseLaunchRole/role restoration, leaving a durable pending launch reservation even though no adapter was entered. Synchronous throws before the adapter promise and shutdown-aborted provisioning take the same exit. Put the whole reserved preparation/native-entry phase under owned rollback, preserving the original error and credential-safe diagnostics. Add a faulted credential-write regression asserting no native launch, no residual reservation/role ownership introduced by the attempt, released lifecycle, and successful subsequent admission. This is a static error-path finding, not an executed reproduction.
+
+Resolved/carried
+
+M1 remains resolved: new guide headings use exact repository test paths and index rows exist. M2's synchronous serving-path filesystem work is removed: fs/promises persistence/removal, per-stable-id serialization, welcome and queued delivery behind readiness, archive drain/remove/publication ordering, lifecycle exclusion of resume, and awaited shutdown before table closure. All production closure callers inspected await the drain. Archive refreshes identity/eligibility before publication; CLI-local fallback reads remain separate. No remaining synchronous credential-write/removal finding.
+
+The original accepted security design remains: session claims are checked before replay/audit/permissions/mutation, stable id and stored role control attribution, explicit invalid/empty environment tokens never fall back, own-ID private fallback files migrate existing shells on accepted own-spoke reconnect, existing tokens are retained when old storage is absent, relaunch rotates, archive removes private settings. Identity-free/unknown human labels and deliberate same-OS-user bypass remain the explicit human-approved trust model, not OS isolation. Claude uses private settings paths instead of token argv; Codex/OpenCode receive owned environment credentials. Authorization fixtures are explicit synthetic owned-store authority; raw admission/native contracts bypass them. Matching docs/help/skill provenance and additive wire actor fields are present.
+
+Evidence
+
+A-10779 original records SHA256 4047193a0da756fbf7f2f7fa5c7bea7466a696736def78226f3b9724c2f4fc5e matches provenance. Exact committed four-case regression SHA256 35274f301ca44320b57faa3b7eb80d9cad740001fd6ad9ce0667a60d1b8dfcfc matches both receipts. Sealed 54ce1285 + regression: exit 1, 0/4, early-welcome/early-result and missing writer receipt. Correction working tree later committed unchanged: exit 0, 4/4, native cases 42.436/24.509/20.958/21.031 ms, runner 418.002 ms, process wall 444 ms. These prove successful-I/O ordering, not the revoked/faulted cases above.
+
+Retained local Darwin arm64 Node 24.21 receipts include raw credential 8/8, native-boundary 29/29, daemon 18/18, lifecycle 6/6, archive 13/13, name reservation 67/67 and other affected targeted files. Check exit 0 (27935 ms process wall), lint report mode 133 findings/60 files, zero refusals; docs guard 3/3. These are accurately labeled correction working-tree receipts, not exact-commit reruns or configured-suite evidence. A-10742/A-10754 keep earlier partial failures/truncations; no broad sweep green inferred. Existing role-skill scan was separately filed T-1230 by Coordinator; fixedRoles I/O guard exempts no Sync export. No runtime executed by Reviewer.
+
+Disposition
+
+Complete remaining source finding set M3/M4. C3 fails for relaunch authorization/rollback lifecycle gaps; C1/C2 remain pending exact-head runtime settlement. Correct and push, restore claimant marks, then request fresh full source review before configured mode-free verification. No post-review dev merge absent Coordinator authorization. No merge enqueue or QA/T3/T4 claim.
+
+Durable review A-10804.
+
+Criteria: C3 failed (Async relaunch must recheck caller authority after persistence and roll back role reservations when credential preparation fails.).

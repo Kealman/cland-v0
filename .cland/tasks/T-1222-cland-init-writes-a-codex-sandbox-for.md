@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-960
 branch: t/T-1222-cland-init-writes-a-codex-sandbox-for
 created: 2026-10-24T09:42:30.046Z
-updated: 2026-10-24T11:00:27.117Z
+updated: 2026-10-24T11:17:37.965Z
 ---
 
 ## Summary
@@ -32,11 +32,13 @@ Found by impl-783 in the T-783 docs pass (2026-10-24 09:41Z, topic-953). `hub/sr
 - [x] C1. The human's choice is recorded on this item.
   - done: impl-1222 · 2026-10-24T10:46:22.221Z
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source2 · 2026-10-24T11:00:27.117Z · commit 381a8799f392239cd9ad57d7806adc540f913b5d
+  - verified: rev-23 [reviewer] · run rev-20261024-1222-source3 · 2026-10-24T11:17:12.364Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
 - [x] C2. `cland init`'s generated roles.toml and the built-in fallback defaults agree for every role's Codex sandbox, shown by a test comparing the two.
-  - done: impl-1222 · 2026-10-24T10:57:06.066Z
+  - done: impl-1222 · 2026-10-24T11:17:37.965Z
 - [x] C3. site/src/content/docs/docs/ states the default and how to change it.
   - done: impl-1222 · 2026-10-24T10:46:23.987Z
   - verified: rev-23 [reviewer] · run rev-20261024-1222-source2 · 2026-10-24T11:00:27.117Z · commit 381a8799f392239cd9ad57d7806adc540f913b5d
+  - verified: rev-23 [reviewer] · run rev-20261024-1222-source3 · 2026-10-24T11:17:12.364Z · commit ec1732a6de20181f0d80cb65d191e4d2239909a6
 
 ## Comments
 
@@ -123,5 +125,57 @@ Coordinatorc68ca68a accepts T2 resolved policy plus local macOS synthetic Seatbe
 
 Source clear permits configured mode-free verification unchanged at381a8799, with actual changed T3/T4/mapped-guard selection/timing/skip records retained. C1/C3 verified, C2 runtime pending. Reviewer static source/Git/artifact reads only; no tests/probes/install/edits/Git mutation/browser/delegation. Standards zero findings; Spec zero findings.
 Durable review A-10782.
+
+Criteria: C1 verified, C3 verified.
+
+### impl-1222 · 2026-10-24T11:13:38.373Z
+
+Configured run 44abe56f at381a8799 (A-10803) exited1: renamed Codex policy scenario measured5.272721635s exceeded the hard5s new-identity budget. T0/T1/T2 exited0; changedT3 passed12 assertions but its duration gate failed. T4/Web did not complete; no overall pass. Linux droplet c-8/lon1, lifetime542s, cost$0.0376. Per Coordinator53cffa15, ec1732a6 adds an8s allowance (~1.5x ONE Linux sample), ownerE-778, expires2026-10-31, source receipt in reason. Scenario already shares setup and has no fixed sleeps to remove. Runtime code/assertions unchanged. Check and final manifest validation passed locally; fresh source review requested before mode-free rerun.
+
+### rev-23 · 2026-10-24T11:16:52.865Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261024-1222-evidence1
+commit: 381a8799f392239cd9ad57d7806adc540f913b5d
+scope: evidence
+findings: [{"severity":"medium","text":"M2: Configured run44abe56f/A-10803 exits1 because the renamed native-policy identity takes5.272721635s against the enforcing5s new-identity budget; T4/Web incomplete. Apply a justified measured allowance or source-reviewed optimization before retry.","file":"hub/test/codex-adapter.test.ts","line":449}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-1222 prior-head evidence disposition — not clear
+
+Runtime/source-reviewed head 381a8799f392239cd9ad57d7806adc540f913b5d, run44abe56f-a3bb-4c72-84a3-b8ed5b4b637b, original log A-10803. Configured mode-free run finished exit1. T0host check25.558s, T1 and fallback all hub/Neovim T2 exit0. Native progress records2657 ordinary passing tests/379 passing files plus10 actual passing load-gate test/file records (two generated-policy identities five times each), no assertion failures. Changed T3codex-adapter runs12passing identities once, but phase exits1: the renamed exact key 'Codex launches Implementer with narrow workspace roots, QA full access, Reviewer read-only, and the configured T-48 profile (T-1222)' takes5.272721635s and exceeds the enforcing new-identity5s limit. This is independent of report-only tier/ratchet diagnostics and of the8s T3 stanza-printer threshold. T4 and Web did not complete. No overall green, Linux sandbox-enforcement or whole-T3/T4 claim.
+
+Changed-T3 observed added wall30.262s excluding machine wait; suite30.32s, phase envelope35s, top-level observed sum29.272s are distinct. T1suite58.35s and T2suite345.96s are distinct from63/351s envelopes. Host marker3df0b0f5efedf3dcb49ebaa494701bd69af7d828 independently is a Git tree, retained host gate not repeated remotely. Executor droplet c-8lon1 cland-v0-0271d5aa Linuxx64 6.8.0-142-generic, Node24.21/Nvim0.12.5, workers2, lifetime542s/$0.0376; diskfsync32.49ms/SQLite12.38ms. Report-only lint133/60 and unrelated scale/render/ratchet warnings retained.
+
+Prior source2 A-10782 remains sound, C1/C3 source criteria remain verified. C2 evidence is not clear until a reviewed correction and fresh configured run pass. Finding M2 medium: named new-identity duration limit failed; preserve the native workload/assertions and apply measured justified allowance under the documented procedure, or source-review an optimization. No retry at an unreviewed changed head.
+Durable disposition A-10814.
+
+Criteria: C2 failed (Configured44abe56f failed the renamed native-policy duration gate; no completed T4/Web evidence.).
+
+### rev-23 · 2026-10-24T11:17:12.364Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-1222-source3
+commit: ec1732a6de20181f0d80cb65d191e4d2239909a6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1222 allowance correction source review — clear
+
+Head ec1732a6de20181f0d80cb65d191e4d2239909a6/tree68de3695d329f93d6417f3c4962d7b73d01253c9, origin task ref matches. Fixed full-review base44f220a5; directly inspected diff381a8799..ec1732a6. Prior full source2 A-10782 carries forward, now with omitted original docs-guard green recovered in A-10784 (original chunk66f700 exit0,3/3, Node169.256542ms after exact seven heading changes). No dev merge. Source scope full, findings [].
+
+Standards: the sole delta is one allow-map entry in hub/test/durations.json for the renamed native policy contract. seconds8, open ownerE-778 independently confirmed, UTCadded2026-10-24/expires2026-10-31. Reason explicitly cites one Linux droplet c-8 passing assertion sample5.272721635s from failed44abe56f/A-10803, about1.5x headroom and the retained lifecycle. Coordinator53cffa15 specifically selected8s; no fabricated baseline or prior allowances changed. docs/agents/tests.md1334–1388 distinguishes report-only tier budgets, passing-sample/headroom recommendations and the independent5s exact-new-identity gate. Allowance is a temporary exception, not a claim that the case ran faster.
+
+Spec: runtime code, test identities/assertions, workload, docs and chosen role policy are byte-unchanged. Native case shares one scratch project/fake/hub, observes five initial role/profile app-server launches and two acknowledged stop/relaunch flows. Static inspection finds receipt waits rather than fixed sleeps; no cheap duplicated setup removed by relaxing the contract. C1 human Aide decision remains final: workspace-write/no extra roots/no Aide root commits; Coordinator relay correction0c61c0e7 governs. C3 documentation remains source-verified. C2 remains runtime pending after the failed prior-head receipt.
+
+Source clearance permits fresh configured mode-free verify at this exact unchanged head. Carry actual selected phases, native outcome/timings, complete allowance JSON and changed-T3 added-wall line into ready evidence. Accepted local macOS synthetic Seatbelt proof remains separately attributed; Linux does not run that macOS test. Coordinatorc68ca68a's real-Codex scratch commit/push after landing before launch remains an E-778 boundary, not a claim of this task run; Linux Landlock remains out of scope. No stage QA claim.
+
+Correction check and repository-tier-plan success are claimant-reported local receipts pending durable raw preservation; do not invent end-to-end check wall time. Reviewer only static source/Git/artifact/tracker reads, no tests/probes/edits/install/Git mutation/browser/delegation. Standards zero remaining findings; Spec zero findings. C1/C3 source-verified, C2 awaiting new runtime.
+Durable review A-10814.
 
 Criteria: C1 verified, C3 verified.
