@@ -6956,6 +6956,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-929)"
     },
+    "hub/test/dev-t3-search-component.test.ts::red periodic run runs Web probes and names the first red merge": {
+      "seconds": 3.4,
+      "owner": "E-1194",
+      "added": "2026-10-24",
+      "expires": "2026-10-31",
+      "reason": "Four detached scripted Web probes plus periodic reporting and Bug filing prove first-red-merge attribution. Local macOS samples 1.524 s and 2.263 s; 3.4 s is about 1.5x the worst sample (T-1098)."
+    },
     "hub/test/dev-t3-search-component.test.ts::red periodic run files one Bug with live last-claimant delivery": {
       "seconds": 2.797752,
       "owner": "E-880",

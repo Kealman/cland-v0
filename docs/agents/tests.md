@@ -273,9 +273,12 @@ A red periodic result starts a separate durable culprit search for T2 and T3
 failures alike, retaining the `DevT3Result` interface above. Each failing file
 reruns at the red head first (an executed pass is a flake), then at the pinned
 last green head (a failure is pre-existing), then bisects the intervening landed
-commits. Probes run only that file, with no load repetitions or full-suite cache
-proof, through the shared droplet budget and queue. Interrupted or missing
-execution, unavailable baselines/ranges and preparation failures are inconclusive;
+commits. Hub and Neovim probes run only that file; `web/test/*.test.ts`
+probes select the Web tier on each candidate, requiring the requested file's own
+execution receipt. All retain test-root and parent-traversal checks, with no load
+repetitions or full-suite cache proof, through the shared droplet budget and queue.
+Interrupted or missing execution, unavailable baselines/ranges and preparation
+failures are inconclusive;
 they never assign blame. Search state and probe receipts survive restart. The
 hub files one Bugs item per culprit merge, retaining both heads, files, run ids
 and artifact paths, and reports in General to the Coordinator and the merge's

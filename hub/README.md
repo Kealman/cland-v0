@@ -3983,6 +3983,10 @@ exclusions in `hub/src/verification-tree.ts` make tracker-only commits ineligibl
 The cursor survives restart, and a queued, running or unreported
 periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
+Red results search candidate merges with detached diagnostic probes; Web test
+files select the Web tier and require their own execution receipts. Test-root
+and parent-traversal validation also applies to these probes. See
+[periodic culprit search](../docs/agents/tests.md#periodic-dev-t2t3-and-release-gate).
 
 After admission, periodic delivery uses the captured commit's objects, so later
 root dev commits cannot invalidate bundling. A bundling or delivery failure before

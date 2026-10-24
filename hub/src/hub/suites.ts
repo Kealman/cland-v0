@@ -466,12 +466,13 @@ export class Suites {
     if (runner && commands.tiers && config?.merge.queue && !admitted.tiers) admitted = taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, true);
     const files = runner ? (input.devT3Probe?.files ?? input.batch?.diagnostic?.files) : undefined;
     const diagnosticSteps = input.batch?.diagnostic?.steps;
-    if (files && (!files.length && !diagnosticSteps?.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
+    if (files && (!files.length && !diagnosticSteps?.length || files.some(file => !/^(?!.*(?:^|\/)\.\.\/)(hub\/(test|src)|nvim\/test|web\/test)\/.*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
+    const webDiagnostic = Boolean(files?.some(file => file.startsWith('web/')) || diagnosticSteps?.includes('Web'));
     let selection: SuiteSelection = files
       ? { mode: 'full', files, reason: input.devT3Probe ? 'periodic dev T3 failing-file rerun' : 'batch failing-file rerun', loadGate: false, soak: false,
-        shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length || diagnosticSteps?.includes('Web')) },
-        ...(diagnosticSteps?.includes('Web') ? { web: 'all' as const, ...(!files.length ? { tiers: [] } : {}) } : {}),
+        shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length || webDiagnostic) },
+        ...(webDiagnostic ? { web: 'all' as const, ...(files.every(file => file.startsWith('web/')) ? { tiers: [] } : {}) } : {}),
         ...(nvimTests?.length ? { nvimTests } : {}) }
       : runner ? occasionSelection(admitted, input.occasion, config?.merge.batchTiers) : admitted;
     const commandSelection = runner || !commands.tiers ? selection : occasionSelection(taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, config?.merge.queue ?? false), input.occasion, config?.merge.batchTiers);
