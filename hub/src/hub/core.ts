@@ -958,6 +958,13 @@ export class HubCore {
     else this.#itemSnapshots.delete(`T-${idNumber(change.id)}`);
     const contextChanged = this.#refreshExplorerContext(false);
     if (change.item) change = {...change,item:this.#items?.get?.(change.id) ?? change.item};
+    if (!change.item || change.item.state === 'closed') {
+      // Include disconnected verifiers: reopening an item must not revive an old reservation.
+      for (const pending of this.#store.pendingVerifications()) {
+        if (this.#sameItem(pending.item, change.id)) this.#store.clearMeta(pending.key);
+      }
+      this.#schedulePresence();
+    }
     this.#afterCommit(() => this.#drainVerifierRequests());
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
@@ -1803,9 +1810,14 @@ export class HubCore {
   }
 
   sessionPending(session: Pick<Connection, 'name' | 'sessionId' | 'role'>): PendingVerification | undefined {
-    const stored = this.#store.meta(`pending-verification:${this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id)}`);
+    const key = `pending-verification:${this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id)}`;
+    const stored = this.#store.meta(key);
     if (!stored) return undefined;
     const pending = JSON.parse(stored) as PendingVerification;
+    if (this.#items && this.#items.lead(pending.item)?.state !== 'open') {
+      this.#store.clearMeta(key);
+      return undefined;
+    }
     return { ...pending, item: this.#items?.resolveId?.(pending.item) ?? pending.item };
   }
 
@@ -1824,7 +1836,7 @@ export class HubCore {
     const request = /^(review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(message.text);
     if (!request) return false;
     const item = this.#items?.resolveId?.(request[2]!) ?? null;
-    if (!item) return false;
+    if (!item || this.#items?.lead(item)?.state !== 'open') return false;
     const key = `pending-verification:${this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id)}`;
     const pending = this.sessionHolds(connection).some(h => h.item === item)
       ? null : JSON.stringify({ item, kind: request[1] });

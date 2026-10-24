@@ -3,8 +3,117 @@ import { fakeHarness } from './fakes/harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { join } from 'node:path';
 import { connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message, SendOutcome } from '../src/protocol.ts';
+import { componentProject, human } from './merge-component-support.ts';
+
+test('landing finalization clears a disconnected verifier reservation durably before an item is reopened', async t => {
+  const f = await componentProject(t);
+  const coord = await inProcessSpoke(t, { hub: f.hub, cwd: f.root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+  await coord.waitForEvent(e => e.params.meta?.kind === 'role');
+  const item = await f.ticket();
+  const text = `review request ${item.id}\nBuild to land`;
+  const sent = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['rev'], text });
+  assert.equal(sent.outcomes[0]?.outcome, 'delivered');
+  await f.rev.waitForEvent(e => e.params.content === text);
+  const who = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: { item: string; kind: string } }> }>('who')).sessions;
+  assert.deepEqual((await who()).find(s => s.name === 'rev')?.pending, { item: item.id, kind: 'review' });
+  await f.rev.close();
+  assert.equal(await f.tracker.finishMerge(human, item.id, 'Merged fixture head into dev'), null);
+  assert.equal(f.tracker.view(item.id).state, 'closed');
+  await f.tracker.edit(human, item.id, { state: 'open' });
+  const back = await inProcessSpoke(t, { hub: f.hub, cwd: f.root, name: 'rev', role: 'reviewer', sessionId: 'component-rev' });
+  await back.waitForEvent(e => e.params.meta?.kind === 'role');
+  assert.equal((await who()).find(s => s.name === 'rev')?.pending, undefined, 'reopening cannot resurrect the landed request');
+});
+
+for (const role of ['reviewer', 'qa'] as const) {
+  const kind = role === 'reviewer' ? 'review' : 'qa';
+  test(`closing an item clears every pending ${kind} and assigns the oldest queued request`, async t => {
+    const root = await tempProject(t);
+    const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+    const ui = await connectUi(t, discovery);
+    const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const verifiers = [];
+    for (const name of ['verify-a', 'verify-b']) {
+      const verifier = await inProcessSpoke(t, { cwd: root, discover: true, name, role, sessionId: name });
+      await verifier.waitForEvent(e => e.params.meta?.kind === 'role');
+      verifiers.push({ name, verifier });
+    }
+    const create = async (title: string) => (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title })).item;
+    const previous = await create('Closing verification');
+    const next = await create('Oldest waiting verification');
+    const later = await create('Later waiting verification');
+    const text = `${kind} request ${previous.id}\nOld build`;
+    for (const { name, verifier } of verifiers) {
+      await coord.call('send', { to: [name], text });
+      await verifier.waitForEvent(e => e.params.content === text);
+    }
+    const pending = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: { item: string; kind: string } }> }>('who')).sessions
+      .filter(s => s.name.startsWith('verify-')).map(s => s.pending);
+    assert.deepEqual(await pending(), [0, 1].map(() => ({ item: previous.id, kind })));
+    for (const item of [next, later]) {
+      const result = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: [role], text: `${kind} request ${item.id}\nWaiting build` });
+      assert.equal(result.outcomes[0]?.outcome, 'queued');
+    }
+    assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: previous.id })).ok, true);
+    const messages = ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages;
+    assert.deepEqual(messages.find(m => m.text.startsWith(`${kind} request ${next.id}\n`))?.to, ['verify-a']);
+    assert.deepEqual(messages.find(m => m.text.startsWith(`${kind} request ${later.id}\n`))?.to, ['verify-b']);
+    await verifiers[0]!.verifier.waitForEvent(e => e.params.content.startsWith(`${kind} request ${next.id}\n`));
+    await verifiers[1]!.verifier.waitForEvent(e => e.params.content.startsWith(`${kind} request ${later.id}\n`));
+    assert.deepEqual(await pending(), [{ item: next.id, kind }, { item: later.id, kind }]);
+    for (const item of [next, later]) assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: item.id })).ok, true);
+    assert.deepEqual(await pending(), [undefined, undefined], 'who never shows a closed item as pending');
+    const lateText = `${text}\nLate delivery after closure`;
+    await coord.call('send', { to: ['verify-a'], text: lateText });
+    await verifiers[0]!.verifier.waitForEvent(e => e.params.content === lateText);
+    assert.deepEqual(await pending(), [undefined, undefined], 'late delivery of a closed-item request cannot recreate pending work');
+  });
+}
+
+for (const queued of [false, true]) {
+  test(`legacy closed-item pending after restart ${queued ? 'cannot block the oldest queued review' : 'is absent from who and session rows'}`, async t => {
+    const root = await tempProject(t);
+    const served = await projectHub(t, root, {}, { clock: new FakeClock() });
+    const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const create = async (title: string) => (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title })).item;
+    const previous = await create('Already landed before upgrade');
+    const next = await create('Oldest queued review');
+    const later = await create('Later queued review');
+    assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: previous.id })).ok, true);
+    const text = `review request ${next.id}\nOldest build`;
+    const laterText = `review request ${later.id}\nLater build`;
+    if (queued) for (const request of [text, laterText]) {
+      assert.equal((await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text: request })).outcomes[0]?.outcome, 'queued');
+    }
+    await coord.close();
+    await served.stop();
+    // Seed the pre-fix durable format only while every writer is stopped.
+    const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+    try {
+      db.prepare('insert into meta (key, value) values (?, ?)').run('pending-verification:rev-id', JSON.stringify({ item: previous.id, kind: 'review' }));
+    } finally { db.close(); }
+    const restarted = await projectHub(t, root, {}, { clock: new FakeClock() });
+    const ui = await connectUi(t, restarted.discovery);
+    const back = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', assignRole: false, sessionId: 'coord-id' });
+    const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-d', role: 'reviewer', sessionId: 'rev-id' });
+    await rev.waitForEvent(e => e.params.meta?.kind === 'role');
+    if (queued) {
+      const messages = ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages;
+      assert.deepEqual(messages.find(m => m.text === text)?.to, ['rev-d']);
+      assert.deepEqual(messages.find(m => m.text === laterText)?.to, ['reviewer']);
+      await rev.waitForEvent(e => e.params.content === text);
+    }
+    const who = (await back.call<{ sessions: Array<{ name: string; pending?: { item: string; kind: string } }> }>('who')).sessions;
+    assert.deepEqual(who.find(s => s.name === 'rev-d')?.pending, queued ? { item: next.id, kind: 'review' } : undefined);
+    const rows = (await ui.request({ type: 'session.list' })).value as { rows: Array<{ name: string; pending?: { item: string } }> };
+    assert.notEqual(rows.rows.find(s => s.name === 'rev-d')?.pending?.item, previous.id);
+  });
+}
 
 for (const relaunch of [false, true]) {
   test(`queued QA request starts an idle verifier with held progress${relaunch ? ' after relaunch' : ''}`, async t => {

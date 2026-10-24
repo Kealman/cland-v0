@@ -717,6 +717,11 @@ export class Store implements HygieneMemory {
 
   clearMeta(key: string): void { this.#prepare('delete from meta where key = ?').run(key); }
 
+  pendingVerifications(): Array<{ key: string; item: string }> {
+    return (this.#prepare("select key, value from meta where key glob 'pending-verification:*'").all() as Row[])
+      .map(row => ({ key: row.key as string, item: (JSON.parse(row.value as string) as { item: string }).item }));
+  }
+
   /** A provisional tracker identity kept while its real session renames during failed adoption. */
   sessionAlias(name: string): string | null { return this.meta(`session-alias:${name}`); }
 

@@ -1,0 +1,5 @@
+# hub/test/verifier-routing.test.ts
+
+T2 request-routing seam: real send, who, session.list and topic.history frames through sealed projectHub fixtures, in-process peers and a FakeClock. Closure tests reserve two verifiers and queue two requests to prove immediate oldest-first assignment for both Reviewer and QA, then check closed-item and late-delivery visibility. The existing merge component fixture exercises Tracker.finishMerge, the landing finalization boundary, with a disconnected verifier; reopening proves the old reservation was durably cleared without needing native Git or a hub process.
+
+Legacy restart cases seed pending-verification metadata only after the first in-process hub has stopped all writers. Observe the assigned message and its accepted delivery before asserting the new pending. Check both an empty queue and the oldest of two queued requests; current open-item uncertain reservations remain covered by the existing cases. Run this file alone with `node --test hub/test/verifier-routing.test.ts`.
