@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { hubShards, lintHubShards, packageShards, serializeTierManifest, ShardManifestError, type TierManifest } from '../src/suite-shards.ts';
+import { hubShards, lintHubShards, packageShards, readTierLoadGuards, serializeTierManifest, ShardManifestError, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection, suiteTestEnv } from '../src/verification-occasion.ts';
 import { planTierReport } from '../src/suite-tier-report.ts';
 import { selectionTransport, selectionFromEnv, chooseSuiteMode } from '../src/suite-selection.ts';
@@ -167,6 +167,24 @@ test('manifest serialization sorts a newly added path before existing paths', as
   assert.deepEqual(Object.keys(JSON.parse(text).tests), ['hub/test/a.test.ts', 'nvim/test/z.test.ts']);
   await writeFile(join(root, 'hub/test/tiers.json'), text);
   await lintHubShards(root);
+});
+
+test('read-path guards survive serialization and refuse malformed globs or non-T4 targets at lint and admission', async t => {
+  const { root } = await fixture(t);
+  const tests = { 'hub/test/a.test.ts': 'T4', 'nvim/test/z.test.ts': 'T1' } as const;
+  const loadGuards = { 'hub/src/reads/**/*.ts': ['hub/test/a.test.ts'] };
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests, loadGuards }));
+  await lintHubShards(root);
+  assert.deepEqual(await readTierLoadGuards(root), loadGuards);
+  for (const invalid of [null, [], 'guard', { '': ['hub/test/a.test.ts'] },
+    { '../outside.ts': ['hub/test/a.test.ts'] }, { '/absolute.ts': ['hub/test/a.test.ts'] },
+    { 'hub/src/*.ts': [] }, { 'hub/src/*.ts': 'hub/test/a.test.ts' },
+    { 'hub/src/*.ts': ['nvim/test/z.test.ts'] }, { 'hub/src/*.ts': ['hub/test/missing.test.ts'] },
+  ]) {
+    await writeFile(join(root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests, loadGuards: invalid }));
+    await assert.rejects(lintHubShards(root), /loadGuards/);
+    await assert.rejects(readTierLoadGuards(root), /loadGuards/);
+  }
 });
 
 test('legacy manifest preserves its recorded phases, targets and worker counts', async t => {

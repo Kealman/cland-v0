@@ -2,11 +2,11 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { dirname, posix, relative, resolve } from 'node:path';
+import { dirname, matchesGlob, posix, relative, resolve } from 'node:path';
 import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
 import { defaultConfig, parseConfig } from './init/config.ts';
 import { fetchSuiteDev, selectionFailure } from './suite-dev-fetch.ts';
-import { readTierAssignments } from './suite-shards.ts';
+import { readTierAssignments, readTierLoadGuards, type LoadGuards, type Tier } from './suite-shards.ts';
 import { durationAllowanceOwner } from './suite-durations.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
@@ -21,6 +21,22 @@ export function taskSuiteSelection(selection: SuiteSelection, branch: string, re
   return { ...(fallback ? whole : selection), mode: selection.mode === 'hub-only' ? 'full' : selection.mode,
     reason: fallback ? `${selection.reason}; task fallback runs all T2` : selection.reason,
     tiers: ['T1', 'T2'], loadGate: true };
+}
+
+/** Add bounded process samples independently of coverage and package fallback. */
+export function taskDurationSelection(selection: SuiteSelection, assignments: ReadonlyMap<string, Tier>, loadGuards: LoadGuards = {}): SuiteSelection {
+  if (selection.tiers?.join(',') !== 'T1,T2') return selection;
+  const reasons = new Set<string>();
+  const guarded = selection.files.flatMap(path => Object.entries(loadGuards).flatMap(([pattern, tests]) => {
+    if (!matchesGlob(path, pattern)) return [];
+    for (const test of tests) reasons.add(`T4 ${test} guards ${path}`);
+    return tests;
+  }));
+  const files = [...new Set([...selection.files.filter(file => ['T3', 'T4'].includes(assignments.get(file) ?? '')), ...guarded])].sort();
+  if (!files.length) return selection;
+  return { ...selection, durationCheck: { files },
+    reason: [selection.reason, ...[...reasons].sort()].join('; '),
+    tiers: ['T1', 'T2', ...(['T3', 'T4'] as const).filter(tier => files.some(file => assignments.get(file) === tier))] };
 }
 
 /** Narrow an admitted package plan for one configured tier command. */
@@ -244,12 +260,10 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
   const config = source === null ? defaultConfig('suite') : parseConfig(source, 'suite', env);
   const taskSelection = taskSuiteSelection(selection, branch, requested, config.merge.queue);
   if (taskSelection.tiers?.join(',') !== 'T1,T2') return taskSelection;
-  const assignments = await readTierAssignments(cwd);
-  const files = taskSelection.files.filter(file => ['T3', 'T4'].includes(assignments?.get(file) ?? '')).sort();
-  if (!files.length) return taskSelection;
+  const sampled = taskDurationSelection(taskSelection, await readTierAssignments(cwd) ?? new Map(), await readTierLoadGuards(cwd));
+  if (!sampled.durationCheck) return sampled;
   const owner = await durationAllowanceOwner(cwd, branch.split('/')[1]!.match(/^[A-Z]+-\d+/)?.[0] ?? '');
-  return { ...taskSelection, durationCheck: { files, ...(owner ? { owner } : {}) },
-    tiers: ['T1', 'T2', ...(['T3', 'T4'] as const).filter(tier => files.some(file => assignments?.get(file) === tier))] };
+  return { ...sampled, durationCheck: { ...sampled.durationCheck, ...(owner ? { owner } : {}) } };
 }
 
 /** Keep large stage identity sets below OS argument/environment size limits. */

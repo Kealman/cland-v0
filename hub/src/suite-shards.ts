@@ -23,7 +23,8 @@ export const TIER_MANIFEST = 'hub/test/tiers.json';
 const LEGACY_MANIFEST = 'hub/test/shards.json';
 export type Tier = 'T1' | 'T2' | 'T3' | 'T4' | 'Web';
 export type TierEntry = Tier | { tier: 'T3'; contract: string } | { tier: 'T3'; scenario: string };
-export type TierManifest = { version: 1; tests: Record<string, TierEntry> };
+export type LoadGuards = Record<string, string[]>;
+export type TierManifest = { version: 1; tests: Record<string, TierEntry>; loadGuards?: LoadGuards };
 // Inject recorded allowance provenance for in-process planners; production reads Git.
 export type DurationHistory = { legacyKeys?: ReadonlySet<string> };
 
@@ -31,7 +32,7 @@ export type DurationHistory = { legacyKeys?: ReadonlySet<string> };
 export function serializeTierManifest(manifest: TierManifest): string {
   return JSON.stringify({ ...manifest, tests: Object.fromEntries(Object.keys(manifest.tests).sort().map(path => [path, manifest.tests[path]])) }, null, 2) + '\n';
 }
-type Manifest = { version?: number; tests?: Record<string, unknown> };
+type Manifest = { version?: number; tests?: Record<string, unknown>; loadGuards?: unknown };
 export class ShardManifestError extends Error {
   readonly files: string[];
   constructor(message: string, files: string[] = []) { super(message); this.files = files; }
@@ -49,6 +50,20 @@ function tierOf(entry: unknown): Tier | undefined {
 function parseManifest(text: string, path: string): Manifest {
   try { return JSON.parse(text) as Manifest; }
   catch { throw new ShardManifestError(`invalid test manifest JSON: ${path}`, [path]); }
+}
+
+function loadGuardsOf(manifest: Manifest): LoadGuards {
+  if (!Object.hasOwn(manifest, 'loadGuards')) return {};
+  const guards = manifest.loadGuards;
+  const invalid = (detail: string): never => { throw new ShardManifestError(`invalid loadGuards in ${TIER_MANIFEST}: ${detail}`, [TIER_MANIFEST]); };
+  if (!guards || typeof guards !== 'object' || Array.isArray(guards)) return invalid('expected a source-glob to T4 test-file array map');
+  const soak = new Set(Object.entries(manifest.tests ?? {}).filter(([, entry]) => tierOf(entry) === 'T4').map(([path]) => path));
+  for (const [pattern, files] of Object.entries(guards)) {
+    if (!pattern.trim() || pattern !== pattern.trim() || pattern.startsWith('/') || pattern.includes('\\') || pattern.split('/').some(part => part === '' || part === '.' || part === '..')) return invalid(`source glob must be repository-relative: ${JSON.stringify(pattern)}`);
+    if (!Array.isArray(files) || !files.length) return invalid(`${pattern} needs a nonempty T4 test-file array`);
+    for (const file of files) if (typeof file !== 'string' || !soak.has(file)) return invalid(`${pattern} names a missing or non-T4 test: ${JSON.stringify(file)}`);
+  }
+  return guards as LoadGuards;
 }
 
 async function classify(paths: string[], manifest: Manifest, source: (path: string) => Promise<string>, smoke: boolean, workers = 4, legacy = false): Promise<SuiteShard[]> {
@@ -69,6 +84,7 @@ async function classify(paths: string[], manifest: Manifest, source: (path: stri
     if (path.startsWith('web/') !== (tier === 'Web')) throw new ShardManifestError(`Web classification requires a web/test path: ${path}`, [path]);
     tiers.set(path, tier);
   }
+  if (!legacy) loadGuardsOf(manifest);
   const groups: Record<Shard, string[]> = { free: [], machine: [] };
   for (const path of paths) {
     const resource = tiers.get(path) === 'T1' ? 'free' : 'machine';
@@ -98,6 +114,12 @@ export async function readTierAssignments(cwd: string): Promise<Map<string, Tier
   // Neovim. Give those files the same conservative tier as the machine phase.
   if (entry.legacy) for await (const path of glob('nvim/test/**/*.test.ts', { cwd })) tiers.set(path, 'T3');
   return tiers;
+}
+
+/** Optional source-glob to T4 guard map; legacy projects have no read-path guards. */
+export async function readTierLoadGuards(cwd: string): Promise<LoadGuards> {
+  const entry = await readManifest(cwd);
+  return entry && !entry.legacy ? loadGuardsOf(entry.manifest) : {};
 }
 
 export async function hubShards(cwd: string, smoke = false, workers?: number, history: DurationHistory = {}): Promise<SuiteShard[]> {

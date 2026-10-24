@@ -540,6 +540,28 @@ test('task admission adds only changed T3/T4 files, including renamed and untrac
   }
 });
 
+test('task admission selects unchanged T4 guards from the manifest and reports the mapped source', async t => {
+  const { root, git, source } = await coverageFixture(t, '', 'hub/src/adapters/sessions.ts');
+  const manifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
+  const guard = 'hub/test/inbox-verifier-load.test.ts';
+  await writeFile(join(root, guard), "import test from 'node:test'; test('load guard', () => {});\n");
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/test/changed.test.ts': 'T2', 'hub/test/first.test.ts': 'T1',
+    [guard]: 'T4', 'hub/test/second.test.ts': 'T2',
+  }, loadGuards: manifest.loadGuards }));
+  await writeFile(join(root, '.cland/config.toml'), '[merge]\nqueue = true\n');
+  await git('add', '.'); await git('commit', '-m', 'mapped baseline'); await git('push', 'origin', 'HEAD:dev');
+  await writeFile(join(root, 'hub/src/adapters/sessions.ts'), source.replace('return 2', 'return 4'));
+  const selection = await selectPackageSuite(root, 'auto', fixtureEnvironment(root, process.env));
+  assert.equal(selection.mode, 'hub-selected');
+  assert.deepEqual(selection.durationCheck?.files, [guard]);
+  assert.deepEqual(selection.tiers, ['T1', 'T2', 'T4']);
+  const { describeSelection, tierSuiteSelection } = await import('../src/suite-selection.ts');
+  assert.match(describeSelection(selection), /T4 hub\/test\/inbox-verifier-load.test.ts guards hub\/src\/adapters\/sessions.ts/);
+  const narrowed = tierSuiteSelection(selection, 'T4');
+  assert.deepEqual((await packageShards(root, narrowed.mode, undefined, narrowed)).flatMap(phase => phase.targets), [guard]);
+});
+
 test('task admission requires explicit merge queue protection before reducing tiers', async t => {
   const { root, source } = await coverageFixture(t);
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {

@@ -115,3 +115,4 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-progress.test.ts`](../../../hub/test/suite-progress.test.ts) | [Notes](hub-test-suite-progress.test.ts.md) |
 | [`hub/test/roles-clauses.test.ts`](../../../hub/test/roles-clauses.test.ts) | [Notes](hub-test-roles-clauses.test.ts.md) |
 | [`hub/test/suite-human-queue.test.ts`](../../../hub/test/suite-human-queue.test.ts) | [Notes](hub-test-suite-human-queue.test.ts.md) |
+| [`hub/test/suite-tiers.test.ts`](../../../hub/test/suite-tiers.test.ts) | [Notes](hub-test-suite-tiers.test.ts.md) |

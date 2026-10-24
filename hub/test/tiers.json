@@ -1,5 +1,10 @@
 {
   "version": 1,
+  "loadGuards": {
+    "hub/src/adapters/requests.ts": ["hub/test/inbox-verifier-load.test.ts"],
+    "hub/src/adapters/sessions.ts": ["hub/test/inbox-verifier-load.test.ts"],
+    "hub/src/hub/core.ts": ["hub/test/inbox-verifier-load.test.ts"]
+  },
   "tests": {
     "hub/src/adapters/opencode.test.ts": "T3",
     "hub/src/address.test.ts": "T1",

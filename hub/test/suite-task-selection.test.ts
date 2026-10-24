@@ -6,7 +6,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, matchesGlob } from 'node:path';
-import { taskSuiteSelection, WEB_SMOKE, type SuiteSelection } from '../src/suite-selection.ts';
+import { taskSuiteSelection, taskDurationSelection, describeSelection, tierSuiteSelection, WEB_SMOKE, type SuiteSelection } from '../src/suite-selection.ts';
 import { packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
 import { packageSuitePlan } from './run-suite.ts';
@@ -62,6 +62,30 @@ test('task cadence plans all T1 plus selected T2 from the repository manifest', 
   assert.deepEqual(selection.tiers, ['T1', 'T2']);
   assert.equal(selection.loadGate, true);
   assert.deepEqual(await verificationCommands(f.root, f.root), { prepare: '', check: 'npm run check', test: 'npm test' });
+});
+
+test('mapped read paths add only their T4 guards once, with an explanation under selected coverage and fallback', async t => {
+  const f = plannerFixture(t, serializeTierManifest({ version: 1, tests: {
+    'hub/test/unit.test.ts': 'T1', 'hub/test/component.test.ts': 'T2',
+    'hub/test/changed.test.ts': 'T3', 'hub/test/read-load.test.ts': 'T4',
+    'hub/test/unrelated-load.test.ts': 'T4',
+  } }));
+  const tiers = new Map(Object.entries(f.manifest.tests).map(([file, tier]) => [file, typeof tier === 'string' ? tier : tier.tier]));
+  const guards = { 'hub/src/reads/**/*.ts': ['hub/test/read-load.test.ts'], 'hub/src/reads/list.ts': ['hub/test/read-load.test.ts'] };
+  for (const mode of ['hub-selected', 'full'] as const) {
+    const base = taskSuiteSelection({ mode, files: ['hub/src/reads/list.ts', 'hub/test/changed.test.ts'], reason: 'coverage fixture', tests: ['hub/test/component.test.ts'] }, 't/T-1203', 'auto', true);
+    const selection = taskDurationSelection(base, tiers, guards);
+    assert.deepEqual(selection.durationCheck?.files, ['hub/test/changed.test.ts', 'hub/test/read-load.test.ts']);
+    assert.deepEqual(selection.tiers, ['T1', 'T2', 'T3', 'T4']);
+    assert.match(describeSelection(selection), /T4 hub\/test\/read-load.test.ts guards hub\/src\/reads\/list.ts/);
+    assert.deepEqual(await f.plan(selection), ['hub/test/changed.test.ts', 'hub/test/component.test.ts', 'hub/test/read-load.test.ts', 'hub/test/unit.test.ts']);
+    const narrowed = tierSuiteSelection(selection, 'T4');
+    assert.deepEqual(await f.plan(narrowed), ['hub/test/read-load.test.ts']);
+    assert.deepEqual(taskDurationSelection({ ...base, files: [...base.files, 'hub/test/read-load.test.ts'] }, tiers, guards).durationCheck, selection.durationCheck, 'a changed guard is not scheduled twice');
+  }
+  const unrelated = taskDurationSelection(taskSuiteSelection({ mode: 'full', files: ['hub/src/unrelated.ts'], reason: 'fallback' }, 't/T-1203', 'auto', true), tiers, guards);
+  assert.equal(unrelated.durationCheck, undefined);
+  assert.deepEqual(unrelated.tiers, ['T1', 'T2']);
 });
 
 test('per-tier commands preserve the repository task file plan', async t => {

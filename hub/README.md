@@ -3777,7 +3777,7 @@ With `tiers.json` and `[merge] queue = true` in both the candidate and hosting
 hub, task verification plans T0 (check), all T1, coverage-selected hub T2 and
 diff-selected Neovim T2. Coverage fallbacks run all T2 across both packages,
 clearing inherited Neovim subsets. Tasks additionally run each added/changed
-T3/T4 test file once, without load repetitions; unchanged process smoke stays deferred; results name whether T3 is in the merge batch or deferred to periodic dev
+T3/T4 test file and mapped T4 read-path guard once, without load repetitions; unchanged process smoke stays deferred; results name whether T3 is in the merge batch or deferred to periodic dev
 and integrated occasions, with the queue state. Explicit `all`
 retains T3. A flaky-gate second task receipt uses the same mode-free selection.
 Projects with the queue disabled or absent, and legacy candidates without
@@ -3785,7 +3785,10 @@ Projects with the queue disabled or absent, and legacy candidates without
 
 The task duration check uses changed test-file paths from the fetched dev
 merge-base diff plus dirty/untracked paths, independently of T2 coverage.
-Fallback keeps that exact T3/T4 file set. On the Linux droplet, passing T3
+The optional `tiers.json` `loadGuards` map adds T4 files when their source globs
+match diff paths; reports name the guarding file and changed source. Fallback
+keeps that exact changed/guarded T3/T4 file set. See
+[shared read-path selection](../docs/agents/tests.md#shared-read-path-load-selection-t-1203). On the Linux droplet, passing T3
 identities at >=80% of their tier budget print JSON allowances with 1.5x worst
 passing sample headroom, the nearest open container owner and seven-day UTC
 dates; T4 has no budget and prints no stanza. No manifest values are written.

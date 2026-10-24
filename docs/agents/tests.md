@@ -191,11 +191,11 @@ This repository's budget manifest uses report mode until after v0.1.4 (D73);
 enforcement returns under E-880. The duration-budget section below describes
 allowances, enforcement and the T3 growth ratchet.
 
-Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets. Tasks also run added/changed T3/T4 test files once for the duration check below; fallback never widens that set. Successful coverage keeps diff-selected Neovim T2. T3 runs in batches whose configured tiers include it, in periodic `dev-t3` runs, and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports name whether T3 is in the merge batch or deferred to periodic dev and integrated occasions, with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
+Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets. Tasks also run added/changed T3/T4 test files and mapped T4 read-path guards once (selection mapping below); fallback never widens that set. Successful coverage keeps diff-selected Neovim T2. T3 runs in batches whose configured tiers include it, in periodic `dev-t3` runs, and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports name whether T3 is in the merge batch or deferred to periodic dev and integrated occasions, with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
 
 | Run kind | Plan after T0 |
 | --- | --- |
-| Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 test files once |
+| Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 files and mapped T4 guards once |
 | Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; this repository T1); five repetitions of T3 identities absent from the last green batch or stage receipt |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
@@ -219,7 +219,7 @@ uses the same mode-free selection. Unchanged T3 smoke files are filtered out of 
 
 `[merge] batch_tiers` selects a nonempty set of T1–T4 tiers for each batch.
 Its default is `["T1", "T3"]`; this repository sets `["T1"]` (D67).
-Task verification adds changed T3/T4 files once to T0–T2 (duration check below). A green batch with T1 only supplies no T3 receipt.
+Task verification adds changed T3/T4 files and mapped T4 guards once to T0–T2 (selection mapping and duration check below). A green batch with T1 only supplies no T3 receipt.
 With this repository's T1-only batches, automated T2 coverage after merge runs
 only in the periodic dev run, the nightly soak and close occasions (stage, epic
 and release). Ordinary integrated `dev` or explicit `all` remains available for
@@ -977,6 +977,36 @@ harness or process-cleanup changes. The report names the deciding functions,
 selected Neovim tests and coverage artifact. T3 smoke remains in integrated and
 legacy package plans.
 
+### Shared read-path load selection (T-1203)
+
+`hub/test/tiers.json` may declare an optional `loadGuards` object mapping
+repository-relative source globs to nonempty arrays of T4 test-file paths:
+
+```json
+"loadGuards": {
+  "hub/src/adapters/sessions.ts": ["hub/test/inbox-verifier-load.test.ts"]
+}
+```
+
+Globs use Node's `path.matchesGlob` syntax, including `**` and brace alternatives.
+Task admission matches the same fetched-dev/dirty/untracked diff paths used by
+package selection. Each matched guard joins the changed T3/T4 duration-check file
+set once, independently of coverage or fallback, and the selection report says
+`T4 hub/test/inbox-verifier-load.test.ts guards hub/src/adapters/sessions.ts`.
+Overlapping globs and a changed guard do not duplicate its execution. Unmatched
+T4 files stay deferred; fallback never selects the whole T4 tier. Queue protection
+must be enabled in both the candidate and hosting hub, as for changed T3/T4 files.
+The selected T4 base phase enables soak and receives no load-gate repetitions.
+Manifest lint and admission reject malformed maps and missing or non-T4 targets.
+
+T-1147's `session.list` read path is mapped at `hub/src/adapters/requests.ts`,
+`hub/src/adapters/sessions.ts` and `hub/src/hub/core.ts` to
+`hub/test/inbox-verifier-load.test.ts`. That guard exercises sustained delivery/list
+bursts and bounds pending reads, indexed queries and coalesced updates. Keep this
+map beside tier assignments when extending a shared read path or its cost guard.
+
+### Coverage ancestry and fallback
+
 Clean integrated `dev` full runs record per-test-file V8 coverage, including the
 CLI, lifecycle daemons, spokes and fake harness descendants, and publish a
 function-range map with their head and canonical candidate tree. Close-run shard
@@ -1081,7 +1111,7 @@ belongs to the human and Coordinator.
 
 The worker survives the caller's shell exiting. The hub keeps its run record across restart; a killed worker produces a result naming the signal while the hub is live, or a missing-exit-receipt crash report after restart. A permission change can hold reporting: `cland hub status --history --json` exposes pending runs and their reporting error; restoring permission lets the hub retry without duplicating a committed result. A recipient hygiene refusal holds the whole result until every intended recipient is admissible, so a partially muted recipient cannot lose its report.
 
-Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. Linked worktrees share one in-flight dev fetch per canonical Git common directory, bounded to five seconds; each admission diffs against its captured commit. A failed fetch may use the last known `origin/dev` only if it has a merge base with the candidate, with an explicit warning. That ref does not count as fresh-fetch proof for an integrated occasion. Without a usable base, selection falls back to full. Fallback warnings retain sanitized Git stderr and appear in the first result lines, including capped and cached reports. `all` or `--all` forces full only for the Coordinator, the human shell or an authorized `--occasion` request. Other sessions receive `verify-all-reserved` with the automatic diff selection and no queue entry. A flaky-gate second receipt is another ordinary diff-selected verify, with no mode. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures without a usable base run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../../hub/README.md#tests). Each run first executes `npm run check` (typecheck and test lint) when the candidate declares it and `test:lint`, otherwise `npm run typecheck`, then the package test script from the calling worktree. For queue-enabled tiered task branches the task tier cap applies after package selection: all T1, selected T2 and no T3/T4, including process smoke baselines. `--report` names the result topic; repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
+Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. Linked worktrees share one in-flight dev fetch per canonical Git common directory, bounded to five seconds; each admission diffs against its captured commit. A failed fetch may use the last known `origin/dev` only if it has a merge base with the candidate, with an explicit warning. That ref does not count as fresh-fetch proof for an integrated occasion. Without a usable base, selection falls back to full. Fallback warnings retain sanitized Git stderr and appear in the first result lines, including capped and cached reports. `all` or `--all` forces full only for the Coordinator, the human shell or an authorized `--occasion` request. Other sessions receive `verify-all-reserved` with the automatic diff selection and no queue entry. A flaky-gate second receipt is another ordinary diff-selected verify, with no mode. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures without a usable base run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../../hub/README.md#tests). Each run first executes `npm run check` (typecheck and test lint) when the candidate declares it and `test:lint`, otherwise `npm run typecheck`, then the package test script from the calling worktree. For queue-enabled tiered task branches the task tier cap applies after package selection: all T1 and selected T2, plus changed T3/T4 files and mapped T4 guards once; remaining process smoke is deferred. `--report` names the result topic; repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
 
 The hub persists the request, exact head, item, diff selection, enqueue time and priority in its database before acknowledging it. Admission gives the Coordinator's integrated dev requests first priority, then human `npm test` waiters in enqueue order, then the item rank captured at submission, then other requests in enqueue order. The local slot admits one run; `[verification].remote_budget` admits parallel
 droplet runs beside it (a positive integer, 4 by default; this project's D27 build value is 2). The scheduler walks the
@@ -1301,8 +1331,9 @@ hub adds one execution of every top-level identity in each added or changed T3/T
 test file. “Changed” means the test file appears in the no-renames diff from the
 merge-base of fetched `origin/dev` to `HEAD`, or in dirty/untracked paths. A renamed
 file is an addition; a renamed identity changes its file. Deleted files are omitted.
-Changes to production code or a shared test helper alone do not select unchanged
-T3/T4 files. Coverage selection and fallback affect T2, never expand this check to
+Production paths select unchanged T4 files only through the `loadGuards` mapping
+above; other production/helper changes do not select unchanged T3/T4 files.
+Coverage selection and fallback affect T2, never expand this check to
 the whole T3/T4 tier. Each selected file runs once, independently of coverage/smoke
 subsets; these identities receive no load-gate repetitions. T4 enables the soak
 prerequisite for its base execution and has no tier budget, so prints no stanza.
@@ -1323,9 +1354,9 @@ stanza. Existing allowances and baselines remain untouched.
 The ready report retains the complete JSON stanza and a `duration check:` line
 naming platform/executor, selection rule, passing identity count and **added wall**:
 the measured selected-phase wall excluding machine-lease wait. This is the added
-work in a typical task verify: zero extra phases when no T3/T4 file changed;
-otherwise one base execution of just those files plus runner setup. It is not a
-projection of the whole tier and does not estimate contention with other work.
+work in a typical task verify: zero extra phases when no T3/T4 file changed and
+no read-path guard matched; otherwise one base execution of just those files plus
+runner setup. It is not a projection of the whole tier and does not estimate contention with other work.
 Local macOS execution is explicitly labelled as lacking Linux evidence. A cache
 hit retains its original platform/executor; it is not a fresh Linux sample.
 
@@ -1653,7 +1684,7 @@ the output-checkpoint/append boundary without resetting the admitted limit.
 
 Clause procedure (defaults implementer, project implementer):
 
-- `hub-selected` names changed functions, covering tests and the map artifact. Queue-enabled tasks run all T1 and selected T2, with all T2 in both packages on fallback. Changed T3/T4 files run once; remaining T3 smoke runs in batches and integrated runs. Coverage maps come from green integrated runs; ancestry, mapping and fallback rules are in docs/agents/tests.md.
+- `hub-selected` names changed functions, covering tests and the map artifact. Queue-enabled tasks run all T1 and selected T2, with all T2 in both packages on fallback. Changed T3/T4 files and mapped T4 guards run once; remaining T3 smoke runs in batches and integrated runs. Coverage maps come from green integrated runs; ancestry, mapping and fallback rules are in docs/agents/tests.md.
 
 Clause procedure (defaults implementer, project implementer):
 

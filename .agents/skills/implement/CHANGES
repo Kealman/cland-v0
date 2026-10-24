@@ -70,5 +70,6 @@ T-1175: Replace the open-page-only worker restriction with the sealed phone work
 
 T-1198: describe changed T3/T4 task duration sampling and point to the shared duration procedure.
 2026-10-24 · T-1015: document captured-commit periodic bundling, remote checks, reusable infrastructure/not-run outcomes and sealed regression seams.
+T-1203: include tiers.json mapped T4 read-path guards in task verification; shared mapping and selection procedure stays in docs/agents/tests.md.
 T-1144: Distinguish provider capacity not-run receipts from executed failures and document no automatic fallback.
 T-1144 M1: Keep capacity unavailable through size/spend admission as well as acquisition.
