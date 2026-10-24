@@ -3,7 +3,7 @@ id: T-1198
 kind: task
 title: Mode-free verify measures new and changed T3/T4 identities on Linux and prints an allowance stanza
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-934
 branch: t/T-1198-mode-free-verify-measures-new-and
 created: 2026-10-24T06:46:04.400Z
-updated: 2026-10-24T08:08:15.278Z
+updated: 2026-10-24T08:11:29.138Z
 ---
 
 ## Summary

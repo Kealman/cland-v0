@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:45:44.006Z
-updated: 2026-10-24T08:09:06.841Z
+updated: 2026-10-24T08:11:49.668Z
 ---
 
 ## Summary
@@ -41,13 +41,13 @@ stages:
     lanes:
       - - T-1199
         - T-1070
+      - - T-1210
   - name: sealed and race-free fixtures
     qa:
       scope: none
       when: after-stage
     lanes:
-      - - T-1210
-        - T-1083
+      - - T-1083
         - T-1200
       - - T-1012
         - T-1030

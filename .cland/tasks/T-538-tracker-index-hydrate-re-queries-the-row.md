@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-1197
 blocked_by: []
-topic: null
+topic: topic-941
 branch: t/T-538-tracker-index-hydrate-re-queries-the-row
 created: 2026-10-15T21:15:50.790Z
-updated: 2026-10-24T08:11:05.984Z
+updated: 2026-10-24T08:11:24.345Z
 ---
 
 ## Summary
