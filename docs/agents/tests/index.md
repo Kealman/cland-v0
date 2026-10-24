@@ -4,6 +4,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/dev-t3-search.test.ts`](../../../hub/test/dev-t3-search.test.ts) | [Notes](hub-test-dev-t3-search.test.ts.md) |
+| [`hub/test/suite-scheduling.test.ts`](../../../hub/test/suite-scheduling.test.ts) | [Notes](hub-test-suite-scheduling.test.ts.md) |
 | [`hub/test/account-fixture-env.test.ts`](../../../hub/test/account-fixture-env.test.ts) | [Notes](hub-test-account-fixture-env.test.ts.md) |
 | [`hub/src/hub/store.test.ts`](../../../hub/src/hub/store.test.ts) | [Notes](hub-src-hub-store.test.ts.md) |
 | [`hub/test/approval-records.test.ts`](../../../hub/test/approval-records.test.ts) | [Notes](hub-test-approval-records.test.ts.md) |

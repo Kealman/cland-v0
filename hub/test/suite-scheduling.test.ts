@@ -4,6 +4,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
+for (const periodic of ['soak', 'dev-t3'] as const) test(`${periodic} timer contains a throwing skipped notice and keeps serving suite reads`, async t => {
+  const f = await suiteUnit(t, { onSoakNotice: () => { throw new Error('skip notice failed'); } },
+    periodic === 'soak' ? 'soak="12:00"' : 'dev_t3_every="1s"');
+  f.beforeInspect(async () => { throw new Error('candidate inspection failed'); });
+  await f.tick(); await assert.doesNotReject(f.suites.settled());
+  if (periodic === 'dev-t3') { await f.tick(); await assert.doesNotReject(f.suites.settled()); }
+  assert.ok(f.logs.some(entry => entry.event === `verification-${periodic}-skipped` && String(entry.text).includes('candidate inspection failed')));
+  assert.ok(f.logs.some(entry => entry.event === `verification-${periodic}-notice-failed` && entry.error === 'Error: skip notice failed'));
+  assert.deepEqual(f.suites.status(), []);
+  await assert.doesNotReject(f.suites.queue());
+});
+
 for (const budget of [1, 2]) test(`verify queues a second requester without a waiting worker (configured budget ${budget})`, async t => {
   const f = await suiteUnit(t, { budget });
   const first = await f.launch(); const second = await f.launch();

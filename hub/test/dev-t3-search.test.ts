@@ -7,6 +7,29 @@ import { join } from 'node:path';
 import { Store } from '../src/hub/store.ts';
 import { DevT3Search, type ProbeReceipt, type SearchReport } from '../src/hub/dev-t3-search.ts';
 import type { DevT3Result } from '../src/hub/dev-t3-result.ts';
+import { suiteUnit } from './suite-unit-fixture.ts';
+
+test('search contains a throwing blocked notice and retries its report on the next timer tick', async t => {
+  const f = await suiteUnit(t);
+  const logs: Record<string, unknown>[] = [];
+  let reported = false;
+  const search = new DevT3Search(f.store, {
+    probe: async () => assert.fail('empty search has no probes'),
+    report: async () => { if (!reported) throw new Error('search report failed'); },
+    blocked: () => { throw new Error('blocked notice failed'); },
+    log: entry => { logs.push(entry); },
+  });
+  t.after(() => search.close(f.clock));
+  search.accept({ ...redResult(), failingFiles: [] });
+  await assert.doesNotReject(search.tick());
+  assert.equal(f.store.meta('dev-t3-search-error'), 'Error: search report failed');
+  assert.ok(logs.some(entry => entry.event === 'dev-t3-search-report-failed' && entry.error === 'Error: blocked notice failed'));
+  reported = true;
+  search.start(f.clock);
+  await f.clock.advance(1000);
+  await search.tick();
+  assert.equal(JSON.parse(f.store.meta('dev-t3-searches')!)[0].reported, true);
+});
 
 export const redResult = (): DevT3Result => ({ event: 'verification-dev-t3-result', run: 'red-run', head: 'm8', tree: 'red-tree', previousGreenHead: 'baseline', previousGreenRun: 'green-run', merges: Array.from({ length: 8 }, (_, i) => ({ head: `m${i + 1}`, subject: `Merge T-${i + 1}` })), result: 'red', failingFiles: ['hub/test/regression.test.ts', 'nvim/test/pre-existing.test.ts'], artifact: 'A-1', path: '/logs/red' });
 

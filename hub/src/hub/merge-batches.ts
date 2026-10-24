@@ -9,13 +9,15 @@ import type { TopicNotice } from './core.ts';
 import { recordBatchFlakes } from './batch-flakes.ts';
 import { verificationStepLabel, verificationStepResults, type VerificationStep } from '../verification-plan.ts';
 import { MergeError } from '../merge.ts';
+import type { LogFn } from '../log.ts';
 
 export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[] };
 type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
 export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; budgetLines?: string[]; files: string[]; steps?: VerificationStep['name'][]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
-export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; failed?: string; retryLanding?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
+export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; failed?: string; reportError?: string; retryLanding?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
 export type BatchBoundary = {
+  log?: LogFn;
   changed?(): void;
   entries(): MergeQueueEntry[];
   build(id: string, members: MergeQueueEntry[], base?: string): Promise<BatchCandidate>;
@@ -92,8 +94,18 @@ export class MergeBatches {
       if (batch) {
         batch.failed = error instanceof Error ? error.message : String(error);
         batch.retryLanding = error instanceof RetryLanding;
-        this.#save(batch); this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}\n${batch.retryLanding ? 'The queue retries automatically on a later tick once the cause is resolved.' : 'Waiting for human or Coordinator action before retrying.'}`);
+        this.#save(batch);
+        try { this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}\n${batch.retryLanding ? 'The queue retries automatically on a later tick once the cause is resolved.' : 'Waiting for human or Coordinator action before retrying.'}`); }
+        catch (error) {
+          batch.reportError = error instanceof Error ? error.message : String(error);
+          this.#save(batch);
+          this.boundary.log?.({ event: 'merge-batch-report-failed', batch: batch.id, reason: batch.failed, error: batch.reportError });
+        }
       }
+    }).catch(error => {
+      // Error handling runs on the same fire-and-forget timer as advancement.
+      try { this.boundary.log?.({ event: 'merge-batch-tick-failed', error: String(error) }); }
+      catch { /* a failed logger must not reject a background tick */ }
     }).finally(() => { this.#work = null; });
   }
   async #advance(): Promise<void> {

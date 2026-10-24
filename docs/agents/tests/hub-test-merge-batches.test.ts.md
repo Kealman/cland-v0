@@ -1,5 +1,11 @@
 # hub/test/merge-batches.test.ts
 
+T-1232 injects independent candidate-preparation and blocked-report failures.
+Start the controller, join its in-flight tick, assert resolution and the failure
+log, then reopen to prove both `failed` and `reportError` remain durable without
+landing or dropping a member. This T1 seam does not rely on closed-item routing;
+the socket serving assertion lives in merge-queue.test.ts.
+
 For Web regressions use the same `diagnostic.steps` seam: a real Web-capable
 candidate plan, two members with passing individual Web receipts and a red
 combined repeat. Assert the full Web phase survives selection transport (no

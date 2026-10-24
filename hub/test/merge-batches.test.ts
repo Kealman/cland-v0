@@ -77,6 +77,26 @@ const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/ex
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
 
+test('a throwing blocked report resolves the background tick and retains both failures across reopen', async t => {
+  const state = await fixture(t);
+  const { boundary, landed, dropped } = state;
+  const logs: Record<string, unknown>[] = [];
+  boundary.log = entry => { logs.push(entry); };
+  boundary.build = async () => { throw new Error('candidate preparation failed'); };
+  boundary.report = () => { throw new Error('report boundary failed'); };
+  state.runner.start();
+  await assert.doesNotReject(state.runner.tick());
+  assert.equal(state.runner.snapshot()?.failed, 'candidate preparation failed');
+  assert.equal(state.runner.snapshot()?.reportError, 'report boundary failed');
+  assert.ok(logs.some(entry => entry.event === 'merge-batch-report-failed' && entry.error === 'report boundary failed'));
+  await state.reopen();
+  await assert.doesNotReject(state.runner.tick());
+  assert.equal(state.runner.snapshot()?.failed, 'candidate preparation failed');
+  assert.equal(state.runner.snapshot()?.reportError, 'report boundary failed');
+  assert.deepEqual(landed, []);
+  assert.deepEqual(dropped, []);
+});
+
 async function webBatch(f: Awaited<ReturnType<typeof suiteUnit>>) {
   await writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="npm run check"\ntest_unit="unit"\n');
   await writeFile(join(f.root, 'hub/test/run-suite.ts'), '// inheritedLease; supportsWebPhase = true');

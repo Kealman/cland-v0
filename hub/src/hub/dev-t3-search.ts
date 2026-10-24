@@ -2,6 +2,7 @@
 import type { Store } from './store.ts';
 import type { DevT3Result } from './dev-t3-result.ts';
 import type { Clock, ClockTimer } from './clock.ts';
+import type { LogFn } from '../log.ts';
 
 export type ProbeReceipt = { head: string; file: string; run: string; result: 'green' | 'red' | 'inconclusive'; artifact: string; path: string; reason?: string };
 type FileSearch = { file: string; low: number; high: number; phase: 'repeat' | 'baseline' | 'bisect'; receipts: ProbeReceipt[];
@@ -9,6 +10,7 @@ type FileSearch = { file: string; low: number; high: number; phase: 'repeat' | '
 export type SearchReport = { input: DevT3Result; files: FileSearch[] };
 type Search = SearchReport & { reported?: boolean };
 export type SearchBoundary = {
+  log?: LogFn;
   probe(input: DevT3Result, head: string, file: string): Promise<ProbeReceipt | null>;
   report(report: SearchReport): Promise<void>;
   blocked?(input: DevT3Result, reason: string): void;
@@ -38,6 +40,9 @@ export class DevT3Search {
       const reason = String(error); this.store.setMeta('dev-t3-search-error', reason);
       const input = this.#read().find(search => !search.reported)?.input;
       if (input) this.boundary.blocked?.(input, reason);
+    }).catch(error => {
+      try { this.boundary.log?.({ event: 'dev-t3-search-report-failed', error: String(error) }); }
+      catch { /* a failed logger must not reject a background tick */ }
     }).finally(() => { this.#work = null; });
   }
   async #advance(): Promise<void> {

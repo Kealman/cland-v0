@@ -1015,8 +1015,11 @@ export class Suites {
         occasion: 'dev-t3', integrated: true, executor: 'droplet', fresh: true, priority: Number.MAX_SAFE_INTEGER }, () => {});
     })().catch(error => {
       const text = `periodic dev T3 skipped: ${error instanceof Error ? error.message : String(error)}`;
-      this.#options.onSoakNotice?.(`dev-t3-skip:${now}`, text);
       this.#options.log?.({ event: 'verification-dev-t3-skipped', text });
+      this.#options.onSoakNotice?.(`dev-t3-skip:${now}`, text);
+    }).catch(error => {
+      try { this.#options.log?.({ event: 'verification-dev-t3-notice-failed', error: String(error) }); }
+      catch { /* a failed logger must not reject a background tick */ }
     }).finally(() => { this.#periodic = null; });
   }
   #checkSoak(): void {
@@ -1040,8 +1043,11 @@ export class Suites {
         occasion: 'soak', integrated: true, executor: 'droplet', fresh: true, priority: Number.MAX_SAFE_INTEGER }, () => {});
     })().catch(error => {
       const text = `nightly soak ${day} skipped: ${error instanceof Error ? error.message : String(error)}`;
-      this.#options.onSoakNotice?.(`soak-skip:${day}`, text);
       this.#options.log?.({ event: 'verification-soak-skipped', day, text });
+      this.#options.onSoakNotice?.(`soak-skip:${day}`, text);
+    }).catch(error => {
+      try { this.#options.log?.({ event: 'verification-soak-notice-failed', day, error: String(error) }); }
+      catch { /* a failed logger must not reject a background tick */ }
     }).finally(() => { this.#soaking = null; });
   }
   #check(): Promise<void> {

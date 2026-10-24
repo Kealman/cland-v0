@@ -410,6 +410,11 @@ Recoverable landing errors (`merge-dirty`, `merge-checkout`, `merge-git`,
 green evidence across restart. The notice names the cause and automatic retry;
 later ticks recheck the candidate and retry without cancelling a member.
 Other held failures name the required human or Coordinator action.
+Blocked-report fault injection must throw at the report boundary, independently
+of closed-item lead routing. Assert the tick resolves, the original reason and
+separate report error survive reopen, and public queue/status reads still reply.
+Periodic T3-search blocked notices and nightly/periodic skip notices get the same
+throwing-boundary regression; inspect their log receipts before asserting recovery.
 Queue and batch state survive reopening the hub store. `cland merge queue` and
 `cland verify queue` show the current batch and its members. Results and logs go
 to Agents and each member's requester and item lead. A

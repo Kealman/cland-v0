@@ -17,6 +17,7 @@ import { parseConfig } from '../src/init/config.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { batchRebuildReason } from '../src/hub/merge-batch-territory.ts';
 import { verificationFixture } from './verification-fixture.ts';
+import { HubCore } from '../src/hub/core.ts';
 
 async function checkoutClandFixture(cwd: string) {
   // Fake batch checkouts carry the runner that real cland candidates contain.
@@ -49,6 +50,34 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
   return { root, ui, dispatcher, item, clock, heads, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
 }
+
+test('hub serves queue and status frames after its batch blocked notice throws', async t => {
+  const logs: Record<string, unknown>[] = [];
+  const { ui, item, clock } = await fixture(t, {
+    log: entry => { logs.push(entry); },
+    batchRepository: {
+      git: async () => { throw new Error('candidate preparation failed'); },
+      facts: async () => assert.fail('failed preparation cannot read facts'),
+      identity: async () => assert.fail('failed preparation cannot identify a tree'),
+      checkout: async () => assert.fail('failed preparation cannot check out'),
+      remove: async () => {},
+    },
+  });
+  const noticeTo = HubCore.prototype.noticeTo;
+  t.mock.method(HubCore.prototype, 'noticeTo', function (this: HubCore, ...args: Parameters<typeof noticeTo>) {
+    if (args[1].detail?.event === 'merge-batch-result') throw new Error('report boundary failed');
+    return noticeTo.apply(this, args);
+  });
+  await value(ui, { type: 'merge', item: item.id });
+  await clock.advance(601_000);
+  await until(() => logs.some(entry => entry.event === 'merge-batch-report-failed'), { what: 'batch report failure logged', timeoutMs: 1500 });
+  const queue = await value<{ entries: Array<{ item: string }>; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' });
+  assert.deepEqual(queue.entries.map(entry => entry.item), [item.id]);
+  assert.equal(queue.batch.failed, 'candidate preparation failed');
+  assert.ok(logs.some(entry => entry.event === 'merge-batch-report-failed' && entry.error === 'report boundary failed'));
+  const status = await value<{ mergeQueue: unknown[] }>(ui, { type: 'hub.status', history: true });
+  assert.equal(status.mergeQueue.length, 1);
+});
 
 test('merge queue carries the root install requirement for dependency changes', async t => {
   const { root, ui, item } = await fixture(t, {}, ['package.json', 'hub/package.json', 'package-lock.json']);

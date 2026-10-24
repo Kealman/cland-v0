@@ -3964,6 +3964,10 @@ batch, completed members and green receipt across restart. The blocked notice
 names the cause; the queue retries on later ticks once it is resolved, rechecking
 the candidate against the retained evidence. Other held failures wait for human
 or Coordinator action, as their notice states.
+If publishing that blocked notice fails, the batch retains its original `failed`
+reason and a separate `reportError`; the hub logs `merge-batch-report-failed`
+and keeps serving. Periodic T3 search and nightly/periodic skip notices also
+contain report failures at their timer boundary and log the failed report.
 Integration-base movement during preparation
 keeps each task in the batch and rechecks the candidate against the retained green
 receipt. Documentation/tracker-only movement may reuse that receipt; code changes
