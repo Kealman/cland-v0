@@ -3,17 +3,17 @@ id: T-421
 kind: task
 title: A stage holding an evidence-only task stays open until the epic closes
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1197
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T16:42:23.975Z
-updated: 2026-10-14T16:42:23.975Z
+updated: 2026-10-24T06:46:55.595Z
 ---
 
 ## Summary

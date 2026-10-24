@@ -3,17 +3,17 @@ id: T-998
 kind: task
 title: A malformed tool argument is answered as a permission refusal (forbidden)
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1197
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T16:52:35.140Z
-updated: 2026-10-20T16:52:35.140Z
+updated: 2026-10-24T06:46:54.990Z
 ---
 
 ## Summary

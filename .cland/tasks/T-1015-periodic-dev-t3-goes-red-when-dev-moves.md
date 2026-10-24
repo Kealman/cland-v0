@@ -3,17 +3,17 @@ id: T-1015
 kind: task
 title: Periodic dev T3 goes red when dev moves while it bundles the root
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1194
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:26:44.017Z
-updated: 2026-10-22T23:37:32.848Z
+updated: 2026-10-24T06:46:50.310Z
 ---
 
 ## Summary

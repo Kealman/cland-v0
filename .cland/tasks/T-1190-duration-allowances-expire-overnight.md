@@ -3,17 +3,17 @@ id: T-1190
 kind: task
 title: Duration allowances expire overnight with no warning and fail every shard plan
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-1195
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T00:03:56.390Z
-updated: 2026-10-24T00:03:56.390Z
+updated: 2026-10-24T06:46:52.049Z
 ---
 
 ## Summary

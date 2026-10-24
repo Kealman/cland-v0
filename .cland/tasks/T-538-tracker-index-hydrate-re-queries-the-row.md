@@ -3,18 +3,19 @@ id: T-538
 kind: task
 title: Tracker index hydrate re-queries the row's own kind to canonicalize an id it already has
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - hub
   - tech-debt
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-1197
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T21:15:50.790Z
-updated: 2026-10-15T21:15:50.790Z
+updated: 2026-10-24T06:46:56.006Z
 ---
 
 ## Summary

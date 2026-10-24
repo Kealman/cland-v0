@@ -3,17 +3,17 @@ id: T-1188
 kind: task
 title: cland release --help exits 1 with Unknown option
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1197
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-23T21:49:35.727Z
-updated: 2026-10-23T21:49:35.727Z
+updated: 2026-10-24T06:46:55.507Z
 ---
 
 ## Summary

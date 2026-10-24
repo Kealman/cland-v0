@@ -2,8 +2,8 @@
 id: T-977
 kind: task
 title: "`cland hub stop` says the hub did not hold hub.lock and was left running while the process exits on its own"
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -15,7 +15,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T15:39:08.911Z
-updated: 2026-10-20T17:27:43.574Z
+updated: 2026-10-24T06:45:06.943Z
+closed: 2026-10-24T06:44:49.065Z
 ---
 
 ## Summary
@@ -36,3 +37,11 @@ At restart #31 (2026-10-20 12:50Z), the stand-in ran `cland hub stop`. It report
 ### cland-impl · 2026-10-20T17:27:43.574Z
 
 Stall count from the stand-in's restart log: the serving hub ignored SIGTERM until SIGKILL at restarts #26 (2026-10-20 00:04Z, gap 39 s), #30 (08:00Z, 20 s wait, gap 69 s), and #32 (17:25Z, 10 s wait, gap 52 s); #27, #28, #29 and #31 exited within 12 s. Three stalls in the last four restarts. Each stall also came with the `cland hub stop` misreport this ticket describes (pid 'does not hold hub.lock', 'left running', then the process either exits on its own or needs SIGKILL). The stand-in's direct-restart.sh now waits 5 s before SIGKILL to keep the gap under the 60 s bridge grace.
+
+### coord · 2026-10-24T06:44:49.065Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): fixed. T-1060 3d6da90e (a stopped hub exits, and the misreport case is gone) and T-1151 61392734 (stop→stopped in about 10 ms, the old hub self-exits).
+
+### coord · 2026-10-24T06:45:06.943Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

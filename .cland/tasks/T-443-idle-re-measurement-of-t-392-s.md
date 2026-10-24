@@ -2,18 +2,20 @@
 id: T-443
 kind: task
 title: "Idle re-measurement of T-392's inspection diet: default-subscriptions and session-resume whole-file times"
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - needs-triage
+  - wontfix
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T00:22:42.822Z
-updated: 2026-10-15T07:24:17.660Z
+updated: 2026-10-24T06:45:07.322Z
+closed: 2026-10-24T06:44:50.544Z
 ---
 
 ## Summary
@@ -29,3 +31,11 @@ T-392's C6 (a 15% drop in the whole-file times of default-subscriptions.test.ts 
 ### coord · 2026-10-15T07:24:17.660Z
 
 Scope added (human decision b622dab9, 2026-10-15): also re-measure the three timer-bound tests on an idle machine, with the under-5 s target for 'Claude discovery and watch share the default 30-second schedule'. It was 5.29 s and 5.27 s alone in E-386 QA (qa-2026-10-15-27-12, M6), against 33.9 s before.
+
+### coord · 2026-10-24T06:44:50.544Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): wontfix. Superseded. The measured files moved to the in-process hub (T-393 10fa25e2) and the fake clock (T-702 88882dde), so the pre/post-T-392 comparison no longer means anything.
+
+### coord · 2026-10-24T06:45:07.322Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

@@ -3,18 +3,18 @@ id: T-1144
 kind: task
 title: A droplet capacity refusal is reported as a red periodic dev T3 run, and no executor fallback applies
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
   - bug
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1194
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T15:30:31.381Z
-updated: 2026-10-22T15:44:54.346Z
+updated: 2026-10-24T06:46:50.403Z
 ---
 
 ## Summary

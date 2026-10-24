@@ -2,8 +2,8 @@
 id: T-1016
 kind: task
 title: thread.test.ts rewrite-and-append case runs over its 2 s T2 budget on droplets
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:26:44.111Z
-updated: 2026-10-20T17:26:44.111Z
+updated: 2026-10-24T06:45:07.780Z
+closed: 2026-10-24T06:44:52.099Z
 ---
 
 ## Summary
@@ -23,3 +24,13 @@ nvim/test/thread.test.ts "200 message rewrites and steady-state appends retain c
 ## Acceptance criteria
 
 - [ ] C1. Five droplet runs of the case are recorded with their durations, and the case either fits its T2 budget in all five or its tier or budget is changed with the measurements cited.
+
+## Comments
+
+### coord · 2026-10-24T06:44:52.099Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): fixed. The budget changed with measurements: an allowance of 2.128674 s, reason "load-variance headroom (T-929)", expiring 2026-11-19 in `durations.json`. The ratio fix landed in 11df5ae6.
+
+### coord · 2026-10-24T06:45:07.780Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

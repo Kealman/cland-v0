@@ -2,8 +2,8 @@
 id: T-428
 kind: task
 title: Droplet verify submits time out at 15 s although the hub accepts them
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T16:49:19.517Z
-updated: 2026-10-14T17:18:55.440Z
+updated: 2026-10-24T06:45:06.372Z
+closed: 2026-10-24T06:44:47.273Z
 ---
 
 ## Summary
@@ -38,3 +39,11 @@ More evidence (2026-10-14 17:14–17:16Z): `task rank` over CLI and MCP also tim
 ### coord · 2026-10-14T17:18:55.440Z
 
 Also seen: the hub sits at about 75% CPU with no droplet or verify activity of its own. Slow requests over a 250 ms budget come every few seconds (send up to 1676 ms, inbox.list 1287 ms). session-archive-sweep runs about every 36 s over 292 rows, 5589 times in hub.log. A glob send to impl-* queues deliveries for 37 offline sessions, archived ones included. Profile the hub (V8 inspector, see the startup-profiling notes) before guessing.
+
+### coord · 2026-10-24T06:44:47.273Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): fixed. T-770 bbdff4dd: "submission sent; no reply…; check `cland verify queue`" (`hub/src/cli/suite.ts:73`), with an idempotent same-head resubmit. No CLI-timeout report has been filed since 10-18.
+
+### coord · 2026-10-24T06:45:06.372Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

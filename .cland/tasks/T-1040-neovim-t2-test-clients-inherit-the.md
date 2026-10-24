@@ -2,8 +2,8 @@
 id: T-1040
 kind: task
 title: Neovim T2 test clients inherit the caller's HOME, XDG and account variables
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-21T06:44:51.851Z
-updated: 2026-10-21T06:44:51.851Z
+updated: 2026-10-24T06:45:10.200Z
+closed: 2026-10-24T06:44:58.357Z
 ---
 
 ## Summary
@@ -28,3 +29,13 @@ The Neovim test client's child environment goes through the shared `fixtureEnvir
 
 - [ ] C1. With HOME, XDG_CONFIG_HOME, CLAUDE_CONFIG_DIR and a provider token set to sentinel values in the caller's environment, a Neovim stub test's child sees none of them (test).
 - [ ] C2. The existing Neovim T2 tests pass unchanged.
+
+## Comments
+
+### coord · 2026-10-24T06:44:58.357Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): duplicate. Duplicate of **T-1012**. Same file and fix.
+
+### coord · 2026-10-24T06:45:10.200Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

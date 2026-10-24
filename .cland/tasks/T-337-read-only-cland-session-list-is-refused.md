@@ -3,17 +3,18 @@ id: T-337
 kind: task
 title: Read-only cland session list is refused for Implementers as session.launch
 state: open
-status: backlog
+status: planned
+size: XS
 labels:
-  - needs-triage
   - hub
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1197
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T14:43:31.707Z
-updated: 2026-10-13T14:43:31.707Z
+updated: 2026-10-24T06:46:54.899Z
 ---
 
 ## Summary

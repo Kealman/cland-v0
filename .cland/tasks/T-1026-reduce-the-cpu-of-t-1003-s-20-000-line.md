@@ -3,17 +3,17 @@ id: T-1026
 kind: task
 title: Reduce the CPU of T-1003's 20,000-line incremental parse proof to fit the T2 budget
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-1195
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T19:23:30.653Z
-updated: 2026-10-20T19:23:30.653Z
+updated: 2026-10-24T06:46:52.232Z
 ---
 
 ## Summary

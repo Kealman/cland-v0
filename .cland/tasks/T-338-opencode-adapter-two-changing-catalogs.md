@@ -2,18 +2,20 @@
 id: T-338
 kind: task
 title: opencode-adapter 'two changing catalogs' readiness times out under heavy load (5000 ms bound, load 22.84); fetch after teardown
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - needs-triage
   - hub
+  - wontfix
 assignee: null
 parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T14:59:56.150Z
-updated: 2026-10-13T14:59:56.150Z
+updated: 2026-10-24T06:45:08.919Z
+closed: 2026-10-24T06:44:54.792Z
 ---
 
 ## Summary
@@ -30,3 +32,13 @@ updated: 2026-10-13T14:59:56.150Z
 
 - [ ] C1. The case passes in a full run under the machine's normal contention, with its assertion strength kept.
 - [ ] C2. A failed readiness leaves no fetch after teardown.
+
+## Comments
+
+### coord · 2026-10-24T06:44:54.792Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): wontfix. One occurrence on 10-13 at load 22.84. The file was reworked repeatedly since (T-1112, T-1125, T-971), and load rules now cap concurrent runs.
+
+### coord · 2026-10-24T06:45:08.919Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

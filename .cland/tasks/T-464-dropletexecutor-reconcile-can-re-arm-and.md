@@ -2,8 +2,8 @@
 id: T-464
 kind: task
 title: DropletExecutor.reconcile can re-arm and save a stale active lease that another executor instance released during watchdogAlive's await
-state: open
-status: backlog
+state: closed
+status: done
 size: M
 labels:
   - needs-triage
@@ -14,7 +14,8 @@ regression_of: T-346
 topic: null
 branch: null
 created: 2026-10-15T08:42:54.396Z
-updated: 2026-10-15T08:42:54.396Z
+updated: 2026-10-24T06:45:06.491Z
+closed: 2026-10-24T06:44:47.712Z
 ---
 
 ## Summary
@@ -29,3 +30,13 @@ Re-read the lease after the await and act only if it is still active with the sa
 
 - [ ] C1. A lease released during reconcile's `watchdogAlive` await stays released, with no re-armed watchdog, proven by a deterministic interleaving test.
 - [ ] C2. The periodic sweep and watchdog frame tests keep their assertions and pass.
+
+## Comments
+
+### coord · 2026-10-24T06:44:47.712Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): fixed. T-517 ac2c3641: the re-arm runs under `#changeLease`, re-reads the lease and skips released or releasing ones (`droplet.ts:410-422`).
+
+### coord · 2026-10-24T06:45:06.491Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

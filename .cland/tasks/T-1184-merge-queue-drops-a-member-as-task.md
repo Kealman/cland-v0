@@ -3,17 +3,17 @@ id: T-1184
 kind: task
 title: Merge queue drops a member as 'task branch changed during preparation' though its head did not move
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1193
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-23T20:54:32.079Z
-updated: 2026-10-23T20:59:38.093Z
+updated: 2026-10-24T06:46:48.878Z
 ---
 
 ## Summary

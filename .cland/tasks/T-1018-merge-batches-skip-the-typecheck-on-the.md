@@ -3,17 +3,17 @@ id: T-1018
 kind: task
 title: Merge batches skip the typecheck on the combined tree, so two green tasks broke dev
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1193
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:30:31.804Z
-updated: 2026-10-20T17:30:31.804Z
+updated: 2026-10-24T06:46:48.630Z
 ---
 
 ## Summary

@@ -8,13 +8,13 @@ size: XS
 labels:
   - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-1197
 blocked_by: []
 regression_of: T-455
 topic: null
 branch: null
 created: 2026-10-15T16:44:45.990Z
-updated: 2026-10-15T16:44:45.990Z
+updated: 2026-10-24T06:46:27.260Z
 ---
 
 ## Summary

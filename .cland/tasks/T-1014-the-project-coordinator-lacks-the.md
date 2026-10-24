@@ -2,8 +2,8 @@
 id: T-1014
 kind: task
 title: The project Coordinator lacks the publish tool its clause and the release skill tell it to use
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:18:37.093Z
-updated: 2026-10-20T17:20:42.415Z
+updated: 2026-10-24T06:45:07.087Z
+closed: 2026-10-24T06:44:49.520Z
 ---
 
 ## Summary
@@ -34,3 +35,11 @@ The human decides whether the Coordinator may publish. If yes, add `publish` to 
 ### coord · 2026-10-20T17:20:42.415Z
 
 Decided by the human, 2026-10-20 ~17:2xZ, directly in the Coordinator's terminal: «дай координатору publish». The Coordinator gets the publish tool in .cland/roles.toml (commit 86e0d5bb, landing on dev after the running T-978 batch). C2 (a check for clause/tool mismatches) stays open.
+
+### coord · 2026-10-24T06:44:49.520Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): fixed. C1 was done in ee07d68f (roles.toml) on the human's decision. C2 (a clause/tool mismatch check) is low value. Close and do not refile.
+
+### coord · 2026-10-24T06:45:07.087Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

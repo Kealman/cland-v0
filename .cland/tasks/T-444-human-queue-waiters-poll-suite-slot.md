@@ -3,17 +3,17 @@ id: T-444
 kind: task
 title: Human-queue waiters poll suite.slot about 2.4 times a second each
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1194
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T00:25:21.216Z
-updated: 2026-10-15T00:25:21.216Z
+updated: 2026-10-24T06:46:51.095Z
 ---
 
 ## Summary

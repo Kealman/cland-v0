@@ -3,19 +3,19 @@ id: T-542
 kind: task
 title: A merge that adds a package leaves the root checkout without it, and the next root-run typecheck fails
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - bug
   - hub
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1193
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-15T22:43:24.442Z
+updated: 2026-10-24T06:46:49.283Z
 ---
 
 ## Summary
@@ -24,6 +24,7 @@ T-427 merged at 21:28Z (bd2fdba4). It switched the typecheck script to `typescri
 ## Acceptance criteria
 - [ ] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
 - [ ] C2. A host typecheck that fails with MODULE_NOT_FOUND for a dependency named in the lockfile reports "dependencies out of date: run npm install", not just exit 1.
+- [ ] C3. `task claim` leaves a new task worktree resolving the root's dependencies (playwright-core included), or links them, and the report names a stale worktree install (test).
 
 ## Comments
 

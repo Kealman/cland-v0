@@ -2,8 +2,8 @@
 id: T-372
 kind: task
 title: A hub-relaunched Claude Code session's row stays exited and its pid unrecorded, so deliveries stop
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -14,7 +14,8 @@ regression_of: T-265
 topic: null
 branch: null
 created: 2026-10-14T03:25:02.175Z
-updated: 2026-10-14T03:25:02.175Z
+updated: 2026-10-24T06:45:06.258Z
+closed: 2026-10-24T06:44:46.809Z
 ---
 
 ## Summary
@@ -31,3 +32,13 @@ After the hub relaunches a Claude Code session on its own conversation, the proc
 ## What to do
 
 Reproduce with the fake Claude: a hub-initiated relaunch whose pid arrives late through the shared schedule. Then make the relaunch path record the pid and mark the row running when the pid is discovered or the spoke says hello. Add a frame-protocol test.
+
+## Comments
+
+### coord · 2026-10-24T06:44:46.809Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): fixed. T-1034 c820a77c: the re-exec grace adopts the replacement pid into the watcher and the durable row (hub/README "Coordinator session procedure"). Also T-816 a83362f6 and T-829 eaa11b62. The 10-14 incident matches the auto-update re-exec pattern. Moderate confidence.
+
+### coord · 2026-10-24T06:45:06.258Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.

@@ -3,18 +3,19 @@ id: T-339
 kind: task
 title: cland task view (text) crashes on a hub frame without T-330's criteria counts (CLI and hub version skew)
 state: open
-status: backlog
+status: planned
+size: XS
 labels:
   - qa-found
-  - needs-triage
   - hub
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1197
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T17:31:48.747Z
-updated: 2026-10-13T17:53:00.795Z
+updated: 2026-10-24T06:46:55.094Z
 ---
 
 ## Summary

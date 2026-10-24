@@ -1,20 +1,21 @@
 ---
 id: T-302
 kind: task
-title: "Suite spend, the production remainder: territory git operations, verdict
-  reads, doctor probes and identity checks"
-state: open
-status: backlog
+title: "Suite spend, the production remainder: territory git operations, verdict reads, doctor probes and identity checks"
+state: closed
+status: done
 labels:
   - hub
   - ready-for-agent
+  - wontfix
 assignee: null
 parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T19:51:04.098Z
-updated: 2026-10-12T19:51:04.098Z
+updated: 2026-10-24T06:45:08.800Z
+closed: 2026-10-24T06:44:54.235Z
 ---
 
 ## Summary
@@ -38,3 +39,13 @@ Measure each source again with the census tool, then cut where an operation can 
 - [ ] A census before and after is published, each cut named with its census line.
 - [ ] The merge gate's decisions and the termination safety checks are unchanged, proved by protocol tests on a moving branch and a reused PID.
 - [ ] No test is weakened, skipped or retried; the suite is green through `cland verify`.
+
+## Comments
+
+### coord · 2026-10-24T06:44:54.235Z
+
+Coordinator triage after v0.2.0 (2026-10-24, backlog triage A-10322): wontfix. The census target predates T-393 (in-process hub), T-750 (fake probes) and the tier model. Refile from a current profile if needed.
+
+### coord · 2026-10-24T06:45:08.800Z
+
+Correction: the backlog triage artifact is A-10327, not A-10322.
