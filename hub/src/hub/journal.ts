@@ -538,9 +538,11 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
     text = `verify ${r.id}: ${r.cause}`; glyph = '⚠';
   } else if (r.event === 'suite-result' || (r.event === 'verification-timing' && r.outcome)) {
     kind = 'suite'; subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : topic ? { kind: 'topic', id: topic } : undefined;
-    const outcome = r.outcome as { code?: number; cause?: string };
-    text = `${r.mode} · ${r.branch} · ${outcome.code === 0 ? 'passed' : 'failed'} · ${String(r.counts ?? 'counts unavailable').split('\n')[0]}`;
-    glyph = outcome.code === 0 ? '✓' : '✗';
+    const outcome = r.outcome as { code?: number; cause?: string; notRun?: string };
+    text = outcome.notRun
+      ? `${r.mode} · ${r.branch} · unavailable: ${outcome.notRun === 'provider-capacity' ? 'provider capacity' : outcome.notRun} · ${outcome.cause ?? 'cause unavailable'}`
+      : `${r.mode} · ${r.branch} · ${outcome.code === 0 ? 'passed' : 'failed'} · ${String(r.counts ?? 'counts unavailable').split('\n')[0]}`;
+    glyph = outcome.notRun ? '⚠' : outcome.code === 0 ? '✓' : '✗';
   } else if (r.event === 'released') {
     kind = 'release'; subject = item ? { kind: 'item', id: item } : { kind: 'topic', id: topic ?? 'general' };
     text ??= `released ${r.version ?? r.tag ?? ''}`;

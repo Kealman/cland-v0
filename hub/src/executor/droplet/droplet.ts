@@ -26,6 +26,9 @@ export class RemoteBudgetFull extends Error {
   constructor() { super('remote budget full'); }
 }
 
+/** The provider offers no machine for the configured size/regions. No worker ran. */
+export class ProviderCapacityUnavailable extends Error {}
+
 /** Owns the project's durable droplet lifecycle, independently of suite delivery. */
 export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | 'start' | 'status' | 'log' | 'cancel' | 'release'> {
   readonly root: string;
@@ -93,14 +96,15 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async cancel(lease: DropletLease, _signal: string) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).cancel(lease); }
   async collectCoverage(lease: DropletLease, path: string) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).collectCoverage(lease, path); }
 
-  /** Refuse an unsupported per-run size before the request enters the queue. */
+  /** Validate a per-run size; capacity is distinct from invalid price/configuration. */
   async validateSize(size: string, snapshot?: ProjectConfig): Promise<void> {
     const config = snapshot ?? await this.#config();
     const api = (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock));
     const selected = (await api.sizes()).find(s => s.slug === size && s.available);
-    if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    if (!selected) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
+    if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     const regions = await api.regions();
-    if (!config.verification.droplet.regions.some(region => selected.regions.includes(region) && regions.some(r => r.slug === region && r.available && r.sizes.includes(size)))) throw new Error(`droplet size ${size} unavailable in configured regions`);
+    if (!config.verification.droplet.regions.some(region => selected.regions.includes(region) && regions.some(r => r.slug === region && r.available && r.sizes.includes(size)))) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable in configured regions`);
   }
 
   async reserveShards(runs: string[], overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
@@ -154,7 +158,8 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const size = overrideSize ?? config.verification.droplet.size;
     const selected = (await (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)).sizes()).find(s => s.slug === size && s.available);
-    if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    if (!selected) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
+    if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     const lifetime = testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env);
     const reservation = Math.max(60000, lifetime) / 3600000 * selected.price_hourly;
     const { spent, reserved, cap } = await inspectSpend(config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes);
@@ -185,11 +190,12 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const { size, regions, image } = input;
     const sizes = await api.sizes(runDeadline);
     const selected = sizes.find(s => s.slug === size && s.available);
-    if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    if (!selected) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
+    if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     if (input.minDiskSize !== undefined && (!Number.isFinite(selected.disk) || selected.disk! < input.minDiskSize)) throw new Error(`prepared snapshot disk does not fit size ${size}`);
     const offered = await api.regions(runDeadline);
     const region = regions.find(r => selected.regions.includes(r) && offered.some(o => o.slug === r && o.available && o.sizes.includes(size)));
-    if (!region) throw new Error(`droplet size ${size} unavailable in regions ${regions.join(', ')}`);
+    if (!region) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable in regions ${regions.join(', ')}`);
     const created = this.clock.now().toISOString();
     const id = randomUUID();
     const name = `cland-${projectName(config.name)}-${id.replace(/-/g, '').slice(0, 8)}`;

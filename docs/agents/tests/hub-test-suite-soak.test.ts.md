@@ -14,3 +14,9 @@ For collection/restart changes, cover both the full-outcome result before its jo
 checkpoint and the earlier bare terminal-transport result after the delivery
 failure job checkpoint. The latter must preserve the saved infrastructure marker
 and original cause, heal the durable result, and still produce no cover or search.
+
+Provider capacity runs reuse that lifecycle: inject a typed acquisition refusal
+at the semantic executor seam after seeding executed green/red receipts. Retain
+the cause, no-cover/release/search checks, restart recovery and next-interval
+retry. The pure `eventRow` assertions keep suite-result and timing journal rows
+unavailable, without a failure glyph.

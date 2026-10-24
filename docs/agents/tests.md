@@ -249,6 +249,12 @@ does not advance the last executed green/red markers, and starts no culprit
 search. After the attempt interval the hub retries the next eligible tip; an
 eligible tree that never started remains retryable across restart.
 
+A provider capacity refusal at size/spend admission or acquisition follows the same lifecycle with
+`outcome.notRun: "provider-capacity"` and its original `cause`. Periodic notices
+say **not run: provider capacity**; task suite results say **unavailable: provider
+capacity**, and the task verify `result` is `"unavailable"`. Neither is executed
+failure evidence. No executor, region or size fallback applies to that refusal.
+
 Each periodic result goes to the Coordinator in General with head, previous green
 periodic head, first-parent commits since that green, outcome and failing files.
 The `verification-dev-t3-result` message detail exposes `run`, `head`, `tree`,

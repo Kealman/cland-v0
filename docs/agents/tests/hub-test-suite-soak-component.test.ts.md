@@ -21,3 +21,21 @@ Neovim, QA waits and startup probes have no cover-row count observers. Executed
 cover rows and their ten-row bound remain unchanged; a new not-run receipt stays
 in suite history with `outcome.notRun` and supplies no incident cover. The new
 component assertion checks both the retained suite row and absence of a cover.
+
+For provider capacity, mark the scripted provider's offered regions unavailable
+before acquisition, leaving size/price facts valid for admission. Also exercise
+unavailable and absent size rows: their typed admission refusal must reach the
+same durable report rather than the generic periodic skipped notice. Observe the
+durable periodic result message and task result message/JSON/status, for both
+default and explicit droplet selection, each with and without `--size`.
+Negative admission controls keep invalid price, provider auth, spend-cap and
+malformed-slug refusals separate; they create no suite or provider resource. Assert the original refusal, no red or
+exit-failure headline, latest task verify `result: "unavailable"`, no delivery or
+start and no provider mutation. No real provider resources are needed.
+
+Unavailable-result consumer inventory (T-1144): `Suites.latest` feeds tracker full
+and compact verify projections, CLI task view, Web `ItemCard` (prints result), and
+Neovim `explorer_card` (explicit unavailable label). `eventRow` projects journal
+suite-result and verification-timing rows. Historical suite status and result
+JSON retain `code`/`cause` with additive `notRun`; periodic result detail retains
+baseline/range/artifact fields. No row membership or count contract changes.

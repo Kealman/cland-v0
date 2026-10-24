@@ -782,7 +782,7 @@ export type SuiteStatus = {
   executor: import('./executor/executor.ts').ExecutorKind;
   platform?: import('./executor/executor.ts').Platform;
   id: string; pid: number | null; topic: string; reported: boolean;
-  outcome: { code: number; cause: string; notRun?: 'infrastructure' } | null; error: string | null;
+  outcome: { code: number; cause: string; notRun?: 'infrastructure' | 'provider-capacity' } | null; error: string | null;
   state?: 'queued' | 'launching' | 'running' | 'finished'; queued?: string | null;
   priority?: number | null; item?: string | null; head?: string; branch?: string; integrated?: boolean;
   selection?: import('./suite-selection.ts').SuiteSelection;

@@ -7,7 +7,7 @@ export type DevT3Result = {
   event: 'verification-dev-t3-result'; run: string; head: string; tree: string | null;
   previousGreenHead: string | null; previousGreenRun: string | null;
   merges: Array<{ head: string; subject: string }> | null;
-  result: 'green' | 'red' | 'not-run'; notRun?: 'infrastructure'; cause?: string;
+  result: 'green' | 'red' | 'not-run'; notRun?: 'infrastructure' | 'provider-capacity'; cause?: string;
   failingFiles: string[]; budgetIdentities?: string[]; artifact: string; path: string;
   durationWarnings?: string[];
 };

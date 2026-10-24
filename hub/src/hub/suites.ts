@@ -23,7 +23,7 @@ import type { VerifyOccasion, SuiteStatus, VerificationQueue, VerificationHolder
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
 import { LocalExecutor } from '../executor/local.ts';
-import { DropletExecutor, RemoteBudgetFull } from '../executor/droplet/droplet.ts';
+import { DropletExecutor, ProviderCapacityUnavailable, RemoteBudgetFull } from '../executor/droplet/droplet.ts';
 import { readLeases, readLease, leaseDir, type DropletLease } from '../executor/droplet/lease.ts';
 import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
@@ -66,7 +66,7 @@ export type SuiteJob = {
   submissionKey?: string;
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
-  pid: number | null; started: string | null; outcome: { code: number; cause: string; notRun?: 'infrastructure' } | null;
+  pid: number | null; started: string | null; outcome: { code: number; cause: string; notRun?: 'infrastructure' | 'provider-capacity' } | null;
   reportFailedPermanently?: boolean;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   accountingWaitStarted?: string; accountingPending?: boolean;
@@ -85,10 +85,10 @@ export type SuiteJob = {
   state?: 'queued' | 'launching' | 'running' | 'finished';
   locks?: string[]; requesterDied?: boolean;
 };
-export type VerifyResult = { webPhase?: WebPhaseUnavailable; executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
+export type VerifyResult = { webPhase?: WebPhaseUnavailable; executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | 'unavailable' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
-const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
+const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome?.notRun ? 'unavailable' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
 export type SuiteSchedulerOptions = { taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
@@ -424,11 +424,16 @@ export class Suites {
     const executor = input.executor ?? settings.executor ?? 'local';
     if (executor !== 'local' && executor !== 'droplet') throw new Error('executor must be local or droplet');
     if (input.workers !== undefined && (!Number.isSafeInteger(input.workers) || input.workers < 1)) throw new Error('workers must be a positive integer');
+    let capacityRefusal: ProviderCapacityUnavailable | undefined;
     if (input.size !== undefined) {
       if (executor !== 'droplet') throw new Error('size requires the droplet executor');
       if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(input.size)) throw new Error('size must be a nonempty slug');
       authorize();
-      await this.#droplet.validateSize(input.size, config);
+      try { await this.#droplet.validateSize(input.size, config); }
+      catch (error) {
+        if (!(error instanceof ProviderCapacityUnavailable) || input.dryRun) throw error;
+        capacityRefusal = error;
+      }
     }
     // Validate the candidate as before; only the hub owns execution policy.
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
@@ -524,9 +529,14 @@ export class Suites {
         await rename(job.log + '.cache.tmp', job.log);
       } else await rm(job.log + '.cache.tmp', { force: true });
     }
-    if (!job.cached && job.requireRemote) {
+    if (!job.cached && capacityRefusal) job.outcome = { code: 1, cause: capacityRefusal.message, notRun: 'provider-capacity' };
+    if (!job.cached && !job.outcome && job.requireRemote) {
       if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
-      await this.#droplet.checkSpend(input.size, config);
+      try { await this.#droplet.checkSpend(input.size, config); }
+      catch (error) {
+        if (!(error instanceof ProviderCapacityUnavailable)) throw error;
+        job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
+      }
     }
     if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during submission; submit verification again');
     authorize();
@@ -693,6 +703,10 @@ export class Suites {
             catch (error) {
               if (this.#closed) return; // The durable creating lease belongs to restart reconciliation.
               if (job.cancelled) throw error;
+              if (error instanceof ProviderCapacityUnavailable) {
+                job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
+                throw error;
+              }
               if (job.requireRemote && !job.parentRun && error instanceof RemoteBudgetFull) {
                 job.state = 'queued';
                 delete job.admittedAt; delete job.remoteAcquireAttempted; delete job.config;
@@ -1085,7 +1099,7 @@ export class Suites {
       throw error;
     });
     if (text === null) return false;
-    const result = JSON.parse(text) as { code: number; cause?: string; notRun?: 'infrastructure'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
+    const result = JSON.parse(text) as { code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
     if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
     // The receipt survives deletion of the machine and can predate the last job
     // checkpoint. Reconcile it before polling or relaunching a persisted holder.

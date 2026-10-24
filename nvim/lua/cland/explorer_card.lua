@@ -349,7 +349,7 @@ function C.compose(key, width)
     local verify = type(it.verify)=='table' and it.verify
     if verify then
       local result = verify.result
-      local word = result == 'passed' and '✓ passed' or result == 'failed' and '✗ failed' or result == 'cancelled' and 'cancelled' or verify.state
+      local word = result == 'passed' and '✓ passed' or result == 'failed' and '✗ failed' or result == 'cancelled' and 'cancelled' or result == 'unavailable' and 'unavailable' or verify.state
       kv('suite',word .. ' · ' .. verify.id .. ' · ' .. verify.head:sub(1,7) .. ' · ' .. E.when(verify.finished) .. (verify.cached and ' · cached' or ''),
         result == 'passed' and 'ClandGreen' or result == 'failed' and 'ClandRed' or 'ClandDim')
     else text('no cland verify run for this task','ClandFaint') end

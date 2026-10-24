@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { DropletExecutor, ProviderCapacityUnavailable } from '../src/executor/droplet/droplet.ts';
 import { releaseT3Cover } from '../src/hub/suites.ts';
 import { devT3Result } from '../src/hub/dev-t3-result.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -11,6 +12,19 @@ import { HubCore } from '../src/hub/core.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { readFile, writeFile } from 'node:fs/promises';
+import { eventRow } from '../src/hub/journal.ts';
+
+test('suite events identify a provider capacity refusal as unavailable without a failure glyph', () => {
+  for (const event of ['suite-result', 'verification-timing']) {
+    const row = eventRow({ event, ts: '2026-10-24T08:00:00Z', item: 'T-2', mode: 'auto', branch: 't/T-2',
+      outcome: { code: 1, cause: 'droplet size c-8 unavailable in regions lon1', notRun: 'provider-capacity' } });
+    assert.ok(row);
+    assert.match(row.text, /unavailable: provider capacity/);
+    assert.match(row.text, /droplet size c-8 unavailable in regions lon1/);
+    assert.doesNotMatch(row.text, /failed/);
+    assert.notEqual(row.glyph, '✗');
+  }
+});
 
 test('nightly submits once after UTC time and skips an unchanged candidate across restart', async t => {
   const f = await suiteUnit(t, { machineReceiptsOnly: true }, 'soak="12:01"');
@@ -110,7 +124,7 @@ test('periodic T3 configuration round-trips duration and disable settings', () =
   for (const value of ['0', '"0h"', '"soon"']) assert.throws(() => parseConfig(`[verification]\ndev_t3_every=${value}`, 'test'), /dev_t3_every/);
 });
 
-test('periodic bundle failure is infrastructure without changing green or red evidence and retries after restart', async t => {
+for (const notRun of ['infrastructure', 'provider-capacity'] as const) test(`periodic ${notRun} preserves green/red evidence and retries after restart`, async t => {
   const run = caseDeadlines(t);
   const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'dev_t3_every="1s"'));
   f.candidate.branch = 'dev';
@@ -126,7 +140,10 @@ test('periodic bundle failure is infrastructure without changing green or red ev
   await run.wait('red started', () => f.machine.waits.run(f.machine.started(red.id)));
   await run.wait('red completion', () => f.finish(red.id, 1, '# tests 1\n# fail 1\n'));
   const covers = f.suites.covers();
-  const delivery = t.mock.method(f.machine.dependencies.run, 'deliver', async () => { throw new Error('bundle: object unavailable'); });
+  const cause = notRun === 'infrastructure' ? 'bundle: object unavailable' : 'droplet size c-8 unavailable in regions lon1, nyc1, sfo2';
+  const refusal = notRun === 'infrastructure'
+    ? t.mock.method(f.machine.dependencies.run, 'deliver', async () => { throw new Error(cause); })
+    : t.mock.method(DropletExecutor.prototype, 'acquire', async () => { throw new ProviderCapacityUnavailable(cause); });
   f.candidate.head = 'c'.repeat(40); f.candidate.tree = 'f'.repeat(40); f.candidate.selection.fetchedDev = f.candidate.head;
   await tick(); await tick();
   const failed = (await f.jobs()).find(job => job.head === f.candidate.head)!;
@@ -134,13 +151,13 @@ test('periodic bundle failure is infrastructure without changing green or red ev
   const receipt = await f.suites.receipt(failed.id);
   const result = await devT3Result(receipt.job, receipt.log, { id: 'A-1', path: '/durable/log' }, async () => `${failed.head}\0Latest tip`);
   assert.equal(result.result, 'not-run', receipt.job.outcome?.cause);
-  assert.equal(result.notRun, 'infrastructure');
-  assert.equal(result.cause, 'bundle: object unavailable');
+  assert.equal(result.notRun, notRun);
+  assert.equal(result.cause, cause);
   assert.deepEqual(result.failingFiles, []);
   assert.equal(result.previousGreenHead, green.head);
   assert.equal(result.previousGreenRun, green.id);
-  assert.equal(receipt.job.outcome?.notRun, 'infrastructure');
-  assert.equal(JSON.parse(await readFile(receipt.job.result, 'utf8')).notRun, 'infrastructure');
+  assert.equal(receipt.job.outcome?.notRun, notRun);
+  assert.equal(JSON.parse(await readFile(receipt.job.result, 'utf8')).notRun, notRun);
   assert.equal(f.machine.calls.some(call => call.run === failed.id && call.step === 'start'), false);
   assert.equal(releaseT3Cover(f.store, failed.tree!), null);
   assert.deepEqual(f.suites.covers(), covers, 'last executed green/red markers do not move');
@@ -156,9 +173,9 @@ test('periodic bundle failure is infrastructure without changing green or red ev
   }));
   await tick();
   await run.wait('recovered infrastructure report', () => f.machine.waits.run(f.result(failed.id)));
-  assert.equal((await f.suites.receipt(failed.id)).job.outcome?.notRun, 'infrastructure');
+  assert.equal((await f.suites.receipt(failed.id)).job.outcome?.notRun, notRun);
   assert.deepEqual(f.suites.covers(), covers);
-  delivery.mock.restore();
+  refusal.mock.restore();
   await tick();
   const retry = (await f.jobs()).find(job => job.head === failed.head && job.id !== failed.id)!;
   assert.ok(retry, 'the next interval retries an eligible tip that never executed');

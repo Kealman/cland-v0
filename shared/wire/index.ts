@@ -629,7 +629,7 @@ export type QaPolicy = { scope: 'none' | 'affected' | 'full'; when: 'per-item' |
 export type CriteriaCounts = { total: number; done: number; verified: number; stale: number; failed: number };
 
 // hub/src/hub/suites.ts
-export type VerifyResult = { webPhase?: { status: 'not-run'; reason: string }; executor: ExecutorKind; id: string; state: 'queued' | 'launching' | 'running' | 'finished'; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: { run: string; head: string; tree: string; occasion?: VerifyOccasion | null; executor?: ExecutorKind } | undefined };
+export type VerifyResult = { webPhase?: { status: 'not-run'; reason: string }; executor: ExecutorKind; id: string; state: 'queued' | 'launching' | 'running' | 'finished'; result: 'passed' | 'failed' | 'cancelled' | 'unavailable' | null; head: string; finished: string | null; artifact: string | null; cached?: { run: string; head: string; tree: string; occasion?: VerifyOccasion | null; executor?: ExecutorKind } | undefined };
 
 // hub/src/executor/executor.ts
 export type ExecutorKind = 'local' | 'droplet';
@@ -1011,7 +1011,7 @@ export type SuiteStatus = {
   executor: ExecutorKind;
   platform?: Platform;
   id: string; pid: number | null; topic: string; reported: boolean;
-  outcome: { code: number; cause: string; notRun?: 'infrastructure' } | null; error: string | null;
+  outcome: { code: number; cause: string; notRun?: 'infrastructure' | 'provider-capacity' } | null; error: string | null;
   state?: 'queued' | 'launching' | 'running' | 'finished'; queued?: string | null;
   priority?: number | null; item?: string | null; head?: string; branch?: string; integrated?: boolean;
   selection?: SuiteSelection;

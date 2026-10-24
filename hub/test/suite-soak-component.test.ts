@@ -15,6 +15,7 @@ import { promisify } from 'node:util';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { runBundle } from '../src/executor/droplet/run.ts';
 import { committedTree } from '../src/verification-tree.ts';
+import { DigitalOceanError } from '../src/executor/droplet/api.ts';
 
 test('periodic dev T3 bundles its captured commit when root dev moves during delivery', async t => {
   const run = caseDeadlines(t);
@@ -345,6 +346,85 @@ test('periodic delivery failure publishes infrastructure rather than a red headl
   const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; outcome: { notRun?: string } }[]; covers: { id: string }[] };
   assert.equal(status.suites.find(job => job.id === message.detail!.run)!.outcome.notRun, 'infrastructure');
   assert.equal(status.covers.some(cover => cover.id === message.detail!.run), false);
+});
+
+for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const) test(`periodic provider capacity refusal publishes not run with no red headline or culprit search (${capacity})`, async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'dev_t3_every="1s"' }));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  if (capacity === 'regions') for (const region of f.api.regions) region.available = false;
+  else if (capacity === 'unavailable-size') f.api.sizes[0]!.available = false;
+  else f.api.sizes.length = 0;
+  const cause = capacity === 'regions' ? 'droplet size c-8 unavailable in regions lon1' : 'droplet size c-8 is unavailable';
+  const tick = () => run.wait('periodic I/O settled', async () => { await f.clock.advance(1000); await drive(f, f.verificationSettled()); });
+  await tick(); await tick(); await tick();
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
+  const message = history.find(message => message.detail?.event === 'verification-dev-t3-result');
+  assert.ok(message, 'durable periodic result published');
+  assert.equal(message.detail!.result, 'not-run', message.text);
+  assert.equal(message.detail!.notRun, 'provider-capacity');
+  assert.equal(message.detail!.cause, cause);
+  assert.match(message.text, /Periodic dev T3 not run: provider capacity/);
+  assert.ok(message.text.includes(cause), message.text);
+  assert.doesNotMatch(message.text, /\bred\b/i);
+  assert.equal(history.some(message => message.detail?.event === 'verification-dev-t3-search'), false);
+  assert.equal(f.machine.calls.some(call => call.step === 'start' || call.step === 'deliver'), false);
+  assert.equal(f.api.requests.some(request => request.method === 'POST'), false, 'no provider resources created');
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; outcome: { notRun?: string } }[]; covers: { id: string }[] };
+  assert.equal(status.suites.find(job => job.id === message.detail!.run)!.outcome.notRun, 'provider-capacity');
+  assert.equal(status.covers.some(cover => cover.id === message.detail!.run), false);
+});
+
+for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const)
+for (const executor of [undefined, 'droplet', 'size', 'droplet-size'] as const) test(`task capacity refusal reports unavailable without executor fallback (${executor ?? 'default'}, ${capacity})`, async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted' }));
+  if (capacity === 'regions') for (const region of f.api.regions) region.available = false;
+  else if (capacity === 'unavailable-size') f.api.sizes[0]!.available = false;
+  else f.api.sizes.length = 0;
+  const explicitSize = executor === 'size' || executor === 'droplet-size';
+  const cause = capacity === 'regions' ? explicitSize ? 'droplet size c-8 unavailable in configured regions' : 'droplet size c-8 unavailable in regions lon1' : 'droplet size c-8 is unavailable';
+  const job = await run.wait('submission', () => f.launch(...(executor === 'droplet' || executor === 'droplet-size' ? ['--executor', 'droplet'] : []), ...(explicitSize ? ['--size', 'c-8'] : [])));
+  await run.wait('acquisition settled', () => drive(f, f.verificationSettled()));
+  await f.clock.advance(1000);
+  await run.wait('report settled', () => drive(f, f.verificationSettled()));
+  const message = (await f.messages(job.id))[0];
+  assert.ok(message, 'durable task suite result published');
+  const result = JSON.parse(await readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8'));
+  assert.equal(result.notRun, 'provider-capacity');
+  assert.equal(result.cause, cause);
+  assert.match(message.text, /^suite result .*\nauto unavailable: provider capacity\n/);
+  assert.ok(message.text.includes(cause), message.text);
+  assert.doesNotMatch(message.text, /exit 1|\bred\b|fallback|# fail/i);
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; executor: string; outcome: { notRun?: string; cause: string }; fallback?: string }[] };
+  const completed = status.suites.find(suite => suite.id === job.id)!;
+  assert.equal(completed.outcome.notRun, 'provider-capacity');
+  assert.equal(completed.outcome.cause, result.cause);
+  assert.equal(completed.executor, 'droplet');
+  assert.equal(completed.fallback, undefined);
+  const card = (await f.ui.request({ type: 'task.view', item: f.item })).value as { item: { verify: { result: string } } };
+  assert.equal(card.item.verify.result, 'unavailable');
+  assert.equal(f.machine.calls.some(call => call.step === 'start' || call.step === 'deliver'), false);
+  assert.equal(f.api.requests.some(request => request.method === 'POST'), false);
+});
+
+for (const refusal of ['invalid-price', 'auth', 'spend', 'malformed-slug'] as const)
+for (const explicitSize of [false, true]) test(`non-capacity admission remains a refusal (${refusal}, size ${explicitSize})`, async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted',
+    config: refusal === 'spend' ? 'daily_spend_usd=0.001\nlifetime="15m"\nrun_timeout="5m"' : '' }));
+  if (refusal === 'invalid-price') f.api.sizes[0]!.price_hourly = -1;
+  if (refusal === 'auth') t.mock.method(f.api.provider, 'sizes', async () => { throw new DigitalOceanError(401, 'unauthorized', 'test auth refused'); });
+  const submitted = await run.wait('admission refusal', () => f.ui.request({ type: 'suite.start',
+    as: { name: 'impl', sessionId: 'remote-impl', shell: true }, cwd: f.root, mode: 'auto', report: f.topic, to: ['impl'], executor: 'droplet',
+    ...(refusal === 'malformed-slug' ? { size: 'bad slug' } : explicitSize ? { size: 'c-8' } : {}) }));
+  assert.equal(submitted.ok, false);
+  const reason = { 'invalid-price': /no valid price/, auth: /401 unauthorized/, spend: /daily spend cap/, 'malformed-slug': /size must be a slug/ }[refusal];
+  assert.match(submitted.error!, reason);
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: unknown[] };
+  assert.deepEqual(status.suites, [], 'no capacity run fabricated for a different admission refusal');
+  assert.equal(f.api.requests.some(request => request.method === 'POST'), false);
 });
 
 test('periodic T3 obeys the shared daily cap without changing the merge queue', async t => {

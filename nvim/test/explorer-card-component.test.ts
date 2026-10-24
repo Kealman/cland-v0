@@ -374,6 +374,7 @@ test('same-timestamp status, claim, verdict and verification signals refresh onl
     ['verdict',{verdicts:[{verdict:'review',result:'clear',run:'review-1'}]}],
     ['verify head',{verify:{id:'suite-1',state:'finished',result:'passed',head:'abcdef012345',finished:'2026-10-14T10:00:00Z'}}],
     ['verify result',{verify:{id:'suite-1',state:'finished',result:'failed',head:'abcdef012345',finished:'2026-10-14T10:01:00Z'}}],
+    ['verify unavailable',{verify:{id:'suite-2',state:'finished',result:'unavailable',head:'abcdef012345',finished:'2026-10-14T10:02:00Z'}}],
   ];
   const start=(await control({requests:true})).requests.length;
   for(const [name,change] of changes) {
@@ -381,11 +382,12 @@ test('same-timestamp status, claim, verdict and verification signals refresh onl
     await control({set:{items:fixture.items!.map(it=>it.id==='T-10'?current:it)}});
     await control({emit:{type:'task',id:'T-10',item:current}});
     await shown(c,'T-10',`Fresh after ${name}.`);
+    if(name==='verify unavailable') assert.match(await card(c), /suite\s+unavailable · suite-2/);
     const views=(await control({requests:true})).requests.filter(r=>r.type==='task.view').length;
     const renders=await c.lua<number>("return require('cland.explorer').renders");
     await control({emit:{type:'task',id:'T-10',item:current}});
     await c.lua("local n=...;assert(vim.wait(5000,function() return require('cland.explorer').renders>n end))",renders);
     assert.equal((await control({requests:true})).requests.filter(r=>r.type==='task.view').length,views,`${name} duplicate does not refetch`);
   }
-  assert.deepEqual((await control({requests:true})).requests.slice(start).filter(r=>r.type==='task.view').map(r=>r.item),Array(5).fill('T-10'),'one fetch per changed signal, only for the shown item');
+  assert.deepEqual((await control({requests:true})).requests.slice(start).filter(r=>r.type==='task.view').map(r=>r.item),Array(6).fill('T-10'),'one fetch per changed signal, only for the shown item');
 });

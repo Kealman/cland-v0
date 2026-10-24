@@ -3203,8 +3203,8 @@ a later local request may reuse it and still names `droplet`. It establishes the
 selected suites on Linux, with macOS-only cases visible as `suite skip` records.
 Those cases run in the release's final local suite ("Release v0.1.2 from the item").
 
-A missing `DIGITALOCEAN_TOKEN`, refused create (including 4xx/5xx), unavailable
-size in all configured regions, missing prepared snapshot, spent daily cap,
+A missing `DIGITALOCEAN_TOKEN`, refused create (including 4xx/5xx), missing
+prepared snapshot, spent daily cap,
 full remote budget with a free local slot, or
 dirty candidate sends a requested droplet run to the local queue with
 `executor: local`. Budget refusals before creation may retry remotely while
@@ -3220,6 +3220,10 @@ reservation, naming the cap. Other remote failures refuse submission or fail the
 running locally. Acquisition
 still reserves spend atomically; a cap reached after submission fails that run
 instead of moving it to the local queue.
+Provider catalog capacity refusals at size/spend admission or acquisition (no
+offered configured size/region) finish **unavailable: provider capacity**, retaining the original
+cause and `outcome.notRun: "provider-capacity"`. They never enter the local queue
+or try another size/region; a periodic run says **not run: provider capacity**.
 
 #### Leases, cleanup and spend
 
@@ -3513,7 +3517,8 @@ but is still waiting for local admission, reclaims a free remote slot in the sam
 queue order, including after a hub restart. The hub reports
 `verify <id>: remote capacity available; moving queued local fallback to droplet`
 to its topic and recipients and journals `verification-executor-reclaimed`.
-Only budget fallbacks are reconsidered; other acquisition failures stay local.
+Only budget fallbacks are reconsidered; other acquisition failures stay local,
+except provider capacity refusals, which finish unavailable without a fallback.
 `--executor local` always uses the local slot. Launching/acquiring jobs reserve
 remote slots through confirmed release; acquires proceed in parallel and each
 checks the shared daily spend cap. The provider also counts durable preparation
@@ -3833,7 +3838,16 @@ durable outcome keeps `code`/`cause` and adds `notRun: "infrastructure"`;
 `cause`. It supplies no cover, release proof or culprit search, and changes
 neither the last executed green nor red evidence. The attempt cursor still
 throttles retries for one interval; the next eligible tip is retried, including
-the same candidate tree if it has never started. These outcomes survive restart.
+the same candidate tree if it has never started. These outcomes survive restart. A provider capacity refusal at
+acquisition uses the same not-run lifecycle with `notRun: "provider-capacity"`
+and the original refusal in `cause`. Its periodic headline is **not run: provider
+capacity**; it never advances executed green/red markers or starts a culprit
+search. Task verification publishes **unavailable: provider capacity** and the
+item's latest verify `result` is `"unavailable"`. Suite result JSON and historical
+status retain the additive `notRun` field alongside `code`/`cause`; Events and
+Neovim cards show unavailable rather than failed. Capacity refuses the run even
+with local fallback enabled: it does not select another executor, region or
+size. Changing that policy changes spend and belongs to the human.
 
 Release occasions run T1–T4, including T3. `cland release`, including
 `--dry-run`, refuses with `release-t3` unless a completed, reported green

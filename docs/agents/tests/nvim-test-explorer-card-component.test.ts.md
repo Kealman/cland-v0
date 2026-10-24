@@ -1,0 +1,8 @@
+# nvim/test/explorer-card-component.test.ts
+
+T2 uses the sealed stub client and committed protocol recordings. The
+same-timestamp verification-signal case includes an unavailable result after a
+failed one and asserts the rendered suite label. Refresh the complete file with
+`npm run test:nvim-fixtures -- nvim/test/explorer-card-component.test.ts` after
+changing scenarios; inspect new frames before committing and retain the existing
+recordings. No human browser or native harness session is involved.
