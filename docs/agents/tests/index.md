@@ -1,6 +1,6 @@
 # Test-file guidance
 
-Shared procedures: [Running tests](../tests.md). Each document is named after its repository test path, replacing `/` with `-` and appending `.md`. Add paragraphs to the matching file; independent test changes do not edit this index unless a new document is needed. List every document exactly once; row order is not checked. Git union merges retain independent rows and paragraphs from parallel branches (see the shared procedure).
+Shared procedures: [Running tests](../tests.md). Each document is named after its repository test path, replacing `/` with `-` and appending `.md`. Add paragraphs to the matching file; independent test changes do not edit this index unless a new document is needed. List every document once; row order is not checked, and an identical row kept twice by a union merge counts once. Git union merges retain independent rows and paragraphs from parallel branches (see the shared procedure).
 
 | Test file | Guidance |
 | --- | --- |

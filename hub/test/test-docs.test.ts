@@ -64,12 +64,14 @@ test('historical tests.md anchors and references from skills, briefs, READMEs an
   }
 });
 
-test('index membership rejects missing, duplicate and dangling entries but accepts either order', () => {
-  const row = (name: string) => `[Notes](${name})`;
+test('index membership rejects missing, conflicting and dangling entries but accepts either order and union-merged identical rows', () => {
+  const row = (name: string, test = name) => `| [\`${test}\`](x) | [Notes](${name}) |`;
   const documents = ['first.md', 'second.md'];
-  assert.doesNotThrow(() => assertTestDocIndex(documents.map(row).join('\n'), documents));
-  assert.doesNotThrow(() => assertTestDocIndex([...documents].reverse().map(row).join('\n'), documents));
+  assert.doesNotThrow(() => assertTestDocIndex(documents.map(name => row(name)).join('\n'), documents));
+  assert.doesNotThrow(() => assertTestDocIndex([...documents].reverse().map(name => row(name)).join('\n'), documents));
+  // Two branches indexing the same document: Git's union merge keeps the identical row twice.
+  assert.doesNotThrow(() => assertTestDocIndex(['first.md', 'second.md', 'first.md'].map(name => row(name)).join('\n'), documents));
   assert.throws(() => assertTestDocIndex(row('first.md'), documents));
-  assert.throws(() => assertTestDocIndex(['first.md', 'second.md', 'first.md'].map(row).join('\n'), documents));
-  assert.throws(() => assertTestDocIndex(['first.md', 'absent.md'].map(row).join('\n'), documents));
+  assert.throws(() => assertTestDocIndex([row('first.md'), row('second.md'), row('first.md', 'other.ts')].join('\n'), documents));
+  assert.throws(() => assertTestDocIndex(['first.md', 'absent.md'].map(name => row(name)).join('\n'), documents));
 });
