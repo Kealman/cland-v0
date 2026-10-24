@@ -2,8 +2,8 @@
 id: T-511
 kind: task
 title: Cancelled local verify leaves the suite lock held when a fake child recreates the suite root; admission refuses cleanup forever
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-971
 branch: t/T-511-cancelled-local-verify-leaves-the-suite
 created: 2026-10-15T15:58:21.157Z
-updated: 2026-10-24T14:20:40.115Z
+updated: 2026-10-24T15:02:15.746Z
+closed: 2026-10-24T15:02:15.746Z
 ---
 
 ## Summary
@@ -25,15 +26,23 @@ Cancelling a local verify can wedge local admission for good. On 2026-10-15 at 1
 
 - [x] C1. A cancel stops the runner's whole process tree, fake harness descendants included, before it removes the suite root. A root recreated after that is still recognised as the run's own by token and owner.
   - verified: rev-23 [reviewer] · run rev-20261024-511-final · 2026-10-24T13:01:39.230Z · commit 2f4067a7e0c7cc513d899f8fd245275233804337
-  - done: impl-511 · 2026-10-24T14:13:38.277Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final2 · 2026-10-24T14:38:14.411Z · commit 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0
+  - done: impl-511 · 2026-10-24T14:38:52.681Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final3 · 2026-10-24T14:56:36.609Z · commit b41992a89f6eb3f0f720a75b968a447cbea5fc99
 - [x] C2. When the holder pid and runner group are dead and the root differs only by identity, recovery releases the locks and quarantines the root (renames it, without deleting it) instead of refusing forever. It journals `suite-recovery-quarantined` with both inodes.
-  - done: impl-511 · 2026-10-24T14:14:53.247Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final2 · 2026-10-24T14:38:14.411Z · commit 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0
+  - done: impl-511 · 2026-10-24T14:38:52.916Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final3 · 2026-10-24T14:56:36.609Z · commit b41992a89f6eb3f0f720a75b968a447cbea5fc99
 - [x] C3. `cland verify queue` shows a blocked admission with its reason, instead of `local: none` beside a waiting run.
   - verified: rev-23 [reviewer] · run rev-20261024-511-final · 2026-10-24T13:01:39.230Z · commit 2f4067a7e0c7cc513d899f8fd245275233804337
-  - done: impl-511 · 2026-10-24T14:13:38.670Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final2 · 2026-10-24T14:38:14.411Z · commit 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0
+  - done: impl-511 · 2026-10-24T14:38:53.075Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final3 · 2026-10-24T14:56:36.609Z · commit b41992a89f6eb3f0f720a75b968a447cbea5fc99
 - [x] C4. A test cancels a run whose fake child recreates the root after the kill, and the next local run is admitted.
   - verified: rev-23 [reviewer] · run rev-20261024-511-final · 2026-10-24T13:01:39.230Z · commit 2f4067a7e0c7cc513d899f8fd245275233804337
-  - done: impl-511 · 2026-10-24T14:13:38.889Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final2 · 2026-10-24T14:38:14.411Z · commit 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0
+  - done: impl-511 · 2026-10-24T14:38:53.296Z
+  - verified: rev-23 [reviewer] · run rev-20261024-511-final3 · 2026-10-24T14:56:36.609Z · commit b41992a89f6eb3f0f720a75b968a447cbea5fc99
 
 ## Comments
 
@@ -373,3 +382,110 @@ C1–C4 implementation and lifecycle controls retain earlier accepted full/integ
 One ordinary mode-free configured verify may follow at unchanged 6b0d312a, then evidence review. No forced mode/full cover, extra load repetitions or dev merge requested. No per-item QA (none/after-stage); Coordinator owns enqueue/merge. Standards 0 findings; Spec 0 findings.
 
 Durable audit A-11186.
+
+### rev-23 · 2026-10-24T14:38:14.411Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-511-final2
+commit: 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-511 final same-head evidence — clear at 6b0d312a
+
+Reviewed head 6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0/tree9e92c2c94c22cc587b82ba2009d148c50f43acbd; source-clear rev-20261024-511-source5/A-11186 carries full corrected design and authorized integration audits. Original mode-free 321dfc2b-9a00-4a41-81bd-cd210b55ddea/A-11210 exits0. task.view independently confirms passed exact head. Scope evidence, run rev-20261024-511-final2; findings[]. Static log/JSON/Git/tracker reads only, no execution/mutation/delegation.
+
+## Standards
+Native finish records independently count3014 ordinary passing tests/428 files plus20 separate load-gate test/file passes, four new T2 identities × five. No failure/cancellation/skip/todo. General lint133findings/60files, unrelated duration overages and ratchet are report-only, not an enforce-budget pass. All exact new-identity allowances satisfy their effective caps:
+- ordinary cancellation/tree-death/successor5.186113134s <7.744s;
+- recreated-root cancellation/tree-death/successor6.424704078s <7.987s;
+- preserved quarantine/inode journal/both locks/successor5.163307023s <9.339s.
+Existing E880 remains unchanged. Generated stale-ps12.245s advisory corresponds to unchanged identity8.163213076s, not an enforced failed gate or an applied new allowance. Earlier failed A-11170 remains failed at e8089022; this fresh run supplies current evidence.
+
+## Spec
+C1 established by real detached fake-child cancellation and death-before-root-removal/successful successor control; C4 established separately by recreated root after runner death6.424704078s. C2 established by quarantine5.163307023s with retained bytes/both-inode journal/both compatibility locks released and successor verification. Safety controls pass: independent dead-parent/detached writer reaped before quarantine3.271732261s; ambiguous writer preserves evidence/locks1.926012927s; absent runner group preserves root/both locks1.265387678s. Protocol wrongpath/symlink and live/unknown-group refusals pass and each5/5.
+
+C3 established through release-recovery queue/subscription/CLI blocked reason and unknown ETA until cleanup succeeds .803452799s, plus occupied-admission reason/CLI/subscription .363196520s; each5/5 separate load passes, maxima .806475350/.567287305s. Other two5/5 protocol maxima .029512004/.024841238s. Original assertions/bounds remain as cleared. All C1–C4 verified at this commit only.
+
+Actual selection: hostT0, allT1, shared-protocol fallback all hub/NeovimT2, changedT3 cancellation+recovery files19 identities once, allWeb. NoT4 or full unchangedT3 cover; remaining T3 periodic/integrated deferred. HostT0 24.489s; host marker491b87c0b688a323f204c792d637e1f9dda3da28 independently Git tree, not remote repeated typecheck. Tier envelopesT1/T2/T3/Web77/424/47/184s versus suite72.14/418.48/42.74/179.03s; shards72.11/313.51hub+104.92Nvim/42.72/178.88. Selected changed-phase addedwall42.657s excludes machinewait. Manifest projected/observed sums are not elapsedwall.
+
+Linuxx64 6.8.0-142-generic, dropletc-8lon1/cland-v0-fc3c49ad,Node24.21.0/Nvim0.12.5,workers2(Web4),lifetime843s/$0.0585; diskfsync14.72ms/SQLite34.31ms,temp.13/.70ms,iowait/steal.01%. Three missing baselines and Web budget warnings retained. Ratchet2218.541vs2195.304s(+23.237s), incomplete one-file base, is report-only projection distinct from measured42.657s; prior projected samples remain historical planning data.
+
+Lead df2ce593 reports fresh no-auto-maintenance fetched devc44650a624b4eb1dca40a96c5bfc0c2e0bdff9f3 conflict only durations.json; clean evidence head preserved during that check. Lead a1687f60 subsequently reports Coordinator567935e3 authorized dev integration without waiting for this old-head settlement. This verdict remains explicit6b0d312a, not the incoming integration: any new head requires delta source review and its own configured evidence before fresh runtime marks. No per-item QA(none/after-stage), stage or landing claim. Coordinator owns integration/enqueue/merge. Standards0 findings; Spec0 findings.
+
+Durable audit A-11211.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-23 · 2026-10-24T14:40:11.618Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-511-delta3
+commit: b41992a89f6eb3f0f720a75b968a447cbea5fc99
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-511 final authorized merge-only delta — clear
+
+Head b41992a89f6eb3f0f720a75b968a447cbea5fc99; tree aa604ee06cbdb2312ad8fe402f2c1cf8deb6a9ea; parents prior reviewed/green6b0d312adc1786015f46d61bd9e4f02ec7f5e9b0 and devc44650a624b4eb1dca40a96c5bfc0c2e0bdff9f3. Branch ref matches. Coordinator567935e3 read directly: one exact dev merge, raw dev key union plus unchanged E1194/Oct31 entries; no further autonomous merge. Scope delta, run rev-20261024-511-delta3. Carry corrected full source A-11186, integrated source A-11146 and old-head final A-11211. Reviewer static read-only Git/JSON/tracker/artifact reads, no tests/probes/edits/Git mutation/delegation.
+
+## Standards
+No findings. Compared prior task patch e053338b..6b0d312a with integrated task patch c44650a6..b41992a8 across union of changed paths: every added/removed line sequence matches exactly. Task patch25files remains unchanged, including queue/recovery/cancellation/CLI/wire/tests/docs and assertion/deadline ownership.
+
+Conflict resolution hub/test/durations.json is independently parsed exact dev plus only three task allowance entries. Every non-allow top-level value equals dev; every dev allow entry is identical and none removed. Exactly three extra identities have values identical to6b0d312a: cancellation7.744/7.987s and quarantine9.339s, ownerE1194,Oct24–Oct31, same reasons. Raw diff21added lines; no baseline/E880/dev key replacement. All other incoming dev auto-merge content retains prior task patch exactly. Whitespace clean, no conflict markers/extra functional or smell finding.
+
+## Spec
+C1–C4 behavior and lifecycle controls remain as fully reviewed: tree death before cleanup, recreated root preserved/quarantined after known-dead ownership proof and independent writer cleanup, both-inode journal/locks/successor, blocked queue reason/unknown ETA until cleanup. No task runtime/assertion/bound/permission change. Fresh claimant done marks present; old6b0d312a runtime marks are stale and not carried here.
+
+A-11212 is summary-level local macOS/Darwin immediately precommit resolution evidence: JSON equality, full npmtypecheck(hub/Nvim/sharedwire/Web), Web static guards zero errors/warnings, tier/identity/owner/date lint exit0,stageddiffcheck0. No original complete command envelopes or overallcheckwall supplied/claimed; no native tests repeated. This supports source integration consistency, not new-head configured proof.
+
+A-11210/A-11211 remain historical green only at6b0d312a:3014ordinary+20load,19changedT3 once,full fallbackT2/Web. Prior +23.237s ratchet remains report-only projection, separate from selected addedwall42.657s. No current runtime mark assigned.
+
+Clear exact source permits one ordinary mode-free configured verify at unchangedb41992a8, followed by original same-head evidence review for C1–C4. No forced mode/full cover/extra load or additional autonomous dev merge; report any later conflict to Coordinator. No per-itemQA(none/after-stage),stage or landing claim. Coordinator owns enqueue/merge. Standards0 findings; Spec0 findings.
+
+Durable audit A-11213.
+
+### rev-23 · 2026-10-24T14:56:36.609Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261024-511-final3
+commit: b41992a89f6eb3f0f720a75b968a447cbea5fc99
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-511 final integrated-head evidence — clear
+
+Head b41992a89f6eb3f0f720a75b968a447cbea5fc99/tree aa604ee06cbdb2312ad8fe402f2c1cf8deb6a9ea; exact source-clear rev-20261024-511-delta3/A-11213. Original ordinary mode-free0a1b9589-ae9c-4d34-9e8b-a4b25ce63a32/A-11224 exits0; tracker independently confirms passed exact head and branch ref matches. Scope evidence, run rev-20261024-511-final3; findings[]. Carry complete corrected source/integration audits. Static read-only log/Git/JSON/tracker reads only, no tests/probes/edits/mutation/delegation.
+
+## Standards
+Independently parsed3048ordinary passing tests/430files plus20separate load-gate test/file passes, four identities × five; zero failures/cancellations/skips/todo. HostT0, allT1, fallbackallhub/NeovimT2, changedT3twofiles19identities once, allWeb completed. No full unchangedT3/T4 cover; deferred periodic/integrated scope remains explicit.
+
+All exact task allowances satisfy effective caps: cancellation before cleanup5.165852866s<7.744s, recreation-after-death5.340241682s<7.987s, quarantine5.146785466s<9.339s. No enforced duration-budget failure. General lint133/60, unrelated overages, five missing baselines and T3ratchet report-only. Unchanged stale-ps advisory12.148s is a recommendation for8.098s sample, not failed gate/applied allowance. All dev manifest entries/E880 preserved by source audit.
+
+## Spec
+C1 verified by detached-child death-before-root-removal and successful next-run lifecycle. C4 separately verified by root recreated after runner death and successor admission. C2 verified by preserved quarantine bytes, old/new inode journal and both compatibility locks released before successor. Independent dead-parent writer cleanup3.199382487s, ambiguous ownership preservation1.800757669s and absent runner-group preservation1.251668616s pass, preserving safety controls.
+
+C3 verified through retained release-recovery reason/unknown ETA/subscription/CLI until cleanup succeeds .673381405s and occupied-admission reason .336661201s. These each5/5load(max .691205098/.430062629s). Protocol exactpath/symlink and live/unknown-group refusal each5/5(max .038645122/.024076955s). All C1–C4 verified at b41992a8 only; priorA-11210/A-11211 remain older-head evidence.
+
+HostT024.341s, marker411a5a0892769aef22ea513010f8c1a1f501f5fc independently Git tree, retained host gate not remote repeated typecheck. EnvelopesT1/T2/T3/Web70/383/46/167s versus suite65.32/378.60/41.42/162.28s; shards65.30/283.24hub+95.31Nvim/41.40/162.16s. Selected changed-phase addedwall41.342s excludes machinewait. Manifest allT1140/882,T2244/1812,T32/19,Web44/225 counts are top-level, distinct from raw nested totals. Linuxx64 6.8.0-142-generic,c-8lon1/cland-v0-8b34606d,Node24.21.0,workers2(Web4); diskfsync4.89ms/SQLite11.95ms,temp.09/.56ms. No inferred executor lifetime/cost beyond truncated delivered receipt.
+
+Ratchet2217.208vs2195.304s(+21.904s), incomplete two-file baseline, remains projected report-only growth for Coordinator planning; not measured41.342s or enforcing budget pass. Earlier failed receipts stay failed historical evidence; no cache/unchanged-head retry claim.
+
+Lead236c4d11 reports final fresh no-auto-maintenance fetched devc44650a624b4eb1dca40a96c5bfc0c2e0bdff9f3 merge-tree0 yielding aa604ee06cbdb2312ad8fe402f2c1cf8deb6a9ea, exactly this task tree; clean head preserved, no further merge. No itemQA(none/after-stage),stage or landing claim. Coordinator owns ready enqueue/merge. Standards0 findings; Spec0 findings.
+
+Durable audit A-11226.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-24T15:02:15.746Z
+
+Merged 61b3f383cc4c75820272a5c107eb8e4d1ce264e2 onto dev.

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-952
 branch: t/T-1220-a-session-s-shell-identity-is-not-bound
 created: 2026-10-24T09:32:51.634Z
-updated: 2026-10-24T14:28:02.592Z
+updated: 2026-10-24T14:49:53.147Z
 ---
 
 ## Summary
@@ -32,7 +32,7 @@ Trust model today: every session runs as the same OS user on one machine. This g
 - [x] C2. A shell that presents no session identity keeps acting as the human, as today (human decision, General 2026-10-24 09:35Z, answer to ask a4e7c1e1); docs state this, and a test pins it.
   - done: impl-1220 · 2026-10-24T10:13:17.528Z
 - [ ] C3. Harness adapters (Claude Code, Codex, OpenCode) deliver the credential to their own shells only, and docs describe the trust model.
-  - failed: rev-31 [reviewer] · 2026-10-24T14:28:02.592Z · note Configured f5a08d89 exits1 on native launch-publication/account-limit assertion; later mappedT4/Web absent. C1/C2 partial passes do not settle required harness cover.
+  - failed: rev-31 [reviewer] · 2026-10-24T14:49:53.146Z · note Authorized retry89849235 remains exit1 on T-1253 native first-turn coverage; mappedT4/Web absent. Pending Coordinator disposition, no current complete runtime proof.
 
 ## Comments
 
@@ -575,3 +575,45 @@ Evidence not clear. Fail C3 current runtime mark for unresolved native adapter/l
 Durable review A-11201.
 
 Criteria: C3 failed (Configured f5a08d89 exits1 on native launch-publication/account-limit assertion; later mappedT4/Web absent. C1/C2 partial passes do not settle required harness cover.).
+
+### impl-1220 · 2026-10-24T14:32:52.691Z
+
+Coordinator filed T-1253 (Bugs/needs-triage) from A-11196+A-11203: exact early-hit native receipt fails head55a993aa0/5 and pinned devb517e9360/5. Per49480a0e, making exactly one mode-free resubmit at unchanged clean55a993aa; no source/assertion/timeout change, no flake exemption or baseline pass claim. If same case fails again, stop/report Coordinator with no second resubmit or T-1253 diagnosis in this item.
+
+### impl-1220 · 2026-10-24T14:48:41.041Z
+
+Coordinator-authorized single unchanged-head resubmit89849235/A-11220 at55a993aa failed the same T-1253 early-hit receipt (`early hit saved: not within 15000 ms`). Per49480a0e: stopped; no second resubmit or T-1253 investigation. Waiting for Coordinator shared fix/disposition, claim retained. T0/T1/allT2 passed, changedT3 partial184pass/1fail; T4/Web unexecuted. Ordinary2911pass/1fail plus90 load repetitions separate; Linux x64 c-8 lifetime867s/$0.0602. Both requested local head/dev controls0/5 are A-11203. Source unchanged and not ready.
+
+### rev-31 · 2026-10-24T14:49:53.146Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261024-1220-evidence3
+commit: 55a993aa67299d3c15c4e12f8ec1c7874e509dda
+scope: evidence
+findings: [{"severity":"medium","text":"M11 persists: authorized retry89849235 repeats exact early-hit assertion timeout. Task/dev0-of-5 matrix supports shared-baseline T-1253, not a pass/exemption; T4/Web unexecuted. Coordinator49480a0e's one retry is exhausted: stop/report, no further retry or T-1253 investigation here.","file":"hub/test/account-limited.test.ts","line":241}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-1220 authorized retry evidence — not clear; retry allowance exhausted
+
+Head55a993aa67299d3c15c4e12f8ec1c7874e509dda / tree350259ca1364086ba9dd82a750a6a1405e6c787e unchanged. Source A-11159 remains the accepted integration. Original prior failure A-11196/A-11201 remains failed. Read-only Reviewer inspected task.verify, new original A-11220, local matrix A-11203 and direct Coordinator messages d9a7c4bf/49480a0e in topic history. No execution or T-1253 investigation performed.
+
+The one authorized unchanged-head resubmit89849235-1653-47e6-a4b5-e353d93e76b7 exits1 on exactly the same identity:
+hub/test/account-limited.test.ts::a hard hit before the native first-turn response is retained through launch publication
+Error: early hit saved: not within15000ms (original log includes space: “not within 15000 ms”)
+stack account-limited.test.ts:241:16 / harness.ts:848:9.
+New ordinary body17.380779117s. The suite failing-test record names only that identity. This is an assertion failure; report-only duration notices cannot explain it away.
+
+Shared-baseline evidence is now established to the requested limited extent: Coordinator d9a7c4bf ordered five selected-case executions at task55a993aa and five at pinned devb517e9363e9cdecab771b057ea10c208d2b7dcec. A-11203 contains ten individual original command/source/SHA256/exit/signal/platform records and raw stdout/stderr. All ten exit1/no signal on local Darwin arm64/Node24.21 with the same actual15000ms failure: task0/5 and dev0/5 pass. Independently recomputed Git-source hashes match the per-run test hashes (task6178a34d…6378e; dev4565eb57…04477). These are sealed local base controls, not Linux-dev executions, root-cause diagnosis or proof of a harmless flake.
+
+Coordinator49480a0e filed T-1253 (Bugs, needs-triage), citing A-11196/A-11203, and allowed exactly one mode-free resubmit at unchanged55a993aa. Its explicit instruction: if same case fails, stop/report; no second resubmit and no T-1253 investigation inside this item. That allowance is now consumed. Claimant0507bd07 correctly stopped/reported; no source changes, bypass/quarantine, cap/timeout/permission relaxation or unapproved retry are authorized by this evidence. Runtime settlement waits for Coordinator's next disposition; do not debug the tracked shared defect in T-1220.
+
+New run partial cover: T0/allT1/full fallback hub+NeovimT2 exit0; changedT3 exits1 with184passing identities/one failing across24files. Selected changed-phase added260.778s excludes machine wait. MappedT4 inbox-verifier and Web remain unexecuted. Independently counted2912 ordinary completions =2911pass/1fail, no cancelled/skipped/todo. Ninety additional passing load bodies (18×5) remain separate; interruption3002/3001pass/1fail includes them. No overall green/current runtime verification or later-phase pass inferred.
+
+Linux x64 6.8.0-142-generic / Node24.21 / Neovim0.12.5; c-8lon1 droplet cland-v0-908d1c15,workers2,lifetime867s,cost$0.0602. T0 envelope24.389s uses reused host-gate tree0e0ab81b9fa0489085550d792dfdae5eda208c0d, not repeated remotely. T1envelope72s,T2 417s,T3 266s. Lint/duration/ratchet and generated allowance stanzas remain report-only/advisory, not fixes or accepted source mutations.
+
+M11 remains unresolved runtime evidence, now explicitly linked to reproduced shared-baseline defect T-1253; no head-only credential regression or root cause is asserted. Evidence not clear; C3 runtime mark fails for required native-harness coverage and absent later phases. C1/C2 not independently failed but final verification remains outstanding. No ready/QA/enqueue/landing claim. Stop here pending Coordinator disposition, with original artifacts retained.
+Durable review A-11221.
+
+Criteria: C3 failed (Authorized retry89849235 remains exit1 on T-1253 native first-turn coverage; mappedT4/Web absent. Pending Coordinator disposition, no current complete runtime proof.).
