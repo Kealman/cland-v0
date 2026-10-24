@@ -18,6 +18,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/connection-snapshot.test.ts`](../../../hub/test/connection-snapshot.test.ts) | [Notes](hub-test-connection-snapshot.test.ts.md) |
 | [`hub/test/daemon.test.ts`](../../../hub/test/daemon.test.ts) | [Notes](hub-test-daemon.test.ts.md) |
 | [`hub/test/demo.test.ts`](../../../hub/test/demo.test.ts) | [Notes](hub-test-demo.test.ts.md) |
+| [`hub/test/demo-provisioning.test.ts`](../../../hub/test/demo-provisioning.test.ts) | [Notes](hub-test-demo-provisioning.test.ts.md) |
 | [`hub/test/durations-runner.test.ts`](../../../hub/test/durations-runner.test.ts) | [Notes](hub-test-durations-runner.test.ts.md) |
 | [`hub/test/events.test.ts`](../../../hub/test/events.test.ts) | [Notes](hub-test-events.test.ts.md) |
 | [`hub/test/executor-run.test.ts`](../../../hub/test/executor-run.test.ts) | [Notes](hub-test-executor-run.test.ts.md) |

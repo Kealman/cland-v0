@@ -47,6 +47,8 @@ Bind every human-visible Definition-of-done sentence to a concrete check and cri
 
 For an epic's Definition of done (separate from after-stage QA), take its QA hold and resolve the requested full dev SHA. Start the demo with `cland demo start <epic> --commit <sha> --json`. Keep the returned lease id, commit and deadline. The hub delivers that committed tree with the suite's dependencies and Neovim, under the shared remote budget and daily cap. Only QA holding the epic, the Coordinator and the human may use demo controls; sessions leave provider operations to the hub.
 
+Wait for start to complete before running cases. Concurrent demo status reports `provisioning` through creation and delivery; exec refuses with the lease id and commit while it is provisioning. Status becomes `active` after delivery persists readiness, when exec can accept commands until the deadline. See `hub/README.md`, "Epic demo leases".
+
 Run each headless case with the recorder from the local checkout. Use the requested epic's canonical id for both arguments (`E-423` in this example):
 
 ```sh

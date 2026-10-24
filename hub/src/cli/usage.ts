@@ -246,7 +246,8 @@ export const RULE_USAGE = `  rule add <text> --scope <roles>|all --reason <text>
 export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease a demo droplet
   demo exec <epic> -- <command…>              run in the delivered tree
   demo stop <epic> [--json]                  release the demo droplet
-  demo status <epic> [--commit <sha>] [--json]  show commit, lifetime and cost
+  demo status <epic> [--commit <sha>] [--json]  show state, commit, lifetime and cost
+                  provisioning until delivery completes; active accepts demo exec
 `;
 
 export const MODELS_USAGE = `  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n`;

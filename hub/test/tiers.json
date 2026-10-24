@@ -90,6 +90,7 @@
     "hub/test/default-subscriptions-workflow.test.ts": "T3",
     "hub/test/default-subscriptions.test.ts": "T2",
     "hub/test/demo-cap.test.ts": "T2",
+    "hub/test/demo-provisioning.test.ts": "T2",
     "hub/test/demo-release-component.test.ts": "T2",
     "hub/test/demo-release.test.ts": "T3",
     "hub/test/demo.test.ts": "T3",
