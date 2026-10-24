@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T09:04:26.967Z
-updated: 2026-10-24T09:26:33.217Z
+updated: 2026-10-24T18:44:43.870Z
 ---
 
 ## Goal
@@ -47,10 +47,5 @@ stages:
         - T-1105
         - T-1092
       - - T-1219
-  - name: fixes from the qualification
-    qa:
-      scope: none
-      when: after-stage
-    lanes:
       - - T-619
 ```
