@@ -79,3 +79,4 @@ T-1144 M1: Keep capacity unavailable through size/spend admission as well as acq
 T-781: Point custom-role workers to their own-claim review/verification permissions and Coordinator routing.
 - T-998: distinguish correctable invalid_argument results from forbidden permission refusals and point to session-permission guidance.
 conditional merge-batch Web step, receipts and bisection (T-1202)
+T-1228: Distinguish unknown explicit size overrides from listed or configured provider-capacity refusals.

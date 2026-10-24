@@ -254,6 +254,9 @@ A provider capacity refusal at size/spend admission or acquisition follows the s
 say **not run: provider capacity**; task suite results say **unavailable: provider
 capacity**, and the task verify `result` is `"unavailable"`. Neither is executed
 failure evidence. No executor, region or size fallback applies to that refusal.
+An explicit `--size` slug absent from the provider catalog instead refuses
+submission (exit 1, "unavailable", no job or droplet). Listed unavailable sizes
+and sizes not offered in configured regions retain the capacity outcome.
 
 Each periodic result goes to the Coordinator in General with head, previous green
 periodic head, first-parent commits since that green, outcome and failing files.

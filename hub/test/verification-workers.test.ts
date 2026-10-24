@@ -86,9 +86,14 @@ test('verify persists overrides, delivers remote workers, prices requested size 
   assert.match((await f.result(localOverride.id)).text, /workers 6/);
   assert.match(await log(localOverride.id), /WORKERS=6\nEXECUTOR=local/);
   for (const args of [['--workers', '0'], ['--workers', '1.5'], ['--size', 'unknown'], ['--executor', 'local', '--size', 'c-16']]) {
+    const before = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
+    const creates = f.api.requests.filter(request => request.method === 'POST' && request.path === '/v2/droplets').length;
     const refused = await clandWithEnv(f.root, f.actor, 'verify', '--report', f.topic, '--to', 'impl', ...args);
     assert.equal(refused.code, 1, refused.stdout);
     assert.match(refused.stderr, /positive integer|unavailable|requires the droplet executor/);
+    const after = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
+    assert.deepEqual(after.suites!.map(job => job.id), before.suites!.map(job => job.id), 'refusal creates no suite job');
+    assert.equal(f.api.requests.filter(request => request.method === 'POST' && request.path === '/v2/droplets').length, creates, 'refusal creates no droplet');
   }
   const refused = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, workers: 0 });
   assert.equal(refused.ok, false);

@@ -3340,6 +3340,10 @@ Provider catalog capacity refusals at size/spend admission or acquisition (no
 offered configured size/region) finish **unavailable: provider capacity**, retaining the original
 cause and `outcome.notRun: "provider-capacity"`. They never enter the local queue
 or try another size/region; a periodic run says **not run: provider capacity**.
+An explicit `--size` override missing from the provider's size list is invalid
+input: submission exits 1 with an "unavailable" error, without a suite job or
+droplet. A listed override marked unavailable or absent from the configured
+regions retains the provider-capacity outcome above.
 
 #### Leases, cleanup and spend
 

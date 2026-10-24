@@ -377,13 +377,24 @@ for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const) 
 });
 
 for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const)
-for (const executor of [undefined, 'droplet', 'size', 'droplet-size'] as const) test(`task capacity refusal reports unavailable without executor fallback (${executor ?? 'default'}, ${capacity})`, async t => {
+for (const executor of [undefined, 'droplet', 'size', 'droplet-size'] as const) test(`${capacity === 'absent-size' && (executor === 'size' || executor === 'droplet-size') ? 'task unknown size override refuses admission' : 'task capacity refusal reports unavailable without executor fallback'} (${executor ?? 'default'}, ${capacity})`, async t => {
   const run = caseDeadlines(t);
   const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted' }));
   if (capacity === 'regions') for (const region of f.api.regions) region.available = false;
   else if (capacity === 'unavailable-size') f.api.sizes[0]!.available = false;
   else f.api.sizes.length = 0;
   const explicitSize = executor === 'size' || executor === 'droplet-size';
+  if (capacity === 'absent-size' && explicitSize) {
+    const submitted = await run.wait('unknown size refusal', () => f.ui.request({ type: 'suite.start',
+      as: { name: 'impl', sessionId: 'remote-impl', shell: true }, cwd: f.root, mode: 'auto', report: f.topic, to: ['impl'],
+      ...(executor === 'droplet-size' ? { executor: 'droplet' as const } : {}), size: 'c-8' }));
+    assert.equal(submitted.ok, false);
+    assert.match(submitted.error!, /droplet size c-8 is unavailable/);
+    const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: unknown[] };
+    assert.deepEqual(status.suites, [], 'unknown override creates no suite job');
+    assert.equal(f.api.requests.some(request => request.method === 'POST'), false, 'unknown override creates no provider resource');
+    return;
+  }
   const cause = capacity === 'regions' ? explicitSize ? 'droplet size c-8 unavailable in configured regions' : 'droplet size c-8 unavailable in regions lon1' : 'droplet size c-8 is unavailable';
   const job = await run.wait('submission', () => f.launch(...(executor === 'droplet' || executor === 'droplet-size' ? ['--executor', 'droplet'] : []), ...(explicitSize ? ['--size', 'c-8'] : [])));
   await run.wait('acquisition settled', () => drive(f, f.verificationSettled()));

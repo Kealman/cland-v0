@@ -24,8 +24,10 @@ component assertion checks both the retained suite row and absence of a cover.
 
 For provider capacity, mark the scripted provider's offered regions unavailable
 before acquisition, leaving size/price facts valid for admission. Also exercise
-unavailable and absent size rows: their typed admission refusal must reach the
-same durable report rather than the generic periodic skipped notice. Observe the
+unavailable and absent configured size rows: their typed admission refusal must
+reach the same durable report rather than the generic periodic skipped notice.
+An explicit size override absent from the catalog instead refuses submission,
+with no suite job or provider resource. Observe the
 durable periodic result message and task result message/JSON/status, for both
 default and explicit droplet selection, each with and without `--size`.
 Negative admission controls keep invalid price, provider auth, spend-cap and

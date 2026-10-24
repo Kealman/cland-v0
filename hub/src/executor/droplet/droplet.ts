@@ -100,8 +100,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async validateSize(size: string, snapshot?: ProjectConfig): Promise<void> {
     const config = snapshot ?? await this.#config();
     const api = (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock));
-    const selected = (await api.sizes()).find(s => s.slug === size && s.available);
-    if (!selected) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
+    const selected = (await api.sizes()).find(s => s.slug === size);
+    if (!selected) throw new Error(`droplet size ${size} is unavailable`);
+    if (!selected.available) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
     if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     const regions = await api.regions();
     if (!config.verification.droplet.regions.some(region => selected.regions.includes(region) && regions.some(r => r.slug === region && r.available && r.sizes.includes(size)))) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable in configured regions`);

@@ -17,6 +17,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh
                   release cache: same effective executor/OS and full coverage; cache notices name original occasion/executor
                   Web: tasks, integrated/periodic/occasion runs, and web/-touching merge batches after T1; web/** selects web-only; missing browser/libs: Web not run (reason retained)
                   provider capacity refusal: unavailable (periodic: not run); no executor, region or size fallback
+                  --size must name a provider-listed slug; an unknown override refuses submission without a job
                   task: T0–T2 + Web + changed T3/T4 files and tiers.json mapped T4 guards once; >=80% T3 budget prints 1.5x allowances; T4 has no budget
                   periodic dev T3 is hub-owned: bundles its captured commit; delivery failures are infrastructure, retried next interval
   suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result
