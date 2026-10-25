@@ -8,9 +8,9 @@ case "${1:-}" in
         cat <<'HELP'
 Usage: sh install.sh
 Install the latest stable cland tag on Linux or macOS. Requires Node >=24.13.0 <25,
-npm, curl, tar and Git (for latest-tag discovery). Never runs sudo.
+npm, curl, tar, mktemp, readlink and Git (for latest-tag discovery). Never runs sudo.
 PREFIX: installation prefix (default: $HOME/.local).
-CLAND_VERSION: install a specific released tag, e.g. v0.2.0.
+CLAND_VERSION: install a specific released tag (vX.Y.Z).
 CLAND_RELEASE_URL: use an HTTPS or file:// source tarball instead of tag discovery.
 CLAND_WEB_RELEASE_URL: optional HTTPS or file:// directory of matching Web assets.
 Tagged installs prefer the SHA-256-verified prebuilt Web bundle; missing or invalid
@@ -153,7 +153,6 @@ else
         sh packaging/build-install.sh
     else
         # Published tags predating the shared helper keep their original build path.
-        # In particular, CLAND_VERSION=v0.2.0 remains installable by this script.
         printf 'Using the legacy source-release build...\n'
         npm ci --include=dev --ignore-scripts --no-audit --no-fund
         cp -p package-lock.json ../build-package-lock.json
