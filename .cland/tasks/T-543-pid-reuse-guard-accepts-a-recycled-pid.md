@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T19:57:02.932Z
+updated: 2026-10-25T21:18:20.124Z
 ---
 
 ## Summary
@@ -31,14 +31,9 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final4 · 2026-10-25T18:36:26.881Z · commit 38d824672ab89f07d1e95c0f36b67ddbbce7d314
   - done: impl-543 · 2026-10-25T19:30:07.671Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final5 · 2026-10-25T19:46:36.411Z · commit 990a407e2214851248cad7b00ad23b776b0632a6
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final6 · 2026-10-25T20:13:15.153Z · commit c169e657d488acf52167263acd544e1a44b60d41
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
-  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
-  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
-  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final3 · 2026-10-25T16:04:52.366Z · commit 8fbcf297cde11d084d4efd1da4ff462405f3a121
-  - verified: rev-34 [reviewer] · run rev-34-20261025-543-source10 · 2026-10-25T18:14:04.626Z · commit c8274f8c0407b05d85eeaf4008382298a6d8de97
-  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final4 · 2026-10-25T18:36:26.881Z · commit 38d824672ab89f07d1e95c0f36b67ddbbce7d314
-  - done: impl-543 · 2026-10-25T19:30:07.838Z
-  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final5 · 2026-10-25T19:46:36.412Z · commit 990a407e2214851248cad7b00ad23b776b0632a6
+  - done: impl-543 · 2026-10-25T21:16:19.147Z
 
 ## Comments
 
@@ -424,3 +419,75 @@ Criteria: C1 verified, C2 verified.
 ### impl-543 · 2026-10-25T19:56:56.622Z
 
 Authorized dev merge committed/pushed at c169e657d488acf52167263acd544e1a44b60d41 (dev 48bcab2955). A-12136 records conflict resolutions and sequential local macOS receipts: seven requested files plus three help/fixture files, 159 passed/one Linux-only skip, typecheck and diff-check green. Capacity retry cancellation, admitted-name settlement and native identity safety retained. C1/C2 implementation done; fresh source review then mode-free Linux verification required. Prior all failures and tracker exact-cause uncertainty remain explicit.
+
+### rev-34 · 2026-10-25T19:58:30.297Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source13
+commit: c169e657d488acf52167263acd544e1a44b60d41
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge source clear; Standards/Spec no findings. A-12137 audits both parents and Coordinator7e4782dd/de4a02f7. Stop clears capacity retry before persisted legacy upgrade, then renews authorization before handoff/adapter stop; replay readback authorization cannot revive removed retry. All admitted-name reservation success/rollback paths and current-session-id publication retained. Native capture/relaunch/checkpoint/refusal/branch/cancellation code and tests unchanged from task parent; incoming Codex22delivery/33native and four rename outcome controls retained. SESSION exact-frozen match, only owning row changed and all parent help preserved. Targeted local159pass/1Linuxskip supplementary only; parent final5 historical, parent allc01a0cfc cancelledT0/countsunavailable. C1/C2runtime-unverified/no marks. One fresh mode-free verify atc169e657, exact-head final review, then Coordinator deciding integrated all before merge.
+
+### rev-34 · 2026-10-25T20:13:15.153Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-final6
+commit: c169e657d488acf52167263acd544e1a44b60d41
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear; Standards/Spec no findings. A-12146 audits a1020c43/A-12145:3387ordinary+75load allpass;15identities each5/5load. Lifecycle18/tracker15/system38/cleanup37, tenstat controls, native identity/oldrow/same-second refused replacement+managed positive/ancestry/cache/checkpoint controls pass. Merge Codexdelivery22/native33, all4admitted-name rename outcomes, stop-capacity cancellation/heldreadback busy controls pass. Probe5+5load, docs3/help4/commandhelp17/frozen1 pass. Native3.345<5.2 allowance; tracker8.850<existing14.629, newstatmax0.158s/no new allowance. HostT0/LinuxT1/allT2/changedT3once/mappedT4once/Web complete; otherT3/T4/extraT4reps/stageQA absent. Host preparedtree not repeated remotely, report-only diagnostics/synthetic limits retained. C1/C2verified atc169e657. Earlier red/cancelled all receipts remain distinct; crew unselected/tracker old exact cause unproven. Coordinator deciding integrated all at landable head remains before merge.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-543 · 2026-10-25T20:49:16.877Z
+
+Zombie follow-up consumer inventory before production changes (rule20): direct native birth consumers are process-identity.ts itself; production adapters/processes.ts, adapters/claude-code.ts, adapters/sessions.ts, adapters/launch-files.ts, system-processes.ts, executor/local.ts and suite-command.ts; synchronous fixture consumer hub/test/process-cleanup.ts; direct tests process-identity.test.ts and claude-code-sessions-lifecycle.test.ts. Row-membership consumers additionally fixture-processes.ts, orphans.ts, and their fixture/run callers; parseProcessTable consumers system-processes.ts/process-cleanup.ts plus system-processes.test.ts. processAlive is consumed by all three native adapters (Claude/Codex/OpenCode); session-resume-lifecycle, fixture-orphans-lifecycle, suite-timeouts and hook-bridge tests use derived boundaries. Shipped docs/skills/QA/startup searches found no additional direct native-reader caller or persisted wire reader: previous nullable/string APIs and persisted pidIdentity shape will stay unchanged. Add an optional native-exit callback, keep live unreadable/mismatch as unknown/refusal, and omit only after-probe-confirmed dead rows just as ps already omits Z. Migrate snapshot and processAlive consumers; launch/capture clients remain unaffected (dead birth still null, never signal proof). All tiers share the unchanged cleanup helper, so its file-wide safety cases plus suite-check, suite-recovery and codex-adapter native reaping paths will be run. Actual red: deterministic Linux cleanup case reproduces 'captured: known; current: after ownership snapshot: Linux stat state: zombie' with no PID reuse. Darwin SDK sys/proc.h defines p_stat at byte36 and SZOMB=5; cover this native equivalent too.
+
+### impl-543 · 2026-10-25T21:03:19.991Z
+
+Native exit correction committed/pushed at c921d76c8e43dcf1b8e1f4e05f56c73859eef701, tree1d816115962b1fcb245685e47c3733e5b38d05ea. Exact A-12158 zombie cleanup error reproduced red and fixed; separate frozen-exit→CONT regression also red/green. Linux Z/X and Darwin SZOMB are explicit no-signal exit receipts, separate from unknown proof and parent reaping; previous API/persisted shapes retained. Consumer inventory preceded production edits. Canonical docs/help/skill updated. Local single-file receipts221pass/one Linux-native skip; typecheck/static lint green (135 report-only findings,0refusals). New deterministic controls<0.1s locally. Fresh source review then one mode-free Linux run required; no integrated-pass claim.
+
+### rev-34 · 2026-10-25T21:06:20.570Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source14
+commit: c921d76c8e43dcf1b8e1f4e05f56c73859eef701
+scope: full
+findings: [{"severity":"medium","text":"M7: final-native-exited rows are filtered before descendant accounting. If ps has managed L→C→G, C becomes Z/X after ps and G survives, C is omitted but returned G still names C as parent. endProcess cannot reach G and can report successful stop while G remains live. An exited leader similarly reaches the leader-missing early return. Retain/reconcile ancestry or refuse unaccounted surviving branches; add non-leaf exited-parent controls and audit the same fixture filter at process-cleanup.ts:58.","file":"hub/src/system-processes.ts","line":88}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Not clear; audit A-12162 (precise filter location is system-processes.ts:88). Standards0/Spec1medium M7. Source-proven after-ps exit/surviving-grandchild interleaving bypasses prior surviving-branch fence; no Reviewer reproduction claimed. Requested sealed control from lead. Native exit of a parent is not its descendants' exit receipt. Keep exited-leaf, invalid/wrongPID, earlierdead/laterlive, frozen-recovery, same-second/cache/ancestry/checkpoint positive/refusal controls and actual native reaping/root assertions. Nullable APIs/docs/callback handling otherwise appropriate. C2failed; C1runtime-unverified. Correct/review at fresh pushed head before verification; parent allA-12158 stays red.
+
+Criteria: C2 failed (M7: native-exited-parent filtering can hide a still-live listed descendant and allow false successful termination; new exited-state positives cover leaves only.).
+
+### impl-543 · 2026-10-25T21:08:46.853Z
+
+M7 reproduced before correction: six sealed stop cases (Linux Z/X + Darwin SZOMB, exiting child and exiting leader) all failed true!==false with a listed surviving/reparented grandchild. Six matching fixture cases also failed 'Missing expected rejection', showing root cleanup could settle without observing the writer branch. Planned shared membership correction: a linear-time retainProcessAncestry helper in process-table.ts, consumed only by system-processes.ts and test/process-cleanup.ts, retains a native-exited row whenever any listed descendant lacks an exit receipt. It retains the previous unknown-birth row shape and an explicit surviving-branch diagnostic, authorizing no signals; leaves/fully exited branches are still omitted. Existing downstream native snapshot consumers remain conservative on unknown birth (inventory above); no new wire/schema/record field. Source14 not-clear remains pending fresh corrected-head review.
+
+### impl-543 · 2026-10-25T21:16:19.320Z
+
+M7 corrected and pushed at f6bd8ca7e1c9cac2d371948a4af0914db4af21c4 (tree8201ffe0f830382d253151b946f1e84f7eb08341). Shared linear retainProcessAncestry preserves exited ancestors while any listed descendant lacks exit proof; rows remain unknown/refused, with no signal authority. Twelve matrix cases red→green, and an old-filter mutation makes all twelve fail. Actual fixture-root/writer preservation and positive retry/managed-leader controls retained. Local final subset121pass/one Linux-only skip, typecheck/static guards green (135report-only findings,0refusals). Docs/skill condition updated; no schema/wire/permission change or new allowance. Fresh review and then one mode-free verify required; source14 remains historical not clear.
+
+### rev-34 · 2026-10-25T21:18:20.124Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source15
+commit: f6bd8ca7e1c9cac2d371948a4af0914db4af21c4
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected native-exit source clear; M7 resolved, Standards/Spec no remaining findings. A-12164 audits correction plus source14 native-exit change. Shared linear retainProcessAncestry retains all rows without final exit proof and their ancestors; retained native-exited rows have null birth/explicit surviving-branch diagnostic, so stop/cleanup refuse without signals.12LinuxZ/X/DarwinSZOMB child/leader controls preserve stop refusal and actual root/writer before simulated reaping, then completion/managed-positive; old-filter mutation reproduces all12 failures. Leaf-zombie/wrongPID/invalid/live-reuse/frozenCONT/oldAPI and real ESRCH controls retained. Docs/skill/CHANGES/help/frozen migration checked. Local121pass/1Linuxskip supplementary; no current-head configured evidence. C1/C2runtime-unverified/no marks. One mode-free Linux run, fresh exact-head evidence, then Coordinator deciding all including original suite-check/reaping paths; no integrated-pass inference from selected controls.

@@ -3,8 +3,9 @@ id: T-290
 kind: task
 title: "An unknown `permissions` launch value is swallowed: RolesFile keeps the last good policy and the launch proceeds (T-289 follow-up)"
 state: open
-status: in progress
+status: ready
 size: S
+criterion_seq: 4
 labels:
   - hub
   - ready-for-agent
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-1067
 branch: t/T-290-an-unknown-permissions-launch-value-is
 created: 2026-10-12T12:17:37.170Z
-updated: 2026-10-25T19:57:55.112Z
+updated: 2026-10-25T20:40:48.354Z
 ---
 
 ## Summary
@@ -35,13 +36,119 @@ Out of scope: the start-up CLI check warning waived on T-289.
 
 ## Acceptance criteria
 
-- [ ] C1. A launch or relaunch under a role whose `permissions` value is unknown is refused, naming the roles file, the role, the value and every accepted value (`""`, `"auto"`, `"skip"`); the hub log names the key.
-- [ ] C2. A corrected roles file lets the next launch proceed without a hub restart.
-- [ ] C3. The parser's diagnostic names every accepted value; `approval` and `sandbox` are checked for the same gap and the finding recorded in the item.
-- [ ] C4. Tests cover the refusal, the recovery and the diagnostic at the roles and adapter seams; `npm run typecheck` and the targeted tests pass; `cland verify` is green.
+- [x] C1. A launch or relaunch under a role whose `permissions` value is unknown is refused, naming the roles file, the role, the value and every accepted value (`""`, `"auto"`, `"skip"`); the hub log names the key.
+  - done: impl-290 · 2026-10-25T20:07:58.019Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
+- [x] C2. A corrected roles file lets the next launch proceed without a hub restart.
+  - done: impl-290 · 2026-10-25T20:00:36.581Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
+- [x] C3. The parser's diagnostic names every accepted value; `approval` and `sandbox` are checked for the same gap and the finding recorded in the item.
+  - done: impl-290 · 2026-10-25T20:00:36.663Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
+- [x] C4. Tests cover the refusal, the recovery and the diagnostic at the roles and adapter seams; `npm run typecheck` and the targeted tests pass; `cland verify` is green.
+  - done: impl-290 · 2026-10-25T20:39:29.497Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
 
 ## Comments
 
 ### impl-290 · 2026-10-25T19:54:44.731Z
 
 Rule 20 before changes: changing launch admission when the roles file is invalid, with additive optional RolesSource.launchError getter (older/fixed sources remain valid; no wire/list/schema changes). Production consumers searched: Sessions launch, pool launch, fresh resume and relaunch (all use fresh; refusal before spawn/stop), hub core role/permission snapshots and dispatch role assignment/list, ProjectConfiguration and RolesFile readers, fixedRoles, roleLaunchPolicy, roles launch/editor/template and CLI role/session. Snapshot, grant, persisted process readers and wire clients keep last-good shapes; no migration required. Tests/fixtures searched across all tiers plus nvim/web, qa briefs, docs, shipped skills and startup: consumers include roles*, config-reload-component, session-credential-io, launch-admission/recovery, session-launch*, session-resume*, lifecycle*, adapter-composition, opencode-launch-policy, custom-roles*, lead*, crew*, scenarios/crew-launch and QA role launch/resume cases. These retain normal valid-file behavior; regressions will cover both real reader implementations through fake adapter Sessions, parser diagnostics, last-good snapshot retention, no-stop refusal and correction. Existing sources without launchError remain a compatibility regression via unchanged launch-admission tests. No new native process required. approval and sandbox share the same caught parse-error gap; both get identical admission treatment. Current permissions contract also includes auto; preserve it.
+
+### rev-31 · 2026-10-25T20:04:05.374Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-source1
+commit: 5ee6d272dd19fa37cd661a242ffd38e670d4193f
+scope: full
+findings: [{"severity":"medium","text":"M1 Standards: SESSION_USAGE changed but frozen commands.json SESSION_USAGE did not. Decoded blocks unequal; existing export/top-level/session CLI help equality guards fail. Update intended frozen block only, preserve composition/template/order/assertions, use existing guards red/green.","file":"hub/src/cli/usage.ts","line":29},{"severity":"medium","text":"M2 Spec: launchError guard precedes async cwd/brief/account preparation but final admission/#launchPolicy/native authorize never recheck it. A reader can publish invalid policy while preparation is held, then resumed launch still consumes last-good skip and spawns. Preserve before-stop refusal and revalidate current error at existing post-I/O/native boundaries, including relevant pool/relaunch callbacks; held-preparation real-reader regression must refuse before native effect and recover after correction.","file":"hub/src/adapters/sessions.ts","line":1011},{"severity":"low","text":"M3 Spec diagnostic completeness: approval/sandbox accept empty string via optString but omit it from unknown-value diagnostics (oneOf nameEmpty omitted); new accepted-value table also omits it. Include the accepted harness-default empty string in both diagnostics/coverage as same-policy handling.","file":"hub/src/roles/config.ts","line":118}]
+finding_counts: {"high":0,"medium":2,"low":1}
+
+Full source NOT CLEAR; A-12140 complete audit at tree7ae79c26d6d65dee1242748a4d1664c35e40b744: Standards1medium/Spec1medium+1low. Reader error/snapshot separation, identical-text read recovery, direct before-stop refusal and six key×reader normal regression cases sound; roleless/ordinaryreattach/OpenCode ignored policy retained. M2 is read-only code-path finding, no executed repro claim: hold actual async preparation then publish bad text via reader before release. Fix M1/M2, considerM3 same correction, preserve guards and add test-first receipt/capture provenance. Push successor/fresh source before mode-free verify; no dev merge/forcedall/nativeprovider expansion. A-12138 is local implementation summary12/12+8/8/typecheck, not configured/Linux/raw-full-log proof; retain original stdout/exits/timings/source limits without transcription reruns. All runtime criteria pending. QA none. Reviewer read-only.
+
+Criteria: C1 failed (Invalid roles error observed during asynchronous launch preparation is not rechecked at final/native admission, so stale policy can still reach spawn.), C4 failed (Changed SESSION_USAGE is not migrated to frozen command fixture, breaking existing CLI compatibility/help guards.).
+
+### impl-290 · 2026-10-25T20:07:10.948Z
+
+Addressing source review A-12140 M1–M3 without merging dev. M1 original compatibility guard reproduced frozen SESSION_USAGE mismatch (exit 1); migrated only that JSON entry, guard passes (1/1) and existing CLI help guards pass (4/4). M2 six real-reader held cwd/native-spawn/native-relaunch cases reproduced 'known-invalid roles must refuse after asynchronous preparation' (exit 1, 8 existing green/6 red). Current-error checks now run at final admission, policy construction, native launch/relaunch authorization and pool handoff boundaries. Six controls + eight existing cases green after correction, with explicit entry/result bounds and correction recovery. M3 four approval/sandbox cases reproduced omitted empty-string diagnostic; parser now lists empty string too and all 14 pass. Final parser 12/12, root typecheck green after correcting new test stat argument typing. New raw capture outputs retained; original first-iteration session outputs/timing/source limits preserved (A-12138/A-12140), no transcription reruns. Rule-20 missed help-fixture consumer now migrated; no wire shape changes.
+
+### rev-31 · 2026-10-25T20:10:12.496Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-source2
+commit: 958c4528ecc36d50b10d1f4c94544a5e2c845955
+scope: full
+findings: [{"severity":"medium","text":"M4 Standards: tempProject registers root-removal hook before new plain t.after gate/reader/session cleanup; early failure while preparation held removes root before release/drain. Hook does not join pending operation before store/session disposal. Pre-register deferred shared before-directory resource owner; release+join operation and drain/close owners safely before root/fault disposal, with same-seam early-failure control. Preserve assertions/receipt bounds, no native process needed.","file":"hub/test/roles-session-refresh.test.ts","line":22}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Corrected full source2 NOT CLEAR; A-12144 carries A-12140 full audit at tree812988904a335cbe6ea7b82ef25ae4b4ae01e6ef. M1 frozenSESSION_USAGE migration/M2 post-I/O, policy, native and pool current-error guards/M3 empty approval+sandbox diagnostics resolved. Six actual-reader held-boundary controls reproduce red then green; roleless/ordinaryreattach/OpenCode behavior retained. New M4 lifecycle ordering must be fixed without production/assertion changes: shared resource cleanup before ownDirectory, release and explicitly join pending operation, safe session/store/reader drain. A-12142 original correction captures checked (help1/1+4/4, held14/14, parser12/12; prior red outputs/source/precommit limits); no Linux/suite proof. C1–C3 done/runtime unverified, C4 pending/failed. Push narrow corrected successor/fresh source before mode-free verify. No devmerge/forcedall/native expansion/transcription reruns. Reviewer read-only.
+
+Criteria: C4 failed (New held-preparation test fixture can delete its root before releasing and draining active launch/resume on early failure.).
+
+### impl-290 · 2026-10-25T20:14:26.370Z
+
+Source2 M4 corrected in 0e2f561e (production behavior unchanged). Deferred aggregate is registered via beforeDirectories before tempProject; it releases gates, joins tracked launch/resume promises, closes Sessions/readers/hub/table, then restores faults before shared root removal. Optional owners handle partial setup. All newly added manual-reader fixtures now use it. Two simulated early-failure controls invoke the same framework after-hook boundary while native preparation remains held, proving the terminal refusal occurs before Sessions closes and the root survives through disposal then disappears after cleanup; no native process. Latest touched T2 file: 16/16 exit 0, local macOS arm64, native Node file duration 1484.202209ms; no configured duration/coverage gate, browser or Linux evidence. This M4 finding was source-reviewed; no executed prior-head M4 red is claimed. Root typecheck completed after fixing generic union inference; full output stays in original session. Original correction capture limits retained; new log artifact preserves this actual run. No dev merge since source1.
+
+### rev-31 · 2026-10-25T20:15:17.218Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-source3
+commit: 0e2f561e0556e63b8a9103fac72af2ff1f7a11fb
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source3 CLEAR; A-12149 carries A-12140/A-12144 at tree4444502d2429df08db13413f941c401479bb1b7a. M4 resolved: pre-root shared beforeDirectories owner releases and joins tracked launch/resume before Sessions/readers/hub/table disposal and fault restoration, then root removal; optional owners cover partial setup. Two same-seam early-failure controls prove terminal refusal before close and root retained through disposal then absent. M1–M3 unchanged/resolved, no production or dev merge delta. Standards0/Spec0 outstanding. A-12148 original local16/16/file1484.202209ms checked; macOS/command/exit/source attribution from request, no standalone typecheck capture/no prior-head M4 red/no configured/Linux claim. C1–C3 done/runtime unverified; C4 configured green pending. Submit one ordinary mode-free configured verify at unchanged head then exact-head final evidence review; retain original receipts/provenance and no transcription reruns. Separate rule6all belongs to Coordinator; QA none. Reviewer read-only.
+
+### rev-31 · 2026-10-25T20:21:09.396Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-failed-evidence1
+commit: 0e2f561e0556e63b8a9103fac72af2ff1f7a11fb
+scope: evidence
+findings: [{"severity":"medium","text":"M5 Standards: shared oneOf supplied-value suffix also changes legacy nonpolicy harness errors; existing exact roles-editor diagnostic contract fails (A-12150:5607-5638). Narrow suffix to intended policy diagnostics, retaining complete policy messages and existing exact harness assertions; inspect remaining consumers.","file":"hub/src/roles/config.ts","line":81}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Failed exact-head evidence NOT CLEAR; A-12152 audits original A-12150. 992 ordinary finish records991pass/1fail, no load finishes. T0 passed26.16s/T1failed80s; T2/mappedT4/Web/T3 unexecuted. Exact roles-editor error actual appends ; got unknown, expected legacy wording. I missed this consumer in source review. Claimant's narrowing to policy diagnostics preserves intended scope; keep strict assertions and all M1-M4 fixes, push successor/fresh source before one new mode-free verify. Linuxc8sfo2life240s/$0.0167, no browser execution; hostgateTREEb901644e reused. Lint/budget/ratchet report-only, no overall green. No unchanged retry/devmerge/full task run. C1-C3 runtime unverified.
+
+Criteria: C4 failed (Configured run99065ba4 failed T1 roles-editor exact harness diagnostic; T2/mappedT4/Web unexecuted.).
+
+### impl-290 · 2026-10-25T20:21:40.170Z
+
+Configured 99065ba4/A-12150 is failed partial Linux evidence, not green: T0 exit 0; T1 991 pass/1 fail; T2/Web/mapped T4 unexecuted and no new-test load finishes. Exact error was aide.launch.harness ...; got "unknown" versus legacy expected aide.launch.harness ... (without suffix). Local roles-editor reproduced it (12/13, exit 1), then passed 13/13 with both strict legacy assertions unchanged after narrowing suffix to policy diagnostics only. Exact-consumer rescan also found roles-component's two nonempty policy regexes and E-611 D3's expected permissions diagnostic. Local component red reproduced the missing-empty mismatch (4/5, exit 1); migrate policy expectations to full exact error (empty + supplied value), retain network/harness assertions, and update QA D3 expected suffix for its literal maybe input. No new behavior/schema/protocol shape; this completes diagnostic consumer migration missed in the initial inventory. Fresh source review before new mode-free verify; no dev merge.
+
+### rev-31 · 2026-10-25T20:23:09.116Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-source4
+commit: cf84aa03d82a3ca2db27982efc786093b2ace3ab
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source4 CLEAR; A-12155 carries previous full audits at tree7b3d9fb1726c35583ee077463580c9c80d6987b0. M5 resolved: policy-only suffix retains exact legacy harness/network diagnostics and all intended permissions/approval/sandbox details. Strict roles-editor assertions unchanged; roles-component expectations strengthened to exact complete policy messages; QA E-611 maybe suffix and guide migrated. M1-M4 unchanged/resolved; Standards0/Spec0 outstanding. A-12154 original local editor12/13red→13/13green and component4/5red→5/5green checked; capture/source/command attribution limits explicit. Parser12/12/readers16/16/typecheck session receipts remain local, no current configured evidence. Prior A-12150 remains failed partialLinux at0e2f561e. C1-C3 done/runtimepending; C4 awaits configuredgreen. Submit one ordinary modefree verify unchanged then exact-head final evidence review; no devmerge/forcedall/transcription reruns. Coordinator owns rule6all; QA none. Reviewer read-only.
+
+### rev-31 · 2026-10-25T20:40:48.196Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-final
+commit: cf84aa03d82a3ca2db27982efc786093b2ace3ab
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final CLEAR; A-12157 independent exact-head audit carries source4A-12155/fullsource chain at tree7b3d9fb1726c35583ee077463580c9c80d6987b0. C4 claimant restoration confirmed4/4done0failed before settlement. Original A-12156/dc8d8923 finished passed:3278ordinary tests+70additional load passes (14new identities×5), zero fail/cancel/skip/todo. All16reader cases and exact editor/parser/component/help/compatibility/docs consumers pass; M1-M5 resolved. C1-C4 verified current: complete refusal/log diagnostics, real-reader held-boundary no-effect refusal, corrected-file recovery/last-good preservation, approval+sandbox gap coverage, targeted/typecheck/configured proof. Worst new load.219677202s/no>=3sallowance. T0/allT1/fallbackallT2/mappedT4once/Web complete; noT3/fullT4soak. Mapped inboxguard1.588653390s,selectedwall2.765s excludesmachinewait; no repeats. Linuxc8sfo2Node24.21/Nvim.12.5/HeadlessShell156v1248;life901s/$0.0626 not suitewall. HostgateTREEae0fbe47 reused, not repeatedremote typecheck. 21existingwarnings/Webwall185.800vs40/lint133/60/unchangedratchet2232.554 report-only, no enforcement claim. Localreceipt capture/source limits carried; priorA-12150failed historical. Component/fake-adapter proof, no provider/nativeharness claim. Fresh conflict assessment/ready and separate rule6all belong to Coordinator; QA none. Reviewer read-only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

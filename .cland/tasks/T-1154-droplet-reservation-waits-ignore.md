@@ -2,8 +2,8 @@
 id: T-1154
 kind: task
 title: Droplet reservation waits ignore shutdown and can hold hub.stop for up to 60 s
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1066
 branch: t/T-1154-droplet-reservation-waits-ignore
 created: 2026-10-22T19:53:59.804Z
-updated: 2026-10-25T19:54:11.064Z
+updated: 2026-10-25T21:25:35.498Z
+closed: 2026-10-25T21:25:35.498Z
 ---
 
 ## Summary
@@ -31,12 +32,15 @@ Reservation and spend-ledger waits become cancellation-aware. On stop they stop 
 - [x] C1. A hub stop while a run waits on the reservation lock or the spend ledger exits within 3 s, and a lock acquired late is released and not left owned (test).
   - done: impl-1154 · 2026-10-25T19:33:45.495Z
   - verified: rev-31 [reviewer] · run rev-20261025-1154-final · 2026-10-25T19:54:10.917Z · commit 73ef11d299d2369601b8f1e5462e9767c156c695
+  - verified: rev-31 [reviewer] · run rev-20261025-1154-final2 · 2026-10-25T20:22:15.153Z · commit 9b13aad58db756fabd51c457aa7ac2a2d3d420e7
 - [x] C2. No spend reservation or remote slot stays counted after such a stop, as shown by the next hub's executor status (test).
   - done: impl-1154 · 2026-10-25T19:26:35.944Z
   - verified: rev-31 [reviewer] · run rev-20261025-1154-final · 2026-10-25T19:54:10.917Z · commit 73ef11d299d2369601b8f1e5462e9767c156c695
+  - verified: rev-31 [reviewer] · run rev-20261025-1154-final2 · 2026-10-25T20:22:15.153Z · commit 9b13aad58db756fabd51c457aa7ac2a2d3d420e7
 - [x] C3. Sharded close-run planning (reserveShardSpend and releaseShardSpend) honours the same shutdown cancellation: a hub stop during either wait exits within 3 s, and a shard reservation released late is still released durably, never left counted (test).
   - done: impl-1154 · 2026-10-25T19:26:36.021Z
   - verified: rev-31 [reviewer] · run rev-20261025-1154-final · 2026-10-25T19:54:10.917Z · commit 73ef11d299d2369601b8f1e5462e9767c156c695
+  - verified: rev-31 [reviewer] · run rev-20261025-1154-final2 · 2026-10-25T20:22:15.153Z · commit 9b13aad58db756fabd51c457aa7ac2a2d3d420e7
 
 ## Comments
 
@@ -135,3 +139,39 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence CLEAR; C1–C3 verified. A-12135 carries full source chain/A-12127 and independent raw A-12132 audit. Exact-head mode-free269ad3fc exit0:3266ordinarypass plus35additional loadpasses(7newidentities×5), nofail/cancel/skip/TODO. Named injected/clock/late-lock and shardreserve/shardrelease/spend/budget-stop cases all ordinary+5/5, worstnew1.091583917s; independent unscaled3s component stop bound and next-hub durable lease/status recovery assertions retained. Durable shard intent keeps uncertain reservations counted until next-hub settlement; no native daemon/provider latency claim. Frozenhelp/top-level+hubCLI/rolewording+bytereserve pass at currenthead. HostT0/allT1/fallbackallhub+NeovimT2/Web complete; T3/T4 absent/deferred, no all/stageQA claim. Linuxc8lon1 Node24.21/Nvim0.12.5/HeadlessShell156v1248 forWeb, life678s/$0.0471 distinctfromwall. HostgateTREEa7f97d79 reused. Report-onlylint133/60/sixbudgetwarnings/Web144.56>40s/ratchet2232.554same retained; no enforcement pass. Prior pre-admission refusal and red015acfff remain historical; original local capture/source limits explicit. No additional task rerun needed. QA none; Coordinator owns enqueue/separate pre-merge checks. Reviewer read-only.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1154 · 2026-10-25T20:06:25.530Z
+
+Rule-6 regression follow-up at 9b13aad5: existing indirect consumer suite-close-component.test.ts cancellation case raw-awaited suite.start while newly clock-aware shard ledger backoff could be pending. It passed ordinary mode-free A-12132 at 0.211 s, then failed pre-merge A-12139 with exact suite.start5000ms timeout. Pinned actual scratch-ledger contention reproduces same red in 5.180 s; drive(f,submission) yields green0.356 s, full file12/12 and root typecheck green on local macOS arm64. Existing cancellation/no-result/zero-spend/no-create/single-result assertions retained. No production/suites/manifest edit, no dev merge; changed existing file forces Linux selection. Original outputs published in topic artifact; new source review required before mode-free rerun.
+
+### rev-31 · 2026-10-25T20:07:53.450Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1154-source5
+commit: 9b13aad58db756fabd51c457aa7ac2a2d3d420e7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source5 CLEAR, Standards0/Spec0; A-12143 carries complete prior audit and historical73ef task evidenceA-12135 at tree4941b7e9a864bca70406973ca57b159ef0f535ff. Coordinator-authorized rule6 follow-up only existing T2 cancellation case+guide. Actual scratch ledger token pins backoff after flushed startup sweep/provider release; existing drive(f,submission) joins injected fake-time wait. No-result/cancelled/zero-spend/no-create/single-report assertions retained; no production/suites/manifest/devmerge or new identity. A-12141 original pinned raw-await red exact5000ms timeout→driven green .355904042s/full12/12 accepted as local corrected-source, not current Linux. A-12139 rule6all red remains separate; prior A-12132 did execute/pass same case .210904002s, so intermittent not omitted. C1–C3 current runtime pending. One ordinary mode-free verify unchanged9b13aad5, final exact cancellation+7new case/load/phase/provenance evidence, then Coordinator-owned rule6rerun. No forcedall/local transcription repeats/devmerge. Reviewer read-only.
+
+### rev-31 · 2026-10-25T20:22:15.153Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1154-final2
+commit: 9b13aad58db756fabd51c457aa7ac2a2d3d420e7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final2 CLEAR; A-12153 independently audits A-12151 at tree4941b7e9a864bca70406973ca57b159ef0f535ff/source5A-12143. Modefreee7785794 green3266ordinary+35additional load passes, seven identities×5 each, zero fail/cancel/skip. Existing held-provider cancellation exact finish line12496 passes0.240380251s, no new-identity repetitions; prior rule6red historical. C1-C3 verified current: bounded component shutdown, late-owned lock join/release, next-hub counted-spend/slot recovery, durable shard release. Worst new load1.131691971s/no>=3s allowance. T0/allT1/fallbackallT2/Web complete; T3/T4 absent/deferred, no all claim. Linuxc8sfo2Node24.21/Nvim0.12.5/HeadlessShell156v1248; life720s/$0.0500 not suitewall. HostgateTREE16546ee9 reused not remote typecheck. Six warnings/Webwall142.336vs40/lint133/60/unchangedratchet2232.554 report-only, no enforced-budget claim. LocalA-12141 source/capture limits carried. No native-provider/OS latency claim. Coordinator owns separate rule6all and enqueue; QA none. Reviewer read-only.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-25T21:25:35.498Z
+
+Merged 76f5b316a351ae510cececd350e39ed92d355739 onto dev.
