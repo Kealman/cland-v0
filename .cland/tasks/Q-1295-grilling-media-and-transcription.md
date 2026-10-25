@@ -5,7 +5,7 @@ title: "Grilling: media and transcription"
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-1286
 blocked_by:
   - Q-1289
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T10:24:46.165Z
-updated: 2026-10-25T10:27:22.439Z
+updated: 2026-10-25T12:51:34.215Z
 ---
 
 ## Question

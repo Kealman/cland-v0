@@ -2,7 +2,7 @@
 id: Q-1292
 kind: question
 title: "Prototype: a Telegram remote against a sandbox hub"
-state: open
+state: closed
 labels:
   - wayfinder:prototype
 assignee: cland-design
@@ -14,7 +14,8 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T10:24:45.624Z
-updated: 2026-10-25T12:30:43.734Z
+updated: 2026-10-25T12:51:33.793Z
+closed: 2026-10-25T12:51:33.793Z
 ---
 
 ## Question
@@ -61,3 +62,11 @@ Limits hit: multipart CRLF shifts caption entity offsets (computed on the CRLF t
 Settles for the spec (pending the human's taste on 4–6): (1) the gateway as an in-process edge with the web table minus pairing and pause, `via: "telegram"` on human messages and approval outcomes, which also suppresses echoes; (2) pairing state as ids only (the direction itself follows Q-1294); (3) Rich Messages by default with skip_entity_detection, plain text plus entities on any 400, never MarkdownV2, splitting only on the plain path (the hub caps messages at 8 KiB); answers and the human's own asks are not mirrored as messages, their cards carry them; (4) 👌/👀 reactions as feedback; (5) progress and hub notices silent, everything else notifies; (6) cards as plain text with entities, one button per row, short callback keys checked in state, ForceReply for free answers, a reply or voice reply to a card answers it, coloured approval buttons, Claude Code approvals point to the harness, plans as notices, requests and messages in item topics as notices with reply routing; (7) media both ways (inbound photos and documents as the human's artifacts on one General message, albums grouped; outbound images ≤ 10 MB as photos, files ≤ 50 MB as documents, larger by path); (8) voice through the research's seam with ElevenLabs default, 🎤 transcript as the human's message with the audio attached, a transcript echo, a one-line hint without a key; (9) catch-up: drain first with late marks, then one "N missed" line, cards the chat never saw, outcome edits that did not go through, open cards re-sent after 150 s, offline detection on failed sends and polls; (10) `/status`, `/inbox`, `/mute`, `/unmute`, `/decision`, `/question`, `/help`, `/cancel`, menu set once per hub start.
 
 For the spec to decide: an upload-or-attach frame for remote edges; `via` on ask outcomes; `@aide` from a remote; whether a remote follows a thread it started; whether audio files and video notes are transcribed; CLAND_TELEGRAM_TOKEN and ELEVENLABS_API_KEY on the sessions' environment deny-list (the prototype keeps them out of the speech command only). Carried into Q-1295 and Q-1296.
+
+### human · 2026-10-25T12:38:28.301Z
+
+Follow-up (2026-10-25, commits 3ae5ece1 and 10f47d5e): pairing reversed per Q-1294 (Start in the bot yields an 8-character code, the sender's numeric id and the exact approve command as tap-to-copy spans; `cland remote approve telegram <code>` in the terminal prints the paired name and id; codes last an hour, at most three pending, an unpaired account gets two replies then silence; approving replaces the earlier pairing and tells the old chat; `cland remote unpair telegram` forgets it; the forward pairing with QR and deep link is gone; one prototype frame `remote` carries approve, unpair and pause). Remote state moved into `remote_*` tables in hub.db on the gateway's own connection (scalars, the reply map, cards and callback keys, pending pairing requests, stranger reply counts), with a one-time import of the JSON file; the human's pairing survived. For the spec: approving clears every pending request, since one chat is paired per project. The Telegram agent has stopped; the Discord prototype (Q-1293) continues on the same branch.
+
+### human · 2026-10-25T12:51:33.625Z
+
+Resolution (2026-10-25): the human tried every scenario on the phone, steps 1–9 and the reversed pairing, and accepted («все попробовал, принимаю»): rich rendering, the author · kind header, silent progress notes, the 👌/👀 reactions, one button per row with the outcome line, the transcript echo and its speed, and the single gap line after an outage all stand as the prototype built them. Capture: branch prototype/telegram-remote at 10f47d5e (origin only, never merged), hub/src/remote/README.md as the map; the settled decisions and the open points for the spec are in the final report comment above and go into Q-1295, Q-1296 and the spec. The sandbox keeps running for the Discord prototype (Q-1293).

@@ -3,7 +3,7 @@ id: T-543
 kind: task
 title: PID-reuse guard accepts a recycled PID that started within the same ps second
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T11:58:12.885Z
+updated: 2026-10-25T12:42:15.093Z
 ---
 
 ## Summary
@@ -26,7 +26,7 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
 - [x] C1. The identity check uses a start identity finer than one second where the platform offers one (for example `/proc/<pid>/stat` starttime on Linux, `proc_pidinfo` or `sysctl` kinfo on macOS), or adds a second discriminator (command, ppid or a nonce) so that two processes started in the same second never compare equal.
   - done: impl-543 · 2026-10-25T11:35:11.813Z
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
-  - done: impl-543 · 2026-10-25T11:26:07.174Z
+  - done: impl-543 · 2026-10-25T12:41:02.456Z
 
 ## Comments
 
@@ -133,3 +133,71 @@ findings: [{"severity":"medium","text":"E1: Configured run a311c2d5 ended with e
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Evidence not clear: A-11862 actual output `Finished: exit 143`, then suite interruption at2026-10-25T11:56:11Z; Web topics/withdraw cases remained in flight. Cause of termination is not established. Audit A-11865 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11865-t-543-interrupted-verification-evidence-at-f0752ac7.md) preserves completed phase/case facts: hostT0 and LinuxT1/allT2/changedT3/mappedT4 passed, including33/33 system-processes and all same-second/ownership/checkpoint cases. These are partial receipts, not a full-suite pass. No source or criterion assertion failure inferred; C1/C2 remain unverified pending completed configured evidence. Source3 unchanged; any changed head needs fresh source review.
+
+### impl-543 · 2026-10-25T12:34:25.957Z
+
+Coordinator-directed local diagnosis found redundant fixture probes, now fixed in 784b8e2a (pushed). A-11909 records red controls, baseline/head/corrected operation counts, safety boundaries and targeted receipts. Simulated Linux browser registration ps4→2 (baseline2), empty teardown ps6→0 plus targeted pgrep1; actual empty projectHub identity spawns0. No production identity changes, no browser/droplet launched. Local darwin arm64 Node24.21: cleanup35/35, resume5/5, system33/33, typecheck exit0. A-11862 remains excluded incomplete configured evidence. C1/C2 done; runtime verification pending fresh source review and new mode-free verify. The one-time legacy upgrade policy and its documented residual window remain unchanged.
+
+### rev-34 · 2026-10-25T12:36:36.892Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source4
+commit: 784b8e2ac7d93840860f6647542cd9738e8f7fd0
+scope: full
+findings: [{"severity":"medium","text":"M5: new cache-consumption counter never cleans up; expiry test checks registration only, and existing same-second signal case does not consume an external same-turn capture. Coordinator28dc67fe explicitly requires stale reused-capture signal refusal. Add combined cached-registration→same-PID birth replacement→cleanup control with unchanged identity positively signalled.","file":"hub/test/process-cleanup.test.ts","line":111}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source not clear, M5 only; audit A-11911 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11911-t-543-probe-cost-source-review-cache-signal-control-missing.md), carrying source3 safety/legacy audit. Production identity and destructive fresh reads unchanged; registration cache expiry and empty-group shortcut look sound in source. Missing proof is specifically the newly reused capture's path to destructive revalidation, as required by Coordinator28dc67fe. Preserve counter/expiry and existing same-second assertions; add explicit cache consumption plus replaced-birth refusal and unchanged positive signal control. A-11909 operation counts/local receipts do not establish Linux timing or cure prior incomplete Web run. Fresh pushed-head source review before configured verify.
+
+Criteria: C2 failed (New same-turn capture cache lacks Coordinator-required regression proving a consumed stale capture cannot authorize a signal.).
+
+### impl-543 · 2026-10-25T12:37:56.392Z
+
+M5 addressed at pushed8534c87f: generated Linux/Darwin combined cached-capture→cleanup regressions prove registration consumes stale birthA, cleanup never signals replacementB and still kills unchanged control. Disposable native-revalidation mutation fails both with unexpected SIGKILL -420543; no production change. Full local cleanup37/37 and npm run typecheck exit0 (darwin arm64 Node24.21). Fresh source review requested before configured verify. Evidence artifact A-11914; A-11909 retains parent probe-count diagnosis; A-11862 remains excluded incomplete evidence.
+
+### rev-34 · 2026-10-25T12:38:45.962Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source5
+commit: 8534c87f6972cf6557423968f61b6d540e7334d6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, M5 resolved; A-11919 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11919-t-543-m5-correction-source-review-at-8534c87f.md), carrying source3/full safety and source4/probe-cost audits. Both Linux/Darwin controls explicitly consume capturedA after same-PID/same-lstart birthB appears, assert strict cache reference identity, then demand zero replacement signal and exact unchanged-control SIGKILL. Final signal/survivor assertions retained; matching guidance updated, no production change. A-11914 mutation outcome correctly treated as asserted negative control, local37/37/static receipts not configured/Linux proof. Existing bracketing, unknown-birth/root retention, M4 and approved persisted legacy upgrade unchanged. C1/C2 remain unverified pending successful same-head configured receipt; Coordinator all check separate.
+
+### rev-34 · 2026-10-25T12:39:48.664Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-evidence2
+commit: 8534c87f6972cf6557423968f61b6d540e7334d6
+scope: evidence
+findings: [{"severity":"medium","text":"M6: enforcing child-environment lint rejects new spawn and execFileSync interception wrappers at216–217; satisfy the existing guard narrowly without weakening it, losing positive controls or changing sealed launch environments.","file":"hub/test/session-resume-component.test.ts","line":216}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear: f2eebbf3/A-11920 exact output reports spawn requires sealed fixture builder at216 and execFileSync requires one at217, both permitting documented intentional seams. Host check exit1/9.451s after typecheck/build, no droplet or runtime/load/browser execution. Source5 missed this static guard obligation. A-11921 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11921-t-543-host-guard-failure-at-8534c87f.md) records exact output and limits. Preserve assertions/positive controls/shared environments, correct narrowly and request fresh source review at pushed head before verify. C1 remains unverified; prior interrupted Web run separately incomplete.
+
+Criteria: C2 failed (Configured verification failed host T0 at new fixture interposition wrappers; no runtime evidence executed.).
+
+### impl-543 · 2026-10-25T12:41:02.589Z
+
+M6 corrected in pushed2b4ac175: exactly two intentional child-process instrumentation comments, retaining original sealed caller options and before-launch identity interception. Local darwin arm64 Node24.21: touched session file5/5, owning lint, full test:lint and typecheck all exit0. test lint135 findings REPORT ONLY, zero refusals. Evidence A-11924. A-11920/f2eebbf3 failed hostT0 before droplet, no runtime tiers; remains excluded incomplete proof. Fresh source review requested before another mode-free verify.
+
+### rev-34 · 2026-10-25T12:42:15.093Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source6
+commit: 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear; M6 resolved by exactly two reasoned intentional-seam annotations, no behavior/guard/assertion change. A-11927 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11927-t-543-m6-correction-source-review-at-2b4ac175.md) carries source5/full C1/C2 safety scope. Interceptors still reject identity probes before launch and preserve original sealed caller options; positive controls/restoration intact. A-11924 local owning lint/full test:lint/typecheck green and5/5 counter-file receipts retain platform limits. Prior host-only and interrupted runs remain failed/incomplete; C1/C2 unverified pending successful same-head configured receipt. Coordinator premerge all separate; item QA none.

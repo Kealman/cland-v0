@@ -2,8 +2,8 @@
 id: T-521
 kind: task
 title: Concurrent artifact.create can fail with 'artifact reservation moved' (id allocated twice)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1035
 branch: t/T-521-concurrent-artifact-create-can-fail-with
 created: 2026-10-15T18:13:01.794Z
-updated: 2026-10-25T12:32:27.237Z
+updated: 2026-10-25T12:38:31.086Z
+closed: 2026-10-25T12:38:31.086Z
 ---
 
 ## Summary
@@ -147,3 +148,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-25T12:32:27.237Z
 
 Rule 6 pre-merge verify all 55b87b2c at 22105f31 (A-11908): 4011 passed, 1 failed, 5 skipped across T0–T3 (Web not reached). The single failure, hub/test/roles-timing.test.ts '150 ms of malformed parsing plus 150 ms of failure logging counts as one 300 ms roles continuation', is a dev defect, not T-521: it passes at 82cf0f6c and fails 5/5 on clean dev at 8acdd283 (T-1230), c966b086 and 0026fcd0 (Coordinator, local macOS). Filed as T-1302 (regression-of T-1230). T-521 touches only hub/src/hub/artifacts.ts and its tests. Coordinator accepts this run as T-521's rule 6 evidence with the attributed identity; Web is covered by T-521's mode-free run 6e780a7b.
+
+### coord · 2026-10-25T12:38:31.086Z
+
+Merged b70efcccc80e6ed829f7d605eba04f6cd2a2eeac onto dev.

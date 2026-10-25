@@ -3,7 +3,7 @@ id: T-1265
 kind: task
 title: 'A long-lived Codex session cannot reattach after a hub restart: app-server thread read fails with "Max payload size exceeded"'
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1029
 branch: t/T-1265-a-long-lived-codex-session-cannot
 created: 2026-10-24T22:20:46.414Z
-updated: 2026-10-25T12:27:41.606Z
+updated: 2026-10-25T12:41:24.174Z
 ---
 
 ## Summary
@@ -32,10 +32,12 @@ After hub restart #55 (2026-10-24 22:18:50Z), Reviewer rev-23 (codex, gpt-6.1-so
   - verified: rev-31 [reviewer] · run rev-20261025-1265-final · 2026-10-25T10:41:15.454Z · commit ac28cf934e8408b4255442e81d21a555cb2a7960
   - verified: rev-34 [reviewer] · run rev-34-20261025-1265-final2 · 2026-10-25T12:23:31.437Z · commit 6f0bde2c6699717722f0aa7bd92efb30cf19737d
   - done: impl-1265 · 2026-10-25T12:26:01.766Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1265-final3 · 2026-10-25T12:41:23.647Z · commit fea3ca1fbd43d23d4286bf9a9d010e9be6ac05bb
 - [x] C2. When reattach still fails, the session row says why (payload limit) instead of `[unknown]`, so the Coordinator knows to replace it (test).
   - verified: rev-31 [reviewer] · run rev-20261025-1265-final · 2026-10-25T10:41:15.454Z · commit ac28cf934e8408b4255442e81d21a555cb2a7960
   - verified: rev-34 [reviewer] · run rev-34-20261025-1265-final2 · 2026-10-25T12:23:31.437Z · commit 6f0bde2c6699717722f0aa7bd92efb30cf19737d
   - done: impl-1265 · 2026-10-25T12:26:02.563Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1265-final3 · 2026-10-25T12:41:23.647Z · commit fea3ca1fbd43d23d4286bf9a9d010e9be6ac05bb
 
 ## Comments
 
@@ -260,3 +262,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear at authorized merge fea3ca1f; A-11903 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11903-t-1265-authorized-merge-source-review-at-fea3ca1f.md), carrying source4/A-11884. Confirmed Coordinator b1503031 authorization and both parents. Sole scripted-codex conflict retains startupDelayMs options/pre-serving block and typed production stateReason delegation; exact metadata/legacy/native params controls unchanged. Inherited Sessions startup policy integrates without changing Codex payload reason; frozen SESSION_USAGE equality and diff check pass. A-11901 local exact-commit33T2/13T3/5T2 and static receipts retain platform/coverage limits; no configured proof at this head yet. C1/C2 remain unverified pending same-head mode-free evidence; Coordinator rule6all/stageQA separate.
+
+### rev-34 · 2026-10-25T12:41:23.647Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1265-final3
+commit: fea3ca1fbd43d23d4286bf9a9d010e9be6ac05bb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear:96d5a3ee/A-11922, audit A-11925 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11925-t-1265-merged-head-final-evidence-at-fea3ca1f.md), carrying source5/A-11903. Parsed3220ordinary passes plus25load passes. All5 exact C1/C2 cases ordinary+5/5load;33native/13CodexT3 pass, corrected full policy expectation retained. All5 merged delivery cases including90s confirmation and120/190s alarms pass;8existing alarm cases pass. HostT0/LinuxT1/allT2/changedT3once/Web complete; otherT3/T4/provider/stageQA absent. Host prepared check not repeated remotely; report-only warnings retained. C1/C2 verified, no findings. Coordinator rule6all remains separate at this merged head.
+
+Criteria: C1 verified, C2 verified.

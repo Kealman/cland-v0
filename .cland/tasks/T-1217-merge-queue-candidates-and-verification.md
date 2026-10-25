@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T12:07:38.168Z
+updated: 2026-10-25T12:47:48.663Z
 ---
 
 ## Summary
@@ -24,9 +24,9 @@ On 2026-10-24 every Git command in the root and in task worktrees started printi
 ## Acceptance criteria
 
 - [ ] C1. cland's own Git maintenance (for example after a landing, or on hub start when idle) prunes unreachable objects older than a safe age that no live batch, verification or lease can still reference, without touching objects a running batch uses (test with a scratch repository).
-  - failed: rev-31 [reviewer] · 2026-10-25T11:39:56.695Z · note H1/M3: incomplete native-close results and the fixture Git timeout can release ownership or remove roots while collector descendants remain unresolved.
+  - failed: rev-31 [reviewer] · 2026-10-25T12:47:48.663Z · note H2: unresolved native observation handles can retain the normally stopped hub after its lock is released, violating the Coordinator's bounded-exit handoff policy.
 - [x] C2. A stale gc.log no longer blocks auto-gc indefinitely; the hub reports the condition once in doctor output instead of in every Git command (test).
-  - done: impl-1217 · 2026-10-25T11:35:10.030Z
+  - done: impl-1217 · 2026-10-25T12:40:49.276Z
 
 ## Comments
 
@@ -139,3 +139,43 @@ Criteria: C1 failed (H1/M3: incomplete native-close results and the fixture Git 
 Coordinator decision 2776473b authorizes durable recovery, never an unbounded stop. Expanded shared-admission consumer inventory: territory lock wrappers are used by territory.ts (provision/undo/worktrees), hub/{dispatch,merge,releases}, tracker/offline-migrate, and their injected lock seams. Search covers all T1–T4 tests, nvim/web clients, shipped skills, QA, startup and persisted readers: relevant tests are territory-lock, push, release-item, task-migrate, tracker-native-boundary and harness; QA T-117 describes the existing lock. No wire field or role permission changes. The wrappers retain prior signatures; an absent recovery receipt performs no native recovery work and keeps existing behavior. New versioned-by-shape owner receipt is private runtime state; no previous reader exists. Doctor adds read-only owner visibility. Existing legacy run results/five-argument callers remain unchanged; maintenance now uses a separate gated owned runner that can hand off incomplete close durably. A private POSIX Node execve gate preserves the PID and birth identity while ensuring no Git work starts before the receipt is durable.
 
 T-543's precise identity helper is not part of this reviewed ancestry. Per Coordinator instruction use the current UTC processStarted/parseStarted identity helpers and record this dependency; recheck its landing before ready and incorporate only a Coordinator-posted shared fix/instruction. The recovery policy tests include dead/alive/mismatched/unverified/signal-surviving states; no identity mismatch authorizes a signal. The scratch helper now uses the same exec gate before its shared test ownership capture; a held descendant regression first failed with `writer ... is gone before the command rejects: true !== false`, then passed with owned group drainage. Infrastructure failures are not interpreted as missing Git objects.
+
+### rev-31 · 2026-10-25T12:47:48.663Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261025-1217-source3
+commit: 2be5d71b993541ef055f210faf5a3079b9fa4280
+scope: full
+findings: [{"severity":"high","text":"H2: incomplete durable handoff resolves without releasing/unrefing referenced child/stdout/stderr handles. Normal hub.stop then releases its lock and only sets CLI exitCode; native handles can keep it alive, and the external stop command refuses to signal after lock release. Bound normal-stop exit while preserving durable ownership; prove with still-referenced native observation handles.","file":"hub/src/git-maintenance-owner.ts","line":114}]
+finding_counts: {"high":1,"medium":0,"low":0}
+
+# T-1217 durable-handoff source review — NOT CLEAR
+
+Reviewed 2be5d71b993541ef055f210faf5a3079b9fa4280 / tree c55533322d404182856830933b156169c31ec43b, unchanged pushed task tip. Full revised design and complete delta from 5571f66c / A-11829 inspected personally on both axes. No post-review dev merge. Coordinator 2776473b explicitly chooses durable recovery with bounded hub exit, rather than unbounded shutdown, and authorizes the current UTC identity helper pending T-543's separately directed integration. No stronger same-second identity guarantee is inferred.
+
+## Standards
+
+M3 resolved: the scratch helper registers beforeDirectories before spawn, captures shared owned detached-group identity while its exec gate is closed, then releases the command. Cancellation/deadline calls drain the owned group and observes actual child close before resolve/reject. The held writer control asserts both captured PIDs gone before rejection. Product-owned scratch roots veto removal through recovery while ownership remains unresolved. Native absence assertions now distinguish cat-file absence from infrastructure failure.
+
+No new Standards finding. T1 14-case policy matrix moves repeated native permutations into injected observations while retaining a native retained-batch positive control; T2 serving and legacy-runner coverage and T3 owned native contracts remain appropriately placed. Exact headings, tier/index rows, changed help/frozen blocks and implement/CHANGES are maintained. Decoded HUB_USAGE/DOCTOR_USAGE still match frozen values. Consumer inventories cover both territory-lock signatures, persisted private owner receipt and doctor visibility; no role, wire or dependency change. Legacy doctor run remains compatible. The two sync/async recovery paths preserve existing caller types.
+
+## Spec
+
+Prior H1 ownership-loss branch is corrected by the approved durable handoff: a private fd gate captures PID/UTC birth/group and durably persists a token/root/repository owner before Git execve. Normal close reconciles actual group disappearance. An incomplete result retains ownership, breaks before another repository, rejects the pass and never announces maintenance completed. Both lock wrappers recover before the managed mutation, after acquiring their existing physical lock; restart recovery begins after serving. Matching alive groups are signalled and observed under a bound, mismatch never authorizes a signal, unknown/surviving groups retain receipts and report PID. Matching dead same-host gc.pid cleanup is guarded, replacement locks and all pack files preserved. Existing grace/retention and serving-first thirty-second design remain. T-543 integration is an explicit follow-up dependency under the Coordinator decision, not a new unapproved source migration.
+
+H2 — high, hub/src/git-maintenance-owner.ts:114–124 (incomplete finish) with hub/src/cli/hub.ts:198–238 and :313–328: durable handoff does not release the parent's referenced native observation handles. When cleanup expires, finish resolves the command but leaves ChildProcess and stdout/stderr pipes referenced. That branch specifically has no observed native close. During normal socket hub.stop, daemon shutdown releases discovery/hub lock and serve returns 0; the CLI entry only sets process.exitCode. Open native child/pipe handles can therefore keep the supposedly stopped hub process alive indefinitely. The external stop command deliberately refuses to signal that PID after observing its released lock ("hub stopped, lock released, process still alive ... left it running"), so its SIGTERM two-second fallback does not rescue this path. This violates the explicit bounded-exit policy and risks the restart/bridge gap the revision is intended to prevent.
+
+On a durable incomplete handoff, release or unref the parent's child/pipe observation resources (or supply an equivalently bounded normal-stop mechanism) while retaining the owner receipt and mutation gate; this must not be counted as collector death or normal completion. Keep native SIGKILL attempt and actual recovery proof. Add a normal hub.stop/CLI-exit regression with genuinely still-referenced held native observation handles. Current T2 uses a synthetic returned RunResult with no native handles. The native held-close test suppresses the JS close notification after the underlying real process/handles close, which tests durable ownership but not event-loop exit liveness. No unbounded wait or silent receipt deletion is authorized.
+
+No other blocker found in the consolidated revised-source audit.
+
+## Original evidence and disposition
+
+A-11923 preserves available original local macOS Node24 output excerpts, not full raw stdout/stderr exports or exact-head configured/Linux evidence. T1 14/14 duration_ms 285.402792, startup T2 5/5 duration_ms 1073.9825, unchanged runner T2 4/4 duration_ms 73.812209, native T3 11/11 duration_ms 16055.99325 (maximum case 2686.847ms), typecheck exit0. The old incomplete-result and old direct-parent helper controls were observed red before corrections. Native real alive/mismatched first-mutation and held-close/group-death/next-pass controls provide meaningful local evidence. They retain original working-tree/platform/capture limits; no Linux/load/browser/all-tier proof or new duration allowance is invented. Preserve available original correction records without transcription reruns.
+
+Full NOT CLEAR: Standards 0 / Spec 1 high (H2). C1 fails bounded stop during unresolved native ownership. C2 source help/doctor/retention corrections remain accepted but runtime verification is pending. Prior H1/M3 are resolved under the Coordinator's durable-handoff policy, not waived. Correct the consolidated H2 path, commit/push, restore done and request fresh exact-head source review before one ordinary configured mode-free verify. No dev merge, live maintenance or extra stress requested. Coordinator retains separate pre-merge verify all after ready; QA none/after-stage. Reviewer performed read-only source/artifact/metadata inspection only; no tests, native subjects, signals, GC, fetch or Git mutation.
+Durable review: A-11929.
+
+Criteria: C1 failed (H2: unresolved native observation handles can retain the normally stopped hub after its lock is released, violating the Coordinator's bounded-exit handoff policy.).

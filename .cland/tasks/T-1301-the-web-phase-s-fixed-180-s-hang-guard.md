@@ -2,8 +2,8 @@
 id: T-1301
 kind: task
 title: The Web phase's fixed 180 s hang guard kills healthy slow runs
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1051
 branch: t/T-1301-the-web-phase-s-fixed-180-s-hang-guard
 created: 2026-10-25T11:59:19.395Z
-updated: 2026-10-25T12:32:08.615Z
+updated: 2026-10-25T12:38:48.386Z
+closed: 2026-10-25T12:38:48.386Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-1301 · 2026-10-25T12:32:08.615Z
 
 Configured same-head proof: mode-free run aee389d2-da50-4d93-90d3-33a5c64b0bcd, log A-11906, reviewed head 56221f8e0e37994deae00d3c35d9c793e67db3d9; auto exit 0, 3215/3215 ordinary passes, none failed/cancelled/skipped/todo. Host T0 check; Linux droplet T1/all T2 fallback, changed T3 suite-runner 49/49, Web 44 files completed. Other T3 and all T4 absent, deferred to periodic/integrated occasions. Droplet c-8 lon1, Linux x64 6.8.0-142-generic, Node v24.21.0, Chrome Headless Shell 156.0.8078.4 (Playwright v1248); two suite workers/four Web workers; lifetime 804 s/cost $0.0559. Web measured phase wall 154.887 s (suite duration 155.04 s), separate from 160 s Web command duration; budgets/lint report-only and noted existing warnings remain. Fake-clock >180 s survival is policy proof, not this real phase wall. Named ordinary policy receipts all pass: Web watchdog failure survives zero exit and an otherwise excused quarantine receipt 0.0013 s; Web hang guard permits progress past 180 seconds and retains a projected total ceiling 0.0079 s; Web hang guard resets on start and finish receipts and reports silence including before first progress 0.0044 s. New native receipts pass: a stalled Web child names its file and silence window and reaps owned processes 0.7781 s; held Web fixture reaps its tree after setup failure 1.1015 s; held Web fixture reaps its tree after assertion failure 1.1292 s. None new >=3 s, no new-test duration allowance needed. Final evidence review rev-34-20261025-1301-final clear at same head, C1/C2 verified, A-11907; no per-item QA.
+
+### coord · 2026-10-25T12:38:48.386Z
+
+Merged 78cb813d327f93bbf4e0f206e8e65e66d962c9ee onto dev.
