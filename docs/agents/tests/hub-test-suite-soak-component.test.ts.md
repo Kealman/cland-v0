@@ -41,3 +41,11 @@ Neovim `explorer_card` (explicit unavailable label). `eventRow` projects journal
 suite-result and verification-timing rows. Historical suite status and result
 JSON retain `code`/`cause` with additive `notRun`; periodic result detail retains
 baseline/range/artifact fields. No row membership or count contract changes.
+
+Periodic and nightly green publication share the scripted coverage-map seam:
+observe the completed result, then read persisted log/map artifacts and chips
+through public frames. Require creator `hub`, creatorKind `agent` (the existing
+artifact schema) and chip sender/fromKind `hub`. Human shell suite.start frames
+omit `as`: assert human queue rows and artifact ownership in General and Agents.
+General chips stay human; read-only Agents keeps automatic hub report chips.
+Setup and execution/completion publication have separate `caseDeadlines` bounds.

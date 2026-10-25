@@ -1,3 +1,4 @@
+import { suiteAuthor } from './suite-author.ts';
 import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps } from '../verification-plan.ts';
 import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
@@ -389,7 +390,7 @@ export class Suites {
     const completed = Date.parse(completedAt);
     job.waitMs = job.cached ? 0 : job.pid && !job.admittedAt ? null : elapsed(job.queued, Date.parse(job.admittedAt ?? completedAt));
     job.runMs = job.cached || (!job.admittedAt && !job.pid) ? 0 : elapsed(job.admittedAt, completed);
-    this.#options.log?.({ event: 'verification-timing', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', branch: job.branch, head: job.head, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null, cached: Boolean(job.cached), queuedAt: job.queued ?? null, admittedAt: job.admittedAt ?? null, completedAt, waitMs: job.waitMs, runMs: job.runMs, estimated: job.timingEstimated ?? false });
+    this.#options.log?.({ event: 'verification-timing', id: job.id, item: job.item ?? null, session: suiteAuthor(job), branch: job.branch, head: job.head, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null, cached: Boolean(job.cached), queuedAt: job.queued ?? null, admittedAt: job.admittedAt ?? null, completedAt, waitMs: job.waitMs, runMs: job.runMs, estimated: job.timingEstimated ?? false });
   }
   async cancel(id: string | undefined, actor: SuiteActor | null, authorize: () => void): Promise<{ id: string; topic: string; cancelled: true }> {
     if (this.#closed) throw new Error('hub is closing');
@@ -1129,7 +1130,7 @@ export class Suites {
         if (this.#shouldPlanShards(job)) await this.#planShards(job, this.#remoteBudget - remoteActive);
         if (job.state !== 'queued' || job.outcome) continue;
         remoteActive += job.shards?.length ?? 1;
-        this.#options.log?.({ event: 'verification-admitted', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', executor: 'droplet', remoteActive, remoteBudget: this.#remoteBudget });
+        this.#options.log?.({ event: 'verification-admitted', id: job.id, item: job.item ?? null, session: suiteAuthor(job), executor: 'droplet', remoteActive, remoteBudget: this.#remoteBudget });
         this.#launchRemote(job);
         continue;
       }
@@ -1540,7 +1541,7 @@ export class Suites {
     const describe = (job: SuiteJob): VerificationHolder => {
       const lease = job.executor === 'droplet' ? job.lease as DropletLease | undefined : undefined;
       const runMs = elapsed(job.admittedAt, now), expected = estimate(job.selection?.mode ?? job.mode, job.executor);
-      return { ...(job.occasion ? { occasion: job.occasion } : {}), ...(job.shardName ? { shard: job.shardName } : {}), kind: 'run', executor: job.executor, id: job.id, session: job.actor?.name ?? 'human', item: job.item ?? null, mode: job.selection?.mode ?? job.mode, pid: job.pid, worktree: job.cwd, since: job.admittedAt ?? null, runMs, etaMs: expected === null || runMs === null ? null : Math.max(0, expected - runMs), ...(lease ? { machine: { name: lease.name, size: lease.size, region: lease.region } } : {}) };
+      return { ...(job.occasion ? { occasion: job.occasion } : {}), ...(job.shardName ? { shard: job.shardName } : {}), kind: 'run', executor: job.executor, id: job.id, session: suiteAuthor(job), item: job.item ?? null, mode: job.selection?.mode ?? job.mode, pid: job.pid, worktree: job.cwd, since: job.admittedAt ?? null, runMs, etaMs: expected === null || runMs === null ? null : Math.max(0, expected - runMs), ...(lease ? { machine: { name: lease.name, size: lease.size, region: lease.region } } : {}) };
     };
     const remote = occupying.filter(j => j.executor === 'droplet').flatMap(job => job.shards ? job.shards.filter(shard => !shard.cleaned).map(describe) : [describe(job)]);
     // A durable lease for an active remote row is already in `remote`. Every other
@@ -1579,7 +1580,7 @@ export class Suites {
         const useRemote = effective === 'droplet' && (job?.requireRemote || localEta === null || remoteEta !== null && remoteEta <= localEta);
         const etaMs = useRemote ? remoteEta : localEta;
         const expectedRunMs = estimate(mode, useRemote ? 'droplet' : 'local');
-        const waiter = { ...(job?.requireRemote ? { waitingFor: 'remote' as const } : {}), ...(job?.occasion ? { occasion: job.occasion } : {}), kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
+        const waiter = { ...(job?.requireRemote ? { waitingFor: 'remote' as const } : {}), ...(job?.occasion ? { occasion: job.occasion } : {}), kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job ? suiteAuthor(job) : 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
         const nextEta = etaMs === null || expectedRunMs === null ? null : etaMs + expectedRunMs;
         if (useRemote) { if (chosen) remoteEtas[chosen.index] = nextEta; }
         else localEta = nextEta;

@@ -13,6 +13,37 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { eventRow } from '../src/hub/journal.ts';
+import { heartbeatDigest } from '../src/hub/heartbeat.ts';
+
+test('periodic queue and heartbeat name the hub while human shell runs keep human attribution', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true, remoteBudget: 1 }));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  const blocker = await run.wait('occupied remote slot', () => f.launch({ executor: 'droplet' }));
+  await run.wait('blocker execution receipt', () => f.machine.waits.run(f.machine.started(blocker.id)));
+  f.hold(true);
+  const periodic = await run.wait('periodic submission', () => f.launch({ actor: null, mode: 'all', occasion: 'dev-t3', integrated: true, executor: 'droplet' }));
+  const human = await run.wait('human submission', () => f.launch({ actor: null, executor: 'local', fresh: true }));
+  const queue = f.suites.snapshot();
+  assert.equal(queue.waiters.find(row => row.id === periodic.id)?.session, 'hub');
+  assert.equal(queue.waiters.find(row => row.id === human.id)?.session, 'human');
+  await run.wait('release remote slot', () => f.finish(blocker.id));
+  f.hold(false);
+  await f.tick(); await f.suites.settled();
+  await run.wait('periodic execution receipt', () => f.machine.waits.run(f.machine.started(periodic.id)));
+  await run.wait('human execution receipt', () => f.when(() => f.delivered.has(human.id) ? true : undefined));
+  assert.equal(f.suites.snapshot().remote?.find(row => row.id === periodic.id)?.session, 'hub');
+  assert.equal(f.suites.snapshot().holder?.session, 'human');
+  const digest = heartbeatDigest(f.store, [], 1000, f.clock.now().getTime(), 0, 1000);
+  assert.ok(digest.text.includes(`run ${periodic.id} running · hub`), digest.text);
+  assert.ok(digest.text.includes(`run ${human.id} running · human`), digest.text);
+  await run.wait('periodic completion', () => f.finish(periodic.id));
+  await run.wait('human completion', () => f.finish(human.id));
+  for (const [id, session] of [[periodic.id, 'hub'], [human.id, 'human']]) {
+    assert.equal(f.logs.find(entry => entry.event === 'verification-timing' && entry.id === id)?.session, session);
+  }
+});
 
 test('suite events identify a provider capacity refusal as unavailable without a failure glyph', () => {
   for (const event of ['suite-result', 'verification-timing']) {

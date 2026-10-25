@@ -3,6 +3,7 @@ import type { ItemSummary } from '../tracker/tracker.ts';
 import type { SuiteJob } from './suites.ts';
 import type { Store } from './store.ts';
 import type { DropletLease } from '../executor/droplet/lease.ts';
+import { suiteAuthor } from './suite-author.ts';
 
 /** Build from committed hub facts at the firing; no tools, Git or network work on the clock. */
 export function heartbeatDigest(store: Store, items: ItemSummary[], interval: number, now: number, idleMs: number, runTimeoutMs: number, queue?: VerificationQueue) {
@@ -49,7 +50,7 @@ export function heartbeatDigest(store: Store, items: ItemSummary[], interval: nu
   const leases = new Map<string, DropletLease>();
   for (const job of jobs) {
     if (job.reported) continue;
-    if (!job.outcome && !job.reported) flight.push(`run ${job.id} ${job.state ?? 'running'} · ${job.actor?.name ?? 'human'}${job.item ? ` · ${job.item}` : ''}`);
+    if (!job.outcome && !job.reported) flight.push(`run ${job.id} ${job.state ?? 'running'} · ${suiteAuthor(job)}${job.item ? ` · ${job.item}` : ''}`);
     const started = Date.parse(job.started ?? job.admittedAt ?? '');
     if (!job.outcome && !job.reported && Number.isFinite(started) && now - started > runTimeoutMs) stale.push(`run ${job.id} past its timeout · age ${age(started)}`);
     const resolved = job.item && (closed.has(job.item) || job.sequence !== undefined && (posted.get(job.item) ?? -1) > job.sequence);

@@ -20,3 +20,9 @@ at the semantic executor seam after seeding executed green/red receipts. Retain
 the cause, no-cover/release/search checks, restart recovery and next-interval
 retry. The pure `eventRow` assertions keep suite-result and timing journal rows
 unavailable, without a failure glyph.
+
+Attribution uses the existing SuiteJob shape: occupy the single remote slot and
+hold local admission, submit a null-actor periodic run and an ordinary human
+run, then assert queued authors. Release both slots, observe each executor start,
+and assert running queue rows, heartbeat text and completed timing records.
+No origin field is required to read the retained records.

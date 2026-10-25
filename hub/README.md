@@ -4190,6 +4190,12 @@ spend cap. The first attempt is due one interval after activation; later runs
 are due after the interval since the last attempt/start, only when dev's
 verification candidate tree differs from the last started run's tree. The shared
 exclusions in `hub/src/verification-tree.ts` make tracker-only commits ineligible.
+Queue rows, heartbeat lines and timing records attribute periodic runs to `hub`;
+their log and coverage-map artifacts have creator `hub`, and their chips are hub
+notices. Nightly soaks use the same attribution. Ordinary human shell submissions
+keep `human` queue/heartbeat attribution and artifact ownership. In the read-only
+Agents topic their automatic report chips remain hub notices. Existing stored
+occasion facts determine the author, including after restart.
 The cursor survives restart, and a queued, running or unreported
 periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.

@@ -1,3 +1,4 @@
+import { suiteAuthor } from './suite-author.ts';
 import { dependencyInstallText } from '../dependency-install.ts';
 import { ModelOutput } from './model-output.ts';
 import { composeSnapshot, snapshotFrames } from './snapshot.ts';
@@ -848,7 +849,7 @@ export class Dispatcher {
     let artifactId = job.artifact ?? prior?.id ?? null;
     if (!job.artifact && prior) checkpointArtifact(prior.id);
     if (!artifactId) {
-      const create = () => job.batch || job.devT3Probe ? this.#batchArtifact(job, title) : this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work(), job.actor === null);
+      const create = () => job.batch || job.devT3Probe ? this.#batchArtifact(job, title) : this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work(), job);
       const operation = this.#artifactQueue.then(create);
       this.#artifactQueue = operation.catch(() => {});
       const result = await operation as { id: string };
@@ -858,14 +859,14 @@ export class Dispatcher {
     for (const shard of job.shards ?? []) {
       const title = `Suite ${job.id} · ${shard.shardName} at ${job.head.slice(0, 7)}`;
       if (!core.store.artifacts(job.topic).some(a => a.title === title)) {
-        await this.#artifact({ type: 'artifact.create', id: shard.id, kind: 'file', title, topic: job.topic, path: shard.log }, callerNow, work => work(), job.actor === null);
+        await this.#artifact({ type: 'artifact.create', id: shard.id, kind: 'file', title, topic: job.topic, path: shard.log }, callerNow, work => work(), job);
       }
     }
     if (job.integrated && job.selection?.recordCoverage && job.outcome?.code === 0 && !job.cached) {
       const title = `Coverage map ${job.id} at ${job.head}`;
       let coverage = core.store.artifacts(job.topic).find(a => a.title === title);
       if (!coverage) {
-        const create = () => this.#artifact({ type: 'artifact.create', id: `coverage:${job.id}`, kind: 'file', title, topic: job.topic, path: join(this.#options.control!.status().root!, '.cland/run/suites', job.id, 'coverage-map.json') }, callerNow, work => work(), job.actor === null);
+        const create = () => this.#artifact({ type: 'artifact.create', id: `coverage:${job.id}`, kind: 'file', title, topic: job.topic, path: join(this.#options.control!.status().root!, '.cland/run/suites', job.id, 'coverage-map.json') }, callerNow, work => work(), job);
         const operation = this.#artifactQueue.then(create);
         this.#artifactQueue = operation.catch(() => {});
         const result = await operation as { id: string };
@@ -986,7 +987,7 @@ export class Dispatcher {
     return { id: artifact.id, path: artifact.path };
   }
 
-  async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T, hubNotice = false): Promise<unknown> {
+  async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T, suite?: Readonly<SuiteJob>): Promise<unknown> {
     const caller = callerNow();
     const core = this.#options.core;
     if (frame.type === 'artifact.list') {
@@ -1007,14 +1008,14 @@ export class Dispatcher {
     const authorize = () => this.#artifactTopic(callerNow(), frame.topic);
     const topic = authorize();
     const root = this.#options.control?.status().root;
-    const name = caller?.name ?? 'human';
+    const name = caller?.name ?? (suite ? suiteAuthor(suite) : 'human');
     const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
-    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.', kind: caller ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
+    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.', kind: caller || name === 'hub' ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
       if (a.status === 'draft') return;
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
       const current = callerNow();
       if (current) core.sendFromSession(current.name, [], text, undefined, topic.id, a, current);
-      else if (hubNotice && topic.id === AGENTS.id) core.noticeTo(topic.id, { kind: 'report', to: ['coordinator'], text, detail: { artifact: a.id } });
+      else if (suite && (name === 'hub' || topic.id === AGENTS.id)) core.noticeTo(topic.id, { kind: 'report', to: ['coordinator'], text, detail: { artifact: a.id } });
       else core.sendFromHuman(topic.id, text, undefined, undefined, undefined, a);
     }, resumed, authorize, this.#options.readArtifact ?? readFile, core.clock);
     return resumed(() => {

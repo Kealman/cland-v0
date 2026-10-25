@@ -16,6 +16,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { runBundle } from '../src/executor/droplet/run.ts';
 import { committedTree } from '../src/verification-tree.ts';
 import { DigitalOceanError } from '../src/executor/droplet/api.ts';
+import type { Artifact, Message } from '../src/protocol.ts';
 
 test('periodic dev T3 bundles its captured commit when root dev moves during delivery', async t => {
   const run = caseDeadlines(t);
@@ -162,8 +163,10 @@ test('red soak proposes each unchanged failing identity while a batch can still 
   assert.match((await f.result(batch.id))!.text, /all exit 0/);
 });
 
-test('green nightly publishes a coverage map that selects task tests', async t => {
-  const f = await fixture(t, { machine: 'scripted', config: 'soak="12:00"\nlifetime="15m"\nrun_timeout="5m"' });
+for (const occasion of ['soak', 'dev-t3'] as const) test(`green ${occasion === 'soak' ? 'nightly' : 'periodic dev T3'} publishes a coverage map that selects task tests`, async t => {
+  const run = caseDeadlines(t);
+  const schedule = occasion === 'soak' ? 'soak="12:00"' : 'dev_t3_every="1s"';
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: `${schedule}\nlifetime="15m"\nrun_timeout="5m"` }));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
@@ -179,12 +182,13 @@ test('green nightly publishes a coverage map that selects task tests', async t =
       } }));
   });
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  if (occasion === 'dev-t3') { await f.clock.advance(1000); await drive(f, f.verificationSettled()); }
   const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; occasion: string }[] }).suites;
-  const job = jobs.find(job => job.occasion === 'soak'); assert.ok(job);
-  await drive(f, f.machine.started(job.id));
+  const job = jobs.find(job => job.occasion === occasion); assert.ok(job);
+  await run.wait('execution receipt', () => drive(f, f.machine.started(job.id)));
   f.machine.finish(job.id);
-  await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { id: string; fromKind: string; to: string[]; text: string }[] }).messages;
+  await f.clock.advance(1000); await run.wait('completion publication', () => drive(f, f.verificationSettled()));
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages;
   const result = history.find(message => message.id === `suite:${job.id}`); assert.ok(result);
   assert.equal(result.fromKind, 'hub');
   assert.deepEqual(result.to, ['impl']);
@@ -192,12 +196,22 @@ test('green nightly publishes a coverage map that selects task tests', async t =
   assert.deepEqual((general.value as { messages: unknown[] }).messages, [], 'nightly result and chips leave General empty');
   const generalArtifacts = await f.ui.request({ type: 'artifact.list', topic: 'general' });
   assert.deepEqual((generalArtifacts.value as { artifacts: unknown[] }).artifacts, []);
-  const artifacts = ((await f.ui.request({ type: 'artifact.list', topic: 'agents' })).value as { artifacts: { id: string; title: string }[] }).artifacts;
+  const artifacts = ((await f.ui.request({ type: 'artifact.list', topic: 'agents' })).value as { artifacts: Artifact[] }).artifacts;
   const log = artifacts.find(artifact => artifact.title.startsWith(`Suite ${job.id} `));
   assert.ok(log);
   assert.ok(history.some(message => message.id !== result.id && message.text.startsWith(`▣ ${log.id} `)), 'nightly log chip follows its report');
   const maps = await coverageMaps(f.root);
   assert.equal(maps.length, 1);
+  const coverage = artifacts.find(artifact => artifact.id === maps[0]!.pointer.artifact);
+  assert.ok(coverage);
+  for (const artifact of [log, coverage]) {
+    assert.equal(artifact.creator, 'hub');
+    assert.equal(artifact.creatorKind, 'agent');
+    const chip = history.find(message => message.text.startsWith(`▣ ${artifact.id} `));
+    assert.ok(chip, `durable chip for ${artifact.title}`);
+    assert.equal(chip.from, 'hub');
+    assert.equal(chip.fromKind, 'hub');
+  }
   assert.equal(maps[0]!.pointer.head, f.candidate.head);
   assert.equal(maps[0]!.pointer.created, f.clock.now().toISOString());
   const selected = await coverageSelection(f.root, [source], f.candidate.head, async (...args) => {
@@ -208,6 +222,35 @@ test('green nightly publishes a coverage map that selects task tests', async t =
   assert.ok('tests' in selected);
   assert.deepEqual(selected.tests, [testFile]);
   assert.equal(selected.map.artifact, maps[0]!.pointer.artifact);
+});
+
+test('human shell verification keeps human queue and artifact authors in General and Agents', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted' }));
+  for (const topic of ['general', 'agents']) {
+    // A shell without session identity sends suite.start without an as field.
+    const submitted = await f.ui.request({ type: 'suite.start', cwd: f.root, mode: 'auto', report: topic, fresh: true });
+    assert.equal(submitted.ok, true, submitted.error);
+    const job = submitted.value as { id: string };
+    await run.wait(`${topic} execution receipt`, () => drive(f, f.machine.started(job.id)));
+    const queue = (await f.ui.request({ type: 'suite.queue' })).value as import('../src/protocol.ts').VerificationQueue;
+    assert.equal(queue.remote?.find(row => row.id === job.id)?.session, 'human');
+    f.machine.finish(job.id);
+    await f.clock.advance(1000);
+    await run.wait(`${topic} completion publication`, () => drive(f, f.verificationSettled()));
+    const history = ((await f.ui.request({ type: 'topic.history', topic })).value as { messages: Message[] }).messages;
+    assert.ok(history.find(message => message.id === `suite:${job.id}`), 'durable result receipt');
+    const artifacts = ((await f.ui.request({ type: 'artifact.list', topic })).value as { artifacts: Artifact[] }).artifacts;
+    const log = artifacts.find(artifact => artifact.title.startsWith(`Suite ${job.id} `));
+    assert.ok(log);
+    assert.equal(log.creator, 'human');
+    assert.equal(log.creatorKind, 'human');
+    const chip = history.find(message => message.text.startsWith(`▣ ${log.id} `));
+    assert.ok(chip);
+    // Agents is read-only to human sends; its automatic report chip remains a hub notice.
+    assert.equal(chip.from, topic === 'agents' ? 'hub' : 'human');
+    assert.equal(chip.fromKind, topic === 'agents' ? 'hub' : 'human');
+  }
 });
 
 // T2: the admitted deadline plan crosses the scripted provider without real time.
