@@ -1,5 +1,5 @@
 // Timing diagnostics and pure merge admission policy over pinned manifest facts.
-import { fileTimings, timingKey, TIER_BUDGETS, type DurationManifest, type TestTiming } from './suite-durations.ts';
+import { durationAllowanceStanzas, fileTimings, timingKey, TIER_BUDGETS, type DurationManifest, type TestTiming } from './suite-durations.ts';
 import type { Tier } from './suite-shards.ts';
 import { projectedWall } from './suite-tier-report.ts';
 
@@ -11,6 +11,21 @@ export type DurationBudgetContext = {
   base?: { manifest: DurationManifest; tiers: Record<string, Tier>; retained: string[]; sources: Record<string, SourceTestIdentity> };
 };
 const seconds = (n: number) => Number(n.toFixed(3)).toString();
+
+/** Keep the task's summary and copyable allowance output together. */
+export function taskDurationReport(manifest: DurationManifest, tiers: Record<string, Tier>, samples: TestTiming[], options: {
+  fileCount: number; wallMs: number; platform: string; executor: string; owner?: string | undefined;
+}): string[] {
+  const lines: string[] = [];
+  if (options.owner) {
+    const stanzas = durationAllowanceStanzas(samples, manifest, tiers, { owner: options.owner });
+    if (Object.keys(stanzas).length) lines.push(`duration allowance stanza ${JSON.stringify(stanzas)}`);
+  }
+  const summary = `duration check: ${options.fileCount} changed T3/T4 files; ${samples.filter(test => test.outcome === 'pass').length} passing identities; added wall ${(options.wallMs / 1000).toFixed(3)} s (selected phases, excluding machine wait); platform ${options.platform}; executor ${options.executor}; changed = test file in branch diff from origin/dev merge-base plus dirty/untracked files; one base execution, no repetitions; T4 has no tier budget; ${lines.length ? `${lines.length} allowance stanza` : 'no allowance stanzas'}${options.platform === 'linux' ? '' : '; Linux evidence unavailable on this platform'}`;
+  lines.unshift(summary);
+  if (!options.owner) lines.push('duration check: allowance owner unavailable; cannot print commit-ready stanzas; link task to an open container');
+  return lines;
+}
 
 export function durationBudgetReport(manifest: DurationManifest, tiers: Record<string, Tier>, observations: TestTiming[], base?: DurationBudgetContext['base']): string[] {
   const enforce = manifest.budget.mode === 'enforce';

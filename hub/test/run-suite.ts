@@ -22,8 +22,8 @@ import { packageShards, readTierAssignments, type SuiteShard } from '../src/suit
 import { planTierReport, tierReport, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
-import { durationAllowanceStanzas, checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
-import { durationBudgetReport } from '../src/suite-duration-budget.ts';
+import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
+import { durationBudgetReport, taskDurationReport } from '../src/suite-duration-budget.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
 import { assertTestAdmission } from '../src/test-admission.ts';
@@ -413,12 +413,10 @@ process.chdir(cwd);`);
           const tiers = await readTierAssignments(options.cwd ?? process.cwd());
           if (tiers && durationCheckFiles.size && options.selection?.durationCheck) {
             const samples = observed.filter(test => durationCheckFiles.has(test.file));
-            process.stderr.write(`duration check: ${durationCheckFiles.size} changed T3/T4 files; ${samples.filter(test => test.outcome === 'pass').length} passing identities; added wall ${(durationCheckWallMs / 1000).toFixed(3)} s (selected phases, excluding machine wait); platform ${process.platform}; executor ${process.env.CLAND_SUITE_EXECUTOR ?? 'local'}; changed = test file in branch diff from origin/dev merge-base plus dirty/untracked files; one base execution, no repetitions; T4 has no tier budget; no stanza${process.platform === 'linux' ? '' : '; Linux evidence unavailable on this platform'}\n`);
-            const owner = options.selection.durationCheck.owner;
-            if (owner) {
-              const stanzas = durationAllowanceStanzas(samples, durationManifest, Object.fromEntries(tiers), { owner });
-              if (Object.keys(stanzas).length) process.stderr.write(`duration allowance stanza ${JSON.stringify(stanzas)}\n`);
-            } else process.stderr.write('duration check: allowance owner unavailable; cannot print commit-ready stanzas; link task to an open container\n');
+            for (const line of taskDurationReport(durationManifest, Object.fromEntries(tiers), samples, {
+              fileCount: durationCheckFiles.size, wallMs: durationCheckWallMs, platform: process.platform,
+              executor: process.env.CLAND_SUITE_EXECUTOR ?? 'local', owner: options.selection.durationCheck.owner,
+            })) process.stderr.write(line + '\n');
           }
           if (tiers) for (const line of durationBudgetReport(durationManifest, Object.fromEntries(tiers), observed)) process.stderr.write(line + '\n');
         } catch { process.stderr.write('budget (report only): unavailable (report read failed)\n'); }

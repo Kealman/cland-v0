@@ -76,7 +76,8 @@ test('task duration check runs changed T3/T4 identities once and retains commit-
   assert.ok(entries[Object.keys(entries)[0]!].seconds >= 0.15);
   assert.equal(entries[Object.keys(entries)[0]!].owner, 'E-677');
   assert.match(result.output, /duration check:.*added wall [\d.]+ s/);
-  assert.match(result.output, /T4 has no tier budget; no stanza/);
+  assert.match(result.output, /T4 has no tier budget; 1 allowance stanza/);
+  assert.doesNotMatch(result.output, /T4 has no tier budget; no stanza/);
   const { suiteSummary } = await import('../src/hub/suites.ts');
   assert.ok(suiteSummary(result.output).includes(rows[0]!), 'ready report retains the complete JSON stanza');
   assert.equal(await readFile(path, 'utf8'), contents);

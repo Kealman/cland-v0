@@ -4216,7 +4216,9 @@ identities at >=80% of their tier budget print JSON allowances with 1.5x worst
 passing sample headroom, the nearest open container owner and seven-day UTC
 dates; T4 has no budget and prints no stanza. No manifest values are written.
 The ready report retains stanzas and measured added phase wall (excluding
-machine wait), with platform/executor. Local macOS is not Linux evidence.
+machine wait), with platform/executor. The duration summary counts the printed
+`duration allowance stanza` JSON lines (each can contain multiple entries), or
+says `no allowance stanzas` when none are printed. Local macOS is not Linux evidence.
 The hosting hub must land/restart onto this admission capability before live
 proof. See [shared duration procedure](../docs/agents/tests.md#task-t3t4-duration-check-t-1198).
 

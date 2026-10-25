@@ -1526,6 +1526,9 @@ no read-path guard matched; otherwise one base execution of just those files plu
 runner setup. It is not a projection of the whole tier and does not estimate contention with other work.
 Local macOS execution is explicitly labelled as lacking Linux evidence. A cache
 hit retains its original platform/executor; it is not a fresh Linux sample.
+The summary counts the `duration allowance stanza` JSON lines that follow it,
+or says `no allowance stanzas` only when none are printed. One JSON line may
+contain several identity entries; T4's lack of a budget does not suppress T3 allowances.
 
 The hub pins tier commands at admission. Updating only a candidate runner cannot
 enable this capability on an older hosting hub: land the capability and restart

@@ -1,11 +1,51 @@
 // T1: planted timing manifests and Suites reports on semantic worker receipts; no processes or wall-clock waits.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { durationBudgetReport, type DurationBudgetContext } from '../src/suite-duration-budget.ts';
+import { durationBudgetReport, taskDurationReport, type DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import { durationAllowanceStanzas, lintDurationManifest, type DurationManifest } from '../src/suite-durations.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
 const manifest = (): DurationManifest => ({ version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} });
+
+test('task duration summary counts the allowance stanza printed for mixed T3/T4 receipts', () => {
+  const file = 'hub/test/process.test.ts', soak = 'hub/test/soak.test.ts';
+  const lines = taskDurationReport(manifest(), { [file]: 'T3', [soak]: 'T4' }, [
+    { file, name: 'slow', seconds: 8, outcome: 'pass' },
+    { file: soak, name: 'soak', seconds: 90, outcome: 'pass' },
+  ], { fileCount: 2, wallMs: 1234, platform: 'linux', executor: 'droplet', owner: 'E-1282' });
+  assert.match(lines[0]!, /^duration check: 2 changed T3\/T4 files; 2 passing identities; added wall 1\.234 s/);
+  assert.match(lines[0]!, /platform linux; executor droplet/);
+  assert.match(lines[0]!, /; 1 allowance stanza$/);
+  assert.doesNotMatch(lines[0]!, /no stanza/);
+  assert.equal(lines.length, 2);
+  const entries = JSON.parse(lines[1]!.slice('duration allowance stanza '.length));
+  assert.deepEqual(Object.keys(entries), [`${file}::slow`]);
+  assert.equal(entries[`${file}::slow`].seconds, 12);
+});
+
+test('task duration summaries count printed JSON objects across empty, multiple-entry and ownerless reports', () => {
+  const file = 'hub/test/process.test.ts', soak = 'hub/test/soak.test.ts';
+  const tiers = { [file]: 'T3', [soak]: 'T4' } as const;
+  const slow = { file, name: 'slow', seconds: 8, outcome: 'pass' as const };
+  for (const scenario of [
+    { samples: [], owner: 'E-1282', keys: [] },
+    { samples: [{ ...slow, seconds: 7.999 }], owner: 'E-1282', keys: [] },
+    { samples: [{ ...slow, file: soak, seconds: 90 }], owner: 'E-1282', keys: [] },
+    { samples: [{ ...slow, outcome: 'fail' as const }, { ...slow, outcome: 'skip' as const }], owner: 'E-1282', keys: [] },
+    { samples: [slow], owner: undefined, keys: [] },
+    { samples: [slow, { ...slow, name: 'other' }], owner: 'E-1282', keys: [`${file}::other`, `${file}::slow`] },
+  ]) {
+    const lines = taskDurationReport(manifest(), tiers, scenario.samples, {
+      fileCount: 2, wallMs: 0, platform: 'darwin', executor: 'local', owner: scenario.owner,
+    });
+    const rows = lines.filter(line => line.startsWith('duration allowance stanza '));
+    assert.equal(rows.length, scenario.keys.length ? 1 : 0);
+    assert.ok(lines[0]!.includes(scenario.keys.length ? '; 1 allowance stanza;' : '; no allowance stanzas;'));
+    assert.match(lines[0]!, /Linux evidence unavailable on this platform$/);
+    assert.deepEqual(rows.flatMap(line => Object.keys(JSON.parse(line.slice('duration allowance stanza '.length)))), scenario.keys);
+    assert.equal(lines.some(line => line.includes('allowance owner unavailable')), !scenario.owner);
+  }
+});
 
 test('allowance stanzas use the worst passing sample at the tier threshold with dated 1.5x headroom', () => {
   const current = manifest();

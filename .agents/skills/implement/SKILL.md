@@ -110,6 +110,11 @@ expected; the Coordinator records post-restart droplet counts as landing
 evidence, not a pre-merge gate. Incomplete or skipped receipts are missing proof. Do not run this CPU
 check as an unleased local probe. No role-clause expansion is needed.
 
+Task duration summaries count printed allowance JSON lines, which can contain
+multiple identity entries; `no allowance stanzas` means no such line was printed.
+Keep this distinct from T4's lack of a tier budget. See the shared task T3/T4
+duration procedure in `docs/agents/tests.md`.
+
 For Web hang-guard changes, use the fake-clock and held-child seams in
 `docs/agents/tests/hub-test-web-phase.test.ts.md` and
 `docs/agents/tests/hub-test-suite-runner.test.ts.md`; the Web phase procedure
