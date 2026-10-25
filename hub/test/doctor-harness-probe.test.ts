@@ -8,6 +8,49 @@ import type { run } from '../src/doctor/report.ts';
 const env = { HOME: '/scratch', CLAND_NVIM: '/scratch/no-nvim' };
 const installed = async (id: HarnessId) => ({ bin: `/tools/${id}` });
 
+test('OpenCode doctor warns when Console providers exist only in the default store', async () => {
+  const calls: Array<{ args: readonly string[]; database: string | undefined }> = [];
+  const probe: typeof run = async (_bin, args, selected) => {
+    calls.push({ args, database: selected.OPENCODE_DB });
+    return { code: 0, stderr: '', stdout: args[0] === '--version' ? '2.0.24' : JSON.stringify(selected.OPENCODE_DB?.includes('/cland/')
+      ? [{ id: 'openrouter', connections: [{ type: 'credential' }] }]
+      : [{ id: 'opencode-go', name: 'OpenCode Go', connections: [{ type: 'credential' }] }, { id: 'openrouter', connections: [{ type: 'credential' }] }]) };
+  };
+  const found = await probeHarness('opencode', { ...env, XDG_DATA_HOME: '/scratch/data', OPENCODE_DB: '/scratch/ignored.db' }, probe, installed);
+  const auth = found.checks[1]!;
+  assert.equal(auth.verdict, 'warn');
+  assert.match(auth.detail, /OpenCode Go.*default OpenCode.*missing.*cland/i);
+  assert.equal(auth.fix, "OPENCODE_DB='/scratch/data/cland/opencode/opencode.db' opencode auth login --standalone");
+  assert.deepEqual(calls.filter(c => c.args[0] === 'auth'), [
+    { args: ['auth', 'list', '--standalone', '--format', 'json'], database: '/scratch/data/cland/opencode/opencode.db' },
+    { args: ['auth', 'list', '--standalone', '--format', 'json'], database: '/scratch/data/opencode/opencode.db' },
+  ]);
+});
+
+test('OpenCode credential comparison ignores environment connections and compares provider ids', async () => {
+  const probe: typeof run = async (_bin, args, selected) => ({ code: 0, stderr: '', stdout: args[0] === '--version' ? '2.0.24' : JSON.stringify(
+    selected.OPENCODE_DB?.includes('/cland/')
+      ? [{ id: 'opencode-go', name: 'Stored Go', connections: [{ type: 'credential' }] }]
+      : [{ id: 'opencode-go', name: 'Renamed Go', connections: [{ type: 'credential' }] }, { id: 'openai', connections: [{ type: 'env' }] }]) });
+  const found = await probeHarness('opencode', env, probe, installed);
+  assert.deepEqual(found.checks[1], { name: 'opencode auth', verdict: 'ok', detail: 'credentials for Stored Go' });
+});
+
+test('OpenCode doctor labels an unreadable default store as an incomplete comparison', async () => {
+  for (const failed of [
+    { code: 1, stdout: '', stderr: 'private native failure' },
+    { code: 0, stdout: 'not JSON private metadata', stderr: '' },
+    { code: null, stdout: '', stderr: '', error: 'timeout' },
+  ]) {
+    const probe: typeof run = async (_bin, args, selected) => args[0] === '--version' ? { code: 0, stdout: '2.0.24', stderr: '' }
+      : selected.OPENCODE_DB?.includes('/cland/') ? { code: 0, stdout: '[]', stderr: '' } : failed;
+    const found = await probeHarness('opencode', env, probe, installed);
+    assert.equal(found.checks[1]?.verdict, 'warn');
+    assert.match(found.checks[1]!.detail, /cannot compare credentials.*default OpenCode store/);
+    assert.doesNotMatch(JSON.stringify(found), /private|missing from/);
+  }
+});
+
 test('doctor requires only the project role harnesses', async () => {
   const options = { harnesses: ['claude-code'], github: false, installation: async (id: HarnessId) => id === 'claude-code' ? installed(id) : { bin: null, missing: { name: id, verdict: 'fail' as const, detail: 'not installed', fix: 'install it' } } };
   const checks = await checkToolchain(env, replies('2.3.0', '{"loggedIn":true}'), options);

@@ -350,7 +350,10 @@ test('doctor names isolated OpenCode databases and standalone login, and warns a
   assert.match(own.detail, /OPENCODE_DB=.*opencode auth login --standalone/);
   assert.match(own.detail, /no login needed for the free default/i);
   const probes = probeCalls.filter(call => call.bin.endsWith('/opencode') && call.args[0] === 'auth').map(({ args, database }) => ({ args, database }));
-  assert.deepEqual(probes.at(-1), { args: ['auth', 'list', '--standalone', '--format', 'json'], database: join(data, 'cland', 'opencode', 'opencode.db') });
+  assert.deepEqual(probes.slice(-2), [
+    { args: ['auth', 'list', '--standalone', '--format', 'json'], database: join(data, 'cland', 'opencode', 'opencode.db') },
+    { args: ['auth', 'list', '--standalone', '--format', 'json'], database: join(data, 'opencode', 'opencode.db') },
+  ]);
   const shared = check(r, 'opencode database shared');
   assert.equal(shared.verdict, 'warn');
   assert.match(shared.detail, /background service.*resume/);

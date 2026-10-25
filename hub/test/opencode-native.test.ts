@@ -13,6 +13,20 @@ import type { ApprovalRecord, Message, SessionUsage } from '../src/protocol.ts';
 const command = 'touch approved && echo done';
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
 
+test('an unavailable OpenCode model reports the separate credential database and standalone login', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const input = await f.send('use my Console model');
+  f.native.start();
+  f.native.deliver(input);
+  const reported = f.ui.waitFor(e => e.type === 'message' && (e.message as Message).text.includes('its turn failed: Model unavailable'));
+  f.native.emit('session.execution.failed', { error: { message: 'Model unavailable' } });
+  const text = ((await reported).message as Message).text;
+  assert.match(text, /default OpenCode.*login.*not shared/i);
+  assert.ok(text.includes(`OPENCODE_DB='${join(f.root, '.local/share/cland/opencode/opencode.db')}' opencode auth login --standalone`), text);
+  const events = (await f.ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string }> };
+  assert.ok(events.rows.some(row => row.text === text));
+});
+
 test('a shell permission becomes one answerable record with its full command and no private metadata', { timeout: 2000 }, async t => {
   const f = await scriptedOpenCode(t);
   f.native.start();

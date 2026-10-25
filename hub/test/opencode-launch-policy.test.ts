@@ -15,7 +15,7 @@ import { FakeClock } from './fake-clock.ts';
 import { connectUi, projectHub, tempProject } from './harness.ts';
 
 type Rule = { action: string; resource: string; effect: string };
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, unavailable = false) {
   const root = await tempProject(t);
   const servers: ReturnType<typeof createServer>[] = [];
   const sessions = new Map<string, Record<string, unknown>>();
@@ -32,6 +32,7 @@ async function fixture(t: TestContext) {
       const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
       let data: unknown = {};
       if (req.method === 'POST' && req.url === '/api/session') {
+        if (unavailable) { res.writeHead(400); res.end('Model unavailable'); return; }
         data = { ...body, id: `ses_${sessions.size}` };
         sessions.set((data as { id: string }).id, data as Record<string, unknown>);
       } else if (req.url?.startsWith('/api/session/ses_')) data = sessions.get(req.url.split('/')[3]!);
@@ -59,6 +60,19 @@ async function fixture(t: TestContext) {
   }
   return { root, launch, adapter, launches };
 }
+
+test('an unavailable OpenCode launch names the selected account database and its login', { timeout: 2000 }, async t => {
+  const f = await fixture(t, true);
+  const database = join(f.root, "paid account's.db");
+  await assert.rejects(f.launch({ account: 'paid', accountEnv: { OPENCODE_DB: database }, model: 'opencode-go/deepseek-v4.1-flash' }), error => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /default OpenCode Console login is not shared/);
+    assert.ok(error.message.includes(database));
+    assert.match(error.message, /opencode auth login --standalone/);
+    assert.ok(error.message.includes("paid account'\"'\"'s.db"), error.message);
+    return true;
+  });
+});
 
 test('OpenCode launches leave native permissions unset even with explicit launch policy', { timeout: 2000 }, async t => {
   const f = await fixture(t);

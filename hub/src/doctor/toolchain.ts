@@ -31,6 +31,19 @@ const parseJson = (text: string): unknown => {
   }
 };
 
+/** Read provider identities only; never export credentials or read database contents. */
+const storedProviders = (result: Awaited<ReturnType<typeof run>>): Map<string, string> | null => {
+  const value = parseJson(result.stdout);
+  if (result.error !== undefined || result.code !== 0 || !Array.isArray(value)) return null;
+  const providers = new Map<string, string>();
+  for (const provider of value) {
+    if (!provider || typeof provider !== 'object' || !Array.isArray(provider.connections) || !provider.connections.some((c: { type?: unknown } | null) => c?.type === 'credential')) continue;
+    const id = typeof provider.id === 'string' ? provider.id : typeof provider.name === 'string' ? provider.name : null;
+    if (id) providers.set(id, typeof provider.name === 'string' ? provider.name : id);
+  }
+  return providers;
+};
+
 const HARNESSES: readonly Harness[] = [
   {
     ...HARNESS_INSTALLATIONS['claude-code'],
@@ -93,7 +106,18 @@ export async function probeHarness(id: HarnessId, env: NodeJS.ProcessEnv, probe:
   const a = await probe(bin, h.auth.args, probeEnv);
   if (a.error !== undefined) out.push(warn(authName(h.id), `cannot check: ${h.bin} ${h.auth.args.join(' ')}: ${a.error}`, `run ${h.bin} ${h.auth.args.join(' ')} by hand`));
   else {
-    const check = h.auth.read(a);
+    let check = h.auth.read(a);
+    if (id === 'opencode') {
+      const selected = storedProviders(a);
+      if (selected) {
+        const defaults = openCodeDatabase({ ...env, OPENCODE_DB: '' });
+        const other = storedProviders(await probe(bin, h.auth.args, accountEnvironment(env, { OPENCODE_DB: defaults })));
+        if (other) {
+          const missing = [...other].filter(([id]) => !selected.has(id)).map(([, name]) => name);
+          if (missing.length) check = warn(authName(id), `${missing.join(', ')}: credentials in the default OpenCode store (${defaults}) are missing from cland's database (${database}); logins are separate`, openCodeLogin(database));
+        } else check = warn(authName(id), `${check.detail}; cannot compare credentials with the default OpenCode store (${defaults})`, openCodeLogin(database));
+      }
+    }
     if (h.id === 'opencode' && check.fix) check.fix = openCodeLogin(database);
     out.push(check);
   }

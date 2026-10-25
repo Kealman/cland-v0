@@ -147,7 +147,7 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions?: boolea
   const factory = (host: AdapterHost) => {
     const lifecycle = fakeHarness('opencode', { host, clock });
     if (process) lifecycle.scriptResume(process.name, 'found');
-    adapter = new OpenCodeAdapter({ ...host, reconnected: id => { native.reconnected++; host.reconnected?.(id); } }, { clock, ...(roleInstructions === undefined ? {} : { roleInstructions }) });
+    adapter = new OpenCodeAdapter({ ...host, reconnected: id => { native.reconnected++; host.reconnected?.(id); } }, { clock, env: { HOME: root }, ...(roleInstructions === undefined ? {} : { roleInstructions }) });
     const spawn = lifecycle.spawn.bind(lifecycle);
     lifecycle.spawn = async (...args) => {
       launchToken = args[0].launchToken; process = await spawn(...args);

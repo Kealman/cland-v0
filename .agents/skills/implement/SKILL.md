@@ -25,6 +25,12 @@ Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 
+For OpenCode Console login diagnostics, use the injected auth-list seam in
+`docs/agents/tests/hub-test-doctor-harness-probe.test.ts.md` and the scripted
+native failure seam in `docs/agents/tests/hub-test-opencode-native.test.ts.md`.
+Keep default-store and selected-database logins separate; report the printed
+standalone login command without reading or copying the human's credentials.
+
 For adapter shutdown, preserve both synchronous and promise-returning `close`
 implementations. Drain transient native CLI callbacks before releasing storage;
 use the scripted close/drain regression and held real-query resource check in

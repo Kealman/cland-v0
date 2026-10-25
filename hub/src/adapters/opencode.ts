@@ -20,7 +20,7 @@ import { harnessBinary } from '../doctor/harnesses.ts';
 //   resume   the pid alive and the server answering for the recorded session; else, with `relaunch`, a new server
 //            on the same config and password, and the same session (OpenCode keeps sessions in its own database;
 //            a session it lost is created again under its id).
-import { accountEnvironment, accountPrefix, clandOpenCodeDatabase, openCodeDatabase } from '../accounts/registry.ts';
+import { accountEnvironment, accountPrefix, clandOpenCodeDatabase, openCodeDatabase, openCodeLogin } from '../accounts/registry.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { createHash, randomUUID } from 'node:crypto';
@@ -233,6 +233,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
         return { ...p, harness: this.harness, model: chosen ?? null, launchPolicy: policy, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
       } catch (err) {
         // a server whose session could not be made is of no use: it does not outlive the failed launch
+        if (err instanceof Error) {
+          const message = this.#modelFailure(err.message, p.accountEnv);
+          if (message !== err.message) err = err instanceof HttpError ? new HttpError(err.status, message) : new Error(message);
+        }
         return yield* wait(this.#recoveries.failed(p.sessionId, p.name, transaction, err, () => {}));
       }
     }).call(this), resumed);
@@ -451,7 +455,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
           const description = command === rejection.request.action ? rejection.approvalCommand ?? command : command ?? rejection.approvalCommand;
           this.#host.turnFailed?.(w.process.sessionId, `Approval rejected${description ? `: ${description}` : ''}`, messages);
         });
-      } else if (change.turnError) this.#host.turnFailed?.(w.process.sessionId, change.turnError, messages);
+      } else if (change.turnError) this.#host.turnFailed?.(w.process.sessionId, this.#modelFailure(change.turnError, w.process.accountEnv), messages);
     }
     if (change.serverShutdown) { this.#gone(w, 'opencode server shutdown'); return; }
     if (change.usage) {
@@ -465,6 +469,12 @@ export class OpenCodeAdapter implements HarnessAdapter {
       const state = permission ? 'waiting for approval' : trackers.some(t => t.forms.size) ? 'waiting for human' : trackers.some(t => t.running) ? 'busy' : 'idle';
       this.#host.signal(w.process.sessionId, { state, source: 'sse', at, ...(permission?.approvalCommand !== undefined ? { approvalCommand: permission.approvalCommand } : {}) });
     }
+  }
+
+  #modelFailure(message: string, accountEnv: HarnessProcess['accountEnv']): string {
+    if (!/model unavailable/i.test(message)) return message;
+    const database = accountEnv ? openCodeDatabase({ HOME: this.#processEnv.HOME, ...accountEnv }) : clandOpenCodeDatabase(this.#processEnv);
+    return `${message}; OpenCode uses ${database}. The default OpenCode Console login is not shared with a separate database; paid Go/Zen providers need credentials there. Connect with: ${openCodeLogin(database)}; then relaunch the session. Run cland doctor to compare stored providers.`;
   }
 
   #describePermission(w: Watch, request: PermissionRequest, tracker = w.tracker): void {

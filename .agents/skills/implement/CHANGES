@@ -104,3 +104,4 @@ T-1271: Document that text after the item on a verifier request first line is de
 
 T-1230: Point skill-inventory changes to the production-role no-sync guard and cached-refresh receipt tests.
 T-1218: Document hub authorship for periodic/nightly queue, heartbeat and artifacts, with human shell ownership preserved.
+T-1258: Document sealed OpenCode Console credential comparison and native model-failure diagnostic seams.

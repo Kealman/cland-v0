@@ -335,6 +335,8 @@ model = "openrouter/qwen3-coder"
 
 Sign OpenCode in to your provider through cland's database: `cland doctor` prints the exact `opencode auth login --standalone` line. With `model = ""`, an available OpenCode Zen free model needs no login.
 
+Your OpenCode Console login for Go or paid Zen in the default OpenCode store is separate. Doctor names providers whose stored credentials are missing from cland's database, even if another provider is connected there. Use its printed standalone login command to connect the missing provider, then relaunch the session. Doctor compares provider names and ids without copying credentials; an unreadable store is an incomplete comparison. If no role uses OpenCode, its auth check is informational. A `Model unavailable` launch or turn error also prints the selected database's login command, including for a named account.
+
 :::caution
 Free OpenCode models may train on the code they see. `cland doctor` flags roles with no model or an apparently free model; check the provider's data policy.
 :::
