@@ -492,6 +492,17 @@ The role clause is delivered before the brief on Claude Code, Codex and OpenCode
 
 A spoke discovering a project hub without `CLAND_SESSION_NAME`, an existing session-id role mapping or a hub launch credential stays disconnected. It serves its MCP tools with an error explaining how to bind the session and appends one `spoke-connection-skipped` record to the project's journal. `CLAND_ROLE` alone grants no connection. Named sessions with a human-assigned role and hub-launched sessions still connect; a nameless spoke of a mapped session still joins or recovers its identity, and an explicitly configured standalone hub retains generated names.
 
+### Spoke stdio input limit
+
+Every local MCP input line is capped at 1 MiB (1,048,576 UTF-8 bytes, excluding
+the newline), before JSON parsing or SDK schema validation. This fixed cap
+applies with or without a connected hub and has no configuration override.
+On overflow, the spoke emits a JSON-RPC `-32700` error naming the cap with
+`id: null` (the rejected JSON is never parsed to recover its id), discards the
+rest of that line and continues serving subsequent messages. An unfinished
+line is refused as soon as it exceeds the cap. Multiple valid lines sharing
+one read are bounded individually. Ending stdin still ends the session.
+
 ### Spoke readiness and deadlines
 
 MCP initialization and tool listing do not wait for the hub. A tool called while its spoke is connecting waits for that connection's welcome up to `READINESS_TIMEOUT_MS` (20,000 ms), then sends its request. The wait applies on initial connection and reconnect. A timeout returns `{ok:false, error:"the hub did not become ready within 20 s (waiting for welcome)"}`. Expired calls are removed and never sent on a later welcome. A disconnect, refusal or stopped spoke fails waiting calls immediately; an already disconnected or refused spoke reports its outage immediately.

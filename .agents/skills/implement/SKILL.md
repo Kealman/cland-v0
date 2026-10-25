@@ -158,6 +158,12 @@ For the Codex approval relay, use the scripted native frame seam and explicit fa
 
 For OpenCode relay changes, follow `docs/agents/tests.md` (The OpenCode relay) for scripted native reply, child/reconnect/shape checks and the targeted fake-binary Deny-with-note receipt, separate from mode-free task coverage.
 
+For spoke stdio framing, use the owned-byte-stream seam in
+`docs/agents/tests/hub-test-spoke-stdio.test.ts.md`: cap each input line at
+1 MiB before JSON/schema decoding, emit a JSON-RPC cap error with unknown id,
+discard the oversized remainder and retain a successful next-request receipt.
+No hub connection or process is needed for this boundary.
+
 For approval race/restart changes, keep the existing native/frame seams and run `hub/test/approval-restart.test.ts` explicitly for the T3 scratch hub-process receipt. Codex's observable race boundary is resolution before its response-write receipt; its own echo follows delivery. OpenCode confirms through the HTTP result, not an equal choice in an event. Recover persisted OpenCode child owners before reconciliation, and wait for the exact `approval-rebuilt` native-validation receipt after a held recovery before answering in the restart test. Treat persisted authorization as display metadata until current native validation completes: hold/malformed replay tests must refuse without any endpoint call, and validated fields replace old subject/choices/routing while keeping id/since. Preserve allowlisted persisted ids/subjects and archive outcomes, and label unobserved off-stream choices `answered in the harness`. See `docs/agents/tests.md` (Approval races) and the protocol limitation in `hub/README.md`.
 
 For ask outcomes, a declined ask is a decision and never consent. Human `topic.answer {ask, declined: true, reason}` requires a non-empty reason, delivers `declined: <reason>` and leaves the topic open; return the unchanged decision down the lead chain with `ask.answer`. Use the public-frame and recorded-headless decline seams in `docs/agents/tests.md`; Neovim does not initiate declines in 0.2.0.

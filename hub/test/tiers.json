@@ -428,6 +428,7 @@
     "hub/test/spoke-artifact-budget.test.ts": "T2",
     "hub/test/spoke-identity.test.ts": "T2",
     "hub/test/spoke-readiness.test.ts": "T2",
+    "hub/test/spoke-stdio.test.ts": "T2",
     "hub/test/sqlite-contention.test.ts": "T2",
     "hub/test/stage-closure-component.test.ts": "T2",
     "hub/test/stage-qa.test.ts": "T3",

@@ -18,9 +18,10 @@ import type { Clock } from '../hub/clock.ts';
 import { subscriptionInput } from '../subscriptions.ts';
 import { sendRecipients } from '../send-input.ts';
 import { randomUUID } from 'node:crypto';
+import type { Readable, Writable } from 'node:stream';
 import { dirname, join } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { SpokeStdioTransport } from './stdio.ts';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
@@ -98,6 +99,8 @@ export type SpokeRuntime = { server: SpokeServer; hub: HubClient | null };
 export type SpokeOptions = {
   clock?: Clock;
   transport?: Transport;
+  /** Raw stdio streams, owned by the caller; defaults to the session's pipes. */
+  stdio?: { input: Readable; output: Writable };
   exit?: (code: number) => void;
   /** Discovery and hello use this directory without changing the host process's cwd. */
   cwd?: string;
@@ -112,7 +115,8 @@ const positive = (raw: string | undefined, fallback: number): number => {
 export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: SpokeOptions = {}): Promise<SpokeRuntime> {
   const log = options.log ?? ((line: string) => { process.stderr.write(`cland-spoke: ${line}\n`); });
   const cwd = options.cwd ?? process.cwd();
-  const transport = options.transport ?? new StdioServerTransport();
+  const input = options.stdio?.input ?? process.stdin;
+  const transport = options.transport ?? new SpokeStdioTransport(input, options.stdio?.output ?? process.stdout);
   const exit = options.exit ?? ((code: number) => process.exit(code));
   let url = env.CLAND_HUB_URL?.trim();
   let secret = env.CLAND_HUB_SECRET?.trim();
@@ -346,8 +350,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
   const stdinEnded = () => exitWithSession("the session's stdin ended");
   const stdinClosed = () => exitWithSession("the session's stdin closed");
   const removeStdinListeners = () => {
-    process.stdin.removeListener('end', stdinEnded);
-    process.stdin.removeListener('close', stdinClosed);
+    input.removeListener('end', stdinEnded);
+    input.removeListener('close', stdinClosed);
   };
   const exitWithSession = (why: string) => {
     if (ended) return;
@@ -358,11 +362,11 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
     exit(0);
   };
   server.onclose = () => exitWithSession('the session closed the channel');
-  // The SDK's stdio transport listens for data and errors only: a parent that died leaves a spoke whose
+  // The stdio transport listens for data and errors only: a parent that died leaves a spoke whose
   // stdin merely ended — an orphan holding a name on the hub. EOF on stdin is the session ending.
-  if (transport instanceof StdioServerTransport) {
-    process.stdin.once('end', stdinEnded);
-    process.stdin.once('close', stdinClosed);
+  if (transport instanceof SpokeStdioTransport) {
+    input.once('end', stdinEnded);
+    input.once('close', stdinClosed);
   }
   try { await server.connect(transport); }
   catch (error) { removeStdinListeners(); throw error; }

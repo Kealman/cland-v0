@@ -117,3 +117,4 @@ T-323: Point early Neovim navigation and launcher defaults to held-snapshot regr
 T-1224: Document Codex's fixed startup injection-alarm grace and its scripted app-server boundary regressions.
 T-1300: Document immediate task subcommand help without hub/config requirements.
 T-1237: Extend the T0 child-environment guard guidance to Neovim test launchers and helpers.
+T-1208: Document the byte-stream spoke framing seam and pre-validation 1 MiB refusal/recovery receipt.
