@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:52:46.898Z
-updated: 2026-10-25T09:53:52.191Z
+updated: 2026-10-25T10:06:48.619Z
 ---
 
 ## Summary
@@ -37,6 +37,7 @@ stages:
       - - T-1041
       - - T-1233
         - T-1237
+        - T-1285
   - name: runner and frame tooling
     qa:
       scope: none
