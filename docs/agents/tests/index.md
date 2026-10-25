@@ -6,6 +6,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | --- | --- |
 | [`hub/test/harness-framing.test.ts`](../../../hub/test/harness-framing.test.ts) | [Notes](hub-test-harness-framing.test.ts.md) |
 | [`hub/test/doctor-harness-probe.test.ts`](../../../hub/test/doctor-harness-probe.test.ts) | [Notes](hub-test-doctor-harness-probe.test.ts.md) |
+| [`hub/test/doctor.test.ts`](../../../hub/test/doctor.test.ts) | [Notes](hub-test-doctor.test.ts.md) |
 | [`hub/test/opencode-launch-policy.test.ts`](../../../hub/test/opencode-launch-policy.test.ts) | [Notes](hub-test-opencode-launch-policy.test.ts.md) |
 | [`hub/test/inject-stalled.test.ts`](../../../hub/test/inject-stalled.test.ts) | [Notes](hub-test-inject-stalled.test.ts.md) |
 | [`hub/test/codex-delivery.test.ts`](../../../hub/test/codex-delivery.test.ts) | [Notes](hub-test-codex-delivery.test.ts.md) |

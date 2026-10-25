@@ -43,7 +43,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
     const result = await run('git', ['-C', root, 'remote'], env);
     return result.code === 0 ? result.stdout.trim().split(/\s+/) : [];
   }))(root);
-  const [toolchain, project, keys] = await Promise.all([checkToolchain(env, probe, { harnesses, github: remotes.includes('github') }), checkProject(root, readers.project), checkKeys(env, probe)]);
+  const [toolchain, project, keys] = await Promise.all([checkToolchain(env, probe, { harnesses, github: remotes.includes('github') }), checkProject(root, readers.project, env), checkKeys(env, probe)]);
   const orphanChecks: Check[] = [];
   // Test fixtures opt out of machine-wide deleted-project discovery; production keeps the default.
   const hubScopeRoot = env.CLAND_TEST_ORPHAN_ROOT;

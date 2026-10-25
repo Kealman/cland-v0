@@ -7,7 +7,7 @@ import { inspectConflictCaptures } from '../tracker/conflict-captures.ts';
 import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { HOOK_EVENTS, MOD_DIR } from '../adapters/claude-code.ts';
-import { askHub } from '../cli/socket-client.ts';
+import { askHubFrame } from '../cli/socket-client.ts';
 import { liveHolderAsync, parseStarted } from '../hub/lock.ts';
 import { parseConfig } from '../init/config.ts';
 import { isManagedFile, readText } from '../init/files.ts';
@@ -51,13 +51,13 @@ export type ProjectReaders = {
 };
 
 /** `hub`, `hub.json` and `secret`. */
-async function checkHub(l: Layout, readers: ProjectReaders): Promise<Check[]> {
+async function checkHub(l: Layout, readers: ProjectReaders, env: NodeJS.ProcessEnv): Promise<Check[]> {
   const rel = (p: string) => relative(l.root, p);
   const text = readText(l.discovery);
   const d = text === null ? null : readDiscovery(l.discovery);
   // the lock's holder, its start time asked of `ps` with a deadline: a hung `ps` cannot hold the doctor up
   const holder = await liveHolderAsync(l.lock, readers.started ?? (async (pid, timezone) => {
-    const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], timezone ? { ...process.env, TZ: timezone, LC_ALL: 'C' } : process.env, probeTimeout(process.env, 3000));
+    const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], timezone ? { ...env, TZ: timezone, LC_ALL: 'C' } : env, probeTimeout(env, 3000));
     return r.code === 0 && r.error === undefined ? parseStarted(r.stdout) : null;
   }));
   const out: Check[] = [];
@@ -91,7 +91,7 @@ async function checkHub(l: Layout, readers: ProjectReaders): Promise<Check[]> {
     let status: HubStatus | null = null;
     let why = '';
     try {
-      status = (await askHub(d, 'hub.status', 3000)) as HubStatus;
+      status = (await askHubFrame(d, { type: 'hub.status' }, 3000, env)) as HubStatus;
     } catch (err) {
       why = errorText(err);
     }
@@ -308,10 +308,10 @@ function checkInstructions(root: string): Check[] {
 }
 
 /** Every project check; a folder `cland init` never ran in is one failure. */
-export async function checkProject(root: string, readers: ProjectReaders = {}): Promise<Check[]> {
+export async function checkProject(root: string, readers: ProjectReaders = {}, env: NodeJS.ProcessEnv = process.env): Promise<Check[]> {
   const l = layout(root);
   if (!existsSync(l.dir)) return [fail('project', `${root} has no ${CLAND_DIR}/: not a cland project`, `cland init ${root}`)];
   const problems = (readers.territoryProblems ?? territoryProblems)(root);
   const territory = problems === null ? ok('territory', 'not a git repository: no territory needed') : problems.length ? fail('territory', problems.join('; '), 'cland init (restore origin to .cland/territory.git if it was changed)') : ok('territory', 'origin is the local bare repository; main and dev protected; HEAD on dev');
-  return [...(await checkHub(l, readers)), territory, await checkCaptures(root), ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
+  return [...(await checkHub(l, readers, env)), territory, await checkCaptures(root), ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
 }

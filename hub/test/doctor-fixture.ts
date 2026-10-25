@@ -11,6 +11,7 @@ import { runDoctor } from '../src/cli/doctor.ts';
 import { runUpdate } from '../src/cli/init.ts';
 import { provision } from '../src/init/provision.ts';
 import { captureCli } from './cli-in-process.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 const FAKES = fileURLToPath(new URL('./fakes/', import.meta.url));
 const FAKE_GH_DIR = fileURLToPath(new URL('./fixtures/fake-gh', import.meta.url));
@@ -43,21 +44,20 @@ export async function toolchain(t: TestContext, real = false): Promise<{ env: Re
   }
   const path = (without?: keyof typeof HARNESS_DIRS) =>
     [...Object.entries(harnessDirs).filter(([k]) => k !== without).map(([, d]) => d), FAKE_GH_DIR, bin, '/usr/bin', '/bin'].join(':');
-  const env = {
+  const env = fixtureEnvironment(dir, process.env, {
     PATH: path(),
-    HOME: join(dir, 'home'),
     XDG_CONFIG_HOME: join(dir, 'config'),
     XDG_DATA_HOME: '',
     CLAND_NVIM: nvim,
     FAKE_CLAUDE_HOME: join(dir, 'claude-home'),
     FAKE_CODEX_HOME: join(dir, 'codex-home'),
     FAKE_OPENCODE_HOME: join(dir, 'opencode-home'),
-  };
+  });
   return { env, path };
 }
 
 export const doctor = (root: string, env: Record<string, string>, ...args: string[]): Promise<CliResult> => doctorWithRemotes(root, env, ['github'], ...args);
-const doctorWithRemotes = (root: string, env: Record<string, string>, remotes: string[], ...args: string[]): Promise<CliResult> => captureCli(write => runDoctor(args, root, { CLAND_TEST_ORPHAN_ROOT: root, ...env }, write, probeTools, { remotes: async () => remotes, project: { started: async () => null, territoryProblems: () => null }, findOrphans: async () => [], webBundle: async () => ({ name: 'web bundle', verdict: 'ok', detail: 'fixture bundle current' }) }));
+const doctorWithRemotes = (root: string, env: Record<string, string>, remotes: string[], ...args: string[]): Promise<CliResult> => captureCli(write => runDoctor(args, root, { ...env, CLAND_TEST_ORPHAN_ROOT: root }, write, probeTools, { remotes: async () => remotes, project: { started: async () => null, territoryProblems: () => null }, findOrphans: async () => [], webBundle: async () => ({ name: 'web bundle', verdict: 'ok', detail: 'fixture bundle current' }) }));
 export const update = (root: string) => captureCli(write => runUpdate([], root, write));
 
 export async function report(root: string, env: Record<string, string>, remotes = ['github']): Promise<{ code: number | null; report: Report }> {
@@ -80,7 +80,7 @@ export const notOk = (r: Report) => r.checks.filter((c) => c.verdict !== 'ok').m
 export async function initialised(t: TestContext, env: Record<string, string>, openCode = false): Promise<string> {
   const root = await tempProject(t, 'cland-doctor-proj-');
   // This fixture needs provisioned files, not the init command's native territory contract.
-  const init = await captureCli(async () => { await provision(root, { territory: false }); return 0; });
+  const init = await captureCli(async () => { await provision(root, { territory: false, env }); return 0; });
   assert.equal(init.code, 0, init.stderr);
   // The healthy fixture uses Codex; OpenCode's safety warnings are exercised separately.
   if (!openCode) {

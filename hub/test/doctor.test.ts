@@ -9,6 +9,34 @@ import { FakeClock } from './fake-clock.ts';
 import { doctor, report, update, initialised, toolchain, check, notOk, HARNESS_DIRS, NVIM_VERSION, probeCalls } from './doctor-fixture.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
 
+test('doctor uses its fixture environment rather than the parent crew session', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
+  // Synthetic outer-session identity: never reuse the running crew's credential.
+  const parent = {
+    CLAND_SESSION_NAME: 'outer-doctor-fixture', CLAND_SESSION_ID: 'outer-doctor-id',
+    CLAND_LAUNCH_TOKEN: 'synthetic-invalid-credential', CLAND_HUB_FILE: join(root, 'outer-hub.json'),
+    CLAND_NODE: '/missing/outer-node', CLAND_CLI: '/missing/outer-cli',
+  };
+  const before = Object.fromEntries(Object.keys(parent).map(key => [key, process.env[key]]));
+  Object.assign(process.env, parent);
+  try {
+    const result = await report(root, tools.env);
+    assert.equal(check(result.report, 'hub').verdict, 'ok', notOk(result.report).join('\n'));
+    assert.equal(result.code, 0, notOk(result.report).join('\n'));
+    const explicit = await report(root, { ...tools.env, ...parent });
+    assert.equal(explicit.code, 1, 'explicit session credentials still use production admission');
+    assert.match(check(explicit.report, 'hub').detail, /outer-doctor-fixture.*credential is missing or invalid/);
+    for (const [key, value] of Object.entries(parent)) assert.equal(process.env[key], value, key);
+  } finally {
+    for (const [key, value] of Object.entries(before)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
 test('a Claude-only project succeeds without other harnesses or GitHub tooling', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);

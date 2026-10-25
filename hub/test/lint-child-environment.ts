@@ -194,6 +194,8 @@ for (const path of ['nvim/src/launch.ts', 'hub/src/launch.ts', 'nvim/test/fixtur
 }
 for await (const path of glob(sourcePattern, { cwd: root })) files.push(join(root, path));
 const rejected = [
+  // T-1285: the original doctor helper's child inherited its outer crew identity.
+  "import { execFile } from 'node:child_process';\nexecFile(process.execPath, ['hub/bin/cland.ts', 'doctor', '--json'], { cwd: '/scratch', env: { ...process.env, HOME: '/scratch/home', XDG_CONFIG_HOME: '/scratch/config' } }, () => {});",
   "import { spawn } from 'node:child_process'; import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';\nspawn('tool', [], {env: fixtureEnvironment('/scratch', process.env, process.env)});",
   "import { spawn } from 'node:child_process';\nspawn('tool');",
   "import { spawn } from 'node:child_process';\nspawn('tool', [], { env: process.env });",
