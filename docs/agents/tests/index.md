@@ -181,6 +181,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/claude-code-environment.test.ts`](../../../hub/test/claude-code-environment.test.ts) | [Notes](hub-test-claude-code-environment.test.ts.md) |
 | [`hub/test/task-migrate.test.ts`](../../../hub/test/task-migrate.test.ts) | [Notes](hub-test-task-migrate.test.ts.md) |
 | [`hub/test/session-credential-io.test.ts`](../../../hub/test/session-credential-io.test.ts) | [Notes](hub-test-session-credential-io.test.ts.md) |
+| [`hub/test/session-resume-component.test.ts`](../../../hub/test/session-resume-component.test.ts) | [Notes](hub-test-session-resume-component.test.ts.md) |
 | [`hub/test/session-events.test.ts`](../../../hub/test/session-events.test.ts) | [Notes](hub-test-session-events.test.ts.md) |
 | [`hub/test/lifecycle-serialization.test.ts`](../../../hub/test/lifecycle-serialization.test.ts) | [Notes](hub-test-lifecycle-serialization.test.ts.md) |
 | [`hub/test/progress.test.ts`](../../../hub/test/progress.test.ts) | [Notes](hub-test-progress.test.ts.md) |

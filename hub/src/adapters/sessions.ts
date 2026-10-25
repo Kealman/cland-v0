@@ -1378,7 +1378,7 @@ export class Sessions {
     } catch (cause) {
       if (!nativeEntered || cause instanceof AccountLimited || cause instanceof ToolForbidden) {
         resumed(() => {
-          if (reservation && desiredRole) this.#core.releaseLaunchRole(row().name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
+          if (reservation && desiredRole) this.#core.releaseLaunchRole(name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
         });
         throw cause;
       }
@@ -1394,7 +1394,7 @@ export class Sessions {
         let detail = cause.message;
         try { await this.#stopFailedLaunch(entry, resumed); }
         catch (error) {
-          resumed(() => { if (reservation && desiredRole) this.#core.releaseLaunchRole(row().name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId); });
+          resumed(() => { if (reservation && desiredRole) this.#core.releaseLaunchRole(name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId); });
           throw new Error(`${detail}; spawned process cleanup failed: ${error instanceof Error ? error.message : String(error)}; cleanup is pending and the failed launch remains supervised`);
         }
         r = { found: false, reason: detail };
@@ -1418,7 +1418,8 @@ export class Sessions {
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));
-      if (reservation) this.#core.launchSettled(process.name);
+      // Reservations retain the admitted name even when the session renames during native I/O.
+      if (reservation) this.#core.launchSettled(name);
       const work = this.#resumeWork(process, desiredRole);
       this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: found.process.pid, state: found.state, relaunched: relaunch && p.status !== 'running', ...work });
       const at = realClock.now().getTime();
@@ -1443,7 +1444,7 @@ export class Sessions {
           this.#log({ event: 'session-resume-unavailable', session: current.name, harness: current.harness, pid: current.pid, reason: r.reason });
         } else if (p.status === 'running') this.#exited(p.sessionId, r.reason);
         if (reservation && desiredRole) {
-          this.#core.releaseLaunchRole(row().name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
+          this.#core.releaseLaunchRole(name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
           this.#table.update(row().name, { role: desiredRole });
         }
         const settled = row();

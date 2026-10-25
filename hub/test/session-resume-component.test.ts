@@ -8,8 +8,70 @@ import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts
 import { FakeClock } from './fake-clock.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeHarness } from './fakes/harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+import { Store } from '../src/hub/store.ts';
+import { ToolForbidden } from '../src/roles/permissions.ts';
 
 type Resumed = { found: boolean; process: HarnessProcessView; role: string | null; claim: string | null; notes: string[]; reason?: string; fresh?: { brief: string | null } };
+
+async function receipt<T>(work: Promise<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([work, new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error(`missing ${label} receipt`)), 2000); // lint-allow-wall-clock: bounded native I/O receipt, not a scheduler wait
+    })]);
+  } finally { clearTimeout(timer); }
+}
+
+for (const outcome of ['successful', 'missing', 'throwing', 'forbidden'] as const) test(`${outcome} native resume settles its admitted reservation after a Coordinator rename`, async t => {
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  const fake = fakes.codex!;
+  const launch = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'codex' });
+  assert.equal(launch.ok, true, launch.error);
+  const before = (launch.value as { process: HarnessProcessView }).process;
+  assert.equal((await ui.request({ type: 'session.stop', session: 'coord' })).ok, true);
+  const entered = Promise.withResolvers<string>(), release = Promise.withResolvers<void>();
+  const resume = fake.resume.bind(fake);
+  fake.resume = async (process, options) => {
+    entered.resolve(options!.launchToken!);
+    await release.promise;
+    if (outcome === 'missing') return { found: false, reason: 'fixture conversation missing' };
+    if (outcome === 'throwing') throw new Error('fixture native resume failed');
+    if (outcome === 'forbidden') throw new ToolForbidden('coordinator', 'session.resume', 'fixture grant revoked');
+    return resume(process, options);
+  };
+  const pending = ui.request({ type: 'session.resume', session: 'coord', relaunch: true });
+  try {
+    const launchToken = await receipt(entered.promise, 'native resume entry');
+    const stored = new Store(join(root, '.cland/hub.db'));
+    try {
+      assert.deepEqual(stored.reservations(), [{ name: 'coord', role: 'coordinator', previous: null }]);
+      const peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', assignRole: false, sessionId: before.sessionId, launchToken });
+      await peer.waitForPresence(['coord']);
+      const renamed = await peer.call<{ ok: boolean; error?: string }>('rename', { name: 'renamed' });
+      assert.equal(renamed.ok, true, renamed.error);
+      assert.deepEqual(stored.reservations(), [{ name: 'coord', role: 'coordinator', previous: null }], 'rename leaves the admitted reservation key in place');
+      release.resolve();
+      const result = await receipt(pending, 'native resume settlement');
+      if (outcome === 'forbidden') {
+        assert.equal(result.ok, false);
+        assert.equal((result as { code?: string }).code, 'forbidden');
+        assert.match(result.error!, /fixture grant revoked/);
+      } else {
+        assert.equal(result.ok, true, result.error);
+        const after = result.value as Resumed;
+        assert.equal(after.found, outcome === 'successful');
+        if (outcome !== 'successful') assert.equal(after.reason, outcome === 'missing' ? 'fixture conversation missing' : 'fixture native resume failed');
+        assert.equal(after.process.name, 'renamed');
+        assert.equal(after.process.sessionId, before.sessionId);
+        assert.equal(after.role, 'coordinator');
+      }
+      assert.equal(stored.roleOf('renamed'), outcome === 'successful' ? 'coordinator' : null, 'rollback resolves the renamed live identity');
+      assert.deepEqual(stored.reservations(), [], 'no reservation outlives the completed resume');
+    } finally { stored.close(); }
+  } finally { release.resolve(); await pending; }
+});
 
 test('restart keeps an undiscoverable live harness tracked and stoppable for every flavour', async t => {
   const root = await tempProject(t);
