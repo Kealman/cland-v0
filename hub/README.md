@@ -3828,7 +3828,13 @@ artifact retention; pointer expiration never deletes or archives them.
 Cache reuse for
 `hub-selected` also requires the same selected tests and Neovim phase.
 `node hub/test/selection-replay.ts <first-parent-range> --coverage` prints the last
-40 task landings, missing-map fallbacks, deciding functions and each selected share
+40 task landings from a disposable local mirror clone. The clone preserves refs;
+historical checkouts and selector archives use private HOME, XDG and Git
+configuration with inherited Git redirects and account credentials removed.
+The caller's repository is read-only; its committed sources supply the checkout,
+while coverage maps, durations, retained suite logs and `--failures` inputs are
+read from the caller. No network or harness login is required. The replay reports
+missing-map fallbacks, deciding functions and each selected share
 of hub test-time. `--nearest` explicitly labels retrospective maps that may postdate
 the merge; live admission always requires an ancestor and mappable hunks. Supply
 `--failures <json>` to include historical failed test paths keyed by full/short

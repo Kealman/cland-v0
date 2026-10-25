@@ -1159,7 +1159,11 @@ Cache reuse for
 `hub-selected` also requires the same selected tests and Neovim phase, including
 its explicit importer subset.
 `node hub/test/selection-replay.ts <first-parent-range> --coverage` prints the last
-40 task landings, the selecting count, missing-map fallbacks, deciding functions and each selected share
+40 task landings from a disposable mirror clone with private HOME/XDG/Git config
+and filtered inherited Git redirects and credentials. The caller stays read-only;
+checkouts use committed sources, while coverage maps, durations, retained logs and
+`--failures` inputs are read from the caller. It needs no network or harness login.
+It reports the selecting count, missing-map fallbacks, deciding functions and each selected share
 of hub test-time. `--nearest` explicitly labels retrospective maps that may postdate
 the merge; live admission always requires an ancestor and mappable hunks. Supply
 `--failures <json>` to include historical failed test paths keyed by full/short

@@ -2,7 +2,7 @@
 // node hub/test/selection-replay.ts f174d9c^..83b74c6 [selector-ref]
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, rm, symlink, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, symlink, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { findPackageJSON } from 'node:module';
@@ -18,6 +18,11 @@ import { projectRoot } from '../src/project.ts';
 import { sourceFixtureFiles } from './source-fixture.ts';
 
 const options = process.argv.slice(2);
+const usage = 'usage: selection-replay.ts <first-parent-range> [selector-ref] [--count 40] [--coverage [--nearest] [--failures json]]';
+if (options.includes('--help')) {
+  console.log(`${usage}\nReplays committed sources in a disposable mirror clone with private HOME/XDG/Git config and filtered credentials/GIT_*; the caller is read-only. Coverage maps, durations, retained logs and --failures are read from the caller. No network or harness login is required.`);
+  process.exit(0);
+}
 const replayOptions = [...options];
 const coverage = options.includes('--coverage');
 const nearest = options.includes('--nearest');
@@ -28,32 +33,42 @@ const failedAt = options.indexOf('--failures');
 const failedPath = failedAt < 0 ? undefined : options[failedAt + 1];
 if (failedAt >= 0) options.splice(failedAt, 2);
 const [range, selectorRef] = options.filter(arg => !['--coverage', '--nearest'].includes(arg));
-if (!range) throw new Error('usage: selection-replay.ts <first-parent-range> [selector-ref] [--count 40] [--coverage [--nearest] [--failures json]]');
-// cland-allow-child-env: manual read-only Git replay and archive extraction inspect refs into disposable scratch; no account or modifying Git command
-const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
-let scratch: string | undefined;
+if (!range) throw new Error(usage);
+const scratch = await mkdtemp(join(tmpdir(), 'cland-selection-replay-'));
+const repository = join(scratch, 'repository.git');
+const checkout = join(scratch, 'source');
+const gitAt = (cwd: string, ...args: string[]) => execFileSync('git', ['-c', 'gc.auto=0', ...args], {
+  env: fixtureEnvironment(scratch, process.env), cwd, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024,
+});
+const git = (...args: string[]) => gitAt(repository, ...args);
 let choose = chooseSuiteMode;
 let readImports = nvimHubImports;
 let readImporters: typeof nvimHubImporters | undefined = nvimHubImporters;
 let selectCoverage = coverageSelection;
 try {
+  // Only discovery and clone read the caller. A mirror preserves exact branch,
+  // remote and selector refs; all worktree bookkeeping belongs to this clone.
+  const source = gitAt(process.cwd(), 'rev-parse', '--show-toplevel').trim();
+  gitAt(scratch, 'clone', '--quiet', '--mirror', '--no-hardlinks', '--', source, repository);
+  git('worktree', 'add', '--quiet', '--detach', checkout, 'HEAD');
   if (selectorRef) {
-    scratch = await mkdtemp(join(tmpdir(), 'cland-selection-replay-'));
+    const selectorRoot = join(scratch, 'selector');
+    await mkdir(selectorRoot);
     // Resolve against the requested tree, including refs predating neutral roots.
     const files = new Set(git('ls-tree', '-r', '--name-only', '-z', selectorRef).split('\0'));
     const paths = await sourceFixtureFiles(async file => files.has(file) ? git('show', `${selectorRef}:${file}`) : undefined,
       ['hub/src/suite-selection.ts', 'hub/src/suite-coverage.ts'], ['hub/package.json', 'package.json']);
-    // cland-allow-child-env: manual read-only Git replay and archive extraction inspect refs into disposable scratch; no account or modifying Git command
-    const archive = execFileSync('git', ['archive', selectorRef, ...paths], { maxBuffer: 32 * 1024 * 1024 });
-    // cland-allow-child-env: manual read-only Git replay and archive extraction inspect refs into disposable scratch; no account or modifying Git command
-    execFileSync('tar', ['-x', '-C', scratch], { input: archive });
-    await symlink(dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!)), join(scratch, 'node_modules'), 'dir');
-    const module = join(scratch, 'hub/src/suite-selection.ts');
+    const archive = execFileSync('git', ['-c', 'gc.auto=0', 'archive', selectorRef, ...paths], {
+      env: fixtureEnvironment(scratch, process.env), cwd: repository, maxBuffer: 32 * 1024 * 1024,
+    });
+    execFileSync('tar', ['-x', '-C', selectorRoot], { env: fixtureEnvironment(scratch, process.env), cwd: scratch, input: archive });
+    await symlink(dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!)), join(selectorRoot, 'node_modules'), 'dir');
+    const module = join(selectorRoot, 'hub/src/suite-selection.ts');
     const selector = await import(pathToFileURL(module).href);
     choose = selector.chooseSuiteMode;
     readImports = selector.nvimHubImports;
     readImporters = selector.nvimHubImporters;
-    const coverageSelector = await import(pathToFileURL(join(scratch, 'hub/src/suite-coverage.ts')).href);
+    const coverageSelector = await import(pathToFileURL(join(selectorRoot, 'hub/src/suite-coverage.ts')).href);
     selectCoverage = coverageSelector.coverageSelection;
     if (!coverageSelector.mergeCoverageFiles) {
       const legacy = selectCoverage;
@@ -61,13 +76,14 @@ try {
         replay as Parameters<typeof legacyCoverageSelection>[6]);
     }
   }
-  const imports = await readImports(process.cwd());
+  const imports = await readImports(checkout);
   const commits = git('log', '--first-parent', '--format=%H%x09%s', range).trim().split('\n')
     .filter(line => /\(T-\d+\)$/.test(line) && !line.includes('\tTracker:'));
   if (coverage) await replayCoverage(commits, range);
   else replayPackage(replayOptions, commits, { range, selectorRef, imports, git, choose, log: console.log });
 } finally {
-  if (scratch) await rm(scratch, { recursive: true, force: true });
+  // All native calls are synchronous: no writer remains when scratch is removed.
+  await rm(scratch, { recursive: true, force: true });
 }
 
 
@@ -90,8 +106,7 @@ async function replayCoverage(commits: string[], range: string): Promise<void> {
   for (const row of rows) {
     const [sha, subject] = row.split('\t');
     if (!sha || !subject) throw new Error('invalid replay row');
-    const dir = await mkdtemp(join(tmpdir(), 'cland-coverage-replay-'));
-    await rm(dir, { recursive: true });
+    const dir = join(scratch, `landing-${sha}`);
     git('worktree', 'add', '--quiet', '--detach', dir, sha);
     try {
       const changed = git('diff', '--name-only', '-z', '--no-renames', `${sha}^1`, sha).split('\0').filter(Boolean);
@@ -99,7 +114,7 @@ async function replayCoverage(commits: string[], range: string): Promise<void> {
         // Task hunks are this landing alone, not the working checkout's diff
         // against current dev. Intervening map-to-parent diffs remain unchanged.
         if (args[0] === 'diff' && args[5] === `${sha}^1` && args[6] === '--') args.splice(6, 0, sha);
-        return execFileSync('git', args, { env: fixtureEnvironment(dir, process.env), cwd: dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+        return execFileSync('git', ['-c', 'gc.auto=0', ...args], { env: fixtureEnvironment(scratch, process.env), cwd: dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
       };
       const imports = await readImports(dir);
       const mode = choose(changed, imports);

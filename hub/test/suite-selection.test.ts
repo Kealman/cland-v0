@@ -4,13 +4,14 @@ import { packageShards, serializeTierManifest, type TierManifest } from '../src/
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sameSuiteSelection, taskSuiteSelection, chooseSuiteMode, importSpecifiers, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, suitePhases, selectPackageSuite } from '../src/suite-selection.ts';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { glob, mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { glob, mkdtemp, mkdir, readFile, writeFile, rm, realpath, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ownDirectory } from './process-cleanup.ts';
+import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
+import { eventually } from './harness.ts';
 
 test('hub implementation changes select hub plus Neovim smoke', () => {
   assert.equal(chooseSuiteMode(['hub/src/adapters/codex.ts', 'hub/test/tracker.test.ts']), 'hub-only');
@@ -140,6 +141,34 @@ test('cache selection equivalence includes Neovim subsets even on hub fallback',
 });
 
 const exec = promisify(execFile);
+function replayChild(t: import('node:test').TestContext, root: string, args: string[], env: NodeJS.ProcessEnv) {
+  let drain = async () => {};
+  beforeDirectories(t, () => drain()); // Register before launch, including red-run teardown.
+  // cland-allow-child-env: replay sealing self-test owns this fixtureEnvironment result, including its deliberately poisoned scratch Git inputs
+  const child = spawn(process.execPath, args, { cwd: root, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', chunk => { stdout = (stdout + chunk).slice(-64 * 1024); });
+  child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-64 * 1024); });
+  const execution = new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', (code, signal) => code === 0 ? resolve({ stdout, stderr })
+      : reject(Object.assign(new Error(`selection replay incomplete: exit ${code}; signal ${signal}\n${stderr}`), { code, signal, stdout, stderr })));
+  });
+  const stopTree = ownProcess(t, child.pid);
+  let stopping: Promise<void> | undefined;
+  const stop = () => stopping ??= stopTree();
+  drain = async () => {
+    await stop();
+    await execution.catch(() => {});
+    if (child.pid) await eventually('replay native process group is reaped', () => {
+      try { process.kill(-child.pid!, 0); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code === 'ESRCH') return true; throw error; }
+      return undefined;
+    }, 5000);
+  };
+  const result = execution.finally(() => drain());
+  return { result, stop: () => drain() };
+}
 async function gitFixture(t: import('node:test').TestContext) {
   const dir = await mkdtemp(join(tmpdir(), 'cland-suite-diff-'));
   ownDirectory(t, dir);
@@ -617,6 +646,97 @@ test('hub-selected task executes covering T2 tests while process smoke waits for
   const duration = result.stderr.split('\n').find(line => line.startsWith('suite duration '));
   assert.match(duration ?? '', /mode hub-selected.*deciding functions.*second/);
   console.log(`one-function fixture: ${duration}`);
+});
+
+test('selection replay seals Git and keeps all worktree mutations in its disposable clone', { timeout: 15_000 }, async t => {
+  const { root: caller, git } = await coverageFixture(t);
+  const root = await realpath(caller);
+  await writeFile(join(root, 'hub/src/suite-selection.ts'), "export const chooseSuiteMode = () => 'hub-only'; export const nvimHubImports = async () => []; export const nvimHubImporters = async () => ({});\n");
+  await writeFile(join(root, 'hub/src/suite-coverage.ts'), "export const coverageSelection = async () => ({ fallback: 'fixture coverage fallback' }); export const mergeCoverageFiles = () => {};\n");
+  await writeFile(join(root, 'hub/package.json'), '{"type":"module"}');
+  await writeFile(join(root, 'package.json'), '{"type":"module"}');
+  await git('add', '.'); await git('commit', '-m', 'Replay landing (T-1)');
+  const before = await git('worktree', 'list', '--porcelain');
+  const status = await git('status', '--porcelain');
+  const audit = join(root, '.cland/run/git-audit.jsonl');
+  const observer = join(root, '.cland/run/observe-git.mjs');
+  // Observe the real executable boundary without recording credential values.
+  await writeFile(observer, `import cp from 'node:child_process';
+import { appendFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+const execute = cp.execFileSync;
+cp.execFileSync = (file, args, options) => {
+  if (file === 'git' || file === 'tar') {
+    const env = options?.env ?? process.env;
+    appendFileSync(${JSON.stringify(audit)}, JSON.stringify({ file, args, cwd: options?.cwd,
+      home: env.HOME, xdg: ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME'].map(key => env[key]),
+      global: env.GIT_CONFIG_GLOBAL, noSystem: env.GIT_CONFIG_NOSYSTEM,
+      inherited: ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0', 'OPENAI_API_KEY'].filter(key => env[key] !== undefined)
+    }) + '\\n');
+  }
+  return execute(file, args, options);
+};
+syncBuiltinESMExports();\n`);
+  const temp = join(root, '.cland/run/tmp');
+  await mkdir(temp);
+  const env = { ...fixtureEnvironment(root, process.env, { TMPDIR: temp }),
+    GIT_DIR: join(root, 'absent.git'), GIT_WORK_TREE: root, GIT_INDEX_FILE: join(root, '.cland/run/poison-index'),
+    GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.bare', GIT_CONFIG_VALUE_0: 'true', OPENAI_API_KEY: 'synthetic-poison' };
+  const replay = fileURLToPath(new URL('./selection-replay.ts', import.meta.url));
+  const result = await replayChild(t, root, ['--import', observer, replay, 'HEAD^..HEAD', 'HEAD', '--coverage', '--count', '1'], env).result
+    .then(value => ({ ...value, code: 0 }), error => error as { stdout: string; stderr: string; code: number });
+  const calls = (await readFile(audit, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as {
+    file: string; args: string[]; cwd?: string; home: string; xdg: string[]; global: string; noSystem: string; inherited: string[];
+  });
+  assert.ok(calls.length > 0, 'positive control: actual Git calls were observed');
+  for (const call of calls) {
+    assert.deepEqual(call.inherited, [], 'every Git/tar call removes inherited Git redirects and credentials');
+    assert.ok(call.cwd, 'every native call declares its cwd');
+    const sandbox = dirname(call.home);
+    assert.ok(relative(temp, sandbox).startsWith('cland-selection-replay-'), 'HOME belongs to the disposable replay');
+    assert.equal(call.global, join(call.home, '.gitconfig'));
+    assert.equal(call.noSystem, '1');
+    assert.deepEqual(call.xdg, ['config', 'opencode', 'state', 'cache'].map(path => join(sandbox, path)));
+    if (call.args.includes('worktree') || call.args.includes('archive')) {
+      assert.ok(call.cwd.startsWith(sandbox + '/'), 'worktree and archive operations belong to the disposable clone');
+    }
+  }
+  assert.ok(calls.some(call => call.args.includes('clone')), 'the replay clones the caller');
+  assert.ok(calls.some(call => call.args.includes('archive')), 'the positional selector ref is loaded');
+  assert.ok(calls.some(call => call.args.includes('worktree') && call.args.includes('add')), 'coverage exercises a historical checkout');
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /fixture coverage fallback/);
+  assert.match(result.stdout, /0 own misses; 0 historical misses/);
+  assert.equal(await git('worktree', 'list', '--porcelain'), before);
+  assert.equal(await git('status', '--porcelain'), status);
+});
+
+test('selection replay cleanup drains a held native writer before removing its fixture', { timeout: 15_000 }, async t => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-replay-deadline-')));
+  const remove = ownDirectory(t, root);
+  const writer = join(root, 'writer.mjs');
+  const launcher = join(root, 'launcher.mjs');
+  const receipt = join(root, 'writer.pid');
+  await writeFile(writer, `import { writeFileSync, appendFileSync } from 'node:fs';
+setInterval(() => appendFileSync(${JSON.stringify(join(root, 'writes'))}, '.'), 25);
+writeFileSync(${JSON.stringify(receipt)}, String(process.pid));\n`);
+  await writeFile(launcher, `import { execFileSync } from 'node:child_process';
+import { fixtureEnvironment } from ${JSON.stringify(new URL('./fixture-environment.ts', import.meta.url).href)};
+execFileSync(process.execPath, [${JSON.stringify(writer)}], { cwd: ${JSON.stringify(root)}, env: fixtureEnvironment(${JSON.stringify(root)}, process.env), stdio: 'ignore' });\n`);
+  const work = replayChild(t, root, [launcher], fixtureEnvironment(root, process.env));
+  const outcome = work.result.then(() => assert.fail('held replay must not complete'), error => error as { signal: string });
+  const pid = await eventually('held native writer persisted its PID', async () => {
+    const value = await readFile(receipt, 'utf8').catch(() => '');
+    return Number(value) || undefined;
+  }, 5000);
+  ownProcess(t, pid); // Red-run recovery retains this writer even if the launcher loses it.
+  assert.doesNotThrow(() => process.kill(pid, 0), 'positive control: the native writer is held');
+  await work.stop(); // Exercise the registered teardown after setup's exact receipt.
+  assert.equal((await outcome).signal, 'SIGKILL', 'retain the producer native signal');
+  assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, 'the native writer is gone before removal');
+  await access(root);
+  await remove();
+  await assert.rejects(access(root), { code: 'ENOENT' });
 });
 
 test('coverage replay includes own tests, reports time share and failures, and names missing-map fallback', async t => {

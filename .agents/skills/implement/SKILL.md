@@ -172,6 +172,12 @@ For coverage selection, pointer retention or shard merging changes, follow
 `docs/agents/tests.md#coverage-ancestry-and-fallback`: prove parsed/retained map
 counts and retained pointers at the loader seam, with named expiration events.
 
+Manual selection replay uses a disposable mirror clone with sealed HOME/XDG/Git
+configuration and filtered inherited credentials and Git redirects. Historical
+checkouts use committed sources; maps, timings and logs stay read-only inputs
+from the caller. Preserve the CLI isolation and replay assertions described in
+`docs/agents/tests/hub-test-suite-selection.test.ts.md`.
+
 An explicit `--size` override absent from the provider catalog is invalid input:
 submission exits 1 with an "unavailable" error and creates no job or droplet.
 Listed unavailable sizes or sizes absent from configured regions retain the
