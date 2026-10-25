@@ -1,6 +1,6 @@
 // T3: package-runner admission and CLI subprocess contracts; pure selection cases are T1.
 import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
-import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
+import { packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sameSuiteSelection, taskSuiteSelection, chooseSuiteMode, importSpecifiers, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, suitePhases, selectPackageSuite } from '../src/suite-selection.ts';
@@ -540,15 +540,31 @@ test('task admission adds only changed T3/T4 files, including renamed and untrac
   }
 });
 
-test('task admission selects unchanged T4 guards from the manifest and reports the mapped source', async t => {
+for (const growManifest of [false, true]) {
+test(`task admission selects unchanged T4 guards from the manifest and reports the mapped source${growManifest ? ' after production guard growth' : ''}`, async t => {
   const { root, git, source } = await coverageFixture(t, '', 'hub/src/adapters/sessions.ts');
-  const manifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
+  const productionCopy = join(root, '.cland/run/production-tiers.json');
+  const production: TierManifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
+  if (growManifest) {
+    const extraGuard = 'hub/test/fixture-extra-load.test.ts';
+    production.tests[extraGuard] = 'T4';
+    const sessionGuards = production.loadGuards?.['hub/src/adapters/sessions.ts'];
+    assert.ok(sessionGuards, 'production maps the changed source to a load guard');
+    sessionGuards.push(extraGuard);
+    production.loadGuards!['hub/src/fixture-extra.ts'] = [extraGuard];
+  }
+  await writeFile(productionCopy, serializeTierManifest(production));
+  const manifest: TierManifest = JSON.parse(await readFile(productionCopy, 'utf8'));
   const guard = 'hub/test/inbox-verifier-load.test.ts';
+  // This fixture declares one guard; unrelated production guards belong to their own fixtures.
+  const loadGuards = Object.fromEntries(Object.entries(manifest.loadGuards ?? {})
+    .map(([path, guards]) => [path, guards.filter(file => file === guard)] as const)
+    .filter(([, guards]) => guards.length > 0));
   await writeFile(join(root, guard), "import test from 'node:test'; test('load guard', () => {});\n");
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
     'hub/test/changed.test.ts': 'T2', 'hub/test/first.test.ts': 'T1',
     [guard]: 'T4', 'hub/test/second.test.ts': 'T2',
-  }, loadGuards: manifest.loadGuards }));
+  }, loadGuards }));
   await writeFile(join(root, '.cland/config.toml'), '[merge]\nqueue = true\n');
   await git('add', '.'); await git('commit', '-m', 'mapped baseline'); await git('push', 'origin', 'HEAD:dev');
   await writeFile(join(root, 'hub/src/adapters/sessions.ts'), source.replace('return 2', 'return 4'));
@@ -561,6 +577,7 @@ test('task admission selects unchanged T4 guards from the manifest and reports t
   const narrowed = tierSuiteSelection(selection, 'T4');
   assert.deepEqual((await packageShards(root, narrowed.mode, undefined, narrowed)).flatMap(phase => phase.targets), [guard]);
 });
+}
 
 test('task admission requires explicit merge queue protection before reducing tiers', async t => {
   const { root, source } = await coverageFixture(t);
