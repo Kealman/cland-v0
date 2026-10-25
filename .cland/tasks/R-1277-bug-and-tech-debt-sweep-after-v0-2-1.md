@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1025
 branch: null
 created: 2026-10-25T09:40:54.973Z
-updated: 2026-10-25T09:50:53.492Z
+updated: 2026-10-25T14:17:17.918Z
 ---
 
 ## Goal
@@ -25,3 +25,9 @@ The human, 2026-10-25 09:40Z in General (answer to ask 1a28c677): «…може�
 ## Epics
 
 Pending the triage.
+
+## Comments
+
+### coord · 2026-10-25T14:17:17.918Z
+
+Release approval recorded in advance (human, General, 2026-10-25 14:17:02Z, msg ef700b46): «заранее даю разрешение на публикацию версии и потом бери 0.3» — advance permission to publish this release (version 0.2.2, already recorded on this item) once the release preview passes, then to start v0.3 (R-1278). The Coordinator still shows the dry-run preview in the release topic and cites this record in the release ask.
