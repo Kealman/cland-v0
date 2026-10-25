@@ -24,3 +24,7 @@ record the implementation head/tree and platform, and publish the output through
 no claim about native harness idle load or the live workbench.
 
 Credential directory cleanup is asynchronous and owned by the stopped session lifecycle. Explicit sweep setup awaits its completion; hand/rule archive observes final list receipts after removal. Fixture shutdown drains Sessions before closing its table.
+
+The migration fixture seeds a pre-`usage` `harness_processes` table. Keep
+`table.get('old')!.usage === null`: the additive column must leave an old row
+readable with no totals rather than inventing a zero.

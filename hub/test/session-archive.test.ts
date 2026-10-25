@@ -440,6 +440,7 @@ test('migration retains old stopped rows without reading the journal, and name r
   const row = table.get('old')!;
   assert.equal(row.sessionId, 'old-id');
   assert.equal(row.stoppedAt, null);
+  assert.equal(row.usage, null, 'a row written before the usage column stays valid without totals');
   table.update('old', { archivedAt: '2026-10-13T00:00:00Z', archivedBy: 'rule' });
   assert.equal(table.get('old')!.archivedBy, 'rule');
   table.put({ ...row, sessionId: 'new-id', status: 'running' });

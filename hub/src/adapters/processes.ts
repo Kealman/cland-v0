@@ -5,6 +5,7 @@ import type { Resumed } from '../hub/worktrees.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import type { HarnessProcess } from './contract.ts';
+import type { SessionUsage } from '../protocol.ts';
 import type { LaunchFilesState } from './launch-files.ts';
 import { processStartedAsync as processStarted } from '../hub/lock.ts';
 
@@ -62,7 +63,8 @@ create table if not exists harness_processes (
   effort text,
   stopped_at text,
   archived_at text,
-  archived_by text
+  archived_by text,
+  usage text
 );
 create index if not exists harness_processes_session on harness_processes (session_id);
 create table if not exists harness_pending_stops (
@@ -114,6 +116,7 @@ const toProcess = (r: Row): HarnessProcess => ({
   account: (r.account as string | null) ?? null,
   accountEnv: r.account_env ? JSON.parse(r.account_env as string) as Record<string, string> : null,
   effort: (r.effort as string | null) ?? null,
+  usage: r.usage ? JSON.parse(r.usage as string) as SessionUsage : null,
 });
 
 export class ProcessTable {
@@ -138,6 +141,8 @@ export class ProcessTable {
     if (!columns.has('item')) this.#db.exec('alter table harness_processes add column item text');
     if (!columns.has('cleanup_item')) this.#db.exec('alter table harness_processes add column cleanup_item text');
     if (!columns.has('cleanup_held_at')) this.#db.exec('alter table harness_processes add column cleanup_held_at text');
+    // Older rows carry no usage: absent stays null, never zero.
+    if (!columns.has('usage')) this.#db.exec('alter table harness_processes add column usage text');
   }
 
   /** Every committed row change, including renames: the sessions layer publishes its public view. */
@@ -162,12 +167,12 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
-           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env`,
+           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null);
+      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null);
     this.#changed(p.name);
   }
 
@@ -206,6 +211,11 @@ export class ProcessTable {
       this.#db.prepare(`update harness_processes set ${sets.join(', ')} where name = ?`).run(...values, name);
       this.#changed(name);
     }
+  }
+
+  /** Keep the latest reported totals on the row itself: they outlive this hub, a stop and an archive. */
+  recordUsage(sessionId: string, usage: SessionUsage): void {
+    this.#db.prepare('update harness_processes set usage = ? where session_id = ?').run(JSON.stringify(usage), sessionId);
   }
 
   get(name: string): HarnessProcess | null {

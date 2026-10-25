@@ -455,7 +455,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
     }
     if (change.serverShutdown) { this.#gone(w, 'opencode server shutdown'); return; }
     if (change.usage) {
-      this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId), change.usage));
+      // A restarted hub starts with no in-memory total: the row's last report seeds this launch's sum.
+      this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId) ?? w.process.usage ?? undefined, change.usage));
       this.#host.usageChanged?.(w.process.sessionId);
     }
     if (change.state) {

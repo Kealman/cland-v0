@@ -240,11 +240,13 @@ test('the first publication after hub restart is recorded again without replayin
   assert.equal(after.length, before.length + 1);
   assert.deepEqual(after.slice(0, before.length), before, 'restart preserves the previous journal without replay');
   assert.deepEqual(after.slice(before.length).map(r => [r.sessionId, r.total, r.rateLimits, r.final]), [
-    [p.sessionId, undefined, publishedUsage.rateLimits, false],
-  ]);
+    [p.sessionId, initialUsage.total, publishedUsage.rateLimits, false],
+  ], 'a rate-limit-only reconnect keeps the stored totals');
   const stopped = await cland(root, 'session', 'stop', p.name);
   assert.equal(stopped.code, 0, stopped.stderr);
-  assert.equal((await usageRecords(root, nextUi)).filter(r => r.final).length, 1);
+  const finals = (await usageRecords(root, nextUi)).filter(r => r.final);
+  assert.equal(finals.length, 1);
+  assert.deepEqual(finals[0]!.total, initialUsage.total, 'stop keeps the totals the reconnect preserved');
 });
 
 

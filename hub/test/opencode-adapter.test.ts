@@ -610,8 +610,18 @@ test('after a hub restart, resume re-finds the OpenCode server and session throu
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const first = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, first.discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
   await presentAs(ui, 'impl', 'idle');
+  // One native step before the restart leaves a stored total the new hub's empty adapter memory cannot know.
+  await sendGeneral(ui, 'usage before restart');
+  await replyTo(ui, 'impl', 'pong: usage before restart');
+  const used = await eventually('usage before restart', async () => {
+    const row = (await status(ui)).harnesses.find((x) => x.name === 'impl') as Harness | undefined;
+    return row?.usage ? row : undefined;
+  });
+  assert.deepEqual((used.usage as { last?: { totalTokens?: number } }).last?.totalTokens, 19, 'one fake step is 19 tokens');
+  const usedTotal = (used.usage as { total: { totalTokens: number; cost?: number } }).total;
   ui.close();
 
   assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
@@ -626,12 +636,30 @@ test('after a hub restart, resume re-finds the OpenCode server and session throu
   assert.equal(resumed.harnessId, launched.harnessId);
   assert.equal(resumed.harnessSessionId, launched.harnessSessionId);
   assert.equal(resumed.attach, launched.attach, 'attach still points at the same server and session');
+  assert.deepEqual(resumed.usage, used.usage, 'the restarted hub reads the stored totals before any new report');
   assert.match(await hubLog(root, ui2), /"event":"session-resumed","session":"impl"/);
+  await presentAs(ui2, 'impl', 'idle');
+
+  // The new adapter has no memory of the pre-restart steps: a same-conversation relaunch must carry the
+  // stored total forward, and the next native step must add exactly one step to it, not restart the sum.
+  assert.equal((await ui2.request({ type: 'session.stop', session: 'impl' }, 30_000)).ok, true);
+  const relaunched = await ui2.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000);
+  assert.equal(relaunched.ok, true, relaunched.error);
+  const again = (relaunched.value as { process: Harness }).process;
+  assert.deepEqual(again.usage, used.usage, 'relaunch keeps the stopped conversation totals with empty adapter memory');
   await presentAs(ui2, 'impl', 'idle');
 
   const id = await sendGeneral(ui2, 'still there?');
   await ui2.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
   await replyTo(ui2, 'impl', 'pong: still there?');
+  const continued = await eventually('usage continues after relaunch', async () => {
+    const row = (await status(ui2)).harnesses.find((x) => x.name === 'impl') as Harness | undefined;
+    const total = (row?.usage as { total?: { totalTokens?: number } } | undefined)?.total;
+    return total?.totalTokens === usedTotal.totalTokens + 19 ? row : undefined;
+  });
+  const continuedTotal = (continued.usage as { total: { totalTokens: number; cost?: number } }).total;
+  assert.equal(continuedTotal.totalTokens, usedTotal.totalTokens + 19, 'the next step adds its exact 19 tokens to the carried total');
+  assert.equal(continuedTotal.cost, (usedTotal.cost ?? 0) + 0.25, 'the next step adds its exact $0.25 to the carried total');
   await presentAs(ui2, 'impl', 'idle');
   assert.ok(stateEvents(ui2, 'impl').some((e) => e.state === 'busy' && e.source === 'sse'), 'busy from the stream after the restart');
 });

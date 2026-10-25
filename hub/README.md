@@ -1496,7 +1496,12 @@ line with `session`, `sessionId`, the current store `role`, the session's launch
 USD `cost` when reported), optional `rateLimits` (Codex's reported account share),
 and `final: false`. Changing a claim or verifier hold does not change its charge
 item. Claude Code's mod turn completions, Codex's token and rate-limit updates,
-and OpenCode's steps use the same path. Publications remain coalesced to at most
+and OpenCode's steps use the same path. Every report is also written to the
+launch's process row (`harness_processes.usage`) as it arrives, before the
+coalesced publication, so a hub stop inside that window, a stop and an archive
+keep the last totals for `session.list --json`, `session.list --archived --json`
+and the workbench rows. A row written before that column existed reads as no
+usage, and absent totals are never zero. Publications remain coalesced to at most
 one per second per session; equal totals and rate limits write nothing, even if
 the latest turn or raw token report differs. Comparison keeps one snapshot per
 session in memory and reads neither tracker items nor journal history. The first
@@ -2374,7 +2379,7 @@ An unfinalized launch identity is fenced against rename and role changes (assign
 
 ### The process table
 
-`harness_processes` in `hub.db`: name, harness, role, model, cwd, pid, the harness's handle (Claude Code's background id, Codex's app-server socket), cland's session id (the spoke's `CLAND_SESSION_ID`), the harness's own conversation id where it chose one (Codex: the thread id), start time, the pid's process start time (`ps -o lstart=`, as the hub lock keeps it), `running` | `exited` | `stopped`, and the Lead’s node or item whose task worktree the session was launched in (`item`, else null). No adapter signals a pid before checking that start time (`system-processes.ts` `endProcess`): a pid reused by an unrelated process after a crash or a restart is never signalled (`signal-refused` in the log), and is not taken for the session when resuming. At its start the hub resumes every `running` row. A process found alive under its ids is watched again. Otherwise the row turns `exited`, the state `unknown`, and the log gets `harness-exited`. The watch also catches a process that dies while the hub runs.
+`harness_processes` in `hub.db`: name, harness, role, model, cwd, pid, the harness's handle (Claude Code's background id, Codex's app-server socket), cland's session id (the spoke's `CLAND_SESSION_ID`), the harness's own conversation id where it chose one (Codex: the thread id), start time, the pid's process start time (`ps -o lstart=`, as the hub lock keeps it), `running` | `exited` | `stopped`, the latest reported usage totals (JSON, null when none), and the Lead’s node or item whose task worktree the session was launched in (`item`, else null). No adapter signals a pid before checking that start time (`system-processes.ts` `endProcess`): a pid reused by an unrelated process after a crash or a restart is never signalled (`signal-refused` in the log), and is not taken for the session when resuming. At its start the hub resumes every `running` row. A process found alive under its ids is watched again. Otherwise the row turns `exited`, the state `unknown`, and the log gets `harness-exited`. The watch also catches a process that dies while the hub runs.
 
 ### The Claude Code adapter
 
@@ -2565,7 +2570,7 @@ archive_after_stop = "24h"
 
 Durations are positive integers with `s`, `m`, `h` or `d`. The hub sweeps once at startup, then sleeps until the earliest eligible row’s archive deadline; with no eligible rows it leaves no archive timer. Process lifecycle changes and changes to a stopped row’s associated item close time coalesce into one sweep on the next event-loop tick. Unrelated item updates do not trigger a scan. A due row archives on that next tick (plus normal event-loop/I/O scheduling); a pending lifecycle operation or failed-launch recovery defers it until that operation or recovery settles. Delays beyond Node’s maximum timeout (about 24.8 days) use a capped wake-up and re-evaluate the deadline, never a 1 ms overflow loop. Every due row commits in one process-table transaction; each publishes one changed `session.process` and journals `session-archived` with `by: "rule"` and `rule: "item" | "stop"`. Legacy undated terminal rows receive the first sweep's time; cleanup never backfills from the journal. The `session.process` envelope includes the authoritative `archived` count, so the panel can update its header without fetching archived rows.
 
-`cland session prune --older-than 7d` deletes only archived rows whose **stop** is older than seven days, along with their remembered presence/role, adapter usage, claim/hold and pending bookkeeping. `--dry-run` lists the names without deleting; `--json` returns `{names, dryRun}`. Messages, topics, artifacts, tracker files and the journal remain. A real prune journals one `sessions-pruned` record listing the names and publishes `sessions.pruned` with their identities and the remaining archive count. The human's shell and Coordinator may prune; other roles are refused by the permission table. Relaunch an existing Coordinator after updating so its launch-fixed tool list includes `session.prune`.
+`cland session prune --older-than 7d` deletes only archived rows whose **stop** is older than seven days, along with their remembered presence/role, stored usage, claim/hold and pending bookkeeping. `--dry-run` lists the names without deleting; `--json` returns `{names, dryRun}`. Messages, topics, artifacts, tracker files and the journal remain. A real prune journals one `sessions-pruned` record listing the names and publishes `sessions.pruned` with their identities and the remaining archive count. The human's shell and Coordinator may prune; other roles are refused by the permission table. Relaunch an existing Coordinator after updating so its launch-fixed tool list includes `session.prune`.
 
 `session.resume` returns `role` (the restored role or null), `claim` (the currently owned item id or null) and `notes[]` describing what did not return. An occupied exclusive role stays with its current holder; a closed or reassigned item stays unclaimed by the resumed session. Verifier holds are released at stop and never restored: the verifier must retake them. The role clause is delivered again on the resumed hello. A successful relaunch journals `session-resumed` with `relaunched: true`, the role, claim and notes.
 
@@ -2585,10 +2590,15 @@ the latest reported model, not a model for the whole accumulated total.
 
 The sessions panel shows `usage.total.cost` when positive, otherwise `usage.total.totalTokens`; the item view's
 cost is the claiming session's `usage.total.cost`, including zero, or unknown when unreported. Counts are absent
-until a usage report arrives (Codex can report only rate limits at first). Claude Code and OpenCode totals live
-in adapter memory and reset when the hub restarts; they sum reports received by this hub and cannot recover
-ones missed while it was disconnected. Codex supplies its thread's running total, which survives with the thread
-and replaces the hub's total on each report. A new launch under a reused name starts a new total.
+until a usage report arrives (Codex can report only rate limits at first). The last totals are kept on the
+launch's process row, so `session.list --json`, `session.list --archived --json` and the workbench rows show
+them after a restart, a stop and an archive. Claude Code and OpenCode sum the reports this hub received;
+after a restart that in-memory sum is seeded from the row's stored totals, so a new turn or step continues
+from there, while reports missed during the disconnection are not recoverable. A relaunch of the same
+conversation keeps the stopped row's totals for the same reason. Codex supplies its thread's running total,
+which survives with the thread and replaces the stored total on each report; a reconnect that has only read
+rate limits keeps the stored total and model until a token report replaces them. A new launch under a reused
+name starts a new total; a reconnect keeps the row's totals until the adapter reports again.
 
 | Command | What it does |
 | --- | --- |

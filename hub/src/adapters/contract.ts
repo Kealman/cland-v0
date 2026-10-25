@@ -48,6 +48,9 @@ export type HarnessProcess = {
   harnessSessionId: string | null;
   startedAt: string;
   stoppedAt?: string | null;
+  /** Latest totals this launch reported, kept on the row so they survive a hub restart, stop and archive.
+   *  Null on a row that never reported and on older rows. */
+  usage?: SessionUsage | null;
   /** Latest crew item retained after claims/holds are released. Never a resume claim. */
   cleanupItem?: string | null;
   cleanupHeldAt?: string | null;

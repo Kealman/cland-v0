@@ -1,5 +1,6 @@
-// T2: usage journal policy with fake adapters, fake publication time and real socket edges.
-// Native token/price parsing is in the adapter contracts; restart recovery remains in session-native-lifecycle.
+// T2: usage journal policy and the process row's durable totals with fake adapters, fake publication time
+// and real socket edges. Native token/price parsing is in the adapter contracts; native reconnect recovery
+// remains in session-native-lifecycle.
 import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,6 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, inProcessSpoke, tempProject, type FrameClient } from './harness.ts';
 import { ruleHub } from './rule-fixture.ts';
+import { componentHub, stopComponentHub } from './subscription-hub.ts';
 import { FakeClock } from './fake-clock.ts';
 import { FAKE_FLAVOURS } from './fakes/harness.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
@@ -240,4 +242,89 @@ test('final totals and cost aggregate by launch item despite a changed verifier 
       { role: 'reviewer', item: items[1], totalTokens: 38, cost: harness === 'opencode' ? 0.5 : null },
     ]);
   }
+});
+
+test('each reporting harness keeps its totals on the session row across restart, stop and archive', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const env = { CLAND_TEST_USAGE_EVENT_MS: '100' };
+  const first = await componentHub(t, root, env, { clock });
+  let ui = await connectUi(t, first.discovery);
+  await ui.request({ type: 'subscribe' });
+  const expected = new Map<string, SessionUsage>();
+  for (const harness of FAKE_FLAVOURS) {
+    const launched = await ui.request({ type: 'session.launch', name: harness, role: 'implementer', harness });
+    assert.equal(launched.ok, true, launched.error);
+    const p = (launched.value as { process: HarnessProcessView }).process;
+    const usage = report(FAKE_FLAVOURS.indexOf(harness) + 1);
+    expected.set(harness, usage);
+    const mark = ui.frames.length;
+    first.fakes[harness]!.feedUsage(p.name, usage);
+    // Stop before the one-second publication window closes: the row must already carry the report.
+    assert.equal(ui.frames.slice(mark).some(f => f.type === 'session.usage' && f.sessionId === p.sessionId), false, `${harness} has not published yet`);
+    const visible = ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes.find(row => row.name === harness);
+    assert.deepEqual(visible?.usage, usage, `${harness} list view shows the queued report`);
+  }
+  ui.close();
+  await stopComponentHub(root);
+  const second = await componentHub(t, root, env, { clock });
+  ui = await connectUi(t, second.discovery);
+  // The adapters start empty under the new hub: only the persisted row can carry the totals.
+  const running = ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
+  for (const harness of FAKE_FLAVOURS) {
+    const row = running.find(p => p.name === harness);
+    assert.ok(row, `${harness} row is listed after restart`);
+    assert.deepEqual(row.usage, expected.get(harness), `${harness} totals survive the restart`);
+  }
+  for (const harness of FAKE_FLAVOURS) {
+    assert.equal((await ui.request({ type: 'session.stop', session: harness })).ok, true);
+    assert.equal((await ui.request({ type: 'session.archive', session: harness })).ok, true);
+  }
+  const archived = (await ui.request({ type: 'session.list', archived: true })).value as { processes: HarnessProcessView[]; rows: Array<{ name: string; usage?: SessionUsage }> };
+  for (const harness of FAKE_FLAVOURS) {
+    assert.deepEqual(archived.processes.find(p => p.name === harness)?.usage, expected.get(harness), `${harness} totals survive stop and archive`);
+    assert.deepEqual(archived.rows.find(row => row.name === harness)?.usage, expected.get(harness), `${harness} archived row feeds the usage view`);
+  }
+  const finals = (await records(root, ui)).filter(r => r.final);
+  for (const harness of FAKE_FLAVOURS) assert.deepEqual(finals.find(r => r.session === harness)?.total, expected.get(harness)!.total, `${harness} final journal total is the persisted one`);
+});
+
+test('a rate-limit-only report after a restart keeps stored totals until a new total replaces them', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const env = { CLAND_TEST_USAGE_EVENT_MS: '100' };
+  const first = await componentHub(t, root, env, { clock });
+  let ui = await connectUi(t, first.discovery);
+  const launched = await ui.request({ type: 'session.launch', name: 'codex-usage', harness: 'codex' });
+  assert.equal(launched.ok, true, launched.error);
+  first.fakes.codex!.feedUsage('codex-usage', { ...report(2), model: 'gpt-stored' });
+  ui.close();
+  await stopComponentHub(root);
+  const second = await componentHub(t, root, env, { clock });
+  ui = await connectUi(t, second.discovery);
+  // Codex reconnects with its rate limits before any token notification: that partial object must not erase
+  // the row's total, last counts, raw token report or model. A later total report replaces them instead.
+  second.fakes.codex!.feedUsage('codex-usage', { rateLimits: limits(9), rateLimitsAt: clock.now().toISOString() });
+  const listed = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
+  const row = listed.processes.find(p => p.name === 'codex-usage')!;
+  assert.deepEqual(row.usage?.total, total(2));
+  assert.deepEqual(row.usage?.last, report(2).last);
+  assert.deepEqual(row.usage?.tokens, { fixture: 2 });
+  assert.equal(row.usage?.model, 'gpt-stored');
+  assert.deepEqual(row.usage?.rateLimits, limits(9));
+  assert.equal((await ui.request({ type: 'session.stop', session: 'codex-usage' })).ok, true);
+  assert.equal((await ui.request({ type: 'session.archive', session: 'codex-usage' })).ok, true);
+  const archived = (await ui.request({ type: 'session.list', archived: true })).value as { processes: HarnessProcessView[] };
+  assert.deepEqual(archived.processes.find(p => p.name === 'codex-usage')?.usage?.total, total(2), 'stop and archive keep the preserved total');
+  assert.deepEqual((await records(root, ui)).filter(r => r.final && r.session === 'codex-usage').map(r => r.total), [total(2)]);
+
+  const replaced = await ui.request({ type: 'session.launch', name: 'codex-replace', harness: 'codex' });
+  assert.equal(replaced.ok, true, replaced.error);
+  second.fakes.codex!.feedUsage('codex-replace', report(1));
+  second.fakes.codex!.feedUsage('codex-replace', { rateLimits: limits(3), rateLimitsAt: clock.now().toISOString() });
+  second.fakes.codex!.feedUsage('codex-replace', report(3));
+  const after = ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes.find(p => p.name === 'codex-replace')!;
+  assert.deepEqual(after.usage?.total, total(3), 'an authoritative total replaces the stored one rather than adding to it');
+  assert.equal((await ui.request({ type: 'session.stop', session: 'codex-replace' })).ok, true);
+  assert.deepEqual((await records(root, ui)).filter(r => r.final && r.session === 'codex-replace').map(r => r.total), [total(3)]);
 });

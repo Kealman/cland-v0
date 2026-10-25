@@ -596,7 +596,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   stateReason(p: HarnessProcess): string | null { return this.#directory(p).signedOut ? 'signed-out' : null; }
 
   noteUsage(p: HarnessProcess, usage: Record<string, unknown>): void {
-    this.#usage.set(p.sessionId, addUsage(this.#usage.get(p.sessionId), usage));
+    // A restarted hub starts with no in-memory total: the row's last report seeds this launch's sum.
+    this.#usage.set(p.sessionId, addUsage(this.#usage.get(p.sessionId) ?? p.usage ?? undefined, usage));
   }
 
   usage(p: HarnessProcess): SessionUsage | null {

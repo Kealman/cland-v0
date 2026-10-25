@@ -22,7 +22,7 @@ import { randomUUID } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { nameRefusal, withRole } from '../names.ts';
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
-import type { HarnessProcessView, Message, SessionState } from '../protocol.ts';
+import type { HarnessProcessView, Message, SessionState, SessionUsage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal } from './contract.ts';
 import { ProcessTable, processStarted, type PendingStop } from './processes.ts';
@@ -379,6 +379,10 @@ export class Sessions {
       // Quarantined status is not a verified exit. Metadata changes must leave the
       // final fact to cleanup, which publishes it only after the original process is gone.
       if (p.status !== 'running') this.#clearUnconfirmed(p.sessionId);
+      // Every row change is a durable checkpoint: the adapter's latest totals are written before a stop,
+      // exit, archive or rename publishes a view that might not be read again.
+      const usage = this.#reportedUsage(p);
+      if (usage) this.#table.recordUsage(p.sessionId, usage);
       if (!this.#pendingStops.has(p.sessionId)) {
         if (p.status !== 'running') for (const [credential, first] of this.#firstHello) if (first.acceptedId === p.sessionId) this.#firstHello.delete(credential);
         this.#core.publishProcess(this.view(p), archived);
@@ -510,9 +514,27 @@ export class Sessions {
 
   // ---------------------------------------------------------------- views
 
+  /**
+   * The view's usage: the adapter's latest object, or the row's stored totals when a restarted hub has no
+   * adapter report. A rate-limit-only report after a restart must not erase totals the row already has;
+   * only a harness report that carries totals replaces them.
+   */
+  #reportedUsage(p: HarnessProcess): SessionUsage | null {
+    const live = this.#adapters.get(p.harness)?.usage?.(p) ?? null;
+    const stored = p.usage ?? null;
+    if (!live || !stored?.total || live.total) return live ?? stored;
+    return {
+      ...live,
+      total: stored.total,
+      ...(live.last ? {} : stored.last ? { last: stored.last } : {}),
+      ...(live.model ? {} : stored.model ? { model: stored.model } : {}),
+      ...(live.tokens ? {} : stored.tokens ? { tokens: stored.tokens } : {}),
+    };
+  }
+
   view(p: HarnessProcess): HarnessProcessView {
     const adapter = this.#adapters.get(p.harness);
-    const usage = adapter?.usage?.(p) ?? null;
+    const usage = this.#reportedUsage(p);
     const stateReason = p.status === 'running' ? adapter?.stateReason?.(p) : null;
     const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
@@ -573,13 +595,16 @@ export class Sessions {
 
   #usageChanged(sessionId: string): void {
     const p = this.#table.bySessionId(sessionId);
-    const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
+    const usage = p && this.#reportedUsage(p);
+    // Persist as soon as the harness reports: a hub stop before the publication window closes must not
+    // lose a total the session list already showed.
+    if (p && usage) this.#table.recordUsage(sessionId, usage);
     if (p?.harness === 'codex' && usage?.rateLimitsAt) this.#queueLimits(p, codexWindows(usage.rateLimits, usage.rateLimitsByLimitId), usage.rateLimitsAt);
     if (this.#usageTimers.has(sessionId)) return;
     const timer = this.#core.clock.setTimeout(() => {
       this.#usageTimers.delete(sessionId);
       const p = this.#table.bySessionId(sessionId);
-      const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
+      const usage = p && this.#reportedUsage(p);
       if (p?.harness === 'codex' && usage?.rateLimitsAt) this.#queueLimits(p, codexWindows(usage.rateLimits, usage.rateLimitsByLimitId), usage.rateLimitsAt);
       if (p && usage) this.#core.publishUsage(p.name, sessionId, usage);
       if (p) {
@@ -1370,7 +1395,12 @@ export class Sessions {
       if (this.#closed) throw new Error('the hub is closing');
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
-      const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null };
+      const process: HarnessProcess = {
+        ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null,
+        // A relaunch resumes the same conversation and cland identity: the adapter's fresh in-memory sum
+        // starts from the totals the stopped row already holds. A fresh launch (#freshResume) has none.
+        ...(relaunch && found.process.usage == null && current.usage ? { usage: current.usage } : {}),
+      };
       this.#table.put(process);
       this.#log({ event: 'session-launched', ...(process.launchPolicy ? { policy: process.launchPolicy } : {}), account: process.account ?? null, ...(process.harness === 'opencode' && process.accountEnv ? { database: openCodeDatabase(process.accountEnv) } : {}), session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
