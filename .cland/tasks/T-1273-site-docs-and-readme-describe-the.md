@@ -2,8 +2,8 @@
 id: T-1273
 kind: task
 title: "Site, docs and README describe the install paths that work since v0.2.1: Homebrew tap, install.sh with the prebuilt web bundle, source"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1022
 branch: t/T-1273-site-docs-and-readme-describe-the
 created: 2026-10-25T06:50:39.988Z
-updated: 2026-10-25T07:29:32.696Z
+updated: 2026-10-25T07:37:29.508Z
+closed: 2026-10-25T07:37:29.508Z
 ---
 
 ## Summary
@@ -37,9 +38,11 @@ Name the brew command exactly, the install.sh one-liner, and the source fallback
 - [x] C1. No page in site/, docs/ or the READMEs describes the Homebrew tap as pending or pins v0.2.0 as the current version; a grep for those phrases is clean, and the item lists every remaining hit with its reason (test).
   - done: oc-1273 · 2026-10-25T07:00:34.735Z
   - verified: rev-26 [reviewer] · run rev-20261025-1273-final-1 · 2026-10-25T07:16:47.521Z · commit ed7c86454c926a4eee5d00ada0ba413003f31d1f
+  - verified: rev-26 [reviewer] · run rev-20261025-1273-final-2 · 2026-10-25T07:31:51.753Z · commit fafe0432b3c403973d45aa64e91499cd7460c4f0
 - [x] C2. The install page, the landing install section and the quickstart give the same three paths with the exact commands `brew install kealman/tap/cland` and `curl -fsSL https://cland.app/install.sh | sh` and the source steps, and the site builds (test).
   - done: oc-1273 · 2026-10-25T07:00:34.940Z
   - verified: rev-26 [reviewer] · run rev-20261025-1273-final-1 · 2026-10-25T07:16:47.521Z · commit ed7c86454c926a4eee5d00ada0ba413003f31d1f
+  - verified: rev-26 [reviewer] · run rev-20261025-1273-final-2 · 2026-10-25T07:31:51.753Z · commit fafe0432b3c403973d45aa64e91499cd7460c4f0
 
 ## Comments
 
@@ -94,3 +97,35 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-25T07:29:32.696Z
 
 Published marketing marketing/T-1273-install at 4d80c698b4f49deedf0f68afa70fa46cef85548a (GitHub default branch and site); dev a6f349d992396e719ee2f1549c4c50c1a41b3ccb.
+
+### rev-26 · 2026-10-25T07:30:49.326Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-1273-source-2
+commit: fafe0432b3c403973d45aa64e91499cd7460c4f0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge-only delta source clear; A-11635, no findings. Coordinator d66a3371 authorized exact dev parent b35cca1e. Parents ed7c8645/b35cca1e, combined diff empty; only two tracker records differ from reviewed head, no nontracker content change. All six public blobs match both reviewed head and dev parent; remaining eight-file dev diff unchanged from source-1. C1/C2/spec scope unchanged. Carry A-11629/A-11631 relevant source/build provenance by unchanged inputs, with original limits; A-11632 stays prior-head configured evidence. Current-head C1/C2 runtime settlement awaits one ordinary mode-free verify then evidence review. No repeat local site build needed solely for this merge.
+
+### rev-26 · 2026-10-25T07:31:51.753Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-1273-final-2
+commit: fafe0432b3c403973d45aa64e91499cd7460c4f0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final cached evidence clear; C1/C2 verified. A-11638 audits configured run0736c258/A-11636, explicitly cache hit of original08cf4af6/A-11632 at ed7c8645, prepared tree47cf680890e552bf0bd1b2368e6bb6e7f778a4fd; requested headfafe0432 source-cleared in A-11635. No fresh execution/timing. Exact retained finish records:3114 ordinary passes/438 files plus15 load tests/files for three identities5/5. Original T0/T1/all fallback hub+Neovim T2/Web pass; no T3/T4. Source-2 confirms every nontracker input unchanged; carry A-11629 inventory/A-11631 site23pages exit0 with original capture/source limits. A-11637 postmerge local excerpts supplementary. Report-only133/60lint/one baseline/duration warnings retained. Original Linux c8/Node24.21/nvim.12.5/HSh156v1248/lifetime766s/$0.0532 not new execution or wall. No clean-machine, changed-tab interaction, E-778 demo/publication/QA claim. Coordinator owns enqueue/merge.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T07:37:29.508Z
+
+Merged 02219bc242b68fe9b2586652589f1f7aad26caa7 onto dev.
