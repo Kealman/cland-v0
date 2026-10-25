@@ -52,9 +52,10 @@
       "A-10290",
       "A-10294",
       "A-10848",
-      "A-11401"
+      "A-11401",
+      "A-11557"
     ],
-    "commit": "fdcea0b958178e2b34c69b5f19fc22dbe8da1626"
+    "commit": "eedc81011923a5c71829f89229ba64150f04e518"
   },
   "budget": {
     "testSeconds": 5,
@@ -2603,6 +2604,34 @@
     "hub/test/session-credential-io.test.ts": {
       "seconds": 0.355901,
       "tests": 7
+    },
+    "hub/test/artifact-cleanup-unit.test.ts": {
+      "seconds": 0.967889,
+      "tests": 1
+    },
+    "hub/test/literal-rm-cli.test.ts": {
+      "seconds": 0.472021,
+      "tests": 1
+    },
+    "hub/test/literal-rm.test.ts": {
+      "seconds": 0.002555,
+      "tests": 2
+    },
+    "hub/test/qa-demo-policy.test.ts": {
+      "seconds": 0.004693,
+      "tests": 5
+    },
+    "hub/test/qa-lint-build.test.ts": {
+      "seconds": 11.073253,
+      "tests": 3
+    },
+    "hub/test/screenshot-capture.test.ts": {
+      "seconds": 0.012255,
+      "tests": 3
+    },
+    "hub/test/web-release-publication.test.ts": {
+      "seconds": 1.575104,
+      "tests": 2
     }
   },
   "tests": {
@@ -6868,7 +6897,60 @@
     "nvim/test/client-component.test.ts::explicit client inputs reach the launcher without restoring ambient accounts or Git overrides": 0.273198,
     "nvim/test/client-component.test.ts::the default client environment seals poisoned parent homes, accounts, credentials and Git settings": 0.101051,
     "nvim/test/qa.test.ts::the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the Coordinator's defaults including its danger-full-access sandbox": 1.483936,
-    "nvim/test/qa.test.ts::the QA fixture seals its CLI environment before the product starts": 0.795894
+    "nvim/test/qa.test.ts::the QA fixture seals its CLI environment before the product starts": 0.795894,
+    "hub/test/artifact-cleanup-unit.test.ts::one cleanup pass decodes the 8,000-artifact index at most once across 200 folders": 0.967889,
+    "hub/test/claude-code-schedule.test.ts::Claude close cancels a held native query and drains its callback before releasing ownership": 0.028069,
+    "hub/test/config-reload-component.test.ts::hub reload accepts equivalent parsed web settings and refuses removing a configured origin": 0.446586,
+    "hub/test/config-reload-component.test.ts::hub reload refuses changed web.bind with restart guidance and retains the config/roles pair": 0.211529,
+    "hub/test/config-reload-component.test.ts::hub reload refuses changed web.dist with restart guidance and retains the config/roles pair": 0.235912,
+    "hub/test/config-reload-component.test.ts::hub reload refuses changed web.origin with restart guidance and retains the config/roles pair": 0.25815,
+    "hub/test/config-reload-component.test.ts::hub reload refuses changed web.port with restart guidance and retains the config/roles pair": 0.228711,
+    "hub/test/config-set.test.ts::config set saves web settings for the next hub start and keeps pending edits out of the loaded config": 0.79648,
+    "hub/test/homebrew.test.ts::prebuilt Web publication is opt-in and survives config rendering": 0.001333,
+    "hub/test/homebrew.test.ts::the release CLI accepts the previous wire response without Web asset fields": 0.00023,
+    "hub/test/init-settings.test.ts::init and update provision one synchronous managed Bash literal-rm guard": 0.002535,
+    "hub/test/install-script.test.ts::installer falls back to the locked source build for bad-checksum Web assets": 1.247036,
+    "hub/test/install-script.test.ts::installer falls back to the locked source build for missing-checksum Web assets": 1.158769,
+    "hub/test/install-script.test.ts::installer falls back to the locked source build for wrong-sources Web assets": 1.332918,
+    "hub/test/install-script.test.ts::installer verifies the tag Web asset and installs runtime dependencies without the build toolchain": 0.990611,
+    "hub/test/literal-rm-cli.test.ts::managed literal-rm hook refuses before approval and allows retry without a running hub": 0.472021,
+    "hub/test/literal-rm.test.ts::literal-rm allows literal paths, git rm, heredoc bodies and unrelated payloads": 0.000364,
+    "hub/test/literal-rm.test.ts::literal-rm refuses computed rm and rmdir targets with a literal-path retry": 0.002191,
+    "hub/test/opencode-adapter.test.ts::a lost instruction write is not treated as absent when cleanup sees no route": 3.014982,
+    "hub/test/opencode-adapter.test.ts::a saved cland-role entry is not treated as removed when the instruction route disappears": 2.820276,
+    "hub/test/opencode-adapter.test.ts::OpenCode role instructions replace the cland-role entry by default; an opt-out and a failed instruction route keep the message path (old endpoint)": 2.529754,
+    "hub/test/qa-demo-policy.test.ts::demo PASS refuses recorded step errors and nonzero native exits": 0.000323,
+    "hub/test/qa-demo-policy.test.ts::demo PASS requires every independently expected fact key, including false and zero facts": 0.002087,
+    "hub/test/qa-demo-policy.test.ts::demo policy accepts the previous headless wire shape and empty error fields": 0.000294,
+    "hub/test/qa-demo-policy.test.ts::demo publication refuses sign-in links, bearer credentials and provider keys without echoing values": 0.001658,
+    "hub/test/qa-demo-policy.test.ts::demo publication scans JSON-escaped whitespace in text captures as well as parsed metadata": 0.000331,
+    "hub/test/qa-lint-build.test.ts::committed brief corpus has no false absent file or title reports against the compiler source oracle": 10.020093,
+    "hub/test/qa-lint-build.test.ts::qa lint reads named tests and selectors from the requested commit rather than the working tree": 0.785194,
+    "hub/test/qa-lint-build.test.ts::qa lint validates named titles from a production install without dev dependencies": 0.267966,
+    "hub/test/qa-lint.test.ts::brief literal test member and item totals point to generated cases or the current plan": 0.000307,
+    "hub/test/qa-lint.test.ts::brief prose test names and plural title lists cannot bypass title checks": 0.000273,
+    "hub/test/qa-lint.test.ts::brief selectors require source evidence in web/src rather than tests or other files": 0.00099,
+    "hub/test/qa-lint.test.ts::brief test files resolve in the build inventory including ambiguous basenames": 0.001471,
+    "hub/test/qa-lint.test.ts::brief test titles and Node patterns match declarations in their named build files": 0.001663,
+    "hub/test/qa-lint.test.ts::for-await and postfix contexts stay precise while ambiguous expression-brace names fail closed": 0.000417,
+    "hub/test/qa-lint.test.ts::regex bodies after arrows and control statements never declare test titles": 0.00052,
+    "hub/test/qa-lint.test.ts::selector attributes match whole names so data-id and aria-label do not invent id or label": 0.000405,
+    "hub/test/qa-lint.test.ts::title source scanning keeps escaped static titles and ignores opaque source literals": 0.000983,
+    "hub/test/rulebook-file.test.ts::rulebook add writes exactly one final newline": 0.015934,
+    "hub/test/rulebook-file.test.ts::rulebook edit writes exactly one final newline": 0.00474,
+    "hub/test/rulebook-file.test.ts::rulebook retire writes exactly one final newline": 0.005197,
+    "hub/test/screenshot-capture.test.ts::capture boundary preserves success and rejects asynchronous navigation and cleanup failures with safe diagnostics": 0.000574,
+    "hub/test/screenshot-capture.test.ts::capture failures retain a failing outcome without emitting scanned text or navigation secrets": 0.010938,
+    "hub/test/screenshot-capture.test.ts::capture scanner rejects bearer, token, one-use-link and exact-secret controls without retaining private actual values": 0.000743,
+    "hub/test/skills-qa.test.ts::demo recorder collects native case facts sidecars through the actual remote envelope": 1.317741,
+    "hub/test/skills-qa.test.ts::demo recorder preserves legacy results and publishes complete declared facts after verified copies": 0.924492,
+    "hub/test/skills-qa.test.ts::demo recorder refuses secret metadata and stderr without leaking diagnostics": 0.752709,
+    "hub/test/skills-qa.test.ts::demo recorder scans every decoded capture before copying or acknowledging publication": 0.723696,
+    "hub/test/skills-qa.test.ts::demo recorder scans parsed JSON metadata and stderr before publishing safe captures": 1.996967,
+    "hub/test/skills-qa.test.ts::demo recorder withholds PASS for missing independently declared facts and step errors": 0.815027,
+    "hub/test/web-release-publication.test.ts::release pins checksummed Web assets before push and retries the same bytes after a lost upload reply": 0.851403,
+    "hub/test/web-release-publication.test.ts::Web release assets contain the pinned build and a reusable checksum, with idempotent remote readback": 0.723701,
+    "nvim/test/qa-shipped.test.ts::EXPLORER-001 passes through the headless QA runner": 0.591699
   },
   "allow": {
     "hub/test/suite-recovery.test.ts::admission quarantines a dead run’s recreated root and releases both compatibility locks": {
@@ -6894,10 +6976,10 @@
     },
     "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a copied live durable fixture": {
       "seconds": 28.298,
-      "owner": "E-1196",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "T-1204 retains the complete copied live tracker and eight real framed startup replies at the existing T3 scale seam, per Coordinator decision 27508150. The unchanged workload previously ran in hub-status-component T2: Linux x64 c-8 lon1 run 0c97f1ae at 9a6d8a27 (A-11122) passed all assertions, ordinary sample 17.275973484 s, worst of five passing load repetitions 18.864933431 s. This allowance rounds 1.5x that worst observed passing sample upward to milliseconds. It covers the same full-copy/shared reply assertions after relocation; no byte cap, fixture size or existing assertion is relaxed. E-1196 owns the seven-day full-copy setup cost."
+      "reason": "T-1204 retains the complete copied live tracker and eight real framed startup replies at the existing T3 scale seam, per Coordinator decision 27508150. The unchanged workload previously ran in hub-status-component T2: Linux x64 c-8 lon1 run 0c97f1ae at 9a6d8a27 (A-11122) passed all assertions, ordinary sample 17.275973484 s, worst of five passing load repetitions 18.864933431 s. This allowance rounds 1.5x that worst observed passing sample upward to milliseconds. It covers the same full-copy/shared reply assertions after relocation; no byte cap, fixture size or existing assertion is relaxed. E-1196 owns the seven-day full-copy setup cost. Re-owned to E-880 on 2026-10-25 before its epic closes (D72 legacy owner)."
     },
     "hub/test/suite-cover.test.ts::all capacity-refused shards preserve a not-run cover receipt and never start culprit search": {
       "seconds": 1.5,
@@ -7104,10 +7186,10 @@
     },
     "hub/test/codex-adapter.test.ts::Codex launches Implementer with narrow workspace roots, QA full access, Reviewer read-only, and the configured T-48 profile (T-1222)": {
       "seconds": 8,
-      "owner": "E-778",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "Sealed native fake-binary policy contract shares one scratch setup, launches five role/profile app-servers and observes two stop/relaunch receipts. Based on one Linux droplet c-8 sample of 5.272721635 s at 381a8799, run 44abe56f (A-10803); 8 s gives about 1.5x headroom for run variance. No fixed waits to remove; renamed identity has no stage baseline yet (T-1222)."
+      "reason": "Sealed native fake-binary policy contract shares one scratch setup, launches five role/profile app-servers and observes two stop/relaunch receipts. Based on one Linux droplet c-8 sample of 5.272721635 s at 381a8799, run 44abe56f (A-10803); 8 s gives about 1.5x headroom for run variance. No fixed waits to remove; renamed identity has no stage baseline yet (T-1222). Re-owned to E-880 on 2026-10-25 before its epic closes (D72 legacy owner)."
     },
     "hub/test/config-reload-component.test.ts::hub reload publishes config and roles together and retains both after either file fails": {
       "seconds": 2.129789,
@@ -9330,10 +9412,10 @@
     },
     "hub/test/homebrew-publication.test.ts::release preview, download failure and lost tap reply recover the pinned formula once": {
       "seconds": 10.5,
-      "owner": "E-778",
+      "owner": "E-880",
       "added": "2026-10-24",
       "expires": "2026-10-31",
-      "reason": "T-779 added this T3 identity: one sealed release transaction covering preview, a failed archive download and a lost tap push reply, recovering the pinned formula exactly once against a local bare tap. Its Linux droplet samples stayed under 5 s, but the macOS arm64 stage cover 0ab35c7d at 5d1fa288 (A-11377), with workers 2 and peak 1-minute load 15.66, observed the assertion-green identity at 6.936 s and failed the enforced T3 budget. The 10.5 s cap is about 1.5 times that worst passing sample; no wait bound, assertion or teardown is relaxed. Owned by E-778 until its fixture cost is reduced."
+      "reason": "T-779 added this T3 identity: one sealed release transaction covering preview, a failed archive download and a lost tap push reply, recovering the pinned formula exactly once against a local bare tap. Its Linux droplet samples stayed under 5 s, but the macOS arm64 stage cover 0ab35c7d at 5d1fa288 (A-11377), with workers 2 and peak 1-minute load 15.66, observed the assertion-green identity at 6.936 s and failed the enforced T3 budget. The 10.5 s cap is about 1.5 times that worst passing sample; no wait bound, assertion or teardown is relaxed. Owned by E-778 until its fixture cost is reduced. Re-owned to E-880 on 2026-10-25 before its epic closes (D72 legacy owner)."
     },
     "hub/test/qa-lint-build.test.ts::committed brief corpus has no false absent file or title reports against the compiler source oracle": {
       "seconds": 18.7,
