@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T10:24:45.865Z
-updated: 2026-10-25T13:25:37.427Z
+updated: 2026-10-25T13:34:27.361Z
 ---
 
 ## Question
@@ -66,3 +66,7 @@ Two sessions (step 8): every session of a bot receives every event, interactions
 Settles for the spec: (1) a hand-written client on the pinned ws and fetch with vendored types; (2) `/cland pair` gives a private 8-character code, `cland remote approve discord <code>` binds guild, channel and user id, the code lives 15 minutes (the interaction token's life) so the private reply turns into "Approved"; (3) one global `/cland`, admins only, written once on the first start and only compared afterwards; (4) one bot per project; (5) cards as legacy messages with up to three rows, options five to a row, labelled when every option fits 34 characters and numbered otherwise, then Other answer… and Decline…; a press answered by UPDATE_MESSAGE, free text by a modal (a Text Display and a Label), a card edited once; (6) interaction callbacks bypass the send queue, work gets 2 s then the remote defers and edits; (7) a hub stop closes resumably, a start younger than about 90 s RESUMEs and re-sends only the pressed cards, otherwise a fresh identify plus history and every open card re-sent, always dedupe by id, one silent gap line; (8) Discord ids stored as TEXT; (9) the invite asks for 117824 (the research's 117760 plus Add Reactions), setup checks Public Bot, the Message Content flag and an empty Interactions Endpoint URL; (10) identify guard: at least 5.5 s apart, back off only after identifies that never reached READY, a daily cap and a floor on `remaining`.
 
 Not tried on real Discord: Codex approval cards, the long restart, the pause outage, the bot's presence after a stop. Leftovers to delete later: ~/Projects/cland/sandbox-discord-fake and ~/Projects/cland/sandbox-remote-two.
+
+### human · 2026-10-25T13:34:27.361Z
+
+Follow-ups done (2026-10-25, sandbox on adba8b89 since 13:33Z): (1) trailers of all six commits after 10f47d5e rewritten to the Fable line with filter-branch, tree byte-identical, pushed with --force-with-lease; (2) the double attachment: a human message carries `artifact` (its first file) and `artifacts` (all files) and both remotes read both, so the first file went out twice (agent posts carry only `artifact`); both remotes now read files through one deduplicating helper, verified on the fakes in both directions (a Discord photo → one captioned sendPhoto in Telegram; a Telegram photo → one attachment in Discord; voice likewise; `drv artifact` once in each); Telegram marks messages written in Discord as "you (Discord)" and Discord mirrors "you (Telegram)"; (3) status and help rebuilt for both messengers: a title, groups separated by blank lines with bold labels (Hub, Coordinator, Sessions as bullets, Queues, Release, This channel or This chat), one fact per line, gateway and REST numbers as subtext or an italic last line; help in four short sections, the commands as a bullet list, the trust lines last; Telegram sends them with entities. Next: Discord state into hub.db through the shared RemoteStore with TEXT ids (one more quick restart).

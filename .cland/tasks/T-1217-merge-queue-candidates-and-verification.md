@@ -3,7 +3,7 @@ id: T-1217
 kind: task
 title: Merge-queue candidates and verification snapshots accumulate unreachable Git objects until auto-gc gives up
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T13:24:21.747Z
+updated: 2026-10-25T13:33:01.484Z
 ---
 
 ## Summary
@@ -248,3 +248,24 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence CLEAR, Standards 0 / Spec 0. A-11975 carries full source4 A-11952 and independently audits original mode-free 6691053c/A-11966: 3184 ordinary passes plus 105 separate load finishes (21 identities × 5), all 35 required base cases, no failures/cancellations/skips. Twelve changed native T3 cases ran once, including normal real CLI exit with durable live collector handoff, independent recovery, pruning grace/retained-work controls and doctor/stale-log outcomes. Maximum new case 2.785146291 s; no new allowance. C1/C2 verified. Actual host T0/Linux all T1/fallback all T2/changed T3/Web passed; remaining T3 deferred and no T4/verify-all claim. Host gate.tree reuse, browser/executor provenance, original local capture limits and approved UTC identity-helper dependency retained. Lint/budgets/ratchet report-only: T3 +18.512 s would refuse growth under enforcement, retained for Coordinator planning. No source change; exact tree 66a94465d9e26e9d0a90c80bf850a4fe4dec2ad3. Coordinator's separate rule-6 pre-merge verify all remains outstanding; no live maintenance authorized.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1217 · 2026-10-25T13:29:48.920Z
+
+Coordinator-authorized post-T1260 dev merge committed/pushed72802020 (dev14ac6e97). Only conflict resolutions: keep explicit checkHub env plus maintenance doctor row; keep markServing immediately after serving log, then maintenance recovery/scheduling. A-11977 will identify merged-tree local receipts if assigned (artifact delivery in topic);55focused cases passed individually, typecheck/child-env/testlint exit0 (133report-only findings/zero refusals). Prior63018b8e configured pass remains prior-head only. New source review before mode-free verification.
+
+### impl-1217 · 2026-10-25T13:29:59.789Z
+
+Artifact correction: actual returned merge evidence id is A-11979, durable path .cland/artifacts/A-11979-t-1217-authorized-dev-merge-and-focused-receipts-at-72802020.md. Disregard the guessed A-11977 reference in the preceding comment.
+
+### rev-31 · 2026-10-25T13:33:01.484Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1217-source5
+commit: 7280202096714186413f19bb49021c67314937a0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source CLEAR, Standards 0 / Spec 0; durable audit A-11982 carries full source4 A-11952. Exact tree 86b0d369e2725145507b469953eafc8282dbc6ff, parents 63018b8e and authorized dev14ac6e97. Independently read Coordinator 4ddc48ac/de16a39a. Doctor resolution forwards explicit env through checkProject/checkHub while retaining maintenance row; daemon resolution is serving log -> markServing -> maintenance recovery/schedule, preserving T-1224 startup anchor. T-1260 authenticated durable one-shot slot notifications/transactional removal and re-admission remain intact; maintenance retention metadata and teardown paths do not conflict. Eighteen task-specific files including owner/collector/territory and all native/policy/startup tests are byte-identical; incoming help, docs/index/tier/harness changes preserve task contributions and decoded intended frozen help rows agree. A-11979's 55 separate local focused passes/typecheck/static excerpts are retained with working-tree/platform/capture limits, not configured/Linux proof. Prior A-11966/A-11975 apply only to 63018b8e; C1/C2 remain runtime-unverified at new head. Current approved UTC-helper limitation unchanged. One ordinary mode-free configured verification at unchanged72802020 followed by evidence review; separate Coordinator rule-6 verify all after ready. No live maintenance, extra integration or Reviewer execution.

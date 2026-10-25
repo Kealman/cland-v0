@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1047
 branch: t/T-1208-the-spoke-validates-local-mcp-input-up
 created: 2026-10-24T06:48:03.158Z
-updated: 2026-10-25T11:55:38.334Z
+updated: 2026-10-25T13:34:24.997Z
 ---
 
 ## Summary
@@ -87,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence CLEAR, A-11860. Carry source-2/A-11830. Original A-11856 inspected and native progress records independently parsed: 3156 ordinary tests/440 files all pass, plus exact owned-stream cap/refusal/recovery identity base 0.050495305 s and five actual load repetitions all pass (0.044664927–0.063381181 s). C1 assertions establish pre-schema cap error, no crash, following ping, byte-fragment/exact-cap/discard compatibility and EOF once. T0/all T1/fallback all T2/Web exit 0 on actual Linux x64 droplet; T3/T4 not run. Host check uses prepared tree 9dd9c574, not a repeated remote typecheck. Lint/duration diagnostics remain report-only; no budget/QA/integration/landing claim. No findings on either axis; Coordinator owns enqueue/merge.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-25T13:34:24.997Z
+
+Rule 6 pre-merge verify all 584b05c4 at 33d24def (A-11983): 4048 passed, 3 failed, 5 skipped across T0–T3 (Web not reached; covered by mode-free 7475f8a3). All three failures are known dev defects with matching messages, already fixed on dev and absent from T-1208's diff (hub/src/spoke/*): suite-selection T4-guard case (invalid loadGuards, T-1299), roles-timing (0 !== 300, T-1302), qa-lint-build production install (ERR_MODULE_NOT_FOUND shared/protocol-frame.ts, T-1303). Coordinator accepts this run as T-1208's rule 6 evidence with those attributed identities.
