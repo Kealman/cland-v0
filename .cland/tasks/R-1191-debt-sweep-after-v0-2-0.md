@@ -1,6 +1,7 @@
 ---
 id: R-1191
 kind: release
+version: 0.2.1
 title: Debt sweep after v0.2.0
 state: open
 labels: []
@@ -10,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:30:51.515Z
-updated: 2026-10-24T06:47:05.909Z
+updated: 2026-10-25T05:57:40.855Z
 ---
 
 ## Goal
