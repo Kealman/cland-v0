@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T10:23:22.644Z
-updated: 2026-10-25T10:23:22.644Z
+updated: 2026-10-25T10:48:16.854Z
 ---
 
 ## Destination
@@ -37,7 +37,7 @@ The spec `docs/spec/v0.3.md` "cland v0.3: remote control through Telegram and Di
   10. Outbound: every General message carries an "author · kind" header; Markdown is converted to the messenger's markup; long texts are split at the limit with part numbers; artifacts: images as photos, other files as documents up to the messenger's limit, otherwise a link to the web or the path.
   11. Inbound photos and files become project artifacts attached to the human's message, the caption is its text; the web renders PNG and JPEG inline.
   12. Voice: downloaded and transcribed; the transcript becomes the human's message text with a voice marker; the original audio is attached as an artifact; the gateway echoes the transcript into the chat; without an STT key the gateway replies with how to enable it.
-  13. STT providers: `[speech] provider = "xai"`; the interface is transcribe(audio, mime, language hint) → text and language; two providers in 0.3: xAI and `command` (a local command reading audio from stdin and printing text).
+  13. STT providers: `[speech] provider = "elevenlabs"`; the interface is transcribe(audio, mime, language hint) → text and language; two providers in 0.3: ElevenLabs (Scribe) and `command` (a local command reading audio from stdin and printing text). Amended 2026-10-25: xAI was the first choice until the human found its free transcription credits gone; xAI stays one alternative the seam must fit.
   14. Noise and commands: all of General is mirrored; `/mute` and `/unmute` silence the General stream, asks always arrive; `/status`, `/inbox` and `/help`.
   15. Downtime and catch-up: after reconnecting, the gateway re-sends still-open asks not yet in the chat and one line "N General messages missed since …" instead of a replay; inbound during downtime comes from Telegram's update queue and from Discord channel history after the last seen id; an outbound queue with backoff per the limits.
   16. Vocabulary: Remote (a paired messenger chat mirroring the human's General and inbox: a Telegram remote, a Discord remote), Gateway (the hub edge serving remotes), Pairing, Transcript; commands under `cland remote …`.
@@ -47,6 +47,7 @@ The spec `docs/spec/v0.3.md` "cland v0.3: remote control through Telegram and Di
 
 ## Decisions so far
 
+- [Sandbox bots for the prototypes: a Telegram bot, a Discord app, an ElevenLabs key](T-1291, .cland/tasks/T-1291-sandbox-bots-for-the-prototypes-a-telegram.md): the human placed the Telegram and Discord bot tokens and an ElevenLabs key in `~/.config/cland/sandbox-remote.secrets.toml` (mode 600) on 2026-10-25; ElevenLabs replaces xAI as the first STT provider because xAI no longer gives free credits; the sandbox project is `/Users/evgeniyivanov/Projects/cland/sandbox-remote`.
 ## Not yet specified
 
 - The exact configuration shape (`[remote]`, `[telegram]`, `[discord]`, `[speech]` keys; hot reload or restart), the pairing state file and the secrets file format: after the API research.

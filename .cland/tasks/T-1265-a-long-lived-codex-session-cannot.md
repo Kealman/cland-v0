@@ -3,7 +3,7 @@ id: T-1265
 kind: task
 title: 'A long-lived Codex session cannot reattach after a hub restart: app-server thread read fails with "Max payload size exceeded"'
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1029
 branch: t/T-1265-a-long-lived-codex-session-cannot
 created: 2026-10-24T22:20:46.414Z
-updated: 2026-10-25T10:27:08.595Z
+updated: 2026-10-25T10:41:15.568Z
 ---
 
 ## Summary
@@ -30,8 +30,10 @@ After hub restart #55 (2026-10-24 22:18:50Z), Reviewer rev-23 (codex, gpt-6.1-so
 
 - [x] C1. The Codex adapter reattaches a session whose thread read exceeds the client's default frame limit (raised limit, paged read, or a reattach path that does not read the whole thread), with a test at the fake app-server boundary (test).
   - done: impl-1265 · 2026-10-25T10:25:28.970Z
+  - verified: rev-31 [reviewer] · run rev-20261025-1265-final · 2026-10-25T10:41:15.454Z · commit ac28cf934e8408b4255442e81d21a555cb2a7960
 - [x] C2. When reattach still fails, the session row says why (payload limit) instead of `[unknown]`, so the Coordinator knows to replace it (test).
   - done: impl-1265 · 2026-10-25T10:25:29.155Z
+  - verified: rev-31 [reviewer] · run rev-20261025-1265-final · 2026-10-25T10:41:15.454Z · commit ac28cf934e8408b4255442e81d21a555cb2a7960
 
 ## Comments
 
@@ -171,3 +173,43 @@ Original configured02a25979/A-11713 remains failed hostT0 at parentbdcfc453, wit
 
 Source CLEAR, findings empty; both runtime criteria remain unverified. Submit one ordinary mode-free configured verify at unchanged ac28cf93, then request final evidence review with the actual generated outcomes, phase/executor/browser scope and gate modes. No dev merge or extra repeats requested. Reviewer used read-only source/artifact inspection only; affected after-stage QA remains with E-1280.
 Durable review: A-11723.
+
+### rev-31 · 2026-10-25T10:41:15.454Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1265-final
+commit: ac28cf934e8408b4255442e81d21a555cb2a7960
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1265 final evidence — CLEAR
+
+Headac28cf934e8408b4255442e81d21a555cb2a7960/tree8e8e53dad01a06c6fc03f000d7578366c247655a remains the branch tip. Carry source3 A-11723, full A-11689 and resolved M1/M2 A-11703. Original configured mode-free84480840-6395-4551-8caa-3c45fcb301b7/A-11741 is terminal passed at this exact head in task.view; C1/C2 done marks present.
+
+## Criteria and recorded facts
+
+C1 verified at the requested fake app-server boundary: `Codex reattaches a long thread without hydrating its oversized turn history` passes ordinary0.265634091s plus5/5load (worst0.314574711s). It rejects full-history resume, accepts excludeTurns metadata, requires exact busy-state publication, subsequent injected delivery and no thread/read. `Codex retries an older app-server without excludeTurns and accepts its previous reply shape` passes ordinary0.138334945s plus5/5load (worst0.351898435s), retaining the exact two native requests and zero turn/start. `Codex WebSocket transport handles large reply at the native frame boundary` passes ordinary1.122118432s plus5/5load (worst1.311730021s), preserving actual101MiB reply receipt and105906176-byte history length. Bounded512MiB client limit, no assertion relaxation.
+
+C2 verified: `Codex exposes a payload-limit reattach failure on the session row and clears it after recovery` passes ordinary0.419161735s plus5/5load (worst0.636956274s), keeping exact session.list payload reason, CLI[payload limit], unknown state and clearing after recovered idle. `Codex WebSocket transport handles payload limit at the native frame boundary` passes ordinary0.007278408s plus5/5load (worst0.047626495s), preserving the legal513MiB declared header without body allocation and rejection as both RpcPayloadTooLarge and RpcNoAnswer. Accepted source review establishes actual bounded listener/client/peer/raw-socket closure before fixture removal.
+
+Entire codex-native file33/33 passes. Frozen named-export compatibility and all three sealed real CLI help cases pass, confirming M1. Host dictionary-membership lint passes with the own-property classifier, confirming M3. The parent bdcfc453 run02a25979/A-11713 remains failed host-only history, never relabelled as runtime proof.
+
+## Executed scope and limits
+
+Unique terminal progress excluding file containers:3119ordinary passes plus40additional load passes, nofail/cancel/skip/todo. Twenty-five load passes belong to the five task identities above; fifteen belong to three inherited install-doc controls. Counts remain separate. New identities each ran five sequential repetitions under two load workers; no new Web files or Web repetitions required.
+
+Host T0exit0/28.9s; allT1exit0/70s; fallback-all hub+NeovimT2exit0/382s due unsupported skill/document coverage; Webexit0/158s. No T3 or T4 ran, no all-tier/provider/real long-lived native session/stage-QA claim. RemainingT3 deferred periodic/integrated and absent configured batch tiers. Required test seam is the native frame/component boundary, not a real-provider enforcement experiment.
+
+Dropletc-8lon1/cland-v0-b68ee079, Linuxx64 6.8.0-142-generic, Node24.21.0/Neovim0.12.5,workers2; machine lifetime713s/cost$0.0495, not suite wall. Prepared pinned Chrome Headless Shell156.0.8078.4/revision1248/linux64 in /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248 supports isolated Web fixtures. No human browser. Host gate-tree keya8b80e382127ab8b1f85cce3c80853623b5895e4 is reused remotely, not an alternate task commit or repeated remote check.
+
+Report-only diagnostics:133lint findings/60files, seven listed budget overages, one missing install-claims baseline, unchanged T3ratchet2209.786s and actual Web suite154.25s vs40s. Not enforced-budget passes. New-case load maximum1.311730021s stays below the enforced5s new-identity gate without an allowance. Phase envelopes, case timings, projections and machine lifetime remain distinct.
+
+## Disposition
+
+Final CLEAR, C1/C2 verified across accepted unchanged source and original same-head executed evidence; findings empty. Local A-11701/A-11719 keep actual precommit/macOS source and missing-record limits, not current Linux receipts. No extra repeats or source/dev merges requested. Lead sends the planned fresh no-auto-maintenance conflict-check/unchanged-head ready report to Coordinator for enqueue; affected after-stage QA remains with E-1280. Reviewer performed read-only inspection only.
+Durable final review: A-11743.
+
+Criteria: C1 verified, C2 verified.

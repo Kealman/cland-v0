@@ -3,17 +3,17 @@ id: T-1259
 kind: task
 title: executor-safety-component's foreign-lease case misses its 15 s completion window under macOS cover load
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - needs-triage
 assignee: null
 parent: E-1282
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1039
+branch: t/T-1259-executor-safety-component-s-foreign
 created: 2026-10-24T19:31:37.373Z
-updated: 2026-10-25T09:53:53.282Z
+updated: 2026-10-25T10:54:33.880Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ The macOS stage cover 83b0e729 at 5d1fa288 (A-11361) failed `hub/test/executor-s
 ## Acceptance criteria
 
 - [ ] C1. The case waits on the exact settlement receipt it asserts (rule 9), not on a scheduler tick racing a loaded event loop, and it passes 10/10 at 2 workers under CPU load on macOS (test).
+
+## Comments
+
+### impl-1259 · 2026-10-25T10:54:33.880Z
+
+Existing worktree is clean. Seam: existing T2 scripted remote-machine + projectHub/public executor.reap; assert foreign live resource is retained and observe admitted run settlement before teardown. Triage A-11669 confirms this test and remote-fixture as scope. No shared protocol/schema/admission contract change planned.

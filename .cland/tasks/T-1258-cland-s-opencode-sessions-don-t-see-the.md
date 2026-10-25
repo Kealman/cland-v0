@@ -2,8 +2,8 @@
 id: T-1258
 kind: task
 title: cland's OpenCode sessions don't see the user's OpenCode Console login, so paid Go and Zen models are unavailable
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1031
 branch: t/T-1258-cland-s-opencode-sessions-don-t-see-the
 created: 2026-10-24T19:27:25.100Z
-updated: 2026-10-25T10:14:52.356Z
+updated: 2026-10-25T10:42:11.103Z
+closed: 2026-10-25T10:42:11.103Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ cland starts each OpenCode server with OPENCODE_DB=~/.local/share/cland/opencode
 
 - [x] C1. A launch or turn on a provider that is connected in the user's default OpenCode store but missing from cland's database fails with a message naming the cause and the fix (the login or import command for cland's database), never a bare "Model unavailable" (test).
   - done: impl-1258 · 2026-10-25T10:07:59.057Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1258-final · 2026-10-25T10:35:05.906Z · commit fc9db0a4a455a5a9191f06d3476f0b3a561b9d6e
 - [x] C2. `cland doctor` warns when the user's OpenCode store has Console credentials that cland's OpenCode database lacks, and docs say how to connect them (test).
   - done: impl-1258 · 2026-10-25T10:11:59.132Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1258-final · 2026-10-25T10:35:05.906Z · commit fc9db0a4a455a5a9191f06d3476f0b3a561b9d6e
 
 ## Comments
 
@@ -69,3 +72,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full corrected source clear; A-11704 carries A-11687 full audit. M1 resolved: sole correction is frozen DOCTOR_USAGE row, exact production equality confirmed; template/order/guards/production unchanged. Original A-11696 red0/1 and2/3 exits1 -> green1/1 and3/3 exits0, local macOS timing/source limits retained. C1/C2 done restored; both runtime marks await exact-head ordinary mode-free configured evidence. Initial A-11678 summary not substituted for raw receipts; T-1285 isolated local doctor remains explicitly Coordinator-authorized/different from ordinary16/19. No other findings; no integration/live login/QA/publication claim.
+
+### rev-34 · 2026-10-25T10:35:05.906Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1258-final
+commit: fc9db0a4a455a5a9191f06d3476f0b3a561b9d6e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged fc9db0a4, carrying source-2/A-11704. Run 3de108c3 / A-11732 passed T0/all T1/fallback all T2/Web: 3119 ordinary passes, no failures/cancellations/skips/todos, Linux x64 droplet, Node 24.21.0, Neovim 0.12.5, Chrome Headless Shell 156.0.8078.4 (v1248). T3/T4 not run; budget/lint warnings report-only. Independently checked base pass records and 5/5 repetitions for both unavailable-model launch/turn cases and all three new doctor credential comparison cases, plus ordinary doctor database/login and frozen compatibility/full-help guards. Source assertions verify cause/fix, exact selected DB, command quoting, public event, credential-only provider IDs and incomplete comparisons; source2 establishes docs. C1/C2 verified. T-1285 isolated local evidence remains separate; no live Console login/import or clean-machine claim. Standards: no remaining findings. Spec: no findings. No Reviewer rerun.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T10:42:11.103Z
+
+Merged 98c60b8cca9d6582eabd28cb2a116780dec915d4 onto dev.

@@ -2,8 +2,8 @@
 id: T-1218
 kind: task
 title: Hub-owned periodic dev T3 runs and their artifacts are attributed to the human
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1034
 branch: t/T-1218-hub-owned-periodic-dev-t3-runs-and-their
 created: 2026-10-24T09:20:07.524Z
-updated: 2026-10-25T10:23:19.724Z
+updated: 2026-10-25T10:29:17.748Z
+closed: 2026-10-25T10:29:17.748Z
 ---
 
 ## Summary
@@ -119,3 +120,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-1218 · 2026-10-25T10:23:19.724Z
 
 Ready at ad056a82044d652e5052067224132dd490760a35; no head changes after source review. Full source clear rev-20261025-1218-source and final evidence clear rev-20261025-1218-final, C1/C2 verified. Configured mode-free verify ada4e697-81d8-4280-87b3-d54c88e50bf5: 3117/3117 pass; host T0 plus Linux droplet all T1/fallback all T2/Web, no T3/T4 runtime; report-only budgets/lint. All three added attribution cases have base passes and explicit 5/5 load finish receipts; maximum added-case Linux duration 0.615209357 s, below 3 s allowance trigger. Evidence A-11708/A-11710/A-11711, original local excerpts A-11688. Fresh git fetch --no-auto-maintenance origin dev at 10:23Z retained dev 82cf0f6caae30e159a6fb4644171abcd29c32d05; git merge-tree --write-tree HEAD origin/dev produced 6f8297a5ac3af74ad2823571cbbffcfde4008b41 without conflicts. Worktree clean; origin task branch pushed. No merge performed; Coordinator owns enqueue. Claim retained.
+
+### coord · 2026-10-25T10:29:17.748Z
+
+Merged 15d47490025104c3b5fb833a262121f19f9ba724 onto dev.

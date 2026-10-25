@@ -3,17 +3,17 @@ id: T-1225
 kind: task
 title: cland qa lint rejects every Aide verification row although the Aide clause allows cland verify
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - needs-triage
 assignee: null
 parent: E-1283
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1040
+branch: t/T-1225-cland-qa-lint-rejects-every-aide
 created: 2026-10-24T10:32:00.959Z
-updated: 2026-10-25T09:53:56.009Z
+updated: 2026-10-25T10:54:21.944Z
 ---
 
 ## Summary

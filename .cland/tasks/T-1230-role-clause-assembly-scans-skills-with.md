@@ -2,8 +2,8 @@
 id: T-1230
 kind: task
 title: Role clause assembly scans skills with readdirSync on every hello
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-1030
 branch: t/T-1230-role-clause-assembly-scans-skills-with
 created: 2026-10-24T10:46:04.079Z
-updated: 2026-10-25T10:22:14.037Z
+updated: 2026-10-25T10:29:04.152Z
+closed: 2026-10-25T10:29:04.152Z
 ---
 
 ## Summary
@@ -65,3 +66,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear; A-11709 audits original A-11707 / c1bf36f1. Carries A-11676 full source clearance. 3116 ordinary passes, 438 passing files; separately 25 actual load executions, including both new skill snapshot/refresh identities 5/5 (worst 0.153633239 s and 0.147080174 s). C1 verified by both serving-source refresh cases and public clause/launch regression; C2 verified by real-configuration role-bearing credential hello under all-sync traps, actual welcome/role assertions and retained lifecycle behavior (credential file 7/7). T0/all T1/fallback both-package T2/Web exit 0 on Linux c-8 lon1; no T3/T4 or stage QA claim. Host check tree a78238d4, not remote typecheck; report-only lint/budget diagnostics retained. A-11672 local summary limits remain explicit. Both criteria verified at unchanged head; Coordinator owns enqueue/merge/stage QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T10:29:04.152Z
+
+Merged 8acdd283b96ddb2683d5f38c87c00d2d823465af onto dev.

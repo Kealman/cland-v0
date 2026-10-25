@@ -2,8 +2,8 @@
 id: T-1244
 kind: task
 title: The culprit search files bugs for regressions dev has already fixed
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1033
 branch: t/T-1244-the-culprit-search-files-bugs-for
 created: 2026-10-24T13:14:28.519Z
-updated: 2026-10-25T10:17:09.980Z
+updated: 2026-10-25T10:53:15.540Z
+closed: 2026-10-25T10:53:15.540Z
 ---
 
 ## Summary
@@ -26,8 +27,10 @@ The periodic dev T3 culprit search for run 1de62ca6 (red at 23066929) filed four
 
 - [x] C1. Before filing a culprit bug, the search checks the failing file at the current dev tip, or reuses a green integrated or stage receipt covering that tip. If the file passes there, the search posts the culprit as "already fixed on dev at <commit>" and files no bug (test).
   - done: impl-1244 · 2026-10-25T10:10:20.656Z
+  - verified: rev-26 [reviewer] · run rev-20261025-1244-final-1 · 2026-10-25T10:47:26.684Z · commit e6c5a73888d7e5e3886b8fbb0c4db612548536e9
 - [x] C2. If the file still fails at the tip, the bug is filed as today, with the tip receipt attached (test).
   - done: impl-1244 · 2026-10-25T10:15:46.740Z
+  - verified: rev-26 [reviewer] · run rev-20261025-1244-final-1 · 2026-10-25T10:47:26.684Z · commit e6c5a73888d7e5e3886b8fbb0c4db612548536e9
 
 ## Comments
 
@@ -74,3 +77,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full corrected source clear; A-11706 carries complete A-11702 audit. M1 resolved: idle completion requires matching HEAD and clean tracked status; incomplete standalone clone stops/observes owned fixtures and recreates once. Both wrong-HEAD and matching-HEAD/unmaterialized tests assert exact source, reuse preserves untracked receipt, legacy/pinned/live-owner and existing admitted-worker no-rewrite controls retained. No assertion/deadline/lint relaxation. Standards0/Spec0. C1/C2 done present; runtime unverified pending same-head ordinary mode-free configured evidence including changedT3. Actual recovery evidence A-11705 (not speculativeA-11703) is summary; preserve original command/stdout/exits/source/timing limits without reruns. No Linux timing/live historical executor/integration/QA claim.
+
+### rev-26 · 2026-10-25T10:34:23.711Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-1244-source-3
+commit: e6c5a73888d7e5e3886b8fbb0c4db612548536e9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized dev integration delta source clear; A-11734 carries A-11702/A-11706 full audits. Independently confirmed Coordinator 7d0da04b authorization, both parents and exact union of T-1230/T-1218/T-1244 skill guidance/CHANGES. T-1244 search/probe/report and direct recovery/search tests byte-unchanged. Dispatch combines currentDev lookup with suiteAuthor artifact context; suite-soak preserves both currentDev migrations/probe order and new attribution case. Seventeen other imported non-tracker files byte-equal dev parent. Standards0/Spec0; diff check exit0. C1/C2 done remain, runtime unverified pending new-head ordinary mode-free configured verify including changed T3 and actual repetitions. A-11727/A-11728 remain 85961e12-only evidence; report-only +0.612s growth retained. Preserve original local receipt limits, no transcription reruns. Coordinator owns landing.
+
+### rev-26 · 2026-10-25T10:47:26.684Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-1244-final-1
+commit: e6c5a73888d7e5e3886b8fbb0c4db612548536e9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-11750 audits native A-11749 /35f72f3a at unchanged source-3 head. 3147 ordinary passes/439 files; separately six new T1/T2 identities each 5/5 (30 actual load test executions). C1 current-tip pass/no-Bug, moved tip and old-checkpoint controls verified; C2 public Bug body retains exact red tip/run/path and idempotent single filing. Historical durations 22/22 once including three preparation cases 0.240892887/0.186386477/0.192437263s; no repetitions, added selected wall3.915s. suite-soak10/10 preserves integration. T0/all T1/fallback both T2/Web + changedT3 exit0 on Linux c8; no T4/full integrated/QA claim. Host gate054a09c3 is tree, not remote recheck. Report-only lint/budget/T3ratchet +0.620s retained; old-head A-11727/A-11728 not reused as new proof. C1/C2 verified; claimant reports clean unchanged head and fresh dev98c60b8c merge-tree0. Coordinator owns landing.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T10:53:15.540Z
+
+Merged 079ccaf88d11aded7231d0c4af1f0b4a156da842 onto dev.

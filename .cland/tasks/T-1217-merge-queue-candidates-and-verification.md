@@ -3,17 +3,17 @@ id: T-1217
 kind: task
 title: Merge-queue candidates and verification snapshots accumulate unreachable Git objects until auto-gc gives up
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - needs-triage
 assignee: null
 parent: E-1284
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1041
+branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T09:53:57.814Z
+updated: 2026-10-25T10:54:24.027Z
 ---
 
 ## Summary

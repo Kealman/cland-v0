@@ -2,8 +2,8 @@
 id: T-1251
 kind: task
 title: The merge queue demands a root npm install for a scripts-only package.json change
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1027
 branch: t/T-1251-the-merge-queue-demands-a-root-npm
 created: 2026-10-24T14:17:14.259Z
-updated: 2026-10-25T10:25:07.846Z
+updated: 2026-10-25T10:33:35.756Z
+closed: 2026-10-25T10:33:35.756Z
 ---
 
 ## Summary
@@ -112,3 +113,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear at unchanged caad2125. Configured run e874d68b / A-11712 passed on Linux x64 droplet, Node 24.21.0, Neovim 0.12.5, Chrome Headless Shell 156.0.8078.4 (v1248). T0/all T1/fallback all T2/Web completed: 3135 passes, no failures/cancellations/skips/todos. T3/T4 not run; duration/test-lint warnings are report-only. Checked recorded passing identities and 5/5 load receipts for all 16 dependency-install cases, both queue candidates, both landing cases and the public scripts-only queue/CLI case; frozen-export/root-help guards passed. Source2 plus these facts establish C1/C2. Standards: no remaining findings. Spec: no findings. No Reviewer rerun.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T10:33:35.756Z
+
+Merged 80e4af54e788f31d6471caa605495219cfecb6a2 onto dev.

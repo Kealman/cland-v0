@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:52:51.686Z
-updated: 2026-10-25T09:53:56.959Z
+updated: 2026-10-25T10:55:03.253Z
 ---
 
 ## Summary
@@ -33,6 +33,7 @@ stages:
     lanes:
       - - T-543
         - T-1154
+        - T-1298
       - - T-1217
       - - T-1208
 ```

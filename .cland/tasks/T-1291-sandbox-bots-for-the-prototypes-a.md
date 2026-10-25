@@ -1,9 +1,9 @@
 ---
 id: T-1291
 kind: task
-title: "Sandbox bots for the prototypes: a Telegram bot, a Discord app, an xAI key"
-state: open
-status: backlog
+title: "Sandbox bots for the prototypes: a Telegram bot, a Discord app, an ElevenLabs key"
+state: closed
+status: done
 size: XS
 labels:
   - wayfinder:task
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T10:24:45.504Z
-updated: 2026-10-25T10:24:45.504Z
+updated: 2026-10-25T10:48:15.350Z
+closed: 2026-10-25T10:48:15.350Z
 ---
 
 ## Question
@@ -26,3 +27,9 @@ The prototypes (map M-1286) need real bots in a sandbox, and only the human can 
 4. Put all three into the sandbox project's secrets file as the prototype's HOW-TO-TRY.md will describe (a git-ignored 0600 file), then tell the planning session which sandbox folder holds them.
 
 Done when the three values are in place and the prototype can read them.
+
+## Comments
+
+### human · 2026-10-25T10:48:15.228Z
+
+Resolution (2026-10-25): the human created the Telegram bot and the Discord application (Message Content intent on, invited into a private test server with one channel) and placed the tokens in `~/.config/cland/sandbox-remote.secrets.toml` (mode 600; sections `[telegram] token`, `[discord] token`, `[speech] elevenlabs_key`). ElevenLabs replaces xAI as the first speech-to-text provider: xAI no longer gives free transcription credits, ElevenLabs still does. The keys are the human's real keys for later use in the app: the file is never deleted, printed or copied into a repository; prototypes read it by path. The prototype's sandbox project is `/Users/evgeniyivanov/Projects/cland/sandbox-remote`, prepared by the prototype agent (git init first, then the prototype's `cland init`).
