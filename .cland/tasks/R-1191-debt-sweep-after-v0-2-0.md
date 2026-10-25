@@ -3,15 +3,16 @@ id: R-1191
 kind: release
 version: 0.2.1
 title: Debt sweep after v0.2.0
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
 blocked_by: []
-topic: null
+topic: topic-1021
 branch: null
 created: 2026-10-24T06:30:51.515Z
-updated: 2026-10-25T06:44:57.760Z
+updated: 2026-10-25T06:47:25.205Z
+closed: 2026-10-25T06:47:07.791Z
 ---
 
 ## Goal
@@ -34,3 +35,25 @@ Triage: A-10327 (2026-10-24). It closed 23 items (13 fixed, 2 duplicates, 8 wont
 | E-1193 | Merge queue and landing safety | after T-1199 |
 | E-1194 | Periodic dev T3 and executor honesty | after T-1199 |
 | E-1197 | Hub correctness and speed | after T-1199 |
+
+## Comments
+
+### coord · 2026-10-25T06:47:07.791Z
+
+Released v0.2.1 at 0ed90062f0180da3584c52f5c68c8b1662191fcc.
+Homebrew published: Kealman/homebrew-tap main Formula/cland.rb v0.2.1
+https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/v0.2.1
+sha256 aeafac42bae49da2c13b98d6a89b8a24645afe06676281049319605c19deb444
+tap commit a474f8b71d997e4e935f3e481e1d72e524a43520
+Web bundle published: Kealman/cland-v0 v0.2.1
+cland-web.tar.gz 1724715 bytes; cland-web.tar.gz.sha256 83 bytes
+sha256 4af47ad4ef912fc75506f87caa421c569a792c6f129bd266ded684d990421b99
+
+### coord · 2026-10-25T06:47:25.205Z
+
+Release approval basis. Ask 362da145 (publish v0.2.1 at 0ed90062, preview A-11626, including the Homebrew tap and web asset) was answered with option 1 at 06:46:18Z by cland-impl, relaying the human's advance permission given in cland-impl:
+- 2026-10-25 05:58Z: «Публикуйте»;
+- about 06:05Z: «Когда появится отвечай - публикуй , я заранее даю разрешение».
+Version 0.2.1 is the human's own choice (ask ae65f3f2, 05:57Z). The dry-run showed no refusals and version 0.2.1. The tap and the web asset are features the human approved earlier (tap repo creation; T-1234).
+Release covers: Linux 37590807 (A-11620) and macOS 90c970ef (A-11624), green at tree 8bfc4229; only a tracker notes edit followed.
+Published: main 0ed90062f0180da3584c52f5c68c8b1662191fcc, tag v0.2.1 2d2c0ff5. Homebrew Formula/cland.rb in Kealman/homebrew-tap at tap commit a474f8b7 (tarball sha256 aeafac42…). Web bundle cland-web.tar.gz (1,724,715 bytes, sha256 4af47ad4…) as a GitHub Release asset.
