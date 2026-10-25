@@ -202,3 +202,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/publish-component.test.ts`](../../../hub/test/publish-component.test.ts) | [Notes](hub-test-publish-component.test.ts.md) |
 | [`hub/test/publish.test.ts`](../../../hub/test/publish.test.ts) | [Notes](hub-test-publish.test.ts.md) |
 | [`hub/test/stage-closure-component.test.ts`](../../../hub/test/stage-closure-component.test.ts) | [Notes](hub-test-stage-closure-component.test.ts.md) |
+| [`hub/test/executor-safety-component.test.ts`](../../../hub/test/executor-safety-component.test.ts) | [Notes](hub-test-executor-safety-component.test.ts.md) |
+| [`hub/test/executor-safety-load.test.ts`](../../../hub/test/executor-safety-load.test.ts) | [Notes](hub-test-executor-safety-load.test.ts.md) |

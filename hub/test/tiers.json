@@ -3,7 +3,11 @@
   "loadGuards": {
     "hub/src/adapters/requests.ts": ["hub/test/inbox-verifier-load.test.ts"],
     "hub/src/adapters/sessions.ts": ["hub/test/inbox-verifier-load.test.ts"],
-    "hub/src/hub/core.ts": ["hub/test/inbox-verifier-load.test.ts"]
+    "hub/src/hub/core.ts": ["hub/test/inbox-verifier-load.test.ts"],
+    "hub/test/executor-safety-case.ts": ["hub/test/executor-safety-load.test.ts"],
+    "hub/test/executor-safety-component.test.ts": ["hub/test/executor-safety-load.test.ts"],
+    "hub/test/remote-clock.ts": ["hub/test/executor-safety-load.test.ts"],
+    "hub/test/remote-fixture.ts": ["hub/test/executor-safety-load.test.ts"]
   },
   "tests": {
     "hub/src/adapters/opencode.test.ts": "T3",
@@ -138,6 +142,7 @@
     "hub/test/executor-run.test.ts": "T3",
     "hub/test/executor-safety-component.test.ts": "T2",
     "hub/test/executor-safety-config.test.ts": "T1",
+    "hub/test/executor-safety-load.test.ts": "T4",
     "hub/test/executor-safety.test.ts": "T3",
     "hub/test/executor-spend.test.ts": "T1",
     "hub/test/executor.test.ts": "T3",
