@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:40:57.049Z
-updated: 2026-10-25T14:12:34.554Z
+updated: 2026-10-25T14:13:56.821Z
 ---
 
 ## Goal
@@ -26,3 +26,15 @@ Telegram and Discord become remote-control channels for cland: a gateway edge in
 - QA: every demo on fake platform servers in the suite (a fake Bot API, a fake Discord gateway and REST); the human joins one live run on the sandbox bots, Telegram and Discord from the phone, only before the release; real tokens never go to droplets (the human, Q-1297).
 - Deferred to 0.3.x: Telegram groups and forum topics, Discord Components V2, a thread per item, following a thread started from the chat, several humans, webhooks, transcription cost accounting, Web Push.
 - The build starts after 0.2.2 ships, on the human's word.
+
+## Comments
+
+### human · 2026-10-25T14:13:56.821Z
+
+## Handover to the Coordinator (2026-10-25, commit 1475cdaf on dev)
+
+The planning of v0.3 is complete: `docs/spec/v0.3.md` (status complete), the glossary entries (Gateway, Remote, Pairing, Remote card, Transcript, Gap line, Outbox; General, Setup and Card amended), and the eight epics E-1307 to E-1314 under this item with their blocking edges and self-contained bodies (goal, contents, order, definition of done, constraints, references). The map M-1286 is closed with eleven decisions; every research and prototype branch is on origin only and is never merged (research/telegram-remote 2a81ecc9, research/discord-remote 1f59ae25, research/speech-to-text ac744986, research/messenger-bridges ffee79d8, prototype/telegram-remote 33bf2b2e with hub/src/remote/README.md and hub/src/remote/discord/README.md as maps).
+
+What the human decided for the build (Q-1297): the Coordinator leads, decides the crew by the project's rules and approves every epic plan itself; QA runs every demo on fake platform servers in the suite (a fake Bot API, a fake Discord gateway and REST, a fake speech provider); the human joins one live run on the sandbox bots, Telegram and Discord from the phone, only before the release (E-1314); real tokens never go to droplets. The build starts after 0.2.2 ships, on the human's word.
+
+Practicalities: the human's bot tokens and ElevenLabs key live in `~/.config/cland/sandbox-remote.secrets.toml` (mode 600; never print, copy into a repository or delete; the live run reads it by path). The prototype sandbox `/Users/evgeniyivanov/Projects/cland/sandbox-remote` is stopped (hub and stand-in Coordinator); it can be restarted by its HOW-TO-TRY.md for reference. Two throwaway folders from the Discord prototype, `/Users/evgeniyivanov/Projects/cland/sandbox-discord-fake` and `sandbox-remote-two`, hold only fake tokens and id-only logs and may be deleted. The repository's `.git/gc.log` (and the research worktrees' copies) block automatic maintenance: a `git prune` when convenient.
