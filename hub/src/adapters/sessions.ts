@@ -1419,6 +1419,8 @@ export class Sessions {
     const settled = resumed(() => {
       // Close stops the adapters before draining admitted lifecycle operations.
       // A late native result must not restart supervision or publish into shutdown.
+      // A relaunch reservation this fence interrupts is not leaked: releaseInterruptedLaunches
+      // rolls it back at the next hub start, as it does for the publish fence above.
       if (this.#closed) throw new Error('the hub is closing');
       if (!r.found) {
         const current = row();

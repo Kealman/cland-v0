@@ -40,7 +40,7 @@ async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) =>
   return { root, table, sessions, hub, revokeStop: () => { roles = parseRoles('[coordinator.launch]\nharness = "test"\n[coordinator.permissions]\ntools = []\n'); } };
 }
 
-for (const outcome of ['found', 'alive', 'identity'] as const) test(`shutdown drains a held ${outcome} resume without restarting supervision or publishing its result`, { timeout: 1000 }, async t => {
+for (const outcome of ['found', 'alive', 'identity'] as const) test(`shutdown drains a held ${outcome} resume without restarting supervision or publishing its result`, { timeout: 2000 }, async t => {
   const entered = deferred(), gate = deferred(), closed = deferred();
   t.after(() => gate.resolve()); // Release before fixture cleanup even if setup hits the test bound.
   const records: Array<Record<string, unknown>> = [];

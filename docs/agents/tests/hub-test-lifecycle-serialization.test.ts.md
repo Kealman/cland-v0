@@ -12,6 +12,6 @@ publishing its result` matrix holds native resume completion (`found`, `alive`)
 or the later process-identity probe (`identity`). Observe adapter closure before
 releasing each result, then await both the resume rejection and session drain.
 Keep the final unchanged process row, zero watch calls, absent resume
-publications and released lifecycle assertions. The one-second test bound
-covers setup and completion; unconditional gate release drains failures before
-fixture storage closes. These T1 cases use only a fake adapter and clock.
+publications and released lifecycle assertions. The 2000 ms test bound matches the
+T1 peers and covers setup and completion; unconditional gate release drains
+failures before fixture storage closes. These T1 cases use only a fake adapter and clock.
