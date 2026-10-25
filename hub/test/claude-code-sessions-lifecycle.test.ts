@@ -1,17 +1,19 @@
 // T3: real delayed hook-process ordering, early bridge confirmation, PID resume identity, TERM escalation and held-hook reaping.
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { afterCleanup, beforeDirectories, ownProcess } from './process-cleanup.ts';
+import { afterCleanup, beforeDirectories, ownProcess, recordedProcess } from './process-cleanup.ts';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, connectUi, eventually, fakeClaude, inProcessSpoke, killDaemon, pidAlive, nativeProjectHub as projectHub, projectHub as scriptedProjectHub, tempProject, type FrameClient } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { NO_PS } from './native-process.ts';
+import { processIdentities, processIdentityAsync } from '../src/process-identity.ts';
+import { systemProcessProbe } from './system-process-probe.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
 type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
@@ -39,6 +41,117 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
   eventually(`${name} present as ${state}`, async () => ((await status(ui)).sessions.find((s) => s.name === name)?.state === state ? true : undefined));
 
 const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+
+for (const errno of ['ENOENT', 'ESRCH']) for (const outcome of ['absent', 'present', 'surviving branch']) {
+  test(`Linux ${errno} after ownership snapshot ${outcome === 'absent' ? 'settles a confirmed-gone descendant branch' : `refuses ${outcome}`}`, async () => {
+    await systemProcessProbe(`
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101), row(420102, 420101, 420102), row(420103, 420100, 420103)];
+let reads = 0;
+onStat = async pid => {
+ if (pid === 420101 && ++reads === 2) {
+  ${outcome === 'absent' ? 'rows = rows.filter(r => r.pid !== 420101 && r.pid !== 420102);' : outcome === 'surviving branch' ? 'rows = rows.filter(r => r.pid !== 420101);' : ''}
+  return ${JSON.stringify(errno)};
+ }
+};
+const events = [];
+const result = await endProcess({ pid: 420100, pidStarted: start }, event => events.push(event), 0);
+assert.equal(reads >= 2, true, 'failure occurs at the after-snapshot native read');
+assert.equal(result, ${outcome === 'absent'});
+${outcome === 'absent' ? `assert.deepEqual(rows, [], 'the original and unchanged managed child still terminate');
+assert.ok(liveness.includes(420101) && liveness.includes(420102), 'both stale branch PIDs have native absence receipts');
+assert.ok(signals.every(s => s.pid !== 420101 && s.pid !== 420102), 'exited branch receives no signal');
+assert.ok(signals.some(s => s.pid === 420103 && s.signal === 'SIGKILL'));` : `assert.deepEqual(signals, [], 'a present or unverified surviving branch receives no signal');
+assert.ok(events.some(event => String(event.reason).includes(${JSON.stringify(`stat read: ${errno}`)}) && String(event.reason).includes('process still present')), 'refusal retains the native read and liveness outcomes');`}
+`, 'linux');
+  });
+}
+
+for (const errno of ['ENOENT', 'ESRCH']) for (const livenessError of ['EPERM', 'EIO']) {
+  test(`Linux ${errno} after ownership snapshot refuses ${livenessError} from kill(0)`, async () => {
+    await systemProcessProbe(`
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
+let reads = 0;
+onStat = async pid => {
+ if (pid === 420101 && ++reads === 2) { rows = rows.filter(r => r.pid !== 420101); return ${JSON.stringify(errno)}; }
+};
+const kill = process.kill;
+process.kill = (pid, signal) => {
+ if (pid === 420101 && signal === 0) throw Object.assign(new Error('liveness unavailable'), { code: ${JSON.stringify(livenessError)} });
+ return kill(pid, signal);
+};
+const events = [];
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, event => events.push(event), 0), false);
+assert.deepEqual(signals, [], 'only native ESRCH, not the stat error, can settle a descendant');
+assert.ok(events.some(event => String(event.reason).includes(${JSON.stringify(`kill(0) pid 420101: ${livenessError}`)})));
+`, 'linux');
+  });
+}
+
+async function nativeBirthDiagnostic(root: string, pid: number) {
+  const errors: string[] = [];
+  const sync = processIdentities([pid], (_pid, error) => errors.push(error)).get(pid) ?? null;
+  const async = await processIdentityAsync(pid, process.env, (_pid, error) => errors.push(error));
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'), { readOnly: true });
+  try {
+    return { sync, async, errors, captured: recordedProcess(pid) ?? null,
+      saved: db.prepare('select pid, pid_started, pid_identity from harness_processes where pid = ?').get(pid) ?? null };
+  } finally { db.close(); }
+}
+
+test('Linux native read diagnostics identify boot-id and stat failures in both readers', async t => {
+  const root = await tempProject(t);
+  const source = `
+import assert from 'node:assert/strict';
+import fs from 'node:fs'; import promises from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+Object.defineProperty(process, 'platform', { value: 'linux' });
+const sync = fs.readFileSync, async = promises.readFile;
+let bootFails = true;
+const read = path => {
+ if (path === '/proc/sys/kernel/random/boot_id') {
+  if (bootFails) throw Object.assign(new Error('denied'), { code: 'EACCES' });
+  return '11111111-2222-3333-4444-555555555555';
+ }
+ if (path === '/proc/123/stat') throw Object.assign(new Error('gone'), { code: 'ENOENT' });
+};
+fs.readFileSync = (path, ...args) => read(path) ?? sync(path, ...args);
+promises.readFile = async (path, ...args) => read(path) ?? async(path, ...args);
+syncBuiltinESMExports();
+const { processIdentities, processIdentitiesAsync } = await import(${JSON.stringify(new URL('../src/process-identity.ts', import.meta.url).href)});
+for (const boot of [true, false]) {
+ bootFails = boot;
+ const failures = [];
+ const report = (pid, error) => failures.push({ pid, error });
+ assert.equal(processIdentities([123], report).size, 0);
+ assert.equal((await processIdentitiesAsync([123], {}, 3000, report)).size, 0);
+ const error = boot ? 'Linux boot-id read: EACCES' : 'Linux /proc/123/stat read: ENOENT';
+ assert.deepEqual(failures, [{ pid: 123, error }, { pid: 123, error }]);
+}
+`;
+  await new Promise<void>((resolve, reject) => {
+    execFile(process.execPath, ['--input-type=module', '-e', source], { cwd: root, env: fixtureEnvironment(root, process.env), timeout: 5000 }, (error, _stdout, stderr) => error ? reject(new Error(stderr || String(error))) : resolve());
+  });
+});
+
+test('Linux background Claude publishes a verifiable native birth and stops through the recorded PID', { skip: process.platform !== 'linux' }, async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { stopCrash: true, ignoreTerm: true, stopGraceMs: 500 });
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  const { pid } = await withDiscoveredPid(ui, launched);
+  const proof = await nativeBirthDiagnostic(root, pid);
+  const detail = JSON.stringify(proof);
+  assert.match(proof.sync ?? '', /^linux:[a-f0-9-]{36}:\d+$/, detail);
+  assert.equal(proof.async, proof.sync, detail);
+  assert.equal((proof.saved as { pid_identity?: string } | null)?.pid_identity, proof.sync, detail);
+  assert.equal(proof.captured?.identity, proof.sync, detail);
+  const stopped = await ui.request({ type: 'session.stop', session: 'coord' }, 15_000);
+  assert.equal(stopped.ok, true, stopped.error);
+  await eventually('verified Linux Claude PID is gone', () => !pidAlive(pid) || undefined);
+  assert.equal(pidAlive(pid), false);
+});
 
 const sendGeneral = async (ui: FrameClient, text: string): Promise<string> => {
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text });

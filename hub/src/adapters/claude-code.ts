@@ -1,3 +1,4 @@
+import { processIdentityAsync } from '../process-identity.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
@@ -107,6 +108,7 @@ export type ClaudeCodeOptions = {
   clock?: Clock;
   /** Process identity fact; production reads the native process start time. */
   processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
+  processIdentity?: (pid: number) => Promise<string | null>;
   /** Native process liveness boundary; tests supply synthetic process facts. */
   pidAlive?: (pid: number) => boolean;
   /** The `claude` executable: `CLAND_CLAUDE_BIN`, PATH, then the installer folders. */
@@ -229,6 +231,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #env: NodeJS.ProcessEnv;
   readonly #processEnv: NodeJS.ProcessEnv;
   readonly #processStarted: NonNullable<ClaudeCodeOptions['processStarted']>;
+  readonly #processIdentity: (pid: number) => Promise<string | null>;
   readonly #pidAlive: (pid: number) => boolean;
   readonly #reexecGraceMs: number;
   readonly #missingSince = new Map<string, number>();
@@ -250,6 +253,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#host = host;
     this.#clock = options.clock ?? realClock;
     this.#processEnv = options.env ?? process.env;
+    this.#processIdentity = options.processIdentity ?? (options.processStarted ? async () => null : pid => processIdentityAsync(pid, this.#processEnv, (pid, error) => {
+      if (!this.#closed) this.#host.log({ event: 'native-identity-unavailable', harness: this.harness, pid, error });
+    }));
     this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#processEnv));
     this.#pidAlive = options.pidAlive ?? pidAlive;
     this.#reexecGraceMs = options.reexecGraceMs ?? 1000;
@@ -489,6 +495,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
           launched.pid = found.pid;
           launched.harnessSessionId = found.sessionId ?? p.harnessSessionId;
           launched.pidStarted = yield* wait(this.#processStarted(found.pid, resumed));
+          launched.pidIdentity = yield* wait(this.#processIdentity(found.pid));
         }
         if (launched.pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
         files.commit();
@@ -689,6 +696,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             && ((p.pid === null && p.harnessSessionId === null) || entry.sessionId === (p.harnessSessionId ?? p.sessionId))) {
             const nativeId = p.harnessSessionId, previousPid = p.pid;
             const started = await this.#processStarted(entry.pid);
+            const identity = await this.#processIdentity(entry.pid);
             // A stop, relaunch or shutdown while probing cannot acquire the old launch's PID.
             if (this.#closed || this.#watched.get(p.sessionId) !== p || this.#stopping.has(p.sessionId)) continue;
             if (p.harnessSessionId !== nativeId || p.pid !== previousPid) {
@@ -700,9 +708,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             if (!started || !this.#pidAlive(entry.pid)) continue;
             p.pid = entry.pid;
             p.pidStarted = started;
+            p.pidIdentity = identity;
             p.harnessSessionId = entry.sessionId ?? p.harnessSessionId;
             this.#clearMissing(p.sessionId);
-            this.#host.recordPid(p.sessionId, entry.pid, started, entry.sessionId);
+            this.#host.recordPid(p.sessionId, entry.pid, started, entry.sessionId, identity);
           }
           this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
         }
@@ -744,7 +753,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         await cliStop();
         if (!stopped) throw new Error(`could not stop "${p.name}": \`claude stop\` failed and its pid is unknown; it is still watched`);
       } else {
-        if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, cliStop, { env: this.#processEnv, resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+        let reason = '';
+        if (!await endProcess(p, (entry) => {
+          if (typeof entry.reason === 'string') reason = entry.reason;
+          this.#host.log({ ...entry, harness: this.harness, session: p.name });
+        }, this.#stopGraceMs, cliStop, { env: this.#processEnv, resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched${reason ? ` (${reason})` : ''}`);
       }
       ended = true;
     } finally {
@@ -797,8 +810,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const pid = entry?.pid ?? p.pid;
       // the same session: listed under its own session id (or background id), with a live process
       const identity = entry && pid !== null && pid !== undefined && p.pid === pid && p.pidStarted ? yield* wait(this.#processStarted(pid, resumed)) : null;
-      if (entry && pid !== null && pid !== undefined && pidAlive(pid) && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted)) {
-        const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
+      const birth = p.pidIdentity && pid !== null && pid !== undefined ? yield* wait(this.#processIdentity(pid)) : null;
+      if (entry && pid !== null && pid !== undefined && pidAlive(pid) && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted) && (!p.pidIdentity || p.pid !== pid || birth === p.pidIdentity)) {
+        const process: HarnessProcess = { ...p, pid, pidIdentity: p.pid === pid ? p.pidIdentity ?? null : birth, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
         return { found: true, process, state: stateOfAgent(entry) };
       }
       this.#unwatch(p.sessionId);

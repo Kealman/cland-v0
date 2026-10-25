@@ -55,8 +55,8 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   assert.equal(hub.core.store.sessionNames().includes('session-1'), false);
 
   const table = new ProcessTable(join(root, '.cland', 'hub.db'), clock, database.open);
-  const probes = { started: async (_pid: number): Promise<string | null> => 'current-start', rows: async () => [{ pid: process.pid, parent: 0, group: 0, started: 'current-start', state: 'S', command: 'fixture' }] };
-  const sessions = new Sessions({ processStarted: pid => probes.started(pid), processRows: async () => probes.rows(), root, core: hub.core, table, ...(log ? { log } : {}) });
+  const probes = { started: async (_pid: number): Promise<string | null> => 'current-start', rows: async (): Promise<import('../src/system-processes.ts').SystemProcess[]> => [{ pid: process.pid, parent: 0, group: 0, started: 'current-start', identity: 'fixture:current-start', state: 'S', command: 'fixture' }] };
+  const sessions = new Sessions({ processIdentity: async () => 'fixture:current-start', processStarted: pid => probes.started(pid), processRows: async () => probes.rows(), root, core: hub.core, table, ...(log ? { log } : {}) });
   let sessionsClosed = false;
   const closeSessions = async () => { if (sessionsClosed) return; sessionsClosed = true; await sessions.close(); table.close(); };
   onCleanup(t, closeSessions);
@@ -171,7 +171,7 @@ function deferSpawn(t: TestContext, sessions: Sessions, options: { refuseStop?: 
   const adapter = sessions.adapter('test');
   const stopped: string[] = [];
   sessions.register({ ...adapter,
-    spawn: async (request, resumed) => { token = request.launchToken; entered(); await gate; return { ...await adapter.spawn(request, resumed), ...options.identity }; },
+    spawn: async (request, resumed) => { token = request.launchToken; entered(); await gate; return { ...await adapter.spawn(request, resumed), ...options.identity, ...(options.identity ? { pidIdentity: 'fixture:' + options.identity.pidStarted } : {}) }; },
     stop: async process => {
       stopped.push(process.sessionId);
       stopEntered();
@@ -1192,7 +1192,7 @@ async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendi
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
   const table = new ProcessTable(db, f.clock, f.database.open);
-  const sessions = new Sessions({ processStarted: pid => f.probes.started(pid), processRows: async () => f.probes.rows(), root: f.root, core: hub.core, table });
+  const sessions = new Sessions({ processIdentity: async () => 'fixture:current-start', processStarted: pid => f.probes.started(pid), processRows: async () => f.probes.rows(), root: f.root, core: hub.core, table });
   onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
   const stopped: string[] = [];
   const watched: string[] = [];
@@ -1364,5 +1364,65 @@ for (const failure of ['role transaction checkpoint', 'process receipt rollback 
     assert.equal((await r.ui.request({ type: 'role.set', session: 'target', role: 'implementer' })).ok, true);
     await r.sessions.resumeAll();
     assert.equal(r.hub.core.store.roleOf('target'), 'implementer');
+  });
+}
+
+for (const observation of ['matching legacy', 'mismatched legacy', 'unreadable legacy', 'precise same-second reuse'] as const) {
+  const title = observation === 'matching legacy' ? 'matching legacy ownership upgrades once before its first signal' : `${observation} ownership refuses signalling without an upgrade`;
+  test(title, async t => {
+    const f = await pendingAlias(t);
+    const precise = observation === 'precise same-second reuse';
+    f.table.put({ name: 'legacy-stop', harness: 'test', role: null, model: null, cwd: f.root, pid: process.pid,
+      harnessId: 'fixture', sessionId: 'legacy-stop-id', harnessSessionId: 'fixture-conversation',
+      startedAt: f.clock.now().toISOString(), status: 'running', pidStarted: observation === 'mismatched legacy' ? 'previous-start' : 'current-start',
+      pidIdentity: precise ? 'fixture:old-birth' : null });
+    const rows = f.probes.rows;
+    if (observation === 'unreadable legacy') f.probes.rows = async () => (await rows()).map(row => ({ ...row, identity: null }));
+    let signals = 0;
+    const adapter = f.sessions.adapter('test');
+    f.sessions.register({ ...adapter, stop: async process => {
+      const live = (await f.probes.rows()).find(row => row.pid === process.pid);
+      if (!live?.identity || process.pidIdentity !== live.identity) throw new Error('process identity cannot be verified');
+      assert.equal(f.table.get('legacy-stop')?.pidIdentity, live.identity, 'upgrade commits before adapter signalling');
+      signals++;
+    } });
+    const stopped = await f.ui.request({ type: 'session.stop', session: 'legacy-stop' });
+    const matching = observation === 'matching legacy';
+    assert.equal(stopped.ok, matching, stopped.error);
+    assert.equal(signals, matching ? 1 : 0);
+    assert.equal(f.table.get('legacy-stop')?.pidIdentity ?? null, precise ? 'fixture:old-birth' : matching ? 'fixture:current-start' : null);
+    if (matching) {
+      f.probes.rows = async () => (await rows()).map(row => ({ ...row, identity: 'fixture:replacement-birth' }));
+      const reused = await f.ui.request({ type: 'session.stop', session: 'legacy-stop' });
+      assert.equal(reused.ok, false, 'the upgraded row never takes the legacy window again');
+      assert.equal(signals, 1);
+      assert.equal(f.table.get('legacy-stop')?.pidIdentity, 'fixture:current-start');
+    }
+  });
+}
+
+for (const legacy of [false, true]) for (const relaunch of [false, true]) {
+  test(`${legacy ? 'legacy' : 'precise'} equal-PID ${relaunch ? 'relaunch publishes fresh' : 'reattachment retains original'} birth ownership`, async t => {
+    const f = await pendingAlias(t);
+    const adapter = f.sessions.adapter('test');
+    const stops: Array<{ pidIdentity?: string | null }> = [];
+    if (legacy) {
+      const rows = f.probes.rows;
+      f.probes.rows = async () => (await rows()).map(row => ({ ...row, identity: null }));
+    }
+    f.sessions.register({ ...adapter,
+      spawn: async (...args) => ({ ...await adapter.spawn(...args), pid: process.pid, harnessSessionId: 'same-conversation', pidStarted: 'current-start', pidIdentity: legacy ? null : 'original-birth' }),
+      resume: async process => ({ found: true, process: { ...process, pid: process.pid, pidStarted: 'current-start', pidIdentity: 'new-birth' }, state: 'idle' }),
+      stop: async process => { stops.push({ pidIdentity: process.pidIdentity ?? null }); },
+    });
+    const launched = await f.launch('same-pid', null);
+    assert.equal(launched.ok, true, launched.error);
+    if (relaunch) assert.equal((await f.ui.request({ type: 'session.stop', session: 'same-pid' })).ok, true);
+    const resumed = await f.ui.request({ type: 'session.resume', session: 'same-pid', ...(relaunch ? { relaunch: true } : {}) });
+    assert.equal(resumed.ok, true, resumed.error);
+    const expected = relaunch ? 'new-birth' : legacy ? null : 'original-birth';
+    assert.equal(f.table.get('same-pid')?.pidIdentity ?? null, expected, 'fresh relaunch proof is persisted even when the PID is equal');
+    assert.equal((await f.ui.request({ type: 'session.stop', session: 'same-pid' })).ok, true);
+    assert.equal(stops.at(-1)?.pidIdentity ?? null, expected, 'subsequent stop receives the published proof');
   });
 }

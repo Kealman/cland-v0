@@ -9673,6 +9673,13 @@
       "added": "2026-10-25",
       "expires": "2026-11-01",
       "reason": "T-1036 C2 requires twenty independently owned sequential headless Neovim explorer cases, preserving settled-card request isolation, fold/rank cursor identity, resize and every original assertion. Linux x64 c-8 lon1 mode-free run 7ee71778 at 9511273e (A-11835), workers 2, Neovim 0.12.5, passed all twenty children and the parent in 12.329751445 s; the enforced generic 5 s new-identity gate alone failed before Web. Per Coordinator instruction, 19 s rounds 1.5x that measured passing sample upward for Linux timing variance. T4 has no tier budget; the case includes fixture setup and teardown, and no wait bound, assertion, repetition count or cleanup is relaxed. Owned by E-1282."
+    },
+    "hub/test/claude-code-sessions-lifecycle.test.ts::Linux background Claude publishes a verifiable native birth and stops through the recorded PID": {
+      "seconds": 5.2,
+      "owner": "E-1284",
+      "added": "2026-10-25",
+      "expires": "2026-11-01",
+      "reason": "T-543 compares native synchronous/asynchronous Linux birth, captured fixture proof and the durable process row for a real background Claude fixture, then exercises verified TERM/KILL fallback and observes PID absence. Linux x64 c-8 lon1 mode-free diagnostic run 478465af-b0c2-4f07-876d-186f2c370f4d at d642f902 (A-12083), workers 2, passed this case in 3.436593699 s and all eight lifecycle cases. Coordinator disposition 66e9cd8b approved 5.2 s, about 1.5x that passing sample, owned by E-1284 for seven days. Fixture setup, native process lifecycle, all assertions and cleanup remain unchanged; the earlier integrated failures remain unexplained and the separate rule 6 rerun is still required."
     }
   }
 }

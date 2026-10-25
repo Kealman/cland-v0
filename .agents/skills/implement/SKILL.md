@@ -42,6 +42,20 @@ native failure seam in `docs/agents/tests/hub-test-opencode-native.test.ts.md`.
 Keep default-store and selected-database logins separate; report the printed
 standalone login command without reading or copying the human's credentials.
 
+For PID ownership changes, keep legacy `pidStarted` fields alongside additive
+`pidIdentity`. Stop, rollback and cleanup require native birth proof: Linux
+boot-id/start ticks or macOS microsecond kinfo birth via the OS Perl syscall
+bridge. Legacy rows upgrade once after a coherent matching lstart/native
+observation, persisting proof before signalling; same-second reuse before that
+first observation retains the previous risk. Mismatch/unreadable proof never
+grants a signal or exit receipt; preserve live writer roots. A final native Linux
+Z/X or Darwin SZOMB receipt establishes exit without signalling; keep uncertain
+listed descendant branches until captured or refused. Parent PID reaping is a separate boundary. Use the
+parser/persistence, native listing and
+same-second signal seams in `docs/agents/tests/hub-test-process-identity.test.ts.md`
+and its linked T3 files. Inject processStarted, processIdentity and coherent
+processRows for synthetic-PID fixtures, including one-time migration checks.
+
 For adapter shutdown, preserve both synchronous and promise-returning `close`
 implementations. Drain transient native CLI callbacks before releasing storage;
 use the scripted close/drain regression and held real-query resource check in

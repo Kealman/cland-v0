@@ -377,8 +377,16 @@ test('restart reconciles a stop recorded before queued hold cleanup, preserving 
   await gate.arm();
   const writing = ui.request({ type: 'task.comment', item: item.id, text: 'paused native write' }).catch(() => null);
   await gate.entered();
-  const stopping = ui.request({ type: 'session.stop', session: 'rev' }).catch(() => null);
-  await eventually('hub crashed after stop row', async () => !pidAlive(first.discovery.pid) ? true : undefined);
+  let stopRefusal: string | undefined;
+  const stopping = ui.request({ type: 'session.stop', session: 'rev' }).then(reply => {
+    if (!reply.ok) stopRefusal = reply.error ?? 'session.stop refused without an error';
+    return reply;
+  }, () => null);
+  const stopped = await eventually('hub crashed after stop row', () => {
+    if (stopRefusal !== undefined) return { crashed: false, error: stopRefusal };
+    return !pidAlive(first.discovery.pid) ? { crashed: true } : undefined;
+  });
+  assert.equal(stopped.crashed, true, 'error' in stopped ? stopped.error : undefined);
   await Promise.all([writing, stopping]);
   ui.close();
   const second = await startDaemon(t, root, fake.env);

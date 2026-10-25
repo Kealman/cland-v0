@@ -200,6 +200,8 @@ This repository uses `node hub/test/run-suite.ts --tier T1` through `T4`.
 The runner narrows the admitted file selection to that tier, preserving all T1
 rules and coverage-selected T2 files.
 
+Native PID birth identity tests and the stop/cleanup compatibility seams are indexed in [process identity](tests/hub-test-process-identity.test.ts.md).
+
 ### Test levels (D53)
 
 Every test belongs to one of four runtime tiers, T1–T4. T0 is the static check before a run. D53 (docs/spec/v0.1.4.md) makes moving tests to the lowest adequate tier the project's top priority. The study is A-4143. `hub/test/tiers.json` declares runtime tiers; manifest lint, source guards and the resource tripwire check their boundaries. Reviewers apply the rules below where enforcement is still report-only.

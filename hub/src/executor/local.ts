@@ -1,3 +1,4 @@
+import { processIdentityAsync } from '../process-identity.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 // The local worker and its process ownership stay behind this backend.
 import { spawn } from 'node:child_process';
@@ -10,7 +11,7 @@ import { systemProcesses, endProcess } from '../system-processes.ts';
 import { compatibilityOccupied, compatibilityHolder } from '../suite-lock.ts';
 import type { Executor, Lease, Platform, Released, RunRef, RunStatus } from './executor.ts';
 
-export type LocalWorker = { pid: number | null; started: string | null; outcome: { code: number; cause: string } | null; cancelled?: boolean };
+export type LocalWorker = { pid: number | null; started: string | null; identity?: string | null; outcome: { code: number; cause: string } | null; cancelled?: boolean };
 type Resource = LocalWorker & { run: RunRef; platform?: Platform; attempted?: boolean };
 
 /** Machine-slot observations; scheduler fixtures supply facts without acquiring OS locks. */
@@ -38,7 +39,7 @@ export class LocalExecutor implements Executor {
   occupied(): Promise<boolean> { return this.#compatibility.occupied(); }
   /** Old jobs stored these facts directly. Their persisted identity remains authoritative. */
   restore(run: RunRef, worker: LocalWorker, previous?: Lease): Lease {
-    const lease: Lease = { kind: 'local', run: run.id, created: previous?.created ?? run.queued ?? new Date().toISOString(), deadline: previous?.deadline ?? new Date(Date.now() + 15000).toISOString(), resource: { ...(previous?.resource as Partial<Resource> | undefined), pid: worker.pid, started: worker.started, outcome: worker.outcome, ...(worker.cancelled ? { cancelled: true } : {}), run } };
+    const lease: Lease = { kind: 'local', run: run.id, created: previous?.created ?? run.queued ?? new Date().toISOString(), deadline: previous?.deadline ?? new Date(Date.now() + 15000).toISOString(), resource: { ...(previous?.resource as Partial<Resource> | undefined), pid: worker.pid, started: worker.started, ...(worker.identity !== undefined ? { identity: worker.identity } : {}), outcome: worker.outcome, ...(worker.cancelled ? { cancelled: true } : {}), run } };
     this.#leases.set(run.id, lease);
     if (worker.pid && !worker.outcome) this.#reserved = run.id;
     return lease;
@@ -90,8 +91,9 @@ export class LocalExecutor implements Executor {
       child.unref();
       resource.pid = child.pid ?? null;
       resource.started = resource.pid ? await processStartedAsync(resource.pid, undefined, undefined, undefined, this.#env) : null;
+      resource.identity = resource.pid ? await processIdentityAsync(resource.pid, this.#env) : null;
       this.#checkpoint(lease, resource);
-      if (!resource.pid || !resource.started) throw new Error('cannot establish suite worker process identity');
+      if (!resource.pid || !resource.started || !resource.identity) throw new Error('cannot establish suite worker process identity');
       this.#admit(run.id);
       await writeFile(run.gate, 'ready');
     } finally { await fd.close(); }
@@ -121,15 +123,33 @@ export class LocalExecutor implements Executor {
       return { text: bytes.subarray(0, bytesRead).toString('utf8'), next: offset + bytesRead };
     } finally { await fd.close(); }
   }
+  async #upgradeLegacyWorker(lease: Lease): Promise<void> {
+    const resource = lease.resource as Resource;
+    if (!resource.pid || !resource.started || resource.identity || !pidAlive(resource.pid)) return;
+    let row: Awaited<ReturnType<typeof systemProcesses>>[number] | undefined;
+    try { row = (await systemProcesses(undefined, undefined, [resource.pid], false, this.#env)).find(row => row.pid === resource.pid); }
+    catch { return; } // unavailable proof retains legacy liveness without authority
+    if (row?.identity && row.started === resource.started) {
+      const previous = resource.identity;
+      resource.identity = row.identity;
+      try { this.#checkpoint(lease, resource); }
+      catch (error) {
+        if (previous === undefined) delete resource.identity; else resource.identity = previous;
+        throw error; // no signal may precede the durable upgrade receipt
+      }
+    }
+  }
   async cancel(lease: Lease, _signal: string): Promise<void> {
     const resource = lease.resource as Resource;
+    await this.#upgradeLegacyWorker(lease);
     resource.cancelled = true;
     if (!resource.pid || !resource.started || !pidAlive(resource.pid)) return;
     // Capture the complete ancestry before the worker forwards its interrupt.
     // Group signalling first loses detached fake harnesses as their parents exit.
-    if (!await endProcess({ pid: resource.pid, pidStarted: resource.started }, () => {}, 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite cancellation could not verify the worker tree');
+    if (!await endProcess({ pid: resource.pid, pidStarted: resource.started, pidIdentity: resource.identity ?? null }, () => {}, 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite cancellation could not verify the worker tree');
   }
   async release(lease: Lease): Promise<Released> {
+    await this.#upgradeLegacyWorker(lease);
     const resource = lease.resource as Resource;
     const { pid, started } = resource;
     const receipt = await readFile(resource.run.result, 'utf8').then(text => JSON.parse(text) as { code: number }, () => null);
@@ -139,12 +159,12 @@ export class LocalExecutor implements Executor {
     }
     if (pid && !started && pidAlive(pid)) throw new Error('suite cleanup waiting for a verified worker identity; process preserved');
     if (pid && started) {
-      if (!await endProcess({ pid, pidStarted: started }, () => {}, resource.cancelled ? 10000 : 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite cleanup could not verify the worker identity');
+      if (!await endProcess({ pid, pidStarted: started, pidIdentity: resource.identity ?? null }, () => {}, resource.cancelled ? 10000 : 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite cleanup could not verify the worker identity');
       const rows = await systemProcesses(undefined, undefined, undefined, undefined, this.#env);
       const leader = rows.find(row => row.pid === pid);
-      if (!leader || leader.started === started) {
+      if (!leader || leader.identity != null && leader.identity === resource.identity) {
         for (const row of rows.filter(row => row.group === pid && row.pid !== pid)) {
-          if (!await endProcess({ pid: row.pid, pidStarted: row.started }, () => {}, 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite crash cleanup could not verify a surviving process');
+          if (!await endProcess({ pid: row.pid, pidStarted: row.started, pidIdentity: row.identity ?? null }, () => {}, 500, undefined, { env: this.#env, allowReused: true })) throw new Error('suite crash cleanup could not verify a surviving process');
         }
       }
       // Interrupted workers leave their lease/root intact for this termination

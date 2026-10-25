@@ -78,7 +78,7 @@ export async function sweepFixtureOrphans(log: (entry: Record<string, unknown>) 
     }
     let authorized = false;
     const beforeSignal = async () => { authorized = (await ownedRoots(current, readers, deadline)).includes(orphan.root); };
-    if (await readers.end({ pid: current.pid, pidStarted: current.started }, () => {}, /cland\.ts\s+hub\s+serve/.test(current.command) ? 5000 : 1000, beforeSignal, { deadline, canSignal: rows => authorized && canSignal(rows) })) {
+    if (await readers.end({ pid: current.pid, pidStarted: current.started, pidIdentity: current.identity ?? null }, () => {}, /cland\.ts\s+hub\s+serve/.test(current.command) ? 5000 : 1000, beforeSignal, { deadline, canSignal: rows => authorized && canSignal(rows) })) {
       for (const path of receipts) {
         if ((await readFixtureReceipt(path))?.pid !== current.pid) continue;
         try { await unlink(path); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }

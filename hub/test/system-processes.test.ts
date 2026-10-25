@@ -1,14 +1,14 @@
 // Portable OS listings, then the termination API against a deterministic OS boundary.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { parseProcessTable } from '../src/process-table.ts';
 import { systemProcesses } from '../src/system-processes.ts';
 import { processStarted, processStartedAsync } from '../src/hub/lock.ts';
 import { captureProcess, ownProcess } from './process-cleanup.ts';
+import { systemProcessProbe as probe } from './system-process-probe.ts';
 
 test('recorded macOS and procps listings parse the same identities and complete commands', () => {
   const recorded = (dialect: string) => readFileSync(new URL(`./fixtures/process-listing/${dialect}.txt`, import.meta.url), 'utf8');
@@ -16,10 +16,115 @@ test('recorded macOS and procps listings parse the same identities and complete 
   const linux = parseProcessTable(recorded('procps'));
   assert.deepEqual(mac, linux);
   assert.equal(mac.length, 1, 'the recorded zombie is dropped');
+  assert.deepEqual(parseProcessTable(recorded('procps').replace(/ Z /g, ' X ')), linux, 'Linux dead X rows are dropped too');
   assert.deepEqual(mac[0], {
     pid: 420100, parent: 420001, group: 420100, started: 'Mon Oct 5 12:00:00 2026', state: 'Ss',
     command: `/bin/sh -c sleep 600 & wait fixture with "double" and 'single' quotes ${'x'.repeat(4096)} final-argument`,
   });
+});
+
+for (const [platform, state] of [['linux', 'Z'], ['linux', 'X'], ['darwin', 'Z']] as const) {
+  test(`${platform} native ${state} is absent for liveness and cleanup while a later live replacement still refuses`, async () => {
+    await probe(`
+const { processAlive } = await import(${JSON.stringify(new URL('../src/adapters/processes.ts', import.meta.url).href)});
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101), row(420102, 420100, 420102)];
+const processRow = { pid: 420100, pidStarted: start, pidIdentity: nativeBirth(rows[0]) };
+assert.equal(await processAlive(processRow), true);
+assert.equal(await processAlive({ ...processRow, pidIdentity: null }), true);
+onStat = async () => 'EACCES'; nativeFailure = 'missing';
+assert.equal(await processAlive(processRow), true, 'unreadable native state remains conservatively live');
+assert.equal(await processAlive({ ...processRow, pidIdentity: null }), true, 'legacy unreadable native state retains timestamp liveness');
+onStat = async () => {}; nativeFailure = false;
+rows[0].ticks = 90002; rows[0].micros = 200002;
+assert.equal(await processAlive(processRow), false, 'a live different birth never matches the recorded process');
+rows[0].ticks = 90001; rows[0].micros = 200001;
+rows[0].nativeState = ${JSON.stringify(state)};
+assert.doesNotThrow(() => process.kill(420100, 0), 'native dead state still has an unreaped PID');
+assert.equal(await processAlive(processRow), false);
+assert.equal(await processAlive({ ...processRow, pidIdentity: null }), false);
+rows[0].nativeState = 'R';
+let reads = 0;
+onStat = async pid => { if (pid === 420101 && ++reads === 2) rows[1].nativeState = ${JSON.stringify(state)}; };
+onNative = async () => { if (++reads === 2) rows[1].nativeState = ${JSON.stringify(state)}; };
+assert.equal(await endProcess(processRow, () => {}, 0), true);
+assert.ok(signals.every(s => s.pid !== 420101), 'native-confirmed dead descendant receives no signal');
+assert.ok(signals.some(s => s.pid === 420102 && s.signal === 'SIGKILL'), 'unchanged managed child remains a positive signal control');
+assert.deepEqual(rows.map(r => r.pid), [420101]);
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
+reads = 0; signals.length = 0;
+const replace = () => {
+ if (++reads === 1) rows[1].nativeState = ${JSON.stringify(state)};
+ else { rows[1].nativeState = 'R'; rows[1].ticks = 90002; rows[1].micros = 200002; }
+};
+onStat = async pid => { if (pid === 420101) replace(); };
+onNative = async () => replace();
+assert.equal(await endProcess(processRow, () => {}, 0), false, 'an earlier dead receipt cannot settle a PID that is live at the final probe');
+assert.deepEqual(signals, [], 'live replacement and its parent remain unsignalled');
+`, platform);
+  });
+}
+
+for (const [platform, state] of [['linux', 'Z'], ['linux', 'X'], ['darwin', 'Z']] as const) {
+  for (const exiting of ['child', 'leader']) test(`${platform} native ${state} ${exiting} exit refuses a surviving listed grandchild`, async () => {
+    await probe(`
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101), row(420102, 420101, 420102)];
+const target = ${exiting == 'child' ? 420101 : 420100};
+let reads = 0;
+const exit = () => {
+ rows.find(r => r.pid === target).nativeState = ${JSON.stringify(state)};
+ rows.find(r => r.pid === 420102).parent = 1; // ps already recorded the older C -> G edge.
+};
+onStat = async pid => { if (pid === target && ++reads === 2) exit(); };
+onNative = async () => { if (++reads === 2) exit(); };
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), false, 'exited ancestry cannot hide the surviving writer');
+assert.deepEqual(signals, [], 'the ambiguous branch and managed leader remain unsignalled');
+assert.deepEqual(rows.map(r => r.pid), [420100, 420101, 420102]);
+onStat = async () => {}; onNative = async () => {};
+rows = rows.filter(r => r.pid !== 420102);
+if (target === 420100) rows.find(r => r.pid === 420101).nativeState = ${JSON.stringify(state)};
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), true, 'a fully exited branch can settle on the next observation');
+assert.ok(signals.every(s => s.pid !== target), 'the exited ancestor never receives a signal');
+if (target === 420101) assert.ok(signals.some(s => s.pid === 420100 && s.signal === 'SIGTERM'), 'the unchanged managed leader still receives its signal');
+`, platform);
+  });
+}
+
+test('a native exit receipt for another PID cannot settle the requested live process', async () => {
+  await probe(`
+const { processAlive } = await import(${JSON.stringify(new URL('../src/adapters/processes.ts', import.meta.url).href)});
+rows = [row(420100, 1, 420100)];
+const recorded = { pid: 420100, pidStarted: start, pidIdentity: nativeBirth(rows[0]) };
+rows[0].nativeState = 'Z';
+nativePid = () => 420199; // A wrong-selector kinfo reply is unknown for 420100.
+assert.equal(await processAlive(recorded), true, 'another PID’s exit is no liveness receipt');
+assert.equal(await endProcess(recorded, () => {}, 0), false);
+assert.deepEqual(signals, []);
+`);
+});
+
+test('a native-exited frozen descendant receives no recovery CONT while its PID awaits reaping', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
+onSignal = (pid, signal) => {
+ if (signal === 'SIGTERM') return false;
+ if (pid === 420101 && signal === 'SIGSTOP') { rows.find(r => r.pid === pid).nativeState = 'Z'; return false; }
+};
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), true);
+assert.ok(signals.some(s => s.pid === 420100 && s.signal === 'SIGKILL'));
+assert.ok(signals.some(s => s.pid === 420101 && s.signal === 'SIGSTOP'));
+assert.ok(!signals.some(s => s.pid === 420101 && (s.signal === 'SIGCONT' || s.signal === 'SIGKILL')), 'native exit settles the captured stop even though kill(0) succeeds');
+assert.deepEqual(rows.map(r => r.pid), [420101]);
+`, 'linux');
+});
+
+test('native zombie observed immediately before a signal settles without sending it', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+onProbe = async () => { rows[0].nativeState = 'Z'; };
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), true);
+assert.deepEqual(signals, [], 'the final native read grants absence, never a signal');
+assert.deepEqual(rows.map(r => r.pid), [420100], 'PID reaping belongs to the parent, not termination');
+`);
 });
 
 test('real whole-table and selected listings match lock and cleanup start identities without truncation', async t => {
@@ -35,6 +140,9 @@ test('real whole-table and selected listings match lock and cleanup start identi
     for (const pid of [process.pid, child.pid]) {
       const row = rows.find(row => row.pid === pid);
       assert.ok(row, `listing contains pid ${pid}`);
+      assert.ok(row.identity, 'native process birth identity must be available');
+      assert.equal(row.identity, captureProcess(pid)?.identity);
+      if (process.platform === 'darwin') assert.equal(Number(row.identity.split(':')[1]), Date.parse(processStarted(pid, 'UTC')! + ' UTC') / 1000, 'native ABI seconds agree independently with ps UTC');
       assert.equal(row.started, processStarted(pid));
       assert.equal(row.started, await processStartedAsync(pid));
       assert.equal(processStarted(pid, 'UTC'), captureProcess(pid)?.started);
@@ -46,74 +154,187 @@ test('real whole-table and selected listings match lock and cleanup start identi
   }
 });
 
-const entry = fileURLToPath(new URL('../src/system-processes.ts', import.meta.url));
-async function probe(body: string) {
-  const source = `
-import assert from 'node:assert/strict';
-import cp from 'node:child_process';
-import { EventEmitter } from 'node:events';
-import { PassThrough } from 'node:stream';
-import { syncBuiltinESMExports } from 'node:module';
-const start = 'Mon Oct 5 12:00:00 2026';
-const row = (pid, parent, group, started = start) => ({ pid, parent, group, started, state: 'S', command: 'node fixture' });
-let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, onChildren = () => {}, cwdOf = () => '', tableOutput;
-const signals = []; const listings = [];
-cp.spawn = (bin, args) => {
-  assert.ok(bin === 'ps' || bin === 'lsof' || bin === 'pgrep');
-  const child = new EventEmitter();
-  child.stdout = new PassThrough(); child.stderr = new PassThrough();
-  queueMicrotask(async () => {
-    let output;
-    if (bin === 'pgrep') {
-      await onChildren();
-      const parents = args[args.indexOf('-P') + 1].split(',').map(Number);
-      output = rows.filter(p => parents.includes(p.parent)).map(p => p.pid).join('\\n');
-    } else if (bin === 'lsof') {
-      output = 'fcwd\\nn' + cwdOf(Number(args[args.indexOf('-p') + 1]));
-    } else if (args.includes('pid=,ppid=,pgid=,lstart=,stat=,command=')) {
-      const selection = args.includes('-p') ? ['-p', args[args.indexOf('-p') + 1]] : ['-e'];
-      assert.deepEqual(args, ['-ww', ...selection, '-o', 'pid=,ppid=,pgid=,lstart=,stat=,command=']);
-      listings.push([...args]);
-      if (await onTable() === false) { child.stdout.end(); child.stderr.end(); child.emit('close', 1); return; }
-      const selected = args.includes('-p') ? args[args.indexOf('-p') + 1].split(',').map(Number) : null;
-      output = tableOutput ?? [row(process.pid, 1, process.pid), ...rows].filter(p => !selected || selected.includes(p.pid)).map(p =>
-        p.pid + ' ' + p.parent + ' ' + p.group + ' ' + p.started + ' ' + p.state + ' ' + p.command).join('\\n');
-    } else {
-      const identities = [];
-      for (const pid of args[args.indexOf('-p') + 1].split(',').map(Number)) {
-        const verified = pid === process.pid ? undefined : await onProbe(pid);
-        const started = verified === false ? undefined : pid === process.pid ? start : rows.find(p => p.pid === pid)?.started;
-        if (started) identities.push(args.includes('pid=,lstart=') ? pid + ' ' + started : started);
-      }
-      output = identities.join('\\n');
-    }
-    child.stdout.end(output); child.stderr.end(); child.emit('close', 0);
-  });
-  return child;
-};
-syncBuiltinESMExports();
-process.kill = (pid, signal) => {
-  if (signal === 0) {
-    if (pid === process.pid || rows.some(p => p.pid === pid)) return true;
-    throw Object.assign(new Error('no process'), { code: 'ESRCH' });
-  }
-  signals.push({ pid, signal });
-  if (onSignal(pid, signal) === false) return true;
-  if (signal === 'SIGSTOP' || signal === 'SIGCONT') {
-    const target = rows.find(p => p.pid === pid);
-    if (target) target.state = signal === 'SIGSTOP' ? 'T' : 'S';
-    return true;
-  }
-  const killed = new Set(rows.filter(p => pid < 0 ? p.group === -pid : p.pid === pid).map(p => p.pid));
-  rows = rows.filter(p => !killed.has(p.pid)).map(p => ({ ...p, parent: killed.has(p.parent) ? 1 : p.parent }));
-  return true;
-};
-const { endProcess, systemProcesses } = await import(${JSON.stringify(entry)});
-${body}
-`;
-  // cland-allow-child-env: OS process identity/termination boundary uses a pure bystander or fully mocked process rows; no account or Git operation
-  await promisify(execFile)(process.execPath, ['--input-type=module', '-e', source], { timeout: 10_000 });
+test('held ownership probe never joins old ancestry to a recycled descendant birth', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543), row(420544, 420543, 420544), row(420545, 420543, 420545)];
+const entered = Promise.withResolvers(), release = Promise.withResolvers();
+let held = false;
+onNative = async () => { if (!held) { held = true; entered.resolve(); await release.promise; } };
+const ending = endProcess({ pid: 420543, pidStarted: start }, () => {}, 0);
+await bounded(entered.promise, 2000, 'native probe setup');
+const replacement = rows.find(r => r.pid === 420544);
+replacement.parent = 1; replacement.micros = 200002;
+release.resolve();
+assert.equal(await bounded(ending, 5000, 'stop completion'), true);
+assert.ok(rows.some(r => r.pid === 420544), 'replacement survives the entire stop');
+assert.ok(signals.every(s => s.pid !== 420544), 'stale ancestry never grants replacement ownership');
+assert.ok(signals.some(s => s.pid === 420545 && s.signal === 'SIGKILL'), 'unchanged managed descendant is still signalled');
+`);
+});
+
+test('termination ignores a descendant confirmed gone after the ownership snapshot', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543), row(420544, 420543, 420544), row(420545, 420543, 420545)];
+let probes = 0;
+onNative = async () => { if (++probes === 2) rows = rows.filter(r => r.pid !== 420544); };
+assert.equal(await endProcess({ pid: 420543, pidStarted: start }, () => {}, 0), true);
+assert.deepEqual(rows, [], 'the managed leader and unchanged descendant still exit');
+assert.ok(signals.every(s => s.pid !== 420544), 'the confirmed-gone child needs no signal');
+assert.ok(signals.some(s => s.pid === 420545 && s.signal === 'SIGKILL'), 'the stable descendant is still killed');
+`);
+});
+
+test('termination ignores a newly discovered child confirmed gone during grace', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543), row(420545, 420543, 420545)];
+let termed = false, probes = 0;
+onSignal = (_pid, signal) => { if (signal === 'SIGTERM') { termed = true; rows.push(row(420544, 420543, 420544)); return false; } };
+onNative = async () => { if (termed && ++probes === 2) rows = rows.filter(r => r.pid !== 420544); };
+assert.equal(await endProcess({ pid: 420543, pidStarted: start }, () => {}, 0), true);
+assert.deepEqual(rows, [], 'the managed leader and stable child still exit');
+assert.ok(signals.every(s => s.pid !== 420544), 'the confirmed-gone child never receives a signal');
+assert.ok(signals.some(s => s.pid === 420545 && s.signal === 'SIGKILL'));
+`);
+});
+
+test('termination still refuses a live descendant whose native birth is unreadable', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543), { ...row(420544, 420543, 420544), micros: null }];
+assert.equal(await endProcess({ pid: 420543, pidStarted: start }, () => {}, 0), false);
+assert.deepEqual(signals, [], 'absence must be positively observed, never inferred from missing birth');
+assert.equal(rows.length, 2);
+`);
+});
+
+test('a vanished unverified child cannot hide its surviving descendant from termination', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543), row(420544, 420543, 420544), row(420546, 420544, 420546)];
+let probes = 0;
+onNative = async () => { if (++probes === 2) rows = rows.filter(r => r.pid !== 420544); };
+assert.equal(await endProcess({ pid: 420543, pidStarted: start }, () => {}, 0), false, 'a surviving branch without coherent ancestry must keep termination incomplete');
+assert.deepEqual(signals, [], 'the unknown branch grants no ownership or false completion');
+assert.deepEqual(rows.map(r => r.pid), [420543, 420546]);
+`);
+});
+
+test('an unexpected liveness error never proves an unverified descendant absent', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543), { ...row(420544, 420543, 420544), micros: null }];
+const kill = process.kill;
+process.kill = (pid, signal) => { if (pid === 420544 && signal === 0) throw Object.assign(new Error('liveness unavailable'), { code: 'EIO' }); return kill(pid, signal); };
+assert.equal(await endProcess({ pid: 420543, pidStarted: start }, () => {}, 0), false);
+assert.deepEqual(signals, []);
+assert.equal(rows.length, 2);
+`);
+});
+
+test('missing or failed Perl returns unknown birth and refuses every destructive signal', async () => {
+  await probe(`
+for (const failure of ['missing', 'failed']) {
+  rows = [row(420543, 1, 420543)]; nativeFailure = failure;
+  assert.equal(await endProcess({ pid: 420543, pidStarted: start }), false);
+  assert.deepEqual(signals, []);
+  assert.equal(rows.length, 1);
 }
+`);
+});
+
+test('persistent recovery checkpoint failures never authorize unsaved child proof and recovery later completes', async () => {
+  await probe(`
+const fs = await import('node:fs/promises');
+const { join } = await import('node:path');
+const { createHubBase } = await import(${JSON.stringify(fileURLToPath(new URL('../src/hub/server.ts', import.meta.url)))});
+const { Sessions } = await import(${JSON.stringify(fileURLToPath(new URL('../src/adapters/sessions.ts', import.meta.url)))});
+const { ProcessTable } = await import(${JSON.stringify(fileURLToPath(new URL('../src/adapters/processes.ts', import.meta.url)))});
+const { FakeClock } = await import(${JSON.stringify(fileURLToPath(new URL('./fake-clock.ts', import.meta.url)))});
+const { fakeHarness } = await import(${JSON.stringify(fileURLToPath(new URL('./fakes/harness.ts', import.meta.url)))});
+const { sqliteProbe } = await import(${JSON.stringify(fileURLToPath(new URL('./sqlite-probe.ts', import.meta.url)))});
+const root = process.cwd(), ownedRoot = join(root, 'owned-child');
+await fs.mkdir(join(root, '.cland')); await fs.mkdir(ownedRoot);
+const payload = join(ownedRoot, 'writer-state'); await fs.writeFile(payload, 'owned');
+rows = [row(420546, process.pid, 420546)];
+const clock = new FakeClock(), database = sqliteProbe(), hooks = [];
+const base = createHubBase({ clock, secret: 'test-secret' });
+const table = new ProcessTable(join(root, '.cland', 'hub.db'), clock, database.open);
+const child = { name: 'recovery-child', harness: 'codex', role: null, model: null, cwd: ownedRoot,
+  pid: 420546, pidStarted: start, harnessId: null, sessionId: 'recovery-child-id', harnessSessionId: null,
+  startedAt: '2026-10-05T12:00:00Z', status: 'stopped' };
+table.pendingStop({ process: child, files: { undo: [{ kind: 'directory', path: ownedRoot }, { kind: 'remove', path: payload }],
+  children: [{ pid: 420546, pidStarted: start, graceMs: 0 }] }, error: 'legacy failed launch',
+  stages: { stopped: false, rowRemoved: false, roleRolledBack: false } });
+const events = [];
+const sessions = new Sessions({ root, core: base.core, table, recoveryClock: clock, log: e => events.push(e) });
+sessions.register(fakeHarness('codex', { clock })); base.dispatcher.useSessions(sessions);
+let fail = true, attempts = 0;
+database.before({ after: fn => hooks.push(fn) }, (sql, method) => {
+  if (method === 'run' && sql.startsWith('insert or replace into harness_pending_stops')) {
+    attempts++; if (fail) throw new Error('pending checkpoint deliberately failed');
+  }
+});
+const durableSignals = [];
+onSignal = () => {
+  const reader = new ProcessTable(join(root, '.cland', 'hub.db'));
+  try { durableSignals.push(reader.pendingStops()[0]?.files?.children[0]?.pidIdentity === nativeBirth(rows[0])); }
+  finally { reader.close(); }
+};
+try {
+  for (let retry = 0; retry < 2; retry++) {
+    const before = attempts;
+    await sessions.resumeAll();
+    assert.ok(attempts >= before + 2, 'both preparation and upgrade writes were attempted');
+    assert.deepEqual(signals, [], 'unsaved child proof never reaches a signal on repeated failure');
+    assert.equal(rows.length, 1, 'the original managed child remains alive');
+    assert.ok((await fs.stat(ownedRoot)).isDirectory());
+    assert.equal(await fs.readFile(payload, 'utf8'), 'owned');
+    assert.equal(table.pendingStops()[0].files.children[0].pidIdentity ?? null, null, 'durable receipt remains legacy');
+  }
+  fail = false;
+  await sessions.resumeAll();
+  assert.deepEqual(durableSignals, [true], 'the native signal observes a committed precise upgrade');
+  assert.deepEqual(signals, [{ pid: 420546, signal: 'SIGTERM' }]);
+  assert.deepEqual(rows, []);
+  assert.deepEqual(table.pendingStops(), [], 'durable recovery receipt is settled');
+  assert.equal(await fs.stat(ownedRoot).catch(() => null), null, 'owned directory is removed only after termination');
+  assert.ok(events.some(e => e.event === 'launch-recovered'));
+} finally {
+  fail = false;
+  for (const hook of hooks) hook();
+  await sessions.close(); table.close(); await base.close();
+}
+`);
+});
+
+test('termination refuses a same-second recycled PID with a different native birth identity', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543)];
+assert.equal(await endProcess({ pid: 420543, pidStarted: start, pidIdentity: 'darwin:1791201600:100001' }), false);
+assert.deepEqual(signals, [], 'equal lstart never authorizes a replacement process');
+assert.equal(rows[0].started, start, 'the replacement is in the same ps second');
+assert.equal(await endProcess({ pid: 420543, pidStarted: start, pidIdentity: nativeBirth(rows[0]) }), true);
+assert.deepEqual(signals, [{ pid: 420543, signal: 'SIGTERM' }], 'matching native identity still authorizes the managed process');
+`);
+});
+
+test('termination requires a persisted legacy upgrade and refuses unreadable birth', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543)];
+assert.equal(await nativeEndProcess({ pid: 420543, pidStarted: start }), false, 'legacy adapter shape needs its lifecycle owner to persist the upgrade');
+rows[0].micros = null;
+assert.equal(await endProcess({ pid: 420543, pidStarted: start, pidIdentity: 'darwin:1791201600:100001' }), false);
+assert.deepEqual(signals, []);
+`);
+});
+
+test('missing native identity after TERM is incomplete rather than a process-exit receipt', async () => {
+  await probe(`
+rows = [row(420543, 1, 420543)];
+const entries = [];
+onSignal = () => { rows[0].micros = null; return false; };
+assert.equal(await endProcess({ pid: 420543, pidStarted: start }, e => entries.push(e), 0), false);
+assert.deepEqual(signals, [{ pid: 420543, signal: 'SIGTERM' }]);
+assert.ok(entries.some(e => e.event === 'harness-end-incomplete' && e.pids.includes(420543)));
+`);
+});
 
 test('inspection refuses a successful listing whose own live identity cannot be parsed', async () => {
   await probe(`
@@ -200,7 +421,7 @@ onChildren = fork;
 onTable = () => {
   if (!termed) return;
   fork();
-  if (++graceTables === 2) rows = rows.filter(p => p.pid !== 420100).map(p => ({ ...p, parent: p.parent === 420100 ? 1 : p.parent }));
+  if (++graceTables === 3) rows = rows.filter(p => p.pid !== 420100).map(p => ({ ...p, parent: p.parent === 420100 ? 1 : p.parent }));
 };
 const entries = [];
 assert.equal(await endProcess({ pid: 420100, pidStarted: start }, entry => entries.push(entry), 100), true);
@@ -532,13 +753,15 @@ try {
 test('termination waits for captured pids with targeted probes before the full-tree freeze', async () => {
   await probe(`
 rows = [row(420100, 1, 420100), row(420101, 420100, 420100)];
-let termAt = -1, stopAt = -1;
+let termAt = -1, stopAt = -1, freezeAt = -1;
+onTable = () => { if (termAt >= 0 && freezeAt < 0 && listings.at(-1).includes('-e')) freezeAt = listings.length - 1; };
 onSignal = (pid, signal) => {
  if (signal === 'SIGTERM') { termAt = listings.length; return false; }
  if (signal === 'SIGSTOP' && stopAt < 0) stopAt = listings.length;
 };
 assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 75), true);
-const polls = listings.slice(termAt, stopAt - 1);
+assert.ok(freezeAt >= termAt && stopAt > freezeAt, 'the freeze discovery follows the grace exit probes');
+const polls = listings.slice(termAt, freezeAt);
 assert.ok(polls.length >= 2, 'grace period includes repeated exit checks');
 assert.ok(polls.every(args => args.includes('-p') && !args.includes('-e')), 'exit checks never enumerate the machine');
 assert.deepEqual(rows, []);

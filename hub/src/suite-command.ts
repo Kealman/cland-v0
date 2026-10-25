@@ -1,3 +1,4 @@
+import { processIdentityAsync } from './process-identity.ts';
 // Observe the command's bytes, rather than reporter totals, so silent test teardown is bounded too.
 import { spawn } from 'node:child_process';
 import { processStartedAsync } from './hub/lock.ts';
@@ -7,6 +8,7 @@ import { suiteLimits } from './suite-limits.ts';
 export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<{ code: number; cause: string }> {
   const { stallTimeoutMs } = await suiteLimits(cwd, 'local', env);
   const child = spawn('/bin/sh', ['-c', line], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const birth = child.pid ? processIdentityAsync(child.pid, env) : Promise.resolve(null);
   const identity = child.pid ? processStartedAsync(child.pid) : Promise.resolve(null);
   let cause = '';
   let interrupted = false;
@@ -15,25 +17,26 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   let timer: NodeJS.Timeout | undefined;
   let observeTimer: NodeJS.Timeout | undefined;
   let closed = false;
-  const owned = new Map<number, { pid: number; started: string }>();
+  const owned = new Map<number, { pid: number; started: string; identity: string }>();
   // Preserve proof across parent exit/reparenting. Cwd, command text and group
   // membership alone never admit a process into this ownership set.
   const capture = async () => {
     const started = await identity;
-    if (child.pid && started && !owned.has(child.pid)) owned.set(child.pid, { pid: child.pid, started });
+    const native = await birth;
+    if (child.pid && started && native && !owned.has(child.pid)) owned.set(child.pid, { pid: child.pid, started, identity: native });
     const rows = await systemProcesses();
     const byPid = new Map(rows.map(row => [row.pid, row]));
     for (let changed = true; changed;) {
       changed = false;
       for (const row of rows) {
         const parent = byPid.get(row.parent);
-        if (parent && owned.get(parent.pid)?.started === parent.started && !owned.has(row.pid)) {
-          owned.set(row.pid, { pid: row.pid, started: row.started }); changed = true;
+        if (parent && parent.identity != null && owned.get(parent.pid)?.identity === parent.identity && !owned.has(row.pid)) {
+          if (row.identity) { owned.set(row.pid, { pid: row.pid, started: row.started, identity: row.identity }); changed = true; }
         }
       }
     }
     for (const [pid, proof] of owned) {
-      if (pid !== child.pid && byPid.get(pid)?.started !== proof.started) owned.delete(pid);
+      if (pid !== child.pid && byPid.get(pid)?.identity !== proof.identity) owned.delete(pid);
     }
   };
   let observing: Promise<void> = Promise.resolve();
@@ -60,7 +63,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       // The root may be gone while inherited pipes are still open. Retained
       // identities still authorize cleanup; endProcess rechecks each before signalling.
       for (const proof of owned.values()) {
-        if (!await endProcess({ pid: proof.pid, pidStarted: proof.started }, () => {}, 500, undefined, { allowReused: true })) throw new Error('cannot reap silent command tree');
+        if (!await endProcess({ pid: proof.pid, pidStarted: proof.started, pidIdentity: proof.identity }, () => {}, 500, undefined, { allowReused: true })) throw new Error('cannot reap silent command tree');
       }
       const pipesClosed = await new Promise<boolean>(resolve => {
         const deadline = setTimeout(() => resolve(false), 500);

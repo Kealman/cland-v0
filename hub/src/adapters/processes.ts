@@ -7,6 +7,7 @@ import { openDatabase } from '../database.ts';
 import type { HarnessProcess } from './contract.ts';
 import type { SessionUsage } from '../protocol.ts';
 import type { LaunchFilesState } from './launch-files.ts';
+import { processIdentityAsync } from '../process-identity.ts';
 import { processStartedAsync as processStarted } from '../hub/lock.ts';
 
 export { processStarted };
@@ -22,20 +23,25 @@ export function pidAlive(pid: number): boolean {
 }
 
 /**
- * Whether the process a row names is still the one the hub launched: its pid is alive and was started when the
- * row says (`ps -o lstart=`, recorded at spawn, as the hub lock does). A pid reused by another process is not it.
- * A row with no recorded start time cannot be verified: false, so nothing is ever signalled on a guess.
+ * Whether a live PID still has the native birth identity captured at launch.
+ * Legacy whole-second timestamps alone provide no signalling authority.
  */
-export async function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+export async function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted' | 'pidIdentity'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
-  if (!p.pidStarted) return false;
-  const started = await processStarted(p.pid, undefined, resumed, undefined, env);
-  return resumed(() => started === p.pidStarted);
+  if (!p.pidIdentity) return false;
+  const identity = await processIdentityAsync(p.pid, env);
+  return resumed(() => identity !== null && identity === p.pidIdentity);
 }
 
-/** Whether the row's process still runs: its pid is alive and, when its start time was recorded, started then. */
-export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env, readStarted: (pid: number, resumed: Resumed) => Promise<string | null> = (pid, resumed) => processStarted(pid, undefined, resumed, undefined, env)): Promise<boolean> {
+/** Whether the row still runs: native exited states are absent; unreadable live proof stays conservative. */
+export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted' | 'pidIdentity'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env, readStarted: (pid: number, resumed: Resumed) => Promise<string | null> = (pid, resumed) => processStarted(pid, undefined, resumed, undefined, env)): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
+  let exited = false;
+  const identity = await processIdentityAsync(p.pid, env, undefined, () => { exited = true; });
+  if (resumed(() => exited)) return false;
+  if (p.pidIdentity) {
+    return resumed(() => identity === null || identity === p.pidIdentity);
+  }
   if (!p.pidStarted) return true;
   const now = await readStarted(p.pid, resumed);
   // `ps` failing for a live pid says nothing either way
@@ -58,6 +64,7 @@ create table if not exists harness_processes (
   started_at text not null,
   status text not null,
   pid_started text,
+  pid_identity text,
   item text,
   brief text,
   effort text,
@@ -109,6 +116,7 @@ const toProcess = (r: Row): HarnessProcess => ({
   archivedBy: (r.archived_by as HarnessProcess['archivedBy']) ?? null,
   status: r.status as HarnessProcess['status'],
   pidStarted: (r.pid_started as string | null) ?? null,
+  pidIdentity: (r.pid_identity as string | null) ?? null,
   item: (r.item as string | null) ?? null,
   cleanupItem: (r.cleanup_item as string | null) ?? null,
   cleanupHeldAt: (r.cleanup_held_at as string | null) ?? null,
@@ -132,6 +140,7 @@ export class ProcessTable {
     // additive, as the store's own migrations: a table written before the column existed grows in place
     const columns = new Set((this.#db.prepare('pragma table_info(harness_processes)').all() as Row[]).map((r) => r.name as string));
     if (!columns.has('harness_session_id')) this.#db.exec('alter table harness_processes add column harness_session_id text');
+    if (!columns.has('pid_identity')) this.#db.exec('alter table harness_processes add column pid_identity text');
     if (!columns.has('pid_started')) this.#db.exec('alter table harness_processes add column pid_started text');
     if (!columns.has('brief')) this.#db.exec('alter table harness_processes add column brief text');
     for (const column of ['account', 'account_env']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
@@ -167,12 +176,12 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, pid_identity, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
-           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage`,
+           pid_started = excluded.pid_started, pid_identity = excluded.pid_identity, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null);
+      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.pidIdentity ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null);
     this.#changed(p.name);
   }
 
@@ -198,11 +207,11 @@ export class ProcessTable {
     return true;
   }
 
-  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role' | 'pidStarted' | 'stoppedAt' | 'archivedAt' | 'archivedBy' | 'cleanupItem' | 'cleanupHeldAt'>>): void {
+  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role' | 'pidStarted' | 'pidIdentity' | 'stoppedAt' | 'archivedAt' | 'archivedBy' | 'cleanupItem' | 'cleanupHeldAt'>>): void {
     if (change.status && change.status !== 'running' && change.stoppedAt === undefined) change = { ...change, stoppedAt: this.#clock.now().toISOString() };
     const sets: string[] = [];
     const values: Array<string | number | null> = [];
-    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role', pidStarted: 'pid_started', stoppedAt: 'stopped_at', archivedAt: 'archived_at', archivedBy: 'archived_by', cleanupItem: 'cleanup_item', cleanupHeldAt: 'cleanup_held_at' } as const;
+    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role', pidStarted: 'pid_started', pidIdentity: 'pid_identity', stoppedAt: 'stopped_at', archivedAt: 'archived_at', archivedBy: 'archived_by', cleanupItem: 'cleanup_item', cleanupHeldAt: 'cleanup_held_at' } as const;
     for (const [k, v] of Object.entries(change) as Array<[keyof typeof column, string | number | null]>) {
       sets.push(`${column[k]} = ?`);
       values.push(v);

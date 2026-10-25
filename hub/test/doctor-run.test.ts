@@ -84,3 +84,18 @@ test('a command cancelled before launch starts no child', async t => {
   t.mock.timers.tick(0);
   assert.deepEqual(await pending, { code: null, stdout: '', stderr: '', error: 'cancelled' });
 });
+
+test('seventh-slot binary output preserves bytes while sixth-slot cancellation still awaits close', async t => {
+  const { child, signals } = fakeProbe(t);
+  const abort = new AbortController();
+  let result: RunResult | undefined;
+  const pending = run('synthetic-native-birth', [], {}, 30_000, false, abort.signal, 'latin1').then(value => { result = value; });
+  child.stdout.end(Buffer.from([0, 128, 255]));
+  abort.abort();
+  assert.deepEqual(signals, [[-42, 'SIGKILL']]);
+  assert.equal(result, undefined, 'binary output and cancellation are not a native close receipt');
+  child.emit('close', null);
+  t.mock.timers.tick(0);
+  await pending;
+  assert.deepEqual(result, { code: null, stdout: '\x00\x80\xff', stderr: '', error: 'cancelled' });
+});

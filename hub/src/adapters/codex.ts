@@ -868,6 +868,7 @@ export class CodexAdapter implements HarnessAdapter {
             live.state = 'busy';
         }
         this.#host.log({ event: 'harness-thread-started', harness: this.harness, session: request.name, thread: threadId, model: p.model });
+        Object.assign(p, yield* wait(files.process(pid!)));
         files.commit();
         return p;
       } catch (err) {
@@ -1294,6 +1295,7 @@ export class CodexAdapter implements HarnessAdapter {
         const relaunched: HarnessProcess = { ...p, pid, harnessId: socket, model: r.model ?? p.model, startedAt: new Date().toISOString(), status: 'running' };
         live.p = relaunched;
         this.#host.log({ event: 'harness-relaunched', harness: this.harness, session: p.name, pid, thread: p.harnessSessionId });
+        Object.assign(relaunched, yield* wait(files.process(pid!)));
         files.commit();
         return { found: true, process: relaunched, state: live.state };
       } catch (err) {

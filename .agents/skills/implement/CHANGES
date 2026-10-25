@@ -109,6 +109,9 @@ T-1244: Document current-dev preflight/freshness receipts and pinned historical 
 T-1230: Point skill-inventory changes to the production-role no-sync guard and cached-refresh receipt tests.
 T-1218: Document hub authorship for periodic/nightly queue, heartbeat and artifacts, with human shell ownership preserved.
 T-1258: Document sealed OpenCode Console credential comparison and native model-failure diagnostic seams.
+
+T-543: document additive native PID birth identity, legacy refusals and sealed same-second stop/cleanup seams.
+T-543 review: record coherent ownership snapshots, persisted one-time legacy upgrades and the accepted migration window.
 T-1217: Point Git maintenance diagnosis to the startup retention policy and sealed native expiry/recovery tests.
 T-1217: Add CLI inactivity-supervisor and held native collector cleanup regression guidance after source review.
 T-1217: Replace pre-serving maintenance with delayed background collection, abort/drain on stop, grace and dead-gc.pid recovery guidance per Coordinator instruction.
@@ -130,3 +133,5 @@ T-450: Document hung-verifier early-failure teardown and phase-sweep PID receipt
 T-1250: Clarify that task duration summaries count printed allowance JSON lines, independently of T4 having no budget.
 T-1249: Point Codex provider-capacity replay to the bounded fake-clock/native-readback tests and preserve uncertain-admission policy.
 T-1154: Document T1 late-lock ownership and T2 reservation/shard shutdown receipts with durable next-hub settlement.
+native exited-state receipts and separate parent reaping boundary (T-543)
+native-exited ancestors retain uncertain surviving branches (T-543)

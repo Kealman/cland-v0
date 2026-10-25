@@ -1,20 +1,45 @@
 // Safety at the cleanup boundary, with synthetic OS process tables and no real signals.
 import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const modulePath = fileURLToPath(new URL('./process-cleanup.ts', import.meta.url));
-function probe(body: string, initial = '') {
+function probe(body: string, initial = '', platform = 'darwin') {
   const source = `
-import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module';
+import cp from 'node:child_process'; import procFiles from 'node:fs'; import { syncBuiltinESMExports } from 'node:module';
 import assert from 'node:assert/strict';
-Object.defineProperty(process, 'platform', { value: 'darwin' });
+Object.defineProperty(process, 'platform', { value: ${JSON.stringify(platform)} });
 process.env.TEST_SUITE_RUN_ID = 'owned-run';
-let rows = []; let cwd = ''; const signals = [];
+let rows = []; let cwd = ''; const signals = []; const processCalls = []; let procReads = 0; let onStat = () => {};
+if (process.platform === 'linux') {
+ const read = procFiles.readFileSync;
+ procFiles.readFileSync = (path, ...args) => {
+  if (path === '/proc/sys/kernel/random/boot_id') { procReads++; return '11111111-2222-3333-4444-555555555555'; }
+  const match = /^\\/proc\\/(\\d+)\\/stat$/.exec(String(path));
+  if (!match) return read(path, ...args);
+  procReads++; onStat(Number(match[1])); const r = rows.find(r => r.pid === Number(match[1]));
+  if (!r) throw Object.assign(new Error('gone'), { code: 'ENOENT' });
+  return r.pid + ' (' + r.command + ') ' + (r.nativeState ?? 'R') + ' ' + r.parent + ' ' + r.group + ' ' + Array(16).fill('0').join(' ') + ' ' + (r.ticks ?? 90001) + ' 0';
+ };
+}
 cp.execFileSync = (command, args) => {
+  processCalls.push(command);
+  if (command === '/usr/bin/perl') {
+    const selected = args.slice(args.indexOf('--') + 1).map(Number);
+    return Buffer.concat(rows.filter(r => selected.includes(r.pid) && r.micros !== null).map(r => {
+      const bytes = Buffer.alloc(648);
+      bytes.writeBigInt64LE(BigInt(Math.floor(Date.parse(r.started + ' UTC') / 1000)), 0);
+      bytes.writeInt32LE(r.micros ?? 200001, 8); bytes.writeInt32LE(r.pid, 40);
+      bytes.writeUInt8(r.nativeState === 'Z' ? 5 : 2, 36);
+      return bytes;
+    }));
+  }
   if (command === 'lsof') return cwd;
   if (command === 'pgrep') return rows.filter(r => args[1].split(',').includes(String(r.group))).map(r => r.pid).join('\\n');
   if (args.includes('eww')) return rows.map(r => r.pid + ' ' + r.command + ' ' + (r.environment ?? ('TEST_SUITE_RUN_ID=' + r.runId))).join('\\n');
@@ -30,10 +55,153 @@ const { cleanupProcesses, captureProcess } = await import(${JSON.stringify(modul
 const root = '/tmp/cland-suite-a';
 ${body}
 console.log(JSON.stringify(signals));`;
-  // cland-allow-child-env: isolated OS-boundary mock probe uses synthetic process rows and intercepts all signals; no fixture filesystem writes
-  const child = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 10_000 });
-  assert.equal(child.status, 0, child.stderr);
-  return JSON.parse(child.stdout) as Array<{ pid: number; signal: string }>;
+  const root = mkdtempSync(join(tmpdir(), 'cland-cleanup-identity-'));
+  try {
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 10_000, cwd: root, env: fixtureEnvironment(root, process.env) });
+    assert.equal(child.status, 0, child.stderr);
+    return JSON.parse(child.stdout) as Array<{ pid: number; signal: string }>;
+  } finally { rmSync(root, { recursive: true, force: true }); }
+}
+
+test('Linux browser startup capture keeps the baseline ps count and spawns no Perl', () => {
+  const counts = probe(`
+rows = [{ pid: 420547, parent: process.pid, group: 420547, started: start, command: 'headless shell' }];
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+assert.equal(captureProcess(420547).pid, 420547);
+ownProcess(undefined, 420547);
+signals.push({ pid: processCalls.filter(command => command === 'ps').length, signal: 'startup ps' },
+ { pid: processCalls.filter(command => command === '/usr/bin/perl').length, signal: 'startup perl' },
+ { pid: procReads, signal: 'proc reads' });
+`, '', 'linux');
+  console.info('Linux startup probe counts', JSON.stringify(counts));
+  assert.ok(counts[0]!.pid <= 2, 'registration never exceeds the two-ps startup baseline');
+  assert.equal(counts[1]!.pid, 0, 'Linux identity never spawns Perl');
+});
+
+test('Linux empty browser teardown needs only the targeted group census', () => {
+  const counts = probe(`
+rows = [
+ { pid: process.pid, parent: 420550, group: process.pid, started: start, command: 'worker' },
+ { pid: 420550, parent: 1, group: 420550, started: start, command: 'parent' },
+ { pid: 1, parent: 0, group: 1, started: start, command: 'init' },
+ { pid: 420547, parent: process.pid, group: 420547, started: start, command: 'headless shell' }
+];
+const native = cp.execFileSync;
+cp.execFileSync = (command, args, ...options) => {
+ const output = native(command, args, ...options);
+ if (command !== 'ps' || !args.includes('-p')) return output;
+ const selected = args[args.indexOf('-p') + 1].split(',').map(Number);
+ return String(output).split('\\n').filter(line => selected.includes(Number(line.trim().split(/\\s+/)[0]))).join('\\n');
+};
+syncBuiltinESMExports();
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+const cleanup = ownProcess(undefined, 420547);
+rows = rows.filter(row => row.pid !== 420547);
+processCalls.length = 0; procReads = 0;
+await cleanup();
+signals.push({ pid: processCalls.filter(command => command === 'ps').length, signal: 'teardown ps' },
+ { pid: processCalls.filter(command => command === '/usr/bin/perl').length, signal: 'teardown perl' },
+ { pid: processCalls.filter(command => command === 'pgrep').length, signal: 'group census' },
+ { pid: procReads, signal: 'proc reads' });
+`, '', 'linux');
+  console.info('Linux empty teardown probe counts', JSON.stringify(counts));
+  assert.deepEqual(counts, [{ pid: 0, signal: 'teardown ps' }, { pid: 0, signal: 'teardown perl' },
+    { pid: 1, signal: 'group census' }, { pid: 0, signal: 'proc reads' }]);
+});
+
+test('ownership registration never reuses an observation beyond the current JavaScript turn', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420547, parent: process.pid, group: 420547, started: start, command: 'headless shell' }];
+const { ownProcess, recordedProcess } = await import(${JSON.stringify(modulePath)});
+assert.ok(captureProcess(420547).identity.endsWith(':90001'));
+await Promise.resolve();
+rows[0].ticks = 90002;
+ownProcess(undefined, 420547);
+assert.ok(recordedProcess(420547).identity.endsWith(':90002'), 'registration after a boundary observes the new native birth');
+`, '', 'linux'), []);
+});
+
+for (const platform of ['linux', 'darwin']) test(`${platform} stale synchronous capture never authorizes a replacement signal`, () => {
+  assert.deepEqual(probe(`
+rows = [420543, 420544].map(pid => ({ pid, parent: process.pid, group: pid, started: start, command: 'node fixture' }));
+const { ownProcess, recordedProcess } = await import(${JSON.stringify(modulePath)});
+const captured = captureProcess(420543);
+rows[0].ticks = 90002; rows[0].micros = 200002;
+const cleanup = ownProcess(undefined, 420543);
+assert.strictEqual(recordedProcess(420543), captured, 'registration consumes the synchronous cached birth, not the replacement');
+const original = ownProcess(undefined, 420544);
+await cleanup();
+assert.deepEqual(signals, [], 'stale cached proof grants no destructive signal');
+assert.deepEqual(rows.map(row => row.pid), [420543, 420544], 'replacement and unchanged control remain before control cleanup');
+await original();
+assert.deepEqual(rows.map(row => row.pid), [420543], 'replacement survives while the unchanged managed control exits');
+`, '', platform), [{ pid: -420544, signal: 'SIGKILL' }]);
+});
+
+for (const [platform, state] of [['linux', 'Z'], ['linux', 'X'], ['darwin', 'Z']]) test(`${platform} ${state} cleanup settles a captured writer after its ps snapshot`, () => {
+  assert.deepEqual(probe(`
+rows = [420543, 420544].map(pid => ({ pid, parent: process.pid, group: pid, started: start, command: 'node fixture' }));
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+const cleanup = ownProcess(undefined, 420543);
+const original = ownProcess(undefined, 420544);
+let reads = 0;
+const native = cp.execFileSync;
+if (process.platform === 'linux') onStat = pid => { if (pid === 420543 && ++reads === 2) rows[0].nativeState = ${JSON.stringify(state)}; };
+else {
+ cp.execFileSync = (command, args, ...options) => {
+  if (command === '/usr/bin/perl' && ++reads === 2) rows[0].nativeState = ${JSON.stringify(state)};
+  return native(command, args, ...options);
+ };
+ syncBuiltinESMExports();
+} // Final native read has exited while authoritative ps still says running.
+assert.doesNotThrow(() => process.kill(420543, 0), 'a zombie still has a PID');
+await cleanup();
+assert.deepEqual(signals, [], 'a zombie needs neither a signal nor fresh ownership');
+assert.deepEqual(rows.map(row => row.pid), [420543, 420544]);
+await original();
+assert.deepEqual(rows.map(row => row.pid), [420543], 'the unchanged managed writer is still signalled');
+`, '', platform), [{ pid: -420544, signal: 'SIGKILL' }]);
+});
+
+for (const [platform, state] of [['linux', 'Z'], ['linux', 'X'], ['darwin', 'Z']]) {
+  for (const exiting of ['child', 'leader']) test(`${platform} ${state} ${exiting} exit preserves the root of a surviving listed writer`, () => {
+    assert.deepEqual(probe(`
+const { ownProcess, ownDirectory } = await import(${JSON.stringify(modulePath)});
+const fs = await import('node:fs/promises');
+const dir = await fs.mkdtemp(process.cwd() + '/surviving-branch-');
+await cleanupProcesses(undefined, []); // Complete invoking-worker discovery before arming the after-ps exit.
+rows = [
+ { pid: 420543, parent: process.pid, group: 420543, started: start, command: 'managed leader' },
+ { pid: 420544, parent: 420543, group: 420544, started: start, command: 'exiting parent' },
+ { pid: 420545, parent: 420544, group: 420545, started: start, command: 'surviving writer' }
+];
+const stop = ownProcess(undefined, 420543);
+const remove = ownDirectory(undefined, dir, { beforeRemove: stop });
+const target = ${exiting == 'child' ? 420544 : 420543};
+let reads = 0;
+const exit = () => {
+ rows.find(r => r.pid === target).nativeState = ${JSON.stringify(state)};
+ rows.find(r => r.pid === 420545).parent = 1;
+};
+const native = cp.execFileSync;
+if (process.platform === 'linux') onStat = pid => { if (pid === target && ++reads === 2) exit(); };
+else {
+ cp.execFileSync = (command, args, ...options) => {
+  if (command === '/usr/bin/perl' && ++reads === 2) exit();
+  return native(command, args, ...options);
+ };
+ syncBuiltinESMExports();
+}
+await assert.rejects(remove(), /native process identity/, 'root removal waits for its captured writer branch');
+assert.ok(await fs.stat(dir), 'the surviving writer root remains until its branch is settled');
+assert.deepEqual(rows.map(r => r.pid), [420543, 420544, 420545]);
+assert.deepEqual(signals, [], 'no ambiguous ancestry is signalled or silently settled');
+onStat = () => {}; cp.execFileSync = native; syncBuiltinESMExports();
+rows = rows.filter(r => r.pid === 420543 && r.nativeState === undefined); // Simulate confirmed branch reaping before fixture removal.
+await remove();
+await assert.rejects(fs.stat(dir), { code: 'ENOENT' });
+`, '', platform), exiting === 'child' ? [{ pid: -420543, signal: 'SIGKILL' }] : []);
+  });
 }
 
 test('cleanup refuses a remembered PID reused by a different process', () => {
@@ -45,6 +213,60 @@ rows = [
 const runner = captureProcess(420100); const original = captureProcess(420001);
 rows[1].started = 'Tue Oct 6 12:00:00 2026';
 await cleanupProcesses(undefined, original ? [original] : [], () => {}, 'owned-run', runner ? [runner] : []);`), []);
+});
+
+test('cleanup never binds stale descendant ancestry to a birth read after PID recycling', () => {
+  assert.deepEqual(probe(`
+rows = [
+ { pid: 420543, parent: process.pid, group: 420543, started: start, command: 'runner' },
+ { pid: 420544, parent: 420543, group: 420544, started: start, command: 'replacement' },
+ { pid: 420545, parent: 420543, group: 420545, started: start, command: 'owned child' }
+];
+const runner = captureProcess(420543);
+const native = cp.execFileSync; let recycled = false;
+cp.execFileSync = (command, args, ...options) => {
+ if (command === '/usr/bin/perl' && !recycled) {
+  recycled = true; rows[1].parent = 1; rows[1].micros = 200002;
+ }
+ return native(command, args, ...options);
+};
+syncBuiltinESMExports();
+await cleanupProcesses(undefined, [runner], () => {}, 'owned-run', [runner]);
+assert.equal(recycled, true, 'replacement is staged at the native acquisition boundary');
+assert.deepEqual(rows.map(r => r.pid), [420544], 'replacement survives and original descendants exit');
+`), [{ pid: -420543, signal: 'SIGKILL' }, { pid: 420545, signal: 'SIGKILL' }]);
+});
+
+test('cleanup preserves a same-second reused PID and still signals the original native identity', () => {
+  assert.deepEqual(probe(`
+rows = [420543, 420544].map(pid => ({ pid, parent: process.pid, group: pid, started: start, command: 'node fixture' }));
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+const cleanup = ownProcess(undefined, 420543);
+const original = ownProcess(undefined, 420544);
+rows[0].micros = 200002;
+await cleanup();
+if (rows.length !== 2) throw new Error('same-second replacement was signalled');
+await original();
+if (rows.length !== 1 || rows[0].pid !== 420543) throw new Error('original native identity was not signalled');
+`), [{ pid: -420544, signal: 'SIGKILL' }]);
+});
+
+test('unreadable native birth preserves the fixture directory while its writer is live', () => {
+  assert.deepEqual(probe(`
+const { ownProcess, ownDirectory } = await import(${JSON.stringify(modulePath)});
+const fs = await import('node:fs/promises');
+const dir = await fs.mkdtemp('/tmp/cland-unreadable-birth-');
+const hooks = []; const t = { after: fn => hooks.push(fn) };
+const remove = ownDirectory(t, dir);
+rows = [{ pid: 420545, parent: process.pid, group: 420545, started: start, command: 'node fixture' }];
+ownProcess(t, 420545);
+rows[0].micros = null;
+await assert.rejects(hooks[0](), e => e instanceof AggregateError && e.errors.every(error => /native process identity/.test(String(error))));
+assert.ok(await fs.stat(dir), 'live writer root is preserved');
+assert.deepEqual(signals, []);
+rows[0].micros = 200001;
+await remove();
+`), [{ pid: -420545, signal: 'SIGKILL' }]);
 });
 
 test('cleanup never treats a sibling path as a run-owned path', () => {
@@ -167,7 +389,7 @@ rows = [{ pid: 420020, parent: process.pid, group: 420020, started: start, comma
 const cleanup = ownProcess(t, 420020);
 const exec = cp.execFileSync;
 cp.execFileSync = (command, args) => {
- if (args.includes('-e') || args.includes('-axo') || command === 'lsof') throw new Error('teardown inspected the machine');
+ if (command === 'ps' && (args.includes('-e') || args.includes('-axo')) || command === 'lsof') throw new Error('teardown inspected the machine');
  return exec(command, args);
 };
 syncBuiltinESMExports();
@@ -258,7 +480,7 @@ rows = [
 cwd = 'p420025\\nn' + dir + '\\np420026\\nn/outside\\n';
 const exec = cp.execFileSync;
 cp.execFileSync = (command, args) => {
- if (args.includes('-e') || args.includes('-axo') || command === 'lsof' && !args.includes('-p')) throw new Error('global teardown probe');
+ if (command === 'ps' && (args.includes('-e') || args.includes('-axo')) || command === 'lsof' && !args.includes('-p')) throw new Error('global teardown probe');
  return exec(command, args);
 };
 syncBuiltinESMExports();
@@ -413,7 +635,7 @@ rows = [
 const seed = captureProcess(420050);
 const exec = cp.execFileSync; const probes = [];
 cp.execFileSync = (command, args) => {
- if (command === 'lsof' || args.includes('-e') || args.includes('eww')) throw new Error('recorded cleanup inspected the machine');
+ if (command === 'lsof' || command === 'ps' && (args.includes('-e') || args.includes('eww'))) throw new Error('recorded cleanup inspected the machine');
  probes.push({ command, args });
  return exec(command, args);
 };

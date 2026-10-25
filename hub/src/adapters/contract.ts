@@ -63,9 +63,11 @@ export type HarnessProcess = {
   /** Original launch brief text or artifact id; null on older rows. */
   launchBrief?: string | null;
   effort?: string | null;
-  /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is
-   *  still this process before any signal (`system-processes.ts` `endProcess`). Null when unknown. */
+  /** Legacy whole-second ps start timestamp, retained for older clients and display.
+   * Destructive signals require pidIdentity as well. Null when unknown. */
   pidStarted?: string | null;
+  /** Native birth identity; absent on older hubs/rows. Required for destructive signals. */
+  pidIdentity?: string | null;
   /** Warning attached to this explicit launch result. */
   warning?: string;
   /** Effective native launch rules and fields the harness cannot enforce. */
@@ -180,7 +182,7 @@ export type AdapterHost = {
   /** Sender attribution learned after the failure notice (a pending admission just settled). */
   notifyFailureSenders?: (sessionId: string, error: string, messages: string[]) => void;
   /** The adapter learnt the session's pid after launch or re-exec; include an observed start identity when known. */
-  recordPid: (sessionId: string, pid: number, pidStarted?: string, harnessSessionId?: string) => void;
+  recordPid: (sessionId: string, pid: number, pidStarted?: string, harnessSessionId?: string, pidIdentity?: string | null) => void;
   /** The adapter's own connection to the session came back (a reconnect): what waits for an inject is retried now,
    *  whether or not the state changed (an idle session reconnected to is still idle). */
   reconnected?: (sessionId: string) => void;

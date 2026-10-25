@@ -229,8 +229,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
         }
         const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
         this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, database: openCodeDatabase(p.accountEnv ?? {}), policy, relaunch });
+        const identity = yield* wait(transaction.process(pid));
         transaction.commit();
-        return { ...p, harness: this.harness, model: chosen ?? null, launchPolicy: policy, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
+        return { ...p, ...identity, harness: this.harness, model: chosen ?? null, launchPolicy: policy, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
       } catch (err) {
         // a server whose session could not be made is of no use: it does not outlive the failed launch
         if (err instanceof Error) {

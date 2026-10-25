@@ -63,8 +63,9 @@ export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number
  * grandchild holding stdout open (a wrapper script's real tool) neither outlives the check nor keeps it waiting.
  * Await close and native cleanup after termination. If close never arrives, report incomplete cleanup after 1 s.
  * Optional cancellation uses that same owned-group termination/close boundary; older calls are unchanged.
+ * Cancellation is sixth; optional output encoding is seventh, defaulting to utf8.
  */
-export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false, signal?: AbortSignal): Promise<RunResult> {
+export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false, signal?: AbortSignal, encoding: BufferEncoding = 'utf8'): Promise<RunResult> {
   return new Promise((done) => {
     let stdout = '';
     let stderr = '';
@@ -114,8 +115,8 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
       error ??= `no answer within ${timeoutMs / 1000} s`;
       terminate();
     }, timeoutMs);
-    child.stdout?.setEncoding('utf8').on('data', (c: string) => (stdout += c));
-    child.stderr?.setEncoding('utf8').on('data', (c: string) => (stderr += c));
+    child.stdout?.setEncoding(encoding).on('data', (c: string) => (stdout += c));
+    child.stderr?.setEncoding(encoding).on('data', (c: string) => (stderr += c));
     child.on('error', (err) => { error ??= err.message; terminate(); });
     child.once('close', (code) => finish({ code: error === undefined ? code : null, stdout, stderr, ...(error === undefined ? {} : { error }) }));
   });

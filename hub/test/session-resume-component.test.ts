@@ -2,6 +2,8 @@
 import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import cp, { spawn as nativeSpawn, execFileSync as nativeExecFileSync } from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
@@ -91,7 +93,7 @@ test('restart keeps an undiscoverable live harness tracked and stoppable for eve
   const first = await projectHub(t, root, {}, { clock, adapters: FAKE_FLAVOURS.map((flavour, i) => host => {
     const fake = fakeHarness(flavour, { host, clock });
     const spawn = fake.spawn.bind(fake);
-    fake.spawn = async (...args) => ({ ...await spawn(...args), pid: fakePids[i]!, pidStarted: 'fixture-owned-process' });
+    fake.spawn = async (...args) => ({ ...await spawn(...args), pid: fakePids[i]!, pidStarted: 'fixture-owned-process', pidIdentity: 'fixture-owned-birth' });
     return fake;
   }) });
   const ui = await connectUi(t, first.discovery, 'ui', observeProcesses);
@@ -262,5 +264,34 @@ test('Codex fresh resume retains text, artifact and absent briefs after native r
       assert.equal(input.brief, undefined);
     } else assert.ok(input.brief!.text.includes(text));
     assert.equal((await ui.request({ type: 'session.stop', session: name })).ok, true);
+  }
+});
+
+test('empty Web fixture hub startup and shutdown add no process-identity spawns', async t => {
+  const root = await tempProject(t);
+  const spawn = cp.spawn, execFileSync = cp.execFileSync;
+  const probes: string[] = [];
+  const observe = (command: string) => {
+    if (command === 'ps' || command.endsWith('/perl')) { probes.push(command); throw new Error('identity probe intercepted'); }
+  };
+  Object.assign(cp, {
+    // cland-allow-child-env: instrumentation intercepts ps/Perl before launch; other fixture calls retain their original sealed options
+    spawn: (command: string, ...args: unknown[]) => { observe(command); return Reflect.apply(spawn, cp, [command, ...args]); },
+    // cland-allow-child-env: synchronous instrumentation preserves caller options and refuses identity probes before native execution
+    execFileSync: (command: string, ...args: unknown[]) => { observe(command); return Reflect.apply(execFileSync, cp, [command, ...args]); },
+  });
+  syncBuiltinESMExports();
+  try {
+    // cland-allow-child-env: positive controls are intercepted before any native spawn; the counter owns both builtin exports
+    assert.throws(() => nativeSpawn('ps', []), /identity probe intercepted/);
+    // cland-allow-child-env: synchronous positive control is intercepted before spawning and prints no OS or environment data
+    assert.throws(() => nativeExecFileSync('/usr/bin/perl', []), /identity probe intercepted/);
+    assert.deepEqual(probes, ['ps', '/usr/bin/perl']);
+    probes.length = 0;
+    const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+    await hub.stop(); await hub.stopped;
+    assert.deepEqual(probes, [], 'empty fake hub startup/shutdown needs no OS process identity');
+  } finally {
+    Object.assign(cp, { spawn, execFileSync }); syncBuiltinESMExports();
   }
 });

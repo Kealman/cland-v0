@@ -286,6 +286,7 @@
     "hub/test/prepared-project.test.ts": "T4",
     "hub/test/presence.test.ts": "T2",
     "hub/test/process-cleanup.test.ts": "T3",
+    "hub/test/process-identity.test.ts": "T1",
     "hub/test/process-started.test.ts": "T3",
     "hub/test/progress.test.ts": "T2",
     "hub/test/project-clock.test.ts": "T2",

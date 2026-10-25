@@ -1,3 +1,4 @@
+import { processIdentityAsync } from '../process-identity.ts';
 import { removeSessionRunDirectory, writeSessionCredential } from '../../../shared/session-credential.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { AccountLimited, codexWindows, type AccountReading } from '../accounts/limits.ts';
@@ -30,7 +31,7 @@ import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText, projectRulesText } from '../roles/clause.ts';
 import { roleLaunchPolicy } from '../roles/config.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
-import { systemProcesses } from '../system-processes.ts';
+import { systemProcesses, type SystemProcess } from '../system-processes.ts';
 import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import type { ProjectConfig } from '../init/config.ts';
@@ -63,7 +64,8 @@ export type SessionsOptions = {
   /** Native cleanup retries use real time by default; isolated fixtures can own their schedule. */
   recoveryClock?: Clock;
   processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
-  processRows?: (resumed: Resumed) => ReturnType<typeof systemProcesses>;
+  processIdentity?: (pid: number) => Promise<string | null>;
+  processRows?: (resumed: Resumed, pids?: number[]) => ReturnType<typeof systemProcesses>;
   env?: NodeJS.ProcessEnv;
   core: HubCore;
   table: ProcessTable;
@@ -92,6 +94,7 @@ export const DEFAULT_HARNESS = 'claude-code';
 export class Sessions {
   readonly #recoveryClock: Clock;
   readonly #processStarted: NonNullable<SessionsOptions['processStarted']>;
+  readonly #processIdentity: (pid: number) => Promise<string | null>;
   readonly #processRows: NonNullable<SessionsOptions['processRows']>;
   readonly #env: NodeJS.ProcessEnv;
   readonly #core: HubCore;
@@ -299,7 +302,8 @@ export class Sessions {
     this.#recoveryClock = options.recoveryClock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#env));
-    this.#processRows = options.processRows ?? (resumed => systemProcesses(resumed, undefined, undefined, undefined, this.#env));
+    this.#processIdentity = options.processIdentity ?? (options.processStarted ? async () => null : pid => processIdentityAsync(pid, this.#env));
+    this.#processRows = options.processRows ?? ((resumed, pids) => systemProcesses(resumed, undefined, pids, undefined, this.#env));
     this.#core = options.core;
     this.#table = options.table;
     this.#root = options.root;
@@ -483,18 +487,18 @@ export class Sessions {
         this.#log({ event: 'adapter-reconnected', session: p.name });
         this.#retry(p, undefined, true);
       },
-      recordPid: (sessionId, pid, pidStarted, harnessSessionId) => {
+      recordPid: (sessionId, pid, pidStarted, harnessSessionId, pidIdentity) => {
         const p = this.#table.bySessionId(sessionId);
         if (p) {
-          const publish = (started: string | null) => {
+          const publish = (started: string | null, identity: string | null) => {
             if (this.#closed || started === null) return;
             const current = this.#table.bySessionId(sessionId);
             // Keep the native stop path until PID and identity can be published together.
             // A stop or relaunch during the probe must not acquire this earlier launch's PID.
-            if (current?.pid === p.pid && current.startedAt === p.startedAt && current.status === 'running') this.#table.update(current.name, { pid, pidStarted: started, ...(harnessSessionId ? { harnessSessionId } : {}) });
+            if (current?.pid === p.pid && current.startedAt === p.startedAt && current.status === 'running') this.#table.update(current.name, { pid, pidStarted: started, pidIdentity: identity, ...(harnessSessionId ? { harnessSessionId } : {}) });
           };
-          if (pidStarted !== undefined) publish(pidStarted);
-          else void this.#processStarted(pid).then(publish);
+          if (pidStarted !== undefined && pidIdentity !== undefined) publish(pidStarted, pidIdentity);
+          else void Promise.all([pidStarted === undefined ? this.#processStarted(pid) : pidStarted, this.#processIdentity(pid)]).then(([started, identity]) => publish(started, identity));
         }
       },
     };
@@ -850,7 +854,7 @@ export class Sessions {
   }
 
   async #stopFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
-    const p = entry.process;
+    let p = entry.process;
     if (this.#stoppingLaunches.has(p.sessionId) || this.#closed) return;
     this.#stoppingLaunches.add(p.sessionId);
     try {
@@ -862,10 +866,21 @@ export class Sessions {
         try { this.#core.publishCleanup(p.sessionId, true); } catch (error) { preparationError ??= error; }
       });
       try {
+        if (!entry.files && !entry.stages.stopped) p = await this.#upgradeLegacyIdentity(p, resumed, upgraded => {
+          const previous = entry.process;
+          entry.process = upgraded;
+          try { this.#table.pendingStop(entry); }
+          catch (error) { entry.process = previous; throw error; }
+        });
         if (entry.files) {
           await LaunchFiles.restore(entry.files, resumed).rollback(state => {
+            const previous = entry.files;
             entry.files = state;
-            this.#table.pendingStop(entry);
+            try { this.#table.pendingStop(entry); }
+            catch (error) {
+              if (previous === undefined) delete entry.files; else entry.files = previous;
+              throw error;
+            }
           }, this.#log);
           resumed(() => { entry.stages.stopped = true; this.#table.pendingStop(entry); });
         } else if (!entry.stages.stopped) {
@@ -879,7 +894,8 @@ export class Sessions {
               const current = rows.find(row => row.pid === p.pid);
               if (!current) return true;
               if (!p.pidStarted) throw new Error('failed launch start identity is unknown; cleanup remains pending');
-              return current.started !== p.pidStarted;
+              if (!p.pidIdentity || !current.identity) throw new Error('failed launch native identity is unknown; cleanup remains pending');
+              return current.identity !== p.pidIdentity;
             });
           }
           if (!gone) {
@@ -1097,7 +1113,8 @@ export class Sessions {
       });
       // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
       const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await this.#processStarted(owned.pid, resumed) : null);
-      const p: HarnessProcess = { ...owned, ...selected, accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, launchBrief: request.brief ?? null, effort };
+      const pidIdentity = owned.pidIdentity !== undefined ? owned.pidIdentity : (owned.pid !== null ? await this.#processIdentity(owned.pid) : null);
+      const p: HarnessProcess = { ...owned, ...selected, accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, pidIdentity, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
         authorize();
@@ -1142,7 +1159,7 @@ export class Sessions {
       let detail = cause instanceof Error ? cause.message : String(cause);
       if (cause instanceof LaunchRecoveryPending) {
         const child = cause.files.children[0];
-        owned = { name: request.name, harness, role, model, cwd, sessionId: cause.sessionId, pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null, harnessId: null, harnessSessionId: null, startedAt: this.#core.clock.now().toISOString(), status: 'stopped', item };
+        owned = { name: request.name, harness, role, model, cwd, sessionId: cause.sessionId, pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null, pidIdentity: child?.pidIdentity ?? null, harnessId: null, harnessSessionId: null, startedAt: this.#core.clock.now().toISOString(), status: 'stopped', item };
         this.#recoveryObservers.set(owned.sessionId, cause.settled);
       }
       if (owned) {
@@ -1195,6 +1212,29 @@ export class Sessions {
     return this.#stop(name, resumed, authorize);
   }
 
+  /** One-time migration: preserve legacy liveness, then persist matching native
+   * ownership before the first stop/resume. Same-second reuse before this first
+   * observation retains the old risk; a precise row never re-enters this window. */
+  async #upgradeLegacyIdentity(p: HarnessProcess, resumed: Resumed, checkpoint?: (upgraded: HarnessProcess) => void): Promise<HarnessProcess> {
+    if (p.pid === null || p.pidIdentity || !p.pidStarted) return p;
+    let observed: SystemProcess | undefined;
+    try { observed = (await this.#processRows(resumed, [p.pid])).find(row => row.pid === p.pid); }
+    catch { return p; } // unavailable proof cannot grant ownership
+    return resumed(() => {
+      if (this.#closed) return p;
+      const current = this.#table.bySessionId(p.sessionId);
+      if (current && (current.pid !== p.pid || current.startedAt !== p.startedAt || current.pidStarted !== p.pidStarted)) throw new Error('session changed while upgrading its legacy process identity; retry');
+      if (current?.pidIdentity) return current;
+      if (!observed?.identity || observed.started !== p.pidStarted) return current ?? p;
+      const upgraded = { ...(current ?? p), pidIdentity: observed.identity };
+      if (checkpoint) checkpoint(upgraded);
+      else if (current) this.#table.update(current.name, { pidIdentity: observed.identity });
+      else return p;
+      this.#log({ event: 'process-identity-upgraded', session: p.name, pid: p.pid });
+      return upgraded;
+    });
+  }
+
   async #stop(name: string, resumed: Resumed, authorize: () => void, poolHandoff?: () => void): Promise<HarnessProcessView> {
     authorize();
     const identity = this.#process(name).sessionId;
@@ -1210,9 +1250,13 @@ export class Sessions {
         if (!poolHandoff && this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
         if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
-        poolHandoff?.();
         p = current;
         this.#clearCapacityRetry(identity);
+      });
+      p = await this.#upgradeLegacyIdentity(p!, resumed);
+      await resumed(() => {
+        authorize();
+        poolHandoff?.();
         return this.adapter(p.harness).stop(p, resumed, authorize);
       });
       return resumed(() => {
@@ -1312,7 +1356,7 @@ export class Sessions {
   }
 
   async #resume(name: string, relaunch: boolean, resumed: Resumed, authorize: () => void): Promise<SessionResumeAnswer> {
-    let p = this.#process(name);
+    let p = await this.#upgradeLegacyIdentity(this.#process(name), resumed);
     const adapter = this.adapter(p.harness);
     if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
     const desiredRole = p.role;
@@ -1385,7 +1429,7 @@ export class Sessions {
       if (cause instanceof LaunchRecoveryPending) {
         const entry = resumed(() => {
           const child = cause.files.children[0];
-          const entry: PendingStop = { process: { ...row(), pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null }, files: cause.files, preserveRow: true, error: cause.message, stages: { stopped: false, rowRemoved: false, roleRolledBack: false } };
+          const entry: PendingStop = { process: { ...row(), pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null, pidIdentity: child?.pidIdentity ?? null }, files: cause.files, preserveRow: true, error: cause.message, stages: { stopped: false, rowRemoved: false, roleRolledBack: false } };
           this.#pendingStops.set(p.sessionId, entry);
           this.#recoveryObservers.set(p.sessionId, cause.settled);
           this.#retryStops();
@@ -1408,7 +1452,7 @@ export class Sessions {
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
       const process: HarnessProcess = {
-        ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null,
+        ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, pidIdentity: !relaunch && current.pid === found.process.pid ? current.pidIdentity ?? null : found.process.pidIdentity ?? null, stoppedAt: null, archivedAt: null, archivedBy: null,
         // A relaunch resumes the same conversation and cland identity: the adapter's fresh in-memory sum
         // starts from the totals the stopped row already holds. A fresh launch (#freshResume) has none.
         ...(relaunch && found.process.usage == null && current.usage ? { usage: current.usage } : {}),
@@ -1451,7 +1495,7 @@ export class Sessions {
         return { answer: { found: false, reason: r.reason, process: this.view(settled), ...this.#resumeWork(settled, desiredRole), ...(relaunch ? { fresh: { brief: settled.launchBrief ?? null } } : {}) } };
       }
       const current = row();
-      const cached = r.process.pid === current.pid ? current.pidStarted : null;
+      const cached = relaunch ? r.process.pidStarted : r.process.pid === current.pid ? current.pidStarted : null;
       // Cached identities publish in this same stretch; only an actual OS probe introduces another await.
       if (cached != null || r.process.pid === null) return { answer: publish(r, cached ?? null) };
       return { identity: this.#processStarted(r.process.pid, resumed), resumed: r };

@@ -248,7 +248,7 @@ async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>)
     // window: a delayed SIGTERM callback must not turn a clean stop into SIGKILL.
     // The shared sweep deadline still bounds inspection and termination.
     const graceMs = kind === 'hub' ? 5000 : 1000;
-    if (await endProcess({ pid: candidate.process.pid, pidStarted: candidate.process.started }, entry => { if (entry.event === 'harness-ended') terminated = true; }, graceMs, undefined, { deadline, canSignal, claim })) {
+    if (await endProcess({ pid: candidate.process.pid, pidStarted: candidate.process.started, pidIdentity: candidate.process.identity ?? null }, entry => { if (entry.event === 'harness-ended') terminated = true; }, graceMs, undefined, { deadline, canSignal, claim })) {
       if (!terminated) return; // another owner settled it; only that owner reports completion
       log({ event: 'orphan-ended', pid: candidate.process.pid, kind: candidate.kind, root: candidate.root, reason: candidate.reason });
       ended.push(candidate);

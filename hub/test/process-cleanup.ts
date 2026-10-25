@@ -1,33 +1,36 @@
+import { processIdentities } from '../src/process-identity.ts';
 // Test-only ownership: registered groups for teardown; directory/ancestry discovery for phase recovery.
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readlinkSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { readdir, rm } from 'node:fs/promises';
 import type { TestContext } from 'node:test';
-import { parseProcessTable, processTableArgs, type SystemProcess } from '../src/process-table.ts';
+import { parseProcessTable, processTableArgs, retainProcessAncestry, type SystemProcess } from '../src/process-table.ts';
 
-export type ProcessIdentity = { pid: number; started: string; group?: number };
+export type ProcessIdentity = { pid: number; started: string; identity?: string | null; identityError?: string; group?: number };
 type ProcessRow = SystemProcess;
 export const RUN_ID = process.env.TEST_SUITE_RUN_ID ??= randomUUID();
 export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 const recorded = new Map<number, ProcessIdentity>();
+const observedThisTurn = new Map<number, ProcessIdentity>();
 const settled = new Set<ProcessIdentity>();
 function alive(pid: number): boolean {
   try { process.kill(pid, 0); return true; }
   catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; }
 }
 
-function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
-  if (groups.length) {
-    let members: string;
-    // cland-allow-child-env: read-only OS discovery tool for fixture cleanup; no account, provider or Git operation
-    try { members = execFileSync('pgrep', ['-g', groups.join(',')], { encoding: 'utf8' }); }
-    catch (error) {
-      if ((error as { status?: number }).status !== 1) throw error;
-      members = String((error as { stdout?: string }).stdout ?? '');
-    }
-    pids = [...new Set([...(pids ?? []), ...members.trim().split(/\s+/).filter(Boolean).map(Number)])];
+function groupMembers(groups: number[]): number[] {
+  let members: string;
+  // cland-allow-child-env: read-only OS discovery for fixture groups; no account, provider or Git operation
+  try { members = execFileSync('pgrep', ['-g', groups.join(',')], { encoding: 'utf8' }); }
+  catch (error) {
+    if ((error as { status?: number }).status !== 1) throw error;
+    members = String((error as { stdout?: string }).stdout ?? '');
   }
+  return members.trim().split(/\s+/).filter(Boolean).map(Number);
+}
+function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
+  if (groups.length) pids = [...new Set([...(pids ?? []), ...groupMembers(groups)])];
   if (pids?.length === 0) return [];
   let output: string;
   // cland-allow-child-env: read-only OS discovery tool for fixture cleanup; no account, provider or Git operation
@@ -36,13 +39,47 @@ function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
     if (!pids || (error as { status?: number }).status !== 1) throw error;
     output = String((error as { stdout?: string }).stdout ?? '');
   }
-  return parseProcessTable(output);
+  const selected = parseProcessTable(output).map(row => row.pid);
+  if (!selected.length) return [];
+  const errors = new Map<number, string>();
+  const before = processIdentities(selected, (pid, error) => errors.set(pid, `before ownership snapshot: ${error}`));
+  // The first listing only selects PIDs. Bind ownership facts to one incarnation
+  // by bracketing the authoritative listing with stable native births.
+  // cland-allow-child-env: read-only native ownership snapshot; caller owns fixture environment
+  try { output = execFileSync('ps', processTableArgs(selected), { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' } }); }
+  catch (error) {
+    if ((error as { status?: number }).status !== 1) throw error;
+    output = String((error as { stdout?: string }).stdout ?? '');
+  }
+  // Only the final native state can supersede an older running ps row. A zombie
+  // has no writer left, although its parent may not have reaped its PID yet.
+  const exited = new Set<number>();
+  const after = processIdentities(selected, (pid, error) => errors.set(pid, `after ownership snapshot: ${error}`), pid => exited.add(pid));
+  return retainProcessAncestry(parseProcessTable(output), exited).map(row => {
+    const identity = before.get(row.pid) && before.get(row.pid) === after.get(row.pid) ? before.get(row.pid)! : null;
+    return { ...row, identity, ...(!identity ? { identityError: exited.has(row.pid) ? 'native exit observed; listed descendants are not confirmed gone' : errors.get(row.pid) ?? 'native birth unavailable or changed across ownership snapshot' } : {}) };
+  });
+}
+function requireIdentities(expected: Iterable<ProcessIdentity>, current: ProcessRow[]): void {
+  for (const target of expected) {
+    if (target.pid === process.pid) continue; // the invoking worker can never be a cleanup target
+    const row = current.find(row => row.pid === target.pid);
+    if (row && (!target.identity || !row.identity) && alive(target.pid)) throw new Error(`native process identity unavailable for pid ${target.pid}; fixture preserved; captured: ${target.identityError ?? (target.identity ? 'known' : 'missing')}; current: ${row.identityError ?? (row.identity ? 'known' : 'missing')}`);
+  }
 }
 /** Capture at spawn/first API observation, never after a remembered child has exited. */
 export function captureProcess(pid: number | undefined): ProcessIdentity | null {
   if (pid === undefined) return null;
   const row = processes([pid]).find(row => row.pid === pid);
-  return row ? { pid: row.pid, started: row.started, group: row.group } : null;
+  if (!row) return null;
+  const identity = { pid: row.pid, started: row.started, identity: row.identity ?? null, ...(row.identityError ? { identityError: row.identityError } : {}), group: row.group };
+  if (identity.identity) {
+    // Registration can reuse the observation its caller just made, before any
+    // asynchronous boundary. Reads and destructive revalidation always stay fresh.
+    observedThisTurn.set(pid, identity);
+    queueMicrotask(() => { if (observedThisTurn.get(pid) === identity) observedThisTurn.delete(pid); });
+  }
+  return identity;
 }
 const directoryProcesses = new Map<string, Set<ProcessIdentity>>();
 const contextProcesses = new WeakMap<TestContext, Set<ProcessIdentity>>();
@@ -110,7 +147,7 @@ export function rememberResultProcesses(value: unknown, root?: string): void {
   };
   collect(value, root);
   const missing = [...new Set(observations.map(entry => entry.pid).filter(pid => !recorded.has(pid)))];
-  for (const row of processes(missing)) recorded.set(row.pid, { pid: row.pid, started: row.started, group: row.group });
+  for (const row of processes(missing)) recorded.set(row.pid, { pid: row.pid, started: row.started, identity: row.identity ?? null, ...(row.identityError ? { identityError: row.identityError } : {}), group: row.group });
   for (const entry of observations) if (recorded.has(entry.pid)) rememberProcess(entry.pid, entry.root);
 }
 const within = (path: string, root: string) => path === root || path.startsWith(`${root}/`);
@@ -183,14 +220,14 @@ function directoryStillOwned(path: string, identity: { device: number; inode: nu
   catch { return false; }
 }
 function ownership(rows: ProcessRow[], cwd: Map<number, string>, roots: string[], anchors: ProcessIdentity[]): (row: ProcessRow) => boolean {
-  const starts = new Map(anchors.map(identity => [identity.pid, identity.started]));
+  const starts = new Map(anchors.map(identity => [identity.pid, identity.identity]));
   const table = new Map(rows.map(row => [row.pid, row]));
   return row => {
     if (roots.some(root => within(cwd.get(row.pid) ?? '', root))) return true;
     const visited = new Set<number>();
     let ancestor: ProcessRow | undefined = row;
     while (ancestor && !visited.has(ancestor.pid)) {
-      if (starts.get(ancestor.pid) === ancestor.started) return true;
+      if (ancestor.identity != null && starts.get(ancestor.pid) === ancestor.identity) return true;
       visited.add(ancestor.pid); ancestor = table.get(ancestor.parent);
     }
     return false;
@@ -221,7 +258,8 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
   const owned = ownership(rows, cwd, roots, anchors);
   // A registered PID which was replaced cannot regain ownership from its cwd.
   // Its new descendants belong to that replacement, not the recorded fixture.
-  const protectedPids = new Set(seeds.filter(seed => rows.some(row => row.pid === seed.pid && (row.started !== seed.started || seed.group !== undefined && row.group !== seed.group))).map(seed => seed.pid));
+  requireIdentities(seeds, rows);
+  const protectedPids = new Set(seeds.filter(seed => rows.some(row => row.pid === seed.pid && (row.identity == null || row.identity !== seed.identity || seed.group !== undefined && row.group !== seed.group))).map(seed => seed.pid));
   for (let changed = true; changed;) {
     changed = false;
     for (const row of rows) if (protectedPids.has(row.parent) && !protectedPids.has(row.pid)) { protectedPids.add(row.pid); changed = true; }
@@ -237,7 +275,7 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
   const expected = new Map<number, ProcessIdentity>();
   for (const seed of seeds) {
     const row = rows.find(row => row.pid === seed.pid);
-    if (row?.started === seed.started && owned(row)) expected.set(row.pid, seed);
+    if (row?.identity != null && row.identity === seed.identity && owned(row)) expected.set(row.pid, seed);
   }
   if (root) for (const row of rows) {
     if (owned(row) && (within(cwd.get(row.pid) ?? '', root) || commandNamesRoot(row.command, root) || markers.get(row.pid) === runId)) expected.set(row.pid, row);
@@ -261,7 +299,7 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
     (markers.get(row.pid) === runId || (root && commandNamesRoot(row.command, root)))) : [];
   const bridgeReceipt = () => {
     if (!report) return;
-    const remaining = bridges.length ? processes(bridges.map(row => row.pid)).filter(row => bridges.some(before => before.pid === row.pid && before.started === row.started)).length : 0;
+    const remaining = bridges.length ? processes(bridges.map(row => row.pid)).filter(row => bridges.some(before => before.pid === row.pid && before.identity != null && before.identity === row.identity)).length : 0;
     report(`suite hook bridges: before cleanup ${bridges.length}; after cleanup ${remaining}`);
     if (remaining) throw new Error(`suite left ${remaining} hook bridge process(es); ambiguous ownership preserved`);
   };
@@ -276,7 +314,8 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
   // A member may fork between discovery and this targeted group snapshot. Retain
   // the original anchors and require current ancestry/cwd proof for every late member.
   for (const row of current) if (!expected.has(row.pid) && !protectedPids.has(row.pid) && expectedGroups.has(row.group) && stillOwned(row)) expected.set(row.pid, row);
-  const verified = (row: ProcessRow) => expected.get(row.pid)?.started === row.started && stillOwned(row);
+  const verified = (row: ProcessRow) => row.identity != null && expected.get(row.pid)?.identity === row.identity && stillOwned(row);
+  requireIdentities(expected.values(), current);
   const targets = current.filter(verified);
   const groups = new Set<number>();
   for (const row of targets) {
@@ -297,13 +336,15 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
       // macOS can report EPERM when a group/child is reaped between ps and kill. Do not
       // hide a permission failure for a live captured identity, or retry a replacement PID.
       const signalled = wholeGroup ? targets.filter(target => target.group === row.group) : [row];
-      const remaining = processes(signalled.map(target => target.pid)).filter(current => signalled.some(target => current.pid === target.pid && current.started === target.started));
+      const remaining = processes(signalled.map(target => target.pid)).filter(current => signalled.some(target => current.pid === target.pid && current.identity != null && current.identity === target.identity));
       if (remaining.length > 0) throw error;
     }
   }
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
-    const remaining = processes(targets.map(target => target.pid)).filter(row => targets.some(target => target.pid === row.pid && target.started === row.started));
+    const inspected = processes(targets.map(target => target.pid));
+    requireIdentities(targets, inspected);
+    const remaining = inspected.filter(row => targets.some(target => target.pid === row.pid && target.identity != null && target.identity === row.identity));
     if (remaining.length === 0) { bridgeReceipt(); return targets.length; }
     await pause(50);
   }
@@ -320,6 +361,15 @@ export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<v
 }
 
 async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line: string) => void, anchors: ProcessIdentity[] = [], root?: string, runId = RUN_ID): Promise<number> {
+  const pending = seeds.filter(seed => !settled.has(seed));
+  // A native absent-PID receipt plus an empty targeted group census establishes
+  // that no captured group writer remains. No ownership snapshot or self/ancestor
+  // inspection is needed unless there is something left to terminate.
+  if (pending.length && pending.every(seed => seed.pid > 1 && seed.group === seed.pid && !alive(seed.pid)) &&
+      groupMembers(pending.map(seed => seed.pid)).length === 0) {
+    for (const seed of pending) settled.add(seed);
+    return 0;
+  }
   seeds = seeds.filter(seed => {
     if (settled.has(seed)) return false;
     // An exited leader can leave its captured group alive. Absence settles only
@@ -340,15 +390,16 @@ async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line
   const protectedForCleanup = protectedPids;
   const groups = seeds.filter(seed => seed.group === seed.pid && seed.pid !== selfProcess()?.group && !protectedForCleanup.has(seed.pid) && newerThanSelf(seed)).map(seed => seed.pid);
   const rows = processes([...seeds.filter(seed => alive(seed.pid)).map(seed => seed.pid), ...anchors.map(anchor => anchor.pid)], groups);
+  requireIdentities(seeds, rows);
   // A live PID whose original identity cannot be verified needs the full proof.
   // A gone leader may still have selected survivors: retain the targeted cwd path.
-  if ([...seeds, ...anchors].some(seed => alive(seed.pid) && !rows.some(row => row.pid === seed.pid && row.started === seed.started && (seed.group === undefined || row.group === seed.group)))) {
+  if ([...seeds, ...anchors].some(seed => alive(seed.pid) && !rows.some(row => row.pid === seed.pid && row.identity != null && row.identity === seed.identity && (seed.group === undefined || row.group === seed.group)))) {
     return cleanupDiscoveredProcesses(root, seeds, report, runId, anchors);
   }
   const expected = new Map<number, ProcessRow>();
   for (const seed of seeds) {
     const row = rows.find(row => row.pid === seed.pid);
-    if (row && !protectedForCleanup.has(row.pid) && newerThanSelf(row) && row.started === seed.started && (seed.group === undefined || row.group === seed.group)) expected.set(row.pid, row);
+    if (row && !protectedForCleanup.has(row.pid) && newerThanSelf(row) && row.identity != null && row.identity === seed.identity && (seed.group === undefined || row.group === seed.group)) expected.set(row.pid, row);
   }
   for (let changed = true; changed;) {
     changed = false;
@@ -372,7 +423,8 @@ async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line
   }
   // This targeted snapshot verifies the seeds and ancestry of every current group member.
   const current = inspectedCwd ? processes([...expected.keys()], groups) : rows;
-  const verified = (row: ProcessRow) => expected.get(row.pid)?.started === row.started && expected.get(row.pid)?.group === row.group;
+  const verified = (row: ProcessRow) => row.identity != null && expected.get(row.pid)?.identity === row.identity && expected.get(row.pid)?.group === row.group;
+  requireIdentities(expected.values(), current);
   const targets = current.filter(verified);
   const signalledGroups = new Set<number>();
   for (const row of targets) {
@@ -390,7 +442,10 @@ async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line
     }
   }
   const deadline = Date.now() + 5000;
-  while (targets.some(target => alive(target.pid)) && processes(targets.map(target => target.pid)).some(verified)) {
+  while (targets.some(target => alive(target.pid))) {
+    const inspected = processes(targets.map(target => target.pid));
+    requireIdentities(targets, inspected);
+    if (!inspected.some(verified)) break;
     if (Date.now() >= deadline) throw new Error('owned test processes did not exit after SIGKILL');
     await pause(50);
   }
@@ -426,7 +481,8 @@ function installSignals(): void {
 }
 export function ownProcess(t: TestContext | undefined, pid: number | undefined): () => Promise<void> {
   installSignals();
-  const identity = pid === undefined ? null : recordedProcess(pid) ?? captureProcess(pid);
+  const identity = pid === undefined ? null : recordedProcess(pid) ?? observedThisTurn.get(pid) ?? captureProcess(pid);
+  if (pid !== undefined) observedThisTurn.delete(pid);
   if (identity) {
     ownedPids.set(identity.pid, identity); recorded.set(identity.pid, identity);
     if (t) {

@@ -216,7 +216,12 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/qa-lint.test.ts`](../../../hub/test/qa-lint.test.ts) | [Notes](hub-test-qa-lint.test.ts.md) |
 | [`hub/test/qa-lint-cli.test.ts`](../../../hub/test/qa-lint-cli.test.ts) | [Notes](hub-test-qa-lint-cli.test.ts.md) |
 | [`hub/test/dependency-install.test.ts`](../../../hub/test/dependency-install.test.ts) | [Notes](hub-test-dependency-install.test.ts.md) |
+| [`hub/test/process-identity.test.ts`](../../../hub/test/process-identity.test.ts) | [Notes](hub-test-process-identity.test.ts.md) |
+| [`hub/test/system-processes.test.ts`](../../../hub/test/system-processes.test.ts) | [Notes](hub-test-system-processes.test.ts.md) |
+| [`hub/test/process-cleanup.test.ts`](../../../hub/test/process-cleanup.test.ts) | [Notes](hub-test-process-cleanup.test.ts.md) |
+| [`hub/test/name-reservation.test.ts`](../../../hub/test/name-reservation.test.ts) | [Notes](hub-test-name-reservation.test.ts.md) |
 | [`hub/test/durations.test.ts`](../../../hub/test/durations.test.ts) | [Notes](hub-test-durations.test.ts.md) |
+| [`hub/test/session-resume-component.test.ts`](../../../hub/test/session-resume-component.test.ts) | [Notes](hub-test-session-resume-component.test.ts.md) |
 
 | [`hub/test/publish-component.test.ts`](../../../hub/test/publish-component.test.ts) | [Notes](hub-test-publish-component.test.ts.md) |
 | [`hub/test/publish.test.ts`](../../../hub/test/publish.test.ts) | [Notes](hub-test-publish.test.ts.md) |
@@ -225,4 +230,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/executor-safety-component.test.ts`](../../../hub/test/executor-safety-component.test.ts) | [Notes](hub-test-executor-safety-component.test.ts.md) |
 | [`hub/test/executor-safety-load.test.ts`](../../../hub/test/executor-safety-load.test.ts) | [Notes](hub-test-executor-safety-load.test.ts.md) |
 | [`nvim/test/launcher-input-load.test.ts`](../../../nvim/test/launcher-input-load.test.ts) | [Notes](nvim-test-launcher-input-load.test.ts.md) |
+| [`hub/test/claude-code-sessions-lifecycle.test.ts`](../../../hub/test/claude-code-sessions-lifecycle.test.ts) | [Notes](hub-test-claude-code-sessions-lifecycle.test.ts.md) |
+| [`hub/test/tracker-ready-native.test.ts`](../../../hub/test/tracker-ready-native.test.ts) | [Notes](hub-test-tracker-ready-native.test.ts.md) |
 | [`hub/test/suite-timeouts.test.ts`](../../../hub/test/suite-timeouts.test.ts) | [Notes](hub-test-suite-timeouts.test.ts.md) |
+| [`hub/test/suite-check.test.ts`](../../../hub/test/suite-check.test.ts) | [Notes](hub-test-suite-check.test.ts.md) |
