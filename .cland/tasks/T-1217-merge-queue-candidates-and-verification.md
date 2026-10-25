@@ -3,7 +3,7 @@ id: T-1217
 kind: task
 title: Merge-queue candidates and verification snapshots accumulate unreachable Git objects until auto-gc gives up
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T13:01:47.679Z
+updated: 2026-10-25T13:24:21.747Z
 ---
 
 ## Summary
@@ -25,8 +25,10 @@ On 2026-10-24 every Git command in the root and in task worktrees started printi
 
 - [x] C1. cland's own Git maintenance (for example after a landing, or on hub start when idle) prunes unreachable objects older than a safe age that no live batch, verification or lease can still reference, without touching objects a running batch uses (test with a scratch repository).
   - done: impl-1217 · 2026-10-25T13:01:34.599Z
+  - verified: rev-31 [reviewer] · run rev-20261025-1217-final · 2026-10-25T13:24:21.608Z · commit 63018b8e4aafefb44f3a2969524374680a21bb29
 - [x] C2. A stale gc.log no longer blocks auto-gc indefinitely; the hub reports the condition once in doctor output instead of in every Git command (test).
   - done: impl-1217 · 2026-10-25T13:01:34.699Z
+  - verified: rev-31 [reviewer] · run rev-20261025-1217-final · 2026-10-25T13:24:21.608Z · commit 63018b8e4aafefb44f3a2969524374680a21bb29
 
 ## Comments
 
@@ -183,3 +185,66 @@ Criteria: C1 failed (H2: unresolved native observation handles can retain the no
 ### impl-1217 · 2026-10-25T13:00:17.988Z
 
 A-11929 H2 corrected: durable incomplete handoff now unrefs the ChildProcess and destroys the parent's observation pipes without clearing owner metadata or claiming death. New actual CLI/socket hub.stop regression first failed with 'normal hub.stop left the CLI alive past its bounded handoff; native hub outcome incomplete'; after correction, native CLI exit succeeds while collector/descendant remain alive, followed by real recovery and exact PID disappearance. Local macOS Node24 focused receipts: new T3 1/1 (1833.804334 ms case), existing native T3 11/11, startup T2 5/5, policy T1 14/14. Static lint exposed two narrow issues before review: deadline lacked its reasoned annotation and policy fixture imported T2 native cleanup. Replaced the latter with filesystem-only awaited cleanup, retaining all fake-policy assertions and T1 classification. No configured/Linux verification yet. T-543 currently ready but unmerged; approved current identity helper remains pending directed integration.
+
+### rev-31 · 2026-10-25T13:04:13.198Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1217-source4
+commit: 63018b8e4aafefb44f3a2969524374680a21bb29
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1217 corrected full source review — CLEAR
+
+Exact head 63018b8e4aafefb44f3a2969524374680a21bb29 / tree 66a94465d9e26e9d0a90c80bf850a4fe4dec2ad3, unchanged pushed task tip. Direct correction after 2be5d71b / A-11929, no dev merge. Complete revised design carried from A-11783/A-11829/A-11929 and correction personally inspected on Standards and Spec. Both claimant criteria done; configured evidence absent.
+
+## Standards
+
+No findings. H2 adds one named T3 normal-CLI lifecycle contract, exact guide/index and sorted tier entry, matching policy/README/implement guidance and CHANGES. It retains real socket status/stop, native CLI close and independently observed collector PIDs. Shared fixture environment is applied after final overrides; every native group is owned and cleanup precedes directory removal. Its bounded exit observation is armed before stop with a reasoned task-specific deadline; no generic timeout/assertion relaxation. The preload accelerates only the post-serving maintenance timer, substitutes only the gated collector and intercepts its exact group signal; the guide distinguishes this from startup-delay performance evidence.
+
+T1 policy fixtures now use awaited filesystem-only cleanup without importing native process cleanup, retaining all fourteen policy cases. No native writer is introduced into T1. Existing five-argument doctor-run semantics and compatibility cases are unchanged. Earlier M1/M2 help/guide corrections and M3 fixture group drainage remain intact; decoded HUB_USAGE/DOCTOR_USAGE match their frozen blocks. No wire, role, permission, dependency or packaging change. Shared-policy/lock/receipt consumer inventories and skill provenance updates are retained.
+
+## Spec
+
+H2 resolved. On durable incomplete handoff only, the owned runner unrefs ChildProcess and destroys parent stdout/stderr/gate observation streams before resolving. The durable owner and mutation refusal/recovery gate remain; this releases the stopped parent's event-loop references without claiming native collector death. The normal close and independent group-recovery paths are unchanged. Late close cannot erase a successor owner because the run is already settled.
+
+The new real CLI regression records genuinely referenced PROCESSWRAP and multiple PIPEWRAP resources at its intercepted kill attempt, arms native CLI exit before ordinary socket hub.stop, and asserts actual code0/signal-null exit plus reaped hub PID. Both collector and descendant remain alive and their durable owner is still present after the hub exits. Independent native recovery then clears the receipt and observes both PIDs gone. This closes the previous synthetic-result/withheld-JS-close coverage gap while preserving actual owned cleanup on failure.
+
+The complete accepted design remains: serving first; one thirty-second delayed pass; explicit cruft/14-day grace or never for retained/uncertain work; private gated exec with durable PID/UTC birth/group before Git starts; native-close/group checks or explicit durable handoff; terminal incomplete result before another repository; no false completed announcement; bounded identity-aware first-mutation and after-serving recovery in both territory lock paths; unknown/surviving owners refuse writes and report PID while reads serve; matching dead same-host gc.pid only, never manual pack deletion. Doctor remains read-only, including --fix. Approved Coordinator decision 2776473b chooses durable recovery rather than an unbounded stop. Preliminary linked-root concern is not reopened.
+
+The current UTC identity helper and its precision limitation remain explicitly approved until T-543's directed integration. The claimant reports T-543 ready/unmerged on recheck; recheck before ready and follow only an explicit Coordinator integration instruction, with fresh source review for any changed head. No unproved same-second PID-reuse guarantee is claimed.
+
+## Original evidence
+
+A-11949 retains original available macOS arm64 Node24 correction excerpts with actual working-tree attribution and raw-capture limits. New normal CLI case reproduced H2 red: bounded handoff left CLI alive, actual native outcome incomplete, exit1, case3280.493917ms. After the correction the same case passes, exit0, case1833.804334ms / file2228.784625ms, with alive-collector/ref/death/recovery assertions retained.
+
+Current native maintenance file11/11, duration_ms13540.8835, maximum case2175.778084ms; startup T2 5/5 duration_ms838.916542; policy T1 14/14 duration_ms258.710542. These total31 focused current correction cases. The separate unchanged doctor-run4/4 remains historical A-11923 evidence, not a new rerun. Corrected typecheck, child-environment, wording, skill provenance and final test lint exit0 are recorded; lint133 findings/60 files is report-only, zero refusals. Earlier first-static failures and preceding source controls remain disclosed. No local case reaches3s, but Linux timing is not inferred from local observations.
+
+## Disposition
+
+Source CLEAR, Standards 0 / Spec 0, findings empty. Prior H1/M1/M2/M3/H2 resolved, with durable exceptional ownership governed by the Coordinator decision rather than a death-receipt waiver. C1/C2 remain runtime-unverified until one ordinary mode-free configured verify at unchanged63018b8e, followed by exact-head evidence review of named policy/serving/normal-exit/native object/recovery/doctor outcomes and actual phase/provenance limits. If Linux measures a case at the policy allowance threshold, use the actual receipt and a fresh source review for any allowance correction; no invented timing or extra stress.
+
+No post-review dev merge, forced/full run, live GC/prune/repack/config mutation or transcription rerun requested. Coordinator separately owns pre-merge verify all after ready; QA none/after-stage. Reviewer performed read-only immutable source/artifact/metadata inspection only, no tests, native probes/subjects, browser, process signals, fetch or Git mutation.
+Durable review: A-11952.
+
+### impl-1217 · 2026-10-25T13:19:42.458Z
+
+Configured exact-head run6691053c at63018b8e passed: A-11966 original log, A-11968 independently parsed named-case audit. 3184 ordinary passing finish records plus105 passing load records (21identities×5); zero failures/cancels/skips. HostT0/LinuxallT1/fallbackallT2/changedT3(2files12cases once)/Web44files225tests completed; remainingT3 deferred, noT4. Required35 named policy/startup/native/normalCLI/doctor base cases pass, not merely exit0. Linuxx64 dropletc-8lon1 Node24.21 ChromeHeadlessShell156.0.8078.4; lifetime732s cost$0.0509. New maximum case2.785146291s, none>=3s; no allowance needed. Lint/duration/T3-growth warnings report-only, listed inA-11968. T-543 rechecked ready/unmerged; current helper limitation remains approved. Requested final evidence review; Coordinator owns premergeall.
+
+### rev-31 · 2026-10-25T13:24:21.608Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1217-final
+commit: 63018b8e4aafefb44f3a2969524374680a21bb29
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence CLEAR, Standards 0 / Spec 0. A-11975 carries full source4 A-11952 and independently audits original mode-free 6691053c/A-11966: 3184 ordinary passes plus 105 separate load finishes (21 identities × 5), all 35 required base cases, no failures/cancellations/skips. Twelve changed native T3 cases ran once, including normal real CLI exit with durable live collector handoff, independent recovery, pruning grace/retained-work controls and doctor/stale-log outcomes. Maximum new case 2.785146291 s; no new allowance. C1/C2 verified. Actual host T0/Linux all T1/fallback all T2/changed T3/Web passed; remaining T3 deferred and no T4/verify-all claim. Host gate.tree reuse, browser/executor provenance, original local capture limits and approved UTC identity-helper dependency retained. Lint/budgets/ratchet report-only: T3 +18.512 s would refuse growth under enforcement, retained for Coordinator planning. No source change; exact tree 66a94465d9e26e9d0a90c80bf850a4fe4dec2ad3. Coordinator's separate rule-6 pre-merge verify all remains outstanding; no live maintenance authorized.
+
+Criteria: C1 verified, C2 verified.

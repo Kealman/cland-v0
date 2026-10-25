@@ -2,8 +2,8 @@
 id: T-1260
 kind: task
 title: Sessions blocked by cover-quiet poll the verify queue with sleep loops, because nothing wakes them when the local slot frees
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1042
 branch: t/T-1260-sessions-blocked-by-cover-quiet-poll-the
 created: 2026-10-24T19:41:53.006Z
-updated: 2026-10-25T13:03:17.858Z
+updated: 2026-10-25T13:26:57.488Z
+closed: 2026-10-25T13:26:57.488Z
 ---
 
 ## Summary
@@ -27,10 +28,12 @@ While an integrated run holds the local slot, local test commands refuse with `c
   - done: impl-1260 · 2026-10-25T11:10:26.454Z
   - verified: rev-26 [reviewer] · run rev-20261025-1260-evidence-1 · 2026-10-25T11:29:05.995Z · commit a6ab11b27ce0bd4a9ba16a588ea32070b4f20218
   - verified: rev-34 [reviewer] · run rev-34-20261025-1260-final · 2026-10-25T11:45:25.691Z · commit a9ed1bfca73ba0c2dae386d84f0e1ccb257aeda2
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1260-final2 · 2026-10-25T13:20:56.887Z · commit 3fd60e915b35c015e7c15cbfa49cf355a2584537
 - [x] C2. The Implementer clause and docs/agents/tests.md#cover-quiet say to do other work or end the turn until that event arrives, with no polling, and the clause stays within its byte reserve (test).
   - done: impl-1260 · 2026-10-25T11:15:23.203Z
   - verified: rev-26 [reviewer] · run rev-20261025-1260-evidence-1 · 2026-10-25T11:29:05.995Z · commit a6ab11b27ce0bd4a9ba16a588ea32070b4f20218
   - verified: rev-34 [reviewer] · run rev-34-20261025-1260-final · 2026-10-25T11:45:25.691Z · commit a9ed1bfca73ba0c2dae386d84f0e1ccb257aeda2
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1260-final2 · 2026-10-25T13:20:56.887Z · commit 3fd60e915b35c015e7c15cbfa49cf355a2584537
 
 ## Comments
 
@@ -116,3 +119,35 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-25T13:03:17.858Z
 
 Rule 6 pre-merge verify all 271ff6ea at a9ed1bfc (A-11951): 4049 passed, 3 failed, 5 skipped across T0–T3 (Web not reached; covered by mode-free a114cce7). All three failures are known dev defects with matching messages, none from T-1260: suite-selection 'task admission selects unchanged T4 guards…' (invalid loadGuards, T-1299, landed after this head's dev merge); roles-timing '150 ms of malformed parsing…' (0 !== 300, T-1302, landed after); qa-lint-build 'qa lint validates named titles from a production install…' (ERR_MODULE_NOT_FOUND shared/protocol-frame.ts, T-1303 open, culprit T-1225). Coordinator accepts this run as T-1260's rule 6 evidence with those attributed identities.
+
+### rev-34 · 2026-10-25T13:08:49.140Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1260-source4
+commit: 3fd60e915b35c015e7c15cbfa49cf355a2584537
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear after second authorized merge; A-11957 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11957-t-1260-second-merge-source-review-at-3fd60e91.md). Coordinatorca9ecd64 authorizes merge and specifically waives repeat rule6all in favor of matching local files/new mode-free verify. SUITE_USAGE retains both task wake-up and incoming watchdog sentences; frozen owning row equals resolved literal, all other incoming help/frozen blocks retained. Task behavior core unchanged from source3. A-11954 records11serial full local files/132passes and typecheck; not configured/Linux/QA proof. Prior all-run remains failed with attributed defects, not reclassified green. C1/C2 remain pending same-head configured evidence; after-stage affected QA separate.
+
+### rev-34 · 2026-10-25T13:20:56.887Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1260-final2
+commit: 3fd60e915b35c015e7c15cbfa49cf355a2584537
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final second-merge evidence clear:df54906c/A-11969; audit A-11970 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11970-t-1260-second-merge-final-evidence-at-3fd60e91.md), carrying source4/A-11957. Parsed3209ordinary+10load passes. Exact durable wake-up/restart and previous-hub refusal each ordinary+5/5load;4admission/39clause checks pass, preserving wording/reserves. Merged help/compatibility/docs guards green. HostT0/LinuxT1/allT2/Web complete; T3/T4/stageQA absent, prepared host check not repeated remotely. Report-only warnings preserved. Historical all-run remains failed/attributed; Coordinatorca9ecd64 explicit repeat-all waiver distinct from this passing configured receipt. C1/C2 verified, no findings; after-stage affected QA separate.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T13:26:57.488Z
+
+Merged d1f480070c1ee1656dc98358ca2612a3bfe6978a onto dev.

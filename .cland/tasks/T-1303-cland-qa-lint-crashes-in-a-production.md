@@ -2,8 +2,8 @@
 id: T-1303
 kind: task
 title: cland qa lint crashes in a production install since T-1225 (protocol-frame.ts not shipped)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-1055
 branch: t/T-1303-cland-qa-lint-crashes-in-a-production
 created: 2026-10-25T12:52:03.115Z
-updated: 2026-10-25T13:00:54.782Z
+updated: 2026-10-25T13:23:10.123Z
+closed: 2026-10-25T13:23:10.123Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Fix: keep `qa lint`'s import graph inside what a production install ships. Eithe
 
 - [x] C1. `hub/test/qa-lint-build.test.ts` passes at the fix head, including "qa lint validates named titles from a production install without dev dependencies", with its assertions unchanged.
   - done: impl-1303 · 2026-10-25T13:00:19.527Z
+  - verified: rev-31 [reviewer] · run rev-20261025-1303-final · 2026-10-25T13:17:03.742Z · commit 77afb33320c407fd7c6eadb6ff65d2b1ba4c633f
 - [x] C2. A test (the existing production-install case or a new T1 import-graph check) fails if `qa lint`'s module graph reaches a file the production install does not ship; a negative control re-adding the T-1225 import shape fails it.
   - done: impl-1303 · 2026-10-25T12:57:23.115Z
+  - verified: rev-31 [reviewer] · run rev-20261025-1303-final · 2026-10-25T13:17:03.742Z · commit 77afb33320c407fd7c6eadb6ff65d2b1ba4c633f
 
 ## Comments
 
@@ -115,3 +118,54 @@ Lead reports the unchanged cli-usage-compatibility guard reproduced M1 red and p
 
 Source CLEAR, Standards 0 / Spec 0, findings empty. C1/C2 remain runtime-unverified until one ordinary mode-free configured verify at unchanged 77afb333 and final exact-head evidence review. Retain exact production-install and committed-source/corpus outcomes, actual changed-T3 phase and executor/platform/gate/browser provenance and exclusions. No full/forced run, dev merge, additional stress or new native case requested. QA none/after-stage, no per-item brief. Reviewer performed read-only immutable source/artifact/metadata inspection only.
 Durable review: A-11948.
+
+### rev-31 · 2026-10-25T13:17:03.742Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1303-final
+commit: 77afb33320c407fd7c6eadb6ff65d2b1ba4c633f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1303 final exact-head evidence — CLEAR
+
+Unchanged head 77afb33320c407fd7c6eadb6ff65d2b1ba4c633f / tree 71694c159e9bf7080a16ee55023291dc7252c3d3 remains branch tip. Carry full source A-11946 and corrected source A-11948. task.view confirms ordinary configured mode-free bc8e1434-d0f2-495b-99ba-065608e1dabe finished/passed at this head; raw original log A-11963. C1/C2 done marks current.
+
+## Criteria
+
+C1 verified. Exact changed-T3 identities all finish pass, with unchanged assertions:
+- qa lint reads named tests and selectors from the requested commit rather than the working tree — 0.851170615s.
+- qa lint validates named titles from a production install without dev dependencies — 0.278046439s.
+- committed brief corpus has no false absent file or title reports against the compiler source oracle — 4.648777032s.
+
+The public production-install case copies candidate hub executable/source into a disposable install without node_modules/shared transport files and asserts successful lint with a full selected source SHA. It now executes successfully on the Linux executor. File finish 6.934441724s differs from summed native case observations, selected added wall 7.107s excluding machine wait, runner suite 7.18s and T3 phase12s. No new test identity was added; these are three existing cases executed once, not load repetitions.
+
+C2 verified across accepted source and original control attribution. A-11944 records the actual local pre-fix ERR_MODULE_NOT_FOUND install/shared/protocol-frame.ts failure and explicit post-fix mutation restoring T-1225's original imports (exit1/253.6ms), then fixed imports restored. This is implementation-tree local macOS evidence with summary/capture limits, not a current-head Linux mutation run. The corrected child's only source delta is the frozen help fixture, so the same install-shaped assertion and qa-lint dependency-free import fix carry unchanged. The exact-head Linux positive pass above confirms the fixed graph; no dependency payload expansion or weakened test substitutes for it.
+
+Corpus diagnostic explicitly selects candidate HEAD 77afb333, not dev: 87 briefs, 1327 retained findings, 152 absentTitles, zero unresolved and zero falseAbsentFilesOrTitles against the TypeScript5.9.3 dev-only oracle. This proves no false file/title absence, not clean historical briefs or a dev corpus receipt. T1 compatibility/static and fallback component consumers also pass; the extracted policy keeps legacy exports and the shared exception identity.
+
+## Scope and provenance
+
+Independent unique progress finish parsing excluding file containers yields 3210 ordinary passing test outcomes, no fail/cancel/skip/todo and zero additional load-gate outcomes. New-test load gate logs describe policy; they do not establish repetitions absent from the actual records. No new Web files/repetitions.
+
+Completed T0 host check exit0/27.204s, all T1 exit0/76s (149 files/973 reported cases), fallback-all hub+Neovim T2 exit0/426s (248/1899), selected changed qa-lint-build T3 exit0/12s (one file/three identities once), Web exit0/182s (44/225). Shared protocol contract triggers all-T2 fallback. Remaining T3 is deferred periodic/integrated and absent configured batch tiers; T4 did not run. No all-tier/stage/provider QA claim.
+
+Executed droplet c-8 lon1 cland-v0-6af29a96, Linux x64 6.8.0-142-generic, Node24.21.0/Neovim0.12.5, overall workers2 (T1one, Web internallyfour). Machine lifetime802s/cost$0.0557 is not suite wall. Log prepares isolated Chrome Headless Shell156.0.8078.4 / Playwright chromium-headless-shell v1248 linux64 at /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248; native Web fixture cleanup observations retained. Reviewer started no browser.
+
+Host typecheck gate.tree 57ad0f25db4051b717ffd21198e9616a7f1ce272 was reused, not repeated remotely or an alternate candidate commit. Original local typecheck and correction guard summaries retain their source/capture limits.
+
+Test lint133 findings/60files, ten summarized duration warnings, four missing baselines (artifact-create-unit, dependency-install, install-claims, harness-framing), Web actual phase wall176.528s versus40s, and T3 ratchet2209.786s unchanged remain report-only. They are not enforced-budget passes. Existing corpus identity4.648777032s is not an invented new allowance; no new identity or candidate-source mutation occurred.
+
+## Disposition
+
+Final CLEAR, C1/C2 verified, findings empty. Source M1 frozen help correction and original dependency regression are resolved. Coordinator owns enqueue after the lead's fresh conflict check; no dev merge, further test/repetition or transcription rerun requested. QA none/after-stage. Reviewer performed immutable source/log/data/metadata inspection only; no tests, browser, fetch, process signals, native subjects or Git mutation.
+Durable final review: A-11965.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T13:23:10.123Z
+
+Merged 0ef4dde1073566f8a0a18aec323e3addfb6f874b onto dev.
