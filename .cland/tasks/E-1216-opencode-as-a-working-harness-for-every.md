@@ -2,7 +2,7 @@
 id: E-1216
 kind: epic
 title: OpenCode as a working harness for every role
-state: open
+state: closed
 criterion_seq: 3
 labels: []
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: topic-1015
 branch: null
 created: 2026-10-24T09:04:26.967Z
-updated: 2026-10-25T05:15:22.119Z
+updated: 2026-10-25T05:20:41.629Z
+closed: 2026-10-25T05:20:41.629Z
 ---
 
 ## Goal
@@ -31,11 +32,13 @@ Today: the OpenCode adapter exists (hub/src/adapters/opencode.ts; E-424 closed),
 - [ ] C1. An OpenCode Implementer takes three consecutive XS/S tasks from claim to merge with no Coordinator intervention beyond ordinary briefs and answers, recorded per run in a qualification artifact.
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T01:15:45.036Z · commit 4decf43e2a44fff25b25b1c60e8de277240929eb
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T03:37:48.515Z · commit 7a9c741569a64a785b2db4da20bb0a41716b485e
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-3 · 2026-10-25T05:20:29.272Z · commit 4c60a272180388e9a9668850f6e03d18c5de9243
 - [ ] C2. An OpenCode Reviewer and an OpenCode QA session each complete a real request with a verdict the hub accepts, recorded in the same artifact.
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T01:15:45.105Z · commit 4decf43e2a44fff25b25b1c60e8de277240929eb
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T03:37:48.594Z · commit 7a9c741569a64a785b2db4da20bb0a41716b485e
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-3 · 2026-10-25T05:20:29.272Z · commit 4c60a272180388e9a9668850f6e03d18c5de9243
 - [ ] C3. Each run's token use and cost are visible in cland's usage view for the OpenCode session.
-  - failed: qa-677 [qa] · 2026-10-25T03:37:48.667Z · note Persistence fix passes, but six original qualifying Implementers plus oc-qa-1 and oc-1269 still lack visible usage; fresh examples do not establish each qualification run.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-3 · 2026-10-25T05:20:29.272Z · commit 4c60a272180388e9a9668850f6e03d18c5de9243
 
 ## Plan
 
@@ -160,3 +163,30 @@ Platform: macOS Darwin arm64, node v24.21.0, local executor, one test file at a 
 QA session own usage (session list --json, read 05:14Z): oc-qa-2, harness opencode, model opencode-go/deepseek-v4.1-flash#default, usage.total 1,414,590 tokens, cost $0.016582386.
 
 Findings: none. Stage verdicts carry no epic criterion marks; the epic Definition of done remains a separate run.
+
+### qa-677 · 2026-10-25T05:20:29.272Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-25-677-3
+commit: 4c60a272180388e9a9668850f6e03d18c5de9243
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Evidence audit of Coordinator brief 5fd99289-a9c8-417d-bc98-7fa9b640b611. Artifact A-11613: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11613-e-1216-post-fix-dod-audit-clear-at-4c60a272/report.md
+
+| Case | Criterion | Result |
+| --- | --- | --- |
+| COHORT | C1 | PASS — T-1270, T-1271, T-1266 consecutive OpenCode claims; clear exact-head source/evidence reviews, green verify receipts and pinned-dev landings; ordinary coordination only |
+| ROLE-VERDICTS | C2 | PASS — oc-rev-1 T-1270/T-1266 and oc-qa-2 E-1216 stage verdicts are hub-sourced and match OpenCode session IDs/roles |
+| USAGE | C3 | PASS — numeric usage totals/costs visible for all five counted replacement-cohort sessions |
+| FRESHNESS | — | PASS — HEAD/dev pinned SHA; demo freshness.current=true |
+
+Findings: none. Verified C1, C2, C3 in this run. oc-qa-2 is stopped, not archived; its normal-list usage satisfies visibility. Reviewer figures are session aggregates, not per-request cost allocations. Historical missing pre-fix totals and earlier not-clear verdicts are not reclassified. No new runtime test, suite or browser; local macOS evidence audit. Existing Linux droplet receipts, completed tiers/skips, report-only gates, costs and limits are detailed in the artifact. Four recorder cases PASS; redacted evidence publication scan passed.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-25T05:20:41.629Z
+
+Closed on qa-677's clear post-fix DoD audit qa-dod-2026-10-25-677-3 at 4c60a272 (A-11613), C1–C3 verified. The cohort: OpenCode Implementers T-1270/T-1271/T-1266; Reviewer oc-rev-1; QA oc-qa-2 (stage 3, qa-2026-10-25-1216s3) and earlier oc-qa-1 (E-1197 DoD). Usage is retained per session since T-1269 (hub restart #56). The pre-fix cohort and its two not-clear audits (A-11568, A-11592) remain history; qualification log A-11591. Ten OpenCode Implementer runs landed in total.
