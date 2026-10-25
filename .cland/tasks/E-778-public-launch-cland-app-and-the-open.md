@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1023
 branch: null
 created: 2026-10-18T06:03:55.152Z
-updated: 2026-10-25T08:32:25.293Z
+updated: 2026-10-25T09:21:20.083Z
 ---
 
 ## Summary
@@ -75,12 +75,6 @@ stages:
       when: after-stage
     lanes:
       - - T-1273
-  - name: docs findings from the DoD run
-    qa:
-      scope: none
-      when: after-stage
-    lanes:
-      - - T-1274
 ```
 
 ## Comments
