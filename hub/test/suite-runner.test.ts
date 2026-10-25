@@ -6,13 +6,14 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, utimes, writeFile } fr
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
-import { ownDirectory } from './process-cleanup.ts';
+import { ownDirectory, ownProcess, onCleanup, captureProcess, cleanupProcesses, type ProcessIdentity } from './process-cleanup.ts';
 import { fileURLToPath } from 'node:url';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { runWebRepetitions } from './web-repetitions.ts';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+const fakeClock = fileURLToPath(new URL('./fake-clock.ts', import.meta.url));
 // Admission retries every 250 ms, including when the competing waiter is paused.
 const admissionPollMs = 250;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,6 +44,95 @@ async function until(check: () => boolean | Promise<boolean>) {
   for (let n = 0; n < 800; n++) { if (await check()) return; await delay(25); }
   throw new Error('runner did not reach the expected state');
 }
+
+test('a stalled Web child names its file and silence window and reaps owned processes', async t => {
+  const fault = process.env.CLAND_WEB_GUARD_CLEANUP_FAULT;
+  const owned: ProcessIdentity[] = [];
+  let closed = true;
+  let done: Promise<number | null> = Promise.resolve(null);
+  let dir: string | undefined;
+  let drained = false;
+  // Register shared resource teardown before acquiring the directory or child.
+  // Capture descendants while the held PID receipt still identifies them, so
+  // even an exited parent cannot strand writers or inherited output pipes.
+  onCleanup(t, async () => {
+    await cleanupProcesses(dir, owned, undefined, undefined, undefined, { discover: true });
+    await until(() => closed);
+    await done;
+    drained = true;
+  });
+  dir = await mkdtemp(join(tmpdir(), 'cland-runner-test-'));
+  ownDirectory(t, dir, { beforeRemove: () => { assert.ok(drained, 'retain fixture until tree and pipes are drained'); } });
+  await mkdir(join(dir, 'web/test'), { recursive: true });
+  await writeFile(join(dir, 'web/test/prerequisite.ts'), `export async function webPrerequisite() { return { available: true, executablePath: '/unused-synthetic-browser' }; }`);
+  await writeFile(join(dir, 'web/test/held.test.ts'), `import test from 'node:test';
+import { spawn } from 'node:child_process'; import { writeFile } from 'node:fs/promises';
+import { fixtureEnvironment } from ${JSON.stringify(fileURLToPath(new URL('./fixture-environment.ts', import.meta.url)))};
+test('held Web child', async () => {
+  const descendant = spawn(process.execPath, ['-e', "process.send('ready');setInterval(() => {}, 1000)"], { env: fixtureEnvironment(process.env.TMPDIR, process.env), stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  await new Promise(resolve => descendant.once('message', resolve));
+  await writeFile('held.json', JSON.stringify({ runner: process.ppid, worker: process.pid, descendant: descendant.pid, root: process.env.TMPDIR }));
+  console.log('held fixture ready');
+  await new Promise(() => {});
+});`);
+  // A real runner/worker boundary is needed for process ownership. Only the
+  // guard's time is fake; advance after both the held PID receipt and progress.
+  const code = `import { runSuite } from ${JSON.stringify(runner)}; import { FakeClock } from ${JSON.stringify(fakeClock)};
+const clock = new FakeClock(); const write = process.stdout.write.bind(process.stdout); let text = ''; let advanced = false;
+process.stdout.write = (chunk, ...args) => { const result = write(chunk, ...args); text += String(chunk);
+  if (${JSON.stringify(!fault)} && !advanced && text.includes('held fixture ready') && text.includes('suite progress ')) { advanced = true; setImmediate(() => clock.advance(60000)); }
+  return result;
+};
+process.exitCode = await runSuite([['--test', 'web/test/held.test.ts']], { cwd: ${JSON.stringify(dir)}, lockDir: ${JSON.stringify(lockPath(dir))}, clock });`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { cwd: dir, env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }), stdio: ['ignore', 'pipe', 'pipe'] });
+  const identity = captureProcess(child.pid);
+  assert.ok(identity, 'capture runner identity before observing setup');
+  owned.push(identity);
+  let output = '';
+  child.stdout.on('data', chunk => { output += String(chunk); });
+  child.stderr.on('data', chunk => { output += String(chunk); });
+  closed = false;
+  done = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', code => { closed = true; resolve(code); }); });
+  void done.catch(() => {});
+  await until(() => output.includes('held fixture ready'));
+  const held = JSON.parse(await readFile(join(dir, 'held.json'), 'utf8')) as { runner: number; worker: number; descendant: number; root: string };
+  if (fault) console.log('held fixture failure receipt ' + JSON.stringify({ ...held, dir }));
+  if (fault === 'setup') assert.fail('deliberate held fixture setup failure');
+  for (const pid of [held.runner, held.worker, held.descendant]) {
+    const heldIdentity = captureProcess(pid);
+    if (heldIdentity) owned.push(heldIdentity);
+  }
+  if (fault === 'assertion') assert.fail('deliberate held fixture assertion failure');
+  // This fails promptly against the fixed-wall guard, without waiting 180 s.
+  await until(() => output.includes('Web phase no test progress for 60 s; last file web/test/held.test.ts'));
+  await until(() => closed);
+  assert.notEqual(await done, 0, output);
+  for (const pid of [held.runner, held.worker, held.descendant]) assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, `owned PID ${pid} reaped`);
+  await assert.rejects(readFile(join(held.root, 'bootstrap-0.mjs')), { code: 'ENOENT' });
+  assert.match(output, /Web phase no test progress for 60 s; last file web\/test\/held.test.ts/);
+});
+
+for (const fault of ['setup', 'assertion']) test(`held Web fixture reaps its tree after ${fault} failure`, async t => {
+  const dir = await fixture(t);
+  const child = spawn(process.execPath, ['--test', '--test-name-pattern=^a stalled Web child', fileURLToPath(import.meta.url)], {
+    cwd: dir, env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: undefined, CLAND_WEB_GUARD_CLEANUP_FAULT: fault }), stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  ownProcess(t, child.pid);
+  let output = '';
+  let closed = false;
+  child.stdout.on('data', chunk => { output += String(chunk); });
+  child.stderr.on('data', chunk => { output += String(chunk); });
+  const done = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', code => { closed = true; resolve(code); }); });
+  onCleanup(t, async () => { await until(() => closed); await done; });
+  await until(() => closed);
+  assert.equal(await done, 1, output);
+  assert.ok(output.includes(`deliberate held fixture ${fault} failure`), output);
+  const row = output.split('\n').find(line => line.includes('held fixture failure receipt '));
+  assert.ok(row, output);
+  const held = JSON.parse(row.slice(row.indexOf('held fixture failure receipt ') + 'held fixture failure receipt '.length)) as { runner: number; worker: number; descendant: number; dir: string };
+  for (const pid of [held.runner, held.worker, held.descendant]) assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, `failure cleanup reaped ${pid}`);
+  await assert.rejects(readFile(join(held.dir, 'held.json')), { code: 'ENOENT' });
+});
 
 test('Web repetition children publish ten completed summaries under CPU load and are reaped', async t => {
   const dir = await fixture(t);

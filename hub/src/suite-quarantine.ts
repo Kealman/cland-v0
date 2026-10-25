@@ -9,6 +9,13 @@ export type QuarantineResult = { file: string; name: string; outcome: 'pass' | '
 export type TestFailure = { file: string; name: string };
 export type QuarantineReceipt = { complete: boolean; cancelled: number; failures: TestFailure[]; results: QuarantineResult[]; excused: number; admissionTimeouts?: AdmissionTimeoutReceipt[] };
 
+/** Quarantine excuses assertions, while runner policy failures stay fatal. */
+export function phaseExitCode(code: number, receipt: QuarantineReceipt | null, guardFailed: boolean): number {
+  if (code === 1 && receipt?.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && !receipt.admissionTimeouts?.length && receipt.excused > 0) code = 0;
+  if (guardFailed) code ||= 1;
+  return code;
+}
+
 /** An interrupted publisher supplies no quarantine authority. Keep I/O failures
  * other than absence visible; parsing a torn receipt must not hide native exit. */
 export async function readQuarantineReceipt(path: string): Promise<QuarantineReceipt | null> {

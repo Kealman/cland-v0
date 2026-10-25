@@ -5296,7 +5296,12 @@ scratch HOME/XDG/Git and a `web.link` frame on a scratch `projectHub`. They reta
 CSP, poll through page evaluation, close each context, save failure traces and
 prove the browser process group and hub edges are gone before deleting roots.
 The 4 s/test and 40 s/phase budgets follow duration report/enforce mode; a separate
-60 s gross guard reaps hangs. Web gets no load-gate repetitions. See
+hang guard reaps owned processes after 60 s without runner test start/finish
+receipts, or at a total ceiling of three times projected Web wall (minimum
+300 s). Projection uses selected file baselines and actual phase workers;
+unbaselined files use the configured Web file budget (default 40 s).
+Guard enforcement is independent of budget report/enforce mode. Web gets no
+T1–T3 identity load-gate repetitions. See
 [the Web phase](../docs/agents/tests.md#web-phase) and
 [browser fixture usage](../web/README.md#browser-tests).
 

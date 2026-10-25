@@ -94,6 +94,11 @@ expected; the Coordinator records post-restart droplet counts as landing
 evidence, not a pre-merge gate. Incomplete or skipped receipts are missing proof. Do not run this CPU
 check as an unleased local probe. No role-clause expansion is needed.
 
+For Web hang-guard changes, use the fake-clock and held-child seams in
+`docs/agents/tests/hub-test-web-phase.test.ts.md` and
+`docs/agents/tests/hub-test-suite-runner.test.ts.md`; the Web phase procedure
+defines the progress window, projection ceiling and cleanup receipts.
+
 For missing droplet browser libraries, report to the item's lead: the human or Coordinator rebuilds the prepared snapshot after restarting the hub onto the provisioning change. See `docs/agents/tests.md#web-phase` for the root provisioning and lockfile-key boundary.
 
 For browser sign-in probes, follow `docs/agents/tests.md#browser-sign-in-fixtures`: `cland web` is human-only; use a disposable project and test client, with scratch browser opener stubs. Cookie sessions persist for 30 days from creation; `web --sessions` and `web --revoke <id>` are also human-only Unix-socket commands. Test clients use those frames on disposable projects, never the live session actor. `web.session` reads only the sign-in bound to the authenticated web socket, with no cookie or identity selector; `session.history` is a bounded human-client read across topics, separate from spoke `history`. Web launches refuse every own `cwd` field; local launches keep it. Web authority changes update the explicit deny-by-default policy and its protocol conformance test; use the same section for T1 policy and T2 web/Unix fixtures.

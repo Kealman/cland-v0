@@ -6,6 +6,15 @@ plan, including candidates with no Web files. Candidates with no configured
 check omit that step. Select Web in batches only for candidate diffs touching web/, independently of
 T0. Assert Web follows T1 in command plans and assert package phases separately. Browser behavior belongs in the Web tier.
 
+T-1301 uses a fake clock at the Web watchdog seam: start/finish receipts every
+50 s survive past 180 s until the 600 s ceiling for a 200 s projection. Prove
+both events reset the 60 s silence window, startup silence has an explicit
+missing-file diagnostic, timeout fires once and stop cancels both deadlines.
+These simulated durations are policy evidence, not measured Web wall time.
+The runner outcome seam also keeps watchdog failure fatal after native exit zero
+with a complete otherwise-excused quarantine receipt; ordinary assertion-only
+quarantine remains excused. This pure control starts no process.
+
 T-1200 uses the pure new-file planner, repetition callback and terminal-summary
 parser to prove ten completed file repetitions on exactly two lanes, and rejects
 partial/skipped/failing/unloaded evidence. The verify summary retains the exact

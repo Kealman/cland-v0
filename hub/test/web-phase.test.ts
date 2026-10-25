@@ -16,6 +16,61 @@ import { suiteEvidence } from '../src/suite-log.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { planTierReport, tierPlanWorkers } from '../src/suite-tier-report.ts';
 import { newWebFiles, repeatWebFiles, webRepeatSummary, selectWebRepetitionFiles, admittedWebRepetitions } from '../src/web-repetitions.ts';
+import { watchWebPhase } from '../src/web-phase-watchdog.ts';
+import { FakeClock } from './fake-clock.ts';
+import { phaseExitCode } from '../src/suite-quarantine.ts';
+
+test('Web watchdog failure survives zero exit and an otherwise excused quarantine receipt', () => {
+  const receipt = { complete: true, cancelled: 0, failures: [], results: [], excused: 1 };
+  assert.equal(phaseExitCode(1, receipt, false), 0, 'ordinary quarantined assertion remains excused');
+  assert.equal(phaseExitCode(0, receipt, true), 1, 'timeout is fatal even after native zero exit');
+  assert.equal(phaseExitCode(1, receipt, true), 1, 'quarantine cannot clear timeout failure');
+});
+
+test('Web hang guard permits progress past 180 seconds and retains a projected total ceiling', async () => {
+  const clock = new FakeClock();
+  const failures: string[] = [];
+  // Four 100-second files on two workers project 200 seconds; 3x is 600.
+  const guard = watchWebPhase({ fileSeconds: [100, 100, 100, 100], workers: 2, clock, stalled: reason => failures.push(reason) });
+  for (let i = 0; i < 11; i++) {
+    await clock.advance(50_000);
+    guard.progress({ event: i % 2 ? 'finish' : 'start', file: 'web/test/slow.test.ts' });
+    assert.equal(failures.length, 0, `progress survives at ${(i + 1) * 50} seconds`);
+  }
+  await clock.advance(49_999);
+  assert.equal(failures.length, 0);
+  await clock.advance(1);
+  assert.match(failures[0]!, /Web phase exceeded 600 s total ceiling.*200 s projected wall/);
+  await clock.advance(60_000);
+  assert.equal(failures.length, 1, 'one timeout owns termination');
+  guard.stop();
+});
+
+test('Web hang guard resets on start and finish receipts and reports silence including before first progress', async () => {
+  const clock = new FakeClock();
+  const failures: string[] = [];
+  const guard = watchWebPhase({ fileSeconds: [100], workers: 1, clock, stalled: reason => failures.push(reason) });
+  await clock.advance(59_999);
+  guard.progress({ event: 'start', file: 'web/test/held.test.ts' });
+  await clock.advance(59_999);
+  guard.progress({ event: 'finish', file: 'web/test/held.test.ts' });
+  await clock.advance(59_999);
+  assert.equal(failures.length, 0);
+  await clock.advance(1);
+  assert.match(failures[0]!, /Web phase no test progress for 60 s; last file web\/test\/held.test.ts/);
+  guard.stop();
+
+  const startup = watchWebPhase({ fileSeconds: [], workers: 1, clock, stalled: reason => failures.push(reason) });
+  await clock.advance(60_000);
+  assert.match(failures[1]!, /no test progress for 60 s; last file unavailable \(no start\/finish receipt\)/);
+  startup.stop();
+
+  const completed = watchWebPhase({ fileSeconds: [100], workers: 1, clock, stalled: reason => failures.push(reason) });
+  completed.stop();
+  completed.progress({ event: 'start', file: 'web/test/late.test.ts' });
+  await clock.advance(600_000);
+  assert.equal(failures.length, 2, 'stop cancels both deadlines and ignores late progress');
+});
 
 test('host pins new and renamed Web files against the merge base, not a newer fetched dev tip', async () => {
   const commands: string[][] = [];

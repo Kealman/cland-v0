@@ -1888,7 +1888,14 @@ For human-only sign-in, session management and web authority policy tests, follo
 Browser tests carry `Web` in `hub/test/tiers.json`, outside T0–T3, with a separate
 4 s/test and 40 s/phase budget in `hub/test/durations.json` (report mode follows
 the repository budget setting). The package runner reports actual phase wall time
-separately from tier projections and keeps a 180 s gross hang guard. Web runs after
+separately from tier projections. Its hang guard resets a 60 s no-progress window
+on each Web runner test start/finish receipt; ordinary output does not reset it.
+The total ceiling is three times projected Web wall, with a 300 s minimum.
+Projection schedules the selected files' duration baselines at the phase's actual
+worker count; a file without a baseline uses the configured Web file budget
+(40 s by default). A timeout names the last file and window or total ceiling,
+fails the phase and reaps owned processes before removing the run root. These
+guards apply independently of duration report/enforce mode. Web runs after
 the hub phases with resource `machine`, two workers locally and four on droplets.
 It keeps the suite's joint lease and never runs in load-gate repetition lanes.
 

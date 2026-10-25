@@ -5,6 +5,21 @@ stale-process recovery, bundle prerequisites and Web repetition child cleanup.
 The process boundary is necessary to observe actual child exits and owned
 resources; pure selection and summary rules belong in `web-phase.test.ts`.
 
+T-1301's held Web child contract uses a synthetic prerequisite with no browser.
+Arm stdout/stderr and close observers before awaiting the persisted PID receipt
+and runner progress; advance only the guard's fake clock by 60 s after those
+receipts. Keep final assertions for the exact file/window message, nonzero exit,
+all three owned PIDs reaped and run-root removal. Setup and timeout-message waits
+are separately bounded; fixture cleanup follows observed process termination.
+Two sealed nested Node controls deliberately fail setup before PID capture and
+an assertion after capture, while the Web tree remains held. Shared resource
+teardown uses explicit full discovery before signalling, captures descendants,
+observes bounded close/pipe drain and then permits directory removal. Failure
+to drain retains the root. Keep the controls' final three-PID and removal checks.
+Run only this case locally with `--test-name-pattern='a stalled Web child'`;
+select its failure controls with `--test-name-pattern='held Web fixture reaps'`;
+the whole file's deliberate CPU-load contract requires the queued machine lease.
+
 The T-1200 Web repetition contract creates a disposable directory with a new
 synthetic `web/test/new.test.ts` and an explicit host-admitted repetition list.
 It calls the real repetition launcher, which starts ten fresh file processes in

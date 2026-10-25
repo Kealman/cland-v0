@@ -11,7 +11,7 @@ import { hubDiscovery, readDiscovery } from '../src/project.ts';
 import { PROTOCOL_VERSION, parseFrame, type SuiteSlotResult } from '../src/protocol.ts';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, realpath, stat, writeFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, realpath, stat, writeFile, rm, glob } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join, resolve, matchesGlob } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ import { durationBudgetReport } from '../src/suite-duration-budget.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
 import { assertTestAdmission } from '../src/test-admission.ts';
-import { readQuarantineManifest, readQuarantineReceipt } from '../src/suite-quarantine.ts';
+import { readQuarantineManifest, readQuarantineReceipt, phaseExitCode, type QuarantineReceipt } from '../src/suite-quarantine.ts';
 import { AdmissionTimeout } from '../src/test-admission-outcome.ts';
 import { suiteTestEnv } from '../src/verification-occasion.ts';
 import { suiteProgress, type TestProgress } from '../src/suite-progress.ts';
@@ -36,6 +36,8 @@ import { StringDecoder } from 'node:string_decoder';
 import { webPhaseAvailable, type WebPrerequisite } from '../src/web-phase.ts';
 import { runWebRepetitions } from './web-repetitions.ts';
 import { WEB_REPETITION_REPORT } from '../src/web-repetitions.ts';
+import { watchWebPhase } from '../src/web-phase-watchdog.ts';
+import type { Clock } from '../src/hub/clock.ts';
 
 // Candidate capability read by verificationCommands; old runners retain their recorded tiers.
 export const supportsWebPhase = true;
@@ -55,7 +57,7 @@ const installedBundleReaders = [
 ];
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
-export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string; tierPlan?: TierPlan } = {}): Promise<number> {
+export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string; tierPlan?: TierPlan; clock?: Clock } = {}): Promise<number> {
   try { await assertTestAdmission(options.cwd); }
   catch (error) {
     if (!(error instanceof AdmissionTimeout)) throw error;
@@ -66,6 +68,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let active: ReturnType<typeof spawn> | undefined;
   let runId = options.token ?? randomBytes(10).toString('base64url');
   let activeIdentity: ProcessIdentity | null = null;
+  let activeGuard: ReturnType<typeof watchWebPhase> | undefined;
   const loadRunners = new Set<ProcessIdentity>();
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
@@ -224,12 +227,19 @@ process.chdir(cwd);`);
         reporters.push(`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout');
       }
       await prepareRunnerFixture(root);
+      const webSeconds: number[] = [];
+      if (webPhase) for await (const file of glob(args.filter(arg => arg.startsWith('web/test/')), { cwd })) {
+        // Unknown files use the Web file budget, never a zero-duration guess.
+        webSeconds.push(durationManifest?.files[file]?.seconds ?? durationManifest?.budget.Web?.fileSeconds ?? 40);
+      }
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       active = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env: runnerFixtureEnvironment(root, env), detached: true, stdio: ['inherit', 'pipe', 'pipe'] });
       const unfinished = new Map<string, TestProgress>();
       const progressDecoder = new StringDecoder('utf8');
       let pendingProgress = '';
       let stderrTail = Buffer.alloc(0);
+      let phaseGuard: ReturnType<typeof watchWebPhase> | undefined;
+      let guardCleanup: Promise<void> | undefined;
       active.stdout!.on('data', (chunk: Buffer) => {
         process.stdout.write(chunk);
         pendingProgress += progressDecoder.write(chunk);
@@ -238,6 +248,7 @@ process.chdir(cwd);`);
           if (!line.startsWith('suite progress ')) continue;
           try {
             const row = JSON.parse(line.slice('suite progress '.length)) as TestProgress;
+            phaseGuard?.progress(row);
             if (row.event === 'start') unfinished.set(row.id, row);
             else if (row.event === 'finish' && row.outcome !== 'cancelled') unfinished.delete(row.id);
           } catch { /* A torn progress line cannot erase observed starts. */ }
@@ -255,6 +266,19 @@ process.chdir(cwd);`);
       holder.runner = activeIdentity;
       for (const lease of [...leases, ...machine]) await lease.publish();
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+      const runnerIdentity = activeIdentity;
+      phaseGuard = webPhase ? watchWebPhase({ fileSeconds: webSeconds,
+        workers: options.workers?.[index] ?? Number(args.find(arg => arg.startsWith('--test-concurrency='))?.split('=')[1] ?? 1),
+        ...(options.clock ? { clock: options.clock } : {}),
+        stalled: reason => {
+          const files = [...new Set([...unfinished.values()].map(row => row.file))];
+          process.stderr.write(reason + (files.length ? `; unfinished files ${files.join(', ')}` : '') + '\n');
+          guardCleanup = cleanupOwnedProcesses([runnerIdentity]);
+          // Observe rejection immediately, then propagate after the exit receipt.
+          void guardCleanup.catch(() => {});
+        },
+      }) : undefined;
+      activeGuard = phaseGuard;
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const repeats = loadGate ? runLoadGate({
@@ -264,15 +288,8 @@ process.chdir(cwd);`);
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
       }) : Promise.resolve({ failed: false, extraWallMs: 0 });
-      // A gross hang guard is separate from the measured 40 s Web budget. It allows 180 s: on Linux c-8
-      // droplets the grown Web phase (16 files, items.test.ts alone about 40 s) passed 60 s of wall
-      // and the guard killed healthy runs mid-file (A-9371, A-9419).
-      const phaseGuard = webPhase ? setTimeout(() => {
-        process.stderr.write('Web phase exceeded 180 s gross hang guard\n');
-        if (activeIdentity) void cleanupOwnedProcesses([activeIdentity]);
-      }, 180_000) : undefined;
-      const [phaseOutcome, gateOutcome] = await Promise.allSettled([done, repeats]);
-      clearTimeout(phaseGuard);
+      const [phaseOutcome, gateOutcome] = await Promise.allSettled([done.finally(() => phaseGuard?.stop()), repeats]);
+      await guardCleanup;
       if (phaseOutcome.status === 'rejected') throw phaseOutcome.reason;
       if (gateOutcome.status === 'rejected') throw gateOutcome.reason;
       let code = phaseOutcome.value;
@@ -288,8 +305,10 @@ process.chdir(cwd);`);
         if (!reportedTrips.has(key)) { reportedTrips.add(key); process.stdout.write(line + '\n'); }
       }
       let incomplete = false;
+      let phaseReceipt: QuarantineReceipt | null = null;
       if (checkQuarantine) {
         const receipt = await readQuarantineReceipt(quarantinePath);
+        phaseReceipt = receipt;
         if (!receipt?.complete) {
           incomplete = true;
           code ||= 1;
@@ -298,9 +317,9 @@ process.chdir(cwd);`);
           for (const result of receipt.results) process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
           process.stdout.write(`suite test failures ${JSON.stringify(receipt.failures)}\n`);
           if (receipt.admissionTimeouts?.length) process.stdout.write(`suite admission timeouts ${JSON.stringify(receipt.admissionTimeouts)}\n`);
-          if (code === 1 && receipt.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && !receipt.admissionTimeouts?.length && receipt.excused > 0) code = 0;
         }
       }
+      code = phaseExitCode(code, phaseReceipt, guardCleanup !== undefined);
       // Resource policy is independent of assertion quarantine or caught errors.
       if (tierFailed) code = 1;
       let budgetFailed = false;
@@ -379,6 +398,7 @@ process.chdir(cwd);`);
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     throw error;
   } finally {
+    activeGuard?.stop();
     clearInterval(sample);
     try {
       if (loadRunners.size) await cleanupOwnedProcesses([...loadRunners]);
