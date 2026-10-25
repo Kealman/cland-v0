@@ -8,3 +8,8 @@ one-minute Agents notice to the Coordinator. Check the pre-deadline boundary,
 reconnect without postponement, one notice per episode, a new episode after
 confirmation, and cancellation by confirmation before the deadline. No wall-clock
 wait or harness process is needed.
+
+Codex additionally defers alarms until 120 seconds from the hub's serving
+receipt. The production Codex adapter and scripted app-server proof lives
+in [codex-delivery.test.ts](hub-test-codex-delivery.test.ts.md); the Claude alarm
+tests here retain their ordinary one-minute and five-minute deadlines.

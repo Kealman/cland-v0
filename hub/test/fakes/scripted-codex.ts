@@ -85,7 +85,7 @@ export class ScriptedCodex extends EventEmitter implements AppServerConnection {
   count(method: string) { return this.calls.filter(call => call.method === method).length; }
 }
 
-export async function scriptedCodex(t: TestContext, beforePublish?: (native: ScriptedCodex, process: HarnessProcess) => Promise<void>) {
+export async function scriptedCodex(t: TestContext, beforePublish?: (native: ScriptedCodex, process: HarnessProcess) => Promise<void>, options: { startupDelayMs?: number } = {}) {
   const root = await tempProject(t);
   const clock = new FakeClock();
   const native = new ScriptedCodex();
@@ -95,6 +95,9 @@ export async function scriptedCodex(t: TestContext, beforePublish?: (native: Scr
   let connectionFailure: Error | null = null;
   let launchToken: string | undefined;
   const { discovery } = await projectHub(t, root, {}, { clock, adapters: [(host) => {
+    // Session-manager construction precedes the serving receipt. Model slow
+    // adapter initialization without processes or wall-clock waiting.
+    clock.block(options.startupDelayMs ?? 0);
     const lifecycle = fakeHarness('codex', { host, clock });
     adapter = new CodexAdapter(host, { clock, pollMs: 100, connect: async () => { connections++; if (connectionFailure) throw connectionFailure; native.closed = false; return native; } });
     // Only lifecycle is replaced: inject, watch and every native event use the production adapter.

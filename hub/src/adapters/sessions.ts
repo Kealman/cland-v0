@@ -80,6 +80,8 @@ export const USAGE_EVENT_MS = 1000;
 /** A failed delivery left unconfirmed this long needs attention. */
 export const INJECT_STALLED_MS = 60_000;
 const COORDINATOR_INJECT_STALLED_MS = 5 * 60_000;
+// Codex app-servers can take 90 seconds to reattach after a hub restart.
+const CODEX_STARTUP_INJECT_GRACE_MS = 120_000;
 const INJECT_RETRY_MAX_MS = 15 * 60_000;
 type UnconfirmedInject = { timer: ClockTimer; delay: number; retryAt: number; report: boolean };
 
@@ -93,6 +95,7 @@ export class Sessions {
   readonly #processRows: NonNullable<SessionsOptions['processRows']>;
   readonly #env: NodeJS.ProcessEnv;
   readonly #core: HubCore;
+  #servingAt: number | null = null;
   readonly #table: ProcessTable;
   readonly #root: string;
   readonly #log: LogFn;
@@ -1709,6 +1712,9 @@ export class Sessions {
     this.#clearUnconfirmedMessage(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
   }
 
+  /** Called once at the hub's serving receipt, before native session recovery. */
+  markServing(): void { this.#servingAt ??= this.#core.clock.now().getTime(); }
+
   /** Everything the session's spoke accepted and its adapter has not confirmed: injected again. */
   #retry(p: HarnessProcess, at?: number, reconnected = false): void {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
@@ -1803,7 +1809,10 @@ export class Sessions {
     const p = this.#table.bySessionId(sessionId)!;
     this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error });
     const coordinator = this.#core.store.roleOf(this.#core.connectionOf(sessionId)?.name ?? p.name) === 'coordinator';
-    const threshold = coordinator ? COORDINATOR_INJECT_STALLED_MS : INJECT_STALLED_MS;
+    const threshold = Math.max(
+      coordinator ? COORDINATOR_INJECT_STALLED_MS : INJECT_STALLED_MS,
+      p.harness === 'codex' && this.#servingAt !== null ? this.#servingAt + CODEX_STARTUP_INJECT_GRACE_MS - this.#core.clock.now().getTime() : 0,
+    );
     const current = episode;
     const timer = this.#core.clock.setTimeout(() => {
       const p = this.#table.bySessionId(sessionId);

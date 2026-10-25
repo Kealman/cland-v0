@@ -45,6 +45,10 @@ re-exec bridge regression in `docs/agents/tests/hub-test-claude-code-schedule.te
 and the fake-clock alarm routing in `docs/agents/tests/hub-test-inject-stalled.test.ts.md`.
 Coordinator alarms reach General and named Aides after five minutes of failed
 confirmation; recover with the named session's `cland session resume <name> --relaunch`.
+Codex injection alarms also wait for a fixed 120-second grace from the hub's
+serving receipt (initialization time does not consume it);
+use `docs/agents/tests/hub-test-codex-delivery.test.ts.md` for the scripted
+app-server confirmation, startup anchoring and post-startup timeout regressions.
 
 For local verification cancellation or compatibility recovery, use the sealed cancellation, recreated-root quarantine and blocked-queue seams in `docs/agents/tests.md`. Observe exact descendant death before root cleanup; retain the quarantine journal's old/new inodes and next-run admission receipt. Live machine locks are outside the fixture.
 

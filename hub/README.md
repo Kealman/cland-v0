@@ -2448,8 +2448,15 @@ and `cland session resume <name> --relaunch`. Each known Aide holder receives it
 directly by name, including offline holders; without an Aide, the human or
 stand-in reads General. It also appears as a `delivery-stalled` event. Other
 sessions produce an Agents notice to the Coordinator after one minute.
-Deadlines start at the first failed confirmation in the running hub; retries and
-bridge/spoke reconnects preserve them. Confirmation cancels the pending alarm,
+Deadlines start at the first failed confirmation in the running hub. For Codex,
+the alarm waits until both that role's timeout and a 120-second startup grace
+have elapsed; the grace starts at the hub's serving receipt, after discovery is
+published and before adapter recovery, and covers app-server reattachment.
+For a standalone WebSocket hub it starts when its listener is ready.
+It is fixed per hub start,
+not renewed per session, failed delivery or reconnect. Other harnesses keep their
+normal timeouts, and the Coordinator's five-minute timeout still applies.
+Retries and bridge/spoke reconnects preserve deadlines. Confirmation cancels the pending alarm,
 and one notice covers an episode until all its failed deliveries are confirmed.
 Hub restart starts a new observation window. This detects stalled delivery; it
 does not relaunch a session automatically.

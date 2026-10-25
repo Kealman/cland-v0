@@ -281,6 +281,7 @@ export async function createHub(options: HubOptions): Promise<Hub> {
       base.dispatcher.useSessions(sessions.sessions);
     }
     edge = await createWebSocketEdge(base.dispatcher, { ...options, clock: options.transportClock ?? realClock });
+    sessions?.sessions.markServing();
   } catch (err) {
     // nothing may outlive a hub that never listened
     try { await sessions?.close(); }

@@ -436,6 +436,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   primeInbox();
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
+  adapters.sessions.markServing();
   starting = false;
   hub.dispatcher.startExecutorRecovery();
   tracker.resumeReadyChecks();

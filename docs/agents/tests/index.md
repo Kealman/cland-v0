@@ -8,6 +8,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/doctor-harness-probe.test.ts`](../../../hub/test/doctor-harness-probe.test.ts) | [Notes](hub-test-doctor-harness-probe.test.ts.md) |
 | [`hub/test/opencode-launch-policy.test.ts`](../../../hub/test/opencode-launch-policy.test.ts) | [Notes](hub-test-opencode-launch-policy.test.ts.md) |
 | [`hub/test/inject-stalled.test.ts`](../../../hub/test/inject-stalled.test.ts) | [Notes](hub-test-inject-stalled.test.ts.md) |
+| [`hub/test/codex-delivery.test.ts`](../../../hub/test/codex-delivery.test.ts) | [Notes](hub-test-codex-delivery.test.ts.md) |
 | [`hub/test/qa-demo-policy.test.ts`](../../../hub/test/qa-demo-policy.test.ts) | [Notes](hub-test-qa-demo-policy.test.ts.md) |
 | [`hub/test/skills-qa.test.ts`](../../../hub/test/skills-qa.test.ts) | [Notes](hub-test-skills-qa.test.ts.md) |
 | [`hub/test/config-set.test.ts`](../../../hub/test/config-set.test.ts) | [Notes](hub-test-config-set.test.ts.md) |
