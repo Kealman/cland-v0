@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1061
 branch: t/T-1029-a-sharded-stage-cover-counted-before-a
 created: 2026-10-20T20:41:07.527Z
-updated: 2026-10-25T17:16:37.438Z
+updated: 2026-10-25T17:21:38.799Z
 ---
 
 ## Summary
@@ -45,3 +45,16 @@ Diagnosis: clean inherited worktree at 871fc363. Triaged lines synchronously res
 ### impl-1029 · 2026-10-25T17:16:21.400Z
 
 C1/C2 are covered by two new T2 regressions. Unchanged product code already passes; T-1049 (7c153e51) fixed pending restored cover/QA currency. A-12042 records the diagnosis, red mutation controls and excluded exploratory results. Local macOS at base 871fc363 + test diff: suite-close-component.test.ts 12/12 (new restart case 0.704 s; final bounded-setup repeat 1.000 s); stage-closure-component.test.ts 7/7 (new post-restart QA case 0.211 s); root npm run typecheck and closed-item wording lint pass. No browser, native worker or real provider ran. No command/policy/schema/wire/permission changes: rule 16 public docs/help/skill/role behavior remains accurate; file-specific test guidance added. QA policy none after-stage, no per-item QA brief required. Source review and mode-free Linux verification remain.
+
+### rev-34 · 2026-10-25T17:21:38.799Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1029-source1
+commit: fdac373eef93ae4162d036a762c6bffb1986f2df
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear at correctedfdac373e; A-12050 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12050-t-1029-full-source-review-at-fdac373e.md). PreliminaryM1 resolved: restarted clients/spoke now share setup.fixtures resource owner before hub/root cleanup. C1 retains actual two-shard scheduler completion, exact original cached run after second start, Linux cover report and no extra provider creates. C2 retains legacy two-platform shape, held product tree read, post-restart authenticated QA unknown→current and no prior closure shortcut. Mutation controls correctly distinguished from current-product reproduction; T-1049 already fixed behavior, no production change. Local12/7case/static reports retain source/platform limits. C1/C2 remain unverified pending same-head configured evidence; QA none.

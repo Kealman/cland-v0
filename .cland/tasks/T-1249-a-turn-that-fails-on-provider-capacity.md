@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1063
 branch: t/T-1249-a-turn-that-fails-on-provider-capacity
 created: 2026-10-24T13:35:17.533Z
-updated: 2026-10-25T17:17:48.722Z
+updated: 2026-10-25T17:27:08.403Z
 ---
 
 ## Summary
@@ -32,3 +32,7 @@ A Codex session's turn fails with `Selected model is at capacity. Please try a d
 ### impl-1249 · 2026-10-25T17:17:48.722Z
 
 Implementation seam: triage A-11669 explicitly selects adapter-seam tests. Use existing T2 scriptedCodex/projectHub + fake clock, retaining exact native input/readback, delivery receipts and Agents retry notices; no processes/browser needed. Rule 20 inventory before the optional internal AdapterHost.turnFailed replay argument: production Sessions host; Codex and OpenCode callers; Claude signal-to-Sessions path; scriptedCodex/fakeHarness hosts and native/adapter/composition tests; Agents lifecycle/journal/inbox consumers of existing turn-failed notices; shipped implement skill, hub README and test docs. Full repository search covers src/test, nvim/web/shared, QA briefs, docs and skills. Keep 3-argument callers and wire notices unchanged; optional replay applies only to Codex provider-capacity failures.
+
+### impl-1249 · 2026-10-25T17:27:08.403Z
+
+Consumer inventory results: AdapterHost.turnFailed production callers are Codex and OpenCode, with Sessions.host receiving it; Claude Code uses Sessions.signal's unchanged 3-argument failure path. Tests: codex-native, codex-adapter, codex-delivery, opencode-native, opencode-adapter, claude-code-sessions/adapter/schedule, account-limited; generic fake host consumers retain optional callbacks. Protocol/persisted readers: hub protocol + shared/wire NotificationKind, hub journal, Agents lifecycle mapper and Inbox; existing turn-failed/redelivered shapes are retained, so web/nvim and historical records need no migration. QA brief hits E-424 and T-272 concern Claude sign-out/authentication and remain unaffected. No native wire/schema/refusal/credential/admission shape changed; optional replay is internal, only provided by Codex. CLI usage frozen fixture changes with the advertised policy. Ordinary-error and existing uncertain-admission regressions retain previous public-frame shape. Matching role clauses contain no failed-turn recovery description; no role grants or clause lines changed (byte reserve).
