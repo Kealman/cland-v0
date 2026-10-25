@@ -2,8 +2,8 @@
 id: T-1235
 kind: task
 title: A rename during native resume can strand the launch reservation under the old name
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1065
 branch: t/T-1235-a-rename-during-native-resume-can-strand
 created: 2026-10-24T11:19:13.427Z
-updated: 2026-10-25T19:11:21.727Z
+updated: 2026-10-25T19:53:14.296Z
+closed: 2026-10-25T19:53:14.296Z
 ---
 
 ## Summary
@@ -83,3 +84,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence CLEAR; C1/C2 verified. A-12113 carries full source A-12106/A-12108 and independent raw A-12111 audit. Exact-head mode-free d2e0d189 exit0:3264ordinary passes plus20additional load finishes(four rename outcomes5/5 each), nofail/cancel/skip/TODO. Successful/missing/throwing/forbidden base .235410644/.151017531/.107697412/.107281437s; worstnewload .374501384s, no>=3s allowance. All8 touched-file cases and3docs-guard identities pass. Durable original reservation positively checked before/after real public Coordinator rename then empty after completed reply; stableId current-role rollback retained. HostT0/allT1/fallbackallhub+NeovimT2/mappedT4onecaseonce/Web complete; T3deferred, no fullT4/all/providerQA claim. Guard100-frame case1.343823151s; selected addedwall2.292s excludesmachinewait. Linuxc8lon1 Node24.21/Nvim0.12.5/HeadlessShell156v1248 forWeb; lifetime740s/$0.0514 distinctfromwall. HostgateTREEe32a18a6 reused remotely. Report-onlylint133/60/sevenbudgetwarnings/Web154.89>40s/ratchet2232.554same retained. Original local summary/capture limits explicit; no transcription reruns. QA none. Coordinator owns enqueue/separate pre-merge checks. Reviewer read-only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T19:53:14.296Z
+
+Merged 48bcab2955a177633118856fb7e9d7701a750625 onto dev.

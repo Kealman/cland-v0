@@ -3,7 +3,7 @@ id: T-543
 kind: task
 title: PID-reuse guard accepts a recycled PID that started within the same ps second
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T18:37:29.494Z
+updated: 2026-10-25T19:57:02.932Z
 ---
 
 ## Summary
@@ -28,15 +28,17 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final3 · 2026-10-25T16:04:52.366Z · commit 8fbcf297cde11d084d4efd1da4ff462405f3a121
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-source10 · 2026-10-25T18:14:04.626Z · commit c8274f8c0407b05d85eeaf4008382298a6d8de97
-  - done: impl-543 · 2026-10-25T18:21:55.966Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final4 · 2026-10-25T18:36:26.881Z · commit 38d824672ab89f07d1e95c0f36b67ddbbce7d314
+  - done: impl-543 · 2026-10-25T19:30:07.671Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final5 · 2026-10-25T19:46:36.411Z · commit 990a407e2214851248cad7b00ad23b776b0632a6
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final3 · 2026-10-25T16:04:52.366Z · commit 8fbcf297cde11d084d4efd1da4ff462405f3a121
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-source10 · 2026-10-25T18:14:04.626Z · commit c8274f8c0407b05d85eeaf4008382298a6d8de97
-  - done: impl-543 · 2026-10-25T18:21:56.167Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final4 · 2026-10-25T18:36:26.881Z · commit 38d824672ab89f07d1e95c0f36b67ddbbce7d314
+  - done: impl-543 · 2026-10-25T19:30:07.838Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final5 · 2026-10-25T19:46:36.412Z · commit 990a407e2214851248cad7b00ad23b776b0632a6
 
 ## Comments
 
@@ -386,3 +388,39 @@ Criteria: C1 verified, C2 verified.
 ### impl-543 · 2026-10-25T18:37:29.494Z
 
 Current merged head38d82467 source11/final4clear, C1/C2verified. 2d9b5bac/A-12096 exact-head Linux task run3339ordinary+75load passes, lifecycle8/8 incl prior3 failures; binary/cancel/close ordinary+5/5load. New native case2.976821157s within5.2s allowance. A-12099 preserves complete stanza, exclusions and fresh fetch dev2bb29ff8 +merge-tree exit0/no conflict (tree28c316dc). Clean unchanged head. Ready for Coordinator deciding rule6all; earlier all failures remain unexplained/load-dependent, no root-cause/integrated-pass claim.
+
+### impl-543 · 2026-10-25T19:30:08.136Z
+
+Pushed990a407e fixes reproduced leaf-only short circuit: after LinuxstatENOENT/ESRCH, every listed branch PID must return nativekill0ESRCH before settlement. Both fully-dead branch cases were redfalse!=true, now green; present/survivor/EPERM/EIO controls refuse. A-12118 records actualA-12114failure, ten deterministicLinuxcases in changed lifecycle file, shared existing OS-probe extraction preserving38assertions, and tracker refusal receipt while keeping crash/hold/claim checks. Current Mac111passes/1Linuxskip across6files; typecheck/lintgreen. Tracker#3 exactcauseunproven fromoldlog; full changed file nowselectedforLinux. Fresh source review before newmode-free; no devmerge or ordinary retryyet.
+
+### rev-34 · 2026-10-25T19:31:38.627Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source12
+commit: 990a407e2214851248cad7b00ad23b776b0632a6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards/Spec no findings. Full branch-settlement audit A-12120 carries prior safety review. Both acquisition/grace paths settle an unverified branch only after every transitively listed PID returns native kill0ESRCH; present/surviving/EPERM/EIO/unknown results refuse with first-PID diagnostic. Native stat errors alone grant no exit or signal authority; before/ps/after binding and fresh per-signal checks unchanged. Ten deterministic Linux after-snapshot controls retain dead-branch no-signal and managed positive signal assertions. Shared OS fixture extraction preserves all38 existing system test bodies, sealed launch/cleanup. Tracker crash assertion now exposes stop refusal and retains native death/restart/claim/status/hold assertions. Docs replace leaf-only wording. Parent A-12114 errors are real; tracker exact cause still unproven. Local111pass/1Linuxskip supplementary only. C1/C2runtime-unverified/no marks. One fresh mode-free verify, exact-head evidence/new-case timings, then Coordinator deciding integrated all required.
+
+### rev-34 · 2026-10-25T19:46:36.412Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-final5
+commit: 990a407e2214851248cad7b00ad23b776b0632a6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; Standards/Spec no findings. A-12129 audits7c51e40d/A-12128:3364ordinary+75load allpass,15identities each5/5load. All10new Linux stat-after-snapshot controls pass0.1405–0.1779s with absent-branch positive and present/survivor/EPERM/EIO no-signal assertions. Full lifecycle18/18, tracker15/15 (crash/restart/claims/status/holds9.018s), system38/cleanup37, finer-than-second/old-row, ancestry/cache/checkpoint and managed-positive controls pass. Nativeproof3.318s<approved5.2; existing tracker9.018<retained14.629 allowance, no new allowance needed. HostT0/LinuxT1/allT2/changedT3once/mappedT4once/Web complete; otherT3/T4/extraT4reps/stageQA absent. Prepared host tree not rerun remote; report-only budgets and native-vs-synthetic limits retained. C1/C2verified. Prior integrated A-12114 remains failed; unchanged crew scenario absent and tracker prior exact cause unproven. Coordinator deciding integrated all at990a407e still required before merge.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-543 · 2026-10-25T19:56:56.622Z
+
+Authorized dev merge committed/pushed at c169e657d488acf52167263acd544e1a44b60d41 (dev 48bcab2955). A-12136 records conflict resolutions and sequential local macOS receipts: seven requested files plus three help/fixture files, 159 passed/one Linux-only skip, typecheck and diff-check green. Capacity retry cancellation, admitted-name settlement and native identity safety retained. C1/C2 implementation done; fresh source review then mode-free Linux verification required. Prior all failures and tracker exact-cause uncertainty remain explicit.
