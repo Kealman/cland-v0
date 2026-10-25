@@ -2,7 +2,7 @@
 id: E-778
 kind: epic
 title: "Public launch: cland.app and the open repository"
-state: open
+state: closed
 criterion_seq: 6
 labels: []
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: topic-1023
 branch: null
 created: 2026-10-18T06:03:55.152Z
-updated: 2026-10-25T09:21:20.083Z
+updated: 2026-10-25T09:26:38.823Z
+closed: 2026-10-25T09:26:38.823Z
 ---
 
 ## Summary
@@ -33,17 +34,21 @@ Everything the landing, the docs and the README promise works on a fresh machine
 ## Definition of done
 
 - [ ] C1. `brew install cland` installs cland on macOS, or the site shows the tap form that works
-  - failed: qa-677 [qa] · 2026-10-25T08:18:12.873Z · note BLOCKED: official Homebrew installer exits 1 as demo runner; insufficient permissions for /home/linuxbrew/.linuxbrew, so formula/version never ran.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T09:26:31.186Z · commit 1dc617ec4d7114f20cc48a396217b58c1f1bfe2d
 - [ ] C2. `curl -fsSL https://cland.app/install.sh | sh` installs cland on Linux
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T08:18:22.918Z · commit c3ec3ab02bee4c935fecd0db8a959f729dbca36f
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T09:26:31.187Z · commit 1dc617ec4d7114f20cc48a396217b58c1f1bfe2d
 - [ ] C3. The crew section's claims hold: custom roles and the one-agent crew either ship or the landing no longer shows them
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T08:18:23.102Z · commit c3ec3ab02bee4c935fecd0db8a959f729dbca36f
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T09:26:31.187Z · commit 1dc617ec4d7114f20cc48a396217b58c1f1bfe2d
 - [ ] C4. Every docs page is checked against the shipped behaviour and corrected
-  - failed: qa-677 [qa] · 2026-10-25T08:18:12.873Z · note Live quickstart says the Aide commits on dev, but default Codex workspace-write Aide cannot commit at root; T-1274.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T09:26:31.187Z · commit 1dc617ec4d7114f20cc48a396217b58c1f1bfe2d
 - [ ] C5. The landing shows real web and phone screenshots instead of placeholders
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T08:18:23.392Z · commit c3ec3ab02bee4c935fecd0db8a959f729dbca36f
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T09:26:31.187Z · commit 1dc617ec4d7114f20cc48a396217b58c1f1bfe2d
 - [ ] C6. cland.app serves the site over HTTPS from the Pages workflow
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T08:18:23.574Z · commit c3ec3ab02bee4c935fecd0db8a959f729dbca36f
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T09:26:31.187Z · commit 1dc617ec4d7114f20cc48a396217b58c1f1bfe2d
 
 ## Plan
 
@@ -137,3 +142,45 @@ Human decision, ask 081e4c5d (2026-10-25 08:32Z): «2 и 5, я проверю п
 - C1 is checked by formula integrity: Formula/cland.rb in Kealman/homebrew-tap points at the v0.2.1 tag tarball, and its sha256 matches that tarball. This is a check of the formula, not of an install; the human will run `brew install` on another machine later and file any problem as a separate item.
 - The T-1222 launch prerequisite (native Codex on the generated defaults) is satisfied by T-1222's synthetic Seatbelt protection tests (A-11645 macOS); no native scratch-HOME run.
 QA re-runs the DoD after T-1274 (C4) lands and is published.
+
+### qa-677 · 2026-10-25T09:26:31.187Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-25-677-2
+commit: 1dc617ec4d7114f20cc48a396217b58c1f1bfe2d
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Revised brief qa/briefs/E-778.md, request a1284f4f. Human decision ask081e4c5d (epic comment 2026-10-25T08:32:25Z) explicitly accepts formula integrity for C1 and synthetic Seatbelt protection for the separate T-1222 prerequisite. Artifact A-11668: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11668-e-778-revised-dod-qa-clear-formula-integrity-and-published-docs/report.md
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| C1 | PASS, formula integrity only | Formula URL is v0.2.1 codeload tarball; expected/computed SHA-256 both aeafac42bae49da2c13b98d6a89b8a24645afe06676281049319605c19deb444; no Homebrew install |
+| C2 | PASS, evidence continuity | live install.sh equals prior/pinned source bytes; retains A-11647 Linux verified-bundle install and version0.2.1 success; no installer rerun |
+| C3 | PASS, evidence continuity | live landing visible text unchanged; prior shipped-role/crew audit retained |
+| C4 | PASS | published T-1274 correction visible; default Codex Aide root-commit restriction and Coordinator commit path stated; docs items closed/clear |
+| C5 | PASS, evidence continuity | nine screenshot definitions/srcsets unchanged; retains prior45/45 successful image fetches |
+| C6 | PASS | fresh HTTPS200, GitHub.com server, ssl_verify_result0 |
+| LAUNCH-PREREQUISITE | PASS under accepted scope | exact synthetic Seatbelt protection case passes in latest macOS A-11666 line22982 |
+| FRESHNESS | PASS | queried requested full SHA: current=true; clean detached build |
+
+Findings none within revised scope. C1–C6 verified in this audit; retained-runtime evidence is labeled and not claimed as new execution. Previous Homebrew blocker and non-equivalent native Codex evidence are not rewritten as successful runtime tests.
+
+Local macOS read-only curl/hash/Git audit in sealed scratch environment. No new droplet, installer, harness, suite or browser; no new droplet cost. Demo status returns the prior released lease b6143abb/c3ec3ab0 (570.183s/$0.039596041666666665); those fields are historical, not this run's build/accounting.
+
+Latest protection receipt: macOS Darwin arm64 27.0.0, Node24.21.0/Neovim0.12.5, cover d38d9c6e at eafe70e51fe9c37bd0d996460ae1334ce3e0a6e1; exact T-1222 Seatbelt case native finish outcome pass. Synthetic policy/Git operations only, not native Codex or Linux parity. Full cover4474 ordinary passes, T0–T4/Web, report-only budgets and skipped T4 repetitions; browser not re-audited. Only tracker files changed between cover source and requested SHA.
+
+Live publication6665bb03, Last-Modified2026-10-25T08:55:35Z; Date/Age retained. Eight recorder cases and30 declared files scanned clean.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-25T09:26:38.823Z
+
+Closed on qa-677's clear DoD re-run qa-dod-2026-10-25-677-2 at 1dc617ec (A-11668), C1–C6 verified.
+- C1 is formula integrity, by the human's decision (ask 081e4c5d): formula url = v0.2.1 tag tarball, sha256 aeafac42… matches. The human will check `brew install` on another machine; any problem becomes a separate item.
+- C2: install.sh on a clean droplet installed 0.2.1 with the verified prebuilt web bundle (A-11647).
+- C3–C6 are live-site checks; C4's quickstart fix T-1274 was published at 6665bb03.
+- The T-1222 prerequisite is accepted on its synthetic Seatbelt tests (human, same ask).
+Follow-ups: T-1275 (Aide commit claim in the skill, role clause and README), T-1276 (publish-landed tasks don't count as merged).
