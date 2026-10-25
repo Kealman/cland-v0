@@ -538,14 +538,26 @@ export async function connectSocket(path: string): Promise<SocketClient> {
   });
   const frames: Array<Record<string, unknown>> = [];
   const waiters: Array<(f: Record<string, unknown>) => void> = [];
-  let buffer = '';
+  // Scan each incoming chunk once; flatten incomplete chunks only at a newline.
+  let parts: string[] = [];
+  const pending: Array<{ chunk: string; start: number }> = [];
   socket.setEncoding('utf8');
   socket.on('data', (chunk: string) => {
-    buffer += chunk;
-    let nl: number;
-    while ((nl = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, nl);
-      buffer = buffer.slice(nl + 1);
+    pending.push({ chunk, start: 0 });
+    while (pending.length) {
+      const input = pending[0]!;
+      const nl = input.chunk.indexOf('\n', input.start);
+      if (nl < 0) {
+        if (input.start < input.chunk.length) parts.push(input.chunk.slice(input.start));
+        pending.shift();
+        continue;
+      }
+      parts.push(input.chunk.slice(input.start, nl));
+      const line = parts.join('');
+      parts = [];
+      // Advance before parsing/callbacks so a caught throw retains the unread suffix.
+      input.start = nl + 1;
+      if (input.start === input.chunk.length) pending.shift();
       if (!line.trim()) continue;
       const frame = JSON.parse(line) as Record<string, unknown>;
       const w = waiters.shift();
@@ -594,14 +606,26 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
   const frames: Array<Record<string, unknown>> = [];
   const results = new Map<string, (f: Record<string, unknown>) => void>();
   const waiters: Array<{ predicate: (f: Record<string, unknown>) => boolean; resolve: (f: Record<string, unknown>) => void }> = [];
-  let buffer = '';
+  // Large replies must not rescan/flatten the accumulated line on every chunk.
+  let parts: string[] = [];
+  const pending: Array<{ chunk: string; start: number }> = [];
   let nextId = 1;
   onData((chunk) => {
-    buffer += chunk;
-    let nl: number;
-    while ((nl = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, nl).trim();
-      buffer = buffer.slice(nl + 1);
+    pending.push({ chunk, start: 0 });
+    while (pending.length) {
+      const input = pending[0]!;
+      const nl = input.chunk.indexOf('\n', input.start);
+      if (nl < 0) {
+        if (input.start < input.chunk.length) parts.push(input.chunk.slice(input.start));
+        pending.shift();
+        continue;
+      }
+      parts.push(input.chunk.slice(input.start, nl));
+      const line = parts.join('').trim();
+      parts = [];
+      // Advance before parsing/callbacks so a caught throw retains the unread suffix.
+      input.start = nl + 1;
+      if (input.start === input.chunk.length) pending.shift();
       if (!line) continue;
       const frame = JSON.parse(line) as Record<string, unknown>;
       const r = frame.type === 'result' && typeof frame.id === 'string' ? results.get(frame.id) : undefined;
