@@ -2,7 +2,7 @@
 id: Q-1293
 kind: question
 title: "Prototype: a Discord remote on the same gateway"
-state: open
+state: closed
 labels:
   - wayfinder:prototype
 assignee: cland-design
@@ -14,7 +14,8 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T10:24:45.865Z
-updated: 2026-10-25T13:34:27.361Z
+updated: 2026-10-25T13:40:24.918Z
+closed: 2026-10-25T13:37:54.083Z
 ---
 
 ## Question
@@ -70,3 +71,11 @@ Not tried on real Discord: Codex approval cards, the long restart, the pause out
 ### human · 2026-10-25T13:34:27.361Z
 
 Follow-ups done (2026-10-25, sandbox on adba8b89 since 13:33Z): (1) trailers of all six commits after 10f47d5e rewritten to the Fable line with filter-branch, tree byte-identical, pushed with --force-with-lease; (2) the double attachment: a human message carries `artifact` (its first file) and `artifacts` (all files) and both remotes read both, so the first file went out twice (agent posts carry only `artifact`); both remotes now read files through one deduplicating helper, verified on the fakes in both directions (a Discord photo → one captioned sendPhoto in Telegram; a Telegram photo → one attachment in Discord; voice likewise; `drv artifact` once in each); Telegram marks messages written in Discord as "you (Discord)" and Discord mirrors "you (Telegram)"; (3) status and help rebuilt for both messengers: a title, groups separated by blank lines with bold labels (Hub, Coordinator, Sessions as bullets, Queues, Release, This channel or This chat), one fact per line, gateway and REST numbers as subtext or an italic last line; help in four short sections, the commands as a bullet list, the trust lines last; Telegram sends them with entities. Next: Discord state into hub.db through the shared RemoteStore with TEXT ids (one more quick restart).
+
+### human · 2026-10-25T13:37:53.954Z
+
+Resolution (2026-10-25): the human tried the Discord remote in their test server and on the phone (pairing, the mirror, cards with buttons and the modal, commands, voice, a file, a quick restart, the reformatted status and help, attachments across both remotes) and accepted («все проверил, принимаю»). Capture: branch prototype/telegram-remote at adba8b89 (origin only, never merged; a last commit moving the Discord state into hub.db with TEXT ids follows), hub/src/remote/discord/README.md as the map; the settled decisions are in the final report comment above and the three follow-ups: command replies structured for a phone screen, an attached artifact sent exactly once per remote with the message header as its caption, cross-remote marks "you (Discord)" and "you (Telegram)". The sandbox keeps running until the handover.
+
+### human · 2026-10-25T13:40:24.918Z
+
+Branch note (2026-10-25, sandbox on 33bf2b2e since 13:39Z): the Discord state moved into hub.db through the shared RemoteStore keyed 'discord' (scalars in remote_state, cards in remote_cards, the reply map in a new remote_text_messages table with TEXT ids beside the integer remote_messages; the JSON file imported once and removed; the human's pairing survived with 26 reply-map rows and 6 cards). SQLite's INTEGER holds snowflakes but node:sqlite reads them back lossily, so TEXT is the exact answer for the spec. A send-queue race present in both remotes is fixed: a job enqueued between the loop finding the queue empty and the drain's finally clearing the flag sat until the next enqueue (a 👌 could hang for over a minute); the flag is now set before the drain starts and cleared in the loop's own finally. The prototype branch's final head for the resolution is 33bf2b2e, every commit after 10f47d5e with the Fable trailer.

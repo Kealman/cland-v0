@@ -2,8 +2,8 @@
 id: T-1208
 kind: task
 title: The spoke validates local MCP input up to the SDK's 10 MiB before the hub's 1 MiB frame cap applies
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1047
 branch: t/T-1208-the-spoke-validates-local-mcp-input-up
 created: 2026-10-24T06:48:03.158Z
-updated: 2026-10-25T13:34:24.997Z
+updated: 2026-10-25T13:40:27.977Z
+closed: 2026-10-25T13:40:27.977Z
 ---
 
 ## Summary
@@ -91,3 +92,7 @@ Criteria: C1 verified.
 ### coord · 2026-10-25T13:34:24.997Z
 
 Rule 6 pre-merge verify all 584b05c4 at 33d24def (A-11983): 4048 passed, 3 failed, 5 skipped across T0–T3 (Web not reached; covered by mode-free 7475f8a3). All three failures are known dev defects with matching messages, already fixed on dev and absent from T-1208's diff (hub/src/spoke/*): suite-selection T4-guard case (invalid loadGuards, T-1299), roles-timing (0 !== 300, T-1302), qa-lint-build production install (ERR_MODULE_NOT_FOUND shared/protocol-frame.ts, T-1303). Coordinator accepts this run as T-1208's rule 6 evidence with those attributed identities.
+
+### coord · 2026-10-25T13:40:27.977Z
+
+Merged d512f4a70452ba4cbc5aa0d0dbe718eb46c083d9 onto dev.

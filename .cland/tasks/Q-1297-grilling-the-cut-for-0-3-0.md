@@ -5,7 +5,7 @@ title: "Grilling: the cut for 0.3.0"
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-1286
 blocked_by:
   - Q-1294
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T10:24:46.524Z
-updated: 2026-10-25T10:27:22.687Z
+updated: 2026-10-25T13:37:54.644Z
 ---
 
 ## Question
