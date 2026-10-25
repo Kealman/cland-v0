@@ -40,7 +40,7 @@ import { codexCounts } from './usage.ts';
 import { accountPrefix } from '../accounts/registry.ts';
 import { VERSION } from '../version.ts';
 import { mergeLimits, codexWindows, fullWindowReset, type LimitWindow } from '../accounts/limits.ts';
-import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type ApprovalRequest, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type ApprovalRequest, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest, type TurnReplay } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, RpcPayloadTooLarge, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
 import { sessionCwdRefusal } from './session-cwd.ts';
@@ -311,6 +311,13 @@ type Live = {
   earlySubagents?: SubagentLaunch[];
   legacySubagents?: Map<string, SubagentLaunch>;
   activityAgents?: Set<string>;
+  capacityAttempt?: number;
+  capacityTurn?: { id: string; attempt: number };
+  capacitySubmitting?: boolean;
+  capacityMessages?: string[];
+  lastStartedTurn?: string;
+  lastCompletedTurn?: string;
+  turnSequence?: number;
 };
 
 /** An accepted input not yet seen taken up: its envelope, the shape it was admitted in, and how often it was
@@ -349,12 +356,12 @@ export class CodexAdapter implements HarnessAdapter {
   /** Inputs being admitted, then associated with the actual turn id (idle can precede completion). */
   readonly #admissions = new Map<string, number>();
   readonly #pendingInputs = new Map<string, Set<PendingInput>>();
-  readonly #completedTurns = new Map<string, string | null>();
+  readonly #completedTurns = new Map<string, { error: string | null; messages: string[] }>();
   readonly #turnInputs = new Map<string, Set<string>>();
   /** Steers the app-server accepted that their turn has not been seen to take up: by `sessionId:turnId`, each
    *  message id with its envelope and recovery count. A turn that ends with one left gets it again (`#redeliver`). */
   readonly #steers = new Map<string, Map<string, OwedInput>>();
-  readonly #earlyFailures = new Map<string, string[]>();
+  readonly #earlyFailures = new Map<string, Array<{ error: string; replay?: TurnReplay }>>();
   #timer: ClockTimer | null = null;
   #versionChecked = new Set<string>();
   #tmpRun = join(tmpdir(), 'cland-run');
@@ -515,6 +522,13 @@ export class CodexAdapter implements HarnessAdapter {
         case 'turn/started': {
           const id = (params.turn as { id?: unknown } | undefined)?.id;
           if (mine(params) && typeof id === 'string') {
+            // A new start owns a new completion episode, even if a native peer
+            // reuses its turn id. Only repeated completion within one episode is a duplicate.
+            delete live.lastCompletedTurn;
+            if (live.capacityTurn?.id === id) live.capacityAttempt = live.capacityTurn.attempt;
+            else if (!live.capacitySubmitting) live.capacityAttempt = 0;
+            live.lastStartedTurn = id;
+            live.turnSequence = (live.turnSequence ?? 0) + 1;
             live.turnId = id;
           }
           return;
@@ -529,16 +543,20 @@ export class CodexAdapter implements HarnessAdapter {
           live.activityAgents?.clear();
           live.subagentItems?.clear();
           const turn = params.turn as { id?: string; status?: string; error?: unknown } | undefined;
+          if (turn?.id && live.lastCompletedTurn === turn.id) return;
+          if (turn?.id) live.lastCompletedTurn = turn.id;
           const limited = this.#limitError(live, turn?.error);
           const key = `${live.p.sessionId}:${turn?.id ?? live.turnId}`;
-          const messages = [...(this.#turnInputs.get(key) ?? [])];
+          const messages = [...new Set([...(this.#turnInputs.get(key) ?? []), ...(live.capacitySubmitting ? live.capacityMessages ?? [] : [])])];
           this.#turnInputs.delete(key);
           const error = turn?.error || turn?.status === 'failed' ? turnError(turn?.error) : null;
-          if (this.#admissions.has(live.p.sessionId)) this.#completedTurns.set(key, error);
+          if (this.#admissions.has(live.p.sessionId)) this.#completedTurns.set(key, { error, messages });
           if (error) {
-            if (this.#watched.has(live.p.sessionId)) this.#host.turnFailed?.(live.p.sessionId, error, messages);
-            else this.#earlyFailures.set(live.p.sessionId, [...(this.#earlyFailures.get(live.p.sessionId) ?? []), error]);
+            const replay = turn?.id ? this.#capacityReplay(live, turn.id, messages) : undefined;
+            if (this.#watched.has(live.p.sessionId)) this.#host.turnFailed?.(live.p.sessionId, error, messages, replay);
+            else this.#earlyFailures.set(live.p.sessionId, [...(this.#earlyFailures.get(live.p.sessionId) ?? []), { error, ...(replay ? { replay } : {}) }]);
           }
+          else live.capacityAttempt = 0;
           if (!turn?.id || live.turnId === turn.id) live.turnId = null;
           // a turn that failed reported the messages it held above (`turnFailed`); one that ended well owes
           // nothing only once every steer it accepted is among its inputs
@@ -964,15 +982,18 @@ export class CodexAdapter implements HarnessAdapter {
     const owed = this.#steers.get(key) ?? new Map<string, OwedInput>();
     owed.set(id, obligation);
     if (this.#completedTurns.has(key)) {
-      if (this.#completedTurns.get(key) === null) void this.#redeliver(live, turnId, owed);
+      if (this.#completedTurns.get(key)?.error === null) void this.#redeliver(live, turnId, owed);
     } else this.#steers.set(key, owed);
   }
 
   #admitInput(sessionId: string, turnId: string, messageId: string): void {
     const key = `${sessionId}:${turnId}`;
     if (this.#completedTurns.has(key)) {
-      const error = this.#completedTurns.get(key);
-      if (error) this.#host.notifyFailureSenders?.(sessionId, error, [messageId]);
+      const completed = this.#completedTurns.get(key)!;
+      if (completed.error) {
+        if (/^Selected model is at capacity\.(?:\s|$)/i.test(completed.error)) completed.messages.push(messageId);
+        else this.#host.notifyFailureSenders?.(sessionId, completed.error, [messageId]);
+      }
       return;
     }
     const inputs = this.#turnInputs.get(key) ?? new Set<string>();
@@ -981,7 +1002,48 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   async inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
+    const live = this.#live.get(p.sessionId);
+    if (live) live.capacityAttempt = 0;
     await this.#withAdmission(p.sessionId, message.id, (pending) => this.#inject(p, message, topic, pending));
+  }
+
+  #capacityReplay(live: Live, turnId: string, messages: string[]): TurnReplay {
+    const attempt = live.capacityAttempt ?? 0;
+    const sequence = live.turnSequence;
+    return { attempt, run: async authorize => {
+      const client = live.client;
+      const check = () => {
+        if (this.#closed || this.#stopping.has(live.p.sessionId) || this.#live.get(live.p.sessionId) !== live || live.turnSequence !== sequence || (live.lastStartedTurn && live.lastStartedTurn !== turnId) || live.state !== 'idle') return false;
+        authorize();
+        if (live.client !== client || !client || client.closed) throw new Error('capacity retry unavailable: native connection changed');
+        return true;
+      };
+      if (!check()) return false;
+      const threadId = live.p.harnessSessionId!;
+      const result = await client!.request<{ thread: { turns?: Array<{ id: string; items?: TurnItem[] }> } }>('thread/read', { threadId, includeTurns: true }, this.#injectTimeoutMs);
+      if (!check()) return false;
+      const inputs = result.thread.turns?.find(turn => turn.id === turnId)?.items?.map(turnInput).filter(input => input !== null) ?? [];
+      if (!inputs.length) throw new Error('failed turn input is unavailable; no replay submitted');
+      const text = inputs.map(input => input.text).join('\n\n');
+      const params = inputs.length === 1 && inputs[0]!.shape === 'toolOutput'
+        ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } }
+        : { threadId, input: [{ type: 'text', text, text_elements: [] }] };
+      if (!check()) return false;
+      live.capacityAttempt = attempt + 1;
+      // The failed turn is confirmed; an ambiguous replay admission is reported once, never resubmitted.
+      live.capacitySubmitting = true;
+      live.capacityMessages = messages;
+      try {
+        // Reuse admission reconciliation: completion and attribution can both precede the reply.
+        await this.#withAdmission(live.p.sessionId, messages[0] ?? '', async () => {
+          const reply = await client!.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
+          if (typeof reply.turn?.id !== 'string') throw new Error('capacity replay accepted without a turn id');
+          live.capacityTurn = { id: reply.turn.id, attempt: attempt + 1 };
+          for (const id of messages) this.#admitInput(live.p.sessionId, reply.turn.id, id);
+        });
+      } finally { live.capacitySubmitting = false; delete live.capacityMessages; }
+      return true;
+    } };
   }
 
   /** Original injections and recoveries share the same completion/late-response reconciliation. */
@@ -1088,7 +1150,7 @@ export class CodexAdapter implements HarnessAdapter {
     for (const subagent of live.earlySubagents ?? []) this.#host.signal(p.sessionId, { source: 'app-server', at: Date.now(), subagent });
     for (const entry of live.approvals?.values() ?? []) this.#publishApproval(live, entry);
     delete live.earlySubagents;
-    for (const error of this.#earlyFailures.get(p.sessionId) ?? []) this.#host.turnFailed?.(p.sessionId, error, []);
+    for (const { error, replay } of this.#earlyFailures.get(p.sessionId) ?? []) this.#host.turnFailed?.(p.sessionId, error, [], replay);
     this.#earlyFailures.delete(p.sessionId);
     // what the app-server said before the process-table row existed
     if (live.state !== 'unknown') this.#host.signal(p.sessionId, { state: live.state, source: 'app-server', at: Date.now(), ...(live.approvalCommand !== undefined ? { approvalCommand: live.approvalCommand } : {}) });

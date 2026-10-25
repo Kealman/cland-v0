@@ -170,6 +170,11 @@ For Web approval cards, extend `web/src/ApprovalCard.tsx` for Inbox and drawer r
 
 For Codex long-thread reattachment, use the scripted native and Unix WebSocket seams in `docs/agents/tests/hub-test-codex-native.test.ts.md`: metadata-only resume, older-server compatibility, frame-limit classification and the CLI payload-limit reason. No harness process is needed.
 
+For Codex provider-capacity replay, use the fake-clock/native-readback seam in
+`docs/agents/tests/hub-test-codex-delivery.test.ts.md`: exact input, bounded
+backoff, ownership cancellation and one terminal lead report. Preserve ordinary
+failure notices and the explicit human retry for uncertain admissions.
+
 For the Codex approval relay, use the scripted native frame seam and explicit fake-binary contract receipt in `docs/agents/tests.md` (Approval record changes). Prove native decisions and shared request ids, including replay, external resolution across readback/disconnect and malformed or oversized subject TUI fallback; file approval subjects come from the matching turn/item. The contract receipt must show that Deny continues without running the command.
 
 For OpenCode relay changes, follow `docs/agents/tests.md` (The OpenCode relay) for scripted native reply, child/reconnect/shape checks and the targeted fake-binary Deny-with-note receipt, separate from mode-free task coverage.

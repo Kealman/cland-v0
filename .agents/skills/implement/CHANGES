@@ -128,3 +128,4 @@ T-1208: Document the byte-stream spoke framing seam and pre-validation 1 MiB ref
 T-1024: Point Neovim frame refresh admission changes to the T1 capture/TAP seam and scheduling-independent completeness checks.
 T-450: Document hung-verifier early-failure teardown and phase-sweep PID receipt regressions.
 T-1250: Clarify that task duration summaries count printed allowance JSON lines, independently of T4 having no budget.
+T-1249: Point Codex provider-capacity replay to the bounded fake-clock/native-readback tests and preserve uncertain-admission policy.

@@ -24,7 +24,7 @@ import { nameRefusal, withRole } from '../names.ts';
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, Message, SessionState, SessionUsage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal } from './contract.ts';
+import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal, type TurnReplay } from './contract.ts';
 import { ProcessTable, processStarted, type PendingStop } from './processes.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText, projectRulesText } from '../roles/clause.ts';
@@ -111,6 +111,7 @@ export class Sessions {
   readonly #inflight = new Map<string, { sentAt: number; again: boolean; reconnected: boolean }>();
   /** One notice per failed-delivery episode; individual confirmations cancel their deadlines. */
   readonly #unconfirmed = new Map<string, { noticed: boolean; messages: Map<string, UnconfirmedInject> }>();
+  readonly #capacityRetries = new Map<string, { process: HarnessProcess; work: string; timer: ClockTimer | null }>();
   /** Launches in progress by name, with the signals that arrived before the process-table row (the harness's
    *  SessionStart hook can beat the launch's own return): replayed once the row is written. */
   readonly #launching = new Map<string, SignalFrame[]>();
@@ -312,6 +313,9 @@ export class Sessions {
       if (item.holds.length) this.#verifierHolds.set(item.id, new Map(item.holds.map(hold => [hold.sessionId, hold.heldAt])));
     }
     this.#untracker = this.#tracker?.onChange(change => {
+      for (const [id, retry] of this.#capacityRetries) {
+        if (JSON.stringify(this.#core.sessionHolds(retry.process)) !== retry.work) this.#clearCapacityRetry(id);
+      }
       // Remember verifier work when it is held, before stop/verdict releases erase it.
       const holds = change.item?.holds ?? [];
       const previous = this.#verifierHolds.get(change.id);
@@ -380,6 +384,8 @@ export class Sessions {
         ?? null;
     });
     this.#unprocess = this.#table.subscribe((p, archived) => {
+      const retry = this.#capacityRetries.get(p.sessionId);
+      if (retry && (p.status !== 'running' || archived || p.role !== retry.process.role || p.item !== retry.process.item)) this.#clearCapacityRetry(p.sessionId);
       // Quarantined status is not a verified exit. Metadata changes must leave the
       // final fact to cleanup, which publishes it only after the original process is gone.
       if (p.status !== 'running') this.#clearUnconfirmed(p.sessionId);
@@ -421,6 +427,7 @@ export class Sessions {
     this.#unsubscribe = this.#core.subscribe((event) => {
       if (event.type !== 'session.role' || this.#vacating) return;
       const row = this.#rowOfName(event.session);
+      if (row) this.#clearCapacityRetry(row.sessionId);
       if (row) this.#table.update(row.name, { role: event.role });
     });
     // a rename moves the session's row to its new name
@@ -467,7 +474,7 @@ export class Sessions {
       approvalsReconciled: (sessionId, requestIds) => this.#core.inbox.reconcileApprovals(sessionId, requestIds),
       usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
-      turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),
+      turnFailed: (sessionId, error, messages, replay) => this.#turnFailed(sessionId, error, messages, replay),
       notifyFailureSenders: (sessionId, error, messages) => this.#notifyTurnSenders(sessionId, error, messages),
       exited: (sessionId, detail) => this.#exited(sessionId, detail),
       reconnected: (sessionId) => {
@@ -1205,6 +1212,7 @@ export class Sessions {
         if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
         poolHandoff?.();
         p = current;
+        this.#clearCapacityRetry(identity);
         return this.adapter(p.harness).stop(p, resumed, authorize);
       });
       return resumed(() => {
@@ -1604,13 +1612,67 @@ export class Sessions {
     return changed;
   }
 
-  #turnFailed(sessionId: string, error: string, messages: string[]): void {
+  #turnFailed(sessionId: string, error: string, messages: string[], replay?: TurnReplay): void {
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return;
     const text = `${this.#core.label(p.name)}: its turn failed: ${error}`;
     // The lifecycle log feeds Agents through its journalled notice path; that notice also feeds the inbox.
     this.#log({ event: 'turn-failed', session: p.name, harness: p.harness, error, text, messages });
+    this.#clearCapacityRetry(sessionId);
+    if (p.harness === 'codex' && /^Selected model is at capacity\.(?:\s|$)/i.test(error) && replay) {
+      if (replay.attempt < 3) {
+        const delay = [30_000, 60_000, 120_000][replay.attempt]!;
+        const work = JSON.stringify(this.#core.sessionHolds(p));
+        const retry = { process: p, work, timer: null as ClockTimer | null };
+        this.#capacityRetries.set(sessionId, retry);
+        const authorize = () => {
+          const current = this.#table.bySessionId(sessionId);
+          if (this.#closed || this.#capacityRetries.get(sessionId) !== retry || !current || current.status !== 'running' || current.archivedAt || current.role !== p.role || current.item !== p.item || JSON.stringify(this.#core.sessionHolds(current)) !== work || this.#pendingStops.has(sessionId) || this.#core.sessionState(sessionId) !== 'idle') throw new Error('capacity retry cancelled: session or work changed');
+        };
+        retry.timer = this.#core.clock.setTimeout(() => {
+          retry.timer = null;
+          try { authorize(); } catch { this.#clearCapacityRetry(sessionId); return; }
+          void replay.run(authorize).then(submitted => {
+            if (this.#closed) return;
+            if (!submitted) {
+              this.#log({ event: 'turn-capacity-retry-cancelled', session: p.name, attempt: replay.attempt + 1 });
+              return;
+            }
+            this.#log({ event: 'turn-capacity-retried', session: p.name, attempt: replay.attempt + 1 });
+            this.#core.noticeInTopic('agents', { kind: 'redelivered', text: `${this.#core.label(p.name)}: provider capacity retry ${replay.attempt + 1}/3 after ${delay / 1000} s`, detail: { session: p.name } });
+          }, err => {
+            if (this.#capacityRetries.get(sessionId) !== retry) return;
+            this.#capacityExhausted(p, `provider capacity replay stopped: ${err instanceof Error ? err.message : String(err)}`, messages);
+          }).finally(() => { if (this.#capacityRetries.get(sessionId) === retry) this.#clearCapacityRetry(sessionId); });
+        }, delay);
+        retry.timer.unref();
+        this.#log({ event: 'turn-capacity-retry-scheduled', session: p.name, attempt: replay.attempt + 1, delay });
+        return;
+      }
+      this.#capacityExhausted(p, `${error} (provider capacity retries exhausted after 3 tries)`, messages);
+      return;
+    }
     this.#notifyTurnSenders(sessionId, error, messages);
+  }
+
+  #capacityExhausted(p: HarnessProcess, error: string, messages: string[]): void {
+    const holds = this.#core.sessionHolds(p);
+    const item = holds[0]?.item ?? p.item;
+    // A claimant is its item's lead. Reporting back to it would start a new
+    // failure/retry episode; escalate its terminal report to the Coordinator.
+    const to = p.role === 'coordinator' ? this.#core.store.sessionsWithRole('aide')
+      : [item && !holds.some(hold => hold.role === 'item') ? `lead ${item}` : 'coordinator'];
+    const senders = messages.flatMap(id => {
+      const message = this.#core.store.message(id);
+      return message?.fromKind === 'agent' && message.from !== p.name ? [message.from] : [];
+    });
+    this.#core.noticeTo('agents', { kind: 'turn-failed', text: `${this.#core.label(p.name)}: its turn failed: ${error}`, to: [...to, ...senders], detail: { session: p.name } });
+  }
+
+  #clearCapacityRetry(sessionId: string): void {
+    const retry = this.#capacityRetries.get(sessionId);
+    if (retry?.timer) this.#core.clock.clearTimeout(retry.timer);
+    this.#capacityRetries.delete(sessionId);
   }
 
   #notifyTurnSenders(sessionId: string, error: string, messages: string[], dedupe?: { key: string; episode: string }): void {
@@ -1757,6 +1819,7 @@ export class Sessions {
     this.#inflight.set(key, flight);
     if (message.fromKind !== 'hub') this.#core.store.setMeta(`pool-handoff:${sessionId}`, '');
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;
+    this.#clearCapacityRetry(sessionId);
     adapter
       .inject(p, message, topic)
       .then(() => {
@@ -1868,6 +1931,7 @@ export class Sessions {
 
   close(): void | Promise<void> {
     this.#closed = true;
+    for (const sessionId of this.#capacityRetries.keys()) this.#clearCapacityRetry(sessionId);
     this.#earlyLimitHits.clear();
     for (const sessionId of this.#unconfirmed.keys()) this.#clearUnconfirmed(sessionId);
     if (this.#archiveTimer) this.#core.clock.clearTimeout(this.#archiveTimer);

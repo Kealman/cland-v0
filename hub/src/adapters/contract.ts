@@ -176,7 +176,7 @@ export type AdapterHost = {
   /** Adapter-owned usage changed; the hub coalesces snapshots per session. */
   usageChanged?: (sessionId: string) => void;
   /** A turn ended in error, with the hub messages that fed it (including steers), when known. */
-  turnFailed?: (sessionId: string, error: string, messages: string[]) => void;
+  turnFailed?: (sessionId: string, error: string, messages: string[], replay?: TurnReplay) => void;
   /** Sender attribution learned after the failure notice (a pending admission just settled). */
   notifyFailureSenders?: (sessionId: string, error: string, messages: string[]) => void;
   /** The adapter learnt the session's pid after launch or re-exec; include an observed start identity when known. */
@@ -187,6 +187,10 @@ export type AdapterHost = {
   /** The process is gone without cland stopping it: the hub sets `unknown` and journals it. */
   exited: (sessionId: string, detail: string) => void;
 };
+
+/** Optional native replay of a confirmed failed turn. Older adapters keep the three-argument report.
+ * authorize must be checked after readback and immediately before native submission. */
+export type TurnReplay = { attempt: number; run: (authorize: () => void) => Promise<boolean> };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
 export type Interpretation = { limitHit?: { reason: string; resetsAt?: string }; state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; rateLimits?: { windows: import('../accounts/limits.ts').LimitWindow[]; at?: string }; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };

@@ -643,6 +643,8 @@ test('completion before an unanswered late steer never replays an ambiguous admi
 
 test('successful completion reconciles late rejected, consumed and dropped steer responses', async t => {
   const f = await scriptedCodex(t);
+  // active() deliberately reuses "original": a fresh start must retire the prior
+  // completion receipt without hiding the final dropped-steer recovery.
   for (const mode of ['reject', 'accept', 'accept dropped']) {
     await active(f);
     const response = deferred<unknown>();
