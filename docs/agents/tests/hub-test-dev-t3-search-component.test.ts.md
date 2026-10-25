@@ -47,3 +47,11 @@ and all-skipped green files; a pure search control rejects architecture drift.
 `ProbeVerdict` and the probe/search/report consumers retain explicit partial
 status, platform and reasons. Existing reporters already emit the reason records;
 no runner capability or protocol extension is required.
+
+T-1244 injects the root dev ref independently of mutable detached candidates.
+Current-tip green, red and movement after boundary confirmation must reach the
+completed search notice. Assert task.list has no Bug for fixed tips, while
+current-red task.view includes the exact tip head, run id and artifact path.
+These are scripted Linux executor receipts, with no browser process. The native
+historical-owner contract is in durations.test.ts; it closes the live owner and
+keeps the pinned owner open through the real default probe repository checkout.

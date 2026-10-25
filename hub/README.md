@@ -4205,7 +4205,17 @@ occasion facts determine the author, including after restart.
 The cursor survives restart, and a queued, running or unreported
 periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
-Red results search candidate merges with detached diagnostic probes; Web test
+Red results first probe each failing file at current local dev. A passing file
+reports `already fixed on dev at <commit>` without filing a Bug; missing or
+partial-green tip evidence remains inconclusive. The search rechecks the dev ref
+before reporting and probes a moved tip. Bugs retain the tip's red receipt.
+No stage/integrated receipt cache is reused. Historical probes use standalone
+detached repositories sharing objects, so their candidate checks read pinned
+allowance owners even after the live tracker closes them. Legacy linked
+checkpoints convert at idle admission; incomplete standalone clones are recreated
+there after checking HEAD and tracked-file status. Complete checkouts are reused;
+active workers finish before cleanup.
+Red files search candidate merges with detached diagnostic probes; Web test
 files select the Web tier and require their own execution receipts. Test-root
 and parent-traversal validation also applies to these probes. Historical admission
 skips and logs hosting manifest/test lint and tier projections while retaining

@@ -42,6 +42,9 @@ test('budget-only periodic red names over-budget identities without starting cul
 });
 
 for (const [scenario, description] of [
+  ['tip fixed', 'skips history and files no Bug for an already fixed dev tip'],
+  ['tip red', 'files a Bug with the current dev tip failing receipt'],
+  ['tip moves', 'rechecks dev after history and suppresses a newly fixed regression'],
   ['culprit', 'files one Bug with live last-claimant delivery'],
   ['flake', 'reports a passing rerun as a flake without filing'],
   ['Web culprit', 'runs Web probes and names the first red merge'],
@@ -68,9 +71,12 @@ for (const [scenario, description] of [
   const run = caseDeadlines(t);
   const firstMerge = 'c'.repeat(40), culprit = ranged ? 'f'.repeat(40) : 'b'.repeat(40);
   const baseline = 'a'.repeat(40), redHead = 'b'.repeat(40), baselineTree = 'd'.repeat(40), redTree = 'e'.repeat(40);
+  const tipHead = '9'.repeat(40);
+  let devTip = scenario === 'tip fixed' || scenario === 'tip red' ? tipHead : redHead;
+  const fixed = scenario === 'tip fixed' || scenario === 'tip moves';
   const checked: string[] = [], removed: string[] = [];
   const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'dev_t3_every="1s"\nshards=1\nlifetime="15m"\nrun_timeout="5m"',
-    git: async args => args[0] === 'log' && args.includes('--first-parent')
+    git: async args => args[0] === 'rev-parse' && args.includes('refs/heads/dev') ? devTip : args[0] === 'log' && args.includes('--first-parent')
       ? ranged ? `${firstMerge}\0Merge green\n${culprit}\0Merge regression\n${redHead}\0Merge later` : `${redHead}\0Merge regression` : null,
     devT3Repository: {
       contains: async head => !introduced || head !== baseline && head !== firstMerge,
@@ -151,9 +157,10 @@ for (const [scenario, description] of [
       assert.equal(probe.selection!.loadGate, false);
       const visit = (visits.get(probe.head!) ?? 0) + 1; visits.set(probe.head!, visit);
       const flips = visit === 2 && (scenario === 'green boundary flips' && probe.head === firstMerge || scenario === 'red boundary flips' && probe.head === culprit);
-      const initialGreen = flake || probe.head === baseline || ranged && probe.head === firstMerge;
+      const initialGreen = fixed && probe.head === tipHead || flake || probe.head === baseline || ranged && probe.head === firstMerge;
       const green = flips ? !initialGreen : initialGreen;
       await finish(probe, green ? 0 : 1, green ? passed : failed);
+      if (scenario === 'tip moves' && checked.length === 4) devTip = tipHead;
     } else { await f.clock.advance(1000); await drive(f, f.verificationSettled()); }
     const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: SearchMessage[] }).messages;
     search = history.find(message => (message.detail as unknown as { event?: string })?.event === 'verification-dev-t3-search');
@@ -174,11 +181,11 @@ for (const [scenario, description] of [
   assert.equal(search.detail.input.run, red.id); assert.equal(search.detail.input.head, redHead); assert.equal(search.detail.input.previousGreenHead, baseline);
   assert.deepEqual(search.detail.input.failingFiles, [file]); assert.equal(search.detail.input.budgetIdentities, undefined);
   assert.doesNotMatch(search.text, /budget only:/);
-  assert.equal(search.detail.files[0]!.result, flake ? 'flake' : boundaryFlip || unstableSkips ? 'inconclusive' : 'culprit', JSON.stringify(search.detail));
-  assert.equal(search.detail.bugs.length, flake || boundaryFlip || unstableSkips ? 0 : 1);
+  assert.equal(search.detail.files[0]!.result, fixed ? 'already-fixed' : flake ? 'flake' : boundaryFlip || unstableSkips ? 'inconclusive' : 'culprit', JSON.stringify(search.detail));
+  assert.equal(search.detail.bugs.length, fixed || flake || boundaryFlip || unstableSkips ? 0 : 1);
   const items = ((await f.ui.request({ type: 'task.list' })).value as { items: { id: string; title: string; parent: string; labels: string[] }[] }).items;
   const bugs = items.filter(item => item.labels.includes(`dev-t3-${culprit}`));
-  assert.equal(bugs.length, flake || boundaryFlip || unstableSkips ? 0 : 1);
+  assert.equal(bugs.length, fixed || flake || boundaryFlip || unstableSkips ? 0 : 1);
   if (historical) {
     const probes = search.detail.files[0]!.receipts;
     assert.ok(probes.length >= 2);
@@ -188,12 +195,19 @@ for (const [scenario, description] of [
     assert.match(search.text, /flaky boundary/);
     assert.equal(search.detail.files[0]!.culprit, undefined);
   }
-  if (!flake && !boundaryFlip && !unstableSkips) {
+  if (!fixed && !flake && !boundaryFlip && !unstableSkips) {
     assert.equal(search.detail.files[0]!.culprit!.head, culprit);
     assert.equal(search.detail.bugs[0]!.merge, culprit);
     assert.equal(items.find(item => item.id === bugs[0]!.parent)!.title, 'Bugs');
     const bug = ((await f.ui.request({ type: 'task.view', item: bugs[0]!.id })).value as { item: { body: string } }).item;
     for (const value of [file, red.id, green.id, redHead, baseline, ...search.detail.files[0]!.receipts.flatMap(receipt => receipt.run ?? [])]) assert.ok(bug.body.includes(value), value);
+    if (scenario === 'tip red') {
+      const tip = search.detail.files[0]!.receipts.find(receipt => receipt.head === tipHead)!;
+      assert.ok(tip, 'Bug must retain a probe at the current dev tip');
+      assert.equal(tip.result, 'red');
+      assert.ok(tip.run && tip.path);
+      for (const value of ['Current dev tip:', tipHead, tip.run!, tip.path!]) assert.ok(bug.body.includes(value), value);
+    }
     assert.ok(search.to.includes('coord')); assert.ok(search.to.includes('impl'), 'live claimant survives task closure');
   }
   if (scenario === 'stable platform skips') {
@@ -214,7 +228,8 @@ for (const [scenario, description] of [
     assert.ok(search.detail.files[0]!.receipts.filter(receipt => receipt.result === 'absent').every(receipt => receipt.run === null));
     assert.deepEqual(checked, [redHead, culprit, culprit], 'absent commits acquire no executor');
   }
-  const expectedCheckouts = scenario === 'boundary platform skips' ? [redHead, baseline, baseline] : unstableSkips ? [redHead, baseline] : flake ? [redHead]
+  if (fixed) assert.match(search.text, new RegExp(`already fixed on dev at ${tipHead}`));
+  const expectedCheckouts = scenario === 'tip fixed' ? [tipHead] : scenario === 'tip moves' ? [redHead, baseline, baseline, redHead, tipHead] : scenario === 'tip red' ? [tipHead, redHead, baseline, baseline, redHead] : scenario === 'boundary platform skips' ? [redHead, baseline, baseline] : unstableSkips ? [redHead, baseline] : flake ? [redHead]
     : introduced ? [redHead, culprit, culprit]
     : boundaryFlip ? [redHead, baseline, firstMerge, culprit, firstMerge, ...(scenario === 'red boundary flips' ? [culprit] : [])]
     : web ? [redHead, baseline, firstMerge, culprit, firstMerge, culprit]
@@ -222,7 +237,7 @@ for (const [scenario, description] of [
   assert.deepEqual(checked, expectedCheckouts); assert.deepEqual(removed, checked);
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
   const later = ((await f.ui.request({ type: 'task.list' })).value as { items: { labels: string[] }[] }).items;
-  assert.equal(later.filter(item => item.labels.includes(`dev-t3-${culprit}`)).length, flake || boundaryFlip || unstableSkips ? 0 : 1);
+  assert.equal(later.filter(item => item.labels.includes(`dev-t3-${culprit}`)).length, fixed || flake || boundaryFlip || unstableSkips ? 0 : 1);
 });
 
 test('diagnostic files outside allowed test roots or with parent traversal are refused', async t => {

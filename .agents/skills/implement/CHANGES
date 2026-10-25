@@ -101,6 +101,7 @@ T-1187: Document startup-only web config, atomic reload refusal and the sealed C
 T-1181: Document the managed synchronous Claude literal-rm guard, literal-path retry and project/launch conditions.
 T-1267: Point adapter shutdown work to the held resume/identity-result matrix and late-supervision fence.
 T-1271: Document that text after the item on a verifier request first line is detail and routes one verifier.
+T-1244: Document current-dev preflight/freshness receipts and pinned historical probe tracker ownership.
 
 T-1230: Point skill-inventory changes to the production-role no-sync guard and cached-refresh receipt tests.
 T-1218: Document hub authorship for periodic/nightly queue, heartbeat and artifacts, with human shell ownership preserved.

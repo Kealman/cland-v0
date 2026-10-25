@@ -12,11 +12,12 @@ export type ProbeReceipt = { head: string; file: string; reason?: string } & (
   (ProbeVerdict & { run: string; artifact: string; path: string })
   | { result: 'absent'; run: null; artifact: null; path: null; tree: string });
 type FileSearch = { file: string; low: number; high: number; phase: 'repeat' | 'baseline' | 'bisect' | 'confirm-green' | 'confirm-red'; receipts: ProbeReceipt[];
-  result?: 'culprit' | 'pre-existing' | 'flake' | 'inconclusive'; culprit?: { head: string; subject: string }; reason?: string };
+  tip?: ProbeReceipt; result?: 'already-fixed' | 'culprit' | 'pre-existing' | 'flake' | 'inconclusive'; culprit?: { head: string; subject: string }; reason?: string };
 export type SearchReport = { input: DevT3Result; files: FileSearch[] };
 type Search = SearchReport & { reported?: boolean };
 export type SearchBoundary = {
   log?: LogFn;
+  currentDev(): Promise<string>;
   probe(input: DevT3Result, head: string, file: string, repetition?: 'boundary'): Promise<ProbeReceipt | null>;
   report(report: SearchReport): Promise<void>;
   blocked?(input: DevT3Result, reason: string): void;
@@ -66,9 +67,38 @@ export class DevT3Search {
     for (const file of search.files) if (file.result === 'culprit' && file.phase === 'bisect') {
       delete file.result; delete file.culprit; file.phase = 'confirm-green';
     }
-    const file = search.files.find(file => !file.result);
+    // Revalidate the live tip before history and again before reporting. Older
+    // persisted searches have no tip receipt, so they pass through this gate too.
+    const candidates = search.files.filter(file => !file.result || file.result === 'culprit' || file.result === 'already-fixed');
+    const tip = candidates.length ? await this.boundary.currentDev() : null;
+    if (candidates.length && !tip) throw new Error('current dev tip unavailable');
+    const stale = candidates.find(file => file.tip?.head !== tip);
+    const file = stale ?? search.files.find(file => !file.result);
     if (file) {
       const { input } = search;
+      if (stale) {
+        const receipt = await this.boundary.probe(input, tip!, file.file);
+        if (!receipt || this.#closed) return;
+        file.receipts.push(receipt);
+        if (receipt.head !== tip || receipt.file !== file.file || receipt.result === 'inconclusive' || receipt.result === 'absent') {
+          file.result = 'inconclusive'; file.reason = receipt.reason ?? 'current dev tip evidence unavailable'; delete file.culprit;
+        } else {
+          file.tip = receipt;
+          const result = executedResult(receipt);
+          if (result === 'green') {
+            file.result = receipt.result === 'partial' ? 'inconclusive' : tip === input.head ? 'flake' : 'already-fixed';
+            file.reason = receipt.result === 'partial' ? 'current dev tip has platform exclusions; excluded tests not executed' : `already fixed on dev at ${tip}`;
+            delete file.culprit;
+          } else {
+            if (file.result === 'already-fixed') {
+              delete file.result; delete file.reason;
+              file.phase = 'repeat'; file.low = -1; file.high = (input.merges?.length ?? 0) - 1;
+            }
+            if (file.phase === 'repeat' && tip === input.head) file.phase = 'baseline';
+          }
+        }
+        save(); return;
+      }
       if (file.phase !== 'repeat' && (!input.previousGreenHead || !input.merges?.length || input.merges.at(-1)?.head !== input.head)) {
         file.result = 'inconclusive'; file.reason = 'baseline or complete landed range unavailable'; save(); return;
       }

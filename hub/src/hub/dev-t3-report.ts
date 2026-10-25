@@ -20,8 +20,8 @@ export async function reportDevT3Search(core: HubCore, tracker: Tracker, report:
   const evidence = [`Periodic run ${input.run}; red head ${input.head}; tree ${input.tree ?? 'unavailable'}`,
     `Last green run ${input.previousGreenRun ?? 'unavailable'}; head ${input.previousGreenHead ?? 'unavailable'}`,
     `Original log ${input.artifact}: ${input.path}`,
-    ...files.map(file => `${file.file}: ${file.result}${file.culprit ? ` at ${file.culprit.head} ${file.culprit.subject}` : ''}${file.reason ? ` (${file.reason})` : ''}\n${file.receipts.map(probeEvidence).join('\n')}`)].join('\n');
-  for (const merge of new Set(files.flatMap(file => file.culprit?.head ?? []))) {
+    ...files.map(file => `${file.file}: ${file.result}${file.culprit ? ` at ${file.culprit.head} ${file.culprit.subject}` : ''}${file.reason ? ` (${file.reason})` : ''}\n${file.tip ? `Current dev tip: ${probeEvidence(file.tip)}\n` : ''}${file.receipts.map(probeEvidence).join('\n')}`)].join('\n');
+  for (const merge of new Set(files.flatMap(file => file.result === 'culprit' && file.tip && (file.tip.result === 'red' || file.tip.result === 'partial' && file.tip.executed === 'red') ? file.culprit?.head ?? [] : []))) {
     const label = `dev-t3-${merge}`;
     let bug = tracker.list().find(item => item.labels.includes(label));
     const source = tracker.list().find(item => tracker.mergeReceipt(item.id)?.commit === merge);

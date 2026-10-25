@@ -192,7 +192,7 @@ for (const notRun of ['infrastructure', 'provider-capacity'] as const) test(`per
   assert.equal(f.machine.calls.some(call => call.run === failed.id && call.step === 'start'), false);
   assert.equal(releaseT3Cover(f.store, failed.tree!), null);
   assert.deepEqual(f.suites.covers(), covers, 'last executed green/red markers do not move');
-  const search = new DevT3Search(f.store, { probe: async () => assert.fail('infrastructure must not start culprit probes'), report: async () => assert.fail('infrastructure must not start a culprit search') });
+  const search = new DevT3Search(f.store, { currentDev: async () => f.candidate.head, probe: async () => assert.fail('infrastructure must not start culprit probes'), report: async () => assert.fail('infrastructure must not start a culprit search') });
   search.accept(result); await search.tick();
   assert.equal(f.store.meta('dev-t3-searches'), null);
   // Simulate a crash after result.json but before the job completion checkpoint.
@@ -246,7 +246,7 @@ test('restart from the first terminal-status receipt preserves the saved infrast
   assert.equal(result.result, 'not-run');
   assert.equal(result.cause, 'bundle: object unavailable');
   assert.deepEqual(f.suites.covers(), []);
-  const search = new DevT3Search(f.store, { probe: async () => assert.fail('infrastructure must not start culprit probes'), report: async () => assert.fail('infrastructure must not start a culprit search') });
+  const search = new DevT3Search(f.store, { currentDev: async () => f.candidate.head, probe: async () => assert.fail('infrastructure must not start culprit probes'), report: async () => assert.fail('infrastructure must not start a culprit search') });
   search.accept(result); await search.tick();
   assert.equal(f.store.meta('dev-t3-searches'), null);
 });
@@ -284,7 +284,7 @@ test('periodic T2/T3 failures reach Bug filing through the culprit search', asyn
   const core = new HubCore({ clock: f.clock });
   t.after(async () => { await tracker.stop(); core.close(); core.store.close(); });
   const probes: Array<{ head: string; file: string }> = [];
-  const search = new DevT3Search(f.store, {
+  const search = new DevT3Search(f.store, { currentDev: async () => f.candidate.head,
     probe: async (_input, head, file) => {
       probes.push({ head, file });
       return { head, file, run: `probe-${probes.length}`, result: head === first.head ? 'green' : 'red', artifact: 'A-2', path: '/durable/probe' };
@@ -293,7 +293,8 @@ test('periodic T2/T3 failures reach Bug filing through the culprit search', asyn
   });
   search.accept(result);
   for (let i = 0; i < 9; i++) await search.tick();
-  assert.deepEqual(probes, files.flatMap(file => [{ head: second.head, file }, { head: first.head, file }, { head: first.head, file }, { head: second.head, file }]));
+  assert.deepEqual(probes, [...files.map(file => ({ head: second.head, file })),
+    ...files.flatMap(file => [{ head: first.head, file }, { head: first.head, file }, { head: second.head, file }])]);
   const bugs = tracker.list().filter(item => item.labels.includes(`dev-t3-${second.head}`));
   assert.equal(bugs.length, 1, 'one Bug groups T2 and T3 failures at the same culprit merge');
   assert.equal(tracker.list().find(item => item.id === bugs[0]!.parent)!.title, 'Bugs');

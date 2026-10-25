@@ -299,7 +299,10 @@ results use `result: "not-run"`, `notRun: "infrastructure"`, `cause` and an empt
 
 A red periodic result starts a separate durable culprit search for T2 and T3
 failures alike, retaining the `DevT3Result` interface above. Each failing file
-reruns at the red head first (an executed pass is a flake), then at the pinned
+first probes the current local dev tip before any historical search. A complete
+executed pass reports `already fixed on dev at <commit>` and files no Bug. An
+executed pass at the original red head remains a flake. A red tip receipt allows
+the file to rerun at the red head (reusing that probe when dev is still there), then at the pinned
 last green head (a failure is pre-existing), then bisects the intervening landed
 commits. Before filing a culprit, it repeats only the adjacent green/red boundary
 with fresh run ids. A changed result is inconclusive (flaky boundary). This adds
@@ -326,7 +329,19 @@ projections, explicitly recorded in each log; detached candidate commands,
 including its own check and runner rules, still execute. Ordinary verification
 and batch diagnostics retain hosting admission lint. Search state and probe
 receipts survive restart, including the two boundary confirmation phases. The
-hub files one Bugs item per culprit merge, retaining both heads, files, run ids
+hub checks the current dev ref again before publishing the diagnosis; any moved
+tip gets its own file probe before filing. Missing, absent or partial-green tip
+receipts supply no fixed or failing proof and file no Bug. Each filed Bug retains
+the current tip's red receipt alongside the historical boundary receipts. This
+adds one probe per distinct tip/file visited; the stable original red tip uses
+its existing rerun. No integrated/stage cache is reused for tip evidence.
+Historical probe checkouts are standalone detached repositories sharing Git
+objects, so candidate checks read allowance owners from the pinned tracker
+rather than the hosting hub's live tracker. Existing linked-worktree checkpoints
+convert before idle probe admission. Incomplete standalone clones get one
+recreation attempt there; HEAD equality also requires clean tracked-file status.
+Complete preparations are reused; admitted workers finish before removal.
+The hub files one Bugs item per culprit merge, retaining both heads, files, run ids
 and artifact paths, and reports in Agents to the Coordinator and the merge's
 last claimant if live. Merges continue while the search runs. Filing errors
 report a blocked search to the Coordinator and retry without holding batches.

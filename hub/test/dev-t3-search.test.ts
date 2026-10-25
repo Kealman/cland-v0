@@ -14,6 +14,7 @@ test('search contains a throwing blocked notice and retries its report on the ne
   const logs: Record<string, unknown>[] = [];
   let reported = false;
   const search = new DevT3Search(f.store, {
+    currentDev: async () => 'm8',
     probe: async () => assert.fail('empty search has no probes'),
     report: async () => { if (!reported) throw new Error('search report failed'); },
     blocked: () => { throw new Error('blocked notice failed'); },
@@ -38,7 +39,7 @@ test('search bisects each failing file and excludes pre-existing failures across
   let store = new Store(join(root, 'hub.db'));
   t.after(async () => { store.close(); await rm(root, { recursive: true, force: true }); });
   const calls: Array<{ head: string; file: string }> = [], reports: SearchReport[] = [];
-  const boundary = { probe: async (_input: DevT3Result, head: string, file: string): Promise<ProbeReceipt> => {
+  const boundary = { currentDev: async () => 'm8', probe: async (_input: DevT3Result, head: string, file: string): Promise<ProbeReceipt> => {
     calls.push({ head, file });
     return { head, file, run: `probe-${calls.length}`, result: file.startsWith('nvim/') || head !== 'baseline' && Number(head.slice(1)) >= 5 ? 'red' : 'green', artifact: `A-${calls.length + 1}`, path: '/logs/probe' };
   }, report: async (report: SearchReport) => { reports.push(report); } };
@@ -71,7 +72,7 @@ test('search reports unavailable evidence without blame and still recognizes red
   const reports: SearchReport[] = [];
   for (const scenario of cases) {
     const input = { ...redResult(), run: scenario.name, failingFiles: ['hub/test/regression.test.ts'], ...('merges' in scenario ? { merges: scenario.merges, previousGreenHead: scenario.previousGreenHead } : {}) };
-    const search = new DevT3Search(store, { probe: async (_input, head, file) => ({ head: 'wrongHead' in scenario ? 'wrong' : head, file, run: 'probe', result: scenario.result, artifact: 'A-2', path: '/log' }), report: async report => { reports.push(report); } });
+    const search = new DevT3Search(store, { currentDev: async () => 'm8', probe: async (_input, head, file) => ({ head: 'wrongHead' in scenario ? 'wrong' : head, file, run: 'probe', result: scenario.result, artifact: 'A-2', path: '/log' }), report: async report => { reports.push(report); } });
     search.accept(input);
     for (let i = 0; i < 5 && !reports.some(report => report.input.run === scenario.name); i++) await search.tick();
     const file = reports.find(report => report.input.run === scenario.name)!.files[0]!;
@@ -143,6 +144,7 @@ test('search refuses identical exclusions observed on different executor archite
   const reports: SearchReport[] = [];
   let sequence = 0;
   const search = new DevT3Search(store, {
+    currentDev: async () => 'm8',
     probe: async (_input, head, file) => ({ head, file, run: `probe-${++sequence}`, artifact: 'A-1', path: '/log',
       result: 'partial', executed: head === 'baseline' ? 'green' : 'red',
       platform: { ...platform, arch: head === 'baseline' ? 'arm64' : 'x64' },
@@ -155,5 +157,71 @@ test('search refuses identical exclusions observed on different executor archite
   assert.equal(reports.length, 1);
   assert.equal(reports[0]!.files[0]!.result, 'inconclusive');
   assert.match(reports[0]!.files[0]!.reason!, /platform changed/);
+  assert.equal(reports[0]!.files[0]!.culprit, undefined);
+});
+
+
+test('search skips history and reports a file already fixed at current dev', async t => {
+  const store = new Store(); t.after(() => store.close());
+  const reports: SearchReport[] = [];
+  const calls: string[] = [];
+  const search = new DevT3Search(store, {
+    currentDev: async () => 'fixed-tip',
+    probe: async (_input, head, file) => {
+      calls.push(head);
+      return { head, file, run: 'tip-run', result: 'green', artifact: 'A-2', path: '/logs/tip' };
+    },
+    report: async report => { reports.push(report); },
+  });
+  search.accept({ ...redResult(), failingFiles: ['hub/test/regression.test.ts'] });
+  for (let i = 0; i < 15 && !reports.length; i++) await search.tick();
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0]!.files[0]!.result, 'already-fixed');
+  assert.match(reports[0]!.files[0]!.reason!, /already fixed on dev at fixed-tip/);
+  assert.deepEqual(calls, ['fixed-tip'], 'fixed files acquire no historical probes');
+  assert.equal(reports[0]!.files[0]!.receipts[0]!.run, 'tip-run');
+});
+
+
+test('search revalidates an already fixed file when dev moves back to red before reporting', async t => {
+  const store = new Store(); t.after(() => store.close());
+  const reports: SearchReport[] = [];
+  let tip = 'fixed-tip', sequence = 0;
+  const search = new DevT3Search(store, {
+    currentDev: async () => tip,
+    probe: async (_input, head, file) => ({ head, file, run: `probe-${++sequence}`, result: head === 'fixed-tip' || head === 'baseline' ? 'green' : 'red', artifact: 'A-2', path: '/log' }),
+    report: async report => { reports.push(report); },
+  });
+  search.accept({ ...redResult(), merges: [{ head: 'm8', subject: 'Regression' }], failingFiles: ['hub/test/regression.test.ts'] });
+  await search.tick();
+  tip = 'new-red-tip';
+  for (let i = 0; i < 15 && !reports.length; i++) await search.tick();
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0]!.files[0]!.result, 'culprit');
+  assert.equal(reports[0]!.files[0]!.tip!.head, tip);
+  assert.equal(reports[0]!.files[0]!.tip!.result, 'red');
+});
+
+
+test('an older checkpoint without a tip receipt cannot file before current dev is checked', async t => {
+  const store = new Store(); t.after(() => store.close());
+  const input = { ...redResult(), failingFiles: ['hub/test/regression.test.ts'] };
+  const file = input.failingFiles[0]!;
+  store.setMeta('dev-t3-searches', JSON.stringify([{ input, files: [{ file, low: 3, high: 4,
+    phase: 'confirm-red', receipts: [], result: 'culprit', culprit: input.merges![4] }] }]));
+  const reports: SearchReport[] = [];
+  let probes = 0;
+  const search = new DevT3Search(store, {
+    currentDev: async () => 'fixed-tip',
+    probe: async (_input, head, file) => {
+      probes++;
+      return { head, file, run: 'tip-run', result: 'green', artifact: 'A-2', path: '/tip' };
+    },
+    report: async report => { reports.push(report); },
+  });
+  await search.tick(); await search.tick();
+  assert.equal(probes, 1);
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0]!.files[0]!.result, 'already-fixed');
   assert.equal(reports[0]!.files[0]!.culprit, undefined);
 });

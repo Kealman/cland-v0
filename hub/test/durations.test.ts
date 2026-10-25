@@ -353,3 +353,46 @@ test('new allowances cannot adopt the one-time legacy exception at either admiss
   await git('add', '.'); await git('commit', '-qm', 'invalid new allowance');
   await assert.rejects(lintHubShardTree(cwd, 'HEAD'), /new duration allowance cannot be legacy: hub\/test\/new.test.ts::new/);
 });
+
+for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted matching clone'] as const) test(`historical probe checks pinned duration owners after the live owner closes (${preparation})`, async t => {
+  const { suiteUnit } = await import('./suite-unit-fixture.ts');
+  const { DevT3Probes } = await import('../src/hub/dev-t3-probe.ts');
+  const { lintHubShards } = await import('../src/suite-shards.ts');
+  const f = await suiteUnit(t);
+  const git = async (...args: string[]) => {
+    const result = await exec('git', ['-c', 'gc.auto=0', ...args], { cwd: f.root, env: fixtureEnvironment(f.root, f.env) });
+    return result.stdout.trim();
+  };
+  await git('init', '-qb', 'dev');
+  await git('config', 'user.name', 'Probe test'); await git('config', 'user.email', 'probe@example.invalid');
+  await mkdir(join(f.root, '.cland/tasks'), { recursive: true });
+  const owner = join(f.root, '.cland/tasks/E-677-fixture.md');
+  await writeFile(owner, '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  const file = 'hub/test/historical.test.ts';
+  await writeFile(join(f.root, file), "test('slow', () => {});\n");
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
+      [`${file}::slow`]: { seconds: 6, owner: 'E-677', legacy: true, reason: 'Historical process contract.' },
+    } }));
+  await git('add', '.'); await git('commit', '-qm', 'Open owner');
+  const head = await git('rev-parse', 'HEAD'), tree = await git('rev-parse', 'HEAD^{tree}');
+  await writeFile(owner, '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: closed\n---\n');
+  await git('add', '.'); await git('commit', '-qm', 'Close live owner');
+  await assert.rejects(lintHubShards(f.root), /closed owner E-677/);
+  const probes = new DevT3Probes(f.store, f.suites, f.root, f.env);
+  const candidate = { base: head, head, tree, cwd: join(f.root, '.cland/run/merge-batches/historical-probe'), budgetLines: [] };
+  t.after(() => probes.repository.remove(candidate));
+  if (preparation === 'legacy worktree') await git('worktree', 'add', '--detach', candidate.cwd, head);
+  else {
+    await git('clone', '--shared', '--no-checkout', '--', f.root, candidate.cwd);
+    if (preparation === 'interrupted matching clone') await git('-C', candidate.cwd, 'update-ref', '--no-deref', 'HEAD', head);
+    await assert.rejects(readFile(join(candidate.cwd, file), 'utf8'), { code: 'ENOENT' }, 'clone has not materialized candidate files');
+  }
+  await probes.repository.checkout(candidate);
+  assert.equal(await readFile(join(candidate.cwd, file), 'utf8'), "test('slow', () => {});\n", 'prepared HEAD must include its materialized test file');
+  await writeFile(join(candidate.cwd, 'reuse-receipt'), 'preserve complete preparation');
+  await probes.repository.checkout(candidate); // Idle recovery retains the same immutable standalone checkout.
+  assert.equal(await readFile(join(candidate.cwd, 'reuse-receipt'), 'utf8'), 'preserve complete preparation');
+  await assert.doesNotReject(lintHubShards(candidate.cwd), 'historical check must use the open owner at its pinned commit');
+  await assert.rejects(lintHubShards(f.root), /closed owner E-677/, 'ordinary admission retains live owner validation');
+});

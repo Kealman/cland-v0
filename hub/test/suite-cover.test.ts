@@ -61,7 +61,8 @@ for (const refusal of ['capacity', 'delivery', 'mixed causes', 'acquisition', 'm
   assert.match(receipt.log, /shard not run shard-2:/);
   const result = await devT3Result(receipt.job, receipt.log, { id: 'A-1', path: '/durable/log' }, async () => null);
   assert.equal(result.result, 'not-run');
-  const search = new DevT3Search(f.store, { probe: async () => assert.fail('no culprit probes for refused shards'), report: async () => assert.fail('no culprit search for refused shards') });
+  const search = new DevT3Search(f.store, {
+    currentDev: async () => 'm8', probe: async () => assert.fail('no culprit probes for refused shards'), report: async () => assert.fail('no culprit search for refused shards') });
   search.accept(result); await search.tick();
   assert.equal(f.store.meta('dev-t3-searches'), null);
   await f.reopen();
@@ -106,7 +107,8 @@ for (const [boundary, unchangedReads] of [['parent validation', 0], ['child bund
   assert.doesNotMatch(receipt.log, /shard failure|\bred\b/);
   const result = await devT3Result(receipt.job, receipt.log, { id: 'A-1', path: '/durable/log' }, async () => null);
   assert.equal(result.result, 'not-run');
-  const search = new DevT3Search(f.store, { probe: async () => assert.fail('no bundle-refusal culprit probe'), report: async () => assert.fail('no bundle-refusal culprit search') });
+  const search = new DevT3Search(f.store, {
+    currentDev: async () => 'm8', probe: async () => assert.fail('no bundle-refusal culprit probe'), report: async () => assert.fail('no bundle-refusal culprit search') });
   search.accept(result); await search.tick();
   assert.equal(f.store.meta('dev-t3-searches'), null);
   await f.reopen();

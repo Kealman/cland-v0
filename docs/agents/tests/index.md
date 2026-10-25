@@ -197,3 +197,4 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/qa-lint.test.ts`](../../../hub/test/qa-lint.test.ts) | [Notes](hub-test-qa-lint.test.ts.md) |
 | [`hub/test/qa-lint-cli.test.ts`](../../../hub/test/qa-lint-cli.test.ts) | [Notes](hub-test-qa-lint-cli.test.ts.md) |
 | [`hub/test/dependency-install.test.ts`](../../../hub/test/dependency-install.test.ts) | [Notes](hub-test-dependency-install.test.ts.md) |
+| [`hub/test/durations.test.ts`](../../../hub/test/durations.test.ts) | [Notes](hub-test-durations.test.ts.md) |

@@ -1055,7 +1055,7 @@ test('merge batches form and land while periodic culprit search awaits its runne
   const { f, runner, entries, landed } = await fixture(t);
   const started = Promise.withResolvers<void>(), release = Promise.withResolvers<null>();
   let completed = false;
-  const search = new DevT3Search(f.store, { probe: async () => { started.resolve(); return release.promise; }, report: async () => { completed = true; } });
+  const search = new DevT3Search(f.store, { currentDev: async () => 'landed', probe: async () => { started.resolve(); return release.promise; }, report: async () => { completed = true; } });
   search.accept({ event: 'verification-dev-t3-result', run: 'periodic', head: 'landed', tree: 'tree', previousGreenHead: 'green', previousGreenRun: 'green-run', merges: [{ head: 'landed', subject: 'Merge' }], result: 'red', failingFiles: ['hub/test/example.test.ts'], artifact: 'A-1', path: '/log' });
   const pending = search.tick();
   t.after(async () => { release.resolve(null); await pending; await search.close(f.clock); });

@@ -1,13 +1,15 @@
 // File probes use the ordinary Suites executor/budget queue on detached immutable commits.
 import { createHash } from 'node:crypto';
+import { mkdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { removeWorktreeWithFixtures } from '../fixture-processes.ts';
 import type { Store } from './store.ts';
 import type { Suites } from './suites.ts';
 import type { DevT3Result } from './dev-t3-result.ts';
 import type { Platform } from '../executor/executor.ts';
 import type { PlatformSkip, ProbeVerdict, ProbeReceipt } from './dev-t3-search.ts';
 import { diagnosticResult, type BatchCandidate } from './merge-batches.ts';
-import { checkoutMergeBatch, removeMergeBatch, type BatchRepository } from './merge-batch-territory.ts';
+import { removeMergeBatch, type BatchRepository } from './merge-batch-territory.ts';
 import { committedTreeOrThrow } from '../verification-tree.ts';
 import { suiteProgress } from '../suite-progress.ts';
 import { quarantineResults } from '../suite-quarantine.ts';
@@ -26,8 +28,42 @@ export class DevT3Probes {
     this.repository = repository ?? {
       contains: async (head, file) => (await territoryGitAsync(root, ['ls-tree', '--name-only', '-z', head, '--', file], false, undefined, env)).split('\0').includes(file),
       identity: head => committedTreeOrThrow(root, head, env),
-      checkout: candidate => checkoutMergeBatch(root, candidate, env),
-      remove: candidate => removeMergeBatch(root, candidate, env),
+      checkout: async candidate => {
+        let gitFile = await stat(join(candidate.cwd, '.git')).catch(error => {
+          if (error.code === 'ENOENT') return null;
+          throw error;
+        });
+        // Old checkpoints used linked worktrees whose project discovery reached
+        // today's tracker. Retire those only at the idle admission boundary.
+        if (gitFile?.isFile()) { await removeMergeBatch(root, candidate, env); gitFile = null; }
+        if (gitFile?.isDirectory()) {
+          // A no-checkout clone can already have the requested HEAD while its
+          // index/worktree are empty. Repair only here, before any job exists.
+          const complete = await (async () => {
+            const head = await territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env);
+            const status = await territoryGitAsync(candidate.cwd, ['status', '--porcelain=v1', '--untracked-files=no'], false, undefined, env);
+            return head === candidate.head && !status;
+          })().catch(() => false);
+          if (complete) return;
+          await removeWorktreeWithFixtures(candidate.cwd, () => rm(candidate.cwd, { recursive: true, force: true }));
+          gitFile = null;
+        }
+        if (!gitFile) {
+          await mkdir(join(root, '.cland/run/merge-batches'), { recursive: true });
+          await territoryGitAsync(root, ['clone', '--shared', '--no-checkout', '--', root, candidate.cwd], false, undefined, env);
+          await territoryGitAsync(candidate.cwd, ['checkout', '--detach', candidate.head], false, undefined, env);
+        }
+        const head = await territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env);
+        if (head !== candidate.head) throw new Error('existing probe checkout differs from its durable head');
+      },
+      remove: async candidate => {
+        const gitFile = await stat(join(candidate.cwd, '.git')).catch(error => {
+          if (error.code === 'ENOENT') return null;
+          throw error;
+        });
+        if (gitFile?.isFile()) await removeMergeBatch(root, candidate, env);
+        else if (gitFile) await removeWorktreeWithFixtures(candidate.cwd, () => rm(candidate.cwd, { recursive: true, force: true }));
+      },
     };
   }
   async probe(input: DevT3Result, head: string, file: string, repetition?: 'boundary'): Promise<ProbeReceipt | null> {
