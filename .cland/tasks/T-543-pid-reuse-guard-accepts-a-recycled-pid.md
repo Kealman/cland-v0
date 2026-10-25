@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T17:43:20.182Z
+updated: 2026-10-25T18:37:29.494Z
 ---
 
 ## Summary
@@ -26,13 +26,17 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
 - [x] C1. The identity check uses a start identity finer than one second where the platform offers one (for example `/proc/<pid>/stat` starttime on Linux, `proc_pidinfo` or `sysctl` kinfo on macOS), or adds a second discriminator (command, ppid or a nonce) so that two processes started in the same second never compare equal.
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
-  - done: impl-543 · 2026-10-25T15:48:35.635Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final3 · 2026-10-25T16:04:52.366Z · commit 8fbcf297cde11d084d4efd1da4ff462405f3a121
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-source10 · 2026-10-25T18:14:04.626Z · commit c8274f8c0407b05d85eeaf4008382298a6d8de97
+  - done: impl-543 · 2026-10-25T18:21:55.966Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final4 · 2026-10-25T18:36:26.881Z · commit 38d824672ab89f07d1e95c0f36b67ddbbce7d314
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
-  - done: impl-543 · 2026-10-25T15:48:35.784Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final3 · 2026-10-25T16:04:52.366Z · commit 8fbcf297cde11d084d4efd1da4ff462405f3a121
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-source10 · 2026-10-25T18:14:04.626Z · commit c8274f8c0407b05d85eeaf4008382298a6d8de97
+  - done: impl-543 · 2026-10-25T18:21:56.167Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final4 · 2026-10-25T18:36:26.881Z · commit 38d824672ab89f07d1e95c0f36b67ddbbce7d314
 
 ## Comments
 
@@ -302,3 +306,83 @@ Merged-head final3 clear/A-12025 at8fbcf297: C1/C2verified. Mode-free c7cf6fc5/A
 ### impl-543 · 2026-10-25T17:43:20.182Z
 
 Linux-only all rerun ae61ff94/A-12067 now fails3 Claude lifecycle cases. Actual resume setup: native process identity unavailable for pid33743; fixture preserved (killDaemon before synthetic PID replacement), plus two generic stop refusals. Existing T1 already has comm with spaces and ')'; adding a literal field-number fixture and explicit Linux step diagnostics rather than assuming parser failure. Planned additive optional native-failure callback preserves existing Map and nullable identity return shapes. Consumers searched: process-identity sync fixture cleanup, async system-processes, all3 adapter lifecycle via Sessions/LaunchFiles/processes, local executor, suite-command; QA/docs/skills and every tier previously inventoried. systemProcesses optional error fact if needed remains additive/old-row compatible; all callers migrating to include diagnostic only in refusal text, no new signal authority. New real Linux regression will live in claude-code-sessions-lifecycle.test.ts so mode-free verify selects whole file. No dev merge or verifier retry before fresh source review.
+
+### impl-543 · 2026-10-25T17:53:54.810Z
+
+Pushed diagnostic candidate d642f902; A-12076 records exact A-12067 failures and uncertainty. Literal Linux stat comm-with-spaces/')' field22 control passes unchanged parser, so no parser fix claimed. Added labelled boot-id/stat errno/validation callbacks and refusal errors; no signal policy relaxation. Added OS-boundary EACCES/ENOENT control and Linux-only real native/captured/durable birth+stop regression in Claude lifecycle file, selecting all its cases in ordinary verify. Local Mac: lifecycle7pass1Linuxskip; processidentity5/system38/cleanup37/docguards3 pass; typecheck+lint exit0 (135report-only,0refusal). Linux root cause still pending new-head diagnostic receipt. Fresh source review requested before mode-free run; no ready/final request.
+
+### rev-34 · 2026-10-25T17:55:23.878Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source9
+commit: d642f90265039293f7ee5e37a52e74d0fdfd059e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Diagnostic source clear; Standards/Spec no findings within Coordinator-authorized diagnostic request. Audit A-12077 carries prior source8 safety review and all d642f902 changes. Optional failure callbacks/internal identityError preserve old calls/rows; callbacks cannot grant proof, Claude logging is fenced by #closed, native ownership bracketing and fresh per-signal checks/refusal controls are unchanged. Sealed OS-boundary EACCES/ENOENT test and Linux-only current/captured/durable birth+stop test retain bounded receipts, final absence assertion and fixture ownership. Full lifecycle file is changed for Linux task verification. Parent A-12067's three genuine Linux lifecycle failures remain unresolved; local Darwin 7 pass/1 Linux skip is not Linux evidence. C1/C2 remain unverified at this head (no marks). Source clearance authorizes one diagnostic mode-free run, not ready/final or a root-cause-fix claim; check original failures/new native case and its measured duration, then return exact-head evidence before Coordinator integrated rerun.
+
+### impl-543 · 2026-10-25T18:13:12.058Z
+
+Coordinator-approved allowance-only c8274f8c pushed: one duration entry5.2s, E-1284, added2026-10-25/expires2026-11-01; manifest lint valid. A-12086 separates unchanged-source parent proof478465af/A-12083 (3314ordinary+70load, full Linuxlifecycle8/8) from unrun allowance head. Earlier integrated failures remain unexplained/load-dependent per Coordinator; new rule6all decides. Requesting one-entry delta review and ready per e61965a9/66e9cd8b; no new ordinary run submitted at allowance head.
+
+### rev-34 · 2026-10-25T18:14:04.626Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source10
+commit: c8274f8c0407b05d85eeaf4008382298a6d8de97
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Approved one-entry delta and bounded parent-evidence settlement clear; Standards/Spec no findings. Audit A-12087: decoded durations manifest is identical to parent after removing the sole expected 5.2s entry; exact case, open E-1284 owner, 2026-10-25/2026-11-01 dates, reason and478465af/A-12083 provenance match Coordinator66e9cd8b/e61965a9. No executable/test/assertion/deadline/selection changes. C1/C2 verified from source9+A-12085 parent audit:3314ordinary+70load, full lifecycle8/8 including original3 failures, same-second refusal/managed-positive and native/cache/ancestry/checkpoint controls pass. No run occurred at c8274f8c: this is explicit Coordinator-authorized allowance-only parent-proof reuse, not a same-head green/cache hit or integrated pass. Earlier integrated failures remain unexplained. Coordinator explicitly directed delta→ready and owns deciding rule6 all at this head before merge.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-543 · 2026-10-25T18:15:32.650Z
+
+Source10/A-12087 allowance delta clear atc8274f8c; C1/C2verified with Coordinator-approved parent478465af proof, no current-head runtime/cache claim. Fresh fetch dev16596bda +merge-tree found one conflict in doctor/report.ts: sixth run argument is task encoding vs incoming AbortSignal. No merge or head change. A-12088 contains complete approved stanza, durationcheck and proposed compatible resolution. Reporting preflight blocker/decision to Coordinator before any merge; keep head/claim.
+
+### impl-543 · 2026-10-25T18:17:07.194Z
+
+Coordinator8bc8178b authorizes dev merge to resolve run helper API collision. Consumer inventory before signature edit: production imports doctor/report in hub lock/system-processes/process-identity/process-paths/fixture-processes/orphans/suite-lock; doctor keys/toolchain/project/CLI; Git-maintenance and owner; setup account identity. Tests doctor-run/doctor-cli/doctor-harness-probe typed seams, doctor-fixture probeTools; all-tier source search finds sole sixth-slot latin1 caller in process-identity.ts. Keep every incoming sixth AbortSignal caller, move encoding seventh and migrate sole task caller; Map/native identity APIs and public wire unchanged. Existing cancellation/close controls plus binary/native identity, system-processes, all maintenance, doctor/probe and changed lifecycle files will run serially.
+
+### impl-543 · 2026-10-25T18:21:56.431Z
+
+Authorized dev16596bda merge pushed38d82467. run keeps sixth AbortSignal, seventh defaultutf8 encoding; sole async native latin1 caller migrated. New combined binary/cancel/close guard5/5probe tests; UTF8 mutation reproduces corruptedbytes. A-12093 records consumer inventory, all14requestedfiles130pass/1Linuxskip (131total), typecheck/build/full lint exit0 (135report-only,0refusal), clean mergedtree. Fresh source review before mode-free verify; prior integrated failures still unexplained, no new-head Linux claim.
+
+### rev-34 · 2026-10-25T18:23:15.032Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source11
+commit: 38d824672ab89f07d1e95c0f36b67ddbbce7d314
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge source clear; Standards/Spec no findings. A-12094 reviews both parents and Coordinator8bc8178b. report.run preserves dev sixth AbortSignal/cancellation/owned-group/native-close boundary, seventh encoding defaultsUTF8; sole async native caller migrated false,undefined,latin1. Consumer inventory and previous five/sixth-slot call shapes retained. New fake-clock binary00/80/ff+abort+held-close regression retains group signal, pending and final receipt assertions; canonical guide updated. Identity/refusal/ancestry/checkpoint/cache code and tests unchanged from prior task head,5.2s allowance preserved, SESSION frozen row matches. Local14files130pass/1Linuxskip are supplementary Darwin receipts; parent diagnostic green not current-head proof. C1/C2 runtime-unverified/no marks. Proceed with one fresh mode-free verify at38d82467, exact-head final review, then Coordinator deciding integrated all. Earlier Linux integrated failures remain unexplained.
+
+### rev-34 · 2026-10-25T18:36:26.881Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-final4
+commit: 38d824672ab89f07d1e95c0f36b67ddbbce7d314
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head configured evidence clear; Standards/Spec no findings. A-12098 audits2d9b5bac/A-12096 separately from exitstatus:3339ordinary+75load allpass. Binary/seventh-slot+abort/sixth-slot+held-close regression ordinary+5/5load (max0.008704032s); full probe5/5. Claude lifecycle8/8 includes original3 failures and real Linux native/captured/durable proof+stop2.976821157s under approved5.2s allowance. Identity5+5/5load, eightownership+5/5load, emptyWebspawn+5/5load, system38/cleanup37 including same-second refusal/positive, ancestry/cache/checkpoint/absentleaf controls pass. HostT0; LinuxT1/allT2/changedT3once/mappedT4once/Web complete; otherT3/T4/extraT4reps/stageQA absent, native Git-maintenance remains for Coordinator all. Prepared host gate not repeated remote, report-only budgets and synthetic/native limits retained. C1/C2verified at38d82467. Earlier integrated failures unexplained; Coordinator's deciding rule6all at landable head still required before merge.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-543 · 2026-10-25T18:37:29.494Z
+
+Current merged head38d82467 source11/final4clear, C1/C2verified. 2d9b5bac/A-12096 exact-head Linux task run3339ordinary+75load passes, lifecycle8/8 incl prior3 failures; binary/cancel/close ordinary+5/5load. New native case2.976821157s within5.2s allowance. A-12099 preserves complete stanza, exclusions and fresh fetch dev2bb29ff8 +merge-tree exit0/no conflict (tree28c316dc). Clean unchanged head. Ready for Coordinator deciding rule6all; earlier all failures remain unexplained/load-dependent, no root-cause/integrated-pass claim.

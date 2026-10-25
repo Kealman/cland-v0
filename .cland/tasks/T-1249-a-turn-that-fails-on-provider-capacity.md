@@ -3,7 +3,7 @@ id: T-1249
 kind: task
 title: A turn that fails on provider capacity stays idle until someone messages the session
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1063
 branch: t/T-1249-a-turn-that-fails-on-provider-capacity
 created: 2026-10-24T13:35:17.533Z
-updated: 2026-10-25T17:36:19.213Z
+updated: 2026-10-25T18:06:02.454Z
 ---
 
 ## Summary
@@ -26,10 +26,13 @@ A Codex session's turn fails with `Selected model is at capacity. Please try a d
 
 - [x] C1. When a session's turn fails with a provider-capacity error, the hub re-delivers the last turn input after a bounded backoff (for example 30 s, 60 s, then 120 s, at most 3 tries) without a Coordinator message, and posts each retry (test).
   - done: impl-1249 · 2026-10-25T17:30:55.435Z
+  - verified: rev-32 [reviewer] · run rev-20261025-1249-final · 2026-10-25T18:05:31.490Z · commit b6a15f47f9ac956779df6fa44041d67b540102fc
 - [x] C2. Other turn failures are not retried this way, and a session that is stopped, archived or reassigned is never retried (test).
-  - done: impl-1249 · 2026-10-25T17:35:38.141Z
+  - done: impl-1249 · 2026-10-25T17:48:30.059Z
+  - verified: rev-32 [reviewer] · run rev-20261025-1249-final · 2026-10-25T18:05:31.490Z · commit b6a15f47f9ac956779df6fa44041d67b540102fc
 - [x] C3. After the last try fails, the hub tells the item lead or Coordinator once, as today (test).
   - done: impl-1249 · 2026-10-25T17:30:55.614Z
+  - verified: rev-32 [reviewer] · run rev-20261025-1249-final · 2026-10-25T18:05:31.490Z · commit b6a15f47f9ac956779df6fa44041d67b540102fc
 
 ## Comments
 
@@ -68,3 +71,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source review clear; A-12064 records unchanged baseline plus all correction hunks. M1 resolved by checking native supersession before idle authorization and immediately after held readback. The new stays-busy regression observes readback completion and retains no obsolete submission/no terminal failure assertions. Standards and Spec: no remaining findings. C1–C3 remain runtime-unverified pending one same-head mode-free configured receipt. Local A-12063 is attributed precommit Darwin T2 output, not configured Linux evidence. No tests run by Reviewer.
+
+### rev-32 · 2026-10-25T17:47:12.267Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261025-1249-evidence1
+commit: c80d86ca04dc077e4378ceced5b034ee6bc9cc5a
+scope: evidence
+findings: [{"severity":"medium","text":"Configured exact-head run 87ad3f88 fails successful late-steer reconciliation: Error: recovery receipt: not within 15000 ms (A-12070 lines14959–14965). T2 failed; later mapped-T4/Web phases did not run. No root-cause or shared-defect classification established.","file":"hub/test/codex-native.test.ts","line":659}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-12071 records failed run87ad3f88/A-12070 at the source-cleared head. Exact output: Error: recovery receipt: not within 15000 ms, codex-native.test.ts:659 via recoveries:524. T0/T1 passed, T2 failed; no later mapped-T4/Web receipt. Linux x64 c-8 lon1, ordinary2604/2603pass/1fail, lifetime538s/$0.0374; hostT0 gate reused, not repeated on Linux. Report-only duration/lint diagnostics are separate from the actual failure. C2 failed, C1/C3 pending; no shared-defect classification or unchanged retry authorized. Any fix needs fresh source review.
+
+Criteria: C2 failed (Exact-head configured T2 failed existing successful late-steer reconciliation: recovery receipt not within 15000 ms; runtime compatibility is not established.).
+
+### rev-32 · 2026-10-25T17:49:01.861Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261025-1249-source3
+commit: b6a15f47f9ac956779df6fa44041d67b540102fc
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source review clear; A-12074 carries previous baseline plus the completion-episode correction. Fresh turn/started clears the prior marker; existing late-steer recovery assertions remain intact, while same-episode duplicate final capacity completion remains suppressed. No remaining Standards/Spec findings. C1–C3 runtime marks remain pending a fresh same-head configured receipt. Prior87ad3f88/A-12070 is failed partial evidence, audited in A-12072 (correcting prior prose's erroneous A-12071 reference). Local A-12073 is attributed Darwin scripted T2 final-source output, not configured Linux evidence. Reviewer ran no tests.
+
+### rev-32 · 2026-10-25T18:05:31.490Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261025-1249-final
+commit: b6a15f47f9ac956779df6fa44041d67b540102fc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; A-12080 audits original A-12078 run8099d09e at unchanged source3 head. 3255 ordinary passes/445files;85 separate load passes (17×5), no fail/cancel/skip. C1 bounded30/60/120s,max3,exact input/posted retries; C2 lifecycle/work cancellation including held-readback busy M1, ordinary/uncertain policies and prior failed late-steer compatibility; C3 one terminal report/no claimant self-wake all have named base+load receipts. T0 hostMac30.855s,excluded-tree318edbc1 reused/not repeatedLinux; Linuxx64 c8nyc1 Node24.21 Nvim.12.5,workers2/Web4,life837s/$0.0581. T1/allfallbackT2/mappedT4once/fullWeb complete; noT3/otherT4/nativeprovider/QA claim. Headless156.0.8078.4/1248; budgets/tier/lint report-only133/60. EarlierfailedA-12070 retained, currentfreshreceipt isgreen. C1–C3verified; no remaining findings.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1249 · 2026-10-25T18:06:02.454Z
+
+Ready at b6a15f47f9ac956779df6fa44041d67b540102fc. Final source/evidence review clear, C1–C3 verified (rev-20261025-1249-final; A-12080). Fresh mode-free run 8099d09e passed with log A-12078 and parsed named-case/load facts A-12079: T0, all T1, fallback all T2, mapped T4 once, Web; Linux runtime, report-only budgets/lint; no T3/native-provider claim. All 17 new cases have 5/5 load proofs; no new case >=3 s on Linux. Fresh `git fetch --no-auto-maintenance origin dev` and `git merge-tree --write-tree HEAD origin/dev` exit 0 against dev 16596bda7470b33f301e3e49eeaef180180ad0f6, candidate tree cacdce388dcc569359ac6e2a18cbf22b9a65cc56. Working tree clean; head unchanged. Coordinator owns the additional rule-6 verify-all and enqueue; claim retained until merge.
