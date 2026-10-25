@@ -2,8 +2,8 @@
 id: T-543
 kind: task
 title: PID-reuse guard accepts a recycled PID that started within the same ps second
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T21:18:20.124Z
+updated: 2026-10-25T22:41:21.815Z
+closed: 2026-10-25T22:41:21.815Z
 ---
 
 ## Summary
@@ -32,8 +33,10 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
   - done: impl-543 · 2026-10-25T19:30:07.671Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final5 · 2026-10-25T19:46:36.411Z · commit 990a407e2214851248cad7b00ad23b776b0632a6
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final6 · 2026-10-25T20:13:15.153Z · commit c169e657d488acf52167263acd544e1a44b60d41
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final7 · 2026-10-25T21:34:19.713Z · commit f6bd8ca7e1c9cac2d371948a4af0914db4af21c4
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
   - done: impl-543 · 2026-10-25T21:16:19.147Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final7 · 2026-10-25T21:34:19.713Z · commit f6bd8ca7e1c9cac2d371948a4af0914db4af21c4
 
 ## Comments
 
@@ -491,3 +494,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected native-exit source clear; M7 resolved, Standards/Spec no remaining findings. A-12164 audits correction plus source14 native-exit change. Shared linear retainProcessAncestry retains all rows without final exit proof and their ancestors; retained native-exited rows have null birth/explicit surviving-branch diagnostic, so stop/cleanup refuse without signals.12LinuxZ/X/DarwinSZOMB child/leader controls preserve stop refusal and actual root/writer before simulated reaping, then completion/managed-positive; old-filter mutation reproduces all12 failures. Leaf-zombie/wrongPID/invalid/live-reuse/frozenCONT/oldAPI and real ESRCH controls retained. Docs/skill/CHANGES/help/frozen migration checked. Local121pass/1Linuxskip supplementary; no current-head configured evidence. C1/C2runtime-unverified/no marks. One mode-free Linux run, fresh exact-head evidence, then Coordinator deciding all including original suite-check/reaping paths; no integrated-pass inference from selected controls.
+
+### rev-34 · 2026-10-25T21:34:19.713Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-final7
+commit: f6bd8ca7e1c9cac2d371948a4af0914db4af21c4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear; Standards/Spec no findings. A-12169 audits9ed79302/A-12168:3409ordinary+80load allpass;16identities each5/5load. M7six stop and six actual-root preservation matrices pass (max0.518s/0.187s); leafZ/X/SZOMB, unreadable/live replacement, wrongPID, invalid/oldAPI, frozenCONT and finalsignal noauthority controls pass. System50/cleanup46/identity6+30load/name75+40load retain native same-second refusal/managedpositive/ancestry/checkpoint/cache. Lifecycle18/tracker15, delivery22/native33/resume9/probe/help/docs pass. Nativeproof3.761<5.2 and tracker9.130<14.629 allowances, no new entry. HostT0/LinuxT1/allT2/changedT3once/mappedT4once/Web complete; otherT3/T4/extraT4reps/stageQA absent. Native suite-check/recovery/codex-adapter have no recorded cases here: actual Linux reaping remains Coordinator deciding all. Hostpreparedtree not repeated remote, report-only diagnostics and synthetic/native limits retained. C1/C2verified. ParentA-12158 remains failed; integrated all at landable head still required before merge.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T22:41:21.815Z
+
+Merged 358e9217f877ab4d6f089a7ab8f2d10ae72acfd1 onto dev.

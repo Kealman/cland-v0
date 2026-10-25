@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1067
 branch: t/T-290-an-unknown-permissions-launch-value-is
 created: 2026-10-12T12:17:37.170Z
-updated: 2026-10-25T20:40:48.354Z
+updated: 2026-10-25T22:14:17.404Z
 ---
 
 ## Summary
@@ -37,17 +37,21 @@ Out of scope: the start-up CLI check warning waived on T-289.
 ## Acceptance criteria
 
 - [x] C1. A launch or relaunch under a role whose `permissions` value is unknown is refused, naming the roles file, the role, the value and every accepted value (`""`, `"auto"`, `"skip"`); the hub log names the key.
-  - done: impl-290 · 2026-10-25T20:07:58.019Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
+  - done: impl-290 · 2026-10-25T22:14:07.797Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
 - [x] C2. A corrected roles file lets the next launch proceed without a hub restart.
-  - done: impl-290 · 2026-10-25T20:00:36.581Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
+  - done: impl-290 · 2026-10-25T22:14:07.905Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
 - [x] C3. The parser's diagnostic names every accepted value; `approval` and `sandbox` are checked for the same gap and the finding recorded in the item.
-  - done: impl-290 · 2026-10-25T20:00:36.663Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
+  - done: impl-290 · 2026-10-25T22:14:07.988Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
 - [x] C4. Tests cover the refusal, the recovery and the diagnostic at the roles and adapter seams; `npm run typecheck` and the targeted tests pass; `cland verify` is green.
-  - done: impl-290 · 2026-10-25T20:39:29.497Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
+  - done: impl-290 · 2026-10-25T22:13:33.850Z
+  - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
 
 ## Comments
 
@@ -150,5 +154,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final CLEAR; A-12157 independent exact-head audit carries source4A-12155/fullsource chain at tree7b3d9fb1726c35583ee077463580c9c80d6987b0. C4 claimant restoration confirmed4/4done0failed before settlement. Original A-12156/dc8d8923 finished passed:3278ordinary tests+70additional load passes (14new identities×5), zero fail/cancel/skip/todo. All16reader cases and exact editor/parser/component/help/compatibility/docs consumers pass; M1-M5 resolved. C1-C4 verified current: complete refusal/log diagnostics, real-reader held-boundary no-effect refusal, corrected-file recovery/last-good preservation, approval+sandbox gap coverage, targeted/typecheck/configured proof. Worst new load.219677202s/no>=3sallowance. T0/allT1/fallbackallT2/mappedT4once/Web complete; noT3/fullT4soak. Mapped inboxguard1.588653390s,selectedwall2.765s excludesmachinewait; no repeats. Linuxc8sfo2Node24.21/Nvim.12.5/HeadlessShell156v1248;life901s/$0.0626 not suitewall. HostgateTREEae0fbe47 reused, not repeatedremote typecheck. 21existingwarnings/Webwall185.800vs40/lint133/60/unchangedratchet2232.554 report-only, no enforcement claim. Localreceipt capture/source limits carried; priorA-12150failed historical. Component/fake-adapter proof, no provider/nativeharness claim. Fresh conflict assessment/ready and separate rule6all belong to Coordinator; QA none. Reviewer read-only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-290 · 2026-10-25T21:57:30.420Z
+
+Coordinator rule-6 all run 2b493141/A-12171 at cf84aa03 found a T3 screen false positive: sessions-lifecycle asserted absence of bare /refused/, but General displayed the new Coordinator instruction 'fix refused roles.toml keys'. This is a screen-matcher regression, not a native launch refusal. Reword default and project Coordinator clause fixtures to 'fix invalid roles.toml keys' at identical byte counts. Search hub/test+nvim/test found one other bare refusal alternative in launcher-component's pending-attachment screen check; scope both checks to actual action/hub refusal messages. Retain real launcher rejected-launch UI as positive control with the same matcher and all existing assertions. No production launch contract changes; existing test identities unchanged. Targeted launcher-component 15/15 green on local macOS headless Neovim; lifecycle and typecheck in progress. New per-file guidance; no dev merge, fresh source review before one mode-free run.
+
+### rev-31 · 2026-10-25T21:59:18.685Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-source5
+commit: 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source5 CLEAR; A-12173 carries full source/final chain at treea41d0606d0c05a7ee3b862a90468d5e1f19566f5. Seven-file correction only/no devmerge. Actual action-refusal/hub-status matcher agrees with production rendered strings; existing rejected-launch positive check uses exact same matcher. Quiet attach and all lifecycle rows/models/journal/attach/death/stop assertions/bounds intact. Coordinator instruction refused→invalid byte-neutral, guide/index correct. M1-M5 unchanged/resolved; Standards0/Spec0. A-12171 all-run red is incidental General clause /refused/ match, historical failed run; prior taskgreen atcf84historical. A-12172 original local launcher15/15+lifecycle1/1(case4.166476917s) checked with plain-stdout attribution/typecheck capture limits; no newidentity/allowance. Criteria stale pending fresh current runtime. Submit one ordinary modefree configured verify unchanged, then exact-head final evidence including lifecycle/refusal positive/quiet attach, policy/load outcomes and actual phase/provenance/report-only limits. No taskall/devmerge/transcription rerun. Coordinator owns separate rule6all; QA none. Reviewer read-only.
+
+### rev-31 · 2026-10-25T22:14:17.251Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-290-final2
+commit: 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final2 CLEAR; A-12175 independent exact-head audit carries source5A-12173 at treea41d0606d0c05a7ee3b862a90468d5e1f19566f5. Original A-12174/5a9699c6 passed3300ordinary+70additional load tests (14reader identities×5), zero fail/cancel/skip/todo. All16reader cases/exact parser/editor/component/help/docs consumers pass; C1-C4 verified current, prior stale marks refreshed. Corrected lifecycle actual finish16986 passes6.352220671s once; same-matcher real refusal positive15939 .409366664s and quiet attach15870 .367894418s pass, no weakened assertions. T0/allT1/fallbackallT2/changedT3once/two mappedT4once/Web complete; remainingT3/fullT4soak absent. Inboxguard1.379976779s, launcherparent7.442102003s with20distinct child passes/40native receipts; no five-suite-repetition claim. SelectedT3wall7.410/T4wall10.152 exclude machinewait. Linuxc8lon1Node24.21/Nvim.12.5/HeadlessShell156v1248;life777s/$0.0539 not suitewall. HostgateTREEb5f2e119 reused, not alternatecommit/remote typecheck. Eight budgetwarnings/Webwall156.389vs40/lint133/60/unchangedratchet2232.554 report-only; existing lifecycle/launcherover5s not newidentity allowance. LocalA-12172 capture/source limits carried. Priorcf84taskgreen/allredhistorical. Coordinator owns fresh ready/conflict assessment and separate rule6all retry; QA none. Reviewer read-only.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
