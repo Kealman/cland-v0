@@ -77,6 +77,7 @@ for (const [source, definitions] of sources) {
         assert.match(clause, /per-item non-none qaPolicy or outstanding qaCriteria requires QA: report the missing brief/);
         assert.match(implementerProcedures, /first line `review request T-<n>`/);
         assert.match(implementerProcedures, /first line `qa request T-<n>`/);
+        assert.match(implementerProcedures, /Text after the item on the request's first line is detail: `review request T-12 — branch, head, scope` resolves one verifier exactly like the bare form/);
         assert.doesNotMatch(clause, /per batch of about three merges|and hub\/Neovim smoke/);
       }
       if (role === 'implementer' || role === 'lead') {

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HubCore, type Connection } from '../src/hub/core.ts';
 import { trackerItems } from '../src/hub/topics.ts';
+import { verifierRequest } from '../src/hub/verifier-request.ts';
 import { Tracker, type Actor } from '../src/tracker/tracker.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -34,6 +35,17 @@ async function resolver(t: TestContext) {
   const coord = peer('coord', 'coordinator');
   return { root, tracker, core, clock, received, connections, actor, peer, ack, send, coord };
 }
+
+test('the shared request matcher accepts detail after the item and refuses a glued or buried id', () => {
+  assert.deepEqual(verifierRequest('review request T-12'), { kind: 'review', item: 'T-12' });
+  assert.deepEqual(verifierRequest('review request T-12 — branch t/T-12, head d4e5f6'), { kind: 'review', item: 'T-12' });
+  assert.deepEqual(verifierRequest('qa request E-9: qa/briefs/E-9.md'), { kind: 'qa', item: 'E-9' });
+  assert.deepEqual(verifierRequest('qa request E-9 stage first\nBrief'), { kind: 'qa', item: 'E-9' });
+  assert.deepEqual(verifierRequest('review request 12\r\nBuild'), { kind: 'review', item: '12' });
+  for (const text of ['review request T-12abc', 'review request T-0', 'review request', 'note: review request T-12', ' review request T-12', 'review requests T-12']) {
+    assert.equal(verifierRequest(text), null, JSON.stringify(text));
+  }
+});
 
 test('default session rows keep current work after cached process facts become stale', async t => {
   const { root, tracker, core, clock, peer, ack, send, coord } = await resolver(t);
@@ -105,6 +117,49 @@ test('three live Reviewers resolve one request with affinity, fallback and queue
   assert.equal(received.get('rev-2')!.filter(m => m.text === text).length, 1);
   assert.ok(received.get('coord')!.some(m => m.kind === 'verifier-request' && m.text.includes(`for ${waiting.id} assigned to rev-2`)));
   assert.equal(send('coord', '@reviewer', `review request ${waiting.id}\nA holder freed`).outcomes[0]?.resolvedTo, 'rev-2');
+});
+
+test('a first line that continues after the item is one verifier request, never a role broadcast', async t => {
+  const { tracker, core, received, peer, actor, ack, send, coord } = await resolver(t);
+  const impl = peer('impl', 'implementer');
+  for (const name of ['rev-1', 'rev-2', 'rev-3']) peer(name, 'reviewer');
+  for (const name of ['qa-1', 'qa-2']) peer(name, 'qa');
+  const item = await tracker.create(coord, { title: 'Continued first line', size: 'M', assignee: 'impl' });
+  await tracker.claim(impl, item.id);
+  const topic = await core.createTopic('Continued first line', item.id, 'impl');
+  const review = `review request ${item.id} — session usage totals persist across restarts`;
+  const sent = send('impl', 'reviewer', review, topic.id);
+  assert.equal(sent.outcomes[0]?.outcome, 'delivered');
+  assert.equal(sent.outcomes[0]?.resolvedTo, 'rev-1');
+  assert.deepEqual(sent.message.to, ['rev-1']);
+  assert.deepEqual(received.get('rev-1')!.map(m => m.text), [review]);
+  for (const name of ['rev-2', 'rev-3']) assert.equal(received.get(name)!.filter(m => m.text === review).length, 0, `${name} never receives one verifier request`);
+  ack('rev-1');
+  assert.deepEqual(core.sessionRows().find(row => row.name === 'rev-1')?.pending, { item: item.id, kind: 'review' });
+  assert.deepEqual(core.sessionRows().find(row => row.name === 'rev-2')?.pending, undefined);
+  const qa = `qa request ${item.id}: qa/briefs/${item.id}.md, build at the reviewed head`;
+  const qaSent = send('impl', 'qa', qa, topic.id);
+  assert.equal(qaSent.outcomes[0]?.outcome, 'delivered');
+  assert.equal(qaSent.outcomes[0]?.resolvedTo, 'qa-1');
+  assert.deepEqual(qaSent.message.to, ['qa-1']);
+  ack('qa-1');
+  assert.deepEqual(core.sessionRows().find(row => row.name === 'qa-1')?.pending, { item: item.id, kind: 'qa' });
+  // Queueing reads the same first line: a busy pool waits for one verifier instead of broadcasting.
+  for (const name of ['rev-1', 'rev-2', 'rev-3']) await tracker.hold(actor(name, 'reviewer'), item.id);
+  core.refreshPresence();
+  const waiting = await tracker.create(coord, { title: 'Queued continued first line', size: 'M' });
+  const queued = `review request ${waiting.id} — all holders busy`;
+  const result = send('coord', 'reviewer', queued);
+  assert.equal(result.outcomes[0]?.outcome, 'queued');
+  assert.match(result.outcomes[0]!.reason!, /next free live verifier/);
+  assert.deepEqual(core.topicHistory('agents').messages.find(m => m.text === queued)?.to, ['reviewer'], 'the queued request waits for one verifier');
+  await tracker.hold(actor('rev-2', 'reviewer'), item.id, true);
+  core.refreshPresence();
+  assert.deepEqual(core.topicHistory('agents').messages.find(m => m.text === queued)?.to, ['rev-2']);
+  assert.equal(received.get('rev-2')!.filter(m => m.text === queued).length, 1);
+  for (const name of ['rev-1', 'rev-3']) assert.equal(received.get(name)!.filter(m => m.text === queued).length, 0, `${name} stays out of the queued request`);
+  ack('rev-2');
+  assert.deepEqual(core.sessionRows().find(row => row.name === 'rev-2')?.pending, { item: waiting.id, kind: 'review' });
 });
 
 test('QA affinity ignores copied and reordered verdict headers and retains stage request affinity', async t => {

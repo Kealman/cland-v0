@@ -336,12 +336,39 @@ test('open asks show their age while a queued review request suppresses the miss
   assert.equal(created.ok, true, created.error);
   const id = (created.value as { item: { id: string } }).item.id;
   await ui.request({ type: 'task.edit', item: id, status: 'review' });
-  await coord.request({ type: 'send', to: ['reviewer'], text: `review request ${id}\nBranch and source to review` });
+  await coord.request({ type: 'send', to: ['reviewer'], text: `review request ${id} — branch and source to review` });
   await coord.request({ type: 'ask', topic: 'general', question: 'A decision is still needed', options: ['yes', 'no'] });
   await nextHeartbeat(clock, ui, 300, m => /ask .* unanswered · age/.test(m.text));
   const aged = (await notes(ui)).find(m => /ask .* unanswered · age/.test(m.text))!;
   assert.match(aged.text, /A decision is still needed/);
   assert.doesNotMatch(aged.text, new RegExp(`${id} review without`));
+});
+
+test('bare and prefixed continued requests suppress the missing-review row while an unrelated review stays stale', async t => {
+  const { clock, ui, coord } = await fixture(t, 150);
+  const create = async (title: string) => {
+    const created = await coord.request({ type: 'task.create', size: 'S', title });
+    assert.equal(created.ok, true, created.error);
+    return (created.value as { item: { id: string } }).item.id;
+  };
+  const canonical = await create('Canonical continued request');
+  const bare = await create('Bare number continued request');
+  const aliased = await create('Alternate prefix continued request');
+  const unrelated = await create('Review without a request');
+  for (const id of [canonical, bare, aliased, unrelated]) assert.equal((await ui.request({ type: 'task.edit', item: id, status: 'review' })).ok, true);
+  const number = (id: string) => id.replace(/^[A-Za-z]-/, '');
+  const queued = async (text: string) => {
+    const sent = await coord.request({ type: 'send', to: ['reviewer'], text });
+    assert.equal(sent.ok, true, sent.error);
+    assert.equal((sent.value as { outcomes: Array<{ outcome: string }> }).outcomes[0]?.outcome, 'queued', text);
+  };
+  await queued(`review request ${canonical} — canonical detail`);
+  await queued(`review request ${number(bare)} — bare number detail`);
+  await queued(`review request C-${number(aliased)} — alternate prefix detail`);
+  const stale = () => new RegExp(`${unrelated} review without`);
+  await nextHeartbeat(clock, ui, 300, m => stale().test(m.text));
+  const digest = (await notes(ui)).find(m => stale().test(m.text))!;
+  for (const id of [canonical, bare, aliased]) assert.doesNotMatch(digest.text, new RegExp(`${id} review without`), `${id} has a queued continued request`);
 });
 
 test('live remote leases appear in the heartbeat beside their verification run', async t => {

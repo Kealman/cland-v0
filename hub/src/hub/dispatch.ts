@@ -77,6 +77,7 @@ import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
 import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
+import { verifierRequest } from './verifier-request.ts';
 import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactLifecycle, type ArtifactFiles } from './artifact-lifecycle.ts';
 import { artifactEntry, folderFiles } from './artifact-folder.ts';
@@ -660,8 +661,7 @@ export class Dispatcher {
       return `root level: only the Coordinator may use ${type}`;
     }
     const request = type === 'send' && frame.kind !== 'request' && typeof frame.text === 'string'
-      ? /^(?:review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)\s*(?:\n|$)/.exec(frame.text)
-        ?? /^qa request ((?:[A-Za-z]-)?[1-9]\d*)[ \t]+stage[ \t]+\S[^\r\n]*(?:\r?\n|$)/.exec(frame.text)
+      ? verifierRequest(frame.text)
       : null;
     if (!['session.launch', 'session.stop', 'merge'].includes(type) && !request) return null;
     const tracker = this.#options.tracker;
@@ -687,7 +687,7 @@ export class Dispatcher {
       const work = held.length ? held.map(i => i.id) : [process.item];
       return work.every(inside) ? null : reason(`session ${process.name}`);
     }
-    const item = request?.[1] ?? (typeof frame.item === 'string' ? frame.item : null);
+    const item = request?.item ?? (typeof frame.item === 'string' ? frame.item : null);
     if (!inside(item)) return reason(item ?? 'a request with no item');
     if (type === 'session.launch') {
       const role = typeof frame.role === 'string' ? frame.role : typeof frame.name === 'string' ? this.core.store.roleOf(frame.name) : null;

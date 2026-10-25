@@ -14,6 +14,7 @@ import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxApproval, InboxDeparture, InboxRowKind } from '../protocol.ts';
 export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
 import { vacancyWarning } from './topics.ts';
+import { verifierRequest } from './verifier-request.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
  *  the turn, or dropped past the TTL. */
@@ -592,12 +593,18 @@ export class Store implements HygieneMemory {
   }
 
   pendingReview(item: string, since: number): boolean {
-    return this.#prepare(`select 1 from messages m join deliveries d on d.message_id = m.id
+    // Verifier deliveries since the item entered review: the same first-line matcher the send path uses,
+    // so text after the item is detail here too and a delivered or queued request counts. Item identity
+    // normalizes to the shared T-<n> key, like routing, so a bare number or another kind prefix matches.
+    const key = itemKey(item);
+    const rows = this.#prepare(`select m.text as text from messages m join deliveries d on d.message_id = m.id
       where m.created_at >= ? and d.state in ('queued', 'delivered', 'injected', 'uncertain')
       and (d.verifier_role = 'reviewer' or d.session in ('@reviewer', '@verifier:reviewer')
-        or d.session in (select name from sessions where role = 'reviewer'))
-      and lower(trim(replace(substr(m.text, 1, instr(m.text || char(10), char(10)) - 1), char(13), ''))) = ? limit 1`)
-      .get(since, `review request ${item}`.toLowerCase()) !== undefined;
+        or d.session in (select name from sessions where role = 'reviewer'))`).all(since) as Array<{ text: string }>;
+    return rows.some((row) => {
+      const request = verifierRequest(row.text);
+      return request?.kind === 'review' && itemKey(request.item) === key;
+    });
   }
 
   /** Sessions seen since `since` (ms epoch) — the ones `@all` or a glob still reaches; older ones are history. */

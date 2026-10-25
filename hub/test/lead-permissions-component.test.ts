@@ -91,6 +91,14 @@ test('live subtree authority covers launch, stop, verifier holds and root-only o
   }
   const held = await coord.call<{ items: Array<{ id: string; holds: Array<{ sessionId: string }> }> }>('task.list', {});
   assert.equal(held.items.find(i => i.id === foreignAgain)?.holds[0]?.sessionId, verifier.process.sessionId, JSON.stringify(held));
+  // A continued first line is the same request: a trailing detail neither escapes the Lead's subtree
+  // check nor turns a refused item into an ordinary send.
+  const ownedRequest = await lead.call<{ ok: boolean; error?: string }>('send', { to: ['qa-pool'], text: `qa request ${own} — check the reviewed build` });
+  assert.equal(ownedRequest.ok, true, ownedRequest.error);
+  const nearMiss = await lead.call<{ ok: boolean; code: string; reason: string }>('send', { to: ['qa-pool'], text: `qa request ${foreignAgain} — check the reviewed build` });
+  assert.equal(nearMiss.ok, false);
+  assert.equal(nearMiss.code, 'forbidden');
+  assert.match(nearMiss.reason, /subtree/);
   const mixed = await stop('qa-pool');
   assert.notEqual(mixed.code, 0);
   assert.match(mixed.stderr, /subtree/);

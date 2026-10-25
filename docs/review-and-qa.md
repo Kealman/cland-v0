@@ -51,7 +51,7 @@ The human shell's `cland task close T-<epic> --override "reason"` skips QA evide
 
 ## The messages
 
-The request's first line is conventional, so the UI can style it later; the rest is free text:
+The request's first line is conventional, so the UI can style it later; the rest is free text. The item id ends the routing form: text after it on the same line is detail, so `review request T-12 — branch and scope` resolves one verifier exactly like the bare line. A letter glued to the id (`review request T-12abc`) is not a request. The usual shape puts the detail on the following lines, for example:
 
 ```
 review request T-12

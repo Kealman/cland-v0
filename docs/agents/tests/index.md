@@ -66,6 +66,9 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/project-probes.test.ts`](../../../hub/test/project-probes.test.ts) | [Notes](hub-test-project-probes.test.ts.md) |
 | [`hub/test/quarantine-runner.test.ts`](../../../hub/test/quarantine-runner.test.ts) | [Notes](hub-test-quarantine-runner.test.ts.md) |
 | [`hub/test/roles-clauses.test.ts`](../../../hub/test/roles-clauses.test.ts) | [Notes](hub-test-roles-clauses.test.ts.md) |
+| [`hub/test/verifier-resolver.test.ts`](../../../hub/test/verifier-resolver.test.ts) | [Notes](hub-test-verifier-resolver.test.ts.md) |
+| [`hub/test/lead-permissions-component.test.ts`](../../../hub/test/lead-permissions-component.test.ts) | [Notes](hub-test-lead-permissions-component.test.ts.md) |
+| [`hub/test/heartbeat.test.ts`](../../../hub/test/heartbeat.test.ts) | [Notes](hub-test-heartbeat.test.ts.md) |
 | [`hub/test/roles-template.test.ts`](../../../hub/test/roles-template.test.ts) | [Notes](hub-test-roles-template.test.ts.md) |
 | [`hub/test/roles-template-component.test.ts`](../../../hub/test/roles-template-component.test.ts) | [Notes](hub-test-roles-template-component.test.ts.md) |
 | [`hub/test/codex-workspace-git.test.ts`](../../../hub/test/codex-workspace-git.test.ts) | [Notes](hub-test-codex-workspace-git.test.ts.md) |

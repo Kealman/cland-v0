@@ -75,6 +75,7 @@ import { Visibility, messageVerdict, type VisibilityOverrides, type Layer } from
 import { eventKey, type JournalRecord } from './journal.ts';
 import type { EventRow, EventsFilter } from '../protocol.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
+import { verifierRequest } from './verifier-request.ts';
 
 /** Attachments describe the committed message: sent prompts never publish stale draft metadata. */
 function messageArtifacts(artifacts?: Artifact[], mayChange: (a: Artifact) => boolean = () => true): Pick<Message, 'artifacts' | 'artifact'> {
@@ -1835,13 +1836,13 @@ export class HubCore {
   /** Delivery acceptance captures only the delivered first line, never the message history. */
   #rememberVerification(connection: Pick<Connection, 'name' | 'sessionId' | 'role'>, message: Message): boolean {
     if (connection.role !== 'reviewer' && connection.role !== 'qa') return false;
-    const request = /^(review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(message.text);
+    const request = verifierRequest(message.text);
     if (!request) return false;
-    const item = this.#items?.resolveId?.(request[2]!) ?? null;
+    const item = this.#items?.resolveId?.(request.item) ?? null;
     if (!item || this.#items?.lead(item)?.state !== 'open') return false;
     const key = `pending-verification:${this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id)}`;
     const pending = this.sessionHolds(connection).some(h => h.item === item)
-      ? null : JSON.stringify({ item, kind: request[1] });
+      ? null : JSON.stringify({ item, kind: request.kind });
     if (this.#store.meta(key) === pending) return false;
     if (pending === null) this.#store.clearMeta(key);
     else this.#store.setMeta(key, pending);
@@ -2726,10 +2727,10 @@ export class HubCore {
 
   /** Only a lead's item request narrows role addressing; ordinary role traffic still broadcasts. */
   #verifierRequest(from: string, role: string | null, text: string, topic: Topic): { item: ItemSummary; role: 'reviewer' | 'qa' } | undefined {
-    const request = /^(review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(text);
-    if (!request || (topic.id !== AGENTS.id && !this.#sameItem(topic.item, request[2]))) return;
+    const request = verifierRequest(text);
+    if (!request || (topic.id !== AGENTS.id && !this.#sameItem(topic.item, request.item))) return;
     const items = this.#items?.get ? [] : this.#items?.list?.() ?? [];
-    const item = this.#items?.get?.(request[2]!) ?? items.find(i => this.#sameItem(i.id, request[2]) && i.state === 'open');
+    const item = this.#items?.get?.(request.item) ?? items.find(i => this.#sameItem(i.id, request.item) && i.state === 'open');
     if (!item || item.state !== 'open') return;
     const sender = this.sessionIdentity(`name:${from}`);
     const owns = (i: ItemSummary) => i.claim && this.sessionIdentity(i.claim.sessionId) === sender;
@@ -2738,7 +2739,7 @@ export class HubCore {
       return node && owns(node);
     });
     if (role !== COORDINATOR && !((role === 'implementer' || isCustomRole(role)) && owns(item)) && !ancestor) return;
-    return { item, role: request[1] === 'review' ? 'reviewer' : 'qa' };
+    return { item, role: request.kind === 'review' ? 'reviewer' : 'qa' };
   }
 
   #requestVerifier(item: ItemSummary, role: 'reviewer' | 'qa', except: string): string | undefined {
