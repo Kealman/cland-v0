@@ -52,7 +52,7 @@ A session that works for the human alone: it holds no crew duty, is addressed by
 _Avoid_: assistant, helper, personal session, scratch session, human session
 
 **Onboarding**:
-The Aide's first conversation with the human on a project new to cland, led from a skill: who decides what, a first plan the human sees, the stack, the crew and the Welcome note, then the Tour on request. On the human's ok, the Aide commits what init and the Onboarding wrote, pushes it and launches the Coordinator to work the first release; with only a map, it commits and pushes but waits to launch the Coordinator.
+The Aide's first conversation with the human on a project new to cland, led from a skill: who decides what, a first plan the human sees, the stack, the crew and the Welcome note, then the Tour on request. On the human's ok, the Coordinator commits and publishes the results when the Aide lacks root Git write access, otherwise the Aide does; the Coordinator then works the first release or waits for the first epic with only a map.
 _Avoid_: setup (the terminal step before it), tutorial, first run
 
 **Tour**:

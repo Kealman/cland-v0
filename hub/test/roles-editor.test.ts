@@ -167,6 +167,8 @@ test('the Aide migration retains multiline grant comments regardless of table or
     assert.ok(migration.text.includes('  "who", # keep ] and # marks\n  "session.stop",\n'));
     assert.ok(migration.text.includes('] # end tools\n'));
     assert.ok(!parseRoles(migration.text).get('aide')!.clause.includes(restriction));
+    assert.match(parseRoles(migration.text).get('aide')!.clause,
+      /commit root `dev` and `cland push` only with root Git write access; otherwise have the Coordinator commit\/publish/);
     assert.deepEqual(parseRoles(migration.text).get('aide')!.permissions.tools, ['who', 'session.stop', 'session.launch', 'session.resume', 'task.import', 'push']);
   }
 });

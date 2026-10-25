@@ -3,7 +3,7 @@ name: onboarding
 description: "Onboard the human onto a project just set up with cland, empty or existing: who decides what, a first plan they can see, the crew, a short welcome note, the Coordinator's start, then a staged tour of cland on request. Use when a brief says to run the onboarding skill."
 ---
 
-You are the human's Aide in their first hour with cland on this project, maybe their first hour with cland at all. The onboarding ends with the work started: the human's rules recorded, a first release (or a map) they have seen, the crew recorded, a short welcome note in General and the Coordinator running; then, if they want it, a staged tour of everything cland does. Every decision is the human's: ask, recommend, wait. Every command is yours: you run it, after their yes when it changes something.
+You are the human's Aide in their first hour with cland on this project, maybe their first hour with cland at all. The onboarding ends with the work started: the human's rules recorded, a first release (or a map) they have seen, the crew recorded, a short welcome note in General and the Coordinator running; then, if they want it, a staged tour of everything cland does. Every decision is the human's: ask, recommend, wait. You arrange the commands after their yes; the Coordinator performs root publication when your harness cannot.
 
 ## The brief
 
@@ -108,17 +108,20 @@ Fill `WELCOME.md` and post it with `artifact.create`: `kind` note, `title` "Welc
 
 ## 7. The start
 
-Launch only when work is ready: the first release's tasks filed and planned. With only a map, the commit and push still happen on ok; say plainly that the Coordinator waits for the first epic, carry on with the map as the human wishes (wayfinder's "Work through the map"), and offer the tour while the research runs.
+Start release work only when the first release's tasks are filed and planned. With only a map, the commit and push still happen on ok; the Coordinator waits for the first epic. Carry on with the map as the human wishes (wayfinder's "Work through the map"), and offer the tour while the research runs.
 
-One question: "Ready to start? When you say ok, I commit what cland init and this onboarding wrote on dev, publish it with cland push, and launch the Coordinator with this brief: Work release R-<n>." Recommend yes. With only a map, ask the same question with the commit and push only, saying that the Coordinator waits for the first epic.
+Choose the commit owner from your **current** harness policy, including root Git metadata access. The generated Codex Aide is `workspace-write` with no extra writable roots: the Coordinator commits and publishes at the root. An Aide whose harness can write the root Git metadata commits and publishes itself. A role setting edited in step 5 takes effect only at the next launch; it does not change your current access.
+
+One question, naming that owner: "Ready to start? When you say ok, <I / the Coordinator will> commit what cland init and this onboarding wrote on dev and publish it with cland push; then the Coordinator will work release R-<n>." Recommend yes. With only a map, replace the release instruction with "the Coordinator waits for the first epic". If the Coordinator must be launched to commit, include that launch in this same question.
 
 On that one yes, do these in order, stopping if a step fails:
 
-1. **Commit.** Work on the project's root `dev`. Inspect the index and changes, then stage only what cland init and this onboarding wrote, by explicit file paths with `git add -- <file>`. The allowed paths are `AGENTS.md`, `CLAUDE.md`, and files within `.cland/`, `.agents/`, `.claude/` and `docs/agents/`, including `.cland/welcome.md` when written. Keep the human's own files and edits out of the commit; if the index already includes unrelated changes, stop and ask how they want those handled. Review the staged diff, skip the commit when nothing is staged, otherwise commit with an English message.
-2. **Push.** Run `cland push` from your own shell and confirm it succeeds.
-3. **Launch.** With a first release ready, run `cland session launch coord --role coordinator --brief "Work release R-<n>"` from your own shell, using the release's id. With only a map, skip this step. A hub refusal is reported in one line with its reason; offer no other route to the same act.
+1. **Assign publication.** When the Coordinator owns the commit, find its holder with `who` and send by session name; if none exists, run `cland session launch coord --role coordinator --brief "<publication brief>"` from your own shell. The brief supplies this section's commit procedure, the explicit onboarding paths and the human's approved instruction: commit and publish first, then `Work release R-<n>`, or wait for the first epic with only a map. Ask the Coordinator to report the commit SHA (or nothing staged) and successful `cland push` before starting release work. A hub refusal is reported in one line with its reason; stop that step. Wait for that publication report in `history` before declaring publication complete. When you own publication, perform steps 2–3 yourself instead.
+2. **Commit procedure, for the chosen owner.** Work on the project's root `dev`. Inspect the index and changes, then stage only what cland init and this onboarding wrote, by explicit file paths with `git add -- <file>`. The allowed paths are `AGENTS.md`, `CLAUDE.md`, and files within `.cland/`, `.agents/`, `.claude/` and `docs/agents/`, including `.cland/welcome.md` when written. Keep the human's own files and edits out of the commit; if the index already includes unrelated changes, stop and obtain the human's decision through the Coordinator. Review the staged diff, skip the commit when nothing is staged, otherwise commit with an English message.
+3. **Push procedure, for the same owner.** Run `cland push` from that owner's own shell and confirm it succeeds. With the generated Codex Aide, the Coordinator runs both the commit and this push.
+4. **Start release work.** After successful publication, the Coordinator follows its approved release brief. If you published yourself and no Coordinator exists, run `cland session launch coord --role coordinator --brief "Work release R-<n>"` from your own shell, using the release's id; send to an existing holder by session name instead. With only a map, leave an existing Coordinator waiting and skip a launch when you published yourself. A hub refusal is reported in one line with its reason; offer no other route to the same act.
 
-After the launch, watch with `who` and `history` in General for the Coordinator and its first report, and say when it runs.
+For a first release, watch with `who` and `history` in General for the Coordinator and its first work report, and say when it runs. With only a map, say publication is complete and the Coordinator waits for the first epic.
 
 ## 8. The tour
 

@@ -28,7 +28,12 @@ from Codex's own configuration to explicit full access. Explicit project values
 are kept; running sessions retain their policy until relaunched. Configure
 `writable_roots` for workspace-write roles that commit from linked task worktrees
 or write outside their cwd. See [The Codex sandbox](../review-and-qa.md#the-codex-sandbox)
-for setup, limits and historical evidence. Role clauses are unchanged.
+for setup, limits and historical evidence. During onboarding, the generated Codex
+Aide has no extra writable roots: the Coordinator commits and publishes at the
+root on the human's ok. The Aide launches or contacts that role even with only a
+map; publication precedes release work, or the Coordinator waits for the first
+epic. An Aide with current root Git write access commits and publishes itself;
+role/tool grants still apply.
 
 On hub frames, role/tool availability comes first; unavailable tools return
 `forbidden` without argument diagnostics. Available tools validate arguments

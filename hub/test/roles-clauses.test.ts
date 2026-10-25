@@ -56,6 +56,14 @@ for (const [source, definitions] of sources) {
       assert.ok(clause.includes('a declined ask is a decision and never consent'), `${source} ${role}: declined decision`);
       if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
       else assert.match(clause, /naming its size \(XS, S, M, L or XL\) and category/);
+      if (role === 'aide') {
+        assert.match(clause, /commit root `dev` and `cland push` only with root Git write access; otherwise have the Coordinator commit\/publish/);
+        assert.doesNotMatch(clause, /After committing the onboarding's work on root/);
+        const overview = hubProcedures.split('\n\n').find(paragraph => paragraph.startsWith('Aides work for the human alone')) ?? '';
+        assert.ok(overview.includes('Aides with root Git write access may publish'), 'active README Aide overview permits publication with root Git write access');
+        assert.ok(overview.includes('generated Codex workspace-write Aide has the Coordinator commit and publish'), 'active README Aide overview delegates publication under generated Codex defaults');
+        assert.doesNotMatch(overview, /They cannot[^.]*`cland push`/);
+      }
       if (role === 'coordinator') assert.match(trackerProcedures, /The explorer's messages come from the human in General or the item's topic: the text, then `from the explorer · scope …` and one line per item \(id · kind · status · container · rank · title\)\. Act on them through the tracker\./);
       assert.match(clause, /human `npm test` queues/, `${source} ${role}`);
       assert.match(clause, /panel `verify:`.*`cland verify queue`/, `${source} ${role}`);

@@ -1,5 +1,14 @@
 # hub/test/roles-clauses.test.ts
 
+The Aide onboarding wording assigns root commits and publication to the
+Coordinator when the current Aide harness lacks root Git write access (the
+generated Codex workspace-write default). Check both defaults and the project
+clause, retaining the byte reserve. `roles-editor.test.ts` checks that the old
+Aide tools migration emits the same condition while preserving custom clauses.
+The same T1 wording cases check the active README Aide overview for the capable
+Aide's publication path and the generated Codex delegation; an unconditional
+`cland push` prohibition there must fail even if the Root dev push section agrees.
+
 The Implementer cadence names Web for web/-touching batches. Replace existing
 wording within its byte reserve; retain both default/project and reserve checks.
 

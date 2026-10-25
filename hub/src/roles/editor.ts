@@ -36,7 +36,7 @@ const AIDE_TOOLS = ['session.launch', 'session.stop', 'session.resume', 'task.im
 const OLD_AIDE_RESTRICTION = '- You cannot ask the human, resolve a topic\'s wait, launch, stop or resume sessions, merge, hand over a role, release, sync or `cland push`: the Coordinator owns those operations.';
 const NEW_AIDE_LINES = [
   '- On the human\'s word, launch, stop and resume sessions of any role, the Coordinator first of all: use `session.launch` or `cland session launch | stop | resume` from your shell. Say what you will launch before doing it. During a build the Coordinator keeps the crew\'s staffing, so launch only when the human asks.',
-  '- On the human\'s confirmation, import an existing project\'s open GitHub issues with `cland task import-github`. After committing the onboarding\'s work on root `dev`, publish it with `cland push` from your own shell.',
+  '- On the human\'s confirmation, import an existing project\'s open GitHub issues with `cland task import-github`. Onboarding: commit root `dev` and `cland push` only with root Git write access; otherwise have the Coordinator commit/publish.',
   '- You cannot ask the human, resolve a topic\'s wait, merge, hand over a role, release or sync: the Coordinator owns those operations.',
 ];
 
