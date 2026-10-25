@@ -2,8 +2,8 @@
 id: T-290
 kind: task
 title: "An unknown `permissions` launch value is swallowed: RolesFile keeps the last good policy and the launch proceeds (T-289 follow-up)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1067
 branch: t/T-290-an-unknown-permissions-launch-value-is
 created: 2026-10-12T12:17:37.170Z
-updated: 2026-10-25T22:14:17.404Z
+updated: 2026-10-25T23:38:34.636Z
+closed: 2026-10-25T23:38:34.636Z
 ---
 
 ## Summary
@@ -38,20 +39,24 @@ Out of scope: the start-up CLI check warning waived on T-289.
 
 - [x] C1. A launch or relaunch under a role whose `permissions` value is unknown is refused, naming the roles file, the role, the value and every accepted value (`""`, `"auto"`, `"skip"`); the hub log names the key.
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
-  - done: impl-290 · 2026-10-25T22:14:07.797Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
+  - done: impl-290 · 2026-10-25T23:31:38.176Z
+  - verified: rev-31 [reviewer] · run rev-20261026-290-final3 · 2026-10-25T23:32:23.153Z · commit 72a1878401317a2dd419e4904c8a720e2d6c51dd
 - [x] C2. A corrected roles file lets the next launch proceed without a hub restart.
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
-  - done: impl-290 · 2026-10-25T22:14:07.905Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
+  - done: impl-290 · 2026-10-25T23:31:38.256Z
+  - verified: rev-31 [reviewer] · run rev-20261026-290-final3 · 2026-10-25T23:32:23.153Z · commit 72a1878401317a2dd419e4904c8a720e2d6c51dd
 - [x] C3. The parser's diagnostic names every accepted value; `approval` and `sandbox` are checked for the same gap and the finding recorded in the item.
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
-  - done: impl-290 · 2026-10-25T22:14:07.988Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
+  - done: impl-290 · 2026-10-25T23:31:38.340Z
+  - verified: rev-31 [reviewer] · run rev-20261026-290-final3 · 2026-10-25T23:32:23.153Z · commit 72a1878401317a2dd419e4904c8a720e2d6c51dd
 - [x] C4. Tests cover the refusal, the recovery and the diagnostic at the roles and adapter seams; `npm run typecheck` and the targeted tests pass; `cland verify` is green.
   - verified: rev-31 [reviewer] · run rev-20261025-290-final · 2026-10-25T20:40:48.196Z · commit cf84aa03d82a3ca2db27982efc786093b2ace3ab
-  - done: impl-290 · 2026-10-25T22:13:33.850Z
   - verified: rev-31 [reviewer] · run rev-20261025-290-final2 · 2026-10-25T22:14:17.251Z · commit 30cfd6f3b15a8fc917268b4d9c0ab3672e542be1
+  - done: impl-290 · 2026-10-25T23:31:38.425Z
+  - verified: rev-31 [reviewer] · run rev-20261026-290-final3 · 2026-10-25T23:32:23.153Z · commit 72a1878401317a2dd419e4904c8a720e2d6c51dd
 
 ## Comments
 
@@ -188,3 +193,39 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final2 CLEAR; A-12175 independent exact-head audit carries source5A-12173 at treea41d0606d0c05a7ee3b862a90468d5e1f19566f5. Original A-12174/5a9699c6 passed3300ordinary+70additional load tests (14reader identities×5), zero fail/cancel/skip/todo. All16reader cases/exact parser/editor/component/help/docs consumers pass; C1-C4 verified current, prior stale marks refreshed. Corrected lifecycle actual finish16986 passes6.352220671s once; same-matcher real refusal positive15939 .409366664s and quiet attach15870 .367894418s pass, no weakened assertions. T0/allT1/fallbackallT2/changedT3once/two mappedT4once/Web complete; remainingT3/fullT4soak absent. Inboxguard1.379976779s, launcherparent7.442102003s with20distinct child passes/40native receipts; no five-suite-repetition claim. SelectedT3wall7.410/T4wall10.152 exclude machinewait. Linuxc8lon1Node24.21/Nvim.12.5/HeadlessShell156v1248;life777s/$0.0539 not suitewall. HostgateTREEb5f2e119 reused, not alternatecommit/remote typecheck. Eight budgetwarnings/Webwall156.389vs40/lint133/60/unchangedratchet2232.554 report-only; existing lifecycle/launcherover5s not newidentity allowance. LocalA-12172 capture/source limits carried. Priorcf84taskgreen/allredhistorical. Coordinator owns fresh ready/conflict assessment and separate rule6all retry; QA none. Reviewer read-only.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-290 · 2026-10-25T23:15:16.231Z
+
+Coordinator explicitly requested origin/dev merge after enqueue conflict (delivery3a9095ff). Merge72a18784 parents30cfd6f3/41d2ad8e. Conflict resolution only usage.ts + frozen commands.json owning SESSION_USAGE rows, independently checked both parents' edits survive; no generator exists, regenerated owning frozen row per test guide with separators/composition intact. git show --remerge-diff confirms only those2 manually resolved files. Upstream T-543/T-1154 changes inherited unchanged. Local requested CLI usage1/compat1/native-merge2/help4 all pass (8total), root typecheck green. Resolution whitespace check clean; first-parent staged check noted inherited dev system-process-probe.ts blank EOF, not edited. No new test identities or production resolution outside help/fixture; original all-green d30d90fe/A-12188 remains at30cfd6f3, accepted for rule6 by Coordinator only under this text-only resolution condition. Fresh delta source review requested before mode-free verification; clean/pushed.
+
+### rev-31 · 2026-10-25T23:17:23.461Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-290-delta1
+commit: 72a1878401317a2dd419e4904c8a720e2d6c51dd
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta CLEAR; A-12191 carries source5A-12173/final2A-12175 at treefe62dcd816811082501b3922305af3f3ecd30596. Parents30cfd6f3+authorizeddev41d2ad8e confirmed. Combined SESSION_USAGE retains invalidroles refusal and nativebirth stop guidance; both-parent decoded transforms identical, production/frozen row equal, fixture keys/order and nonowning rows/composition intact. Object-only69parent-union matches plus sharedCHANGES exactunion; no unexpected runtime resolution. git remerge display required temporaryobjects/read-only refused, not retried/no successful remerge-output claim; independent object comparison used. A-12189 local8/8CLIchecks and typecheck attribution/capturelimits retained, no merged-head configured proof. Coordinator3a9095ff conditionally accepts prior30cfdallA-12188(4606pass8skip) for text/fixture-only resolution; scope met, acceptance/enqueue remains Coordinator. Criteria stale pending current runtime. Submit one ordinary modefree verify unchanged then final exact-head evidence with policy/UI/lifecycle/load/mappedT4 and phase/provenance limits. No extra devmerge/forcedall/transcription rerun. Standards0/Spec0; QA none. Reviewer read-only.
+
+### rev-31 · 2026-10-25T23:32:23.153Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-290-final3
+commit: 72a1878401317a2dd419e4904c8a720e2d6c51dd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final3 CLEAR; A-12194 independently audits A-12193/4e8d5fd2 at treefe62dcd816811082501b3922305af3f3ecd30596, carrying authorized deltaA-12191/fullsource chain.3323ordinary+70additional load tests pass(14newreaderidentities×5), zero fail/cancel/skip/todo; all16reader/exact parser/editor/component/help/docs consumers pass. C1-C4 verified current. Lifecycle6.691812842s once; real-refusal positive.408167192s/quietattach.377908297s pass. Merged source/frozenhelp retainsbothchanges; inherited heldprovider cancellation.291541629s also pass. T0/allT1/fallbackallT2/changedT3once/two mappedT4once/Web complete; remainingT3/fullT4soak absent. Inbox1.434403326s/launcherparent7.652062098s with20childpasses/40native receipts; no repeatedT4 claim. SelectedwallT3 7.699/T4 10.464 exclude wait. Linuxc8lon1Node24.21/Nvim.12.5/HeadlessShell156v1248,life774s/$0.0538 not suitewall; hostgateTREEb09d21da reused not remote typecheck. Ninebudgetwarnings/Webwall155.708vs40/lint135/61/0refusals/oneinheritedbaseline/unchangedratchet report-only. Worstnewload.242471430s/no>=3sallowance. LocalA-12189 limits carried. Coordinator3a9095ff accepts PRIOR30cfdallA-12188(4606pass8skip) for usage/fixture-only resolution condition established bydelta; no newheadallclaim. Fresh ready/conflict/enqueue decision remains Coordinator. QA none. Reviewer read-only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-25T23:38:34.636Z
+
+Merged 7ac25caba227815fac1d08e144d9a3f87ec90a44 onto dev.
