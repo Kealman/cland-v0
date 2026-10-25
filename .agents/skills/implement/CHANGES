@@ -107,3 +107,5 @@ T-1230: Point skill-inventory changes to the production-role no-sync guard and c
 T-1218: Document hub authorship for periodic/nightly queue, heartbeat and artifacts, with human shell ownership preserved.
 T-1258: Document sealed OpenCode Console credential comparison and native model-failure diagnostic seams.
 T-1256: Require Claude envelope-bearing turn-start confirmation and point to re-exec and five-minute Coordinator alarm regressions.
+
+- T-1036: Document summary-only descendant verdict facts and the settled explorer-card T2/T4 regression seams.

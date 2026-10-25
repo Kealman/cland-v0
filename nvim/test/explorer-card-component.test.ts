@@ -122,14 +122,18 @@ test('epic cards show stage progress, approval, subtree verdict and latest activ
   const {c,control}=await stub(t,scenario);
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
   await select(c,'E-2'); await shown(c,'E-2','approved by human');
-  await shown(c,'E-2','The card passes.');
   let text=await card(c);
   for(const value of ['follows','E-1','1 of 2 done','1 done · 1 review','S1 ■ closed','S2 ■ open','PLAN · STAGE 2 OF 2',
     '0 of 1 merged (loaded)','qa full, after the stage','approval human','in its tasks · T-10 Written summary task',
-    'The card passes.','evidence','a message in its topic · T-10']) assert.ok(text.replace(/\s+/g,' ').includes(value),value+'\n'+text);
+    'qa · clear','qa-1 [QA]','run qa-26','evidence','a message in its topic · T-10']) assert.ok(text.replace(/\s+/g,' ').includes(value),value+'\n'+text);
+  assert.ok(!text.includes('The card passes.'),'cold descendant reason is omitted');
+  assert.ok(!text.includes('loading the reason'),'cold descendant has no loading placeholder');
   assert.ok(!text.includes('More details.'));
   const views=(await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-'));
-  assert.deepEqual(views.map(r=>r.item),['T-10'],'only the subtree verdict owner fetches detail');
+  assert.deepEqual(views,[],'a container never fetches detail for an unselected task');
+  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','The card passes.');
+  await select(c,'E-2'); await shown(c,'E-2','The card passes.');
+  assert.deepEqual((await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-')).map(r=>r.item),['T-10'],'the selected task supplies the cached descendant reason');
   const closed={...scenario.items.find(i=>i.id==='E-2'),state:'closed',updated:newer,
     stages:stages.map(i=>({...i,state:'closed',closed:newer}))};
   await control({set:{items:scenario.items.map(i=>i.id==='E-2'?closed:i)},emit:{type:'task',id:'E-2',item:closed}});

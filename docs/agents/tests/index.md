@@ -112,6 +112,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/web-readme.test.ts`](../../../hub/test/web-readme.test.ts) | [Notes](hub-test-web-readme.test.ts.md) |
 | [`hub/test/web-tunnel-guide.test.ts`](../../../hub/test/web-tunnel-guide.test.ts) | [Notes](hub-test-web-tunnel-guide.test.ts.md) |
 | [`hub/test/web-verification-model.test.ts`](../../../hub/test/web-verification-model.test.ts) | [Notes](hub-test-web-verification-model.test.ts.md) |
+| [`nvim/test/explorer-component.test.ts`](../../../nvim/test/explorer-component.test.ts) | [Notes](nvim-test-explorer-component.test.ts.md) |
+| [`nvim/test/explorer-outline-load.test.ts`](../../../nvim/test/explorer-outline-load.test.ts) | [Notes](nvim-test-explorer-outline-load.test.ts.md) |
 | [`nvim/test/explorer-card-component.test.ts`](../../../nvim/test/explorer-card-component.test.ts) | [Notes](nvim-test-explorer-card-component.test.ts.md) |
 | [`nvim/test/artifact-render.test.ts`](../../../nvim/test/artifact-render.test.ts) | [Notes](nvim-test-artifact-render.test.ts.md) |
 | [`nvim/test/hub-read-component.test.ts`](../../../nvim/test/hub-read-component.test.ts) | [Notes](nvim-test-hub-read-component.test.ts.md) |

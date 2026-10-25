@@ -9436,6 +9436,13 @@
       "added": "2026-10-25",
       "expires": "2026-10-31",
       "reason": "T-1201 lints all 85 committed qa/briefs against an independent compiler-source oracle; this real-repo corpus control was the agreed bar for its bounded lexer (review-loop cap, 2026-10-24). Samples: macOS/local stage cover 7a8445c1 (A-11552) 4.078 s; Linux c-8 lon1 item verify 8d8e04c9 (A-11526) 4.071 s; Linux c-8 lon1 stage cover e70d2393 shard-1 (A-11549) 12.466 s under shard load. The 18.7 s cap rounds 1.5x the worst sample upward. Assertions unchanged. Owned by E-880 (D72 legacy owner) so E-1196 can close."
+    },
+    "nvim/test/explorer-outline-load.test.ts::explorer settled card preserves unselected-task isolation 20/20": {
+      "seconds": 19,
+      "owner": "E-1282",
+      "added": "2026-10-25",
+      "expires": "2026-11-01",
+      "reason": "T-1036 C2 requires twenty independently owned sequential headless Neovim explorer cases, preserving settled-card request isolation, fold/rank cursor identity, resize and every original assertion. Linux x64 c-8 lon1 mode-free run 7ee71778 at 9511273e (A-11835), workers 2, Neovim 0.12.5, passed all twenty children and the parent in 12.329751445 s; the enforced generic 5 s new-identity gate alone failed before Web. Per Coordinator instruction, 19 s rounds 1.5x that measured passing sample upward for Linux timing variance. T4 has no tier budget; the case includes fixture setup and teardown, and no wait bound, assertion, repetition count or cleanup is relaxed. Owned by E-1282."
     }
   }
 }

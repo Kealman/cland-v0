@@ -9,7 +9,10 @@
     "hub/test/executor-safety-case.ts": ["hub/test/executor-safety-load.test.ts"],
     "hub/test/executor-safety-component.test.ts": ["hub/test/executor-safety-load.test.ts"],
     "hub/test/remote-clock.ts": ["hub/test/executor-safety-load.test.ts"],
-    "hub/test/remote-fixture.ts": ["hub/test/executor-safety-load.test.ts"]
+    "hub/test/remote-fixture.ts": ["hub/test/executor-safety-load.test.ts"],
+    "nvim/lua/cland/explorer_card.lua": ["nvim/test/explorer-outline-load.test.ts"],
+    "nvim/test/explorer-component.test.ts": ["nvim/test/explorer-outline-load.test.ts"],
+    "nvim/test/explorer-outline-fixture.ts": ["nvim/test/explorer-outline-load.test.ts"]
   },
   "tests": {
     "hub/src/adapters/opencode.test.ts": "T3",
@@ -605,6 +608,7 @@
     "nvim/test/explorer-component.test.ts": "T2",
     "nvim/test/explorer-compose-component.test.ts": "T2",
     "nvim/test/explorer-compose.test.ts": "T3",
+    "nvim/test/explorer-outline-load.test.ts": "T4",
     "nvim/test/explorer-roots-component.test.ts": "T2",
     "nvim/test/explorer-roots.test.ts": "T3",
     "nvim/test/explorer-summary.test.ts": "T2",

@@ -298,7 +298,8 @@ function C.compose(key, width)
     end
   end
   if verdict then
-    local detail = owner.id == it.id and d or require('cland.item_view').get(owner.id, {summary_only=true})
+    -- A container shows descendant facts without fetching an unselected task's body.
+    local detail = owner.id == it.id and d or require('cland.item_view').detail[owner.id]
     -- Closed summary rows defer card metadata; full detail retains historical rounds.
     round = verdict.round or round_of(detail or {},verdict.run) or round
     local scope = verdict.scope
@@ -323,7 +324,8 @@ function C.compose(key, width)
       if type(comment.verdict)=='table' and comment.verdict.run == verdict.run then reason = summary.sentences(comment.text)[1] end
     end
     if reason then rows[#rows+1] = require('cland.bars').fit({{reason,'ClandText'}},width); rows[#rows].ref = owner.id
-    else text(detail and 'no reason in the verdict comment' or 'loading the reason…','ClandFaint',owner.id) end
+    elseif detail then text('no reason in the verdict comment','ClandFaint',owner.id)
+    elseif owner.id == it.id then text('loading the reason…','ClandFaint',owner.id) end
     kv('run',present(verdict.run) and verdict.run or '—','ClandDim',owner.id)
   else text('none yet','ClandFaint') end
 
