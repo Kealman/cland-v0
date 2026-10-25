@@ -1,9 +1,10 @@
 // T3: native Git and cland CLI process starts prove atomic remote publication, following release ancestry checks and ref-failure recovery; the hub stays in-process.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
+import { parseItem } from '../src/tracker/item.ts';
 import { cland, eventually } from './harness.ts';
 import { project, git, clean, json } from './release-support.ts';
 
@@ -57,11 +58,17 @@ test('publish previews exact tips, publishes only marketing commits and preserve
 test('a task published through cland publish counts as merged and closes its plan stage', async t => {
   const { root } = await project(t);
   const { item: epic } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--kind', 'epic', 'Published epic', '--json'));
-  const { item: task } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'S', '--parent', epic.id, '--branch', 'marketing', 'Marketing', '--json'));
+  const { item: task } = json<{ item: { id: string; file: string } }>(await cland(root, 'task', 'create', '--size', 'S', '--parent', epic.id, '--branch', 'marketing', 'Marketing', '--json'));
+  const taskFile = join(root, '.cland', 'tasks', task.file);
   const planFile = join(root, 'plan.yaml');
   await writeFile(planFile, stringify({ stages: [{ name: 'marketing', qa: { scope: 'none', when: 'per-item' }, lanes: [[task.id]] }] }));
   const planned = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile, '--json');
   assert.equal(planned.code, 0, planned.stderr);
+  // Plan reconciliation writes the child asynchronously after the CLI reply.
+  await eventually('plan persists the child task status', async () => {
+    const text = await readFile(taskFile, 'utf8');
+    return parseItem(text, task.file).fm.status === 'planned' ? true : undefined;
+  });
   await clean(root);
   git(root, 'checkout', '-qb', 'marketing');
   await mkdir(join(root, 'site'), { recursive: true });
