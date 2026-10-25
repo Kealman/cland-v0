@@ -53,9 +53,10 @@
       "A-10294",
       "A-10848",
       "A-11401",
-      "A-11557"
+      "A-11557",
+      "A-11582"
     ],
-    "commit": "eedc81011923a5c71829f89229ba64150f04e518"
+    "commit": "ad67ef5593ae84e5a699354a2a6741fc89769e22"
   },
   "budget": {
     "testSeconds": 5,
@@ -6950,7 +6951,12 @@
     "hub/test/skills-qa.test.ts::demo recorder withholds PASS for missing independently declared facts and step errors": 0.815027,
     "hub/test/web-release-publication.test.ts::release pins checksummed Web assets before push and retries the same bytes after a lost upload reply": 0.851403,
     "hub/test/web-release-publication.test.ts::Web release assets contain the pinned build and a reusable checksum, with idempotent remote readback": 0.723701,
-    "nvim/test/qa-shipped.test.ts::EXPLORER-001 passes through the headless QA runner": 0.591699
+    "nvim/test/qa-shipped.test.ts::EXPLORER-001 passes through the headless QA runner": 0.591699,
+    "hub/test/lifecycle-serialization.test.ts::shutdown drains a held alive resume without restarting supervision or publishing its result": 0.024457,
+    "hub/test/lifecycle-serialization.test.ts::shutdown drains a held found resume without restarting supervision or publishing its result": 0.050139,
+    "hub/test/lifecycle-serialization.test.ts::shutdown drains a held identity resume without restarting supervision or publishing its result": 0.027581,
+    "hub/test/session-usage.test.ts::a rate-limit-only report after a restart keeps stored totals until a new total replaces them": 0.211715,
+    "hub/test/session-usage.test.ts::each reporting harness keeps its totals on the session row across restart, stop and archive": 0.236599
   },
   "allow": {
     "hub/test/suite-recovery.test.ts::admission quarantines a dead run’s recreated root and releases both compatibility locks": {
