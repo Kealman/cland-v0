@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1015
 branch: null
 created: 2026-10-24T09:04:26.967Z
-updated: 2026-10-25T01:16:22.371Z
+updated: 2026-10-25T03:38:11.913Z
 ---
 
 ## Goal
@@ -30,10 +30,12 @@ Today: the OpenCode adapter exists (hub/src/adapters/opencode.ts; E-424 closed),
 
 - [ ] C1. An OpenCode Implementer takes three consecutive XS/S tasks from claim to merge with no Coordinator intervention beyond ordinary briefs and answers, recorded per run in a qualification artifact.
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T01:15:45.036Z · commit 4decf43e2a44fff25b25b1c60e8de277240929eb
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T03:37:48.515Z · commit 7a9c741569a64a785b2db4da20bb0a41716b485e
 - [ ] C2. An OpenCode Reviewer and an OpenCode QA session each complete a real request with a verdict the hub accepts, recorded in the same artifact.
   - verified: qa-677 [qa] · run qa-dod-2026-10-25-677 · 2026-10-25T01:15:45.105Z · commit 4decf43e2a44fff25b25b1c60e8de277240929eb
+  - verified: qa-677 [qa] · run qa-dod-2026-10-25-677-2 · 2026-10-25T03:37:48.594Z · commit 7a9c741569a64a785b2db4da20bb0a41716b485e
 - [ ] C3. Each run's token use and cost are visible in cland's usage view for the OpenCode session.
-  - failed: qa-677 [qa] · 2026-10-25T01:15:45.200Z · note All six archived phase-1 OpenCode Implementer rows lack usage totals; free model identity does not establish per-run recorded tokens or cost.
+  - failed: qa-677 [qa] · 2026-10-25T03:37:48.667Z · note Persistence fix passes, but six original qualifying Implementers plus oc-qa-1 and oc-1269 still lack visible usage; fresh examples do not establish each qualification run.
 
 ## Plan
 
@@ -59,6 +61,13 @@ stages:
       when: after-stage
     lanes:
       - - T-1269
+  - name: re-qualification with durable usage
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1271
+      - - T-1266
 ```
 
 ## Comments
@@ -87,3 +96,30 @@ Low: A-11567's six-run/no-model-caused-intervention wording does not match the s
 C1/C2 verified separately in this run; C3 failed. Local macOS read-only evidence audit under Coordinator-authorized message brief cc2a473f/1d1d6ed9. No runtime tests, suites, browser, probe or demo lease ran; no new droplet cost. This checks prior receipt linkage, not fresh test coverage. Full evidence and limits: A-11568, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11568-e-1216-qa-audit-c1-c2-confirmed-phase-1-usage-missing.md. Four manual audit records appended to runs.jsonl; outputs secret-scanned.
 
 Criteria: C3 failed (All six archived phase-1 OpenCode Implementer rows lack usage totals; free model identity does not establish per-run recorded tokens or cost.).
+
+### qa-677 · 2026-10-25T03:37:48.667Z
+
+verdict: qa
+result: not clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-25-677-2
+commit: 7a9c741569a64a785b2db4da20bb0a41716b485e
+findings: [{"severity":"medium","text":"C3 qualification-evidence gap: archived session list still lacks usage for the six original Implementer runs, oc-qa-1 and oc-1269. oc-1270 and current oc-rev-1 demonstrate post-fix records, not the complete each-run cohort. No new persistence defect is alleged."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| C1 qualification | hub-api | PASS | Original six review/verify pairs and landings reconfirmed; A-11568 four-later-run classification stands |
+| C2 role verdicts | hub-api | PASS | Original hub-source OpenCode Reviewer/QA identities retained; T-1270 adds two clear OpenCode reviews |
+| C3 persistence | hub-api | PASS | Five generated identities pass in both A-11582/A-11586; first two each have five passing load repeats per platform; asserted exact restart/stop/archive facts checked |
+| C3 fresh usage | hub-api | PASS, limited | Archived oc-1270 5,579,954 tokens/$0.050566764; current oc-rev-1 4,123,219/$0.047691018 |
+| C3 each run | hub-api | FAIL | Six original Implementers, oc-qa-1, oc-1269 have no usage object |
+| Freshness | hub-api | PASS | current=true at full requested SHA |
+
+Medium finding: C3 still says each run. Fresh post-fix usage for T-1270 and current Reviewer activity does not supply the lost qualification records; no post-fix QA qualification run is supplied. This is an evidence gap, not a finding that T-1269 failed. Historical totals captured in A-11568 are not currently visible for oc-qa-1; absent totals are not zero. Recover actual visible run totals or supply a replacement cohort with preserved per-run usage; a future live restart alone will not recover historical loss.
+
+C1/C2 reverified separately in this run; C3 failed. A-11592 contains exact case names, original log line numbers, source assertions, source-delta limits and current snapshots. Covers ran at ad67ef5593ae84e5a699354a2a6741fc89769e22; usage implementation/tests unchanged through audit SHA, apart from a Sessions comment. T0–T4/Web covers completed; budgets/lint report-only; T4 repetitions skipped. Linux two droplets: lifetimes 1336s/$0.0928 and 1136s/$0.0789, recorded total $0.1716. macOS local Darwin arm64 27.0.0. These are prior cover receipts, not new QA execution.
+
+This run is a local macOS read-only audit under message brief 8e8488c9. No new tests/suite/browser/demo lease or live restart/archive mutation. Six manual audit records saved; evidence secret-scanned. Artifact A-11592: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11592-e-1216-qa-re-audit-persistence-passes-per-run-qualification-usage-incomplete.md
+
+Criteria: C3 failed (Persistence fix passes, but six original qualifying Implementers plus oc-qa-1 and oc-1269 still lack visible usage; fresh examples do not establish each qualification run.).
