@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T15:28:56.375Z
+updated: 2026-10-25T15:49:38.607Z
 ---
 
 ## Summary
@@ -25,10 +25,12 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
 ## Acceptance criteria
 - [x] C1. The identity check uses a start identity finer than one second where the platform offers one (for example `/proc/<pid>/stat` starttime on Linux, `proc_pidinfo` or `sysctl` kinfo on macOS), or adds a second discriminator (command, ppid or a nonce) so that two processes started in the same second never compare equal.
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
-  - done: impl-543 · 2026-10-25T15:27:42.740Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
+  - done: impl-543 · 2026-10-25T15:48:35.635Z
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
-  - done: impl-543 · 2026-10-25T15:27:43.809Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
+  - done: impl-543 · 2026-10-25T15:48:35.784Z
 
 ## Comments
 
@@ -230,3 +232,48 @@ Premerge regression diagnosis: local original stop fails with valid persisted Cl
 ### impl-543 · 2026-10-25T15:28:46.584Z
 
 0405a629 correction complete locally. A-12007 diagnosis/red controls: saved Claude identity valid; dead transient descendant in stale ps snapshot blocked stop. Only ESRCH for an unverified leaf can settle it; live unknown/error/surviving listed branch still refuses. Five new deterministic guards; system-processes38/38pass. A-12011: all83 searched/alias/direct cleanup consumer files723/723 pass individually+serially (includes original3), zero skips/cancel; isolated cli-identity6/6 retry pass, earlier SQLite5 recorded local busy-lock flake per Coordinator. darwin arm64 Node24.21; no Linux/browser claim. Typecheck and full test:lint exit0 (135 report-only findings,0refusals). C1/C2done restored; requesting fresh source review before new mode-free verify.
+
+### rev-34 · 2026-10-25T15:30:15.691Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source7
+commit: 0405a629685a8279304c85271907cb51ff47c64e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear; A-12013 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12013-t-543-absent-leaf-correction-source-review-at-0405a629.md), carrying prior full safety audit. Both acquisition/grace paths skip only unverified leaf with no listed child and positive nativeESRCH; no ownership/signal authority gained. Live unknown/mismatch, listed surviving branch, EPERM/EIO remain refusals. Coherent bracketing, per-PID signal checks, M4/M5 and legacy policy unchanged. Five new deterministic guards retain stable-child termination/no-gone-child-signal and refusal assertions; matching docs updated. A-12006/12011 consumer audit/local83files723passes plus38system cases retain darwin/local/targeted limits, not configured/Linux proof. Parent all-run genuine failures preserved, old green receipts stale for newhead. C1/C2 remain unverified pending same-head configured evidence; Coordinator premerge all rerun separate.
+
+### rev-34 · 2026-10-25T15:44:29.753Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-final2
+commit: 0405a629685a8279304c85271907cb51ff47c64e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final configured evidence clear:1990574b/A-12016; audit A-12017 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12017-t-543-absent-leaf-corrected-final-evidence-at-0405a629.md), carrying source7/full safety review. Parsed3239ordinary+60load passes. Five new absent-leaf/grace/liveunknown/survivingbranch/EIO controls pass with retained signal/completion assertions; whole38system/37cleanup pass, including prior same-second/cache/ancestry/checkpoint controls.3identity+8ownership+1emptyhub each5/5load. HostT0/LinuxT1/allT2/changedT3/mappedT4once/Web complete; otherT3/T4 and extraT4 repetitions absent. New cases<3s; report-only warnings/native-vs-synthetic limits retained. Original3 lifecycle consumers have corrected local receipts but were not in this Linux task selection; Coordinator premerge all must re-establish them. Parent all failure stays failed. C1/C2 verified, no findings; QA none.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-543 · 2026-10-25T15:48:36.030Z
+
+Coordinator-authorized dev8d4d5650 merge pushed8fbcf297. Two SESSION_USAGE conflicts resolved preserving incoming state-reason line and native-birth stop line; owning frozen row regenerated, all other command rows unchanged. Current merged-tree seven requested files69/69local passes plus typecheck exit0 (darwin arm64 Node24.21). A-12019 records exact files/durations and prior-head Linux receipt1990574b/A-12016 separately. Clean tree, no remaining conflicts. C1/C2done restored; fresh source review requested before new mode-free verify. Coordinator premerge all rerun remains pending at this merged head.
+
+### rev-34 · 2026-10-25T15:49:38.607Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source8
+commit: 8fbcf297cde11d084d4efd1da4ff462405f3a121
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear after Coordinator51bc6f1b authorized merge; A-12021 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12021-t-543-authorized-merge-source-review-at-8fbcf297.md), carrying source7/full safety conclusions. Only manual SESSION_USAGE source/frozen resolution retains incoming state-reason wording plus native-birth stop requirement; exact owning equality/all-other-row preservation verified. Auto-merged adapter contract/Claude/Codex/Sessions delivery changes coexist with retained precise stop/resume metadata and rollback; native process/LaunchFiles/cleanup byte-unchanged from source7. A-12019 local69cases/static receipts retain platform/selection limits; parent receipts stale for newhead. C1/C2 unverified pending same-head configured evidence; Coordinator premerge all at mergehead separate; QA none.
