@@ -66,7 +66,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   // durable leases left by preparation, restarts or unconfirmed acquire cleanup.
   async #reserve(lease: DropletLease, budget: number, deadline: number): Promise<void> {
     const path = join(this.root, '.cland/run/executor/budget.lock');
-    const lock = await acquireLockWithRetry(path, deadline, { clock: this.clock, wait: this.dependencies.wait, ...(this.dependencies.processes ? { processes: this.dependencies.processes } : {}) });
+    const lock = await acquireLockWithRetry(path, deadline, { signal: this.#abort.signal, clock: this.clock, wait: this.dependencies.wait, ...(this.dependencies.processes ? { processes: this.dependencies.processes } : {}) });
     try {
       this.#abort.signal.throwIfAborted();
       if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
@@ -114,7 +114,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const size = overrideSize ?? config.verification.droplet.size;
     const selected = (await (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)).sizes()).find(s => s.slug === size && s.available);
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
-    await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env), config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes);
+    await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env), config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes, { signal: this.#abort.signal, wait: this.dependencies.wait });
   }
   async releaseShardReservations(runs: string[]): Promise<void> {
     // Synthetic reservations have no lease for settleSpend to recover. Persist
@@ -128,9 +128,12 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   }
 
   async #finishShardRelease(path: string, runs: string[]): Promise<void> {
-    try { await releaseShardSpend(this.root, runs, this.#env, this.clock, this.dependencies.processes); }
+    try { await releaseShardSpend(this.root, runs, this.#env, this.clock, this.dependencies.processes, { signal: this.#abort.signal, wait: this.dependencies.wait }); }
     catch (error) {
       this.logger({ event: 'executor-shard-reservations-deferred', runs, error: String(error) });
+      // The durable intent, not the closing planner, owns any remaining spend.
+      // A later hub retries it during reconciliation; preserve it on stop.
+      if (this.#closing) return;
       throw error;
     }
     await rm(path, { force: true });
@@ -207,7 +210,8 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     try {
       await (this.dependencies.host ?? processHost).createKey(dir, name, this.#env);
       await this.#reserve(lease, config.verification.remoteBudget, runDeadline);
-      await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.wait, this.dependencies.processes);
+      await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.wait, this.dependencies.processes, this.#abort.signal);
+      this.#abort.signal.throwIfAborted();
       lease.watchdog = await (this.dependencies.host ?? processHost).armWatchdog(dir, this.#env);
       await this.#save(lease);
       const publicKey = await readFile(join(dir, 'key.pub'), 'utf8');

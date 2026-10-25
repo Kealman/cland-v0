@@ -29,6 +29,13 @@ Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 
+Reservation-lock shutdown uses the cheaper T1 ownership and T2 `projectHub`
+seams in `docs/agents/tests/hub-test-executor-lock-liveness.test.ts.md` and
+`docs/agents/tests/hub-test-executor-admission-lock.test.ts.md`. Join a late lock
+acquisition before rejecting cancellation. Keep shard-release intents durable
+through shutdown and prove next-hub settlement; no new process is needed for
+these local wait boundaries.
+
 For OpenCode Console login diagnostics, use the injected auth-list seam in
 `docs/agents/tests/hub-test-doctor-harness-probe.test.ts.md` and the scripted
 native failure seam in `docs/agents/tests/hub-test-opencode-native.test.ts.md`.

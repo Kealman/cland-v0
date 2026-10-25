@@ -3470,8 +3470,14 @@ reports `prepare: not set`). It powers off before snapshotting,
 polls actions under a twenty-minute bound, transfers to configured regions and
 tags the image `cland` and `cland-p-<hash>`, then releases the builder.
 
-Stopping the hub interrupts provider waits, acquisition polling and preparation
-machine work. Suite launches keep their durable acquisition attempt rather than
+Stopping the hub interrupts provider waits, reservation-lock and spend-ledger
+retries, acquisition polling and preparation machine work. Cancellation joins
+native lock acquisition and releases a late-acquired lock before rejecting; it
+never detaches an owner. Sharded planning uses the same cancellation. If its
+ledger release cannot finish at shutdown, the persisted shard-release intent
+stays until the next hub settles it before reconciliation completes; reservations
+remain conservatively counted until then. Suite launches keep their durable
+acquisition attempt rather than
 falling back locally during shutdown. Unanswered creates keep their original
 name, tags and unfinished create marker in `lease.json`; cleanup remains
 `releasing` with unknown lifetime and cost until deletion is confirmed. The hub

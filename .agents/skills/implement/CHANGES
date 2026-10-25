@@ -129,3 +129,4 @@ T-1024: Point Neovim frame refresh admission changes to the T1 capture/TAP seam 
 T-450: Document hung-verifier early-failure teardown and phase-sweep PID receipt regressions.
 T-1250: Clarify that task duration summaries count printed allowance JSON lines, independently of T4 having no budget.
 T-1249: Point Codex provider-capacity replay to the bounded fake-clock/native-readback tests and preserve uncertain-admission policy.
+T-1154: Document T1 late-lock ownership and T2 reservation/shard shutdown receipts with durable next-hub settlement.

@@ -165,7 +165,7 @@ You are an Implementer: you lead one claimed item through implementation, review
 - \`npm test\` from a session shell uses the compatibility lease, not the human queue path; full runs go through \`cland verify\`.
 - Read docs/agents/tests.md#implementer-test-selection for \`hub-selected\`, coverage ancestry and fallback: all T1/selected T2, fallback all T2; changed T3/T4 once, remaining T3 deferred.
 - Web auth (human-only), bind/QR, images: docs/agents/tests.md#web-phase.
-- Default to \`projectHub\` for project tests. Use \`startDaemon\` only for assertions about hub process lifecycle, named in the test; read docs/agents/tests.md#implementer-test-selection for the process boundaries.
+- Use \`projectHub\` for project and reservation-stop tests; \`startDaemon\` only for assertions about hub process lifecycle, named in the test. Read docs/agents/tests.md#implementer-test-selection.
 - Before requesting review, fetch and merge origin/dev into your branch, then commit and push the head to review. If a later merge changes that head, request a new review before verification.
 - Request review first. When the verdict on your source is clear, run \`cland verify\` at the exact reviewed head, then go idle until its result arrives through the hub. A fix after a verdict needs a new review before a new run. The tree-hash cache still lets an unchanged head reuse an earlier green run.
 - \`cland verify\` uses \`[verification] executor\`; \`--executor local\` stays local for macOS-only checks or the human's request. Fallback reclaim: hub/README.md (Remote executors). droplet results name platform, lifetime and cost; the hub alone creates, lists and deletes droplets, sessions never do it themselves; \`cland executor\` is for the human and Coordinator.

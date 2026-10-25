@@ -282,7 +282,6 @@ export class HubLocked extends Error {
 export type HubLock = { holder: LockHolder; release: () => void };
 export type AsyncHubLock = { holder: LockHolder; release: () => Promise<void> };
 const pauseSync = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
-const pauseAsync = () => new Promise(resolve => setTimeout(resolve, 20));
 
 export function acquireLock(path: string, processes: LockProcessTable = nativeProcesses): HubLock {
   // Only this process's own lock identity is immutable while it lives. Null is
@@ -329,7 +328,8 @@ function lockTimeout(deadline?: number): number {
   return Math.min(PS_TIMEOUT_MS, ms);
 }
 
-export async function acquireLockAsync(path: string, resumed: Resumed = work => work(), deadline?: number, timezone?: 'UTC', processes?: LockProcessTable): Promise<AsyncHubLock> {
+export async function acquireLockAsync(path: string, resumed: Resumed = work => work(), deadline?: number, timezone?: 'UTC', processes?: LockProcessTable, signal?: AbortSignal): Promise<AsyncHubLock> {
+  signal?.throwIfAborted();
   lockTimeout(deadline);
   // Injected identities never enter the native process cache.
   const started = processes ? processes.started(process.pid) : await (ownStarted ??= processStartedAsync(process.pid, lockTimeout(deadline)));
@@ -340,14 +340,16 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
   });
   const guarded = async <T>(work: () => Promise<T>, limit?: number): Promise<T> => {
     for (let attempt = 0; attempt < 250; attempt++) {
+      signal?.throwIfAborted();
       lockTimeout(limit);
       const release = await takeGuardAsync(`${path}.break`, me, resumed, limit, processes);
-      if (!release) { await pauseAsync(); continue; }
-      return withCleanupAsync(work, release, resumed);
+      if (!release) { await lockWait(20, { signal }); continue; }
+      return withCleanupAsync(async () => { signal?.throwIfAborted(); return work(); }, release, resumed);
     }
     return resumed(() => { throw new LockAcquisitionTimeout(`could not take guard for ${path}`); });
   };
   for (let attempt = 0; attempt < 50; attempt++) {
+    signal?.throwIfAborted();
     lockTimeout(deadline);
     const acquired = await guarded(async () => {
       if (await createExclusiveAsync(path, text, resumed)) return true;
@@ -364,7 +366,7 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
     if (acquired) {
       let releasing: Promise<void> | null = null;
       let released = false;
-      return resumed(() => ({ holder: me, release: () => {
+      const lock: AsyncHubLock = resumed(() => ({ holder: me, release: () => {
         if (released) return Promise.resolve();
         if (releasing) return releasing;
         // A live main holder cannot be replaced by a contender. Release its own
@@ -379,13 +381,38 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
         // Failed unlink remains retryable, preserving the owner's cleanup duty.
         return releasing;
       } }));
+      // Native I/O can complete after cancellation. Join it and relinquish the
+      // acquired token before rejecting; never detach a possible lock owner.
+      if (signal?.aborted) { await lock.release(); signal.throwIfAborted(); }
+      return lock;
     }
   }
   return resumed(() => { throw new Error(`could not take ${path}: it keeps changing under this process`); });
 }
 
 /** Wait through transient executor contention, without changing the hub lock's fail-fast contract. */
-export type LockRetryTiming = { processes?: LockProcessTable; clock?: Clock; wait?: ((ms: number) => Promise<void>) | undefined };
+export type LockRetryTiming = { processes?: LockProcessTable; clock?: Clock; wait?: ((ms: number) => Promise<void>) | undefined; signal?: AbortSignal | undefined };
+
+/** Only a non-owning delay may detach; acquisition and release always drain. */
+async function lockWait(ms: number, timing: LockRetryTiming): Promise<void> {
+  const clock = timing.clock ?? realClock;
+  const signal = timing.signal;
+  signal?.throwIfAborted();
+  let timer: ReturnType<Clock['setTimeout']> | undefined;
+  let abort: (() => void) | undefined;
+  try {
+    const wait = timing.wait?.(ms) ?? new Promise<void>(resolve => { timer = clock.setTimeout(resolve, ms); });
+    if (!signal) { await wait; return; }
+    await Promise.race([wait, new Promise<never>((_, reject) => {
+      abort = () => reject(signal.reason);
+      if (signal.aborted) abort();
+      else signal.addEventListener('abort', abort, { once: true });
+    })]);
+  } finally {
+    clock.clearTimeout(timer);
+    if (abort) signal?.removeEventListener('abort', abort);
+  }
+}
 export async function acquireLockWithRetry(path: string, deadline?: number, timing: LockRetryTiming = {}): Promise<AsyncHubLock> {
   const clock = timing.clock ?? realClock;
   const started = clock.now().getTime();
@@ -393,18 +420,20 @@ export async function acquireLockWithRetry(path: string, deadline?: number, timi
   const limit = Math.min(deadline, started + 60000);
   let backoff = 25;
   let last: unknown;
+  timing.signal?.throwIfAborted();
   while (clock.now().getTime() < limit) {
     // OS identity probes retain native deadlines; only contention/backoff uses hub time.
-    try { return await acquireLockAsync(path, undefined, Date.now() + Math.min(15000, limit - clock.now().getTime()), 'UTC', timing.processes); }
+    try { return await acquireLockAsync(path, undefined, Date.now() + Math.min(15000, limit - clock.now().getTime()), 'UTC', timing.processes, timing.signal); }
     catch (error) {
       // Cleanup failures keep their primary error type; they are not safe contention.
       if (!(error instanceof HubLocked || error instanceof LockAcquisitionTimeout) || error.message.includes('; cleanup failed:')) throw error;
       last = error;
     }
+    timing.signal?.throwIfAborted();
     const remaining = limit - clock.now().getTime();
     if (remaining <= 0) break;
     const ms = Math.min(backoff, remaining);
-    await (timing.wait?.(ms) ?? new Promise<void>(resolve => clock.setTimeout(resolve, ms)));
+    await lockWait(ms, timing);
     backoff = Math.min(backoff * 2, 1000);
   }
   throw new Error(`lock ${path}: acquisition deadline reached after waiting ${clock.now().getTime() - started} ms`, { cause: last });

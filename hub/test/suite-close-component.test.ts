@@ -13,6 +13,9 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { DropletExecutor, ProviderCapacityUnavailable } from '../src/executor/droplet/droplet.ts';
 import { Store } from '../src/hub/store.ts';
 import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
+import { acquireLockAsync } from '../src/hub/lock.ts';
+import { spendPath } from '../src/executor/droplet/spend.ts';
+import { completeJournalLines } from './journal-lines.ts';
 
 test('a reported two-shard Linux stage cover counts on the first run after hub restart', async t => {
   const setup = caseDeadlines(t);
@@ -296,7 +299,11 @@ test('live and restored shards separate remote execution from collection in one 
 });
 
 test('cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend', async t => {
-  const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { machine: 'scripted' });
+  const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } });
+  await eventually('initial executor sweep persisted before reservation contention', async () => {
+    assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
+  }, 2000);
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
   onCleanup(t, () => release.resolve());
@@ -308,8 +315,15 @@ test('cancelling while provider sizes are held joins reservation before reportin
   assert.equal((await f.ui.request({ type: 'suite.cancel', suite: id })).ok, true);
   await f.clock.advance(1000);
   assert.equal((await f.messages(id)).length, 0, 'no result while reservation completion is held');
+  // Pin the intermittent startup/sweep contention at the actual scratch ledger.
+  // The scripted retry is on fake time, independently of the provider reply.
+  const lock = await acquireLockAsync(`${spendPath(f.env)}.lock`, undefined, undefined, 'UTC', f.dependencies.processes);
+  onCleanup(t, () => lock.release());
+  const waiting = f.waits.waiting();
   release.resolve();
-  assert.equal((await submission).id, id);
+  await waiting;
+  await lock.release();
+  assert.equal((await drive(f, submission)).id, id);
   await f.clock.advance(1000);
   const result = await drive(f, f.result(id));
   assert.match(result.text, /cancelled/);

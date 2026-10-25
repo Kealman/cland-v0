@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
-import { acquireLockAsync } from '../src/hub/lock.ts';
+import { acquireLockAsync, acquireLockWithRetry } from '../src/hub/lock.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
 import { writeLease, readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
@@ -142,4 +142,75 @@ test('settled legacy lease history cannot repeatedly defer a later release', asy
     assert.equal(ledger.entries.filter((entry: { cost: number | null }) => entry.cost === null).length, 0);
     assert.equal(ledger.entries.filter((entry: { cost: number }) => entry.cost === 0.5).length, 16);
   } finally { publication.mock.restore(); syncBuiltinESMExports(); }
+});
+
+for (const mode of ['injected', 'clock'] as const) test(`shutdown cancels an admission ${mode} retry without releasing the other holder`, { timeout: 2000 }, async t => {
+  const clock = new FakeClock();
+  const shutdown = new AbortController();
+  const entered = Promise.withResolvers<void>(), unblock = Promise.withResolvers<void>();
+  let acquisition: Promise<unknown> | undefined;
+  let lock: Awaited<ReturnType<typeof acquireLockAsync>> | undefined;
+  // Register before scratchMachine's directory hook: drain file writers first.
+  t.after(async () => {
+    shutdown.abort(); unblock.resolve(); await lock?.release();
+    await acquisition?.catch(() => {});
+  });
+  const { root } = await scratchMachine(t, { identity: false });
+  const path = join(root, 'held.lock');
+  lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
+  const before = await fs.readFile(path, 'utf8');
+  if (mode === 'clock') {
+    const schedule = clock.setTimeout.bind(clock);
+    t.mock.method(clock, 'setTimeout', (...args: Parameters<typeof clock.setTimeout>) => {
+      const timer = schedule(...args); entered.resolve(); return timer;
+    });
+  }
+  acquisition = assert.rejects(acquireLockWithRetry(path, undefined, {
+    clock, processes, signal: shutdown.signal,
+    ...(mode === 'injected' ? { wait: async () => { entered.resolve(); await unblock.promise; } } : {}),
+  }), /fixture shutdown/);
+  await entered.promise;
+  shutdown.abort(new Error('fixture shutdown'));
+  await acquisition;
+  assert.equal(await fs.readFile(path, 'utf8'), before);
+  assert.equal(clock.pending, 0);
+});
+
+test('cancellation joins a late lock acquisition and releases it before rejecting', { timeout: 2000 }, async t => {
+  const linked = Promise.withResolvers<void>(), resume = Promise.withResolvers<void>();
+  const shutdown = new AbortController();
+  const reason = new Error('fixture shutdown during link');
+  let unexpected: Awaited<ReturnType<typeof acquireLockAsync>> | undefined;
+  let rejected: Promise<void> | undefined;
+  let restore = () => {};
+  // This test owns only file I/O. Its hook precedes fixture directory removal.
+  t.after(async () => {
+    shutdown.abort(reason); resume.resolve(); await rejected?.catch(() => {});
+    await unexpected?.release(); restore();
+  });
+  const { root } = await scratchMachine(t, { identity: false });
+  const path = join(root, 'late.lock');
+  const link = fs.link;
+  const fault = t.mock.method(fs, 'link', async (...args: Parameters<typeof fs.link>) => {
+    await link(...args);
+    if (args[1] === path) { linked.resolve(); await resume.promise; }
+  });
+  restore = () => fault.mock.restore();
+  const work = acquireLockWithRetry(path, undefined, { processes, signal: shutdown.signal }).then(lock => { unexpected = lock; return lock; });
+  rejected = assert.rejects(work, error => error === reason);
+  await linked.promise;
+  shutdown.abort(reason);
+  assert.equal(JSON.parse(await fs.readFile(path, 'utf8')).pid, process.pid);
+  // A rejected caller must not leave an unobserved owner behind this gate.
+  let settled = false;
+  void work.then(() => { settled = true; }, () => { settled = true; });
+  await Promise.resolve();
+  assert.equal(settled, false);
+  resume.resolve();
+  await rejected;
+  await assert.rejects(fs.stat(path), { code: 'ENOENT' });
+  await assert.rejects(fs.stat(`${path}.break`), { code: 'ENOENT' });
+  fault.mock.restore();
+  const next = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
+  await next.release();
 });

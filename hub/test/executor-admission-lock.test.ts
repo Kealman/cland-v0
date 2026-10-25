@@ -3,10 +3,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { join } from 'node:path';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir } from 'node:fs/promises';
+import fs from 'node:fs/promises';
 import { completeJournalLines } from './journal-lines.ts';
 import { fixture } from './remote-fixture.ts';
-import { eventually, tempProject } from './harness.ts';
+import { eventually, tempProject, projectHub } from './harness.ts';
+import { sessionUi } from './session-credential-fixture.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable } from '../src/hub/lock.ts';
 import { drive, remoteWaits } from './remote-clock.ts';
@@ -14,11 +16,130 @@ import { cancelAndDrain, type OwnedRemoteRun } from './remote-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { FakeClock } from './fake-clock.ts';
 import { scratchMachine, legacyLedger, ledger } from './init-machine.ts';
-import { rememberProject, spendPath } from '../src/executor/droplet/spend.ts';
+import { rememberProject, reserveShardSpend, spendPath } from '../src/executor/droplet/spend.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import type { HubStatus } from '../src/protocol.ts';
+import { readLeases } from '../src/executor/droplet/lease.ts';
+import { integrated } from './close-run-fixture.ts';
 
 const processes: LockProcessTable = { alive: pid => pid === process.pid, started: () => null };
+
+for (const phase of ['reserve', 'release'] as const) test(`hub stop cancels shard planning ${phase} and restart settles its durable release`, { timeout: 10000 }, async t => {
+  const f = await integrated(t, '', 2, undefined, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } });
+  await eventually('startup sweep persisted', async () => {
+    assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
+  });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const planning = Promise.withResolvers<void>(), resume = Promise.withResolvers<void>();
+  const sizes = f.api.provider.sizes.bind(f.api.provider);
+  let calls = 0;
+  if (phase === 'release') t.mock.method(f.api.provider, 'sizes', async (...args: Parameters<typeof sizes>) => {
+    if (++calls === 1) { planning.resolve(); await resume.promise; throw new Error('controlled shard planning refusal'); }
+    return sizes(...args);
+  });
+  const path = `${spendPath(f.env)}.lock`;
+  const attempted = Promise.withResolvers<void>();
+  const link = fs.link;
+  t.mock.method(fs, 'link', async (...args: Parameters<typeof fs.link>) => {
+    try { return await link(...args); }
+    catch (error) {
+      if (args[1] === path && (error as NodeJS.ErrnoException).code === 'EEXIST') attempted.resolve();
+      throw error;
+    }
+  });
+  let lock: Awaited<ReturnType<typeof acquireLockAsync>> | undefined;
+  let stopping: Promise<unknown> | undefined;
+  onCleanup(t, async () => {
+    resume.resolve(); await lock?.release();
+    await drive(f, stopping ?? f.stop());
+  });
+  if (phase === 'reserve') lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
+  // Suite.start joins planning, so observe its persisted job independently of
+  // the submission reply; no client request timer owns this held boundary.
+  f.ui.send({ type: 'suite.start', id: 'held-shard-submit', as: { name: 'impl', sessionId: 'remote-impl', shell: true }, cwd: f.root, mode: 'all', occasion: 'stage', report: f.topic, to: ['impl'], fresh: true });
+  const job = await eventually('close job persisted before shard planning', async () => {
+    const status = await f.ui.request({ type: 'hub.status' });
+    assert.equal(status.ok, true, status.error);
+    return (status.value as HubStatus).suites?.find(job => job.occasion === 'stage');
+  });
+  const runs = [1, 2].map(n => `${job.id}-shard-${n}`);
+  if (phase === 'release') {
+    await planning.promise;
+    await reserveShardSpend(f.root, runs, 'c-8', 0.25, 900000, 10, f.env, f.clock, processes);
+    lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
+    resume.resolve();
+  }
+  await attempted.promise;
+  const intents = join(f.root, '.cland/run/executor/shard-releases');
+  if (phase === 'release') {
+    const names = await eventually('shard release intent published', async () => {
+      const names = await readdir(intents).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+      return names.length ? names : undefined;
+    });
+    assert.equal(names.length, 1);
+    assert.deepEqual(JSON.parse(await readFile(join(intents, names[0]!), 'utf8')), runs);
+  }
+  let stopped = false;
+  stopping = f.stop();
+  void stopping.then(() => { stopped = true; });
+  await eventually('hub stop drains shard planner with ledger still held', () => stopped ? true : undefined, 3000);
+  await stopping;
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).token, lock!.holder.token);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST').length, 0);
+  if (phase === 'release') {
+    const ledger = JSON.parse(await readFile(spendPath(f.env), 'utf8'));
+    assert.equal(ledger.entries.filter((entry: { cost: number | null }) => entry.cost === null).length, 2, 'release intent owns the still-counted reservations until restart can take the ledger');
+  }
+  await lock!.release();
+  const next = await projectHub(t, f.root, f.env, { clock: f.clock, droplet: f.dependencies, harnesses: 'fake', probes: 'fake', syntheticProvider: { token: f.syntheticProvider.token, api: f.api.provider } });
+  const ui = await sessionUi(t, next.discovery);
+  await eventually('next hub durably settles shard release intent', async () => {
+    const ledger = JSON.parse(await readFile(spendPath(f.env), 'utf8'));
+    return ledger.entries.every((entry: { cost: number | null }) => entry.cost !== null) && (await readdir(intents)).length === 0 ? true : undefined;
+  });
+  const status = await ui.request({ type: 'executor.status' });
+  assert.equal(status.ok, true, status.error);
+  assert.equal((status.value as { spend: { reserved: number } }).spend.reserved, 0);
+});
+
+for (const kind of ['spend', 'executor'] as const) test(`hub stop cancels the held ${kind} admission lock and restart has no reservation`, { timeout: 10000 }, async t => {
+  const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } });
+  await eventually('startup sweep persisted', async () => {
+    assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
+  });
+  const path = kind === 'spend' ? `${spendPath(f.env)}.lock` : join(f.root, '.cland/run/executor/budget.lock');
+  const lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
+  const before = await readFile(path, 'utf8');
+  let stopping: Promise<unknown> | undefined;
+  onCleanup(t, async () => {
+    await lock.release();
+    await drive(f, stopping ?? f.stop());
+  });
+  const job = await f.launch();
+  await f.waits.waiting();
+  stopping = f.stop();
+  let stopped = false;
+  void stopping.then(() => { stopped = true; });
+  await eventually('hub stop completes while admission lock stays held', () => stopped ? true : undefined, 3000);
+  await stopping;
+  assert.equal(await readFile(path, 'utf8'), before, 'shutdown leaves the other owner intact');
+  assert.equal(f.api.requests.filter(r => r.method === 'POST').length, 0, 'no provider resource was created');
+  assert.equal(f.machine.calls.filter(call => call.step === 'start').length, 0);
+  await lock.release();
+  const next = await projectHub(t, f.root, f.env, { clock: f.clock, droplet: f.dependencies, harnesses: 'fake', probes: 'fake', syntheticProvider: { token: f.syntheticProvider.token, api: f.api.provider } });
+  const ui = await sessionUi(t, next.discovery);
+  await eventually('next hub reconciles the interrupted acquisition', async () => {
+    const leases = await readLeases(f.root);
+    return leases.some(lease => lease.run === job.id && lease.state === 'released') ? true : undefined;
+  });
+  const status = await ui.request({ type: 'executor.status' });
+  assert.equal(status.ok, true, status.error);
+  const value = status.value as { leases: unknown[]; spend: { reserved: number } };
+  assert.deepEqual(value.leases, []);
+  assert.equal(value.spend.reserved, 0);
+});
 
 test('lock contention expires at the admission deadline or the sixty-second cap', async t => {
   const root = await tempProject(t, 'retry-deadline-');

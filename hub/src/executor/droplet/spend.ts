@@ -77,7 +77,7 @@ async function locked<T>(work: (ledger: Ledger) => T | Promise<T>, env: NodeJS.P
       if (!currentStat || currentStat.dev !== oldStat.dev || currentStat.ino !== oldStat.ino) {
         // Never wait for another lock while holding the current ledger. Deferral
         // unwinds the current lock; the next sweep retries both from scratch.
-        legacyLock = await acquireLockAsync(`${old}.lock`, undefined, Date.now() + 1000, 'UTC', timing?.processes);
+        legacyLock = await acquireLockAsync(`${old}.lock`, undefined, Date.now() + 1000, 'UTC', timing?.processes, timing?.signal);
       }
       const legacy = await read(old);
       ledger = reconcile(ledger, legacy);
@@ -91,6 +91,7 @@ async function locked<T>(work: (ledger: Ledger) => T | Promise<T>, env: NodeJS.P
       }
     }
     const before = JSON.stringify(ledger);
+    timing?.signal?.throwIfAborted();
     const result = await work(ledger);
     // Mixed-version hubs read only the legacy file. Publish mutations there
     // first while holding both locks, so a crash cannot hide new reservations
@@ -142,7 +143,7 @@ export async function retireLegacySpend(confirmed: boolean, env: NodeJS.ProcessE
     return { path, receipt, projects, summary: `legacy spend write-through retired; legacy file retained: ${old}; receipt: ${receipt}` };
   }, env, { clock, ...(processes ? { processes } : {}) });
 }
-export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, wait?: (ms: number) => Promise<void>, processes?: LockProcessTable): Promise<void> {
+export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, wait?: (ms: number) => Promise<void>, processes?: LockProcessTable, signal?: AbortSignal): Promise<void> {
   await locked(ledger => {
     if (ledger.entries.some(e => e.lease === lease.lease)) return;
     const reservation = Math.max(60000, Date.parse(lease.deadline) - Date.parse(lease.created)) / 3600000 * lease.priceHourly;
@@ -151,7 +152,7 @@ export async function reserveSpend(project: string, lease: DropletLease, cap: nu
     if (spent + reserved - (group?.reservation ?? 0) + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
     if (group) ledger.entries.splice(ledger.entries.indexOf(group), 1);
     ledger.entries.push({ project, lease: lease.lease, run: lease.run, size: lease.size, reservation, cost: null, created: lease.created, deadline: lease.deadline });
-  }, env, { clock, wait, ...(processes ? { processes } : {}) });
+  }, env, { clock, wait, signal, ...(processes ? { processes } : {}) });
 }
 /** Recovery settles retained history in one ledger transaction, independent of
  * the number of already-settled leases. Missing entries predate spend tracking. */
@@ -248,7 +249,7 @@ export async function hostLeases(project: string, env: NodeJS.ProcessEnv = proce
 }
 
 /** Atomic group admission: no provider resources exist when this can refuse. */
-export async function reserveShardSpend(project: string, runs: string[], size: string, priceHourly: number, lifetimeMs: number, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable): Promise<void> {
+export async function reserveShardSpend(project: string, runs: string[], size: string, priceHourly: number, lifetimeMs: number, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, timing?: Pick<LockRetryTiming, 'signal' | 'wait'>): Promise<void> {
   await locked(ledger => {
     const missing = runs.filter(run => !ledger.entries.some(e => e.project === project && e.run === run));
     const reservation = Math.max(60000, lifetimeMs) / 3600000 * priceHourly;
@@ -256,12 +257,12 @@ export async function reserveShardSpend(project: string, runs: string[], size: s
     if (spent + reserved + missing.length * reservation > cap) throw new Error(`daily spend cap $${cap} would be exceeded`);
     const created = clock.now().toISOString(), deadline = new Date(clock.now().getTime() + lifetimeMs).toISOString();
     for (const run of missing) ledger.entries.push({ project, lease: `reserved:${run}`, run, size, reservation, cost: null, created, deadline });
-  }, env, processes ? { processes } : undefined);
+  }, env, { ...timing, clock, ...(processes ? { processes } : {}) });
 }
-export async function releaseShardSpend(project: string, runs: string[], env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable): Promise<void> {
+export async function releaseShardSpend(project: string, runs: string[], env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, timing?: Pick<LockRetryTiming, 'signal' | 'wait'>): Promise<void> {
   await locked(ledger => {
     for (const e of ledger.entries) if (e.project === project && runs.includes(e.run) && e.lease === `reserved:${e.run}` && e.cost === null) {
       e.cost = 0; e.released = clock.now().toISOString();
     }
-  }, env, processes ? { processes } : undefined);
+  }, env, { ...timing, clock, ...(processes ? { processes } : {}) });
 }
