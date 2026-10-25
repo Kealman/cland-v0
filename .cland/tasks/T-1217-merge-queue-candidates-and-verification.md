@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T11:23:45.434Z
+updated: 2026-10-25T11:31:35.892Z
 ---
 
 ## Summary
@@ -87,3 +87,9 @@ Criteria: C1 failed (H1: maintenance's silent30s detached collector conflicts wi
 Coordinator changed the constraint before re-review: maintenance must be delayed until after serving. Git's documented prune grace protects fresh objects and descendants during concurrent writers, and gc.cruftPacks applies that grace to packed unreachable objects; use explicit --cruft with the same 14-day cutoff, retain --prune=never for existing batch/suite/lease/uncertain records, and test fresh/reused admission snapshot objects natively instead of adding an admission fence. Schedule 30 s after serving and cancel/drain native GC on hub stop.
 
 Additional shared-runner consumer inventory before adding optional cancellation: hub/src/doctor/report.ts run is imported by doctor/{toolchain,harnesses,project,keys,web,opencode-smoke,opencode-contract}.ts and CLI/setup/harness probes; search every production/test import and call before edit. Add only optional trailing AbortSignal (old five-argument calls retain prior behavior/results); no wire/schema/reply changes. The maintenance wrapper forwards it; existing doctor callers remain unaffected. T2 runner tests retain legacy calls and add cancellation coverage. The pre-serve heartbeat implementation and its source-review tests are superseded by serving-first background scheduling and shutdown ownership tests; prior macOS timing summaries remain historical, not current-head evidence.
+
+### impl-1217 · 2026-10-25T11:31:35.892Z
+
+Final additional rule-20 consumer inventory for optional trailing AbortSignal in doctor/report.run: production imports/callers are cli/doctor.ts; doctor/{git,harnesses,keys,project,toolchain,web}.ts; fixture-processes.ts; git-maintenance.ts; hub/lock.ts; orphans.ts; process-paths.ts; setup/{account-identity,handover,machine}.ts; suite-lock.ts; system-processes.ts. Tests/fixtures are doctor-{cli,fixture,harness-probe,run}, git-maintenance, opencode-database, duration-reporter and skip-reporter. Broader docs/skill/QA/startup searches found no existing sixth-argument consumers or wire dependencies. Existing five-argument calls and RunResult shape remain unchanged, with their exact legacy T2 assertions retained. Only maintenance opts into cancellation and forwards the signal. Controller timing lives in serveProject (every production entry and the projectHub fixture); default fake projectHub maintenance remains process-free.
+
+Coordinator-approved design now implemented: one pass 30 s after serving, native gc --cruft with a 14-day grace (never for retained/uncertain work), no new admission fence. Native scratch tests confirm young loose and cruft-packed objects survive despite inherited gc.pruneExpire=now/gc.cruftPacks=false; actual committedTreeOrThrow freshens an old reused unreferenced snapshot. Cancellation reaps both captured PIDs before lock release, then a real next pass recovers same-host dead gc.pid while fresh owned/foreign temporary pack bytes remain unchanged. Source-review M1/M2 are corrected. Prior pre-serve heartbeat and five-second timeout timings are superseded; cancellation test now has no fixed wait. Latest local macOS native file: 8/8, file wall 5.36 s, cases 0.20–1.37 s; T2 serving-first 2/2, runner compatibility/cancellation 4/4; typecheck passed. Linux evidence remains pending.

@@ -3,7 +3,7 @@ id: T-1260
 kind: task
 title: Sessions blocked by cover-quiet poll the verify queue with sleep loops, because nothing wakes them when the local slot frees
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1042
 branch: t/T-1260-sessions-blocked-by-cover-quiet-poll-the
 created: 2026-10-24T19:41:53.006Z
-updated: 2026-10-25T11:30:14.212Z
+updated: 2026-10-25T11:31:37.488Z
 ---
 
 ## Summary

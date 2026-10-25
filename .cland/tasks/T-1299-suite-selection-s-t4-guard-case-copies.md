@@ -15,7 +15,7 @@ found_by: cover
 topic: topic-1048
 branch: t/T-1299-suite-selection-s-t4-guard-case-copies
 created: 2026-10-25T11:30:32.519Z
-updated: 2026-10-25T11:31:08.748Z
+updated: 2026-10-25T11:31:41.591Z
 ---
 
 ## Summary
@@ -26,4 +26,4 @@ The fix keeps the fixture self-contained: it derives only the guard entries for 
 
 ## Acceptance criteria
 
-- C1. The case passes at the fix head with the current production `loadGuards` (three guard files) and still asserts the inbox-verifier-load selection and description; a second fixture-local guard added to production `tiers.json` in a scratch copy does not break it.
+- [ ] C1. The case passes at the fix head with the current production `loadGuards` (three guard files) and still asserts the inbox-verifier-load selection and description; a second fixture-local guard added to production `tiers.json` in a scratch copy does not break it.

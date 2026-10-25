@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T11:31:06.724Z
-updated: 2026-10-25T11:31:13.196Z
+updated: 2026-10-25T11:31:42.016Z
 ---
 
 ## Summary
@@ -22,4 +22,4 @@ updated: 2026-10-25T11:31:13.196Z
 
 ## Acceptance criteria
 
-- C1. `cland task criterion --help` (and every `task` subcommand) prints that subcommand's usage and exits 0, matching the documented contract; a test covers each `task` subcommand.
+- [ ] C1. `cland task criterion --help` (and every `task` subcommand) prints that subcommand's usage and exits 0, matching the documented contract; a test covers each `task` subcommand.

@@ -5,6 +5,7 @@ title: The droplet watchdog signals a persisted pid on a whole-second start time
 state: open
 status: planned
 size: S
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T10:54:46.064Z
-updated: 2026-10-25T10:54:55.413Z
+updated: 2026-10-25T11:31:48.499Z
 ---
 
 ## Summary
@@ -25,4 +26,4 @@ Found aside by impl-543 while migrating T-543's consumers (2026-10-25). Native c
 
 ## Acceptance criteria
 
-- C1. The watchdog's persisted-pid liveness and stop checks use T-543's precise process identity; a test with a recycled pid of the same whole-second start time refuses the signal, and a legacy row without the identity never authorizes a destructive signal.
+- [ ] C1. The watchdog's persisted-pid liveness and stop checks use T-543's precise process identity and its one-time legacy-row upgrade; a test with a recycled pid of the same whole-second start time refuses the signal, and a legacy row whose start does not match, or whose identity cannot be read, never authorizes a destructive signal.
