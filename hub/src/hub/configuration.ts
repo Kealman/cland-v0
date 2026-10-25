@@ -39,6 +39,7 @@ export type ConfigReloadResult = ConfigStatus & { applied: string[]; warnings: s
 export class ProjectConfiguration implements RolesSource {
   #config: ProjectConfig;
   #roles: RolesConfig = DEFAULTS;
+  #rolesError: string | null = null;
   #skills: ReadonlySet<string> = new Set();
   #status: ConfigStatus = { loadedAt: new Date().toISOString(), sourceCommit: null };
   #idleMinutes = IDLE_NOTIFY_MS / 60000;
@@ -59,6 +60,7 @@ export class ProjectConfiguration implements RolesSource {
     this.#config = config ?? defaultConfig(basename(layout.root));
   }
   get = (): RolesConfig => this.#roles;
+  launchError = (): string | null => this.#rolesError;
   availableSkills = (): ReadonlySet<string> => this.#skills;
   config = (): ProjectConfig => this.#config;
   status = (): ConfigStatus => ({ ...this.#status });
@@ -79,6 +81,7 @@ export class ProjectConfiguration implements RolesSource {
       migration = migrateAideTools(original);
     }
     catch (error) {
+      this.#rolesError = `${this.layout.roles} is in error: ${String(error)}`;
       this.log({ event: 'roles-unreadable', path: this.layout.roles, error: String(error), keeping: 'the defaults' });
       this.log({ event: 'aide-tools-migration', path: this.layout.roles, text: `roles.toml: the Aide tools migration waits for a valid file at the next hub start; the file was left unchanged: ${String(error)}` });
     }
@@ -172,7 +175,7 @@ export class ProjectConfiguration implements RolesSource {
       const edit = await setRoleLaunch(this.layout.roles, role, fields, resumed, authorize, this.env);
       // Publish the exact parsed settings immediately; running sessions retain their launch snapshots.
       // Leave the last-read file stamp intact so a concurrent external edit still triggers refresh.
-      resumed(() => { this.#roles = edit.roles; });
+      resumed(() => { this.#roles = edit.roles; this.#rolesError = null; });
       return edit.result;
     });
     this.#work = work.catch(() => {});
@@ -208,6 +211,7 @@ export class ProjectConfiguration implements RolesSource {
         if (this.#stopped) throw new Error('hub is stopping');
         this.apply(config);
         this.#config = config; this.#roles = roles; this.#stamp = stamp; this.#attemptStamp = stamp;
+        this.#rolesError = null;
         this.log({ event: 'roles-loaded', path: file, launch: Object.fromEntries([...roles].map(([role, definition]) => [role, definition.launch])) });
         if (configText !== null) this.#status = { loadedAt: new Date().toISOString(), sourceCommit };
         const applied = ['verification.prepare', 'verification.check', 'verification.test', 'verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.soak', 'verification.dev_t3_every', 'merge.batch_tiers', 'verification.droplet', 'keys.layouts', 'plan.approval', 'roles'];
@@ -218,7 +222,10 @@ export class ProjectConfiguration implements RolesSource {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       resumed(() => {
-        if (file === this.layout.roles) this.log({ event: 'roles-unreadable', path: file, error: message, keeping: 'the last good config and roles' });
+        if (file === this.layout.roles) {
+          this.#rolesError = `${file} is in error: ${message}`;
+          this.log({ event: 'roles-unreadable', path: file, error: message, keeping: 'the last good config and roles' });
+        }
         this.log({ event: 'config-reload-failed', file, error: message, keeping: 'the last good config and roles' });
       });
       throw new Error(`${file}: ${message}`);

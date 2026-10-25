@@ -11,3 +11,7 @@ valid links, empty directories and broken links. After deleting the inventory,
 observe the hub's `skills-loaded` empty-snapshot log receipt before requesting
 another role clause. Keep the final empty wire list and omitted clause/launch
 skill-line assertions; a filesystem edit alone does not prove publication.
+
+Policy diagnostic assertions include the supplied value and every accepted setting,
+including the empty harness default for approval/sandbox. Keep nonpolicy harness
+diagnostics byte-stable in the existing roles-editor regression.

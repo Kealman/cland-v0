@@ -52,6 +52,8 @@ export type RolesConfig = ReadonlyMap<string, RoleDefinition>;
 export type RolesSource = {
   get: () => RolesConfig;
   fresh?: (resumed?: Resumed) => Promise<void>;
+  /** A file error blocks new role launches, while existing users keep the last-good snapshot. */
+  launchError?: () => string | null;
   /** Cached usable-skill snapshot; building instructions performs no filesystem I/O. */
   availableSkills?: () => ReadonlySet<string>;
 };
@@ -74,9 +76,10 @@ const optString = (v: unknown, where: string): string | null => {
  */
 const DEFAULT_WRITABLE_ROOTS: Readonly<Record<string, string[]>> = { qa: ['.cland/qa'] };
 
-const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string, nameEmpty = false): T | null => {
+const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string, policyDiagnostic = false): T | null => {
   const s = optString(v, where);
-  if (s !== null && !values.includes(s as T)) throw new Error(`${where} must be one of ${nameEmpty ? '"", ' : ''}${values.join(', ')}`);
+  // Policy refusals name the harness-default empty value and supplied input; keep other diagnostics stable.
+  if (s !== null && !values.includes(s as T)) throw new Error(`${where} must be one of ${policyDiagnostic ? '"", ' : ''}${values.join(', ')}${policyDiagnostic ? `; got ${JSON.stringify(s)}` : ''}`);
   return s as T | null;
 };
 
@@ -87,7 +90,7 @@ const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string
  * nothing closed with `danger-full-access`.
  */
 const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox | null, role: string): Sandbox | null => {
-  const written = oneOf(launch.sandbox, SANDBOX_MODES, `${where}.sandbox`);
+  const written = oneOf(launch.sandbox, SANDBOX_MODES, `${where}.sandbox`, true);
   const roots = launch.writable_roots === undefined ? null : strings(launch.writable_roots, `${where}.writable_roots`);
   const network = oneOf(launch.network, SANDBOX_NETWORKS, `${where}.network`);
   const mode = launch.sandbox === undefined ? (base?.mode ?? null) : written;
@@ -113,7 +116,7 @@ export function roleLaunchPolicy(definition: RoleDefinition, harness: string): P
   const where = ROLE_NAMES.includes(role) ? role : `custom.${role}`;
   const builtin = BUILT_IN?.get(role)?.launch;
   return {
-    approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${where}.launch.approval`),
+    approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${where}.launch.approval`, true),
     sandbox: sandboxOf(launch, `${where}.launch`, builtin?.sandbox ?? null, role),
     permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${where}.launch.permissions`, true),
   };
@@ -194,7 +197,7 @@ function parseDefinitions(text: string, fallback: RolesConfig | null, allowedHar
         effort: optString(launch.effort, `${where}.launch.effort`),
         // The snapshot describes the role's default harness. Keep OpenCode's ignored inputs
         // above for other actual launch harnesses; `""` selects a harness's own defaults.
-        approval: nativePolicy ? null : launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${where}.launch.approval`),
+        approval: nativePolicy ? null : launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${where}.launch.approval`, true),
         sandbox: nativePolicy ? null : sandboxOf(launch, `${where}.launch`, builtin?.sandbox ?? null, role),
         permissions: nativePolicy ? null : launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${where}.launch.permissions`, true),
       },
@@ -235,6 +238,7 @@ export class RolesFile implements RolesSource {
   #running: Promise<boolean> | null = null;
   #stopped = false;
   #freshStamp: string | null = null;
+  #error: string | null = null;
 
   constructor(path: string, log: LogFn = () => {}, read: (path: string) => Promise<string> = path => readFile(path, 'utf8'), resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env) {
     this.#env = env;
@@ -269,6 +273,8 @@ export class RolesFile implements RolesSource {
   /** One immutable-in-use snapshot. A refresh publishes a replacement, never edits a check's map. */
   get(): RolesConfig { return this.#config; }
 
+  launchError(): string | null { return this.#error; }
+
   availableSkills(): ReadonlySet<string> { return this.#skills; }
 
   /** Rare launch/assignment paths see an edit immediately; hot permission checks never await disk. */
@@ -299,8 +305,11 @@ export class RolesFile implements RolesSource {
   }
 
   /** Synchronous failure handling; the caller owns the whole resumed continuation's scope. */
-  #unreadable(err: unknown): void {
+  #unreadable(err: unknown, parseFailure = false): void {
     if (this.#stopped) return;
+    this.#error = `${this.path} is in error: ${err instanceof Error ? err.message : String(err)}`;
+    // A recovered read must validate even identical bytes; only parse failures may cache bad text.
+    if (!parseFailure) { this.#text = null; this.#freshStamp = null; }
     const missing = (err as NodeJS.ErrnoException).code === 'ENOENT';
     if (missing && this.#missing) return;
     if (missing) { this.#missing = true; this.#text = null; }
@@ -328,12 +337,13 @@ export class RolesFile implements RolesSource {
         // Parse before publication. Parse errors and their immediate log share this one continuation.
         const config = parseRoles(text);
         this.#config = config;
+        this.#error = null;
         for (const definition of config.values()) for (const warning of definition.warnings ?? []) {
           this.#log({ event: 'roles-warning', path: this.path, role: definition.role, warning });
         }
         this.#log({ event: 'roles-loaded', path: this.path, launch: Object.fromEntries([...config].map(([r, d]) => [r, d.launch])) });
         return true;
-      } catch (err) { this.#unreadable(err); return false; }
+      } catch (err) { this.#unreadable(err, true); return false; }
     });
   }
 }

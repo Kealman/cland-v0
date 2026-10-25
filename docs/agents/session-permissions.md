@@ -20,6 +20,14 @@ Leads retain scoped launch/stop authority; listing needs no item claim.
 See the [permission table](../../hub/README.md#permissions) and the
 [regression seam](tests/hub-test-permissions.test.ts.md).
 
+A roles file in error retains its last good grants and role listings, but refuses
+new role launches, fresh resumes and relaunches until corrected. The refusal names
+the file and invalid key/value with its accepted settings; fix that key before
+retrying. Relaunch validates before stopping the old process. `approval` and
+`sandbox` errors follow the same rule as `permissions` (`""`, `auto`, `skip`).
+OpenCode ignores policy keys for its own launches; overrides to Codex or Claude
+Code validate them. See [role configuration](../../hub/README.md#roles).
+
 Codex command sandboxes are separate from these hub grants. Generated and
 built-in fallback sandboxes agree: Implementer/Aide workspace-write, Reviewer
 read-only, Coordinator/Lead/QA full access. T-1222 changes omitted sandbox keys

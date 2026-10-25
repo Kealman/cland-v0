@@ -163,6 +163,7 @@ test('unknown permission values name all three accepted settings', { timeout: 50
   assert.throws(() => parseRoles('[coordinator.launch]\nharness = "claude-code"\npermissions = "unguarded"\n'), error => {
     assert.ok(error instanceof Error);
     assert.match(error.message, /coordinator\.launch\.permissions/);
+    assert.match(error.message, /"unguarded"/);
     for (const value of ['""', 'auto', 'skip']) assert.ok(error.message.includes(value), error.message);
     return true;
   });

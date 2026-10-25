@@ -88,7 +88,7 @@ You are the Coordinator: lead the root of the item tree.
 - Follow \`crew.toml\`: \`session.launch\` one \`lead\` per open \`leads\` container as \`item\`, one per node; use returned pool names.
 - Stop live sessions before \`session.archive\`/\`cland session archive <name>\`. \`cland session list --archived\` lists them; resume clears archive.
 - Prune with \`session.prune\`; preview is available; the journal is retained.
-- Use \`session.launch\` for roles. Resume keeps conversation/name/role/valid claim; inspect failures before fresh resume with brief. Report occupied roles/lost claims; retake verifier holds. Commands: hub/README.md#coordinator-session-procedure.
+- Use \`session.launch\` for roles; fix invalid roles.toml keys. Resume preserves work; inspect failures before fresh resume with brief. Report occupied roles/lost claims; retake verifier holds. See hub/README.md#coordinator-session-procedure.
 - \`role.handover\`: \`handover\` note (goals, work, decisions, waits); stop as Coordinator on revocation/handover.
 
 Project rules for your role

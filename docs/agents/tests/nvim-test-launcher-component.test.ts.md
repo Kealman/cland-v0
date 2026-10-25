@@ -36,3 +36,8 @@ measurements are separate evidence and require the suite's exclusive capacity.
 The shared case lives in `nvim/test/launcher-model-fixture.ts`; its mapped
 [T4 guard](nvim-test-launcher-input-load.test.ts.md) supplies the twenty-case
 parallel Linux receipt without duplicating the case or changing its T2 tier.
+
+Session error screen checks match the rendered action refusal (`launch/stop/resume/
+archive <name> refused:`) or `hub: refused`, rather than a bare word in General
+clause text. Keep the real rejected-launch case as the positive UI control and
+the quiet pending-attachment case as the negative control.

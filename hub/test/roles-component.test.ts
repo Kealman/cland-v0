@@ -266,8 +266,8 @@ test('roles.toml: approval, sandbox, writable_roots and network of a launch are 
   assert.deepEqual(launch('sandbox = "workspace-write"\nwritable_roots = ["."]')?.sandbox?.writableRoots, ['.']);
   assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "workspace-write"\n').get('implementer')?.launch.sandbox?.writableRoots, implementerSandbox.writableRoots);
 
-  assert.throws(() => launch('approval = "always"'), /qa\.launch\.approval must be one of never, on-request, untrusted/);
-  assert.throws(() => launch('sandbox = "open"'), /qa\.launch\.sandbox must be one of read-only, workspace-write, danger-full-access/);
+  assert.throws(() => launch('approval = "always"'), { message: 'qa.launch.approval must be one of "", never, on-request, untrusted; got "always"' });
+  assert.throws(() => launch('sandbox = "open"'), { message: 'qa.launch.sandbox must be one of "", read-only, workspace-write, danger-full-access; got "open"' });
   assert.throws(() => launch('sandbox = "read-only"\nnetwork = "lan"'), /qa\.launch\.network must be one of none, local, full/);
   assert.throws(() => launch('sandbox = ""\nnetwork = "local"'), /qa\.launch\.writable_roots and qa\.launch\.network need qa\.launch\.sandbox/);
   assert.throws(() => launch('sandbox = "read-only"\nwritable_roots = ["."]'), /qa\.launch\.writable_roots needs sandbox = "workspace-write"/);

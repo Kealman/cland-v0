@@ -99,6 +99,11 @@ the report; it checks admission again. If the running hub still says "wait for
 it to finish", report the missing wake-up capability to the Coordinator and
 end the turn until its release notice or authorized restart.
 
+For roles-file launch refusals, fix the named key before retrying; running sessions
+keep their last-good grants. Prove launch/relaunch refusal before native stop and
+correction through both reader implementations at the fake-adapter seam in
+`docs/agents/tests/hub-test-roles-session-refresh.test.ts.md`.
+
 For role-clause skill inventory changes, use the production configuration and
 T-1220 synchronous-filesystem guard described in
 `docs/agents/tests/hub-test-session-credential-io.test.ts.md`; snapshot refresh

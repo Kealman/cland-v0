@@ -13,3 +13,7 @@ Codex/Claude role policy. T-1222 expects workspace-write and narrow roots for
 Implementer, workspace-write for Aide, explicit full-access Coordinator/Lead,
 read-only Reviewer and full-access QA. Keep explicit empty-policy overrides and
 the OpenCode-to-other-harness fallback checks.
+
+Unknown policy diagnostics retain the full role/key and supplied value. Permissions
+name every supported setting (`""`, `auto`, `skip`); stale-file admission and
+recovery are covered by [the fake-adapter seam](hub-test-roles-session-refresh.test.ts.md).

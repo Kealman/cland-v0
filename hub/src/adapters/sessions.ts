@@ -194,6 +194,7 @@ export class Sessions {
         return await this.#restartPool(candidate, request, role, cwd, brief, resumed, authorize);
       return resumed(() => {
         authorize();
+        this.#checkRolesLaunch(role);
         const current = this.#table.bySessionId(candidate.sessionId);
         if (!current || !this.retainedPool(role) || !this.#reuseEligible(current, role, cwd)) throw new Error('idle pool member changed during admission; retry');
         this.#core.checkAccountLimit(current.account ?? `default:${current.harness}`);
@@ -213,6 +214,7 @@ export class Sessions {
     const info = await stat(cwd).catch(() => null);
     const { current, resumeConversation } = resumed(() => {
       authorize();
+      this.#checkRolesLaunch(role);
       if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
       const current = this.#table.bySessionId(candidate.sessionId);
       if (!current || !this.#implementerPool(role) || !this.#reuseEligible(current, role, current.cwd)) throw new Error('idle pool member changed during admission; retry');
@@ -224,6 +226,7 @@ export class Sessions {
     });
     const handoffAuthorized = () => {
       authorize();
+      this.#checkRolesLaunch(role);
       this.#core.checkAccountLimit(current.account ?? `default:${current.harness}`);
       if (!this.#implementerPool(role) || this.retainedPool(role) !== (resumeConversation !== undefined)) throw new Error('crew policy changed during pool handoff; retry');
     };
@@ -928,9 +931,16 @@ export class Sessions {
 
   // ---------------------------------------------------------------- launch, attach, stop, resume
 
+  #checkRolesLaunch(role: string | null): void {
+    if (role === null) return;
+    const error = this.#core.roles?.launchError?.();
+    if (error) throw new Error(`cannot launch role "${role}": ${error}`);
+  }
+
   /** The role's approval and sandbox (roles.toml as it is now), the writable roots resolved against the project
    *  root. Resolve against the actual harness, which can differ from the role's default. */
-  #launchPolicy(role: string | null, harness: string): LaunchPolicy {
+  #launchPolicy(role: string | null, harness: string, launching = true): LaunchPolicy {
+    if (launching) this.#checkRolesLaunch(role);
     const definition = role !== null ? this.#core.roles?.get().get(role) : null;
     if (!definition) return {};
     const defaults = roleLaunchPolicy(definition, harness);
@@ -964,6 +974,7 @@ export class Sessions {
     if (!request.item || (!this.#implementerPool(role) && !this.retainedPool(role)))
       return resumed(() => this.#launchNew(request, role, resumed, authorize));
     if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
+    resumed(() => { authorize(); this.#checkRolesLaunch(role); });
     const effective = await this.#accountRequest(request, role, resumed);
     resumed(() => this.#core.checkAccountLimit(effective.resolvedAccount.account ?? `default:${effective.harness}`));
     const reused = await resumed(() => this.#reuse(effective, role, resumed, authorize));
@@ -1017,6 +1028,7 @@ export class Sessions {
             if (current?.status === 'running' || (existing && current?.sessionId !== existing.sessionId)) throw new Error(`session "${request.name}" changed while waiting for its lifecycle slot`);
           }
           if (this.#core.roles?.fresh) { authorize(); admission?.validate(); }
+          this.#checkRolesLaunch(role);
           const cwd = resolve(this.#root, request.cwd ?? '.');
           return { cwd, info: stat(cwd) };
         } catch (err) { abort(); throw err; }
@@ -1030,6 +1042,7 @@ export class Sessions {
         // Re-read the grant and exclusivity after stat, with refusal and rollback in this same timed stretch.
         try {
           authorize();
+          this.#checkRolesLaunch(role);
           admission?.validate();
           this.#checkCrew(request.name, role);
           if (request.role == null && this.#core.store.roleOf(request.name) !== role) throw new Error(`session "${request.name}" changed role while launching; retry the launch`);
@@ -1039,7 +1052,7 @@ export class Sessions {
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (this.#env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); }, resumeConversation, retainedId);
+          return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkRolesLaunch(role); this.#checkCrew(request.name, role); }, resumeConversation, retainedId);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -1360,6 +1373,11 @@ export class Sessions {
     const adapter = this.adapter(p.harness);
     if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
     const desiredRole = p.role;
+    if (relaunch) {
+      this.#checkRolesLaunch(desiredRole);
+      // Validate deferred OpenCode-default policy overrides before stopping the old process too.
+      this.#launchPolicy(desiredRole, p.harness);
+    }
     if (relaunch && !p.harnessSessionId) return { found: false, reason: 'no harness conversation id recorded', process: this.view(p), ...this.#resumeWork(p), fresh: { brief: p.launchBrief ?? null } };
     let reservation: { previous: string | null; previousSessionId: string | null } | null = null;
     if (relaunch && p.status !== 'running' && p.role !== null && this.#core.roles) {
@@ -1380,7 +1398,10 @@ export class Sessions {
       const current = this.#table.bySessionId(p.sessionId);
       if (!current) throw new Error(`session "${p.name}" was replaced while resuming`);
       p = current;
-      if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
+      if (relaunch) {
+        this.#checkRolesLaunch(p.role);
+        this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
+      }
     };
     const launchToken = relaunch ? randomUUID() : this.#core.store.sessionCredential(p.sessionId) ?? undefined;
     const provision = async () => {
@@ -1408,14 +1429,14 @@ export class Sessions {
         resuming = resumed(() => {
           authorizeResume();
           nativeEntered = true;
-          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness) });
+          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness, relaunch) });
         });
       } else {
         await provision();
         resuming = resumed(() => {
           authorizeResume();
           nativeEntered = true;
-          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness) });
+          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness, relaunch) });
         });
       }
       r = await resuming;

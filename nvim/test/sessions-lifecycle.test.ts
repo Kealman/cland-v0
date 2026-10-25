@@ -90,7 +90,7 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
     await focusPanel(c);
     await c.input(`gg/^ . ${name} \\[<CR>`);
     const s = await c.waitScreen(x => x.includes(model!) && /idle|busy/.test(x), `${name} selected with model`, 30000);
-    assert.doesNotMatch(s, /refused/);
+    assert.doesNotMatch(s, /\b(?:launch|stop|resume|archive) \S+ refused:|\bhub: refused\b/);
   }
   const launchedLogs = await ui.request({ type: 'hub.status', flushLogs: true });
   assert.equal(launchedLogs.ok, true, launchedLogs.error);

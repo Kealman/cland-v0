@@ -73,7 +73,7 @@ test('CLAND_OPEN_SESSION waits quietly for a later session list and opens only o
     s.attach = { ...s.attach, 'aide-1': aideAttach };
   }, { CLAND_OPEN_SESSION: 'aide-1' });
   assert.equal((await requestsOf(c, 'session.attach')).length, 0, 'an unknown name does not attach');
-  assert.doesNotMatch((await c.screen()).join('\n'), /cannot attach|refused|CLAND_OPEN_SESSION|Press ENTER/);
+  assert.doesNotMatch((await c.screen()).join('\n'), /cannot attach|\b(?:launch|stop|resume|archive) \S+ refused:|\bhub: refused\b|CLAND_OPEN_SESSION|Press ENTER/);
   await c.control({ set: { processes: [aide] } });
   await c.lua("require('cland').refresh_sessions()");
   await c.waitScreen(s => centreOf(s).includes('open-session=unset') && statusLine(s).includes('TERMINAL  aide-1'), 'the Aide after it appears in a later list');
@@ -267,6 +267,7 @@ test('the launcher shows what the hub refuses in the form and the panel, never a
   await c.waitScreen((x) => x.includes('launch a session'), 'the launcher form');
   await c.input('coord-2<Tab>coordinator<CR>');
   const s = await c.waitScreen((x) => x.includes('launch coord-2 refused: role'), 'the refusal in the panel');
+  assert.match(s, /\b(?:launch|stop|resume|archive) \S+ refused:|\bhub: refused\b/, 'the real hub refusal matches the session error check');
   assert.match(s, /launch a session/, 'the form stays open to fix it');
   assert.match(s, /role "coordinator" is held by coord-1/);
   assert.doesNotMatch(s, /Press ENTER/);
