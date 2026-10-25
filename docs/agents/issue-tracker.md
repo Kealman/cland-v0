@@ -233,9 +233,11 @@ Preserve `.cland/publish.tmp` after a failed push reply or follow-up. Repair the
 Task preparation shares the root dependency install through a `node_modules`
 link when the task worktree has none. Claim/launch replies preserve existing
 installs and report stale ones with their worktree path and directory/link kind.
-After dependency-changing merges, queue entries, landing results and the landing
-comment name the changed manifests/lockfiles and required `npm install` in the
-root. The Coordinator stops shared readers before updating that install; the
+Queue entries, landing results and the landing comment require a root
+`npm install` for lockfile changes or manifest changes to `dependencies`,
+`devDependencies`, `optionalDependencies`, `peerDependencies`, `overrides` or
+`workspaces`. Scripts/version/metadata-only changes omit the notice; missing or
+malformed manifests retain it conservatively. The Coordinator stops shared readers before updating that install; the
 merge gate and task claim never invoke an installer.
 
 ## Homebrew release follow-up

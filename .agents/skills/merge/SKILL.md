@@ -35,8 +35,11 @@ For a recoverable landing block, resolve the named cause and let the queue retry
 
 Results reach Agents, the requester and each item lead. The supervising Lead or Coordinator handles queue refusals below; the item's Implementer owns any fix and new review/verify cycle. When the queue is disabled, or changes stay wholly in the documentation/tracker allowlist below, the gate lands immediately with its required verdicts. The allowlist does not include skills or role configuration.
 
-Package manifest/lockfile changes add a required root `npm install` notice to
-queue entries, landing results and the durable landing comment; batch landing
+Lockfile changes or manifest changes to `dependencies`, `devDependencies`,
+`optionalDependencies`, `peerDependencies`, `overrides` or `workspaces` add a
+required root `npm install` notice to queue entries, landing results and the
+durable landing comment. Scripts/version/metadata-only changes omit it; missing
+or malformed manifests retain it conservatively. Batch landing
 sends it to the enqueuer and item lead. Stop shared readers before updating the
 root install. The merge gate never runs npm or replaces shared `node_modules`.
 

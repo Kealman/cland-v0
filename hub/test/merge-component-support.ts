@@ -22,6 +22,7 @@ const sha = (n: number) => n.toString(16).padStart(40, '0');
 export class MergeFacts {
   readonly heads = new Map([['dev', sha(1)]]);
   readonly files = new Map<string, string>();
+  readonly manifests = new Map<string, string>();
   readonly landings: Array<{ commit: string; parent: string; message: string; files: string[] }> = [];
   readonly worktrees = new Set<string>();
   cleanupFailure: string | undefined;
@@ -38,6 +39,11 @@ export class MergeFacts {
     if (args[0] === 'diff') return 'task patch';
     if (args[0] === 'patch-id') return 'stable-patch';
     if (args[0] === 'symbolic-ref') return 'dev';
+    if (args[0] === 'show' && args.at(-1)!.includes(':')) {
+      const [revision, path] = args.at(-1)!.split(':');
+      const commit = this.landings.find(landing => `${landing.commit}^` === revision)?.parent ?? revision;
+      return this.manifests.get(`${commit}:${path}`) ?? null;
+    }
     if (args[0] === 'show') return this.landings.find(l => l.commit === args.at(-1))?.message ?? null;
     if (args[0] === 'log') {
       if (args.includes('--raw')) return this.landings.map(l => `${l.commit}\0${l.message.split('\n').filter(line => line.startsWith('Item: ')).map(line => line.slice(6)).join('\n')}\0\0${l.files.map(file => `\n:100644 100644 ${'a'.repeat(40)} ${'b'.repeat(40)} M\0${file}\0`).join('')}`).join('\0');
@@ -66,6 +72,10 @@ export class MergeFacts {
     assert.equal(latest, text);
     const commit = sha(100 + this.landings.length);
     prepared?.({ commit, base: 'dev', tip });
+    for (const file of files) {
+      const content = this.manifests.get(`${tip}:${file}`);
+      if (content !== undefined) this.manifests.set(`${commit}:${file}`, content);
+    }
     this.landings.push({ commit, parent, message: text, files });
     this.heads.set('dev', commit);
     return { commit, base: 'dev' };

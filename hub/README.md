@@ -2026,9 +2026,13 @@ A missing root install is reported for Node projects. Preparation never installs
 
 ### The merge gate
 
-Changes to `package.json` or `package-lock.json` (including workspace manifests)
-produce an explicit required root `npm install` notice; landing never runs npm or
-replaces the shared dependency tree. Stop shared readers before the Coordinator
+A changed `package-lock.json`, or a `package.json` change to `dependencies`,
+`devDependencies`, `optionalDependencies`, `peerDependencies`, `overrides` or
+`workspaces` (including workspace manifests), produces a required root
+`npm install` notice. Scripts, version and other metadata changes alone omit it.
+The queue compares manifests at the candidate's merge base and head; landing
+compares the landed commit with its parent. Missing or malformed manifests keep
+the warning conservatively. Landing never runs npm or replaces the shared dependency tree. Stop shared readers before the Coordinator
 updates that install. Queue entries and landing results add optional
 `dependencies: {files, command: "npm install", cwd}`; plain `cland merge queue`
 and `cland merge` print it, the durable landing comment retains it, and batch

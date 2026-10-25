@@ -37,6 +37,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
   const tips = manualTips();
   const heads = new Map([['dev', 'a'.repeat(40)], ['t/parser', 'b'.repeat(40)]]);
   const surfaces = new Map<string, string[]>();
+  const manifests = new Map<string, string>();
   const history = { read: undefined as (() => string | null) | undefined };
   const git: Git = async (args, input) => {
     if (args[0] === 'for-each-ref') return [...heads].map(([branch, head]) => `${head} refs/heads/${branch}`).join('\n');
@@ -47,6 +48,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
     }
     if (args[0] === 'merge-base') return 'a'.repeat(40);
     if (args[0] === 'diff') return args.includes('--name-only') ? files.join('\0') + '\0' : 'parser patch';
+    if (args[0] === 'show') return manifests.get(args.at(-1)!) ?? null;
     if (args[0] === 'patch-id') return 'stable-patch';
     if (args[0] === 'log') return args.includes('--raw') && history.read ? history.read() : [...surfaces].map(([item, paths]) => `${'c'.repeat(40)}\0${item}\0\0${paths.map(path => `\n:100644 100644 ${'a'.repeat(40)} ${'b'.repeat(40)} M\0${path}\0`).join('')}`).join('\0');
     return null;
@@ -63,7 +65,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
   const { item } = await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Parser', size: 'M', branch: 't/parser' });
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'review-1' })).ok, true);
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
-  return { root, ui, dispatcher, item, clock, heads, surfaces, history, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
+  return { root, ui, dispatcher, item, clock, heads, surfaces, manifests, history, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
 }
 
 function demoLease(clock: FakeClock, epic: string): DropletLease {
@@ -506,4 +508,18 @@ test('the production batch Git adapter preserves whitespace in unknown paths', a
   }
   path = 'docs/input.md';
   assert.equal(await batchRebuildReason('/isolated', candidate('tested'), candidate('current')), null);
+});
+
+test('scripts-only manifest changes omit the install warning from queue frames and CLI output', async t => {
+  const f = await fixture(t, {}, ['package.json']);
+  f.manifests.set(`${f.heads.get('dev')}:package.json`, JSON.stringify({ scripts: { test: 'old' } }));
+  f.manifests.set(`${f.heads.get('t/parser')}:package.json`, JSON.stringify({ scripts: { test: 'new' } }));
+  await value(f.ui, { type: 'merge', item: f.item.id });
+  const queue = await value<{ entries: Array<{ item: string; dependencies?: unknown }> }>(f.ui, { type: 'merge.queue' });
+  assert.equal(queue.entries[0]?.item, f.item.id);
+  assert.equal(queue.entries[0]?.dependencies, undefined);
+  const shown = await cland(f.root, 'merge', 'queue');
+  assert.equal(shown.code, 0, shown.stderr);
+  assert.ok(shown.stdout.includes(f.item.id));
+  assert.doesNotMatch(shown.stdout, /npm install|dependencies out of date/);
 });

@@ -240,3 +240,31 @@ test('component fixture drains cancelled socket startup before removing its root
   assert.equal(inspected, true);
   assert.equal(existsSync(root), false);
 });
+
+for (const change of ['scripts', 'dependencies'] as const) test(`landing: ${change} change reports the correct install requirement`, async t => {
+  const f = await componentProject(t);
+  const work = await f.ticket(undefined, 'package.json');
+  const before = { dependencies: { library: '1' }, scripts: { test: 'old' } };
+  const after = change === 'scripts' ? { ...before, scripts: { test: 'new' } } : { ...before, dependencies: { library: '2' } };
+  f.facts.manifests.set(`${f.facts.heads.get('dev')}:package.json`, JSON.stringify(before));
+  f.facts.manifests.set(`${f.facts.heads.get(work.branch!)}:package.json`, JSON.stringify(after));
+  await review(f.rev, work.id);
+  const result = await f.merges.merge(work.id, human, work => work());
+  assert.ok('commit' in result);
+  assert.deepEqual(result.dependencies, change === 'scripts' ? undefined : { files: ['package.json'], command: 'npm install', cwd: f.root });
+  const record = f.records.find(record => record.event === 'task-merged')!;
+  assert.ok(record);
+  const notice = lifecycleNotice(record, name => name)!;
+  const comment = f.tracker.view(work.id).comments.at(-1)?.text ?? '';
+  if (change === 'scripts') {
+    assert.doesNotMatch(notice.text, /npm install/);
+    assert.doesNotMatch(comment, /npm install/);
+  } else {
+    assert.match(notice.text, /run npm install in root/);
+    assert.match(comment, /run npm install in root/);
+  }
+  const resumed = await f.merges.merge(work.id, human, work => work());
+  assert.ok('commit' in resumed);
+  assert.equal(resumed.commit, result.commit);
+  assert.deepEqual(resumed.dependencies, result.dependencies);
+});

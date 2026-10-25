@@ -1,6 +1,6 @@
-import { dependencyInstall } from '../dependency-install.ts';
+import { dependencyInstallBetween } from '../dependency-install.ts';
 // Durable FIFO requests pin a reviewed head; execution belongs to the merge batch runner.
-import type { MergeQueueEntry } from '../protocol.ts';
+import type { DependencyInstall, MergeQueueEntry } from '../protocol.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { branchTips, gitIn, resolveCommit, type Git } from '../tracker/verdict-git.ts';
 import { MergeError } from '../merge.ts';
@@ -101,17 +101,20 @@ export class MergeQueue {
     });
   }
 
-  async candidate(view: ItemView, resumed: Resumed): Promise<{ head: string; base: string; baseTip: string; files: string[] }> {
+  async candidate(view: ItemView, resumed: Resumed): Promise<{ head: string; base: string; baseTip: string; files: string[]; dependencies?: DependencyInstall }> {
     const base = view.verdictBase;
     if (!base || !view.branch || ['dev', 'main', base].includes(view.branch)) throw new MergeError('merge-branch', 'no task branch or integration base');
     const head = await resolveCommit(this.git, `refs/heads/${view.branch}`);
     const baseTip = await resolveCommit(this.git, `refs/heads/${base}`);
     if (!head || !baseTip) throw new MergeError('merge-branch', `${view.id}: branch or base is missing`);
     const paths = await this.git(['diff', '--no-renames', '--name-only', '-z', `${baseTip}...${head}`, '--']);
-    return resumed(() => {
-      if (paths === null) throw new MergeError('merge-git', 'cannot read task paths');
-      return { head, base, baseTip, files: paths.split('\0').filter(Boolean) };
-    });
+    if (paths === null) throw new MergeError('merge-git', 'cannot read task paths');
+    const files = paths.split('\0').filter(Boolean);
+    // Match the triple-dot path diff: unrelated changes on dev do not belong to this candidate.
+    const ancestor = files.some(file => /(^|\/)package\.json$/.test(file)) ? await this.git(['merge-base', baseTip, head]) : null;
+    const dependencies = await dependencyInstallBetween(this.tracker.root, files, { before: ancestor?.trim() ?? baseTip, after: head },
+      (revision, path) => ancestor === null ? Promise.resolve(null) : this.git(['show', `${revision}:${path}`]));
+    return resumed(() => ({ head, base, baseTip, files, ...(dependencies ? { dependencies } : {}) }));
   }
 
   async demoWarnings(files: readonly string[], dev: string, resumed: Resumed): Promise<DemoWarning[]> {
@@ -140,9 +143,8 @@ export class MergeQueue {
     return warnings;
   }
 
-  enqueue(view: ItemView, head: string, base: string, actor: Actor, files: readonly string[] = [], warnings: DemoWarning[] = []): { item: string; queued: number } {
+  enqueue(view: ItemView, head: string, base: string, actor: Actor, dependencies: DependencyInstall | undefined = undefined, warnings: DemoWarning[] = []): { item: string; queued: number } {
     this.reconcile();
-    const dependencies = dependencyInstall(this.tracker.root, files);
     const queued = this.store.enqueueMerge({ ...(dependencies ? { dependencies } : {}), item: view.id, branch: view.branch!, head, verdictBase: base, enqueued: this.clock.now().toISOString(), by: actor });
     if (warnings.length) this.warn(view, warnings);
     return { item: view.id, queued };

@@ -1,4 +1,4 @@
-import { dependencyInstall, dependencyInstallText } from '../dependency-install.ts';
+import { dependencyInstallBetween, dependencyInstallText } from '../dependency-install.ts';
 import type { DependencyInstall } from '../protocol.ts';
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
 // the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
@@ -190,7 +190,7 @@ export class TaskMerges {
                 this.#message(finalView);
                 if (!this.queue?.enabled()) throw new MergeError('merge-changed', 'merge queue setting changed during enqueue; try again');
                 if (finalView.branch !== checked.branch || this.tracker.freshnessTip(finalView.branch) !== candidate.head || this.tracker.freshnessTip(candidate.base) !== candidate.baseTip || finalView.verdictBase !== candidate.base) throw new MergeError('merge-changed', `${id}: task branch changed during enqueue; try again`);
-                queued = this.queue!.enqueue(finalView, candidate.head, candidate.base, actor, candidate.files, warnings);
+                queued = this.queue!.enqueue(finalView, candidate.head, candidate.base, actor, candidate.dependencies, warnings);
               });
               return;
             }
@@ -254,7 +254,9 @@ export class TaskMerges {
       const result: LandedResult = { item: id, ...state.landed!, cleanup: 'pending' };
       try {
         const files = await this.#git(this.tracker.root, ['diff-tree', '--no-commit-id', '--name-only', '--no-renames', '-r', '-z', result.commit, '--'], undefined, undefined, this.#env);
-        const dependencies = dependencyInstall(this.tracker.root, files.split('\0').filter(Boolean));
+        const dependencies = await dependencyInstallBetween(this.tracker.root, files.split('\0').filter(Boolean),
+          { before: `${result.commit}^`, after: result.commit },
+          (revision, path) => this.#git(this.tracker.root, ['show', `${revision}:${path}`], undefined, undefined, this.#env));
         if (dependencies) result.dependencies = dependencies;
       } catch (err) { return this.#incomplete(result, 'dependency report', err instanceof Error ? err.message : String(err), resumed); }
       try {

@@ -17,7 +17,13 @@ async function fixture(t: TestContext) {
   const listing = () => [...heads].map(([branch, head]) => `${head} refs/heads/${branch}`).join('\n');
   let read: () => string | null = listing;
   let absent: ((input: string) => string | null) | undefined;
+  const manifests = new Map<string, string>();
+  const ancestor = heads.get('dev')!;
   const git: Git = async (args, input) => {
+    if (args[0] === 'rev-parse') return heads.get(args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '')) ?? null;
+    if (args[0] === 'merge-base') return ancestor;
+    if (args[0] === 'diff') return 'package.json\0';
+    if (args[0] === 'show') return manifests.get(args.at(-1)!) ?? null;
     if (args[0] === 'for-each-ref') return read();
     if (args[0] === 'show-ref' && args.includes('--exclude-existing=refs/heads/')) {
       return absent ? absent(input!) : input!.trim().split('\n').filter(ref => !heads.has(ref.slice('refs/heads/'.length))).join('\n');
@@ -34,7 +40,7 @@ async function fixture(t: TestContext) {
     const item = await tracker.create(actor, { title: `Queued ${i}`, branch, size: 'S' });
     store.enqueueMerge({ item: item.id, branch, head: heads.get(branch)!, verdictBase: 'dev', enqueued: clock.now().toISOString(), by: actor });
   }
-  return { queue, tracker, heads, drops, listing, read(fn: typeof read) { read = fn; }, absent(fn: NonNullable<typeof absent>) { absent = fn; } };
+  return { root, actor, manifests, queue, tracker, heads, drops, listing, read(fn: typeof read) { read = fn; }, absent(fn: NonNullable<typeof absent>) { absent = fn; } };
 }
 
 test('malformed branch output cannot authorize drops even for parsed head changes', async t => {
@@ -115,4 +121,21 @@ test('partial tracker notifications cannot bypass snapshot validation', async t 
   await f.tracker.refreshFreshness();
   assert.deepEqual(await f.queue.refresh(), expected);
   assert.deepEqual(f.drops, []);
+});
+
+for (const change of ['scripts', 'dependencies'] as const) test(`queue candidate: ${change} change has the correct install notice`, async t => {
+  const f = await fixture(t);
+  const before = { dependencies: { library: '1' }, scripts: { test: 'old' } };
+  const after = change === 'scripts' ? { ...before, scripts: { test: 'new' } } : { ...before, dependencies: { library: '2' } };
+  f.manifests.set(`${f.heads.get('dev')}:package.json`, JSON.stringify(before));
+  f.manifests.set(`${f.heads.get('t/1')}:package.json`, JSON.stringify(after));
+  // Dev's independent dependency update must not be attributed to this candidate.
+  f.heads.set('dev', 'c'.repeat(40));
+  f.manifests.set(`${f.heads.get('dev')}:package.json`, JSON.stringify({ ...before, dependencies: { library: '3' } }));
+  const view = { ...f.tracker.view('T-1'), verdictBase: 'dev' };
+  const candidate = await f.queue.candidate(view, work => work());
+  f.queue.cancel(view.id);
+  f.queue.enqueue(view, candidate.head, candidate.base, f.actor, candidate.dependencies);
+  assert.deepEqual(f.queue.entries().find(entry => entry.item === view.id)?.dependencies,
+    change === 'scripts' ? undefined : { files: ['package.json'], command: 'npm install', cwd: f.root });
 });
