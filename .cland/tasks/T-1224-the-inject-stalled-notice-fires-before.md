@@ -3,17 +3,17 @@ id: T-1224
 kind: task
 title: The inject-stalled notice fires before Codex app-servers finish reconnecting after a hub restart
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-1280
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T10:13:49.994Z
-updated: 2026-10-24T10:13:49.994Z
+updated: 2026-10-25T09:53:48.520Z
 ---
 
 ## Summary

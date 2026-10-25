@@ -3,17 +3,17 @@ id: T-1276
 kind: task
 title: A task landed through cland publish never counts as merged, so its plan stage cannot close
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1281
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:21:11.429Z
-updated: 2026-10-25T09:21:11.429Z
+updated: 2026-10-25T09:53:50.830Z
 ---
 
 ## Summary

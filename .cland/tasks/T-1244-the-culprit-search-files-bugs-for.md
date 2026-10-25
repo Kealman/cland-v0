@@ -3,18 +3,18 @@ id: T-1244
 kind: task
 title: The culprit search files bugs for regressions dev has already fixed
 state: open
-status: backlog
-size: S
+status: planned
+size: M
 labels:
   - bug
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1281
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T13:14:28.519Z
-updated: 2026-10-24T21:11:16.633Z
+updated: 2026-10-25T09:53:51.598Z
 ---
 
 ## Summary

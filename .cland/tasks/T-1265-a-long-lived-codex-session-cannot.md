@@ -3,17 +3,17 @@ id: T-1265
 kind: task
 title: 'A long-lived Codex session cannot reattach after a hub restart: app-server thread read fails with "Max payload size exceeded"'
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1280
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T22:20:46.414Z
-updated: 2026-10-24T22:20:46.414Z
+updated: 2026-10-25T09:53:48.940Z
 ---
 
 ## Summary

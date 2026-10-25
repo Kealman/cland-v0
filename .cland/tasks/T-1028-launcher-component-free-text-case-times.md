@@ -3,19 +3,19 @@ id: T-1028
 kind: task
 title: launcher-component free-text case times out waiting for Insert mode under load-gate pressure
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1282
 blocked_by: []
 regression_of: T-882
 found_by: cover
 topic: null
 branch: null
 created: 2026-10-20T20:13:05.016Z
-updated: 2026-10-20T20:19:02.324Z
+updated: 2026-10-25T09:53:53.059Z
 ---
 
 ## Summary

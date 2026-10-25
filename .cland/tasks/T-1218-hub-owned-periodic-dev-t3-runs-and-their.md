@@ -3,17 +3,17 @@ id: T-1218
 kind: task
 title: Hub-owned periodic dev T3 runs and their artifacts are attributed to the human
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1281
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T09:20:07.524Z
-updated: 2026-10-24T09:20:07.524Z
+updated: 2026-10-25T09:53:50.943Z
 ---
 
 ## Summary

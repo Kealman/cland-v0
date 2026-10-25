@@ -3,17 +3,17 @@ id: T-521
 kind: task
 title: Concurrent artifact.create can fail with 'artifact reservation moved' (id allocated twice)
 state: open
-status: backlog
-size: S
+status: planned
+size: XS
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1281
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T18:13:01.794Z
-updated: 2026-10-15T18:13:01.794Z
+updated: 2026-10-25T09:53:51.094Z
 ---
 
 ## Summary

@@ -3,17 +3,17 @@ id: T-1260
 kind: task
 title: Sessions blocked by cover-quiet poll the verify queue with sleep loops, because nothing wakes them when the local slot frees
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-216
+parent: E-1283
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T19:41:53.006Z
-updated: 2026-10-24T19:41:53.006Z
+updated: 2026-10-25T09:53:55.914Z
 ---
 
 ## Summary

@@ -3,17 +3,17 @@ id: T-1251
 kind: task
 title: The merge queue demands a root npm install for a scripts-only package.json change
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1281
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T14:17:14.259Z
-updated: 2026-10-24T14:17:14.259Z
+updated: 2026-10-25T09:53:51.706Z
 ---
 
 ## Summary

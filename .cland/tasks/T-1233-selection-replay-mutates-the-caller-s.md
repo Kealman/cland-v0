@@ -3,17 +3,17 @@ id: T-1233
 kind: task
 title: Selection replay mutates the caller's repository with an unsealed Git environment
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-216
+parent: E-1282
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T11:03:29.065Z
-updated: 2026-10-24T11:03:29.065Z
+updated: 2026-10-25T09:53:53.867Z
 ---
 
 ## Summary

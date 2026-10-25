@@ -3,17 +3,17 @@ id: T-1237
 kind: task
 title: The T0 child-environment guard does not cover nvim/test
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-216
+parent: E-1282
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T11:55:41.896Z
-updated: 2026-10-24T11:55:41.896Z
+updated: 2026-10-25T09:53:54.354Z
 ---
 
 ## Summary

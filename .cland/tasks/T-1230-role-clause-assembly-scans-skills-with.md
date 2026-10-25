@@ -3,19 +3,19 @@ id: T-1230
 kind: task
 title: Role clause assembly scans skills with readdirSync on every hello
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - bug
   - needs-triage
   - qa-found
 assignee: null
-parent: C-325
+parent: E-1280
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T10:46:04.079Z
-updated: 2026-10-24T10:46:04.079Z
+updated: 2026-10-25T09:53:49.305Z
 ---
 
 ## Summary

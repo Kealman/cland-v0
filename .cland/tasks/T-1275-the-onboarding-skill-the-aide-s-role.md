@@ -3,17 +3,17 @@ id: T-1275
 kind: task
 title: The onboarding skill, the Aide's role clause and hub/README still have the Aide commit at the root, which the default workspace-write Codex Aide cannot do
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1283
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T08:28:46.609Z
-updated: 2026-10-25T08:28:46.609Z
+updated: 2026-10-25T09:53:55.814Z
 ---
 
 ## Summary

@@ -3,17 +3,18 @@ id: T-323
 kind: task
 title: Plan navigation issued before the initial task and ladder snapshots is discarded instead of deferred
 state: open
-status: backlog
+status: planned
+size: M
 labels:
   - needs-triage
   - nvim
 assignee: null
-parent: C-216
+parent: E-1283
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T10:43:14.266Z
-updated: 2026-10-13T19:40:55.933Z
+updated: 2026-10-25T09:53:56.491Z
 ---
 
 ## Summary

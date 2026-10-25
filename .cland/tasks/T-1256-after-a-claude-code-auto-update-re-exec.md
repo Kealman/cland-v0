@@ -3,17 +3,17 @@ id: T-1256
 kind: task
 title: After a Claude Code auto-update re-exec the coordinator's bridge reconnects but its deliveries are acked and never run, with no alarm for an hour
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1280
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T18:39:16.111Z
-updated: 2026-10-24T18:39:16.111Z
+updated: 2026-10-25T09:53:48.376Z
 ---
 
 ## Summary

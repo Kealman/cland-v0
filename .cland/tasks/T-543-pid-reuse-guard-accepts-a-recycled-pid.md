@@ -3,19 +3,19 @@ id: T-543
 kind: task
 title: PID-reuse guard accepts a recycled PID that started within the same ps second
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - bug
   - hub
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1284
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-15T22:29:59.157Z
+updated: 2026-10-25T09:53:57.611Z
 ---
 
 ## Summary

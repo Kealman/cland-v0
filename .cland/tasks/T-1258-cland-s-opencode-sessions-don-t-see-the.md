@@ -3,17 +3,17 @@ id: T-1258
 kind: task
 title: cland's OpenCode sessions don't see the user's OpenCode Console login, so paid Go and Zen models are unavailable
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1280
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T19:27:25.100Z
-updated: 2026-10-24T19:28:40.744Z
+updated: 2026-10-25T09:53:49.416Z
 ---
 
 ## Summary

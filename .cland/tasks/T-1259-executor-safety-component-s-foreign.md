@@ -3,17 +3,17 @@ id: T-1259
 kind: task
 title: executor-safety-component's foreign-lease case misses its 15 s completion window under macOS cover load
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1282
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T19:31:37.373Z
-updated: 2026-10-24T19:31:37.373Z
+updated: 2026-10-25T09:53:53.282Z
 ---
 
 ## Summary

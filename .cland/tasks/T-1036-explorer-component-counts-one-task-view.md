@@ -3,18 +3,18 @@ id: T-1036
 kind: task
 title: explorer-component counts one task.view for an unselected task under load
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
   - flaky
 assignee: null
-parent: C-325
+parent: E-1282
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-21T06:00:35.930Z
-updated: 2026-10-21T06:00:35.930Z
+updated: 2026-10-25T09:53:53.167Z
 ---
 
 ## Summary

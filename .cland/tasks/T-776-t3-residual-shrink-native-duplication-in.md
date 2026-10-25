@@ -2,8 +2,8 @@
 id: T-776
 kind: task
 title: "T3 residual: shrink native duplication in suites/executor and adapters to bring T3 from about 2110 s to 1800 s"
-state: open
-status: backlog
+state: closed
+status: done
 size: M
 labels:
   - verification
@@ -16,7 +16,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T04:49:40.116Z
-updated: 2026-10-18T04:49:40.116Z
+updated: 2026-10-25T09:53:37.436Z
+closed: 2026-10-25T09:53:37.436Z
 ---
 
 ## Summary
@@ -30,3 +31,9 @@ Cut measured native duplication: shared fixtures per file, scripted providers wh
 ## Acceptance criteria
 
 - [ ] C1. A durations refresh from a green full run shows T3 at 1800 s or less, with every native contract claim kept, recorded with a per-file before/after table.
+
+## Comments
+
+### coord · 2026-10-25T09:53:37.436Z
+
+Target retired by the human's decision (ask f93ccf6a, option b, 2026-10-25 09:52Z). Since D77, T3 runs only in the periodic dev run and the stage covers, sharded on droplets, and no longer gates merges, so the 1800 s T3 target from D53 is no longer needed. Per-test duration budgets still apply.

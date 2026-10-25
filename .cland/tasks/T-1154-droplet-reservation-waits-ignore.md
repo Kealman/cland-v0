@@ -3,18 +3,18 @@ id: T-1154
 kind: task
 title: Droplet reservation waits ignore shutdown and can hold hub.stop for up to 60 s
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
   - bug
 assignee: null
-parent: C-325
+parent: E-1284
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T19:53:59.804Z
-updated: 2026-10-22T19:53:59.804Z
+updated: 2026-10-25T09:53:57.713Z
 ---
 
 ## Summary

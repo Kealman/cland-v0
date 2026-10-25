@@ -3,17 +3,17 @@ id: T-1208
 kind: task
 title: The spoke validates local MCP input up to the SDK's 10 MiB before the hub's 1 MiB frame cap applies
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-216
+parent: E-1284
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:48:03.158Z
-updated: 2026-10-24T06:48:03.158Z
+updated: 2026-10-25T09:53:58.309Z
 ---
 
 ## Summary

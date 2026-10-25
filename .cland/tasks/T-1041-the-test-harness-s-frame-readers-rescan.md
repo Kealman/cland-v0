@@ -3,17 +3,17 @@ id: T-1041
 kind: task
 title: The test harness's frame readers rescan an accumulated string on every chunk
 state: open
-status: backlog
-size: S
+status: planned
+size: XS
 labels:
   - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-1282
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-21T06:56:53.807Z
-updated: 2026-10-21T06:56:53.807Z
+updated: 2026-10-25T09:53:53.768Z
 ---
 
 ## Summary
