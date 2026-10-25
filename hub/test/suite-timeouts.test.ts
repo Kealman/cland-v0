@@ -11,7 +11,8 @@ import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { systemProcesses } from '../src/system-processes.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { ownProcess, onCleanup, cleanupProcesses } from './process-cleanup.ts';
+import { until } from './until.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
@@ -67,16 +68,101 @@ test('forced ownership failure', async t => {
 });
 
 test('verify fails a named hung test at the configured per-test timeout', async t => {
-  const f = await fixture(t, `${process.execPath} package.mjs`, undefined, { verification: 'test_timeout="1s"' });
+  const fault = process.env.CLAND_TEST_HUNG_CLEANUP_FAULT;
+  let f: Awaited<ReturnType<typeof fixture>>;
+  let job: Awaited<ReturnType<typeof f.launch>> | undefined;
+  // Run before fixture socket/hub disposal. The worker owns its captured tree
+  // and phase roots; wait for its terminal cleanup receipt before removing them.
+  onCleanup(t, async () => {
+    if (!job) return;
+    if (!(await f.results()).some(row => row.id === `suite:${job!.id}`)) {
+      const cancelled = await f.ui.request({ type: 'suite.cancel', suite: job.id });
+      assert.equal(cancelled.ok, true, cancelled.error);
+    }
+    await eventually('hung fixture terminal cleanup receipt', async () => (await f.results()).find(row => row.id === `suite:${job!.id}`));
+  });
+  f = await fixture(t, `${process.execPath} package.mjs`, undefined, { verification: `test_timeout="${fault ? '120s' : '1s'}"` });
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+  const marker = join(f.root, 'hung-pids.json');
   await writeFile(join(f.root, 'package.mjs'), `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', 'hung.test.mjs']], {cwd: ${JSON.stringify(f.root)}, lockDirs: [${JSON.stringify(join(f.root, 'suite.lock'))}, ${JSON.stringify(join(f.root, 'suite.lock-nvim'))}]});`);
-  await writeFile(join(f.root, 'hung.test.mjs'), `import {test} from 'node:test'; test('never resolves', async t => {const timer = setInterval(() => {}, 1000); t.after(() => clearInterval(timer)); await new Promise(() => {});});`);
-  await f.launch();
-  const result = await eventually('hung test times out', async () => (await f.results())[0], 8000);
+  await writeFile(join(f.root, 'hung.test.mjs'), `import {test} from 'node:test'; import {writeFile} from 'node:fs/promises';
+  test('never resolves', async t => {const timer = setInterval(() => {}, 1000); t.after(() => clearInterval(timer));
+    await writeFile(${JSON.stringify(marker)}, JSON.stringify([process.ppid, process.pid]));
+    await new Promise(() => {});
+  });`);
+  job = await f.launch();
+  const pids = await eventually('hung runner and worker PID receipt', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined));
+  if (fault === 'split') {
+    const receipt = JSON.stringify({ root: f.root, pids });
+    const split = receipt.indexOf('"pids":') + '"pids":'.length;
+    process.stdout.write('hung fixture failure receipt ' + receipt.slice(0, split));
+    await until(() => stat(join(f.root, 'receipt-continue')).then(() => true, () => false), { what: 'parent observed incomplete receipt', timeoutMs: 15000 });
+    process.stdout.write(receipt.slice(split) + '\n');
+  } else if (fault) console.log('hung fixture failure receipt ' + JSON.stringify({ root: f.root, pids }));
+  if (fault === 'setup') assert.fail('deliberate hung fixture setup failure');
+  for (const pid of pids) ownProcess(t, pid);
+  if (fault === 'assertion' || fault === 'split') assert.fail(`deliberate hung fixture ${fault} failure`);
+  const result = await eventually('hung test times out', async () => (await f.results()).find(row => row.id === `suite:${job!.id}`), 8000);
   assert.match(result.text, /exit 1/);
   const log = await readFile(result.artifacts[0]!.path, 'utf8');
   assert.match(log, /never resolves/);
   assert.match(log, /test timed out after 1000ms/);
+  for (const pid of pids) assert.equal(pidAlive(pid), false, `hung fixture PID ${pid} survived timeout`);
+});
+
+for (const fault of ['setup', 'assertion', 'split']) test(`hung fixture reaps its runner and worker after ${fault} failure`, async t => {
+  const root = await tempProject(t, 'cland-hung-cleanup-control-');
+  // This enclosing test must also survive a missing/torn setup receipt. Scope
+  // all nested fixtures beneath its root and discover writers before removal.
+  onCleanup(t, () => cleanupProcesses(root, [], undefined, undefined, undefined, { discover: true }));
+  const child = spawn(process.execPath, ['--test', '--test-name-pattern=^verify fails a named hung test', fileURLToPath(import.meta.url)], {
+    cwd: root, env: runnerFixtureEnvironment(root, { ...process.env, NODE_TEST_CONTEXT: undefined, CLAND_TEST_HUNG_CLEANUP_FAULT: fault, TMPDIR: root, TMP: root, TEMP: root }), detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  ownProcess(t, child.pid);
+  let output = '';
+  let closed = false;
+  child.stdout.on('data', data => { output += String(data); });
+  child.stderr.on('data', data => { output += String(data); });
+  const done = new Promise<number | null>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', code => { closed = true; resolve(code); });
+  });
+  void done.catch(() => {});
+  onCleanup(t, async () => { await until(() => closed, { what: 'nested hung fixture pipes drained' }); await done; });
+  // A pipe chunk/prefix is not the completed newline-delimited PID receipt.
+  let held: { root: string; pids: number[] } | undefined;
+  let resumed = false;
+  await until(async () => {
+    for (const line of output.split('\n').slice(0, -1)) {
+      const at = line.indexOf('hung fixture failure receipt ');
+      if (at < 0) continue;
+      try {
+        const value = JSON.parse(line.slice(at + 'hung fixture failure receipt '.length));
+        if (typeof value.root === 'string' && value.root.startsWith(root + '/') && Array.isArray(value.pids)
+          && value.pids.length === 2 && value.pids[0] !== value.pids[1] && value.pids.every((pid: unknown) => Number.isSafeInteger(pid) && Number(pid) > 0)) held = value;
+      } catch { /* wait for a complete valid receipt */ }
+    }
+    if (fault === 'split' && !resumed && !held) {
+      const partial = /hung fixture failure receipt \{"root":("(?:[^"\\]|\\.)*"),"pids":/.exec(output);
+      if (partial) {
+        const fixtureRoot = JSON.parse(partial[1]!) as string;
+        assert.ok(fixtureRoot.startsWith(root + '/'));
+        await writeFile(join(fixtureRoot, 'receipt-continue'), 'observed incomplete receipt');
+        resumed = true;
+      }
+    }
+    return held !== undefined || closed;
+  }, { what: 'nested hung fixture complete PID receipt', timeoutMs: 15000 }).catch(error => {
+    throw new Error(`${error.message}; exit ${child.exitCode}; signal ${child.signalCode}; tail: ${output.slice(-4000)}`);
+  });
+  assert.ok(held, `incomplete PID receipt; exit ${child.exitCode}; signal ${child.signalCode}; tail: ${output.slice(-4000)}`);
+  if (fault === 'split') assert.equal(resumed, true, 'parent observed partial receipt before accepting the full line');
+  for (const pid of held.pids) ownProcess(t, pid);
+  await until(() => closed, { what: 'nested hung fixture exited', timeoutMs: 15000 });
+  assert.equal(await done, 1, output);
+  assert.ok(output.includes(`deliberate hung fixture ${fault} failure`), output);
+  for (const pid of held.pids) assert.equal(pidAlive(pid), false, `hung fixture PID ${pid} survived ${fault} failure`);
+  await assert.rejects(stat(held.root), { code: 'ENOENT' });
 });
 
 test('verify kills a silent test tree and spoke, names the last started test and frees admission', async t => {

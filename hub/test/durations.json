@@ -9036,6 +9036,27 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/suite-timeouts.test.ts::hung fixture reaps its runner and worker after assertion failure": {
+      "seconds": 5.907,
+      "owner": "E-1282",
+      "added": "2026-10-25",
+      "expires": "2026-11-01",
+      "reason": "T-450: real verifier/runner failure control proves native tree cleanup and pipe drainage after assertion failure; Linux droplet 5011acf6 measured 3.937698 s, with 1.5x headroom (new-test >=3 s launch-brief allowance)."
+    },
+    "hub/test/suite-timeouts.test.ts::hung fixture reaps its runner and worker after setup failure": {
+      "seconds": 6.135,
+      "owner": "E-1282",
+      "added": "2026-10-25",
+      "expires": "2026-11-01",
+      "reason": "T-450: real verifier/runner failure control proves native tree cleanup and pipe drainage after setup failure; Linux droplet 5011acf6 measured 4.089820 s, with 1.5x headroom (new-test >=3 s launch-brief allowance)."
+    },
+    "hub/test/suite-timeouts.test.ts::hung fixture reaps its runner and worker after split failure": {
+      "seconds": 5.677,
+      "owner": "E-1282",
+      "added": "2026-10-25",
+      "expires": "2026-11-01",
+      "reason": "T-450: real verifier/runner failure control proves native tree cleanup and pipe drainage after split failure; Linux droplet 5011acf6 measured 3.784515 s, with 1.5x headroom (new-test >=3 s launch-brief allowance)."
+    },
     "hub/test/suite-timeouts.test.ts::verify keeps a slow command alive while partial stderr output continues": {
       "seconds": 12.430842,
       "owner": "E-880",

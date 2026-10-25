@@ -56,3 +56,25 @@ diagnostics are separate from the normal Web phase and its wall budget, and use
 the existing load-worker summary prefix for running-hub compatibility. A failed
 synthetic contract remains an ordinary T3 test failure. See
 [Web phase](../tests.md#web-phase) for admission selection and rollout behavior.
+
+T-450's phase-sweep backstop deliberately leaks a detached `node --test`
+`hung.test.mjs` runner and its worker from a passing disposable test. The worker
+publishes both live PIDs before the leaking test returns. Keep the final
+assertions for the exact runner's cleanup diagnostic, both PIDs gone and the
+fixture removed. The enclosing test owns emergency teardown only; the generated
+leaking test must not register its runner for cleanup. A negative control that
+omits the completed-phase sweep must fail the cleanup diagnostic assertion.
+This selected case needs no CPU-load worker or browser and may run alone with
+`--test-name-pattern='phase sweep reports and reaps'`. The complete file retains
+the queued-machine requirement above.
+
+The deliberate-leak fixture registers deferred emergency ownership before
+allocating directories or launching processes. It pins a unique token and
+planned phase root, recovers the published holder (including its inode/runner
+identity) when available, then stops the enclosing runner and its descendants
+and observes pipe close before sweeping/removing the planned phase scope. Fixture directory removal has a final drainage
+guard. Its missing-marker control fails while the detached hung tree is live,
+without publishing the main marker; verify both leaked PIDs and both roots are
+gone after the nested test closes. Keep recovery independent of the marker and
+keep the primary sweep assertions before emergency teardown. Omitting planned
+phase-root recovery must fail this control's final root-removal assertion.

@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { runWebRepetitions } from './web-repetitions.ts';
+import { sweep, type Holder } from '../src/suite-lock.ts';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
 const fakeClock = fileURLToPath(new URL('./fake-clock.ts', import.meta.url));
@@ -1051,6 +1052,153 @@ test('crash', async () => {
   assert.throws(() => process.kill(orphan.pid, 0), { code: 'ESRCH' });
   assert.equal(await readFile(scans, 'utf8'), 'scan\n', 'one process-table discovery per phase');
   assert.equal(await import('node:fs/promises').then(({ stat }) => stat(orphan.root)).catch(() => null), null);
+});
+
+test('the phase sweep reports and reaps an intentionally leaked hung fixture runner and worker', async t => {
+  const fault = process.env.CLAND_TEST_HUNG_SWEEP_FAULT;
+  let dir: string | undefined;
+  let phaseRoot: string | undefined;
+  let token = '';
+  const owned: ProcessIdentity[] = [];
+  let closed = true;
+  let done: Promise<number | null> = Promise.resolve(null);
+  let drained = false;
+  // Deferred ownership is installed before allocation, including the planned
+  // phase scope, so no marker/identity receipt is required to recover writers.
+  onCleanup(t, async () => {
+    let holder: Holder | undefined;
+    try {
+      if (phaseRoot && dir) {
+        const published = await readFile(lockPath(dir) + '.owner', 'utf8').then(text => JSON.parse(text) as Holder, () => undefined);
+        holder = published?.token === token ? published : {
+          pid: owned[0]?.pid ?? process.pid, started: owned[0]?.started ?? null,
+          since: 'hung fixture cleanup', token, root: phaseRoot,
+        };
+      }
+    } finally {
+      // Capture the holder first, then stop every writer and drain native pipes
+      // before its recovery sweep is allowed to remove the phase root.
+      if (dir) await cleanupProcesses(dir, owned, undefined, undefined, undefined, { discover: true });
+      await until(() => closed);
+      await done;
+    }
+    if (holder) await sweep(holder);
+    drained = true;
+  });
+  dir = await mkdtemp(join(tmpdir(), 'cland-runner-test-'));
+  ownDirectory(t, dir, { beforeRemove: () => assert.ok(drained, 'retain hung sweep fixture until writers and pipes drain') });
+  token = 'hung-' + dir.split('/').at(-1)!;
+  phaseRoot = join(await realpath('/tmp'), `cland-suite-${token}`);
+  const marker = join(dir, 'hung-leak.json');
+  const file = join(dir, 'leak.mjs');
+  await writeFile(file, `import test from 'node:test'; import {spawn} from 'node:child_process';
+import {writeFile, readFile, mkdtemp} from 'node:fs/promises'; import {tmpdir} from 'node:os'; import {join} from 'node:path';
+import {fixtureEnvironment} from ${JSON.stringify(new URL('./fixture-environment.ts', import.meta.url).href)};
+import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
+test('leak a hung fixture runner', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'hung-fixture-'));
+  const ready = join(root, 'ready.json');
+  const hung = join(root, 'hung.test.mjs');
+  await writeFile(hung, \`import test from 'node:test'; import {writeFile} from 'node:fs/promises';
+    test('never resolves', async () => {setInterval(() => {}, 1000);
+      await writeFile(\${JSON.stringify(ready)}, JSON.stringify([process.ppid, process.pid]));
+      await new Promise(() => {});
+    });\`);
+  const child = spawn(process.execPath, ['--test', hung], {cwd: root, env: fixtureEnvironment(root, process.env, {NODE_TEST_CONTEXT: undefined}), detached: true, stdio: 'ignore'});
+  child.unref(); // Deliberately omit ownership: only the enclosing phase sweep may reap it.
+  let pids;
+  await until(async () => {pids = JSON.parse(await readFile(ready, 'utf8')); return pids.length === 2;}, {what: 'leaked hung worker PID receipt'});
+  if (${JSON.stringify(Boolean(fault))}) {
+    console.log('hung sweep held receipt ' + JSON.stringify({root, phaseRoot: tmpdir(), pids}));
+    await new Promise(() => {}); // The enclosing test fails before any marker.
+  }
+  await writeFile(${JSON.stringify(marker)}, JSON.stringify({root, phaseRoot: tmpdir(), pids}));
+});`);
+  const code = `import {runSuite} from ${JSON.stringify(runner)};
+process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({cwd: dir, lockDir: lockPath(dir), token})});`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], {
+    cwd: dir, env: fixtureEnvironment(dir, process.env, {NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0'}), detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  child.stdout.on('data', chunk => { output += String(chunk); });
+  child.stderr.on('data', chunk => { output += String(chunk); });
+  closed = false;
+  done = new Promise<number | null>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', code => { closed = true; resolve(code); });
+  });
+  void done.catch(() => {});
+  const identity = captureProcess(child.pid);
+  assert.ok(identity, 'enclosing runner identity captured');
+  owned.push(identity);
+  if (fault) {
+    let receipt: {root: string; phaseRoot: string; pids: number[]} | undefined;
+    await until(() => {
+      const line = output.split('\n').find(line => line.includes('hung sweep held receipt '));
+      try { if (line && output.includes(line + '\n')) receipt = JSON.parse(line.slice(line.indexOf('hung sweep held receipt ') + 'hung sweep held receipt '.length)); } catch { /* incomplete line */ }
+      return receipt !== undefined || closed;
+    });
+    assert.ok(receipt, output);
+    console.log('hung sweep failure receipt ' + JSON.stringify({...receipt, dir}));
+    await assert.rejects(readFile(marker), {code: 'ENOENT'});
+    assert.fail('deliberate hung sweep missing-marker failure');
+  }
+  let held: {root: string; phaseRoot: string; pids: number[]} | undefined;
+  await until(async () => {
+    try { held = JSON.parse(await readFile(marker, 'utf8')); } catch { /* receipt not yet complete */ }
+    return held !== undefined || closed;
+  });
+  assert.ok(held, output);
+  // Safety ownership belongs to the enclosing test, never the intentionally
+  // leaking worker. It runs only after the sweep's output and PID assertions.
+  for (const pid of held.pids) { const identity = captureProcess(pid); if (identity) owned.push(identity); }
+  await until(() => closed);
+  assert.equal(await done, 0, output);
+  assert.match(output, new RegExp(`cleanup pid ${held.pids[0]}:.*hung\\.test\\.mjs`));
+  for (const pid of held.pids) assert.throws(() => process.kill(pid, 0), {code: 'ESRCH'}, `leaked hung PID ${pid} reaped by phase sweep`);
+  await assert.rejects(readFile(join(held.root, 'ready.json')), {code: 'ENOENT'});
+});
+
+test('hung sweep fixture drains its tree before removal when its marker is missing', async t => {
+  let dir: string | undefined;
+  let closed = true;
+  let done: Promise<number | null> = Promise.resolve(null);
+  let drained = false;
+  let output = '';
+  let held: {dir: string; phaseRoot: string; pids: number[]} | undefined;
+  onCleanup(t, async () => {
+    if (dir) await cleanupProcesses(dir, [], undefined, undefined, undefined, {discover: true});
+    await until(() => closed);
+    await done;
+    if (held) await sweep({pid: process.pid, started: null, since: 'missing-marker control safety',
+      token: held.phaseRoot.split('/').at(-1)!.slice('cland-suite-'.length), root: held.phaseRoot});
+    drained = true;
+  });
+  dir = await mkdtemp(join(tmpdir(), 'cland-hung-sweep-control-'));
+  ownDirectory(t, dir, {beforeRemove: () => assert.ok(drained, 'retain missing-marker control until pipes drain')});
+  const child = spawn(process.execPath, ['--test', '--test-name-pattern=^the phase sweep reports and reaps', fileURLToPath(import.meta.url)], {
+    cwd: dir, env: fixtureEnvironment(dir, process.env, {NODE_TEST_CONTEXT: undefined, CLAND_TEST_HUNG_SWEEP_FAULT: 'missing-marker', TMPDIR: dir, TMP: dir, TEMP: dir}), detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  ownProcess(t, child.pid);
+  child.stdout.on('data', chunk => { output += String(chunk); });
+  child.stderr.on('data', chunk => { output += String(chunk); });
+  closed = false;
+  done = new Promise<number | null>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', code => { closed = true; resolve(code); });
+  });
+  void done.catch(() => {});
+  await until(() => closed);
+  assert.equal(await done, 1, output);
+  assert.match(output, /deliberate hung sweep missing-marker failure/);
+  assert.doesNotMatch(output, /retain hung sweep fixture until/);
+  const line = output.split('\n').find(line => line.includes('hung sweep failure receipt '));
+  assert.ok(line, output);
+  held = JSON.parse(line.slice(line.indexOf('hung sweep failure receipt ') + 'hung sweep failure receipt '.length));
+  assert.ok(held);
+  for (const pid of held.pids) assert.throws(() => process.kill(pid, 0), {code: 'ESRCH'}, `missing-marker cleanup reaped ${pid}`);
+  await assert.rejects(readFile(join(held.dir, 'leak.mjs')), {code: 'ENOENT'});
+  await assert.rejects(readdir(held.phaseRoot), {code: 'ENOENT'});
 });
 
 test('the phase receipt counts and reaps a detached hook bridge without another discovery scan', async t => {

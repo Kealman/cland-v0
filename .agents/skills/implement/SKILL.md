@@ -56,6 +56,13 @@ app-server confirmation, startup anchoring and post-startup timeout regressions.
 
 For local verification cancellation or compatibility recovery, use the sealed cancellation, recreated-root quarantine and blocked-queue seams in `docs/agents/tests.md`. Observe exact descendant death before root cleanup; retain the quarantine journal's old/new inodes and next-run admission receipt. Live machine locks are outside the fixture.
 
+For hung verifier fixtures, use the real-runner PID receipts and early-failure
+controls in `docs/agents/tests/hub-test-suite-timeouts.test.ts.md`. Register
+cleanup before the fixture closes its clients, cancel through the owning
+verifier and wait for its terminal receipt before removing roots. The deliberate
+phase-sweep leak is in `docs/agents/tests/hub-test-suite-runner.test.ts.md`;
+parent emergency ownership must not substitute for the sweep's cleanup receipt.
+
 For Git object accumulation or stale `gc.log`, follow `docs/agents/git-maintenance.md`; prove grace, owned fixture drainage and held-close recovery through `docs/agents/tests/hub-test-git-maintenance.test.ts.md`, serving-first bounded stop/restart through `docs/agents/tests/hub-test-git-maintenance-startup.test.ts.md`, normal CLI exit beside a live handed-off collector through `docs/agents/tests/hub-test-git-maintenance-cli.test.ts.md`, and identity/refusal policy through `docs/agents/tests/hub-test-git-maintenance-recovery.test.ts.md`.
 
 For startup lease recovery and phase timing, follow the sealed T2 fake-provider receipts in `docs/agents/tests.md#implementer-test-selection`. The T3 retained-history scale guard counts suite checkpoints, explorer batches and per-item native reads through the first completed status reply; retain CPU/wall/step diagnostics, the gross hang guard and red count-based historical controls as `docs/agents/tests.md#startup-reply-byte-budgets-t-1038` describes.
