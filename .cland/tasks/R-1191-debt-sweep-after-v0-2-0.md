@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T06:30:51.515Z
-updated: 2026-10-25T05:57:40.855Z
+updated: 2026-10-25T06:44:57.760Z
 ---
 
 ## Goal
@@ -20,7 +20,7 @@ Clear the backlog left after v0.2.0 (Bugs, Follow-ups, Tech debt) and turn the v
 
 ## Notes
 
-The human, 2026-10-24 06:30Z in General: «Отлично, иди дальше по задачам которые говоришь и беклогу». This release holds the triaged backlog (triage artifact to follow) and the dependency update T-1189, which the human approved in the same message. The version is the human's choice before release; none is recorded yet.
+The human, 2026-10-24 06:30Z in General: «Отлично, иди дальше по задачам которые говоришь и беклогу». This release holds the triaged backlog (A-10327) and the dependency update T-1189, which the human approved in the same message. Version 0.2.1 is the human's choice (ask ae65f3f2, 2026-10-25 05:57Z). Highlights: OpenCode qualified for every role (E-1216, audit A-11613); session usage now survives hub restarts (T-1269); the merge queue, periodic dev T3, duration budgets, QA tooling and hub correctness fixes of E-1193 to E-1197.
 
 ## Epics
 
