@@ -145,19 +145,28 @@ test('demo recorder refuses secret metadata and stderr without leaking diagnosti
 
 test('demo recorder scans parsed JSON metadata and stderr before publishing safe captures', { skip: skipRun }, async t => {
   const fake = 'opaque-fixture'.repeat(5);
-  for (const whitespace of ['\t', '\n']) {
+  // Each control is one sealed recorder child on its own disposable root, so the
+  // five run together: the T2 budget counts their wall time, not the sum of five runs.
+  const controls = ['\t', '\n'].flatMap(whitespace => {
     const secret = `${['Bear', 'er'].join('')}${whitespace}${fake}`;
-    for (const [detail, stderr] of [[{ message: secret }, ''], [{}, secret]] as const) {
-      const { root, envelope, recorded, line } = await demoRecord(t, { result: 'PASS', evidence: [], ...detail }, undefined, {}, stderr);
-      assert.equal(recorded.code, 2);
-      assert.equal(line.result, 'BLOCKED');
-      assert.deepEqual(line.evidence, []);
-      assert.equal((recorded.stdout + recorded.stderr).includes(fake), false);
-      assert.deepEqual(await readdir(join(root, '.cland/qa/E-1/demo-run')), [], 'no partial publication');
-      assert.equal(await stat(`${envelope}.cleaned`).then(() => true, () => false), false, 'no cleanup acknowledgement');
-    }
+    return ([[{ message: secret }, ''], [{}, secret]] as const).map(([detail, stderr]) => demoRecord(t, { result: 'PASS', evidence: [], ...detail }, undefined, {}, stderr));
+  });
+  const settled = await Promise.allSettled([
+    demoRecord(t, { result: 'PASS', evidence: [], message: 'worker\tconnected' }, undefined, {}, 'safe\ndiagnostic'),
+    ...controls,
+  ]);
+  // Every child settles before the assertions run, so a first failure cannot leave
+  // recorder children writing into roots the case is about to remove.
+  const records = settled.map(result => result.status === 'fulfilled' ? result.value : assert.fail(String(result.reason)));
+  const safe = records[0]!;
+  for (const { root, envelope, recorded, line } of records.slice(1)) {
+    assert.equal(recorded.code, 2);
+    assert.equal(line.result, 'BLOCKED');
+    assert.deepEqual(line.evidence, []);
+    assert.equal((recorded.stdout + recorded.stderr).includes(fake), false);
+    assert.deepEqual(await readdir(join(root, '.cland/qa/E-1/demo-run')), [], 'no partial publication');
+    assert.equal(await stat(`${envelope}.cleaned`).then(() => true, () => false), false, 'no cleanup acknowledgement');
   }
-  const safe = await demoRecord(t, { result: 'PASS', evidence: [], message: 'worker\tconnected' }, undefined, {}, 'safe\ndiagnostic');
   assert.equal(safe.recorded.code, 0);
   assert.equal(safe.line.result, 'PASS');
   assert.equal(await readFile(join(safe.root, safe.line.evidence[0]!), 'utf8'), 'General');
