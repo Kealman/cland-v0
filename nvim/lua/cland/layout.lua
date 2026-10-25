@@ -446,6 +446,7 @@ end
 
 --- Show `view` ({kind = thread|session|item|board|graph|log|inbox|rulebook|rule_compose, id}) in the centre.
 function M.show(view, opts)
+  require('cland.plan').cancel_navigation()
   if view.kind == 'item' or view.kind == 'plan' then
     local item = state.item(view.id)
     if item then view = vim.tbl_extend('force', view, { id = item.id }) end
@@ -542,6 +543,7 @@ function M.back()
     return
   end
   -- Explorer scopes form a back stack; other centre views retain the CTRL-^ toggle.
+  require('cland.plan').cancel_navigation()
   if ui.view.kind ~= 'explorer' then table.insert(ui.hist, ui.view) end
   if ui.view.kind == 'events' then require('cland.events').visit_look = nil end
   if prev.kind == 'events' then require('cland.events').visit() end

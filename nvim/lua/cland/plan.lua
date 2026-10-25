@@ -4,6 +4,7 @@ local api = vim.api
 local state = require('cland.state')
 local items = require('cland.items')
 local M = { bufs = {}, detail = {}, pending = {}, stale = {}, history = {}, visits = {} }
+local snapshots, navigation = {}, nil
 local ns = api.nvim_create_namespace('cland.plan')
 local function width(s) return api.nvim_strwidth(s or '') end
 local function fit(s, w) return require('cland.bars').prefix(s, math.max(0, w)) end
@@ -57,10 +58,28 @@ end
 
 function M.setup(client)
   M.client = client
+  snapshots, navigation = {}, nil
+  client:on('state', function(status)
+    if status ~= 'connected' then snapshots, navigation = {}, nil end
+  end)
   client:on('connected', function()
     for id in pairs(M.detail) do M.stale[id] = true end
     state.changed()
   end)
+end
+
+function M.cancel_navigation()
+  navigation = nil
+end
+
+-- Called after the shell installs the snapshot and replays its live updates.
+function M.snapshot_ready(kind, err)
+  snapshots[kind] = err and tostring(err) or true
+  if navigation and snapshots.items and snapshots.tracker then
+    local requested = navigation
+    navigation = nil
+    if requested.view == state.S.ui.view then M.open(requested.id) end
+  end
 end
 
 function M.owner(id)
@@ -101,8 +120,20 @@ function M.get(id)
 end
 
 function M.open(id)
-  id = M.owner(id or require('cland.motions').item_of(require('cland.motions').subject()))
+  id = id or require('cland.motions').item_of(require('cland.motions').subject())
+  navigation = nil
   if not id then return state.say('gp: select an epic or an item in an epic') end
+  if not (snapshots.items and snapshots.tracker) then
+    navigation = { id = id, view = state.S.ui.view }
+    return
+  end
+  for _, kind in ipairs({ 'items', 'tracker' }) do
+    if snapshots[kind] ~= true then return state.say('plan: ' .. kind .. ': ' .. snapshots[kind], 'ClandRedBar') end
+  end
+  local owner = M.owner(id)
+  if not state.item(id) then return state.say('plan: ' .. id .. ' is not in the tracker') end
+  if not owner then return state.say('plan: ' .. id .. ' is not an epic or in one') end
+  id = owner
   M.stale[id] = true
   local layout = require('cland.layout')
   if not layout.panel_window('items') then layout.place_panel('items', layout.panel_home('items')) end

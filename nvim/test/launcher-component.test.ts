@@ -2,9 +2,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { eventually } from './fixture.ts';
-import { skip, startShell, requestsOf, onSessionRow, proc, statusLine, type Shell } from './shell-fixture.ts';
+import { skip, startShell, requestsOf, onSessionRow, proc, statusLine, waitHeldSnapshot, type Shell } from './shell-fixture.ts';
 import { centreOf } from './stub-client.ts';
 import { failedOrEmptyModelAnswers } from './launcher-model-fixture.ts';
+
+test('a role selected before role.list arrives fills launcher defaults when the reply lands', { skip }, async t => {
+  const c = await startShell(t, s => { s.holdSnapshots = ['role.list']; }, {}, false);
+  await waitHeldSnapshot(c, 'role.list');
+  await c.input('<Esc><Space>l');
+  await c.waitScreen(s => s.includes('launch a session'), 'launcher before role snapshot');
+  await c.input('early-reviewer<Tab>reviewer<Tab>');
+  await c.waitScreen(s => /role +reviewer/.test(s), 'role selected while defaults are pending');
+  await c.control({ releaseSnapshots: ['role.list'] });
+  const screen = await c.waitScreen(s => /harness +codex/.test(s) && /model +gpt-6\.1-sol/.test(s) && /effort +high/.test(s), 'defaults after delayed role reply');
+  assert.doesNotMatch(screen, /unknown role/);
+  assert.equal(await c.mode(), 'i');
+  await c.input('<CR>');
+  await c.waitScreen(s => !s.includes('launch a session') && s.includes('early-reviewer [Reviewer]'), 'launched early role selection');
+  const [frame] = await requestsOf(c, 'session.launch');
+  assert.equal(frame?.role, 'reviewer');
+  assert.equal(frame?.harness, 'codex');
+  assert.equal(frame?.model, 'gpt-6.1-sol');
+  assert.equal(frame?.effort, 'high');
+});
+
+for (const harness of ['codex', 'opencode']) {
+  test(`late role defaults preserve typed ${harness}, model and effort`, { skip }, async t => {
+    const c = await startShell(t, s => { s.holdSnapshots = ['role.list']; }, {}, false);
+    await waitHeldSnapshot(c, 'role.list');
+    await c.input('<Esc><Space>l');
+    await c.waitScreen(s => s.includes('launch a session'), 'launcher before role snapshot');
+    await c.input(`typed-role<Tab>Reviewer<Tab>${harness}<Tab>custom-model<Tab><Tab>custom-effort`);
+    await c.waitScreen(s => /effort +custom-effort/.test(s) && /unknown role/.test(s), 'typed fields before defaults');
+    await c.control({ releaseSnapshots: ['role.list'] });
+    const screen = await c.waitScreen(s => s.includes('launch a session') && !s.includes('unknown role'), 'role resolved without another key');
+    assert.match(screen, new RegExp(`harness +${harness}`));
+    assert.match(screen, /model +custom-model/);
+    assert.match(screen, /effort +custom-effort/);
+    await c.input('<CR>');
+    await c.waitScreen(s => !s.includes('launch a session') && s.includes('typed-role [Reviewer]'), 'typed defaults launch');
+    const [frame] = await requestsOf(c, 'session.launch');
+    assert.equal(frame?.harness, harness);
+    assert.equal(frame?.model, 'custom-model');
+    assert.equal(frame?.effort, 'custom-effort');
+    assert.equal(frame?.role, 'reviewer');
+  });
+}
 
 const aide = proc('aide-1', 'aide', 'idle');
 // Only shell builtins: keep the stub attachment alive and report its inherited environment.

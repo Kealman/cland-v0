@@ -73,15 +73,19 @@ local function sync(f)
   local v = values(f)
   local def = state.role_def(v.role)
   local role_key = def and def.role or v.role
-  if role_key ~= f.seen.role then
+  local late = def and f.seen.unresolved == v.role
+  if role_key ~= f.seen.role or late then
     f.seen.role = role_key
+    f.seen.unresolved = not def and v.role or nil
     if def and def.launch then
       local l = def.launch
-      if str(l.harness) ~= '' then
+      if str(l.harness) ~= '' and (not late or v.harness == '') then
         set_value(f, 'harness', l.harness)
       end
-      set_value(f, 'model', str(l.model))
-      set_value(f, 'effort', str(l.effort))
+      if not late or values(f).harness == str(l.harness) then
+        if not late or v.model == '' then set_value(f, 'model', str(l.model)) end
+        if not late or v.effort == '' then set_value(f, 'effort', str(l.effort)) end
+      end
       v = values(f)
     end
   end
@@ -198,6 +202,15 @@ end
 --- The form's text, to tell an edit from a TextChangedI that only reports typing already handled.
 local function snapshot(f)
   return table.concat(api.nvim_buf_get_lines(f.buf, 0, -1, false), '\n')
+end
+
+-- A role selected before its first definition arrived still needs its defaults.
+function M.refresh_roles()
+  local f = M.cur
+  if not f or not api.nvim_buf_is_valid(f.buf) then return end
+  sync(f)
+  f.snap = snapshot(f)
+  draw(f)
 end
 
 local function submit(f)

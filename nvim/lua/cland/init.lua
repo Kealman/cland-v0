@@ -181,6 +181,7 @@ local refresh_sessions = single_flight(function(done)
       replay_sessions(events, false)
       state.changed()
     end
+    require('cland.plan').snapshot_ready('tracker', err)
     answered()
   end, { nulls = true })
   -- the roles and their launch defaults: the launcher's prefill and the labels
@@ -188,6 +189,7 @@ local refresh_sessions = single_flight(function(done)
     answered()
     if not err and value and value.roles then
       state.S.roles = value.roles
+      require('cland.launcher').refresh_roles()
       state.changed()
     end
   end)
@@ -288,6 +290,7 @@ local refresh_items = single_flight(function(done)
       end
     end
     state.changed()
+    require('cland.plan').snapshot_ready('items', err)
     done()
     if closed_all then M.load_closed_items()
     else for parent in pairs(closed_requested) do M.load_closed_items(parent) end end
@@ -425,6 +428,7 @@ M.HELP = {
   'Items     1 board · 2 in work · 3 needs you · 4 done · 5 map · 6 all (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
+  '          Early plan navigation waits for task and tracker snapshots; missing items are reported',
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣E events · ␣␣ the previous centre view',
   'Explorer  startup view · ␣e · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back',
   '          za/zo/zc toggle/open/close · zR zM all · D done · A archive',
@@ -446,6 +450,7 @@ M.HELP = {
   '          :Cland topic new <title> | close | resolve',
   'Session   ↵ attaches in Terminal mode · C-h/j/k/l focus · C-\\ leaves (C-\\ C-n too)',
   '          ␣l (panel l) launches · ␣A (panel a) launches an Aide, ready for its brief',
+  '          Late role defaults fill untouched launcher fields once role.list arrives',
   'Artifacts ␣a on ~ · ga browser · ↵ open/fold · n new · m move · s attach · p promote · k keep · d archive · x delete (confirm)',
   '          za/zo/zc folds · zR background · A archive · :w saves files · q back · R render Mermaid',
   'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',

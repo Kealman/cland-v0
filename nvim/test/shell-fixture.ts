@@ -125,6 +125,17 @@ type Req = Record<string, unknown> & { type: string };
 
 export const requestsOf = async (c: Shell, type: string): Promise<Req[]> => ((await c.control({ requests: true })).requests as Req[]).filter((f) => f.type === type);
 
+/** Bound setup independently of the post-release view/form observation. */
+export async function waitHeldSnapshot(c: Shell, type: string): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      c.control({ waitSnapshot: type }),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`stub did not capture ${type} within 5000 ms`)), 5000); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 export async function onSessionRow(c: Shell, name: string) {
   await c.input('<Esc><Space>s<Space>s');
   await c.waitScreen((s) => s.includes('SESSIONS') && statusLine(s).includes('NORMAL'), 'the sessions panel, focused');

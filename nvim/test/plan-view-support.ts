@@ -19,8 +19,8 @@ export async function waitFor(predicate: () => Promise<boolean>, what: string) {
   assert.ok(ready, `${what} not ready within 5000 ms`);
 }
 export async function openPlan(client: Client, id: string) {
-  // Connected precedes the task/ladder snapshots. An early command is refused,
-  // so waiting for plan text after issuing it cannot recover that navigation.
+  // Ordinary presentation cases start with settled task/ladder snapshots.
+  // plan-component.test.ts separately proves navigation while those reads are held.
   await waitFor(() => client.lua<boolean>("local id=...; return require('cland.plan').owner(id) == id", id), `epic ${id} from task and tracker snapshots`);
   await client.input(`<Esc>:Cland view plan ${id}<CR>`);
 }

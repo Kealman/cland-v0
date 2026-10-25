@@ -105,6 +105,11 @@ body fetch. Use the settled-card T2 and mapped twenty-case T4 seams in
 
 For Neovim recording refreshes, follow `docs/agents/tests.md#neovim-recorded-frames`: audit every reduced slice before changing its stored expectation. The named local-only summary/decoder checks are excluded from full discovery; every selected file retains the zero-frame guard.
 
+For early Neovim plan navigation or launcher role defaults, use the delayed
+snapshot seams in `docs/agents/tests/nvim-test-plan-component.test.ts.md` and
+`docs/agents/tests/nvim-test-launcher-component.test.ts.md`. Hold the initial
+reads and observe the resulting view or form after release without another key.
+
 For human marks changes, preserve the forward-only timestamp/plan-history ordering and the durable one-time import acknowledgement before removing `events.last_look` or `plan_seen` from `ui.json`. Use the real-frame and recorded-headless seams in `docs/agents/tests.md#human-marks-fixtures`; no role-clause expansion is needed for these human-only UI frames.
 
 For human topic kinds and queued withdrawal, use the public-frame/fake-spoke seams in `docs/agents/tests.md#human-kinds-and-queued-withdrawal`. Only a human Question starts a wait; withdrawal succeeds before adapter submission and returns the text. Preserve the durable submission fence and held notes.

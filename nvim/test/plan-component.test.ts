@@ -9,6 +9,76 @@ import type { EpicPlan } from '../../hub/src/tracker/plan.ts';
 import { startClient } from './stub-client.ts';
 import { planText, waitFor, openPlan, waitPlan, bin, skip } from './plan-view-support.ts';
 import { tempProject } from './fixture.ts';
+import { startShell, requestsOf, waitHeldSnapshot } from './shell-fixture.ts';
+
+for (const action of ['gp', ':Cland view plan T-12<CR>']) {
+  for (const outcome of ['epic', 'unparented', 'missing']) {
+    const inEpic = outcome === 'epic';
+    for (const last of ['hub.status', 'task.list']) {
+      test(`early ${action}: ${inEpic ? 'opens the epic plan' : `reports ${outcome}`} after ${last} arrives last`, { skip }, async t => {
+        const c = await startShell(t, s => {
+          s.holdSnapshots = ['hub.status', 'task.list'];
+          s.tracker = { levels: ['release', 'epic'] };
+          if (outcome === 'missing') s.items = s.items!.filter(it => it.id !== 'T-12');
+          if (inEpic) {
+            s.items![0]!.parent = 'T-2';
+            s.items!.push({ id: 'T-1', kind: 'release', state: 'open', title: 'Release' },
+              { id: 'T-2', kind: 'epic', parent: 'T-1', state: 'open', title: 'Panels' });
+          }
+        }, {}, false);
+        for (const type of ['hub.status', 'task.list']) await waitHeldSnapshot(c, type);
+        // An explicit card supplies gp's subject even while its index is held.
+        await c.input('<Esc>:Cland view item T-12<CR>');
+        await c.waitScreen(s => s.includes('T-12: no such item in the tracker'), 'selected card before snapshots');
+        await c.input(action);
+        const first = last === 'hub.status' ? 'task.list' : 'hub.status';
+        await c.control({ releaseSnapshots: [first] });
+        await c.lua("require('cland').client:request({type='rule.list'},function() vim.g.plan_barrier=true end); assert(vim.wait(5000,function() return vim.g.plan_barrier end))");
+        assert.equal(await c.lua("return require('cland.state').S.ui.view.kind"), 'item', 'one snapshot cannot resolve the plan');
+        assert.doesNotMatch(await c.lua<string>("return (require('cland.state').S.flash or {}).text or ''"), /select an epic|not an epic/, 'no premature refusal');
+        await c.control({ releaseSnapshots: [last] });
+        if (inEpic) {
+          await c.waitScreen(s => s.includes('Plan of T-2 Panels'), 'deferred plan opens');
+          assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'T-2');
+          assert.equal((await requestsOf(c, 'task.plan')).length, 1, 'one navigation fetches one plan');
+        } else {
+          await c.waitScreen(s => s.includes('T-12') && s.includes(outcome === 'missing' ? 'not in the tracker' : 'not an epic or in one'), 'settled no-epic notice');
+          assert.equal(await c.lua("return require('cland.state').S.ui.view.kind"), 'item');
+          assert.equal((await requestsOf(c, 'task.plan')).length, 0);
+        }
+      });
+    }
+  }
+}
+
+for (const next of ['another plan', 'another view', 'away and back', 'snapshot failure']) {
+  test(`deferred plan navigation respects ${next}`, { skip }, async t => {
+    const c = await startShell(t, s => { s.holdSnapshots = ['hub.status', 'task.list']; }, {}, false);
+    for (const type of ['hub.status', 'task.list']) await waitHeldSnapshot(c, type);
+    await c.input('<Esc>:Cland view plan T-404<CR>');
+    if (next === 'another plan') await c.input(':Cland view plan T-12<CR>');
+    if (next === 'another view' || next === 'away and back') {
+      await c.input(':Cland view inbox<CR>');
+      await c.waitScreen(s => s.includes('Inbox · full width'), 'newer navigation before release');
+      if (next === 'away and back') {
+        await c.input('<Space><Space>');
+        await c.waitScreen(s => s.includes('Starting T-12') && !s.includes('Inbox · full width'), 'returned to original view before release');
+      }
+    }
+    await c.control({ releaseSnapshots: ['task.list'], ...(next === 'snapshot failure' ? { snapshotError: 'held item snapshot failed' } : {}) });
+    await c.control({ releaseSnapshots: ['hub.status'] });
+    // A receipt after both callbacks makes the unchanged-view assertion meaningful.
+    await c.lua("require('cland').client:request({type='rule.list'},function() vim.g.plan_barrier=true end); assert(vim.wait(5000,function() return vim.g.plan_barrier end))");
+    if (next === 'another view' || next === 'away and back') {
+      assert.equal(await c.lua("return require('cland.state').S.ui.view.kind"), next === 'another view' ? 'inbox' : 'thread');
+      assert.doesNotMatch(await c.lua<string>("return (require('cland.state').S.flash or {}).text or ''"), /plan:/);
+    } else {
+      const notice = await c.lua<string>("return (require('cland.state').S.flash or {}).text or ''");
+      assert.equal(notice, next === 'another plan' ? 'plan: T-12 is not an epic or in one' : 'plan: items: held item snapshot failed');
+    }
+    assert.equal((await requestsOf(c, 'task.plan')).length, 0);
+  });
+}
 
 test('the plan shows Lead metadata and lane claim/verdict marks, including role labels and long source fences', { skip }, async t => {
   const root = await tempProject(t);

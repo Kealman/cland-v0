@@ -5,6 +5,12 @@ stub hub; no native harness. T-781 adds the six built-in role rows plus one cust
 role, preserving snapshot membership. Observe the rendered custom harness/model/
 effort before launch, then the exact session row and outbound launch fields.
 
+T-323 holds the initial `role.list` answer while real keys select a role. Release
+it without another key and observe the rendered defaults, Insert mode and exact
+outbound launch fields. The typed-value cases select the role by its label and
+preserve an explicit harness, model and effort, including a different harness.
+The role reply must update the open form without requiring a role change.
+
 Refresh only this consumer with `node hub/test/record-nvim-frames.ts
 nvim/test/launcher-component.test.ts` after changing scenario inputs. Audit both
 the retained main catalog and its launcher slice; new custom role-list and
