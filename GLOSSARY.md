@@ -21,7 +21,7 @@ The harness the human talks to, on which the Aide runs; the human chooses it dur
 _Avoid_: default harness, main harness, preferred agent
 
 **Setup**:
-The guided step, in a terminal, that readies a project once it is initialised: the harnesses, their logins and folder trust, the accounts and the Favourite harness, then the hub and the Aide, which it opens in the workbench for the Onboarding. Each step checks first and asks only about what is missing; without a terminal it reports open steps by default, but explicit options can authorise harness installation and folder-trust writes.
+The guided step, in a terminal, that readies a project once it is initialised: the harnesses, their logins and folder trust, the accounts and the Favourite harness, then the hub, a remote if the human wants one, and the Aide, which it opens in the workbench for the Onboarding. Each step checks first and asks only about what is missing; without a terminal it reports open steps by default, but explicit options can authorise harness installation and folder-trust writes.
 _Avoid_: installer, onboarding (the Aide's conversation that follows)
 **Session**:
 One running interactive instance of a harness, with its own history and working state. A session has a name and at most one role.
@@ -119,6 +119,10 @@ _Avoid_: client, connector, plugin, channel
 The hub-side component for one harness that launches, supervises and observes its sessions, delivers hub messages into them, and reports their state.
 _Avoid_: driver, integration, supervisor, wrapper
 
+**Gateway**:
+The hub's edge that serves the remotes: it mirrors General and the needs-you rows into them and turns what the human sends back into messages, answers and approvals, with no wider authority than those. It connects out to the messengers and accepts no connection from them.
+_Avoid_: bot (the messenger's account the gateway drives), bridge, relay, connector, integration
+
 ## Chat
 
 **Topic**:
@@ -126,7 +130,7 @@ A thread in the human's chat with agents. A topic has a title, a status (open, w
 _Avoid_: thread, channel, conversation, chat
 
 **General**:
-The standing topic every project has for free conversation with the Coordinator; it is bound to no unit of work.
+The standing topic every project has for free conversation with the Coordinator; it is bound to no unit of work. The gateway mirrors it both ways into the project's remotes.
 _Avoid_: lobby, main chat, default channel
 
 **Agents topic**:
@@ -144,6 +148,32 @@ _Avoid_: prompt, poll, question dialog, request
 **Request**:
 A message to the human that asks for an act of theirs: a review, a QA run or a handover. It waits in the inbox until the human answers, gives the verdict or declines it.
 _Avoid_: ask (that is a question or an approval), ping, mention
+
+## Remotes
+
+**Remote**:
+A messenger chat paired with the project, from which the human follows General and answers away from the workbench: a Telegram remote is the human's private chat with the project's bot, a Discord remote one channel of the human's own server. A project has at most one remote per messenger, and what the human sends there arrives as the human's own, marked with where it came from.
+_Avoid_: bot, channel (Discord's word for where a remote lives), mirror, mobile client, integration
+
+**Pairing**:
+The link between a remote and the project's human, made when the human approves, in Neovim or the terminal, the one-time code the bot gave them in the chat. It knows the human by the messenger's ids, never by a name, and a new pairing replaces the old one.
+_Avoid_: login, linking, registration, allow-list, subscription (a session's standing request for events)
+
+**Remote card**:
+An ask or an approval shown in a remote as a message with buttons. The first answer from anywhere wins, and every copy of the card turns into its outcome.
+_Avoid_: card (the item's picture in the Explorer), notice (a needs-you row shown without buttons), prompt, poll, keyboard
+
+**Transcript**:
+The text the speech provider heard in a voice note, or another recording, sent from a remote. It becomes the human's message, marked as voice, with the recording kept as an artifact, and it is never edited afterwards: a correction is the human's next message.
+_Avoid_: transcription (the act), dictation, caption, voice message (the recording)
+
+**Gap line**:
+The one line a remote receives after an outage, saying how many General messages it missed and since when, in place of replaying them.
+_Avoid_: replay, backlog, digest (how a session receives events), catch-up (the whole recovery)
+
+**Outbox**:
+A remote's durable queue of what the hub sends and edits there, kept across restarts and paced to the messenger's limits. A General message that an outage kept from going out is counted in the Gap line, not sent late.
+_Avoid_: queue alone (the merge and verification queues), buffer, spool
 
 ## Work
 
@@ -216,7 +246,7 @@ _Avoid_: tree view, browser, board (the side panel), item view (now the Card)
 
 **Card**:
 The human's picture of one item in the Explorer: the Summary, the facts, the progress, the latest verdict and the relations, with the agents' text folded away.
-_Avoid_: item view, details pane, preview
+_Avoid_: item view, details pane, preview, remote card (an ask or approval in a remote)
 
 **Summary**:
 One to three sentences in an item that say what it is about, written by whoever creates the item; the first paragraph of the first section that is not Parent stands in when it is missing.

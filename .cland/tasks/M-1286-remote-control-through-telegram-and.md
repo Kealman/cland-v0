@@ -2,7 +2,7 @@
 id: M-1286
 kind: map
 title: Remote control through Telegram and Discord (v0.3)
-state: open
+state: closed
 labels:
   - wayfinder:map
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T10:23:22.644Z
-updated: 2026-10-25T13:42:37.000Z
+updated: 2026-10-25T14:12:34.661Z
+closed: 2026-10-25T14:12:34.661Z
 ---
 
 ## Destination
