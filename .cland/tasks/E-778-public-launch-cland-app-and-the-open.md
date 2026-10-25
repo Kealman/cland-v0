@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T06:03:55.152Z
-updated: 2026-10-24T18:43:29.876Z
+updated: 2026-10-25T06:50:45.170Z
 ---
 
 ## Summary
@@ -62,6 +62,12 @@ stages:
     lanes:
       - - T-784
       - - T-1234
+  - name: live install docs
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1273
 ```
 
 ## Comments
