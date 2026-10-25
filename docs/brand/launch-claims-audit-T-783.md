@@ -4,6 +4,8 @@ Audited on 2026-10-24 against dev `86449530f6f292a3cad7e4debeeb56d45d9ec498`, ne
 
 Later update (v0.2.1): the Homebrew tap now exists at `Kealman/homebrew-tap`, and the current install claims live in `install.md`, `quickstart.md`, the landing page and the READMEs. The tables below record what this audit read on 2026-10-24; a command block quoted there is not a current install command.
 
+Later correction (T-1274): T-1222's human decision of 2026-10-24 makes the generated Codex Aide `workspace-write` with no extra writable roots, so it cannot commit at the project root; the Coordinator commits there. `quickstart.md` now states that, and an Aide whose harness can write the root still commits and publishes the onboarding's work itself. The other hits for an Aide commit claim are consistent: `crew.md` and `docs/review-and-qa.md` name the protected `.git/index.lock` and `.git/COMMIT_EDITMSG`. `docs/spec/v0.1.3.md` and `docs/spec/v0.1.4.md` are dated records of closed releases: the v0.1.4 spec keeps the Q-600 decision as it shipped then, and the generated defaults are described in `crew.md` and `quickstart.md`.
+
 `ok` means the claim matches the named code or authoritative project instructions. `fixed` means the text was corrected. `gap` names missing or unqualified launch behavior, reported to the Coordinator; a gap is not a runtime pass. Paths are repository-relative; brace shorthand names the corresponding files in one directory. UI behavior was source-checked, without opening any browser.
 
 ## Launch exceptions to collect before publication
@@ -59,7 +61,7 @@ The final Coordinator request (`75811faf-1546-492a-bcf9-99a665406f79`) fixed dev
 | quickstart.md | Eight ordered setup steps and step verdicts; login offered only when needed | hub/src/setup/runner.ts; hub/src/setup/steps/logins.ts | fixed |
 | quickstart.md | Trust applies to installed Claude/Codex profiles; OpenCode has no gate | hub/src/setup/steps/trust.ts | fixed |
 | quickstart.md | Aide terminal handoff and setup --attach; needs terminal | hub/src/setup/steps/aide.ts; hub/src/setup/handover.ts | ok |
-| quickstart.md | Onboarding rounds, rules, first release/map, categories, checks, crew, welcome, commit and start | .agents/skills/onboarding/SKILL.md | ok |
+| quickstart.md | Onboarding rounds, rules, first release/map, categories, checks, crew, welcome, commit and start | .agents/skills/onboarding/SKILL.md; T-1222 human decision | fixed |
 | quickstart.md | Session/General/Inbox keys, attach exit and status progression | nvim/lua/cland/actions.lua; hub/src/tracker/tracker.ts | ok |
 | quickstart.md | No promised one-minute launch time | hub/src/setup/runner.ts; hub/src/crew.ts | fixed |
 | quickstart.md | inbox + topic answer use a real ask id, not shell redirection placeholders | hub/src/cli/inbox.ts; hub/src/cli/usage.ts TOPIC_USAGE | fixed |
