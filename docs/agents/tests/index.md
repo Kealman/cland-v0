@@ -4,6 +4,11 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/git-maintenance-cli.test.ts`](../../../hub/test/git-maintenance-cli.test.ts) | [Notes](hub-test-git-maintenance-cli.test.ts.md) |
+| [`hub/test/git-maintenance-recovery.test.ts`](../../../hub/test/git-maintenance-recovery.test.ts) | [Notes](hub-test-git-maintenance-recovery.test.ts.md) |
+| [`hub/test/doctor-run.test.ts`](../../../hub/test/doctor-run.test.ts) | [Notes](hub-test-doctor-run.test.ts.md) |
+| [`hub/test/git-maintenance-startup.test.ts`](../../../hub/test/git-maintenance-startup.test.ts) | [Notes](hub-test-git-maintenance-startup.test.ts.md) |
+| [`hub/test/git-maintenance.test.ts`](../../../hub/test/git-maintenance.test.ts) | [Notes](hub-test-git-maintenance.test.ts.md) |
 | [`hub/test/test-admission.test.ts`](../../../hub/test/test-admission.test.ts) | [Notes](hub-test-test-admission.test.ts.md) |
 | [`hub/test/harness-framing.test.ts`](../../../hub/test/harness-framing.test.ts) | [Notes](hub-test-harness-framing.test.ts.md) |
 | [`hub/test/doctor-harness-probe.test.ts`](../../../hub/test/doctor-harness-probe.test.ts) | [Notes](hub-test-doctor-harness-probe.test.ts.md) |

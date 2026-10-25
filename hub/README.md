@@ -2017,6 +2017,53 @@ core.bare false` before retrying. The hub never repairs it automatically. Linked
 task worktrees share this config, so Git experiments must use disposable clones,
 a scratch HOME/XDG/config and the sealed fixture environment after overlays.
 
+### Git object maintenance
+
+Each project hub start schedules one background collection 30 seconds after its
+serving receipt. Maintenance does no Git I/O during startup, and status/ordinary
+requests remain available while it runs under the territory lock. The pass
+collects the common project repository and existing local bare territory. Once
+it runs, repository-local `gc.auto=0` and `maintenance.auto=false` replace
+implicit collection, including in task worktrees; global config, upstream
+repositories and executor clones are unchanged.
+
+With no retained work, `git gc --cruft --prune=2.weeks.ago` applies a 14-day grace
+to loose and packed unreachable objects. Fresh objects and their descendants
+survive concurrent admission; native verification snapshot writes freshen reused
+object identities. See [Git's GC safety notes](https://git-scm.com/docs/git-gc#_notes)
+and [cruft expiry](https://git-scm.com/docs/git-gc#Documentation/git-gc.txt-gcpruneExpire).
+Any retained `suite-jobs` row, `merge-batch`, cached or on-disk unreleased executor
+lease, incomplete lease directory, or unreadable activity state disables expiry
+for the entire pass (`--prune=never`). Expired leases stay protected until release
+is confirmed. Reflogs and worktree metadata are preserved. An idle pass after a
+later restart permits expiry again; landings do not start another pass.
+
+Each native command has a 30-second deadline. A private POSIX Node `execve`
+gate records its PID, native UTC start identity and detached process group in
+`.cland/run/git-maintenance-owner.json` before Git starts, preserving that
+identity across exec. Stop cancels the delay or signals the owned group. Normal
+native close and group disappearance clear ownership. If bounded close remains
+incomplete, the durable receipt keeps the territory owned by that collector;
+maintenance is not announced completed. The parent releases its native child
+and pipe observation handles so normal hub shutdown can exit within its bound;
+this release never counts as collector death.
+
+After serving on restart, or before the first synchronous/asynchronous territory
+mutation, recovery checks that receipt. A gone group recovers; a matching live
+group is signalled and checked with a bounded wait. A changed PID identity is
+never signalled. An unverified or surviving group retains ownership, refuses
+territory mutations and reports its PID to the Coordinator; serving and reads
+continue. Recovery clears only its matching dead same-host `gc.pid`, preserving
+possible replacement locks after PID reuse. No pack file is manually removed;
+fresh interrupted and foreign temporary packs retain the grace. Older native
+stale `gc.pid` files without cland receipts still use Git's own recovery rule.
+
+Foreground native GC retries despite a stale `gc.log` and clears it on success.
+`.cland/run/git-maintenance.json` records the completed attempt, expiry policy
+and repository failures. `cland doctor` reports one `git maintenance` row for
+current owner receipts/logs, failed collection or a recovered log. Doctor is read-only,
+including with `--fix`. See [agent recovery guidance](../docs/agents/git-maintenance.md).
+
 ### Task branches and worktrees
 
 In a project with a territory, a task's branch and worktree come from cland, never from the harness (T-58; T-20 decisions D3, D7, D8):

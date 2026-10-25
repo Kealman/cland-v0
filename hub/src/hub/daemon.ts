@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { createWebEdge, type WebEdge } from './web-edge.ts';
-import { realClock, type Clock } from './clock.ts';
+import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // The hub as a project's daemon: the project's lock taken first, `.cland/` prepared, the store opened on
 // `hub.db`, the WebSocket edge for spokes and the Unix socket edge for the UI bound, and the discovery file
 // written last — a client that reads `hub.json` finds a hub that answers. Shutdown runs it backwards: the
@@ -41,6 +41,9 @@ import { RequestGuard } from './budget.ts';
 import { jsonLinesLog } from '../log.ts';
 import { TestLintWarmer } from '../test-lint-policy.ts';
 import { hubPriority } from './priority.ts';
+import { maintainProjectGit } from '../git-maintenance.ts';
+import { MaintenanceRecoveryRequired, maintenanceRecoveryReporter, readMaintenanceOwner } from '../git-maintenance-owner.ts';
+import { withTerritoryLockAsync } from '../territory.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -66,7 +69,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -338,6 +341,33 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   let stopping: Promise<void> | null = null;
   let deliberateStop = false;
   let sweep: Promise<void> | null = null;
+  let maintenanceTimer: ClockTimer | null = null;
+  let maintenance: Promise<void> | null = null;
+  let maintenanceRecovery: Promise<void> | null = null;
+  const maintenanceAbort = new AbortController();
+  const reportOwner = (owner: import('../git-maintenance-owner.ts').MaintenanceOwner) => hub.core.noticeTo(AGENTS.id, { id: `git-maintenance-recovery:${owner.token}`, kind: 'report', to: ['coordinator'], text: `Git collector pid ${owner.pid} retains territory ownership; recovery could not confirm its group is gone. Serving and read-only requests remain available.`, detail: { event: 'git-maintenance-recovery-blocked', pid: owner.pid } });
+  const unreportMaintenance = maintenanceRecoveryReporter(root, reportOwner);
+  const maintenanceFailure = (error: unknown) => {
+    log({ event: 'git-maintenance-failed', error: String(error) });
+    if (error instanceof MaintenanceRecoveryRequired) reportOwner(error.owner);
+  };
+  const startMaintenanceRecovery = () => {
+    maintenanceRecovery = (options.gitMaintenanceRecovery ?? (async () => {
+      if (await readMaintenanceOwner(root)) await withTerritoryLockAsync(root, async () => {});
+    }))(root, env);
+    void maintenanceRecovery.catch(maintenanceFailure);
+  };
+  const scheduleMaintenance = () => {
+    maintenanceTimer = clock.setTimeout(() => {
+      maintenanceTimer = null;
+      if (stopping) return;
+      log({ event: 'git-maintenance-started' });
+      maintenance = (maintenanceRecovery ?? Promise.resolve()).then(() => (options.gitMaintenance ?? maintainProjectGit)(root, key => store.meta(key), env, { signal: maintenanceAbort.signal }))
+        .then(() => log({ event: 'git-maintenance-completed' }))
+        .catch(maintenanceFailure);
+    }, 30_000);
+    maintenanceTimer.unref();
+  };
   const stop = (): Promise<void> => {
     stopping ??= (async () => {
       const failures: unknown[] = [];
@@ -346,6 +376,12 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
       };
       try {
         await attempt(() => log({ event: 'stopping' }));
+        clock.clearTimeout(maintenanceTimer);
+        maintenanceAbort.abort();
+        // The collector's native close and receipt precede store/lock teardown.
+        await attempt(() => maintenance);
+        await attempt(() => maintenanceRecovery);
+        unreportMaintenance();
         await attempt(() => edge?.close());
         await attempt(() => ws?.close());
         await attempt(() => web?.close());
@@ -388,6 +424,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
       await ws?.close();
       ws = null;
       if (listen === 'required') {
+        unreportMaintenance();
         await crew.stop();
         agents.attach(null);
         await hub.close();
@@ -408,6 +445,8 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   if (ws === null || edge === null) {
     primeInbox();
     log({ event: 'serving', root, pid: process.pid, listeners: false });
+    startMaintenanceRecovery();
+    scheduleMaintenance();
     starting = false;
     hub.dispatcher.startExecutorRecovery();
     tracker.resumeReadyChecks();
@@ -437,6 +476,8 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   adapters.sessions.markServing();
+  startMaintenanceRecovery();
+  scheduleMaintenance();
   starting = false;
   hub.dispatcher.startExecutorRecovery();
   tracker.resumeReadyChecks();

@@ -59,3 +59,28 @@ test('a probe error starts its own close bound without waiting for the answer de
   await pending;
   assert.deepEqual(receipt, { code: null, stdout: '', stderr: '', error: 'probe failure; cleanup incomplete: child did not close within 1 s of SIGKILL' });
 });
+
+test('an aborted owned command kills its group and waits for native close before returning', async t => {
+  const { child, signals } = fakeProbe(t);
+  const abort = new AbortController();
+  let result: RunResult | undefined;
+  const observed = () => result;
+  const pending = run('synthetic-maintenance', [], {}, 30_000, false, abort.signal).then(value => { result = value; });
+  abort.abort();
+  assert.deepEqual(signals, [[-42, 'SIGKILL']]);
+  assert.equal(observed(), undefined, 'an abort request is not native close');
+  child.emit('close', null);
+  t.mock.timers.tick(0);
+  await pending;
+  assert.deepEqual(observed(), { code: null, stdout: '', stderr: '', error: 'cancelled' });
+});
+
+test('a command cancelled before launch starts no child', async t => {
+  fakeProbe(t);
+  const abort = new AbortController();
+  abort.abort();
+  const pending = run('synthetic-maintenance', [], {}, 30_000, false, abort.signal);
+  assert.equal((cp.spawn as unknown as { mock: { callCount(): number } }).mock.callCount(), 0);
+  t.mock.timers.tick(0);
+  assert.deepEqual(await pending, { code: null, stdout: '', stderr: '', error: 'cancelled' });
+});

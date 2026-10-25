@@ -418,6 +418,8 @@ export type ProjectHubOptions = {
   /** Fake unless a T3 native contract explicitly opts in. */
   harnesses?: 'fake' | 'native';
   probes?: 'fake' | 'native';
+  gitMaintenance?: typeof import('../src/git-maintenance.ts').maintainProjectGit;
+  gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>;
   adapters?: import('../src/adapters/index.ts').AdapterFactory[];
   git?: import('../src/tracker/verdict-git.ts').Git;
   hasTerritory?: typeof import('../src/territory.ts').hasTerritory;
@@ -458,6 +460,8 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     priorityProbe: () => 0,
     lintWarmer: { request: () => {}, close: async () => {} },
     git: async () => null,
+    gitMaintenance: async () => {},
+    gitMaintenanceRecovery: async () => {},
     readBase: async () => null,
     hasTerritory: async () => false,
     territoryLock: async <T>(_root: string, operation: () => Promise<T>) => operation(),

@@ -109,6 +109,11 @@ T-1244: Document current-dev preflight/freshness receipts and pinned historical 
 T-1230: Point skill-inventory changes to the production-role no-sync guard and cached-refresh receipt tests.
 T-1218: Document hub authorship for periodic/nightly queue, heartbeat and artifacts, with human shell ownership preserved.
 T-1258: Document sealed OpenCode Console credential comparison and native model-failure diagnostic seams.
+T-1217: Point Git maintenance diagnosis to the startup retention policy and sealed native expiry/recovery tests.
+T-1217: Add CLI inactivity-supervisor and held native collector cleanup regression guidance after source review.
+T-1217: Replace pre-serving maintenance with delayed background collection, abort/drain on stop, grace and dead-gc.pid recovery guidance per Coordinator instruction.
+T-1217: Document durable ownership handoff on incomplete close, bounded identity-aware restart/territory recovery, and gated owned fixture commands (Coordinator 2776473b; H1/M3 review).
+normal CLI exit with live durable collector handoff (T-1217)
 T-1260: Replace cover-quiet polling with the durable one-shot test-slot-available report and explain older-hub recovery.
 T-1233: document disposable-clone selection replay, sealed Git environment and the existing CLI regression seam.
 T-1256: Require Claude envelope-bearing turn-start confirmation and point to re-exec and five-minute Coordinator alarm regressions.

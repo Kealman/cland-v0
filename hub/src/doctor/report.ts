@@ -62,8 +62,9 @@ export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number
  * The child leads its own process group: past the deadline the whole group is killed and the pipes are closed, so a
  * grandchild holding stdout open (a wrapper script's real tool) neither outlives the check nor keeps it waiting.
  * Await close and native cleanup after termination. If close never arrives, report incomplete cleanup after 1 s.
+ * Optional cancellation uses that same owned-group termination/close boundary; older calls are unchanged.
  */
-export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false): Promise<RunResult> {
+export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false, signal?: AbortSignal): Promise<RunResult> {
   return new Promise((done) => {
     let stdout = '';
     let stderr = '';
@@ -76,10 +77,16 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
       settled = true;
       clearTimeout(timer);
       clearTimeout(cleanupTimer);
+      signal?.removeEventListener('abort', abort);
       // ChildProcess close (or a thrown spawn) can precede libuv's native close callbacks.
       // Cross a complete loop turn so they drain too, without a wall-clock grace period.
       setImmediate(() => setImmediate(() => done(r)));
     };
+    const abort = () => { error ??= 'cancelled'; terminate(); };
+    if (signal?.aborted) {
+      finish({ code: null, stdout, stderr, error: 'cancelled' });
+      return;
+    }
     let child;
     try {
       child = spawn(bin, args, { env, stdio: [inheritStdin ? 0 : 'ignore', 'pipe', 'pipe'], detached: true });
@@ -102,6 +109,7 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
       child.stdout?.destroy();
       child.stderr?.destroy();
     };
+    signal?.addEventListener('abort', abort, { once: true });
     timer = setTimeout(() => {
       error ??= `no answer within ${timeoutMs / 1000} s`;
       terminate();

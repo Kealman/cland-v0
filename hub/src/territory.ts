@@ -13,6 +13,7 @@ import { checkMergeBudgets, type DurationBudgetContext } from './suite-duration-
 import { suiteLimits } from './suite-limits.ts';
 import { withCleanup, withCleanupAsync } from './cleanup.ts';
 import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
+import { recoverMaintenanceOwner, recoverMaintenanceOwnerSync } from './git-maintenance-owner.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
 
 export const territoryPath = (root: string): string => join(root, '.cland', 'territory.git');
@@ -55,7 +56,7 @@ export function withTerritoryLock<T>(root: string, operation: () => T | Promise<
     throw err;
   }
   let result;
-  try { result = operation(); }
+  try { recoverMaintenanceOwnerSync(root); result = operation(); }
   catch (err) { return withCleanup(() => { throw err; }, lock.release); }
   if (result instanceof Promise) return withCleanupAsync(() => result, async () => lock.release());
   lock.release();
@@ -97,7 +98,7 @@ export async function withTerritoryLockAsync<T>(root: string, operation: () => P
     });
     throw err;
   }
-  return withCleanupAsync(operation, lock.release, resumed);
+  return withCleanupAsync(async () => { await recoverMaintenanceOwner(root); return operation(); }, lock.release, resumed);
 }
 
 export const TERRITORY_HOOK = `#!/bin/sh
