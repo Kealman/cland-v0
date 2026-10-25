@@ -2,8 +2,8 @@
 id: T-1217
 kind: task
 title: Merge-queue candidates and verification snapshots accumulate unreachable Git objects until auto-gc gives up
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T13:49:33.009Z
+updated: 2026-10-25T16:16:17.550Z
+closed: 2026-10-25T16:16:17.550Z
 ---
 
 ## Summary
@@ -294,3 +295,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-1217 · 2026-10-25T13:49:33.009Z
 
 Ready report sent to Coordinator at unchanged 72802020 after final evidence A-11989. Fresh no-auto-maintenance fetch found dev 31e63e92; object-only merge-tree exited 0 with no conflicts (result e063f7b7). Clean tree; claim retained. Coordinator owns queued rule 6 verify all after stage covers and T-1265/T-543 reruns, then enqueue. No additional source changes or all-tier proof claimed.
+
+### coord · 2026-10-25T16:16:17.550Z
+
+Merged 980a01bfe0982db6d2afdb4091139acd6a94a21a onto dev.

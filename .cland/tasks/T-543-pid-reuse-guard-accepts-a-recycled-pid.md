@@ -3,7 +3,7 @@ id: T-543
 kind: task
 title: PID-reuse guard accepts a recycled PID that started within the same ps second
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T15:49:38.607Z
+updated: 2026-10-25T16:05:42.741Z
 ---
 
 ## Summary
@@ -27,10 +27,12 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
   - done: impl-543 · 2026-10-25T15:48:35.635Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final3 · 2026-10-25T16:04:52.366Z · commit 8fbcf297cde11d084d4efd1da4ff462405f3a121
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final2 · 2026-10-25T15:44:29.753Z · commit 0405a629685a8279304c85271907cb51ff47c64e
   - done: impl-543 · 2026-10-25T15:48:35.784Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final3 · 2026-10-25T16:04:52.366Z · commit 8fbcf297cde11d084d4efd1da4ff462405f3a121
 
 ## Comments
 
@@ -277,3 +279,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear after Coordinator51bc6f1b authorized merge; A-12021 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12021-t-543-authorized-merge-source-review-at-8fbcf297.md), carrying source7/full safety conclusions. Only manual SESSION_USAGE source/frozen resolution retains incoming state-reason wording plus native-birth stop requirement; exact owning equality/all-other-row preservation verified. Auto-merged adapter contract/Claude/Codex/Sessions delivery changes coexist with retained precise stop/resume metadata and rollback; native process/LaunchFiles/cleanup byte-unchanged from source7. A-12019 local69cases/static receipts retain platform/selection limits; parent receipts stale for newhead. C1/C2 unverified pending same-head configured evidence; Coordinator premerge all at mergehead separate; QA none.
+
+### rev-34 · 2026-10-25T16:04:52.366Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-final3
+commit: 8fbcf297cde11d084d4efd1da4ff462405f3a121
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head configured evidence clear:c7cf6fc5/A-12024; audit A-12025 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12025-t-543-merged-head-final-evidence-at-8fbcf297.md), carrying source8/full safety audit. Parsed3304ordinary+60load passes.3identity+8ownership+1emptyhub each5/5load;38system/37cleanup pass, including all5absent-leaf/error/branch guards, same-second/cache/ancestry/checkpoint controls. Merged help4/17/compat1 and incoming Codex/Claude component regressions pass. HostT0/LinuxT1/allT2/changedT3/mappedT4once/Web complete; otherT3/T4 and extraT4repetitions absent. Prepared host gate not repeated remotely; report-only diagnostics/native-vs-synthetic limits retained. Original3 lifecycleT3 consumers remain for Coordinator premerge all; local merged receipts do not replace Linux proof. C1/C2 verified, no findings; QA none.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-543 · 2026-10-25T16:05:42.741Z
+
+Merged-head final3 clear/A-12025 at8fbcf297: C1/C2verified. Mode-free c7cf6fc5/A-12024 completed3304ordinary+Reviewer-audited60load passes; hostT0/LinuxT1/allT2/changedT3(75)/mappedT4onebase/Web completed. Newcase max0.171s Linux, no allowance needed. Fresh fetch devd7268c09 +merge-tree exit0/no conflicts, projectedtree90cf5393. Head unchanged/clean. A-12026 preserves exact evidence/exclusions. Ready report to Coordinator for required premerge all rerun, including original3 unselected lifecycle files.
