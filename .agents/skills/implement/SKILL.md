@@ -178,6 +178,10 @@ scope in `docs/agents/tests.md` when adding copies or exceptions. Keep payload
 caps above measured copied-state bytes with growth headroom, alongside synthetic
 fixtures.
 
+For Neovim frame refresh admission, use the T1 capture/TAP publication seam in
+`docs/agents/tests/hub-test-nvim-frame-refresh.test.ts.md`; completeness follows
+successful consumer tests and nonempty captures, not historical frame counts.
+
 For native child launches in `hub/test` and `nvim/test`, use the complete `fixtureEnvironment`
 or `accountFixtureEnvironment` result after explicit owned extras. Fresh runner
 children use `runnerFixtureEnvironment` to filter inherited paths while keeping

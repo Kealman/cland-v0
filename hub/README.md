@@ -3733,7 +3733,8 @@ also names `explorer-summary.test.ts` and `hub-read-component.test.ts` as local
 Lua checks that never await stub frames; incidental startup traffic does not make
 them recording consumers. Every selected file must still record at least one frame. It
 captures and validates all requested files before replacing fixtures, refusing
-skipped or incomplete runs and captures below the existing frame counts. See the
+skipped or incomplete runs and empty captures. Completeness uses successful test
+counts, allowing scheduling-dependent reductions in distinct frame counts. See the
 [fixture maintenance guidance](../docs/agents/tests.md) for full, retained and
 per-file slice refreshes.
 

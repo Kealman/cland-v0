@@ -726,14 +726,14 @@ if they record zero frames.
 This maintenance command requires one-minute load below 15. A trailing test file refreshes that file while retaining the
 catalog; `--from-recordings` regenerates existing inputs and the live baseline
 without replaying client assertions. Use the full command after adding scenarios.
-Capture runs must finish successfully with at least one test and no skips. The
-recorder validates every requested file before replacing any fixture: each file
-must record at least its existing slice's frame count (and at least one frame),
-and the replacement catalog must contain at least as many frames as the current
-catalog. An unavailable Neovim binary, incomplete run or reduced capture refuses
-the refresh and names the affected file, leaving the fixtures unchanged. A
-deliberate reduction of recorded scenarios requires updating the expected fixture
-counts through a reviewed fixture change.
+Capture runs must finish successfully with every reported test passed, at least
+one test and zero failures, cancellations, skips or TODOs. The recorder validates
+every requested file before replacing any fixture: each file must record at least
+one frame. Empty consumer discovery also refuses publication. Distinct frame
+counts can shrink when concurrent requests coalesce, so existing slice and catalog
+counts are not completeness floors. An unavailable Neovim binary, incomplete test
+receipt or empty capture refuses the refresh, leaving fixtures unchanged. Full
+refreshes replace the catalog; targeted refreshes retain unrelated catalog entries.
 For an expensive consumer, `npm run test:nvim-fixtures -- --slice <test-file>`
 also commits a per-file catalog under `nvim/test/fixtures/protocol-frames/`.
 The parent test selects that slice for its stub processes; consumers without a
