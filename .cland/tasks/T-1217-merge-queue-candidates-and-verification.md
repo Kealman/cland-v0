@@ -3,7 +3,7 @@ id: T-1217
 kind: task
 title: Merge-queue candidates and verification snapshots accumulate unreachable Git objects until auto-gc gives up
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T12:47:48.663Z
+updated: 2026-10-25T13:01:47.679Z
 ---
 
 ## Summary
@@ -23,10 +23,10 @@ On 2026-10-24 every Git command in the root and in task worktrees started printi
 
 ## Acceptance criteria
 
-- [ ] C1. cland's own Git maintenance (for example after a landing, or on hub start when idle) prunes unreachable objects older than a safe age that no live batch, verification or lease can still reference, without touching objects a running batch uses (test with a scratch repository).
-  - failed: rev-31 [reviewer] · 2026-10-25T12:47:48.663Z · note H2: unresolved native observation handles can retain the normally stopped hub after its lock is released, violating the Coordinator's bounded-exit handoff policy.
+- [x] C1. cland's own Git maintenance (for example after a landing, or on hub start when idle) prunes unreachable objects older than a safe age that no live batch, verification or lease can still reference, without touching objects a running batch uses (test with a scratch repository).
+  - done: impl-1217 · 2026-10-25T13:01:34.599Z
 - [x] C2. A stale gc.log no longer blocks auto-gc indefinitely; the hub reports the condition once in doctor output instead of in every Git command (test).
-  - done: impl-1217 · 2026-10-25T12:40:49.276Z
+  - done: impl-1217 · 2026-10-25T13:01:34.699Z
 
 ## Comments
 
@@ -179,3 +179,7 @@ Full NOT CLEAR: Standards 0 / Spec 1 high (H2). C1 fails bounded stop during unr
 Durable review: A-11929.
 
 Criteria: C1 failed (H2: unresolved native observation handles can retain the normally stopped hub after its lock is released, violating the Coordinator's bounded-exit handoff policy.).
+
+### impl-1217 · 2026-10-25T13:00:17.988Z
+
+A-11929 H2 corrected: durable incomplete handoff now unrefs the ChildProcess and destroys the parent's observation pipes without clearing owner metadata or claiming death. New actual CLI/socket hub.stop regression first failed with 'normal hub.stop left the CLI alive past its bounded handoff; native hub outcome incomplete'; after correction, native CLI exit succeeds while collector/descendant remain alive, followed by real recovery and exact PID disappearance. Local macOS Node24 focused receipts: new T3 1/1 (1833.804334 ms case), existing native T3 11/11, startup T2 5/5, policy T1 14/14. Static lint exposed two narrow issues before review: deadline lacked its reasoned annotation and policy fixture imported T2 native cleanup. Replaced the latter with filesystem-only awaited cleanup, retaining all fake-policy assertions and T1 classification. No configured/Linux verification yet. T-543 currently ready but unmerged; approved current identity helper remains pending directed integration.

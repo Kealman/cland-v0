@@ -2,8 +2,8 @@
 id: T-1302
 kind: task
 title: roles-timing's malformed-refresh case reads its clock before T-1230's async refresh completes
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-1053
 branch: t/T-1302-roles-timing-s-malformed-refresh-case
 created: 2026-10-25T12:32:13.237Z
-updated: 2026-10-25T12:50:41.037Z
+updated: 2026-10-25T12:57:06.952Z
+closed: 2026-10-25T12:57:06.952Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence CLEAR, A-11933; carry source-1/A-11913. A-11932 independently parsed: 3203 ordinary test passes / 441 files, exact changed T3 case once at 0.151867270 s, no load repetitions. T0/all T1/fallback all T2/changed T3/Web green on Linux x64; docs guard 3/3. A-11918 original copied response excerpts establish corrected-head local 5/5 and restored skip-wait control exit1 at clock0!==300, with explicit source/capture/omitted-stack limits and no transcription reruns. All four assertions unchanged and receipt-before-stop/drain verified. Host prepared-tree check and report-only timing/lint diagnostics separately attributed; broader T3/T4/QA/landing not claimed. C1 done checked and verified; zero findings. Coordinator owns enqueue/merge and affected after-stage QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-25T12:57:06.952Z
+
+Merged ba9d182e261db2e7f2ce9771b614db542245e252 onto dev.

@@ -3,7 +3,7 @@ id: T-543
 kind: task
 title: PID-reuse guard accepts a recycled PID that started within the same ps second
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T12:42:15.093Z
+updated: 2026-10-25T12:57:19.341Z
 ---
 
 ## Summary
@@ -25,8 +25,10 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
 ## Acceptance criteria
 - [x] C1. The identity check uses a start identity finer than one second where the platform offers one (for example `/proc/<pid>/stat` starttime on Linux, `proc_pidinfo` or `sysctl` kinfo on macOS), or adds a second discriminator (command, ppid or a nonce) so that two processes started in the same second never compare equal.
   - done: impl-543 · 2026-10-25T11:35:11.813Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
   - done: impl-543 · 2026-10-25T12:41:02.456Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
 
 ## Comments
 
@@ -201,3 +203,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear; M6 resolved by exactly two reasoned intentional-seam annotations, no behavior/guard/assertion change. A-11927 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11927-t-543-m6-correction-source-review-at-2b4ac175.md) carries source5/full C1/C2 safety scope. Interceptors still reject identity probes before launch and preserve original sealed caller options; positive controls/restoration intact. A-11924 local owning lint/full test:lint/typecheck green and5/5 counter-file receipts retain platform limits. Prior host-only and interrupted runs remain failed/incomplete; C1/C2 unverified pending successful same-head configured receipt. Coordinator premerge all separate; item QA none.
+
+### impl-543 · 2026-10-25T12:56:39.461Z
+
+Completed configured run4b32a51f/A-11937 at unchanged source6 head2b4ac175: exit0,3234passes,0fail/cancel/skip. HostT0 plus LinuxT1/allT2 fallback/changedT3(70 identities)/mappedT4(1base)/Web(44files225tests) completed. RemainingT3 deferred; T4 repetitions skipped. Droplet c-8lon1 Linuxx64 Node24.21, ChromeHeadlessShell156.0.8078.4; lifetime722s cost$0.0502. Web suite wall150.62s, duration gates report-only. Required native/legacy/held/checkpoint/cache-to-signal cases independently checked in timing records; all pass. New cases all<3s. A-11939 summarizes exact cases and limits; earlier incomplete A-11862/A-11920 stay excluded. Requesting final evidence review before fresh fetch/conflictcheck and Coordinator-ready report.
+
+### rev-34 · 2026-10-25T12:57:18.787Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-final
+commit: 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear:4b32a51f/A-11937; audit A-11943 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11943-t-543-final-configured-evidence-at-2b4ac175.md), carrying source6/full safety review. Parsed3234ordinary+60load passing finish identities. Precise birth/persistence, same-second stop/cleanup refusal with positive signals, coherent ancestry, M4 durable checkpoint, M5 cache-to-signal and M6 host guard controls pass.3identity+8ownership+1emptyhub identities each5/5load; changedT3system33/cleanup37 once pass. HostT0/LinuxT1/allT2/changedT3/mappedT4once/Web complete; otherT3/T4/extraT4repetitions absent. Native Linux versus simulated Darwin limits explicit; accepted persisted legacy-upgrade/preupgrade-window policy retained. Report-only warnings unchanged, no new>=3s case allowance. Prior failed/incomplete runs remain excluded. C1/C2 verified; Coordinator premerge all check separate; QA none.
+
+Criteria: C1 verified, C2 verified.

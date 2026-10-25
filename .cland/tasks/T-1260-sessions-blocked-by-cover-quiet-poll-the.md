@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1042
 branch: t/T-1260-sessions-blocked-by-cover-quiet-poll-the
 created: 2026-10-24T19:41:53.006Z
-updated: 2026-10-25T11:45:26.179Z
+updated: 2026-10-25T13:03:17.858Z
 ---
 
 ## Summary
@@ -112,3 +112,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear. Run a114cce7 / A-11836 passed 3157 ordinary tests, no failures/cancellations/skips/todos. T0 host-worktree check passed; prepared host tree 83a3c233 is not a source commit and remote typecheck was not repeated. Linux x64 droplet T1/fallback all hub+Neovim T2/Web completed, Node 24.21.0, Neovim 0.12.5, Chrome Headless Shell 156.0.8078.4 (v1248). No T3/T4/occasion/stage QA. Checked exact durable wake-up/restart identity and previous-wire refusal identity, ordinary passes plus each 5/5 load receipt; all four admission cases pass. Clauses 39/39 include default/project no-polling wording, reserve and growth-headroom assertions; help 3/3, frozen usage 1/1, docs 3/3 pass. Source3 plus full prior source audit and these records establish C1/C2. Budget/lint warnings remain report-only. No findings or Reviewer rerun. Coordinator retains extra pre-merge all verification and stage QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T13:03:17.858Z
+
+Rule 6 pre-merge verify all 271ff6ea at a9ed1bfc (A-11951): 4049 passed, 3 failed, 5 skipped across T0–T3 (Web not reached; covered by mode-free a114cce7). All three failures are known dev defects with matching messages, none from T-1260: suite-selection 'task admission selects unchanged T4 guards…' (invalid loadGuards, T-1299, landed after this head's dev merge); roles-timing '150 ms of malformed parsing…' (0 !== 300, T-1302, landed after); qa-lint-build 'qa lint validates named titles from a production install…' (ERR_MODULE_NOT_FOUND shared/protocol-frame.ts, T-1303 open, culprit T-1225). Coordinator accepts this run as T-1260's rule 6 evidence with those attributed identities.
