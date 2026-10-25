@@ -15,9 +15,9 @@ cland runs on **macOS** and **Linux**. Windows is not supported.
 brew install kealman/tap/cland
 ```
 
-The tap is pending publication: the human must first create
-`Kealman/homebrew-tap`, and a release must publish its formula. Until then, use
-the [source install](#from-source).
+The formula lives in [`Kealman/homebrew-tap`](https://github.com/Kealman/homebrew-tap).
+Each release publishes `Formula/cland.rb` there, and the formula installs that
+release's tagged source.
 
 Homebrew supplies `node@24` (at least 24.13), builds the web workbench from the
 release's locked dependencies, and puts `cland` on PATH. Its command wrapper
@@ -30,22 +30,31 @@ The formula's source and dependencies live in its Homebrew keg under `libexec`.
 curl -fsSL https://cland.app/install.sh | sh
 ```
 
-The script needs **Node >=24.13.0 <25**, npm, curl, tar and Git. If Node is missing,
-install Node 24 LTS from [nodejs.org](https://nodejs.org/en/download), put `node`
-and `npm` on your PATH, and run the command again.
+The script needs **Node >=24.13.0 <25**, npm, curl, tar, `mktemp` and `readlink`.
+It also needs Git to find the latest stable tag with `git ls-remote`; when
+`CLAND_VERSION` or `CLAND_RELEASE_URL` is set, it does not use Git for that.
+If Node is missing, install Node 24 LTS from
+[nodejs.org](https://nodejs.org/en/download), put `node` and `npm` on your PATH,
+and run the command again.
 
-It fetches the newest stable `vX.Y.Z` tag from the public repository, downloads
-that tag’s source tarball and looks for its prebuilt Web release assets. It
-verifies the archive’s SHA-256 and source stamp, then installs only locked runtime
-dependencies with lifecycle scripts disabled. If the assets are absent, invalid
-or for different sources, it installs locked build dependencies, builds the web
-workbench, and removes development dependencies.
-Older tags without the shared build helper use the equivalent legacy build steps,
-so the pinned-version command below also works for those archives.
-It prints each step and never uses `sudo`. Download or build failures leave the
-current installation in place. An interrupted update restores the old version
-and prints any retained staging or recovery path; keep that path until recovery
-is complete.
+With no version given, the script reads the public repository's tags and picks
+the newest stable `vX.Y.Z`. It downloads that tag's source tarball from
+codeload. For a tagged install it also downloads the release's
+`cland-web.tar.gz` and `cland-web.tar.gz.sha256` assets, and accepts the bundle
+only when its SHA-256 matches the checksum file, every entry is an ordinary file
+or directory under `web/dist/` with no links or `..` components, and its source
+stamp matches the downloaded source. It then installs only locked runtime
+dependencies with lifecycle scripts disabled.
+
+If the assets are absent, invalid or for different sources, the script says so
+and builds from source with the shared `packaging/build-install.sh`: locked
+dependencies with lifecycle scripts disabled, the web build, then removal of
+development dependencies. Published tags that predate that helper use the
+equivalent legacy `npm ci`, `npm run build` and `npm prune` steps. It prints
+each step and never uses `sudo`. Download or build failures leave the current
+installation in place. An interrupted update restores the old version and prints
+any retained staging or recovery path; keep that path until recovery is
+complete.
 
 | Path | What the script installs |
 | --- | --- |
@@ -56,7 +65,7 @@ To choose another writable prefix or a specific released tag:
 
 ```sh
 curl -fsSL https://cland.app/install.sh | PREFIX="$HOME/tools" sh
-curl -fsSL https://cland.app/install.sh | CLAND_VERSION=v0.2.0 sh
+curl -fsSL https://cland.app/install.sh | CLAND_VERSION=v0.2.1 sh
 ```
 
 With a custom prefix, the paths become `<prefix>/bin/cland` and

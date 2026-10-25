@@ -66,21 +66,25 @@ One Claude plan works too: opus leads, sonnet implements and reviews. So does a 
 
 ## Install
 
-macOS:
+macOS, with Homebrew:
 
 ```sh
 brew install kealman/tap/cland
 ```
 
-The Homebrew tap is pending publication. Until it is available, use the source install below.
+The formula lives in [Kealman/homebrew-tap](https://github.com/Kealman/homebrew-tap)
+and installs each release's tagged source.
 
-Linux:
+Linux or macOS, with the install script:
 
 ```sh
 curl -fsSL https://cland.app/install.sh | sh
 ```
 
-The install script also requires Node >=24.13.0 <25 and npm on your PATH.
+The install script also requires Node >=24.13.0 <25, npm, curl, tar, `mktemp`
+and `readlink` on your PATH. It needs Git to find the latest tag unless you set
+`CLAND_VERSION`, and it uses the release's prebuilt web bundle when its
+checksum and source stamp verify, otherwise it builds from source.
 
 From source (Node >=24.13.0 <25):
 
