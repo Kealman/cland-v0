@@ -66,8 +66,13 @@ test('role clauses and launch instructions omit unavailable skills and retain pr
   const input = await launch('launch-mixed');
   assert.match(input.clause!, /Skills for this role: implement, project-check, project-link\./);
   assert.doesNotMatch(`${input.clause}\n${input.brief!.text}`, /grill-me|empty-skill|broken-skill/);
-  // Inventory changes take effect without an edit to roles.toml or a hub restart.
+  // Inventory changes take effect without an edit to roles.toml or a hub restart: wait for the hub's
+  // published empty snapshot (its `skills-loaded` event) before reading another clause.
   await rm(join(root, '.agents'), { recursive: true });
+  await eventually('empty skill snapshot published', async () => {
+    await flushProjectLogs(t, root);
+    return (await logEvents(root, 'skills-loaded')).some(event => Array.isArray(event.skills) && event.skills.length === 0) ? true : undefined;
+  });
   const empty = await readClause('direct-empty');
   assert.deepEqual(empty.skills, []);
   assert.doesNotMatch((empty.message as { text: string }).text, /Skills for this role:/);

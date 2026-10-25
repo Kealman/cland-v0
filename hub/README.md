@@ -1209,6 +1209,8 @@ claims. Custom staffing is manual; `crew.toml` pools and hierarchy remain built-
 
 ### The clause
 
+The hub scans `.agents/skills` asynchronously before accepting connections and on its 500 ms role-refresh cadence. Clause assembly reads the published inventory from memory. A usable skill is a directory (including a symlink to one) containing a `SKILL.md` file; missing or unreadable entries are omitted. Inventory changes need no `roles.toml` edit or restart and become visible after the next completed scan; already delivered clauses remain as delivered. `cland doctor` scans synchronously in its separate CLI process.
+
 On assignment and on every hello of a session holding a role, the hub records the clause as a hub notice to the session (`from: "hub"`, no topic) and sends it as a `role` frame, ahead of what else waited:
 
 ```json

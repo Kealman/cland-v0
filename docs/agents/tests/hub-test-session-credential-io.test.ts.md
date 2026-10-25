@@ -1,6 +1,12 @@
 # hub/test/session-credential-io.test.ts
 
-T2 uses sealed real socket frames with startHub, production projectSessions, fixedRoles and fake adapters, matching the public fixed-role seam in tracker-native-boundary.test.ts. Fixed-role setup isolates credential I/O from the existing ProjectConfiguration role-skill scanner; it does not exempt any synchronous function. Full projectHub authentication/migration remains covered in cli-session-credential.test.ts. Arm an asynchronous
+T2 uses sealed real socket frames with startHub, production projectSessions,
+ProjectConfiguration and fake adapters. Seed a real `.agents/skills` inventory
+before starting configuration; the role-bearing hello uses the production cached
+inventory under T-1220's trap of every synchronous filesystem export. Retain the
+exact skill list and clause text assertions after welcome, as well as the empty
+trap-call assertion. Full projectHub authentication/migration remains covered in
+cli-session-credential.test.ts. Arm an asynchronous
 rename/removal observer and the reply observer before sending the action, then
 trap every exported synchronous filesystem function. Hold only the owned session
 path. Assert that an unrelated hub status/list still answers while persistence

@@ -9,7 +9,7 @@ import type { LogFn } from '../log.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { rolesTemplate } from './template.ts';
-import { projectSkills } from './skills.ts';
+import { projectSkillsAsync } from './skills.ts';
 import { installedHarnessesAsync } from '../doctor/harnesses.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal, customGrantRefusal } from './permissions.ts';
 import { APPROVALS, PERMISSIONS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Permissions, type Sandbox } from '../adapters/contract.ts';
@@ -52,7 +52,7 @@ export type RolesConfig = ReadonlyMap<string, RoleDefinition>;
 export type RolesSource = {
   get: () => RolesConfig;
   fresh?: (resumed?: Resumed) => Promise<void>;
-  /** Read only when building instructions; permission checks keep using the parsed snapshot. */
+  /** Cached usable-skill snapshot; building instructions performs no filesystem I/O. */
   availableSkills?: () => ReadonlySet<string>;
 };
 
@@ -228,6 +228,7 @@ export class RolesFile implements RolesSource {
   readonly #resumed: Resumed;
   readonly #read: (path: string) => Promise<string>;
   #config: RolesConfig = DEFAULTS;
+  #skills: ReadonlySet<string> = new Set();
   #text: string | null = null;
   #missing = false;
   #timer: NodeJS.Timeout | null = null;
@@ -268,7 +269,7 @@ export class RolesFile implements RolesSource {
   /** One immutable-in-use snapshot. A refresh publishes a replacement, never edits a check's map. */
   get(): RolesConfig { return this.#config; }
 
-  availableSkills(): ReadonlySet<string> { return projectSkills(dirname(dirname(this.path))); }
+  availableSkills(): ReadonlySet<string> { return this.#skills; }
 
   /** Rare launch/assignment paths see an edit immediately; hot permission checks never await disk. */
   async fresh(resumed: Resumed = this.#resumed): Promise<void> {
@@ -307,6 +308,9 @@ export class RolesFile implements RolesSource {
   }
 
   async #reload(resumed: Resumed): Promise<boolean> {
+    if (this.#stopped) return false;
+    const skills = await projectSkillsAsync(dirname(dirname(this.path)));
+    resumed(() => { if (!this.#stopped) this.#skills = skills; });
     const reading = resumed(() => {
       try { return this.#read(this.path); }
       catch (err) { this.#unreadable(err); return null; }

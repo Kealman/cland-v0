@@ -16,3 +16,11 @@ reload test preserves the successful response shape. See the
 Run the touched files individually with `node --test <file>`, subject to
 cover-quiet admission. T3 `config-reload.test.ts` owns SIGHUP/PID behavior; extending
 the shared startup-field guard needs no new process or browser test.
+
+The generated `project configuration` and `roles file` skill-snapshot cases use
+scratch skill directories, fake interval advancement and the public
+`availableSkills` read. Trap all synchronous filesystem exports around that read,
+then retain the startup inventory, unchanged snapshot before refresh, added-skill
+and removed-directory assertions after publication. Drain the previous refresh
+before the next edit/tick. These are T2 filesystem receipts without native
+processes; no source-commit Git query runs in the configuration fixture.

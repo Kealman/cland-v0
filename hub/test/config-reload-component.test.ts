@@ -2,10 +2,15 @@
 import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import fs from 'node:fs';
+import { mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { ProjectConfiguration } from '../src/hub/configuration.ts';
+import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
+import { RolesFile, ROLES_REFRESH_MS } from '../src/roles/config.ts';
 import { layout } from '../src/project.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { cland, eventually, flushProjectLogs, projectHub, tempProject } from './harness.ts';
 
 const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;
@@ -204,4 +209,45 @@ test('missing config retains the loaded policy and permits role refresh with a w
   const listed = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
   assert.equal(listed.roles.find(r => r.role === 'implementer')?.launch.model, 'without-config');
   assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout).verification.remoteBudget, 6);
+});
+
+// T-1230 C1: the project's usable-skill inventory is a cached snapshot. The scan is asynchronous, the clause
+// path only reads the snapshot, and the roles cadence publishes inventory changes without a roles.toml edit.
+for (const owner of ['project configuration', 'roles file']) test(`${owner} reads a skill snapshot and refreshes changed inventories without a roles edit`, async t => {
+  const root = await tempProject(t);
+  const files = layout(root);
+  await mkdir(files.dir, { recursive: true });
+  await writeFile(files.roles, DEFAULT_ROLES_TOML);
+  const addSkill = async (name: string) => {
+    await mkdir(join(root, '.agents/skills', name), { recursive: true });
+    await writeFile(join(root, '.agents/skills', name, 'SKILL.md'), '# Skill\n');
+  };
+  await addSkill('tdd');
+  const env = fixtureEnvironment(root, process.env);
+  const source = owner === 'project configuration'
+    ? new ProjectConfiguration(files, null, () => {}, env, work => work(), () => {}, async () => null)
+    : new RolesFile(files.roles, () => {}, undefined, work => work(), env);
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  await source.start();
+  t.after(() => source.stop());
+  assert.deepEqual([...source.availableSkills()], ['tdd']);
+  // Arm the observer around the snapshot read: role clause assembly must not scan synchronously.
+  const originals = Object.fromEntries(Object.entries(fs).filter(([name, fn]) => name.endsWith('Sync') && typeof fn === 'function'));
+  const calls: string[] = [];
+  for (const name of Object.keys(originals)) Object.assign(fs, { [name]: () => { calls.push(name); throw new Error(`synchronous ${name} while reading the skill snapshot`); } });
+  syncBuiltinESMExports();
+  try { assert.deepEqual([...source.availableSkills()], ['tdd']); } finally { Object.assign(fs, originals); syncBuiltinESMExports(); }
+  assert.deepEqual(calls, []);
+  const first = source.availableSkills();
+  await addSkill('implement');
+  assert.equal(source.availableSkills(), first, 'reads retain the published snapshot until refresh');
+  t.mock.timers.tick(ROLES_REFRESH_MS);
+  await eventually('added skill published', () => source.availableSkills().has('implement') ? true : undefined);
+  assert.deepEqual([...source.availableSkills()].sort(), ['implement', 'tdd']);
+  await source.fresh(); // Drain the refresh before arming the next inventory edit/tick.
+  assert.deepEqual([...first], ['tdd'], 'refresh does not mutate an earlier snapshot');
+  await rm(join(root, '.agents'), { recursive: true });
+  t.mock.timers.tick(ROLES_REFRESH_MS);
+  await eventually('removed skills published', () => source.availableSkills().size === 0 ? true : undefined);
+  assert.deepEqual([...source.availableSkills()], []);
 });

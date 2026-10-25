@@ -41,6 +41,11 @@ For remote watchdog changes, use the executor-fake guidance in `docs/agents/test
 
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
 
+For role-clause skill inventory changes, use the production configuration and
+T-1220 synchronous-filesystem guard described in
+`docs/agents/tests/hub-test-session-credential-io.test.ts.md`; snapshot refresh
+receipts are in `docs/agents/tests/hub-test-config-reload-component.test.ts.md`.
+
 For `web/` changes in this repository, follow the root AGENTS.md web rule and `web/README.md`. The root check builds the ignored bundle after typechecking, including on local verification; no separate development bridge is used.
 
 For message or notes Markdown, read `web/README.md#message-markdown` for the pure

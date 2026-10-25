@@ -9,7 +9,7 @@ import { isDeepStrictEqual, promisify } from 'node:util';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../init/config.ts';
 import { DEFAULTS, parseRoles, ROLES_REFRESH_MS, type RolesConfig, type RolesSource } from '../roles/config.ts';
 import { rolesTemplate } from '../roles/template.ts';
-import { projectSkills } from '../roles/skills.ts';
+import { projectSkillsAsync } from '../roles/skills.ts';
 import { installedHarnessesAsync } from '../doctor/harnesses.ts';
 import type { Layout } from '../project.ts';
 import type { LogFn } from '../log.ts';
@@ -39,6 +39,7 @@ export type ConfigReloadResult = ConfigStatus & { applied: string[]; warnings: s
 export class ProjectConfiguration implements RolesSource {
   #config: ProjectConfig;
   #roles: RolesConfig = DEFAULTS;
+  #skills: ReadonlySet<string> = new Set();
   #status: ConfigStatus = { loadedAt: new Date().toISOString(), sourceCommit: null };
   #idleMinutes = IDLE_NOTIFY_MS / 60000;
   #stamp = '';
@@ -58,7 +59,7 @@ export class ProjectConfiguration implements RolesSource {
     this.#config = config ?? defaultConfig(basename(layout.root));
   }
   get = (): RolesConfig => this.#roles;
-  availableSkills = (): ReadonlySet<string> => projectSkills(this.layout.root);
+  availableSkills = (): ReadonlySet<string> => this.#skills;
   config = (): ProjectConfig => this.#config;
   status = (): ConfigStatus => ({ ...this.#status });
   async start(): Promise<void> {
@@ -102,11 +103,20 @@ export class ProjectConfiguration implements RolesSource {
       this.log({ event: 'roles-warning', path: this.layout.roles, role: definition.role, warning });
     }
     this.log({ event: 'roles-loaded', path: this.layout.roles, launch: Object.fromEntries([...this.#roles].map(([role, definition]) => [role, definition.launch])) });
+    await this.#refreshSkills(this.resumed);
     this.#status.sourceCommit = await this.#sourceCommit();
     this.#timer = setInterval(() => { void this.fresh(); }, ROLES_REFRESH_MS);
     this.#timer.unref();
   }
   async stop(): Promise<void> { this.#stopped = true; clearInterval(this.#timer); await this.#work; }
+  async #refreshSkills(resumed: Resumed): Promise<void> {
+    const skills = await projectSkillsAsync(this.layout.root);
+    resumed(() => {
+      if (this.#stopped || isDeepStrictEqual(skills, this.#skills)) return;
+      this.#skills = skills;
+      this.log({ event: 'skills-loaded', skills: [...skills] });
+    });
+  }
   async #sourceCommit(): Promise<string | null> {
     if (this.readSourceCommit) return this.readSourceCommit();
     return exec('git', ['log', '-1', '--format=%H', '--', '.cland/config.toml'], { cwd: this.layout.root, env: this.env }).then(r => r.stdout.trim() || null, () => null);
@@ -119,6 +129,8 @@ export class ProjectConfiguration implements RolesSource {
     // another refresh's attempted stamp for an already loaded snapshot.
     const work = this.#work.then(async () => {
       try {
+        if (this.#stopped) return;
+        await this.#refreshSkills(resumed);
         const stamp = await this.#fileStamp(this.layout.roles);
         if (this.#stopped || stamp === this.#attemptStamp) return;
         this.#attemptStamp = stamp;

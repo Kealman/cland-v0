@@ -9,7 +9,9 @@ import { connectSocket, connectUi, startHub, tempProject, TEST_SECRET } from './
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { projectSessions } from '../src/adapters/index.ts';
 import { Store } from '../src/hub/store.ts';
-import { fixedRoles } from '../src/roles/config.ts';
+import { ProjectConfiguration } from '../src/hub/configuration.ts';
+import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
+import { layout } from '../src/project.ts';
 import { FAKE_FLAVOURS, fakeHarness, type FakeHarness } from './fakes/harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -18,14 +20,22 @@ import { sessionCredentialFile, sessionRunDirectory } from '../../shared/session
 import { value } from './validation-support.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-// The fixed-role public seam matches tracker-native-boundary.test.ts. It keeps the
-// unrelated ProjectConfiguration skill-directory scanner out of this I/O contract.
+// The production role source: a real `ProjectConfiguration` with a real `.agents/skills` inventory, so the
+// role-bearing hello is guarded with no fixed-role substitution (T-1230 closed T-1220's exemption).
 async function credentialHub(t: import('node:test').TestContext, root: string) {
   const clock = new FakeClock();
   const socket = join(root, 'hub.sock');
   const env = fixtureEnvironment(root, process.env);
   await files.mkdir(join(root, '.cland'), { recursive: true });
-  const hub = await startHub({ secret: TEST_SECRET, roles: fixedRoles(), clock, store: new Store(join(root, '.cland/hub.db')), env,
+  await files.writeFile(join(root, '.cland/roles.toml'), DEFAULT_ROLES_TOML);
+  for (const skill of ['implement', 'tdd', 'diagnosing-bugs']) {
+    await files.mkdir(join(root, '.agents/skills', skill), { recursive: true });
+    await files.writeFile(join(root, '.agents/skills', skill, 'SKILL.md'), '# Skill\n');
+  }
+  const roles = new ProjectConfiguration(layout(root), null, () => {}, env, work => work(), () => {}, async () => null);
+  await roles.start();
+  onCleanup(t, () => roles.stop());
+  const hub = await startHub({ secret: TEST_SECRET, roles, clock, store: new Store(join(root, '.cland/hub.db')), env,
     control: { status: () => ({ root, pid: process.pid, port: 0, socket, version: 'test', startedAt: clock.now().toISOString(), uptimeMs: 0 }), stop() {} } });
   const fakes = {} as Record<typeof FAKE_FLAVOURS[number], FakeHarness>;
   const project = projectSessions({ core: hub.core, root, db: join(root, '.cland/hub.db'), discoveryFile: join(root, '.cland/hub.json'), env, log: () => {},
@@ -86,6 +96,11 @@ test('credential persistence keeps welcome behind its async receipt while the hu
     assert.equal(delivered, false, 'an unrelated serving receipt cannot release welcome');
     release.resolve();
     assert.equal((await receipt(welcomed, 'credential-ready welcome')).type, 'welcome');
+    // The real role source's cached inventory reaches the clause on this same hello, still with no sync call.
+    const clause = await receipt(peer.next(), 'role clause after welcome');
+    assert.equal(clause.type, 'role');
+    assert.deepEqual(clause.skills, ['implement', 'tdd', 'diagnosing-bugs']);
+    assert.match((clause.message as { text: string }).text, /Skills for this role: implement, tdd, diagnosing-bugs\./);
     assert.equal((await files.stat(file)).mode & 0o777, 0o600);
     assert.deepEqual(guard.calls, []);
   } finally { release.resolve(); guard.restore(); }
