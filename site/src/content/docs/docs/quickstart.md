@@ -95,8 +95,8 @@ The Aide now leads a short conversation. It works in rounds: each question comes
 5. **The stack and its checks.** For example: build with TypeScript; checks: `npm run typecheck`, `npm test`. The commands become your [verification](/docs/verification-and-release/) commands.
 6. **The crew.** The Aide explains the roles, then proposes the crew as one table: harness, model, count and how each role works, from the harnesses you have. One harness is a valid crew. It also asks how Claude Code sessions handle permission prompts. See [Crew configuration](/docs/crew/).
 7. **The welcome note.** A short note in General, in your language: who is who, your rules, the first release and how to reach the Aide.
-8. **The commit.** The Aide commits everything `cland init` and the onboarding wrote, on `dev`.
-9. **The start.** "Ready to start? When you say ok, I launch the Coordinator with this brief: Work release R-1." Say ok.
+8. **The start.** "Ready to start? When you say ok, I launch the Coordinator with this brief: Work release R-1." Say ok.
+9. **The commit.** The Coordinator commits everything `cland init` and the onboarding wrote, on `dev`, and publishes it with `cland push`. A Codex Aide runs in the generated `workspace-write` sandbox and cannot commit at the project root; an Aide whose harness can write the root commits and publishes that work itself before the Coordinator starts.
 
 After that, the Aide offers a tour of cland in eight short stages tied to what is on your screen. You can stop after any stage.
 

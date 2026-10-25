@@ -4,6 +4,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "test": "node --test test/*.test.ts",
+    "prebuild": "npm test",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",

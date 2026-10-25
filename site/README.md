@@ -10,9 +10,12 @@ This folder is a standalone npm project with its own `package-lock.json`. It is 
 cd site
 npm install
 npm run dev       # local dev server with hot reload, http://localhost:4321
-npm run build     # static build into dist/
+npm test          # the onboarding claim guard
+npm run build     # static build into dist/, after the claim guard
 npm run preview   # serve the built dist/ locally
 ```
+
+`npm test` checks that no site or docs page says the Aide commits at the project root without naming the generated `workspace-write` limit and the Coordinator. `npm run build` runs it first through `prebuild`, so a stale claim fails the build.
 
 ## Where things live
 
