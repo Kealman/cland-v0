@@ -9423,6 +9423,13 @@
       "expires": "2026-10-31",
       "reason": "T-779 added this T3 identity: one sealed release transaction covering preview, a failed archive download and a lost tap push reply, recovering the pinned formula exactly once against a local bare tap. Its Linux droplet samples stayed under 5 s, but the macOS arm64 stage cover 0ab35c7d at 5d1fa288 (A-11377), with workers 2 and peak 1-minute load 15.66, observed the assertion-green identity at 6.936 s and failed the enforced T3 budget. The 10.5 s cap is about 1.5 times that worst passing sample; no wait bound, assertion or teardown is relaxed. Owned by E-778 until its fixture cost is reduced. Re-owned to E-880 on 2026-10-25 before its epic closes (D72 legacy owner)."
     },
+    "nvim/test/launcher-input-load.test.ts::launcher Insert receipt holds 20/20 under parallel load": {
+      "seconds": 11,
+      "owner": "E-1282",
+      "added": "2026-10-25",
+      "expires": "2026-11-01",
+      "reason": "T-1028 C1 requires twenty independently owned headless Neovim launcher cases in batches of two, with forty native TextChangedI receipts and original error/empty/outbound assertions. Linux x64 c-8 lon1 mode-free run 69adb5aa at 1bee70f9 (A-11758) passed all twenty children and the parent in 7.12978769 s; the generic 5 s new-identity gate alone failed. The Coordinator directed rounding 1.5x that measured passing sample upward to 11 s for Linux timing variance. T4 has no tier budget; fixture cleanup, input bounds, all twenty cases and every assertion stay unchanged."
+    },
     "hub/test/qa-lint-build.test.ts::committed brief corpus has no false absent file or title reports against the compiler source oracle": {
       "seconds": 18.7,
       "owner": "E-880",

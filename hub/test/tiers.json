@@ -1,6 +1,8 @@
 {
   "version": 1,
   "loadGuards": {
+    "nvim/test/launcher-component.test.ts": ["nvim/test/launcher-input-load.test.ts"],
+    "nvim/test/launcher-model-fixture.ts": ["nvim/test/launcher-input-load.test.ts"],
     "hub/src/adapters/requests.ts": ["hub/test/inbox-verifier-load.test.ts"],
     "hub/src/adapters/sessions.ts": ["hub/test/inbox-verifier-load.test.ts"],
     "hub/src/hub/core.ts": ["hub/test/inbox-verifier-load.test.ts"],
@@ -616,6 +618,7 @@
     "nvim/test/item-prefixes.test.ts": "T2",
     "nvim/test/items.test.ts": "T2",
     "nvim/test/launcher-component.test.ts": "T2",
+    "nvim/test/launcher-input-load.test.ts": "T4",
     "nvim/test/layers-component.test.ts": "T2",
     "nvim/test/layers.test.ts": "T3",
     "nvim/test/needs-you.test.ts": "T2",
