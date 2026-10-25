@@ -168,6 +168,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/progress.test.ts`](../../../hub/test/progress.test.ts) | [Notes](hub-test-progress.test.ts.md) |
 | [`hub/test/skills-onboarding.test.ts`](../../../hub/test/skills-onboarding.test.ts) | [Notes](hub-test-skills-onboarding.test.ts.md) |
 | [`hub/test/item-lead.test.ts`](../../../hub/test/item-lead.test.ts) | [Notes](hub-test-item-lead.test.ts.md) |
+| [`hub/test/install-claims.test.ts`](../../../hub/test/install-claims.test.ts) | [Notes](hub-test-install-claims.test.ts.md) |
 | [`hub/test/install-script.test.ts`](../../../hub/test/install-script.test.ts) | [Notes](hub-test-install-script.test.ts.md) |
 | [`hub/test/roles-launch-permissions.test.ts`](../../../hub/test/roles-launch-permissions.test.ts) | [Notes](hub-test-roles-launch-permissions.test.ts.md) |
 | [`hub/test/custom-roles-component.test.ts`](../../../hub/test/custom-roles-component.test.ts) | [Notes](hub-test-custom-roles-component.test.ts.md) |

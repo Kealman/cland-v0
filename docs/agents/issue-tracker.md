@@ -246,8 +246,10 @@ The Coordinator includes the preview's tap/main/file/version and exact tag URL i
 the release approval ask. SHA-256 is computed after the product tag is published,
 then recorded before the tap push. On a `homebrew` follow-up failure, keep
 `release.tmp` and retry the same item/version; the product may already be public.
-The human creates the tap. Real clean-macOS Homebrew evidence follows creation;
-sealed source-build and pure render tests supply pre-merge evidence.
+For cland itself the tap is `Kealman/homebrew-tap`; each release publishes its
+formula there. Real clean-macOS install, version, doctor, upgrade and uninstall
+evidence remains E-778's launch demo, not release publication; sealed
+source-build and pure render tests supply pre-merge evidence.
 
 
 ## Prebuilt Web release follow-up

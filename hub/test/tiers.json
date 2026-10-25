@@ -191,6 +191,7 @@
     "hub/test/init-skills-update.test.ts": "T1",
     "hub/test/init.test.ts": "T3",
     "hub/test/inject-stalled.test.ts": "T2",
+    "hub/test/install-claims.test.ts": "T1",
     "hub/test/install-script.test.ts": "T3",
     "hub/test/item-lead.test.ts": "T2",
     "hub/test/item-summary-lua.test.ts": "T3",

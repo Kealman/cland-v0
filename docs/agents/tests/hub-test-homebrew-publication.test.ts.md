@@ -12,4 +12,5 @@ refusal. The final assertions read durable remote blobs and refs.
 
 The companion installer test executes the shared build on sealed local tarballs,
 including updates and rollback. Neither suite proves actual Homebrew installation;
-clean-macOS install/version/doctor/upgrade/uninstall follow human tap creation.
+clean-macOS install/version/doctor/upgrade/uninstall remain E-778's launch demo
+evidence, now that the formula is published in `Kealman/homebrew-tap`.

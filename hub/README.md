@@ -2,8 +2,14 @@
 
 ## Start a project with cland
 
-You need Node >=24.13.0 <25, npm, Git, curl and tar. On Linux and macOS without
-Homebrew, install the latest stable released tag:
+You need Node >=24.13.0 <25, npm, Git, curl and tar. On macOS with Homebrew, the
+formula in `Kealman/homebrew-tap` installs the latest release's tagged source:
+
+```sh
+brew install kealman/tap/cland
+```
+
+On Linux, or macOS without Homebrew, install the latest stable released tag:
 
 ```sh
 curl -fsSL https://cland.app/install.sh | sh
@@ -2092,9 +2098,11 @@ The result keeps `{version, commit, notes, refs, dryRun, homebrew}` and adds opt
 cland's optional `[release.homebrew] tap = "Kealman/homebrew-tap"` in committed
 `.cland/config.toml` enables a second, separate Git push inside `cland release`.
 The default empty tap reports **Homebrew skipped** and does no tap work. The human
-creates the GitHub tap repository first; cland never creates it. Only the existing
-human/Coordinator release authorization permits publication. Keep the tap empty
-until that repository exists and Git authentication can write to it.
+creates the GitHub tap repository first; cland never creates it. For cland itself
+that tap is `Kealman/homebrew-tap`, named by the committed config, and each release
+publishes `Formula/cland.rb` there. Only the existing human/Coordinator release
+authorization permits publication. Keep another project's tap empty until its
+repository exists and Git authentication can write to it.
 
 The dry run names the tap, `main`, `Formula/cland.rb`, version and exact source
 URL (`https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/<tag>`).
@@ -2120,12 +2128,13 @@ The formula uses `node@24` for both build and command execution, with a minimum
 24.13 check. It and the curl installer’s source fallback call `packaging/build-install.sh`:
 locked dependencies with lifecycle scripts disabled, Web build, then dev-dependency
 pruning while preserving the lockfile's build mtime. The curl installer retains
-the equivalent legacy build steps for published archives without that helper,
-including `CLAND_VERSION=v0.2.0`. Sealed local archive tests
-exercise that build; pure Node tests check formula rendering. Real clean-macOS
-`brew install kealman/tap/cland`, `cland --version`, `cland doctor`, upgrade and
-uninstall are landing evidence after the human creates the tap. Until publication,
-site and README label Homebrew pending and offer source installation. See
+the equivalent legacy build steps for published archives without that helper.
+Sealed local archive tests exercise that build; pure Node tests check formula
+rendering. Real clean-macOS `brew install kealman/tap/cland`, `cland --version`,
+`cland doctor`, upgrade and uninstall remain E-778's launch demo evidence
+(C1/C2); a published formula is not an end-to-end install proof. The site,
+quickstart and READMEs give the same three paths: the Homebrew formula, the
+install script and source. See
 [Homebrew's tap convention](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap)
 and [formula cookbook](https://docs.brew.sh/Formula-Cookbook).
 
