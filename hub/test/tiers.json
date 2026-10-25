@@ -1,6 +1,7 @@
 {
   "version": 1,
   "loadGuards": {
+    "nvim/lua/cland/init.lua": ["nvim/test/qa-shipped.test.ts"],
     "nvim/test/launcher-component.test.ts": ["nvim/test/launcher-input-load.test.ts"],
     "nvim/test/launcher-model-fixture.ts": ["nvim/test/launcher-input-load.test.ts"],
     "hub/src/adapters/requests.ts": ["hub/test/inbox-verifier-load.test.ts"],
