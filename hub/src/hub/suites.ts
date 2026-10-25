@@ -43,6 +43,7 @@ import { unavailableWebPhase, webUnavailableLine, type WebPhaseUnavailable } fro
 import { receiptExecutionMatches } from '../verification-tree.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
+export type TestSlotWaiter = { id: string; sessionId: string; cover: string };
 export type SuiteJob = {
   webPhase?: WebPhaseUnavailable;
   commands?: import('../verification-commands.ts').VerificationCommands;
@@ -93,7 +94,7 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome?.notRun ? 'unavailable' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -587,15 +588,37 @@ export class Suites {
     if (active.occasion !== input.occasion || (active.submissionKey ?? submissionKey(active, active.head)) !== submissionKey(input, head)) throw new Error('this session already has a suite queued or running');
     return { reused: true, id: active.id, pid: active.pid, topic: active.topic, position: active.state === 'queued' ? this.#ordered().findIndex(job => job.id === active.id) + 1 : 1, ...(active.cached ? { cached: active.cached } : {}) };
   }
-  /** Targeted tests inspect the machine fence without joining or changing it. */
-  async checkSlot(lease?: { pid: number; started: string; token: string }): Promise<{ admitted: true }> {
+  /** Targeted tests never reserve capacity; authenticated refusals arm one wake-up. */
+  async checkSlot(lease?: { pid: number; started: string; token: string }, sessionId?: string): Promise<{ admitted: true }> {
     const owner = (await this.#local.holder())?.holder;
     const job = owner && this.#jobs.find(j => j.executor === 'local' && j.integrated && j.pid === owner.pid && j.started === owner.started && !j.cleaned && !j.reported);
     const cover = owner?.integrated ?? job?.id;
     if (cover && owner && !(lease && lease.pid === owner.pid && lease.started === owner.started && lease.token === owner.token)) {
-      throw new Error(`cover-quiet: integrated run ${cover} holds the local test slot; wait for it to finish (only the human may set CLAND_TEST_IGNORE_COVER=1)`);
+      const waiters = this.#testSlotWaiters();
+      if (sessionId && !waiters.some(waiter => waiter.sessionId === sessionId)) {
+        waiters.push({ id: `test-slot:${randomUUID()}`, sessionId, cover });
+        this.#store.setMeta('test-slot-waiters', JSON.stringify(waiters));
+      }
+      const next = sessionId
+        ? 'test-slot-available wake-up registered; do other work or end the turn until it arrives; no polling'
+        : 'no session identity for a test-slot-available wake-up; ask the Coordinator for a release notice; no polling';
+      throw new Error(`cover-quiet: integrated run ${cover} holds the local test slot; ${next} (only the human may set CLAND_TEST_IGNORE_COVER=1)`);
     }
     return { admitted: true };
+  }
+  #testSlotWaiters(): TestSlotWaiter[] { return JSON.parse(this.#store.meta('test-slot-waiters') ?? '[]') as TestSlotWaiter[]; }
+  async #notifyTestSlot(): Promise<void> {
+    if (this.#closed || !this.#options.onTestSlotAvailable || !this.#testSlotWaiters().length) return;
+    if (this.#jobs.some(job => job.executor === 'local' && job.state !== 'queued' && !job.cleaned && !job.reported)
+      || [...this.#humans.values()].some(slot => !slot.left && slot.admittedAt)
+      || await this.#local.occupied()) return;
+    if (this.#closed) return;
+    // Re-read after the asynchronous observation: a concurrent refusal must not
+    // be overwritten. The idempotent notice and removal commit together.
+    this.#store.transaction(() => {
+      for (const waiter of this.#testSlotWaiters()) this.#options.onTestSlotAvailable!(waiter);
+      this.#store.setMeta('test-slot-waiters', '[]');
+    });
   }
   // Connection-owned reservations have no worker or result; a restart closes their owners.
   slot(input: SuiteSlot, owner: object): SuiteSlotResult {
@@ -1057,6 +1080,7 @@ export class Suites {
     if (this.#checking) return this.#checking;
     if (this.#closed) return Promise.resolve();
     this.#checking = this.#tick().catch(error => { this.#options.log?.({ event: 'verification-admission-blocked', error: String(error) }); }).then(async () => {
+      await this.#notifyTestSlot();
       if (this.#closed || !this.#options.onQueue) return;
       const queue = await this.#schedulerSnapshot();
       if (this.#closed) return;

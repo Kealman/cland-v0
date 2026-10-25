@@ -4728,10 +4728,25 @@ under load. Assert the writer's OS identity is gone at the removal boundary;
 await the callback separately to check successful CLI completion. Do not treat
 an undelivered callback as proof that a process can still write.
 
-The machine shards run at concurrency 4 locally and 2 on droplets (D53, measured on c-8); hermetic shards run at 1. Targeted single-file runs are free:
+The machine shards run at concurrency 4 locally and 2 on droplets (D53, measured on c-8); hermetic shards run at 1. Targeted single-file runs take no suite lease but obey cover-quiet admission:
 `node --test hub/test/daemon.test.ts`. If calling the runner directly, use
 `node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw
 `node --test` is reserved for targeted runs.
+
+When an integrated cover holds the local slot, `suite.slot/check` refuses with
+`cover-quiet`. An authenticated session's refusal persists a one-shot
+`test-slot-available` hub report, delivered to that stable session identity when
+local capacity is free. Repeated refusals coalesce; the registration survives the
+short-lived test socket closing and hub restarts. No queue row or lease is taken.
+Do other work or end the turn until that report arrives; never poll with sleep
+or `cland verify queue`. Retry the command after the notice: admission is checked
+again, so another cover can refuse it and register a fresh wake-up. Remote covers
+do not hold the local slot, and a matching inherited lease admits the cover's own
+workers. Human/standalone checks without session identity get Coordinator-notice
+guidance; only the human may use `CLAND_TEST_IGNORE_COVER=1`. Older running hubs
+keep their previous refusal; report the missing capability to the Coordinator
+and end the turn until its release notice or authorized restart. See
+[cover-quiet](../docs/agents/tests.md#cover-quiet).
 
 Each phase ends with `suite skip details N` and one `suite skip` JSON record per
 skipped test, containing its repository-relative file, name and reason. Both

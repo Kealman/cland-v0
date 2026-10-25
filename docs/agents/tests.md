@@ -1729,9 +1729,23 @@ exercise file migration and must not acquire credentials from the synthetic help
 ## Cover-quiet
 
 Before fixture setup, the hub and Neovim test harnesses ask the project hub for
-a read-only `suite.slot` check. When an integrated cover holds the local
-compatibility slot, an unrelated test exits with `cover-quiet` and the run id.
-Wait for that cover to release the slot. Its own workers pass with the matching
+a `suite.slot` check (no capacity reservation). When an integrated cover holds
+the local compatibility slot, an unrelated test exits with `cover-quiet` and the run id.
+An authenticated session refusal durably registers one `test-slot-available`
+hub report, addressed to that session by stable identity when the local slot is
+free. Repeated refusals coalesce; disconnecting the test client or restarting
+the hub retains the registration. The report starts a session turn, including
+when its test command has already exited.
+
+Do other work or end the turn until `test-slot-available` arrives; no polling
+with sleeps or `cland verify queue`. Retry the targeted command after the report;
+it checks admission again and does not own a reservation. Without a session
+identity, the refusal asks for a Coordinator release notice instead. An older
+hub that still says "wait for it to finish" has no wake-up: report that missing
+capability to the Coordinator and end the turn until its release notice or
+authorized restart.
+
+The cover's own workers pass with the matching
 inherited lease; remote covers do not occupy this machine's local slot. Without
 a project hub there is no refusal. A connected hub must answer. Admission waits
 at least 15 seconds, scaling with one-minute load per available CPU to a maximum
@@ -1746,7 +1760,8 @@ waits, and neither test bodies nor fixture hooks run after a refusal or timeout.
 A disconnect also fails admission before fixtures. Discovery follows `CLAND_HUB_FILE`
 and linked worktrees, as the CLI does. Only the human may set
 `CLAND_TEST_IGNORE_COVER=1` to bypass this check. The check never joins the queue
-or acquires a lease; normal full-suite queueing stays in effect.
+or acquires a lease; only an authenticated refusal adds the one-shot wake-up.
+Normal full-suite queueing stays in effect.
 An older hub that refuses or does not recognize the check fails startup with
 `test admission unavailable`, naming the missing read-only `suite.slot/check`
 capability and the required hub restart. Wait for that authorized restart.

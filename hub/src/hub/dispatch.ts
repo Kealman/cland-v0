@@ -40,7 +40,7 @@ import { DropletExecutor } from '../executor/droplet/droplet.ts';
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
-import { Suites, releaseT3Cover, SuiteAdmissionError, suiteSummary, machineAccounting, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
+import { Suites, releaseT3Cover, SuiteAdmissionError, suiteSummary, machineAccounting, type SuiteJob, type TestSlotWaiter, type SuiteSchedulerOptions } from './suites.ts';
 import { machineHealthSummary } from '../executor/droplet/health.ts';
 import { reportSharedDefects } from './shared-defects.ts';
 import { quarantineResults, recordQuarantineResults, type QuarantineHistory } from '../suite-quarantine.ts';
@@ -273,7 +273,7 @@ export class Dispatcher {
       }).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, Math.min(sweepMs, 60000)) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, taskLanding: item => options.tracker?.summary(item)?.state === 'closed' ? options.tracker.landingReceipt(item) : null, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(AGENTS.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onRemoteReclaimed: job => options.core.noticeTo(job.topic, { id: `executor-reclaimed:${job.id}`, kind: 'report', to: job.to, text: `verify ${job.id}: remote capacity available; moving queued local fallback to droplet`, detail: { event: 'verification-executor-reclaimed', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, taskLanding: item => options.tracker?.summary(item)?.state === 'closed' ? options.tracker.landingReceipt(item) : null, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onTestSlotAvailable: waiter => this.#reportTestSlot(waiter), onSoakNotice: (id, text) => { options.core.noticeTo(AGENTS.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onRemoteReclaimed: job => options.core.noticeTo(job.topic, { id: `executor-reclaimed:${job.id}`, kind: 'report', to: job.to, text: `verify ${job.id}: remote capacity available; moving queued local fallback to droplet`, detail: { event: 'verification-executor-reclaimed', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     const devT3Probes = root && this.#suites ? new DevT3Probes(options.core.store, this.#suites, root, options.env ?? process.env, options.devT3Repository) : null;
     this.#devT3Search = devT3Probes && options.tracker ? new DevT3Search(options.core.store, {
       log: this.#log,
@@ -815,6 +815,15 @@ export class Dispatcher {
     for (const entry of job.batch?.members ?? []) {
       core.noticeTo(this.#options.tracker?.summary(entry.item)?.topic ?? AGENTS.id, { id: `suite-accounting:${job.id}:${entry.item}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text: `suite accounting correction ${job.id} · ${machines.join('; ')}` });
     }
+  }
+  #reportTestSlot(waiter: TestSlotWaiter): void {
+    const name = this.#options.core.store.nameOfSession(waiter.sessionId);
+    if (!name) return; // The requesting session was pruned.
+    this.#options.core.noticeTo(AGENTS.id, {
+      id: waiter.id, kind: 'report', to: [name],
+      text: `test-slot-available: local test slot released after integrated run ${waiter.cover}; retry the targeted command (admission is checked again).`,
+      detail: { event: 'test-slot-available', cover: waiter.cover },
+    });
   }
   async #reportSuite(job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void): Promise<void> {
     const core = this.#options.core;
@@ -2209,7 +2218,7 @@ export class Dispatcher {
         if (isClientRequest(frame) && (frame.type === 'suite.slot' || frame.type === 'suite.forced')) {
           if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for suites')));
           if ('check' in frame) {
-            return later(frame.type, this.#suites.checkSlot(frame.lease).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+            return later(frame.type, this.#suites.checkSlot(frame.lease, caller?.sessionId === UNKNOWN_SESSION ? undefined : caller?.sessionId).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
           }
           if (caller) return this.#refuse(caller, frame, peer, frame.type, 'human suite slots belong to runners outside a cland session');
           if (!isAbsolute(frame.cwd)) return peer.send(Dispatcher.#failure(frame.id, new Error('suite cwd must be absolute')));

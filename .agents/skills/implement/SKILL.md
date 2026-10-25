@@ -62,6 +62,13 @@ For remote watchdog changes, use the executor-fake guidance in `docs/agents/test
 
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
 
+On `cover-quiet`, an authenticated refusal registers a durable one-shot
+`test-slot-available` hub report. Do other work or end the turn until it arrives;
+never poll with sleep or `cland verify queue`. Retry the targeted command after
+the report; it checks admission again. If the running hub still says "wait for
+it to finish", report the missing wake-up capability to the Coordinator and
+end the turn until its release notice or authorized restart.
+
 For role-clause skill inventory changes, use the production configuration and
 T-1220 synchronous-filesystem guard described in
 `docs/agents/tests/hub-test-session-credential-io.test.ts.md`; snapshot refresh

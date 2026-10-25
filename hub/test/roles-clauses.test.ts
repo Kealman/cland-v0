@@ -74,6 +74,8 @@ for (const [source, definitions] of sources) {
         assert.doesNotMatch(clause, /batches shard too|per batch of about three merges/);
       }
       if (role === 'implementer') {
+        assert.match(clause, /On `cover-quiet`, do other work or end the turn until `test-slot-available`; no polling/);
+        assert.match(testProcedures, /Do other work or end the turn until `test-slot-available` arrives; no polling/);
         assert.match(clause, /Mark every criterion done before requesting the final review/);
         assert.match(clause, /Tasks: T0–T2, Web, changed T3\/T4 once; web\/ batches add Web/);
         assert.match(testProcedures, /Changed T3\/T4 files and mapped T4 guards run once; remaining T3 smoke runs in batches and integrated runs/);

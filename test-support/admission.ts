@@ -1,4 +1,5 @@
-// Read-only startup admission shared by targeted tests and package runners.
+// Startup admission shared by targeted tests and package runners; a refused
+// authenticated session registers a hub-owned wake-up without reserving capacity.
 import { askHubFrame, HubTimeout } from '../shared/socket-client.ts';
 import { hubDiscovery, readDiscovery } from '../shared/project-discovery.ts';
 import { realClock, type Clock } from '../shared/clock.ts';
