@@ -3,7 +3,7 @@ id: T-1250
 kind: task
 title: The changed-T3 duration check says 'no stanza' and then prints allowance stanzas
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - bug
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T14:13:21.952Z
-updated: 2026-10-25T09:53:25.637Z
+updated: 2026-10-25T17:06:59.738Z
 ---
 
 ## Summary

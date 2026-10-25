@@ -3,7 +3,7 @@ id: T-450
 kind: task
 title: A hung.test.mjs fixture run leaves its runner and child alive for hours (orphan from the hung-run tests)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
@@ -12,9 +12,9 @@ parent: E-1282
 blocked_by: []
 regression_of: T-385
 topic: null
-branch: null
+branch: t/T-450-a-hung-test-mjs-fixture-run-leaves-its
 created: 2026-10-15T03:49:38.455Z
-updated: 2026-10-25T09:53:25.413Z
+updated: 2026-10-25T17:08:50.392Z
 ---
 
 ## Summary

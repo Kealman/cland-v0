@@ -3,7 +3,7 @@ id: T-1024
 kind: task
 title: The Neovim frame recorder refuses green runs whose frame count depends on scheduling
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
@@ -11,9 +11,9 @@ assignee: null
 parent: E-1282
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1024-the-neovim-frame-recorder-refuses-green
 created: 2026-10-20T19:05:14.551Z
-updated: 2026-10-25T09:53:26.076Z
+updated: 2026-10-25T17:08:53.655Z
 ---
 
 ## Summary
