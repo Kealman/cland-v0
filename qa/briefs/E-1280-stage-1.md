@@ -44,7 +44,6 @@ Selectors: the test files below are the ones each item changed on dev. Recheck e
 | M6 | hub-api | `node --test hub/test/codex-adapter.test.ts` in the detached worktree | exit 0, including "Codex launches Implementer with narrow workspace roots, QA full access, Reviewer read-only, and the configured T-48 profile (T-1222)", which now asserts `excludeTurns` on resume |
 | M7 | hub-api | `node --test hub/test/roles-component.test.ts`, then `node --test hub/test/config-reload-component.test.ts`, then `node --test hub/test/roles-timing.test.ts`, in the detached worktree | all exit 0 (T-1230, T-1302) |
 | M8 | hub-api | `node --test hub/test/doctor-harness-probe.test.ts`, then `node --test hub/test/opencode-launch-policy.test.ts`, then `node --test hub/test/opencode-native.test.ts`, in the detached worktree | all exit 0 (T-1258) |
-| M9 | hub-api | `node hub/bin/cland.ts doctor` from the project root (read-only) | the OpenCode section names cland's OpenCode database and compares stored provider names or ids, without printing any credential; when a provider is missing it prints an `opencode auth login --standalone` line. Record the section's text with any provider-id values elided |
 
 Run M1–M8 one file at a time, and never in parallel with each other. Record every check with `qa-record.sh note` under E-1280 and one unique run id; retain the captures in the project's .cland/qa tree.
 
@@ -53,7 +52,7 @@ Before requesting QA, run `cland qa lint qa/briefs/E-1280-stage-1.md` at the bui
 ## Probes that mislead
 
 - The live hub runs the code of its last restart, not the tested dev SHA. Never use live-session behaviour, such as a Codex row's state or an inject-stalled notice in Agents, as evidence for this stage. The tests above are the evidence.
-- M9 reads the live doctor: it must not mutate anything and must never print a credential value. Elide provider ids if they look like secrets.
+- Never run a live `cland doctor` here: it calls the real harness credential probes against the human's HOME (rule 15). T-1258's doctor behaviour is covered by M8's sealed tests.
 - `node --test` exit 0 with a name that matches nothing is not a pass: confirm each named case appears in the output.
 - Re-check case names with grep at the tested build; renames happen.
 

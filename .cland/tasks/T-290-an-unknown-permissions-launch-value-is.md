@@ -3,7 +3,7 @@ id: T-290
 kind: task
 title: "An unknown `permissions` launch value is swallowed: RolesFile keeps the last good policy and the launch proceeds (T-289 follow-up)"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - hub
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T12:17:37.170Z
-updated: 2026-10-25T09:53:34.418Z
+updated: 2026-10-25T17:15:38.214Z
 ---
 
 ## Summary

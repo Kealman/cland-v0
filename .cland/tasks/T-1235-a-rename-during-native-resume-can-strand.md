@@ -3,7 +3,7 @@ id: T-1235
 kind: task
 title: A rename during native resume can strand the launch reservation under the old name
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - bug
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T11:19:13.427Z
-updated: 2026-10-25T09:53:20.351Z
+updated: 2026-10-25T17:15:37.960Z
 ---
 
 ## Summary
