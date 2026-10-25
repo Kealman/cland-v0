@@ -12,16 +12,18 @@ You need macOS or Linux and at least one AI coding plan: a Claude plan for Claud
 ## 1. Install
 
 ```sh
-# macOS
+# macOS, with Homebrew
 brew install kealman/tap/cland
 
-# Linux
+# Linux or macOS, with the install script
 curl -fsSL https://cland.app/install.sh | sh
+
+# From source
+git clone https://github.com/Kealman/cland-v0 cland
+cd cland && npm ci && npm link
 ```
 
-The Homebrew tap is pending publication; use the [source install](/docs/install/#from-source) until it is available.
-
-The install script requires Node >=24.13.0 <25 and npm on your PATH. See [Install](/docs/install/) for the other prerequisites and custom prefixes.
+The Homebrew formula lives in `Kealman/homebrew-tap`. The install script requires Node >=24.13.0 <25 and npm on your PATH; it also needs Git to find the latest tag unless you set `CLAND_VERSION`. See [Install](/docs/install/) for the other prerequisites and custom prefixes.
 
 Check it:
 

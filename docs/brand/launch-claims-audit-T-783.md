@@ -2,6 +2,8 @@
 
 Audited on 2026-10-24 against dev `86449530f6f292a3cad7e4debeeb56d45d9ec498`, newer than the public v0.2.0 tag. Changes are documentation only. All 15 pages under `site/src/content/docs/docs/`, README, the landing crew/features/FAQ/install sections, and the software-factory merge claim were read. This audit does not claim that the public installer or every provider/model is launch-qualified.
 
+Later update (v0.2.1): the Homebrew tap now exists at `Kealman/homebrew-tap`, and the current install claims live in `install.md`, `quickstart.md`, the landing page and the READMEs. The tables below record what this audit read on 2026-10-24; a command block quoted there is not a current install command.
+
 `ok` means the claim matches the named code or authoritative project instructions. `fixed` means the text was corrected. `gap` names missing or unqualified launch behavior, reported to the Coordinator; a gap is not a runtime pass. Paths are repository-relative; brace shorthand names the corresponding files in one directory. UI behavior was source-checked, without opening any browser.
 
 ## Launch exceptions to collect before publication
