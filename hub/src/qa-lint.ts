@@ -2,8 +2,7 @@
 import * as help from './cli/usage.ts';
 import { lintQaReferences } from './qa-lint-references.ts';
 import { decide, DEFAULT_PERMISSIONS, KNOWN_TOOLS, type ToolCall } from './roles/permissions.ts';
-import { isVerifyOccasion } from './protocol.ts';
-import { authorizeVerifyMode, VerifyAllReserved } from './verification-occasion.ts';
+import { isVerifyOccasion, authorizeVerifyMode, VerifyAllReserved } from './verification-policy.ts';
 
 export type QaLintFinding = { line: number; message: string; command?: string };
 type Command = { path: string[]; flags: Set<string>; forwardAfter?: number };

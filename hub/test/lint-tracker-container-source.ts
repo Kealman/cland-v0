@@ -56,7 +56,7 @@ function containerLiterals(rel: string, source: ts.SourceFile, checker: ts.TypeC
   const operationalOccasion = (node: ts.Node): boolean => {
     // One fixed wire enum may use epic independently of tracker configuration.
     // Only its direct constant initializer is exempt; Kind uses of the value still fail below.
-    if (rel !== 'hub/src/protocol.ts' || !ts.isStringLiteral(node) || node.text !== 'epic') return false;
+    if (rel !== 'hub/src/verification-policy.ts' || !ts.isStringLiteral(node) || node.text !== 'epic') return false;
     const contextual = checker.getContextualType(node);
     if (contextual && hasKind(contextual)) return false;
     const property = node.parent;
@@ -240,15 +240,15 @@ await check('compiler guard follows aliases and inference while preserving opera
 await check('only the operational verification enum declaration is exempt; tracker Kind uses stay protected', () => {
   const declaration = "export const VERIFY_OCCASIONS = { stage: 'stage', epic: 'epic', release: 'release' } as const;";
   const cases = [
-    { rel: 'hub/src/protocol.ts', text: declaration, allowed: true },
-    { rel: 'hub/src/protocol.ts', text: declaration + ' Object.values(VERIFY_OCCASIONS).some(value => value === input);', allowed: true },
+    { rel: 'hub/src/verification-policy.ts', text: declaration, allowed: true },
+    { rel: 'hub/src/verification-policy.ts', text: declaration + ' Object.values(VERIFY_OCCASIONS).some(value => value === input);', allowed: true },
     { rel: 'hub/src/hub/dispatch.ts', text: declaration, allowed: false },
-    { rel: 'hub/src/protocol.ts', text: declaration.replace('VERIFY_OCCASIONS', 'OTHER_VALUES'), allowed: false },
-    { rel: 'hub/src/protocol.ts', text: "'epic';", allowed: false },
-    { rel: 'hub/src/protocol.ts', text: declaration + ' kind === VERIFY_OCCASIONS.epic;', allowed: false },
-    { rel: 'hub/src/protocol.ts', text: declaration + ' [VERIFY_OCCASIONS.epic].includes(kind);', allowed: false },
-    { rel: 'hub/src/protocol.ts', text: declaration + " const payload: { kind: Kind } = { kind: 'epic' };", allowed: false },
-    { rel: 'hub/src/protocol.ts', text: declaration.replace('VERIFY_OCCASIONS =', 'VERIFY_OCCASIONS: {stage: string; epic: Kind; release: string} ='), allowed: false },
+    { rel: 'hub/src/verification-policy.ts', text: declaration.replace('VERIFY_OCCASIONS', 'OTHER_VALUES'), allowed: false },
+    { rel: 'hub/src/verification-policy.ts', text: "'epic';", allowed: false },
+    { rel: 'hub/src/verification-policy.ts', text: declaration + ' kind === VERIFY_OCCASIONS.epic;', allowed: false },
+    { rel: 'hub/src/verification-policy.ts', text: declaration + ' [VERIFY_OCCASIONS.epic].includes(kind);', allowed: false },
+    { rel: 'hub/src/verification-policy.ts', text: declaration + " const payload: { kind: Kind } = { kind: 'epic' };", allowed: false },
+    { rel: 'hub/src/verification-policy.ts', text: declaration.replace('VERIFY_OCCASIONS =', 'VERIFY_OCCASIONS: {stage: string; epic: Kind; release: string} ='), allowed: false },
   ];
   const texts = new Map(cases.map((sample, index) => [join(root, `hub/src/__occasion_case_${index}.ts`),
     `import type { Kind } from './tracker/item.ts'; declare const kind: Kind; declare const input: unknown; ${sample.text}`]));

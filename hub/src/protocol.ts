@@ -1,6 +1,9 @@
 // The hub ↔ spoke protocol. One integer version, bumped on any incompatible change.
 // Frames travel as JSON text over one WebSocket per spoke.
 
+import { VERIFY_OCCASIONS, isVerifyOccasion, type VerifyOccasion } from './verification-policy.ts';
+export { VERIFY_OCCASIONS, isVerifyOccasion, type VerifyOccasion } from './verification-policy.ts';
+
 import type { Layer } from './hub/visibility.ts';
 import type { ItemSummary } from './tracker/tracker.ts';
 import type { VerificationStep } from './verification-plan.ts';
@@ -593,12 +596,6 @@ export type ClientHello = {
   resume?: { epoch: string; seq: number };
 };
 
-// Operational verification occasions are independent of configured tracker container kinds.
-export const VERIFY_OCCASIONS = { batch: 'batch', stage: 'stage', epic: 'epic', release: 'release', soak: 'soak', 'dev-t3': 'dev-t3' } as const;
-export type VerifyOccasion = typeof VERIFY_OCCASIONS[keyof typeof VERIFY_OCCASIONS];
-export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
-  return Object.values(VERIFY_OCCASIONS).some(occasion => occasion === value);
-}
 /** Field diagnostics shared by frame validation and verification admission. */
 export function suiteStartIssues(f: Record<string, unknown>): string[] {
   const issues: string[] = [];

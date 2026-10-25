@@ -49,6 +49,8 @@ test('qa lint reads named tests and selectors from the requested commit rather t
 });
 
 
+// Keep the install limited to hub sources: a runtime import into shared/ must fail here.
+// T-1303 negative control restores qa-lint's protocol/verification-occasion imports.
 test('qa lint validates named titles from a production install without dev dependencies', async t => {
   const root = await tempProject(t);
   const install = join(root, 'install');

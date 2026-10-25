@@ -1,5 +1,6 @@
 import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
-import { VERIFY_OCCASIONS, type VerifyOccasion } from './protocol.ts';
+import type { VerifyOccasion } from './verification-policy.ts';
+export { authorizeVerifyOccasion, authorizeVerifyMode, VerifyAllReserved } from './verification-policy.ts';
 import type { SuiteSelection } from './suite-selection.ts';
 
 /** The same admitted selection drives planning, executor transport and workers. */
@@ -24,20 +25,4 @@ export function suiteTestEnv(selection?: SuiteSelection, base: NodeJS.ProcessEnv
   if (selection?.soak || selection?.durationCheck && selection.tiers?.includes('T4')) env.CLAND_TEST_SOAK = '1';
   else delete env.CLAND_TEST_SOAK;
   return env;
-}
-
-/** CLI and MCP use the same role rule for integrated verification occasions. */
-export function authorizeVerifyOccasion(role: string | null | undefined, occasion: VerifyOccasion): void {
-  if (occasion === 'batch' || occasion === 'dev-t3') throw new Error(`${occasion} occasion is hub-owned`);
-  if (role !== 'coordinator' && !(role === 'qa' && occasion === VERIFY_OCCASIONS.epic)) {
-    throw new Error('occasion requires the Coordinator, or QA with occasion epic');
-  }
-}
-
-export class VerifyAllReserved extends Error {}
-
-/** Undefined role means the human shell; null means a session with no role. */
-export function authorizeVerifyMode(role: string | null | undefined, mode: string, occasion?: VerifyOccasion): void {
-  if (mode === 'all' && role !== undefined && role !== 'coordinator' && !occasion) throw new VerifyAllReserved();
-  if (occasion) authorizeVerifyOccasion(role, occasion);
 }
