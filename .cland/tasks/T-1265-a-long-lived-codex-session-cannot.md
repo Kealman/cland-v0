@@ -2,8 +2,8 @@
 id: T-1265
 kind: task
 title: 'A long-lived Codex session cannot reattach after a hub restart: app-server thread read fails with "Max payload size exceeded"'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1029
 branch: t/T-1265-a-long-lived-codex-session-cannot
 created: 2026-10-24T22:20:46.414Z
-updated: 2026-10-25T12:41:24.174Z
+updated: 2026-10-25T14:37:53.838Z
+closed: 2026-10-25T14:37:53.838Z
 ---
 
 ## Summary
@@ -277,3 +278,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head evidence clear:96d5a3ee/A-11922, audit A-11925 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11925-t-1265-merged-head-final-evidence-at-fea3ca1f.md), carrying source5/A-11903. Parsed3220ordinary passes plus25load passes. All5 exact C1/C2 cases ordinary+5/5load;33native/13CodexT3 pass, corrected full policy expectation retained. All5 merged delivery cases including90s confirmation and120/190s alarms pass;8existing alarm cases pass. HostT0/LinuxT1/allT2/changedT3once/Web complete; otherT3/T4/provider/stageQA absent. Host prepared check not repeated remotely; report-only warnings retained. C1/C2 verified, no findings. Coordinator rule6all remains separate at this merged head.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T14:32:01.700Z
+
+Rule 6 pre-merge verify all rerun e5108363 at merged head fea3ca1f (A-12000): 4102 passed, 3 failed, 5 skipped across T0–T3 (Web not reached; covered by mode-free 96d5a3ee). The previously failing codex-adapter T-1222 case now passes. All three failures are known dev defects with matching messages, outside T-1265's diff: publish.test.ts plan-stage case (dirty-root race, T-1306), qa-lint-build production install (ERR_MODULE_NOT_FOUND, T-1303), roles-timing (0 !== 300, T-1302). Coordinator accepts this run as T-1265's rule 6 evidence with those attributed identities.
+
+### coord · 2026-10-25T14:37:53.838Z
+
+Merged 8d8717ade0774ecde23e0325ed56a6038e7049bb onto dev.
