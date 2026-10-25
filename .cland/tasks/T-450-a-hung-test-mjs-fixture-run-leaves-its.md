@@ -3,7 +3,7 @@ id: T-450
 kind: task
 title: A hung.test.mjs fixture run leaves its runner and child alive for hours (orphan from the hung-run tests)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-385
 topic: topic-1060
 branch: t/T-450-a-hung-test-mjs-fixture-run-leaves-its
 created: 2026-10-15T03:49:38.455Z
-updated: 2026-10-25T17:23:05.858Z
+updated: 2026-10-25T17:33:53.410Z
 ---
 
 ## Summary
@@ -24,10 +24,10 @@ impl-397 found two orphan node processes, about 15 h old (PID 48761 under PPID 1
 
 ## Acceptance criteria
 
-- [ ] C1. A test that starts a hung fixture run kills its runner and children on every exit path, and the file passes 5/5 with no node process left afterwards.
-  - failed: rev-31 [reviewer] · 2026-10-25T17:23:05.858Z · note New failure controls accept a partial stdout prefix as the completed PID receipt; valid fragmented receipt can fail before cleanup assertions.
-- [ ] C2. The runner's phase sweep reports a leaked hung fixture runner, proven by a test that leaks one on purpose.
-  - failed: rev-31 [reviewer] · 2026-10-25T17:23:05.858Z · note New deliberate-leak fixture emergency cleanup depends on receiving its marker; early failure can remove roots before the generic runner stop hook.
+- [x] C1. A test that starts a hung fixture run kills its runner and children on every exit path, and the file passes 5/5 with no node process left afterwards.
+  - done: impl-450 · 2026-10-25T17:33:53.319Z
+- [x] C2. The runner's phase sweep reports a leaked hung fixture runner, proven by a test that leaks one on purpose.
+  - done: impl-450 · 2026-10-25T17:33:53.410Z
 
 ## Comments
 
@@ -53,3 +53,16 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Full source NOT CLEAR; A-12051 complete Standards2medium/Spec-no-separate-findings audit at tree5a2d9d6013435e0b14199373cc3d1b99a6162f72. Normal exact-job cancellation/terminal receipt before client/hub disposal and native timeout/OS death assertions are sound; deliberate sweep primary proof must stay distinct from emergency cleanup. Fix only narrow lifecycle/receipt paths preserving assertions and sealed env. Local A-12048 TDD summary/first10-case file and ongoing repetitions remain attributed prior-head evidence, not final5/5/Linux or timing enforcement. Preserve original outputs/source/capture limits without transcription reruns. Push correctedhead/fresh source before verify, restore marks when appropriate; no dev merge/production expansion directed. Reviewer read-only.
 
 Criteria: C1 failed (New failure controls accept a partial stdout prefix as the completed PID receipt; valid fragmented receipt can fail before cleanup assertions.), C2 failed (New deliberate-leak fixture emergency cleanup depends on receiving its marker; early failure can remove roots before the generic runner stop hook.).
+
+### rev-31 · 2026-10-25T17:32:21.260Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-450-source2
+commit: a07f5563652f83fbadfbcbd41bb51462be6b93ad
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source CLEAR, Standards0/Spec0; A-12057 carries complete A-12051 audit plus all5b040a06/a07f5563 corrections at treeb5009b0c5c2edc76c16006e453f89ff7e3770b81. M1 resolved: pre-registered deferred token/phase ownership, capture holder then discover/stop enclosing writers and drain native close before phase sweep/removal; guarded fixture removal, missing-marker fault control, emergency paths after primary assertions. M2 resolved: complete newline/parsed scratch root/two distinct valid PIDs, existing15s bound, split-receipt scratch acknowledgement proves prefix not completion. Original exact-job terminal/timeout/OS death/sweep diagnostics retained; no product/wire/permission/allowance/dev-merge change. Intermediate5b040a06 explicitly superseded before verdict. A-12048/A-12052 prior-source evidence historical; current correction summaries and underway5x timeout file need exact source/native-output attribution; timeout source unchanged5b→a07, current sweep checks pending. Finish authorized serial proof/targeted sweep controls, restore claimant done once supported, then one mode-free verify at unchangedhead and final evidence. C1/C2 not verified here. No transcription reruns or broader execution directed. Reviewer read-only.

@@ -2,8 +2,8 @@
 id: T-1024
 kind: task
 title: The Neovim frame recorder refuses green runs whose frame count depends on scheduling
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1062
 branch: t/T-1024-the-neovim-frame-recorder-refuses-green
 created: 2026-10-20T19:05:14.551Z
-updated: 2026-10-25T17:18:08.505Z
+updated: 2026-10-25T17:38:43.947Z
+closed: 2026-10-25T17:38:43.947Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Make the recorder's completeness check independent of scheduling: count recorded
 
 - [x] C1. A recorder run with concurrent targets publishes when every consumer test passed and no file was skipped (test simulating a scheduling-dependent frame count).
   - done: impl-1024 · 2026-10-25T17:17:30.648Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1024-final · 2026-10-25T17:32:42.482Z · commit d6d3d5c9d53869b357a4d98127fea9f5d110aeec
 - [x] C2. The recorder still refuses a run that skipped a file or a test (test).
   - done: impl-1024 · 2026-10-25T17:13:00.059Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1024-final · 2026-10-25T17:32:42.482Z · commit d6d3d5c9d53869b357a4d98127fea9f5d110aeec
 
 ## Comments
 
@@ -97,3 +100,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source CLEAR, Standards0/Spec0, A-12047 carries complete A-12041/A-12044/A-12045 audit. Exact tree59b940ff1b01cd13f9e89d19440aa497dd41e439. Sole two-line removal deletes both retired exact test duration keys; file metadata/three current identities/all allowances and baselines unchanged, no renamed/invented measurements. M2 resolved; M1 heading remains fixed. A-12046 original local existing lintDurationIdentities command validates all keys against current source, exit0/complete stdout with attribution; not runtime evidence. Core scheduling-independent completion/TAP/capture/publication source and full T1 controls unchanged, no other findings. Previous submission pre-execution refused; C1/C2 done but runtime-unverified. One new ordinary mode-free verify at unchangedhead then exact named/repetition/phase/provenance evidence. No expensive recorder refresh, dev merge/guard change/transcription rerun directed. Reviewer read-only.
+
+### rev-34 · 2026-10-25T17:32:42.482Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1024-final
+commit: d6d3d5c9d53869b357a4d98127fea9f5d110aeec
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear:4e24346a/A-12055; audit A-12058 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12058-t-1024-final-evidence-at-d6d3d5c9.md), carrying rev31source3/A-12047 full audit. Parsed3238ordinary+15load passes. C1 coalesced concurrent-target simulation, C2 skipped/incomplete no-publication matrix and empty-discovery case each ordinary+5/5load; all6frame-refresh guards pass with exact retained publication/catalog assertions. This is pure admission simulation, not native concurrent refresh. HostT0/LinuxT1/allT2/Web complete; T3/T4/native refresh absent; prepared host check not repeated remotely. Docs3/3, prior duration refusal remains preexecution history. Report-only diagnostics retained, newcase peak0.009696756s. C1/C2 verified, no findings; QA none.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T17:38:43.947Z
+
+Merged 8811120ea961ed413fd810e57e3e943b4cb1c8eb onto dev.

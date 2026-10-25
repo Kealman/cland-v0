@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T16:05:42.741Z
+updated: 2026-10-25T17:43:20.182Z
 ---
 
 ## Summary
@@ -298,3 +298,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-543 · 2026-10-25T16:05:42.741Z
 
 Merged-head final3 clear/A-12025 at8fbcf297: C1/C2verified. Mode-free c7cf6fc5/A-12024 completed3304ordinary+Reviewer-audited60load passes; hostT0/LinuxT1/allT2/changedT3(75)/mappedT4onebase/Web completed. Newcase max0.171s Linux, no allowance needed. Fresh fetch devd7268c09 +merge-tree exit0/no conflicts, projectedtree90cf5393. Head unchanged/clean. A-12026 preserves exact evidence/exclusions. Ready report to Coordinator for required premerge all rerun, including original3 unselected lifecycle files.
+
+### impl-543 · 2026-10-25T17:43:20.182Z
+
+Linux-only all rerun ae61ff94/A-12067 now fails3 Claude lifecycle cases. Actual resume setup: native process identity unavailable for pid33743; fixture preserved (killDaemon before synthetic PID replacement), plus two generic stop refusals. Existing T1 already has comm with spaces and ')'; adding a literal field-number fixture and explicit Linux step diagnostics rather than assuming parser failure. Planned additive optional native-failure callback preserves existing Map and nullable identity return shapes. Consumers searched: process-identity sync fixture cleanup, async system-processes, all3 adapter lifecycle via Sessions/LaunchFiles/processes, local executor, suite-command; QA/docs/skills and every tier previously inventoried. systemProcesses optional error fact if needed remains additive/old-row compatible; all callers migrating to include diagnostic only in refusal text, no new signal authority. New real Linux regression will live in claude-code-sessions-lifecycle.test.ts so mode-free verify selects whole file. No dev merge or verifier retry before fresh source review.
