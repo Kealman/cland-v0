@@ -5,7 +5,7 @@ title: "Prototype: a Telegram remote against a sandbox hub"
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: M-1286
 blocked_by:
   - Q-1287
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T10:24:45.624Z
-updated: 2026-10-25T10:48:16.642Z
+updated: 2026-10-25T11:34:22.060Z
 ---
 
 ## Question

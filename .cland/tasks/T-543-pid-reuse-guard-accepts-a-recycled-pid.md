@@ -16,15 +16,15 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T11:27:50.284Z
+updated: 2026-10-25T11:58:12.885Z
 ---
 
 ## Summary
 Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40` reads `ps -o lstart`, which has whole-second resolution, and `sameProcess` in `hub/src/adapters/processes.ts:27-32` accepts equal start stamps. If a managed PID exits and the OS recycles it to an unrelated process within the same second, the stop and cleanup guard accepts the replacement as the managed process and can SIGTERM or SIGKILL it. That's unlikely under ordinary PID allocation, more likely under heavy PID churn such as a loaded test suite. The consequence is termination of an unrelated process.
 
 ## Acceptance criteria
-- [ ] C1. The identity check uses a start identity finer than one second where the platform offers one (for example `/proc/<pid>/stat` starttime on Linux, `proc_pidinfo` or `sysctl` kinfo on macOS), or adds a second discriminator (command, ppid or a nonce) so that two processes started in the same second never compare equal.
-  - failed: rev-34 [reviewer] · 2026-10-25T11:27:50.284Z · note M4: recovery-child native proof can authorize retry signalling before the approved one-time upgrade is durably persisted.
+- [x] C1. The identity check uses a start identity finer than one second where the platform offers one (for example `/proc/<pid>/stat` starttime on Linux, `proc_pidinfo` or `sysctl` kinfo on macOS), or adds a second discriminator (command, ppid or a nonce) so that two processes started in the same second never compare equal.
+  - done: impl-543 · 2026-10-25T11:35:11.813Z
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
   - done: impl-543 · 2026-10-25T11:26:07.174Z
 
@@ -107,3 +107,29 @@ C1 fails M4 under the approved legacy migration contract. C2's new same-second/p
 Standards: 0 remaining findings. Spec: 1 medium M4. Hold verification; correct the recovery receipt checkpoint, preserve assertions and request fresh pushed-head source review before one configured run.
 
 Criteria: C1 failed (M4: recovery-child native proof can authorize retry signalling before the approved one-time upgrade is durably persisted.).
+
+### rev-34 · 2026-10-25T11:37:50.167Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-source3
+commit: f0752ac746c2b1a9e1ca080b792d9feb6ec05b4e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at f0752ac7. H1/M1–M4 resolved. External PendingStop.files now rolls back with failed persistence, including optional absence; the regression keeps child/root/legacy receipt and no signal across repeated failed writes, then observes committed precise proof through a separate DB reader before successful signal/cleanup/receipt settlement. H1 coherent ownership, equal-PID relaunch, frozen help and canonical headings remain fixed. Coordinator af199dc0 one-time legacy upgrade policy/residual window unchanged. Withdrawn c423b37f TS2412 was disclosed and corrected; A-11824 reports checked replacement-source typecheck and 33/33 targeted cases, supplementary local macOS 27.0.1 arm64 evidence only. Standards: no findings. Spec: no findings. C1/C2 runtime requirements await successful configured verify at this exact head. No Reviewer execution; Linux/x86_64 not yet claimed. Coordinator owns pre-merge all run.
+
+### rev-34 · 2026-10-25T11:58:12.885Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-543-evidence1
+commit: f0752ac746c2b1a9e1ca080b792d9feb6ec05b4e
+scope: evidence
+findings: [{"severity":"medium","text":"E1: Configured run a311c2d5 ended with exit143 during Web; no successful final Web completion receipt. Completed native tests passed, but this partial result cannot establish a final clear verification."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear: A-11862 actual output `Finished: exit 143`, then suite interruption at2026-10-25T11:56:11Z; Web topics/withdraw cases remained in flight. Cause of termination is not established. Audit A-11865 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11865-t-543-interrupted-verification-evidence-at-f0752ac7.md) preserves completed phase/case facts: hostT0 and LinuxT1/allT2/changedT3/mappedT4 passed, including33/33 system-processes and all same-second/ownership/checkpoint cases. These are partial receipts, not a full-suite pass. No source or criterion assertion failure inferred; C1/C2 remain unverified pending completed configured evidence. Source3 unchanged; any changed head needs fresh source review.

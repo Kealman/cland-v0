@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T11:31:35.892Z
+updated: 2026-10-25T11:39:56.695Z
 ---
 
 ## Summary
@@ -24,9 +24,9 @@ On 2026-10-24 every Git command in the root and in task worktrees started printi
 ## Acceptance criteria
 
 - [ ] C1. cland's own Git maintenance (for example after a landing, or on hub start when idle) prunes unreachable objects older than a safe age that no live batch, verification or lease can still reference, without touching objects a running batch uses (test with a scratch repository).
-  - failed: rev-31 [reviewer] · 2026-10-25T11:11:26.170Z · note H1: maintenance's silent30s detached collector conflicts with15s startup supervisor, risking hub kill and orphaned collector ownership.
-- [ ] C2. A stale gc.log no longer blocks auto-gc indefinitely; the hub reports the condition once in doctor output instead of in every Git command (test).
-  - failed: rev-31 [reviewer] · 2026-10-25T11:11:26.170Z · note M1/M2: matching changed help and per-test documentation disagree with retained frozen-byte/exact-heading guards.
+  - failed: rev-31 [reviewer] · 2026-10-25T11:39:56.695Z · note H1/M3: incomplete native-close results and the fixture Git timeout can release ownership or remove roots while collector descendants remain unresolved.
+- [x] C2. A stale gc.log no longer blocks auto-gc indefinitely; the hub reports the condition once in doctor output instead of in every Git command (test).
+  - done: impl-1217 · 2026-10-25T11:35:10.030Z
 
 ## Comments
 
@@ -93,3 +93,43 @@ Additional shared-runner consumer inventory before adding optional cancellation:
 Final additional rule-20 consumer inventory for optional trailing AbortSignal in doctor/report.run: production imports/callers are cli/doctor.ts; doctor/{git,harnesses,keys,project,toolchain,web}.ts; fixture-processes.ts; git-maintenance.ts; hub/lock.ts; orphans.ts; process-paths.ts; setup/{account-identity,handover,machine}.ts; suite-lock.ts; system-processes.ts. Tests/fixtures are doctor-{cli,fixture,harness-probe,run}, git-maintenance, opencode-database, duration-reporter and skip-reporter. Broader docs/skill/QA/startup searches found no existing sixth-argument consumers or wire dependencies. Existing five-argument calls and RunResult shape remain unchanged, with their exact legacy T2 assertions retained. Only maintenance opts into cancellation and forwards the signal. Controller timing lives in serveProject (every production entry and the projectHub fixture); default fake projectHub maintenance remains process-free.
 
 Coordinator-approved design now implemented: one pass 30 s after serving, native gc --cruft with a 14-day grace (never for retained/uncertain work), no new admission fence. Native scratch tests confirm young loose and cruft-packed objects survive despite inherited gc.pruneExpire=now/gc.cruftPacks=false; actual committedTreeOrThrow freshens an old reused unreferenced snapshot. Cancellation reaps both captured PIDs before lock release, then a real next pass recovers same-host dead gc.pid while fresh owned/foreign temporary pack bytes remain unchanged. Source-review M1/M2 are corrected. Prior pre-serve heartbeat and five-second timeout timings are superseded; cancellation test now has no fixed wait. Latest local macOS native file: 8/8, file wall 5.36 s, cases 0.20–1.37 s; T2 serving-first 2/2, runner compatibility/cancellation 4/4; typecheck passed. Linux evidence remains pending.
+
+### rev-31 · 2026-10-25T11:39:56.695Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261025-1217-source2
+commit: 5571f66c6d58981a11cf07f6b51a602395f7df59
+scope: full
+findings: [{"severity":"high","text":"H1: the shared runner's bounded cleanup-incomplete result is swallowed as an ordinary repository error; maintenance settles and releases territory ownership despite no child close, and daemon shutdown treats it as drained. Cover withheld-close/incomplete cleanup and retain unresolved collector ownership without changing legacy doctor behavior.","file":"hub/src/git-maintenance.ts","line":68},{"severity":"medium","text":"M3: fixture Git uses direct-child-only execFile timeout without captured group/tree cleanup; new native gc/repack can leave a descendant writer beyond failure/root cleanup. Register owned cleanup before launch, drain before root removal, and prove with a held descendant receipt.","file":"hub/test/git-maintenance.test.ts","line":80}]
+finding_counts: {"high":1,"medium":1,"low":0}
+
+# T-1217 revised full source review — NOT CLEAR
+
+Head 5571f66c6d58981a11cf07f6b51a602395f7df59 / tree 0cd255587f30d7d5b2838b6750d9b12f9e536b40, unchanged pushed task tip. Full comparison against merge-base c966b08692a6b2e00d5bf03f45af7fd463ea2fee, plus complete correction from A-11783 / c3042ac7. Personally reviewed both axes under the Reviewer role, without delegation or execution.
+
+Coordinator decisions 85c153ea, 9514cf5f and 04bfcc99 authorize serving first, one pass thirty seconds later under the existing territory lock, explicit cruft/14-day grace, conservative never for retained/uncertain work, optional runner cancellation and next-pass native stale-lock recovery. These supersede foreground/startup-heartbeat designs. No live GC, prune, repack, config writes, fetch, process signals, tests or Git mutation were performed by Reviewer.
+
+## Standards
+
+Prior M1 and M2 resolved: decoded HUB_USAGE/DOCTOR_USAGE equal the corresponding frozen commands.json blocks, with guards/export composition retained. All three test guides have exact test-path headings and index rows. Native scratch Git is T3; serving-first and mocked runner controls are T2. Implement skill and CHANGES, policy/help/doctor docs, tier entries and expanded shared-runner consumer inventory are present. Existing five-argument runner calls and RunResult fields remain compatible.
+
+M3 — medium, hub/test/git-maintenance.test.ts:80: repository() launches fixture Git through execFile with only a direct-child 10-second timeout, no owned process group/tree registration or descendant drain. The new cruft control invokes gc through this helper, which can launch repack/pack-objects writers. A timed-out parent does not establish descendant death; after a callback rejection (or test failure) tempProject cleanup has no captured identities from this helper and can remove the scratch root while a child still writes. This is separate from the explicitly owned held-collector cancellation test. Use an owned group/tree boundary for fixture Git, registering cleanup before launch and observing writers/pipes settle before rejection/root removal. Prove the failure path with a held native-command descendant and exact readiness receipt; no live repository operation or weakened bounds/assertions.
+
+## Spec
+
+Foreground startup H1 trigger is resolved in the normal path: no maintenance command before serving, one fake-clock thirty-second timer, no repeated cadence, stop cancels delay or aborts active work. T2 holds a collector while actual hub.status replies before/during work and checks lock/storage ordering. Native tests cover retained/malformed records, loose/cruft fresh/aged controls, actual reused snapshot writer, positive stale gc.log warning and recovered single doctor row, common repository/territory and next native pass after a dead same-host gc.pid. Temporary pack bytes remain intact. The approved grace policy is retained; no admission fence or dropped linked-root concern is reopened.
+
+H1 — high, hub/src/git-maintenance.ts:68–85 and hub/src/hub/daemon.ts:350–367: the incomplete-cleanup branch still releases collector ownership without a native close. doctor/report.ts:100–103 deliberately resolves run() after one second with "cleanup incomplete: child did not close…" (the legacy doctor-run test explicitly retains this result and permits late close). Maintenance converts that result into an ordinary per-repository error, persists the report and returns through withTerritoryLockAsync, which releases the territory lock on settlement. On deadline expiry without an aborted signal it can also continue to the second repository. The daemon's maintenance promise treats returned errors as completion, and stop proceeds to store and hub-lock teardown. Thus waiting for the maintenance promise is not equivalent to the native-close receipt promised by the design/docs; a collector can remain unresolved beyond released ownership.
+
+Add a held runner/close regression exercising this exact existing incomplete-cleanup result, not only successful SIGKILL/close: establish that unresolved collector ownership cannot be released or announced as completed, and shutdown cannot treat it as drained. Preserve legacy five-argument doctor bounded results and the normal serving-first behavior. Do not substitute signalling, destroyed pipes, a report file or elapsed cleanup deadline for actual close. If the bounded hub-stop policy requires an explicit exceptional recovery ownership design, resolve that with the Coordinator rather than silently waiving drain.
+
+## Original evidence and disposition
+
+A-11822 contains original available local macOS Node 24 output excerpts with explicit capture limits, not raw exported stdout/stderr or configured/Linux proof. Final native T3 8/8, duration_ms 4191.960084 (max case 931.184542ms); serving-first T2 2/2, duration_ms 534.989625; runner T2 4/4, duration_ms 108.148875; typecheck exit 0. Pre-serve heartbeat experiments and interrupted cancellation red run are historical, not current passes. The successful cancellation cases observe close; they do not cover H1's returned incomplete-close result or M3's direct-child fixture timeout. Preserve original available receipts and missing-source/capture limits without transcription reruns.
+
+Full NOT CLEAR. Standards 1 medium (M3); Spec 1 high (H1). C1 fails ownership/drain protection; C2 matching help/guide source corrections are accepted but its runtime verification remains pending. This is the consolidated finding set at this head; prior M1/M2 and the preliminary linked-root concern are not active blockers. Correct, commit/push, restore claimant done and request fresh full source review before any configured verify. No post-review dev merge, unchanged-head retry, live maintenance, full/forced-mode run or extra load requested. QA none/after-stage; Coordinator retains its separate pre-merge verify all requirement after ready.
+Durable review: A-11829.
+
+Criteria: C1 failed (H1/M3: incomplete native-close results and the fixture Git timeout can release ownership or remove roots while collector descendants remain unresolved.).

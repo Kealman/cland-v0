@@ -3,7 +3,7 @@ id: T-1260
 kind: task
 title: Sessions blocked by cover-quiet poll the verify queue with sleep loops, because nothing wakes them when the local slot frees
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1042
 branch: t/T-1260-sessions-blocked-by-cover-quiet-poll-the
 created: 2026-10-24T19:41:53.006Z
-updated: 2026-10-25T11:31:37.488Z
+updated: 2026-10-25T11:45:26.179Z
 ---
 
 ## Summary
@@ -26,9 +26,11 @@ While an integrated run holds the local slot, local test commands refuse with `c
 - [x] C1. A session refused by cover-quiet gets a one-shot event when the local slot frees (a subscription or a queued targeted-run admission), and the refusal text names it instead of "wait" (test).
   - done: impl-1260 · 2026-10-25T11:10:26.454Z
   - verified: rev-26 [reviewer] · run rev-20261025-1260-evidence-1 · 2026-10-25T11:29:05.995Z · commit a6ab11b27ce0bd4a9ba16a588ea32070b4f20218
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1260-final · 2026-10-25T11:45:25.691Z · commit a9ed1bfca73ba0c2dae386d84f0e1ccb257aeda2
 - [x] C2. The Implementer clause and docs/agents/tests.md#cover-quiet say to do other work or end the turn until that event arrives, with no polling, and the clause stays within its byte reserve (test).
   - done: impl-1260 · 2026-10-25T11:15:23.203Z
   - verified: rev-26 [reviewer] · run rev-20261025-1260-evidence-1 · 2026-10-25T11:29:05.995Z · commit a6ab11b27ce0bd4a9ba16a588ea32070b4f20218
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1260-final · 2026-10-25T11:45:25.691Z · commit a9ed1bfca73ba0c2dae386d84f0e1ccb257aeda2
 
 ## Comments
 
@@ -80,5 +82,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final same-head evidence CLEAR, C1/C2 verified. A-11803 carries source-2/A-11789 and independent A-11801 native finish audit: 3155 ordinary passes/439 file records plus ten actual load tests, both new admission identities 5/5. Exact durable one-shot addressed-spoke/restart/dedup assertions pass base 0.379066082 s, worst load 0.424728144 s; old-hub refusal compatibility also passes. Clauses 39/39 establish default/project no-polling wording, byte and growth reserve; docs guard 3/3, help 3/3, frozen usage 1/1 pass. Linux droplet T0/all T1/fallback all hub+Neovim T2/Web, no T3/T4/occasion/stage QA claim. Prepared host tree c4ec8fdd not repeated remotely. Existing budgets/lint report-only, not timing compliance. Coordinator owns landing and affected after-stage QA.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-34 · 2026-10-25T11:32:32.906Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1260-source3
+commit: a9ed1bfca73ba0c2dae386d84f0e1ccb257aeda2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear at a9ed1bfc after authorized dev 8fa66512 merge (Coordinator 6f72bb55 confirmed). Carry full A-11786/source2 A-11789. Both-parent conflict resolution preserves verify --help|-h and cover-quiet/no-polling guidance; immutable parsing confirms production/frozen SUITE_USAGE byte equality and only that frozen block differs from incoming dev. Guards/template/composition intact. Task registration/report/admission semantics unchanged; inspected inherited verification authorization refactor against suite.slot/check. Standards: no findings. Spec: no findings. C1/C2 require new same-head configured runtime evidence; prior A-11801 remains old-head only. A-11810 local outputs are supplementary, not a configured pass. No Reviewer execution. Coordinator owns extra pre-merge all verification and stage QA.
+
+### rev-34 · 2026-10-25T11:45:25.691Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1260-final
+commit: a9ed1bfca73ba0c2dae386d84f0e1ccb257aeda2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear. Run a114cce7 / A-11836 passed 3157 ordinary tests, no failures/cancellations/skips/todos. T0 host-worktree check passed; prepared host tree 83a3c233 is not a source commit and remote typecheck was not repeated. Linux x64 droplet T1/fallback all hub+Neovim T2/Web completed, Node 24.21.0, Neovim 0.12.5, Chrome Headless Shell 156.0.8078.4 (v1248). No T3/T4/occasion/stage QA. Checked exact durable wake-up/restart identity and previous-wire refusal identity, ordinary passes plus each 5/5 load receipt; all four admission cases pass. Clauses 39/39 include default/project no-polling wording, reserve and growth-headroom assertions; help 3/3, frozen usage 1/1, docs 3/3 pass. Source3 plus full prior source audit and these records establish C1/C2. Budget/lint warnings remain report-only. No findings or Reviewer rerun. Coordinator retains extra pre-merge all verification and stage QA.
 
 Criteria: C1 verified, C2 verified.

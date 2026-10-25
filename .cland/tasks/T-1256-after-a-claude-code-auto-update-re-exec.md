@@ -2,8 +2,8 @@
 id: T-1256
 kind: task
 title: After a Claude Code auto-update re-exec the coordinator's bridge reconnects but its deliveries are acked and never run, with no alarm for an hour
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1028
 branch: t/T-1256-after-a-claude-code-auto-update-re-exec
 created: 2026-10-24T18:39:16.111Z
-updated: 2026-10-25T10:26:32.893Z
+updated: 2026-10-25T11:41:44.169Z
+closed: 2026-10-25T11:41:44.169Z
 ---
 
 ## Summary
@@ -139,3 +140,7 @@ Final CLEAR, C1/C2 verified across unchanged accepted source and original same-h
 Durable final review: A-11722.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T11:41:44.168Z
+
+Merged 5881ebcc36b1010ecb04e5808665fb24856ee926 onto dev.

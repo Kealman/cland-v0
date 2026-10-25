@@ -3,8 +3,9 @@ id: T-323
 kind: task
 title: Plan navigation issued before the initial task and ladder snapshots is discarded instead of deferred
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 2
 labels:
   - needs-triage
   - nvim
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-1046
 branch: t/T-323-plan-navigation-issued-before-the
 created: 2026-10-13T10:43:14.266Z
-updated: 2026-10-25T11:30:23.784Z
+updated: 2026-10-25T11:46:33.974Z
 ---
 
 ## Summary
@@ -33,8 +34,10 @@ Keep or defer the requested navigation until its task and ladder preconditions s
 
 ## Acceptance criteria
 
-- [ ] C1. `gp` and `:Cland view plan <id>` issued before the initial snapshots open the plan once they arrive, or report clearly that the item is not an epic or in one.
-- [ ] C2. A headless test on the stub hub with delayed `hub.status` and `task.list` covers both outcomes.
+- [x] C1. `gp` and `:Cland view plan <id>` issued before the initial snapshots open the plan once they arrive, or report clearly that the item is not an epic or in one.
+  - done: impl-323 · 2026-10-25T11:45:55.831Z
+- [x] C2. A headless test on the stub hub with delayed `hub.status` and `task.list` covers both outcomes.
+  - done: impl-323 · 2026-10-25T11:45:56.331Z
 
 ## Comments
 
@@ -49,3 +52,31 @@ Second product case, from T-340 (impl-340, A-2046, 2026-10-13): the session laun
 ### impl-323 · 2026-10-25T11:30:23.784Z
 
 Clean inherited worktree. A-11669 confirms scope is the two named connect races: plan navigation before task.list + hub.status, and launcher role before role.list. Using existing T2 stub-hub/headless-client seams as required by C2 and triage; no wire/schema/permission change planned.
+
+### rev-26 · 2026-10-25T11:44:37.490Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261025-323-source-1
+commit: bfea7e84c0357a7beebdba0c14e907bfa3e0e490
+scope: full
+findings: [{"severity":"medium","text":"M1: current-view table equality resurrects stale deferred plan navigation after another view then previous-centre restores the original table. Invalidate on actual navigation transition/generation and add held-snapshot away/back cancellation control.","file":"nvim/lua/cland/plan.lua","line":77}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full in-session Standards/Spec audit complete, A-11838; consolidated finding M1 only. Pending view-table equality can become true again because layout.back restores the original history table, resurrecting stale plan navigation. Add away/back held-snapshot regression and real transition invalidation; preserve both-order outcome/latest-plan/error tests. Launcher delayed defaults and typed-value preservation otherwise match the two named race scopes. Old recording records/nodes retained unchanged; local A-11832 remains summary with source/capture limits. Request fresh committed source review before verification; no Linux/load/QA/landing pass claimed.
+
+Criteria: C1 failed (Deferred plan request survives an intervening other-view/previous-view sequence and can reopen after newer navigation.).
+
+### rev-26 · 2026-10-25T11:46:33.974Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-323-source-2
+commit: 1f708c1f7503f4043e6e701e41b236b4431c0fb5
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source audit A-11838 carried forward; M1 resolved, A-11842. Four-file sole-parent correction explicitly cancels pending plan requests on layout.show/successful back, preventing history-table resurrection. Real space-space held-snapshot regression retains original view/no notice/zero plan-fetch receipts; latest-plan, one-way cancellation, error and both-order outcome/defaults tests retained. Both axes clear, no new findings. A-11841 original red/green/static/existing-launcher excerpts and source/capture limits inspected. C1/C2 final runtime pending one ordinary configured exact-head receipt; no Linux/load/QA/landing claim.
