@@ -91,7 +91,7 @@ copies and computed ids still require review. Keep copied sources read-only and
 perform all tracker writes under the sealed disposable root.
 
 The T0 child-environment guard (`hub/test/lint-child-environment.ts`) checks
-native Node child-process launches throughout `hub/test` (TypeScript and JavaScript,
+native Node child-process launches throughout `hub/test` and `nvim/test` (TypeScript and JavaScript,
 including helpers, fakes and manual tools). Named, renamed, namespace, default,
 dynamic-import, CommonJS and promisified child-process functions are resolved
 through the compiler, including call/apply forwarding. Dynamic method lookups
@@ -137,6 +137,13 @@ this tool. Diagnostics never include source expressions or environment values.
 Embedded generated programs are covered at their parent launch boundary; this
 is a source guard, not whole-program runtime taint analysis. Its negative and
 positive compiler cases run in memory at T0, without workers or subprocesses.
+The compiler cases run from both governed source roots. Scope controls use the
+production discovery glob to include TypeScript and JavaScript, including nested
+helpers, and exclude production sources and non-source fixtures. Run
+`node hub/test/lint-child-environment.ts --inventory` to check the real launch
+sites; Neovim sites use sealed builders without new exemptions. Read an owned
+working directory separately from the builder so an environment alias stays
+used only as a launch's `env`.
 
 `npm test` enters `hub/test/run-suite.ts auto`. Whole-suite `hub`, `nvim`, `all`,
 coverage-selected runs and close-run shards use that same runner, with the

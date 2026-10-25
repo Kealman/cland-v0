@@ -385,8 +385,8 @@ test(':Cland qa dump <path> writes the grid and the state in an ordinary run', {
 
 // ------------------------------------------------------------------ under sandbox-exec
 
-const sandboxEnv = await accountFixtureEnvironment();
-const SANDBOX = existsSync('/usr/bin/sandbox-exec') && spawnSync('/usr/bin/sandbox-exec', ['-p', '(version 1)(allow default)', '/usr/bin/true'], { cwd: sandboxEnv.HOME, env: sandboxEnv }).status === 0;
+const sandboxHome = (await accountFixtureEnvironment()).HOME;
+const SANDBOX = existsSync('/usr/bin/sandbox-exec') && spawnSync('/usr/bin/sandbox-exec', ['-p', '(version 1)(allow default)', '/usr/bin/true'], { cwd: sandboxHome, env: await accountFixtureEnvironment() }).status === 0;
 const sandboxSkip = skip || (SANDBOX ? false : 'needs macOS sandbox-exec');
 const sandboxed = (profile: string) => ['/usr/bin/sandbox-exec', '-p', `(version 1)(allow default)${profile}`];
 const NO_NETWORK = '(deny network*)';

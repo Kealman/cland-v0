@@ -161,7 +161,7 @@ scope in `docs/agents/tests.md` when adding copies or exceptions. Keep payload
 caps above measured copied-state bytes with growth headroom, alongside synthetic
 fixtures.
 
-For native child launches in `hub/test`, use the complete `fixtureEnvironment`
+For native child launches in `hub/test` and `nvim/test`, use the complete `fixtureEnvironment`
 or `accountFixtureEnvironment` result after explicit owned extras. Fresh runner
 children use `runnerFixtureEnvironment` to filter inherited paths while keeping
 execution/admission controls. Read the T0

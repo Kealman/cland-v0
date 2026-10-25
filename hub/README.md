@@ -3111,7 +3111,7 @@ The pure fixture builder lives in `test-support/fixture-environment.ts`, with a
 compatibility export in `hub/test/fixture-environment.ts`. Native account fixtures
 keep their account builder at attach/replacement launches; prepare fixtures place
 legacy snapshot inputs under the sealed HOME.
-Its T0 child-environment guard checks native launches in `hub/test`, including
+Its T0 child-environment guard checks native launches in `hub/test` and `nvim/test`, including
 helpers, fakes and JavaScript tools. Supply the complete sealed fixture builder
 result after explicit owned extras. Fresh runner children use
 `runnerFixtureEnvironment` to retain only execution/admission controls while

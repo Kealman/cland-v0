@@ -1,12 +1,12 @@
 // T0: imported native child launches need a sealed environment or a reasoned seam.
 import assert from 'node:assert/strict';
 import { glob } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, matchesGlob } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 if (process.argv.includes('--help')) {
-  console.log('Usage: node hub/test/lint-child-environment.ts [--inventory]\nChecks hub/test native child launches. --inventory lists sealed sites and reasoned exemptions; environment values are never printed.');
+  console.log('Usage: node hub/test/lint-child-environment.ts [--inventory]\nChecks hub/test and nvim/test native child launches (TypeScript and JavaScript, including helpers). --inventory lists sealed sites and reasoned exemptions; environment values are never printed.');
   process.exit(0);
 }
 
@@ -183,7 +183,16 @@ const config = ts.readConfigFile(join(root, 'hub/tsconfig.json'), ts.sys.readFil
 assert.equal(config.error, undefined);
 const options = { ...ts.parseJsonConfigFileContent(config.config, ts.sys, join(root, 'hub')).options, allowJs: true, checkJs: false };
 const files: string[] = [];
-for await (const path of glob('hub/test/**/*.{ts,mts,cts,js,mjs,cjs}', { cwd: root })) files.push(join(root, path));
+const sourcePattern = '{hub,nvim}/test/**/*.{ts,mts,cts,js,mjs,cjs}';
+// These scope controls exercise the same pattern as repository discovery without
+// writing fixtures into the checkout or launching any native children.
+for (const path of ['hub/test/launch.ts', 'nvim/test/launch.ts', 'nvim/test/helpers/launch.js', 'nvim/test/launch.mts', 'nvim/test/launch.cts', 'nvim/test/launch.mjs', 'nvim/test/launch.cjs']) {
+  assert.ok(matchesGlob(path, sourcePattern), `child environment scan includes ${path}`);
+}
+for (const path of ['nvim/src/launch.ts', 'hub/src/launch.ts', 'nvim/test/fixture.lua', 'web/test/launch.ts']) {
+  assert.ok(!matchesGlob(path, sourcePattern), `child environment scan excludes ${path}`);
+}
+for await (const path of glob(sourcePattern, { cwd: root })) files.push(join(root, path));
 const rejected = [
   "import { spawn } from 'node:child_process'; import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';\nspawn('tool', [], {env: fixtureEnvironment('/scratch', process.env, process.env)});",
   "import { spawn } from 'node:child_process';\nspawn('tool');",
@@ -227,7 +236,10 @@ const allowed = [
   "import { execSync } from 'node:child_process';\nexecSync('tool'); // cland-allow-child-env: sealed lifecycle helper",
   "const spawn = () => {}; spawn(); /x/.exec('x');",
 ];
-const samples = new Map([...rejected, ...allowed].map((text, index) => [join(root, `hub/test/__child_env_case_${index}.ts`), `export {};\n${text}`]));
+const samples = new Map(['hub/test', 'nvim/test'].flatMap(directory => [...rejected, ...allowed].map((text, index) => [
+  join(root, `${directory}/__child_env_case_${index}.ts`),
+  `export {};\n${directory === 'nvim/test' ? text.replaceAll("from './", "from '../../hub/test/") : text}`,
+])));
 const host = ts.createCompilerHost(options), original = host.getSourceFile.bind(host);
 host.getSourceFile = (path, languageVersion, onError, shouldCreateNewSourceFile) => {
   const text = samples.get(path);
@@ -235,9 +247,12 @@ host.getSourceFile = (path, languageVersion, onError, shouldCreateNewSourceFile)
 };
 const program = ts.createProgram([...files, ...samples.keys()], options, host), checker = program.getTypeChecker();
 [...samples.keys()].forEach((path, index) => {
-  const { failures } = inspect('hub/test/scratch.test.ts', program.getSourceFile(path)!, checker);
-  assert.equal(failures.length, index < rejected.length ? 1 : 0, `child environment self-check ${index}`);
-  if (index === 0) assert.match(failures[0]!, /^hub\/test\/scratch\.test\.ts:3:/);
+  const relative = path.slice(root.length);
+  assert.ok(matchesGlob(relative, sourcePattern), `child environment self-check selected: ${relative}`);
+  const { failures } = inspect(relative, program.getSourceFile(path)!, checker);
+  const caseIndex = index % (rejected.length + allowed.length);
+  assert.equal(failures.length, caseIndex < rejected.length ? 1 : 0, `child environment self-check ${relative}`);
+  if (caseIndex === 0) assert.ok(failures[0]!.startsWith(`${relative}:3:`));
 });
 const results = files.sort().map(path => inspect(path.slice(root.length), program.getSourceFile(path)!, checker));
 if (process.argv.includes('--inventory')) console.log(results.flatMap(result => result.inventory).join('\n'));
