@@ -3,17 +3,18 @@ id: T-1041
 kind: task
 title: The test harness's frame readers rescan an accumulated string on every chunk
 state: open
-status: planned
+status: review
 size: XS
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1282
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1044
+branch: t/T-1041-the-test-harness-s-frame-readers-rescan
 created: 2026-10-21T06:56:53.807Z
-updated: 2026-10-25T09:53:53.768Z
+updated: 2026-10-25T11:30:20.392Z
 ---
 
 ## Summary
@@ -26,5 +27,13 @@ The harness readers keep incomplete chunks in an array and search only the new c
 
 ## Acceptance criteria
 
-- [ ] C1. A harness frame client receives a 20 MB frame delivered in 64 kB chunks in under 2 s (T2 test).
-- [ ] C2. The existing tests that use `frameClient` and the other harness reader pass unchanged.
+- [x] C1. A harness frame client receives a 20 MB frame delivered in 64 kB chunks in under 2 s (T2 test).
+  - done: impl-1041 · 2026-10-25T11:29:39.312Z
+- [x] C2. The existing tests that use `frameClient` and the other harness reader pass unchanged.
+  - done: impl-1041 · 2026-10-25T11:29:39.512Z
+
+## Comments
+
+### impl-1041 · 2026-10-25T11:26:11.673Z
+
+Implementation plan: preserve the public frameClient/connectSocket APIs, wire frames, request correlation, blank-line handling and JSON.parse error behavior; no shared contract changes, so rule 20 migration inventory is not triggered. Agreed seams from the item: T2 scripted frameClient input and an in-process Unix socket peer for connectSocket. Add 20 MiB JSON frames in 64 KiB chunks with observed complete frame/result under 2 s, and mixed partial/coalesced/order/error controls. No child process or native harness required.

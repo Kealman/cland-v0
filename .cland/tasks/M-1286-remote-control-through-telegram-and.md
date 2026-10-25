@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T10:23:22.644Z
-updated: 2026-10-25T10:48:16.854Z
+updated: 2026-10-25T11:18:14.201Z
 ---
 
 ## Destination
@@ -47,6 +47,7 @@ The spec `docs/spec/v0.3.md` "cland v0.3: remote control through Telegram and Di
 
 ## Decisions so far
 
+- [Speech-to-text providers for voice remotes, ElevenLabs first](Q-1289, .cland/tasks/Q-1289-speech-to-text-providers-for-voice.md): OGG/Opus uploads as-is to every cloud provider, no ffmpeg in the hub; the gateway downloads bytes and uploads them, never a messenger URL; ElevenLabs Scribe v2 is the reference provider (about $0.0018 per 30-second note, free plan about 4.5 h a month, privacy toggle), xAI an alternative with prepaid credits only; one interface with nine error kinds, retries only for rate-limited, unavailable and timeout; `[speech] provider = "elevenlabs" | "command"`; the `command` contract (stdin bytes, env MIME and language, stdout text); findings on research/speech-to-text (docs/research/speech-to-text.md).
 - [Sandbox bots for the prototypes: a Telegram bot, a Discord app, an ElevenLabs key](T-1291, .cland/tasks/T-1291-sandbox-bots-for-the-prototypes-a-telegram.md): the human placed the Telegram and Discord bot tokens and an ElevenLabs key in `~/.config/cland/sandbox-remote.secrets.toml` (mode 600) on 2026-10-25; ElevenLabs replaces xAI as the first STT provider because xAI no longer gives free credits; the sandbox project is `/Users/evgeniyivanov/Projects/cland/sandbox-remote`.
 ## Not yet specified
 

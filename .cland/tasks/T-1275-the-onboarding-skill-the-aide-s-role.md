@@ -2,8 +2,8 @@
 id: T-1275
 kind: task
 title: The onboarding skill, the Aide's role clause and hub/README still have the Aide commit at the root, which the default workspace-write Codex Aide cannot do
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1036
 branch: t/T-1275-the-onboarding-skill-the-aide-s-role
 created: 2026-10-25T08:28:46.609Z
-updated: 2026-10-25T10:41:24.680Z
+updated: 2026-10-25T11:02:48.617Z
+closed: 2026-10-25T11:02:48.617Z
 ---
 
 ## Summary
@@ -34,6 +35,7 @@ One consistent rule. The skill gets a branch for when the Aide's harness cannot 
 
 - [x] C1. The onboarding skill, the Aide role clause and hub/README.md agree with SKILL.md:94 and T-1222 on who commits at the root under the generated defaults; the clause tests cover the new wording (test).
   - done: impl-1275 · 2026-10-25T10:40:42.069Z
+  - verified: rev-26 [reviewer] · run rev-20261025-1275-final-1 · 2026-10-25T10:56:25.116Z · commit 73d5f067321b568eda433b6b56b340b3f95f1c03
 
 ## Comments
 
@@ -68,3 +70,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear; A-11744 carries A-11740 full audit. M1 resolved: active README overview now agrees on capable-Aide publication subject to current launch-fixed push grant and generated-Codex Coordinator delegation, preserving actual role prohibitions. Existing T1 defaults/project cases pin both paths and reject old unconditional prohibition; no production permissions/policy/wire changes. A-11742 independently read original M1 red 37/39 exit1 /124.356584ms then green39/39 exit0 /108.686541ms, with exact precommit source attribution and partial initial-TDD limits. Actual artifact A-11742, not A-11741. Standards0/Spec0; diff check0; C1 done restored. Runtime unverified pending ordinary mode-free configured verify at this unchanged head; no live onboarding/integration/QA claim.
+
+### rev-26 · 2026-10-25T10:56:25.116Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-1275-final-1
+commit: 73d5f067321b568eda433b6b56b340b3f95f1c03
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-11761 audits original A-11760/e544ad80, carrying source-2/A-11744. 3140 ordinary test passes/439 files, no fail/skip/cancel; T0/all T1/fallback both T2/Web exit0 on Linux c8, no T3/T4. C1 verified: roles-clauses39/39 defaults/project Aide wording + active overview + byte/growth reserves, roles-editor13/13 conditional migration/custom CRLF, startup Aide migration7/7, onboarding13/13 and template7/7. No new identities or load-gate finish records; no5/5 or live onboarding/native sandbox claim. Host35.222s gate81e04406 is tree, not remote recheck; lifetime792s not suite wall. Report-only133/60 lint, two missing baselines/overages retained. Original localA-11742 capture/source limits remain; Coordinator owns enqueue/merge and affected after-stage QA.
+
+Criteria: C1 verified.
+
+### impl-1275 · 2026-10-25T10:56:45.326Z
+
+Ready at 73d5f067321b568eda433b6b56b340b3f95f1c03: source-2 clear A-11744, final evidence-1 clear A-11761, same-head verify e544ad80 exit 0 / A-11760. Actual T0/T1/fallback T2/Web passed; T3/T4 and after-stage QA remain deferred; report-only lint/duration diagnostics retained. Exact affected case receipts checked separately from suite exit, <0.003 s Linux; no new test identities/load-gate execution. Fresh origin/dev fetch 2aab88ca189feca954b9394be3455c5e397b46b7 and merge-tree exit 0 -> 450025ba76a9a4aecf722419e08f6d1d931a8c14, no conflicts. Head unchanged/clean; Coordinator notified for enqueue and stage QA.
+
+### coord · 2026-10-25T11:02:48.617Z
+
+Merged c966b08692a6b2e00d5bf03f45af7fd463ea2fee onto dev.

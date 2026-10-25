@@ -3,7 +3,7 @@ id: T-323
 kind: task
 title: Plan navigation issued before the initial task and ladder snapshots is discarded instead of deferred
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - needs-triage
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1283
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1046
+branch: t/T-323-plan-navigation-issued-before-the
 created: 2026-10-13T10:43:14.266Z
-updated: 2026-10-25T09:53:56.491Z
+updated: 2026-10-25T11:30:23.784Z
 ---
 
 ## Summary
@@ -45,3 +45,7 @@ Pattern note (2026-10-13): three Neovim test flakes today came from keys pressed
 ### coord · 2026-10-13T19:40:55.933Z
 
 Second product case, from T-340 (impl-340, A-2046, 2026-10-13): the session launcher can consume a role selection before role.list arrives. It then leaves harness, model and effort unfilled even after the role response. launcher.sync records the unknown role in seen.role and fills defaults only on a role change. A controlled 1000 ms role.list replay shows the missing reviewer defaults. T-340 fixes only the test's readiness, so this belongs in T-323's product scope: actions that need snapshots must defer, or re-apply, once the snapshots land.
+
+### impl-323 · 2026-10-25T11:30:23.784Z
+
+Clean inherited worktree. A-11669 confirms scope is the two named connect races: plan navigation before task.list + hub.status, and launcher role before role.list. Using existing T2 stub-hub/headless-client seams as required by C2 and triage; no wire/schema/permission change planned.

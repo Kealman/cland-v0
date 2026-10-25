@@ -2,8 +2,8 @@
 id: T-1276
 kind: task
 title: A task landed through cland publish never counts as merged, so its plan stage cannot close
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1032
 branch: t/T-1276-a-task-landed-through-cland-publish
 created: 2026-10-25T09:21:11.429Z
-updated: 2026-10-25T10:25:41.674Z
+updated: 2026-10-25T11:07:08.467Z
+closed: 2026-10-25T11:07:08.467Z
 ---
 
 ## Summary
@@ -126,3 +127,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear at unchanged afe0a53f. Configured run 0536f1ef / A-11714 passed 3120 tests on Linux x64 droplet, Node 24.21.0, Neovim 0.12.5, Chrome Headless Shell 156.0.8078.4 (v1248). T0/all T1/fallback all T2/changed T3 publish.test.ts once/Web completed; remaining T3/T4 not run. Checked passing trailer and durable-reopen/containing-cover identities plus each 5/5 load receipt; native published-stage closure case passed at 1.819810889s. All four native publication cases passed once; no native T3 repetitions claimed. Frozen-help and canonical-doc guards pass, resolving M1/M2. Duration/lint/T3-growth warnings are report-only. Source4 plus these records establish C1/C2. Standards: no remaining findings. Spec: no findings. No Reviewer rerun.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T11:07:08.467Z
+
+Merged ea0586343a0adadb7f20d35d1ffd9c49dd59e6ba onto dev.
