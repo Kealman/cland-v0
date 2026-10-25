@@ -33,3 +33,11 @@ export function authorizeVerifyOccasion(role: string | null | undefined, occasio
     throw new Error('occasion requires the Coordinator, or QA with occasion epic');
   }
 }
+
+export class VerifyAllReserved extends Error {}
+
+/** Undefined role means the human shell; null means a session with no role. */
+export function authorizeVerifyMode(role: string | null | undefined, mode: string, occasion?: VerifyOccasion): void {
+  if (mode === 'all' && role !== undefined && role !== 'coordinator' && !occasion) throw new VerifyAllReserved();
+  if (occasion) authorizeVerifyOccasion(role, occasion);
+}

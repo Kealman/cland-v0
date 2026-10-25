@@ -20,3 +20,12 @@ previous minimal submission/preview reply shape. Assert the received frames as
 well as successful CLI completion. Close every peer and the listener before
 fixture directories are removed. This is admission compatibility, not proof of
 an older hub's new report-publication behavior.
+
+The Aide lint/runtime matrix sends the same literal argv through the in-process
+CLI and `lintQaBrief` (verify and suite alias), asserting each against independent
+allowed/refused expectations. It covers explicit topics, named and repeated
+recipients, default Coordinator addressing, role/glob/all/lead refusals,
+report-target recipient fallback and overrides, report-free and reporting
+previews, both help flags with an unknown-short-flag negative, package mode,
+all mode after flags and reserved occasions. Candidate/executor facts are injected; this measures
+admission only, with no real suite execution. Keep the prior-hub wire control.

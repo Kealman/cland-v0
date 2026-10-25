@@ -2,6 +2,8 @@
 import * as help from './cli/usage.ts';
 import { lintQaReferences } from './qa-lint-references.ts';
 import { decide, DEFAULT_PERMISSIONS, KNOWN_TOOLS, type ToolCall } from './roles/permissions.ts';
+import { isVerifyOccasion } from './protocol.ts';
+import { authorizeVerifyMode, VerifyAllReserved } from './verification-occasion.ts';
 
 export type QaLintFinding = { line: number; message: string; command?: string };
 type Command = { path: string[]; flags: Set<string>; forwardAfter?: number };
@@ -94,7 +96,7 @@ function roleProblem(role: string, args: string[]): string | null {
   if (role === 'human') return null;
   const [root, sub] = args;
   // Verification uses scheduler admission, not the built-in tool-grant lists.
-  // Its report, mode and Aide checks remain in lintQaBrief below; the custom
+  // Its report and mode checks remain in lintQaBrief below; the custom
   // verify grant in KNOWN_TOOLS must not change built-in brief policy.
   if (root === 'verify' || root === 'suite') return null;
   const tool = root === 'artifact' && ['new', 'create'].includes(sub ?? '') ? 'artifact.create'
@@ -122,6 +124,41 @@ function roleProblem(role: string, args: string[]): string | null {
   }
   const decision = decide(role, DEFAULT_PERMISSIONS[role], call);
   return decision.ok ? null : `${role}: ${decision.reason}`;
+}
+
+/** Static Aide facts; live topic/recipient existence and configured grants stay with the hub. */
+function aideVerifyProblem(args: string[]): string | null {
+  if (args.includes('--help') || args.includes('-h')) return null;
+  const report = flagValue(args, '--report');
+  if (!args.includes('--dry-run') || report !== undefined) {
+    const to: string[] = [];
+    for (let i = 1; i < args.length && args[i] !== '--'; i++) {
+      if (args[i] === '--to') to.push(args[++i] ?? '');
+      else if (args[i]!.startsWith('--to=')) to.push(args[i]!.slice('--to='.length));
+    }
+    // A literal report may resolve as a recipient instead of a topic. Topic ids
+    // also satisfy named addressing; shell-expanded values stay unresolved here.
+    if (!to.length && !report?.includes('$')) to.push(report ?? 'coordinator');
+    for (const call of [{ tool: 'artifact.create' }, { tool: 'send', to, toHuman: to.length === 0, roleNames: Object.keys(DEFAULT_PERMISSIONS) }]) {
+      const decision = decide('aide', DEFAULT_PERMISSIONS.aide, call);
+      if (!decision.ok) return decision.reason;
+    }
+  }
+  const occasion = flagValue(args, '--occasion');
+  if (occasion !== undefined && !isVerifyOccasion(occasion)) return 'invalid verification occasion';
+  let mode = 'auto';
+  for (let i = 1; i < args.length; i++) {
+    const arg = args[i]!;
+    if (arg === '--') { mode = args[i + 1] ?? 'auto'; break; }
+    if (['--report', '--to', '--occasion', '--executor', '--workers', '--size', '--note'].includes(arg)) { i++; continue; }
+    if (!arg.startsWith('-')) { mode = arg; break; }
+  }
+  try {
+    authorizeVerifyMode('aide', args.includes('--all') ? 'all' : mode, occasion);
+  } catch (error) {
+    return error instanceof VerifyAllReserved ? 'Aide cannot request verify all; use a mode-free task run' : (error as Error).message;
+  }
+  return null;
 }
 
 /** Lint table commands, check identifiers/surfaces, and shell cleanup in code. */
@@ -214,7 +251,10 @@ export function lintQaBrief(source: string, build?: ReadonlyMap<string, string>)
           const report = flagValue(args, '--report');
           if (assignedRole === 'implementer' && ((!report && !args.includes('--dry-run')) || (report !== undefined && (report.startsWith('--') || /^(general|agents)$/i.test(report))))) add(`Implementer verify --report must name the item's topic`, command);
           if (['implementer', 'reviewer', 'lead'].includes(assignedRole) && (args[1] === 'all' || args.includes('--all'))) add(`${assignedRole} cannot request verify all; use a mode-free task run`, command);
-          if (assignedRole === 'aide') add('Aide cannot submit verification', command);
+          if (assignedRole === 'aide') {
+            const refusal = aideVerifyProblem(args);
+            if (refusal) add(refusal, command);
+          }
         }
       }
     }

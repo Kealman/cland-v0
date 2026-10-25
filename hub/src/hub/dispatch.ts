@@ -19,7 +19,7 @@ import { gitIn } from '../tracker/verdict-git.ts';
 import { interruptionLines } from '../suite-progress.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import type { ClockTimer } from './clock.ts';
-import { authorizeVerifyOccasion } from '../verification-occasion.ts';
+import { authorizeVerifyMode, VerifyAllReserved } from '../verification-occasion.ts';
 import { HarnessModels } from '../models.ts';
 import { AccountLimited } from '../accounts/limits.ts';
 import { prefixOf } from '../tracker/prefixes.ts';
@@ -164,7 +164,6 @@ export type DispatcherOptions = {
 
 /** Who the UI's and the CLI's calls are audited as. */
 const HUMAN_SESSION = 'human';
-class VerifyAllReserved extends Error {}
 
 /**
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
@@ -1935,10 +1934,7 @@ export class Dispatcher {
           this.#suitePermissions(actor, topic, to);
           reportAuthorized = true;
         }
-        if (request.mode === 'all' && actor && current?.role !== 'coordinator' && !request.occasion) throw new VerifyAllReserved();
-        if (request.occasion) {
-          authorizeVerifyOccasion(current?.role, request.occasion);
-        }
+        authorizeVerifyMode(actor ? current?.role ?? null : undefined, request.mode, request.occasion);
       };
       const failure = async (error: unknown): Promise<HubFrame> => {
         if (!(error instanceof VerifyAllReserved)) return Dispatcher.#failure(request.id, error);

@@ -14,6 +14,62 @@ import { runSuiteCommand } from '../src/cli/suite.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { createServer, type Socket } from 'node:net';
 import { beforeDirectories } from './process-cleanup.ts';
+import { lintQaBrief } from '../src/qa-lint.ts';
+
+test('Aide verification brief rows match runtime admission for the same commands', async t => {
+  const f = await fixture(t);
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'aide' })).ok, true);
+  const cases: { args: string[]; allowed: boolean; reason?: RegExp }[] = [
+    { args: ['--report', f.topic], allowed: true },
+    { args: ['--report=general', '--to=rev'], allowed: true },
+    { args: ['--dry-run', '--report', 'rev'], allowed: true },
+    { args: ['--dry-run', '--report', 'reviewer', '--to', 'rev'], allowed: true },
+    { args: ['--report', 'agents'], allowed: true },
+    { args: ['--to', 'rev'], allowed: true },
+    { args: ['--report', f.topic, '--to', 'rev', '--to', 'impl'], allowed: true },
+    { args: ['hub', '--report', f.topic], allowed: true },
+    { args: ['--dry-run'], allowed: true },
+    { args: ['--dry-run', '--to', 'all'], allowed: true },
+    { args: ['--help'], allowed: true },
+    { args: ['-h'], allowed: true },
+    { args: ['-z'], allowed: false, reason: /Unknown option '-z'/ },
+    { args: [], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--dry-run', '--report', 'reviewer'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--dry-run', '--report=all'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--dry-run', '--report', 'impl-*'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--dry-run', '--report', 'lead T-1'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--report', f.topic, '--to', 'reviewer'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--report', f.topic, '--to', 'rev', '--to', 'all'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--report', f.topic, '--to=impl-*'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--report', f.topic, '--to', 'lead T-1'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['all', '--report', f.topic], allowed: false, reason: /verify-all-reserved/ },
+    { args: ['--all', '--report', f.topic], allowed: false, reason: /verify-all-reserved/ },
+    { args: ['--dry-run', '--all'], allowed: false, reason: /verify-all-reserved/ },
+    { args: ['--report', f.topic, 'all'], allowed: false, reason: /verify-all-reserved/ },
+    { args: ['--dry-run', '--report', f.topic, '--to', 'all'], allowed: false, reason: /sends to sessions by name only/ },
+    { args: ['--report', f.topic, '--occasion', 'stage'], allowed: false, reason: /occasion requires the Coordinator/ },
+    { args: ['--report', f.topic, '--occasion=epic'], allowed: false, reason: /occasion requires the Coordinator/ },
+    { args: ['--dry-run', '--occasion', 'batch'], allowed: false, reason: /batch occasion is hub-owned/ },
+  ];
+  for (const row of cases) {
+    // The real in-process CLI parser supplies defaults, identity and the public
+    // suite.start frame; the fixture injects candidate facts and executor receipts.
+    let runtimeError: unknown;
+    try {
+      assert.equal(await runSuiteCommand([...row.args, '--fresh'], f.root,
+        { env: f.env, out: () => {} }), 0);
+    } catch (error) { runtimeError = error; }
+    await f.settle();
+    const command = 'cland verify ' + row.args.map(arg => JSON.stringify(arg)).join(' ');
+    assert.equal(runtimeError === undefined, row.allowed, `${command}: ${String(runtimeError)}`);
+    if (row.reason) assert.match(String(runtimeError), row.reason, command);
+    for (const alias of ['verify', 'suite']) {
+      const brief = '| role | command | expected |\n| --- | --- | --- |\n| Aide | `' + command.replace('cland verify', 'cland ' + alias) + '` | admission |';
+      const findings = lintQaBrief(brief);
+      assert.equal(findings.length === 0, row.allowed, `${command}: ${JSON.stringify(findings)}`);
+    }
+  }
+});
 
 test('verify materializes Agents defaults for a prior hub wire contract and preserves previews and overrides', async t => {
   const root = await tempProject(t, 'verify-prior-wire-');
