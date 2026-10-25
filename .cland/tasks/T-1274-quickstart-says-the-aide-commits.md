@@ -2,8 +2,8 @@
 id: T-1274
 kind: task
 title: Quickstart says the Aide commits everything on dev, but the default workspace-write Codex Aide cannot commit at the root
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1024
 branch: t/T-1274-quickstart-says-the-aide-commits
 created: 2026-10-25T08:14:53.469Z
-updated: 2026-10-25T08:46:31.987Z
+updated: 2026-10-25T08:54:09.575Z
+closed: 2026-10-25T08:54:09.575Z
 ---
 
 ## Summary
@@ -118,3 +119,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1 verified. A-11658 audits exact-head configured45da8e29/A-11657 plus authoritative standalone stdout A-11654/55 and indexA-11656. Corrected public copy/dispositions/source-3 stand. Local Darwin guard2/2 duration70.584667ms, actual prebuild2/2 then Astro23pages/Complete/observed exit0; stdout/exit/source limits retained, no inferred full wall. A-11653 manual duplication superseded, original red truncation retained. Configured3114 ordinary passes/438 files plus15 existing install-claims load tests/files (three5/5), not onboarding guard repetitions. T0/T1/all fallback bothT2/Web green; noT3/T4. Host25.246s/tree d65fe37e2fc44341803ad772c4b6174eb4bcd6b8 not remotely repeated; Linux c8lon1 Node24.21/nvim.12.5/HSh156v1248/lifetime662s/$0.0460 distinct from suite wall. Report-only lint133/60/baseline1/timing warnings retained. Claimant clean read-only dev3e2584ca mergecheck0, no merge. No native sandbox/QA/publication/integration proof. Coordinator owns enqueue/merge.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-25T08:53:57.597Z
+
+Published marketing t/T-1274-quickstart-says-the-aide-commits at 6665bb0339ac7781294ee61e0b11ed2b03025f88 (GitHub default branch and site); dev f6c64386407e4177eb4dab1e6c7da09689f040c9.
+
+### coord · 2026-10-25T08:54:09.575Z
+
+Published with `cland publish` on the human's approval (ask 35a4e90b, 08:53Z, relayed by cland-impl). GitHub main and site are at 6665bb03; the branch merged into dev at f6c64386. Reviews and verify were clear at 97d9d80b (A-11652, A-11658, run 45da8e29). The rest of the Aide-commit claim (the onboarding skill, the role clause, hub/README) is T-1275.
