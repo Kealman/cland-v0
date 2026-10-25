@@ -79,6 +79,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/roles-template-component.test.ts`](../../../hub/test/roles-template-component.test.ts) | [Notes](hub-test-roles-template-component.test.ts.md) |
 | [`hub/test/codex-workspace-git.test.ts`](../../../hub/test/codex-workspace-git.test.ts) | [Notes](hub-test-codex-workspace-git.test.ts.md) |
 | [`hub/test/roles-component.test.ts`](../../../hub/test/roles-component.test.ts) | [Notes](hub-test-roles-component.test.ts.md) |
+| [`hub/test/roles-timing.test.ts`](../../../hub/test/roles-timing.test.ts) | [Notes](hub-test-roles-timing.test.ts.md) |
 | [`hub/test/adapter-composition.test.ts`](../../../hub/test/adapter-composition.test.ts) | [Notes](hub-test-adapter-composition.test.ts.md) |
 | [`hub/test/codex-adapter.test.ts`](../../../hub/test/codex-adapter.test.ts) | [Notes](hub-test-codex-adapter.test.ts.md) |
 | [`hub/test/session-archive.test.ts`](../../../hub/test/session-archive.test.ts) | [Notes](hub-test-session-archive.test.ts.md) |
