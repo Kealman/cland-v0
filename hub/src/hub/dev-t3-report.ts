@@ -24,7 +24,7 @@ export async function reportDevT3Search(core: HubCore, tracker: Tracker, report:
   for (const merge of new Set(files.flatMap(file => file.result === 'culprit' && file.tip && (file.tip.result === 'red' || file.tip.result === 'partial' && file.tip.executed === 'red') ? file.culprit?.head ?? [] : []))) {
     const label = `dev-t3-${merge}`;
     let bug = tracker.list().find(item => item.labels.includes(label));
-    const source = tracker.list().find(item => tracker.mergeReceipt(item.id)?.commit === merge);
+    const source = tracker.list().find(item => tracker.landingReceipt(item.id)?.commit === merge);
     if (source) {
       const claim = tracker.lastClaim(source.id);
       const live = claim && core.presence().find(session => tracker.sameSession(session.sessionId, claim.sessionId));

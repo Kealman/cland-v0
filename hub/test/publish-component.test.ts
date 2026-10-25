@@ -78,3 +78,10 @@ test('a lost accepted push reply recovers the pinned tips without repeating publ
   assert.equal(recovered.dev, tips.dev);
   assert.equal(f.pushes(), 1);
 });
+
+test('every dev merge publication prepares names its item so the landing is attributable', async t => {
+  const f = await publishFixture(t);
+  await f.publish();
+  assert.deepEqual(f.mergeMessages.map(message => message.split('\n').includes('Item: T-1')), [true, true],
+    'both publication merges carry the item trailer a landing receipt points at');
+});

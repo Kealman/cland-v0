@@ -574,6 +574,19 @@ export class TrackerIndex {
     return row ? { branch: row.branch as string, tip: row.tip as string, base: row.base as string, commit: row.commit_sha as string, ...(row.override_reason === null ? {} : { override: row.override_reason as string }), ...(row.checkout_recovery === null ? {} : { checkout: JSON.parse(row.checkout_recovery as string) as CheckoutRecovery }) } : null;
   }
 
+  /** Completed publication evidence is not an unfinished merge lifecycle. */
+  recordPublication(id: string, receipt: MergeReceipt): void {
+    this.#db.prepare('insert into tracker_meta (key, value) values (?, ?) on conflict(key) do update set value = excluded.value')
+      .run(`publication:${idNumber(id)}`, JSON.stringify(receipt));
+  }
+
+  landingReceipt(id: string): MergeReceipt | null {
+    const merge = this.mergeReceipt(id);
+    if (merge) return merge;
+    const row = this.#db.prepare('select value from tracker_meta where key = ?').get(`publication:${idNumber(id)}`) as Row | undefined;
+    return row ? JSON.parse(row.value as string) as MergeReceipt : null;
+  }
+
   holdsOf(id: string): VerifierHold[] {
     id = this.#key(id);
     const rows = this.#db.prepare('select * from tracker_holds where item_id = ? order by held_at, session_id').all(id) as Row[];

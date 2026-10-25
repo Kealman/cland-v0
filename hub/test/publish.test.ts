@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland } from './harness.ts';
+import { stringify } from 'yaml';
+import { cland, eventually } from './harness.ts';
 import { project, git, clean, json } from './release-support.ts';
 
 test('publish previews exact tips, publishes only marketing commits and preserves dev for the next release', async t => {
@@ -51,6 +52,39 @@ test('publish previews exact tips, publishes only marketing commits and preserve
   await import('./release-support.ts').then(({ releaseCover }) => releaseCover(root));
   const release = await cland(root, 'release', 'v0.1.0', '--dry-run', '--json');
   assert.equal(release.code, 0, release.stderr);
+});
+
+test('a task published through cland publish counts as merged and closes its plan stage', async t => {
+  const { root } = await project(t);
+  const { item: epic } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--kind', 'epic', 'Published epic', '--json'));
+  const { item: task } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'S', '--parent', epic.id, '--branch', 'marketing', 'Marketing', '--json'));
+  const planFile = join(root, 'plan.yaml');
+  await writeFile(planFile, stringify({ stages: [{ name: 'marketing', qa: { scope: 'none', when: 'per-item' }, lanes: [[task.id]] }] }));
+  const planned = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile, '--json');
+  assert.equal(planned.code, 0, planned.stderr);
+  await clean(root);
+  git(root, 'checkout', '-qb', 'marketing');
+  await mkdir(join(root, 'site'), { recursive: true });
+  await writeFile(join(root, 'site/index.html'), 'Published marketing copy\n');
+  git(root, 'add', 'site/index.html');
+  git(root, 'commit', '-qm', 'Marketing copy');
+  git(root, 'checkout', '-q', 'dev');
+  const published = json<{ followUp?: { step: string; error: string }; dev: string }>(await cland(root, 'publish', 'marketing', '--item', task.id, '--json'));
+  assert.equal(published.followUp, undefined, published.followUp?.error);
+  // A publish landing is not a pending merge recovery: dev still pushes while the item is open.
+  const pushed = await cland(root, 'push');
+  assert.equal(pushed.code, 0, pushed.stderr);
+  const closed = await cland(root, 'task', 'close', task.id);
+  assert.equal(closed.code, 0, closed.stderr);
+  const { item } = json<{ item: { merged?: boolean } }>(await cland(root, 'task', 'view', task.id, '--json'));
+  assert.equal(item.merged, true, 'the published task reports its dev landing');
+  const shown = await eventually('published stage closes with both platform covers', async () => {
+    const view = json<{ stages: Array<{ state: string; merged: number; total: number }> }>(await cland(root, 'task', 'plan', 'show', epic.id, '--json'));
+    return view.stages[0]?.state === 'closed' ? view : undefined;
+  });
+  assert.equal(shown.stages[0]?.merged, 1);
+  assert.equal(shown.stages[0]?.total, 1);
+  assert.equal(shown.stages[0]?.state, 'closed');
 });
 
 test('publish recovers a published tip after local ref failure without republishing or duplicating its comment', async t => {

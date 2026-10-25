@@ -25,6 +25,7 @@ export async function publishFixture(t: TestContext) {
   let index = `${tips.private}-tree`;
   const faults = { rejectPush: false, loseReply: false, localRefs: false };
   let pushes = 0;
+  const mergeMessages: string[] = [];
   const run: typeof territoryGitAsync = async (cwd, rawArgs, _marked, input) => {
     const args = [...rawArgs];
     while (args[0] === '-c') args.splice(0, 2);
@@ -58,7 +59,7 @@ export async function publishFixture(t: TestContext) {
         return '';
       case 'cherry-pick': scratchHeads.set(cwd, args.at(-1) === tips.first ? tips.publicFirst : tips.public); return '';
       case 'checkout': scratchHeads.set(cwd, args.at(-1)!); return '';
-      case 'merge': scratchHeads.set(cwd, args.at(-1) === tips.source ? tips.mergedSource : tips.dev); return '';
+      case 'merge': mergeMessages.push(args[args.indexOf('-m') + 1]!); scratchHeads.set(cwd, args.at(-1) === tips.source ? tips.mergedSource : tips.dev); return '';
       case 'write-tree': return index;
       case 'read-tree': index = `${args.at(-1)!}-tree`; return '';
       case 'update-ref':
@@ -86,5 +87,5 @@ export async function publishFixture(t: TestContext) {
     }
   };
   const publish = (dryRun = false, allowPaths = defaultConfig('').publish.allowPaths, item = 'T-1') => publishGit(root, 'marketing', item, dryRun, allowPaths, resumed, () => {}, {}, run);
-  return { root, rootRefs, territoryRefs, githubRefs, changed, faults, publish, pushes: () => pushes };
+  return { root, rootRefs, territoryRefs, githubRefs, changed, faults, mergeMessages, publish, pushes: () => pushes };
 }

@@ -69,7 +69,7 @@ export async function publishGit(root: string, branch: string, item: string, dry
       for (const { commit } of commits) await run(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'cherry-pick', commit], true, undefined, { GIT_COMMITTER_DATE: date });
       const main = await run(scratch, ['rev-parse', 'HEAD']);
       await run(scratch, ['checkout', '--detach', state.dev], true);
-      for (const tip of [source, main]) await run(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'merge', '--no-edit', '--no-ff', '-m', `Publish marketing ${branch}`, tip], true, undefined, { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date });
+      for (const tip of [source, main]) await run(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'merge', '--no-edit', '--no-ff', '-m', `Publish marketing ${branch}\n\nItem: ${item}`, tip], true, undefined, { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date });
       return { main, dev: await run(scratch, ['rev-parse', 'HEAD']) };
     }, async () => {
       await run(root, ['worktree', 'remove', '--force', scratch], true);

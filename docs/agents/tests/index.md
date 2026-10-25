@@ -198,3 +198,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/qa-lint-cli.test.ts`](../../../hub/test/qa-lint-cli.test.ts) | [Notes](hub-test-qa-lint-cli.test.ts.md) |
 | [`hub/test/dependency-install.test.ts`](../../../hub/test/dependency-install.test.ts) | [Notes](hub-test-dependency-install.test.ts.md) |
 | [`hub/test/durations.test.ts`](../../../hub/test/durations.test.ts) | [Notes](hub-test-durations.test.ts.md) |
+
+| [`hub/test/publish-component.test.ts`](../../../hub/test/publish-component.test.ts) | [Notes](hub-test-publish-component.test.ts.md) |
+| [`hub/test/publish.test.ts`](../../../hub/test/publish.test.ts) | [Notes](hub-test-publish.test.ts.md) |
+| [`hub/test/stage-closure-component.test.ts`](../../../hub/test/stage-closure-component.test.ts) | [Notes](hub-test-stage-closure-component.test.ts.md) |

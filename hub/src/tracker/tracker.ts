@@ -1593,7 +1593,7 @@ export class Tracker {
     const open = tasks.filter(t => t.state !== 'closed').map(t => t.id);
     if (open.length) return { id, met: false, open };
     const last = tasks.sort((a, b) => (a.closed ?? a.updated).localeCompare(b.closed ?? b.updated) || idNumber(a.id) - idNumber(b.id)).at(-1);
-    const met = !!last && this.#index.mergeReceipt(last.id)?.base === 'dev';
+    const met = !!last && this.#index.landingReceipt(last.id)?.base === 'dev';
     return { id, met, open: [], ...(met ? {} : { reason: last ? `last ticket ${last.id} has not merged` : 'no task children' }) };
   }
 
@@ -1610,7 +1610,7 @@ export class Tracker {
     const tasks = uniq(predecessors).flatMap(predecessor => this.#index.list({ under: predecessor, kind: 'task' }).map(t => t.id));
     return JSON.stringify([
       uniq([id, ...ancestors, ...predecessors, ...tasks]).map(key => [key, this.#index.metaOf(key)?.hash]),
-      tasks.map(key => [key, this.#index.mergeReceipt(key)]),
+      tasks.map(key => [key, this.#index.landingReceipt(key)]),
       this.#index.claimOf(id), this.#index.holdsOf(id),
     ]);
   }
@@ -1707,7 +1707,7 @@ export class Tracker {
     };
     if (view.kind === 'task') {
       view.verify = this.#verify(view.id, view.branch);
-      view.merged = view.state === 'closed' && this.#index.mergeReceipt(id)?.base === 'dev';
+      view.merged = view.state === 'closed' && this.#index.landingReceipt(id)?.base === 'dev';
       // Use durable hub write order and normalized writer/claim identity, just as merge does.
       // A missing or altered recorded comment invalidates the evidence rather than breaking a UI read.
       try { view.qaSatisfied = qaSatisfied(this.#mergeViewOf(view)); }
@@ -1720,7 +1720,7 @@ export class Tracker {
 
   #criteriaTip(item: Pick<IndexedItem, 'id' | 'kind' | 'state' | 'branch'>): string | null {
     const branch = isPlanningContainer(item.kind, this.ladder) ? 'dev' : item.branch;
-    const receipt = item.kind === 'task' && item.state === 'closed' ? this.#index.mergeReceipt(item.id) : null;
+    const receipt = item.kind === 'task' && item.state === 'closed' ? this.#index.landingReceipt(item.id) : null;
     return receipt?.tip ?? this.#fresh.tip(branch);
   }
 
@@ -1835,7 +1835,7 @@ export class Tracker {
     // stays outside the closure hash: an open member's status is not a landing.
     const statuses: Record<string,number> = {};
     const facts = items.map(childId => {
-      const child = this.#index.get(childId), receipt = this.#index.mergeReceipt(childId);
+      const child = this.#index.get(childId), receipt = this.#index.landingReceipt(childId);
       const status = child?.state === 'closed' ? 'done' : child?.status ?? 'backlog';
       statuses[status] = (statuses[status] ?? 0)+1;
       const evidenceOnly = child?.kind === 'task' && child.state === 'closed' && child.status === 'done'
@@ -1908,7 +1908,7 @@ export class Tracker {
     }
     const covers = this.#stageCovers();
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
-    const landings = snapshot.items.flatMap(child => this.#index.mergeReceipt(child)?.commit ?? []);
+    const landings = snapshot.items.flatMap(child => this.#index.landingReceipt(child)?.commit ?? []);
     const candidates = covers.filter(cover => cover.platform === 'Linux droplet').map(cover => {
       const treeMatches = expected === null ? undefined : !build || cover.tree === expected;
       // A tested build must have a known matching tree before ancestry can
@@ -1986,7 +1986,7 @@ export class Tracker {
     const commits = resumed(() => {
       if (!tip) throw new TrackerError('stage QA needs a resolving dev branch');
       return snapshot.items.flatMap(childId => {
-        const receipt = this.#index.mergeReceipt(childId);
+        const receipt = this.#index.landingReceipt(childId);
         return receipt ? [receipt.commit] : [];
       });
     });
@@ -2032,6 +2032,13 @@ export class Tracker {
 
   recordMerge(rawId: string, receipt: MergeReceipt): void { this.#index.recordMerge(this.#require(rawId).id, receipt); }
   mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(this.#referenceId(rawId) ?? rawId); }
+  landingReceipt(rawId: string): MergeReceipt | null { return this.#index.landingReceipt(this.#referenceId(rawId) ?? rawId); }
+
+  recordPublication(rawId: string, receipt: MergeReceipt): void {
+    const id = this.#require(rawId).id;
+    this.#index.recordPublication(id, receipt);
+    this.#changed(id);
+  }
 
   closedAt(id: string): string | null { return this.#index.closedAt(id); }
   pruneSession(sessionId: string, name: string): void {
@@ -2591,7 +2598,7 @@ export class Tracker {
         if (item.fm.state === 'open') delete item.fm.closed;
         else if (!wasClosed) item.fm.closed = this.#now().toISOString();
         else if (op === 'close') item.fm.closed ??= this.#now().toISOString();
-        const receipt = wasClosedTask && item.fm.state === 'open' ? this.#index.mergeReceipt(id) : null;
+        const receipt = wasClosedTask && item.fm.state === 'open' ? this.#index.landingReceipt(id) : null;
         const prepare = receipt ? async () => {
           await beforeRename?.();
           // A prepared receipt may have rolled back. Only an actual landing makes the task final.
@@ -3226,7 +3233,7 @@ export class Tracker {
     if (self && idNumber(target.id) === idNumber(self)) throw new TrackerError('regression_of cannot name the item itself');
     if (target.kind !== 'task') throw new TrackerError(`regression_of target ${target.id} must be a task`);
     if (target.state !== 'closed') throw new TrackerError(`regression_of target ${target.id} must be closed`);
-    if (this.#index.mergeReceipt(target.id)?.base !== 'dev') throw new TrackerError(`regression_of target ${target.id} needs a landing receipt on dev`);
+    if (this.#index.landingReceipt(target.id)?.base !== 'dev') throw new TrackerError(`regression_of target ${target.id} needs a landing receipt on dev`);
     return target.id;
   }
 

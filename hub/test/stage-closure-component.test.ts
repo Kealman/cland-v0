@@ -8,6 +8,56 @@ import type { StageCover } from '../src/hub/suites.ts';
 import { connectWsUi, eventually, startHub, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 
+test('publication landings survive tracker reopen and require covers containing the published dev merge', async t => {
+  const root = await tempProject(t);
+  const landing = 'a'.repeat(40), head = 'b'.repeat(40), tree = 'c'.repeat(40), before = 'd'.repeat(40);
+  const options = { root, db: join(root, '.cland/hub.db'),
+    git: async (args: string[]) => {
+      if (args[0] === 'for-each-ref') return `${head} refs/heads/dev`;
+      if (args[0] === 'rev-parse') return args.at(-1)!.replace(/\^\{commit\}$/, '');
+      if (args[0] === 'merge-base' && args[2] === landing && args[3] === before) return null;
+      return '';
+    }, readBase: async () => 'dev', stageTree: async () => tree,
+    scheduleTips: () => ({ poke() {}, stop() {} }),
+  };
+  let tracker = new Tracker(options);
+  tracker.start(); onCleanup(t, () => tracker.stop());
+  const actor = { id: 'human', name: 'human', role: null };
+  const epic = await tracker.create(actor, { kind: 'epic', title: 'Published stage' });
+  const child = await tracker.create(actor, { size: 'S', title: 'Published', branch: 'marketing', parent: epic.id });
+  await tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [
+    { name: 'marketing', qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]] },
+  ] }));
+  tracker.recordPublication(child.id, { branch: 'marketing', tip: 'e'.repeat(40), commit: landing, base: 'dev' });
+  assert.equal((await tracker.viewAsync(child.id)).merged, false, 'publication leaves the item open');
+  assert.equal(tracker.mergeReceipt(child.id), null, 'publication does not create merge recovery');
+  await tracker.close(actor, child.id);
+  await tracker.stop();
+  tracker = new Tracker(options); tracker.start();
+  await tracker.refreshFreshness();
+  assert.equal((await tracker.viewAsync(child.id)).merged, true);
+  assert.equal(tracker.mergeReceipt(child.id), null);
+  let covers: StageCover[] = [
+    { id: 'linux-before', head: before, tree, platform: 'Linux droplet' },
+    { id: 'mac', head, tree, platform: 'macOS' },
+  ];
+  tracker.useVerify(() => null, () => covers);
+  const stage = async () => (await tracker.viewAsync(epic.id)).stages![0]!;
+  const uncontained = await eventually('old cover is rejected after ancestry resolves', async () => {
+    const value = await stage();
+    return value.cover?.tree === tree && !value.cover.pending?.length ? value : undefined;
+  });
+  assert.equal(uncontained.merged, 1);
+  assert.equal(uncontained.state, 'open');
+  assert.deepEqual(uncontained.cover?.missing, ['Linux droplet']);
+  covers = [covers[1]!, { id: 'linux', head, tree, platform: 'Linux droplet' }];
+  const closed = await eventually('matching cover pair closes the published stage', async () => {
+    const value = await stage(); return value.state === 'closed' ? value : undefined;
+  });
+  assert.equal(closed.merged, 1);
+  assert.deepEqual(closed.cover, { tree, missing: [], linux: 'linux', macos: 'mac' });
+});
+
 test('a pending stage build tree keeps QA currency unknown until a mismatching tree is observed', async t => {
   const root = await tempProject(t);
   const head = 'a'.repeat(40), coveredTree = 'b'.repeat(40), actualTree = 'c'.repeat(40);

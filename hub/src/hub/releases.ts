@@ -55,6 +55,10 @@ export class Releases {
           const result = await publishGit(this.tracker.root, branch, view.id, dryRun, allowPaths, resumed, authorize, this.#env);
           if (!dryRun) published = result;
           if (!dryRun && !result.followUp) {
+            resumed(() => {
+              authorize();
+              this.tracker.recordPublication(view.id, { branch: result.branch, tip: result.source, base: 'dev', commit: result.dev });
+            });
             const text = `Published marketing ${branch} at ${result.main} (GitHub default branch and site); dev ${result.dev}.`;
             if (!view.comments.some(comment => comment.text === text)) await this.tracker.comment(actor, view.id, text, undefined, resumed, () => { authorize(); return actor; });
           }
