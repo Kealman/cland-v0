@@ -98,7 +98,7 @@ export async function scriptedCodex(t: TestContext, beforePublish?: (native: Scr
     // Session-manager construction precedes the serving receipt. Model slow
     // adapter initialization without processes or wall-clock waiting.
     clock.block(options.startupDelayMs ?? 0);
-    const lifecycle = fakeHarness('codex', { host, clock });
+    const lifecycle: ReturnType<typeof fakeHarness> & Pick<HarnessAdapter, 'stateReason'> = fakeHarness('codex', { host, clock });
     adapter = new CodexAdapter(host, { clock, pollMs: 100, connect: async () => { connections++; if (connectionFailure) throw connectionFailure; native.closed = false; return native; } });
     // Only lifecycle is replaced: inject, watch and every native event use the production adapter.
     const spawn = lifecycle.spawn.bind(lifecycle);
@@ -116,6 +116,7 @@ export async function scriptedCodex(t: TestContext, beforePublish?: (native: Scr
     lifecycle.watch = adapter.watch.bind(adapter);
     lifecycle.unwatch = adapter.unwatch.bind(adapter);
     lifecycle.usage = adapter.usage.bind(adapter);
+    lifecycle.stateReason = adapter.stateReason.bind(adapter);
     lifecycle.answerApproval = (process, id, answer) => adapter.answerApproval(process, id, answer);
     const close = lifecycle.close.bind(lifecycle);
     lifecycle.close = () => { adapter.close(); close(); };

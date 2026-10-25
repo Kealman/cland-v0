@@ -13,8 +13,8 @@ const flag = (args: string[], name: string): string | undefined => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 
-const line = (p: HarnessProcessView): string =>
-  `${withRole(p.name, p.role)}  ${p.harness}  ${p.status}  [${p.state}]${p.model ? `  ${p.model}` : ''}${p.account ? `  account ${p.account}` : ''}  pid ${p.pid ?? '?'}${p.attach ? `\n    attach: ${p.attach}` : ''}`;
+export const sessionLine = (p: HarnessProcessView): string =>
+  `${withRole(p.name, p.role)}  ${p.harness}  ${p.status}  [${p.stateReason ?? p.state}]${p.model ? `  ${p.model}` : ''}${p.account ? `  account ${p.account}` : ''}  pid ${p.pid ?? '?'}${p.attach ? `\n    attach: ${p.attach}` : ''}`;
 
 export async function runSession(args: string[], cwd: string = process.cwd()): Promise<number> {
   const [sub, ...rest] = args;
@@ -46,12 +46,12 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
         60_000,
       )) as { process: HarnessProcessView; claim?: { session: string } | null; worktree?: { path: string; branch: string } | null; reason?: string };
       const where = item ? `\n    ${item}: ${v.worktree ? `worktree ${v.worktree.path} on ${v.worktree.branch}` : (v.reason ?? 'no worktree')}; claimed by ${v.claim?.session ?? '-'}` : '';
-      out(v, `${v.process.warning ? `warning: ${v.process.warning}\n` : ''}launched ${line(v.process)}${where}`);
+      out(v, `${v.process.warning ? `warning: ${v.process.warning}\n` : ''}launched ${sessionLine(v.process)}${where}`);
       return 0;
     }
     case 'list': {
       const v = (await askHubFrame(d, { type: 'session.list', archived: rest.includes('--archived') })) as { processes: HarnessProcessView[]; coordinator?: string | null; archived: number };
-      out(v, `${v.processes.length ? v.processes.map(line).join('\n') : 'no sessions launched'}\n${v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator'}\narchived: ${v.archived}`);
+      out(v, `${v.processes.length ? v.processes.map(sessionLine).join('\n') : 'no sessions launched'}\n${v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator'}\narchived: ${v.archived}`);
       return 0;
     }
     case 'attach': {
@@ -63,7 +63,7 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
     case 'archive': {
       if (!name) throw new Error('usage: cland session archive <name>');
       const v = (await askHubFrame(d, { type: 'session.archive', session: name })) as { process: HarnessProcessView };
-      out(v, `archived ${line(v.process)}`);
+      out(v, `archived ${sessionLine(v.process)}`);
       return 0;
     }
     case 'prune': {
@@ -76,7 +76,7 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
     case 'stop': {
       if (!name) throw new Error('usage: cland session stop <name>');
       const v = (await askHubFrame(d, { type: 'session.stop', session: name }, 30_000)) as { process: HarnessProcessView };
-      out(v, `stopped ${line(v.process)}`);
+      out(v, `stopped ${sessionLine(v.process)}`);
       return 0;
     }
     case 'resume': {
@@ -84,7 +84,7 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       const v = (await askHubFrame(d, { type: 'session.resume', session: name, relaunch: rest.includes('--relaunch'), fresh: rest.includes('--fresh') }, 60_000)) as SessionResumeAnswer;
       const notes = v.notes.length ? `\n    ${v.notes.join(' · ')}` : '';
       const hint = v.fresh ? `\n    cland session resume ${name} --fresh (${v.fresh.brief === null ? 'no brief recorded' : 'with its recorded brief'})` : '';
-      out(v, v.found ? `resumed ${line(v.process)}${notes}` : `cannot resume ${name}: ${v.reason ?? ''}${notes}${hint}`);
+      out(v, v.found ? `resumed ${sessionLine(v.process)}${notes}` : `cannot resume ${name}: ${v.reason ?? ''}${notes}${hint}`);
       return v.found ? 0 : 1;
     }
     case 'retry': {

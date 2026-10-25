@@ -41,7 +41,7 @@ import { accountPrefix } from '../accounts/registry.ts';
 import { VERSION } from '../version.ts';
 import { mergeLimits, codexWindows, fullWindowReset, type LimitWindow } from '../accounts/limits.ts';
 import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type ApprovalRequest, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
-import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
+import { AppServerClient, RpcError, RpcNoAnswer, RpcPayloadTooLarge, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
 import { sessionCwdRefusal } from './session-cwd.ts';
 import { endProcess } from '../system-processes.ts';
@@ -341,6 +341,9 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #live = new Map<string, Live>();
   /** Keep terminal totals after the app-server connection is released, until resume or prune. */
   readonly #stoppedUsage = new Map<string, SessionUsage>();
+  /** Why a running session has no state: its thread reply passed the frame limit, so the row names the reason
+   *  instead of an unexplained unknown. Cleared by the next successful resume or launch. */
+  readonly #stateReasons = new Map<string, string>();
   /** Watched session ids: their pids are checked and their connections kept. */
   readonly #watched = new Set<string>();
   /** Inputs being admitted, then associated with the actual turn id (idle can precede completion). */
@@ -739,23 +742,46 @@ export class CodexAdapter implements HarnessAdapter {
     }
   }
 
-  /** Subscribe a fresh connection to the thread: `thread/resume` (which needs a rollout), else `thread/read`. */
+  /** Subscribe a fresh connection to the thread: `thread/resume` (which needs a rollout), else `thread/read`.
+   *  The resume asks for metadata only (`excludeTurns`) so a long-lived thread does not exceed the client's frame
+   *  limit; if an older app-server refuses that field, its whole-thread resume is
+   *  retried under the raised limit. A reply still too large for the client names `payload limit` on the row. */
   async #subscribe(live: Live, client: AppServerConnection, extra: Record<string, unknown> = {}, resumed: Resumed = untimed): Promise<SubscriptionSnapshot> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, SubscriptionSnapshot, unknown> {
       const threadId = live.p.harnessSessionId as string;
       const sequence = live.eventSequence;
       try {
-        const r = (yield* wait(client.request<ThreadResult>('thread/resume', { threadId, ...extra })));
+        const r = (yield* this.#resumeThread(client, threadId, extra));
+        this.#stateReasons.delete(live.p.sessionId);
         if (!this.#closed && live.client === client) this.#host.approvalsReconciled?.(live.p.sessionId, [...live.approvals?.keys() ?? []]);
         return { state: stateOfStatus(r.thread.status), model: r.model ?? r.thread.model ?? null, sequence };
       } catch (err) {
+        if (err instanceof RpcPayloadTooLarge) this.#stateReasons.set(live.p.sessionId, 'payload limit');
         if (!(err instanceof RpcError) || Object.keys(extra).length)
           throw err;
         // a thread with no turn yet has no rollout: still loaded, and its status is broadcast to every connection
-        const r = (yield* wait(client.request<ThreadResult>('thread/read', { threadId })));
-        return { state: stateOfStatus(r.thread.status), model: r.thread.model ?? null, sequence };
+        try {
+          const r = (yield* wait(client.request<ThreadResult>('thread/read', { threadId })));
+          this.#stateReasons.delete(live.p.sessionId);
+          return { state: stateOfStatus(r.thread.status), model: r.thread.model ?? null, sequence };
+        } catch (readError) {
+          if (readError instanceof RpcPayloadTooLarge) this.#stateReasons.set(live.p.sessionId, 'payload limit');
+          throw readError;
+        }
       }
     }).call(this), resumed);
+  }
+
+  /** `thread/resume` with `excludeTurns`, so a long thread's reply stays within the client's frame limit. If an
+   *  older app-server rejects that specific field as invalid, retry without it under the raised limit.
+   *  A resume is idempotent, so the retry is not a second turn. */
+  *#resumeThread(client: AppServerConnection, threadId: string, extra: Record<string, unknown>): Generator<Promise<unknown>, ThreadResult, unknown> {
+    try {
+      return (yield* wait(client.request<ThreadResult>('thread/resume', { threadId, excludeTurns: true, ...extra })));
+    } catch (err) {
+      if (!(err instanceof RpcError) || err.code !== -32602 || !err.message.includes('excludeTurns')) throw err;
+      return (yield* wait(client.request<ThreadResult>('thread/resume', { threadId, ...extra })));
+    }
   }
 
   #snapshotIsCurrent(live: Live, snapshot: SubscriptionSnapshot): boolean {
@@ -1026,6 +1052,10 @@ export class CodexAdapter implements HarnessAdapter {
     return {};
   }
 
+  stateReason(p: HarnessProcess): string | null {
+    return this.#stateReasons.get(p.sessionId) ?? null;
+  }
+
   usage(p: HarnessProcess): SessionUsage | null {
     const live = this.#live.get(p.sessionId);
     if (!live) return this.#stoppedUsage.get(p.sessionId) ?? null;
@@ -1076,6 +1106,7 @@ export class CodexAdapter implements HarnessAdapter {
     this.#earlyFailures.delete(sessionId);
     for (const key of this.#turnInputs.keys()) if (key.startsWith(`${sessionId}:`)) this.#turnInputs.delete(key);
     for (const key of this.#steers.keys()) if (key.startsWith(`${sessionId}:`)) this.#steers.delete(key);
+    this.#stateReasons.delete(sessionId);
     this.#watched.delete(sessionId);
     if (this.#watched.size === 0 && this.#timer) {
       this.#clock.clearInterval(this.#timer);
@@ -1213,6 +1244,7 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   close(): void {
+    this.#stateReasons.clear();
     this.#recoveries.close();
     this.#admissions.clear();
     this.#completedTurns.clear();

@@ -4,14 +4,138 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
-import { AppServerClient, RpcError, RpcNoAnswer } from '../src/adapters/codex/app-server.ts';
+import { createServer } from 'node:http';
+import type { Socket } from 'node:net';
+import { beforeDirectories } from './process-cleanup.ts';
+import { WebSocketServer } from 'ws';
+import { join } from 'node:path';
+import { once } from 'node:events';
+import { AppServerClient, RpcError, RpcNoAnswer, RpcPayloadTooLarge } from '../src/adapters/codex/app-server.ts';
 import { deferred, scriptedCodex } from './fakes/scripted-codex.ts';
-import { connectUi, eventually } from './harness.ts';
-import type { Inbox, Message } from '../src/protocol.ts';
+import { connectUi, eventually, tempProject } from './harness.ts';
+import { sessionLine } from '../src/cli/session.ts';
+import type { HarnessProcessView, Inbox, Message } from '../src/protocol.ts';
 
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
 const redelivered = (intoActive: boolean) => `impl [Implementer]: its turn ended without a message it had accepted; the message was delivered again ${intoActive ? 'into a running turn' : 'as a new turn'}`;
 type Fixture = Awaited<ReturnType<typeof scriptedCodex>>;
+
+test('Codex reattaches a long thread without hydrating its oversized turn history', async t => {
+  const f = await scriptedCodex(t);
+  f.native.handlers.set('thread/resume', params => {
+    if (params.excludeTurns !== true) throw new RpcNoAnswer('Max payload size exceeded');
+    assert.deepEqual(params, { threadId: f.native.thread, excludeTurns: true });
+    return { thread: { id: f.native.thread, status: { type: 'active', activeFlags: [] } } };
+  });
+  const resumed = f.ui.waitFor(frame => frame.type === 'session.state' && frame.sessionId === f.process.sessionId && frame.state === 'busy');
+  await f.reconnect();
+  await resumed;
+  const listed = await f.ui.request({ type: 'session.list' });
+  const row = (listed.value as { processes: Array<{ sessionId: string; state: string }> }).processes.find(row => row.sessionId === f.process.sessionId);
+  assert.equal(row?.state, 'busy');
+  f.native.state('idle');
+  const id = await f.send('continue after long-thread recovery');
+  await f.injected(id);
+  assert.equal(f.native.calls.filter(call => call.method === 'thread/read').length, 0);
+});
+
+test('Codex exposes a payload-limit reattach failure on the session row and clears it after recovery', async t => {
+  const f = await scriptedCodex(t);
+  f.native.handlers.set('thread/resume', () => { throw new RpcPayloadTooLarge('payload limit: Max payload size exceeded'); });
+  await f.reconnect();
+  await eventually('failed subscription logged', async () => (await f.log()).includes('harness-reconnect-failed') || undefined);
+  const row = async () => {
+    const listed = await f.ui.request({ type: 'session.list' });
+    return (listed.value as { processes: HarnessProcessView[] }).processes.find(row => row.sessionId === f.process.sessionId)!;
+  };
+  assert.equal((await row()).stateReason, 'payload limit');
+  assert.match(sessionLine(await row()), /\[payload limit\]/);
+  assert.equal((await row()).state, 'unknown');
+  f.native.handlers.delete('thread/resume');
+  await f.reconnect();
+  await eventually('recovered state', async () => (await row()).state === 'idle' || undefined);
+  assert.equal((await row()).stateReason, undefined);
+});
+
+test('Codex retries an older app-server without excludeTurns and accepts its previous reply shape', async t => {
+  const f = await scriptedCodex(t);
+  f.native.handlers.set('thread/resume', params => {
+    if ('excludeTurns' in params) throw new RpcError(-32602, 'unknown field excludeTurns');
+    return { thread: { id: f.native.thread, turns: [], status: { type: 'active', activeFlags: [] } }, model: 'legacy-model' };
+  });
+  const resumed = f.ui.waitFor(frame => frame.type === 'session.state' && frame.sessionId === f.process.sessionId && frame.state === 'busy');
+  await f.reconnect();
+  await resumed;
+  assert.deepEqual(f.native.calls.filter(call => call.method === 'thread/resume').slice(-2).map(call => call.params), [
+    { threadId: f.native.thread, excludeTurns: true }, { threadId: f.native.thread },
+  ]);
+  assert.equal(f.native.count('turn/start'), 0);
+});
+
+for (const outcome of ['large reply', 'payload limit'] as const) {
+  test(`Codex WebSocket transport handles ${outcome} at the native frame boundary`, async t => {
+    const root = await tempProject(t, 'cx-');
+    const path = join(root, 's');
+    const server = createServer();
+    const peers = new WebSocketServer({ noServer: true });
+    const sockets = new Set<Socket>();
+    let client: AppServerClient | undefined;
+    let clientDidClose = false;
+    // Own partial setup and cancellation before the first listen/connection acquisition.
+    beforeDirectories(t, async () => {
+      const listenerClosed = server.listening ? once(server, 'close', { signal: AbortSignal.timeout(2000) }) : Promise.resolve();
+      if (server.listening) server.close();
+      const clientClosed = client && !clientDidClose ? once(client, 'close', { signal: AbortSignal.timeout(2000) }) : Promise.resolve();
+      const peersClosed = once(peers, 'close', { signal: AbortSignal.timeout(2000) });
+      client?.close();
+      const socketsClosed = [...sockets].map(socket => {
+        const closed = once(socket, 'close', { signal: AbortSignal.timeout(2000) });
+        socket.destroy();
+        return closed;
+      });
+      peers.close();
+      await Promise.all([listenerClosed, clientClosed, peersClosed, ...socketsClosed]);
+      assert.equal(server.listening, false);
+      assert.equal(peers.clients.size, 0);
+      assert.equal(sockets.size, 0);
+    });
+    server.on('connection', socket => {
+      sockets.add(socket);
+      socket.once('close', () => sockets.delete(socket));
+    });
+    server.on('upgrade', (request, socket, head) => peers.handleUpgrade(request, socket, head, peer => {
+      peer.on('error', () => {});
+      peer.on('message', bytes => {
+        const request = JSON.parse(String(bytes)) as { id?: number; method: string };
+        if (request.method === 'initialize') peer.send(JSON.stringify({ id: request.id, result: {} }));
+        else if (request.method === 'thread/resume') {
+          if (outcome === 'large reply') {
+            // A real reply above ws's former 100 MiB default, with a known final receipt.
+            peer.send(JSON.stringify({ id: request.id, result: { history: 'x'.repeat(101 * 1024 * 1024), receipt: 'long-thread' } }));
+          } else {
+            // Announce 513 MiB in a legal frame header. ws rejects before allocating its body.
+            const header = Buffer.alloc(10);
+            header[0] = 0x81; header[1] = 127; header.writeBigUInt64BE(BigInt(513 * 1024 * 1024), 2);
+            socket.write(header);
+          }
+        }
+      });
+    }));
+    const listening = once(server, 'listening', { signal: AbortSignal.timeout(2000) });
+    server.listen(path);
+    await listening;
+    client = await AppServerClient.connect(path, { client: { name: 'test', version: '0' } });
+    client.once('close', () => { clientDidClose = true; });
+    const result = client.request<{ history: string; receipt: string }>('thread/resume', { threadId: 'long-thread' });
+    if (outcome === 'large reply') {
+      const reply = await result;
+      assert.equal(reply.receipt, 'long-thread');
+      assert.equal(reply.history.length, 105906176);
+    } else {
+      await assert.rejects(result, error => error instanceof RpcPayloadTooLarge && error instanceof RpcNoAnswer && /payload limit/.test(error.message));
+    }
+  });
+}
 
 test('a Codex command approval is one allowlisted record and Approve once responds to its native id', async t => {
   const f = await scriptedCodex(t);

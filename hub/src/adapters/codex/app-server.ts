@@ -30,6 +30,21 @@ export class RpcNoAnswer extends Error {
   }
 }
 
+/** The app-server sent a frame past the client's receive limit (ws closes it with 1009): the pending request got no
+ *  answer, and may have been accepted. A caller uses the distinct reason to tell the human why a session cannot be
+ *  reattached (`payload limit`), rather than leaving it at an unexplained `unknown`. */
+export class RpcPayloadTooLarge extends RpcNoAnswer {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RpcPayloadTooLarge';
+  }
+}
+
+/** The client's receive limit for one frame. `thread/resume` used to answer with the whole thread, and ws's 100 MiB
+ *  default refused a long-lived thread after a hub restart (T-1265). The resume path asks for metadata only
+ *  (`excludeTurns`); this bound still admits a whole-thread answer from an app-server that does not know the field. */
+const APP_SERVER_MAX_FRAME_BYTES = 512 * 1024 * 1024;
+
 /** A request the server sent to its clients (an approval, a question). */
 export type ServerRequest = { id: string | number; method: string; params: Record<string, unknown> };
 
@@ -82,7 +97,9 @@ export class AppServerClient extends EventEmitter {
       this.#receive(frame);
     });
     // every pending request was written: whatever breaks the connection now, the server may have acted on it
-    socket.on('error', (err) => this.#fail(new RpcNoAnswer(`the app-server connection failed (${err.message}); a pending request may have been accepted`)));
+    socket.on('error', (err) => this.#fail(Object.hasOwn(err, 'code') && (err as { code?: unknown }).code === 'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH'
+      ? new RpcPayloadTooLarge(`payload limit: the app-server's frame exceeded the client limit (${err.message}); a pending request may have been accepted`)
+      : new RpcNoAnswer(`the app-server connection failed (${err.message}); a pending request may have been accepted`)));
     socket.on('close', () => {
       this.#closed = true;
       this.#fail(new RpcNoAnswer('the app-server connection closed; a pending request may have been accepted'));
@@ -98,7 +115,7 @@ export class AppServerClient extends EventEmitter {
   static async connect(socketPath: string, options: { client: ClientInfo; timeoutMs?: number; connectTimeoutMs?: number }): Promise<AppServerClient> {
     const timeoutMs = options.timeoutMs ?? 30_000;
     // Codex closes Unix-socket upgrades that advertise permessage-deflate (seen by BCAS with 0.153.4)
-    const socket = new WebSocket(`ws+unix://${socketPath}:/`, { perMessageDeflate: false, handshakeTimeout: options.connectTimeoutMs ?? 5000 });
+    const socket = new WebSocket(`ws+unix://${socketPath}:/`, { perMessageDeflate: false, handshakeTimeout: options.connectTimeoutMs ?? 5000, maxPayload: APP_SERVER_MAX_FRAME_BYTES });
     const client = new AppServerClient(socket, timeoutMs);
     try {
       await new Promise<void>((resolve, reject) => {

@@ -587,7 +587,7 @@ test('Codex launches Implementer with narrow workspace roots, QA full access, Re
   assert.equal(relaunched.ok, true, relaunched.error);
   const again = (relaunched.value as { process: Harness }).process;
   const [resumed] = threadCalls(await fake.log(again.pid as number), 'thread/resume');
-  assert.deepEqual(resumed, { threadId: qa.launched.harnessSessionId, cwd: root, model: again.model, approvalPolicy: 'on-request', permissions: 'cland' });
+  assert.deepEqual(resumed, { threadId: qa.launched.harnessSessionId, excludeTurns: true, cwd: root, model: again.model, approvalPolicy: 'on-request', permissions: 'cland' });
   assert.deepEqual(await overridesOf(again.pid as number), qaProfile, 'the relaunched app-server defines the configured profile');
 
   // the Implementer's configured profile still grants the main worktree and both git directories
@@ -607,7 +607,7 @@ test('Codex launches Implementer with narrow workspace roots, QA full access, Re
     'features.network_proxy': true,
   });
   const [implResumed] = threadCalls(await fake.log(implPid), 'thread/resume');
-  assert.deepEqual([implResumed?.approvalPolicy, implResumed?.permissions], ['never', 'cland']);
+  assert.deepEqual(implResumed, { threadId: impl.launched.harnessSessionId, excludeTurns: true, cwd: worktree, model: (implAgain.value as { process: Harness }).process.model, approvalPolicy: 'never', permissions: 'cland' });
 });
 
 // T-51. Measured with Codex 0.160.0: every `thread/start` on an app-server spawns its MCP servers again, so any
