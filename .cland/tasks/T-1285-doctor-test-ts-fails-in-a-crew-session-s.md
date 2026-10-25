@@ -5,6 +5,7 @@ title: "doctor.test.ts fails in a crew session's shell: three cases inherit the 
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1054
 branch: t/T-1285-doctor-test-ts-fails-in-a-crew-session-s
 created: 2026-10-25T10:06:40.797Z
-updated: 2026-10-25T12:51:26.611Z
+updated: 2026-10-25T12:53:24.047Z
 ---
 
 ## Summary
@@ -27,7 +28,7 @@ The error is `fail hub: pid … holds the lock but does not answer on <scratch>/
 
 ## Acceptance criteria
 
-- [ ] C1. doctor.test.ts passes 19/19 when run with CLAND_* session variables set in the parent environment; its child processes get their environment from fixtureEnvironment with scratchGitEnvironment, and a red control shows the old inheritance failing (test).
+- [ ] C1. doctor.test.ts passes with its original cases plus one regression when run with CLAND_* session variables set in the parent environment; doctor's hub check uses the environment runDoctor receives (fixtureEnvironment in the tests), never the ambient process.env, and a red control shows the old ambient read failing (test).
 - [ ] C2. The T0 child-environment lint (T-1237's guard) or an equivalent check flags this inheritance pattern in hub/test, with the doctor case as its positive control (test).
 
 ## Comments

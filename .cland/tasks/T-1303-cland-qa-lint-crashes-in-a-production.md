@@ -3,7 +3,7 @@ id: T-1303
 kind: task
 title: cland qa lint crashes in a production install since T-1225 (protocol-frame.ts not shipped)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1283
 blocked_by: []
 regression_of: T-1225
 found_by: cover
-topic: null
-branch: null
+topic: topic-1055
+branch: t/T-1303-cland-qa-lint-crashes-in-a-production
 created: 2026-10-25T12:52:03.115Z
-updated: 2026-10-25T12:52:10.549Z
+updated: 2026-10-25T12:53:09.233Z
 ---
 
 ## Summary
