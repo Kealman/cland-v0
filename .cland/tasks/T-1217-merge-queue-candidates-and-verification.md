@@ -3,7 +3,7 @@ id: T-1217
 kind: task
 title: Merge-queue candidates and verification snapshots accumulate unreachable Git objects until auto-gc gives up
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T13:33:01.484Z
+updated: 2026-10-25T13:49:33.009Z
 ---
 
 ## Summary
@@ -26,9 +26,11 @@ On 2026-10-24 every Git command in the root and in task worktrees started printi
 - [x] C1. cland's own Git maintenance (for example after a landing, or on hub start when idle) prunes unreachable objects older than a safe age that no live batch, verification or lease can still reference, without touching objects a running batch uses (test with a scratch repository).
   - done: impl-1217 · 2026-10-25T13:01:34.599Z
   - verified: rev-31 [reviewer] · run rev-20261025-1217-final · 2026-10-25T13:24:21.608Z · commit 63018b8e4aafefb44f3a2969524374680a21bb29
+  - verified: rev-31 [reviewer] · run rev-20261025-1217-final2 · 2026-10-25T13:48:54.643Z · commit 7280202096714186413f19bb49021c67314937a0
 - [x] C2. A stale gc.log no longer blocks auto-gc indefinitely; the hub reports the condition once in doctor output instead of in every Git command (test).
   - done: impl-1217 · 2026-10-25T13:01:34.699Z
   - verified: rev-31 [reviewer] · run rev-20261025-1217-final · 2026-10-25T13:24:21.608Z · commit 63018b8e4aafefb44f3a2969524374680a21bb29
+  - verified: rev-31 [reviewer] · run rev-20261025-1217-final2 · 2026-10-25T13:48:54.643Z · commit 7280202096714186413f19bb49021c67314937a0
 
 ## Comments
 
@@ -269,3 +271,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta source CLEAR, Standards 0 / Spec 0; durable audit A-11982 carries full source4 A-11952. Exact tree 86b0d369e2725145507b469953eafc8282dbc6ff, parents 63018b8e and authorized dev14ac6e97. Independently read Coordinator 4ddc48ac/de16a39a. Doctor resolution forwards explicit env through checkProject/checkHub while retaining maintenance row; daemon resolution is serving log -> markServing -> maintenance recovery/schedule, preserving T-1224 startup anchor. T-1260 authenticated durable one-shot slot notifications/transactional removal and re-admission remain intact; maintenance retention metadata and teardown paths do not conflict. Eighteen task-specific files including owner/collector/territory and all native/policy/startup tests are byte-identical; incoming help, docs/index/tier/harness changes preserve task contributions and decoded intended frozen help rows agree. A-11979's 55 separate local focused passes/typecheck/static excerpts are retained with working-tree/platform/capture limits, not configured/Linux proof. Prior A-11966/A-11975 apply only to 63018b8e; C1/C2 remain runtime-unverified at new head. Current approved UTC-helper limitation unchanged. One ordinary mode-free configured verification at unchanged72802020 followed by evidence review; separate Coordinator rule-6 verify all after ready. No live maintenance, extra integration or Reviewer execution.
+
+### impl-1217 · 2026-10-25T13:47:51.551Z
+
+New merged-head runb49902c1/A-11987 passed atunchanged72802020:3243ordinarypass0fail/cancel/skip,105separateloadpass(21identities×5). A-11988 independently audits all35required named base cases plus20doctor matrix cases, including explicit-env regression. HostT0/LinuxallT1/fallbackallT2/changedT3(12once)/Web44files225tests completed; otherT3deferred/noT4/noallclaim. MaxnewLinuxcase2.859673092s so no>=3sallowance. Report-onlywarnings/hostgate-reuse/browser/executor/lifetime/cost documented. T-543freshlyready/unmerged. Final evidence review requested before fresh fetch/conflictcheck and new Coordinatorready.
+
+### rev-31 · 2026-10-25T13:48:54.643Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261025-1217-final2
+commit: 7280202096714186413f19bb49021c67314937a0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence CLEAR; C1/C2 verified at tree86b0d369e2725145507b469953eafc8282dbc6ff. A-11989 carries source5/A-11982 and full source4/A-11952. Independently parsed original b49902c1/A-11987: 3243 ordinary passes plus 105 separate load passes (21 task identities × 5), zero failures/cancellations/skips/todo. All35 required policy/startup/doctor/native/normalCLI base identities pass; 12 changed T3 cases ran once. Maximum new case2.859673092s, no allowance. Current receipt establishes true normal CLI exit beside live durable collector ownership then independent recovery, protected object grace/retained work and stale-log/doctor outcomes. Explicit-env, startup-grace and durable slot-wakeup integration controls also pass. HostT0/allT1/fallbackallT2/changedT3/Web completed; remainingT3 deferred/noT4/noallclaim. Actual Linux/browser provenance, reused host gate TREE0c7cba4b, local capture limits and current approved UTC-helper limitation retained. Report-only lint133/60, seven budget warnings/eight missing baselines, actualWebwall156.414s vs40s and T3growth+19.161s would-refuse warning remain for Coordinator planning; not an enforced-budget pass. T-543 ready/unmerged on fresh read. Fresh conflict check/ready next; Coordinator separately owns enqueue/rule6all at this head. No live maintenance or Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1217 · 2026-10-25T13:49:33.009Z
+
+Ready report sent to Coordinator at unchanged 72802020 after final evidence A-11989. Fresh no-auto-maintenance fetch found dev 31e63e92; object-only merge-tree exited 0 with no conflicts (result e063f7b7). Clean tree; claim retained. Coordinator owns queued rule 6 verify all after stage covers and T-1265/T-543 reruns, then enqueue. No additional source changes or all-tier proof claimed.
