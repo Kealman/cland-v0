@@ -23,6 +23,9 @@
 # is appended; the outcome and the captures' directory are on stderr); recover: 71 the evidence directory cannot be made
 # (nothing appended), 73 some lines were not recovered (the rest were; stderr names each loss). recover never deletes a source.
 # CLAND is the path of the cland executable (default: cland).
+# With QA_DEMO_EPIC, QA_EXPECTED_FACTS optionally names a local JSON array of required result.facts keys.
+# Missing/null facts, recorded step errors and nonzero PASS exits are BLOCKED (2).
+# Demo captures/diagnostics are scanned for secrets before any local copy; unsafe output is withheld.
 # An item has one uppercase kind prefix and digits (T-12, E-423, or a configured planning kind); run and case ids are one safe path component: letters, digits, . _ - and not starting with . or -.
 set -u
 

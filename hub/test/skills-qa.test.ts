@@ -6,7 +6,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
-import { access, chmod, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clandCliLaunch } from './tier-cli.ts';
@@ -67,11 +67,11 @@ test('QA recorder records real-browser notes with screenshot evidence without la
   assert.deepEqual(await readFile(join(root, line.evidence[0]!)), capture);
 });
 
-/** `qa-record.sh <args>` from the repository root, as a QA session would run it from the item's worktree. */
+/** Run the shipped recorder from a disposable checkout with sealed child environments. */
 async function record(hubFile: string, env: Record<string, string>, ...args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   const root = dirname(dirname(hubFile));
   return new Promise((resolve, reject) => clandCliLaunch(() => execFile('/bin/sh', [RECORD, ...args], {
-    cwd: REPO, encoding: 'utf8', timeout: 120_000,
+    cwd: root, encoding: 'utf8', timeout: 120_000,
     env: fixtureEnvironment(root, process.env, { TMPDIR: root, CLAND: HEADLESS, CLAND_HUB_FILE: hubFile, CLAND_SESSION_NAME: 'qa-1', ...env }),
   }, (error, stdout, stderr) => {
     if (error && typeof error.code !== 'number') reject(error);
@@ -79,10 +79,123 @@ async function record(hubFile: string, env: Record<string, string>, ...args: str
   })));
 }
 
+async function demoRecord(t: TestContext, result: Record<string, unknown>, captures = [{ name: 'grid.txt', text: 'General' }], extra: Record<string, string> = {}, stderr = '') {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const envelope = join(root, 'envelope.json');
+  await writeFile(envelope, JSON.stringify({ result, captures: captures.map(({ name, text }) => ({ name, data: Buffer.from(text).toString('base64') })), code: 0, stderr, out: '/tmp/cland-demo-case-fixture' }));
+  const recorded = await record(join(root, '.cland/hub.json'), { QA_DEMO_EPIC: 'E-1', FAKE_DEMO_ENVELOPE: envelope, ...extra }, 'run', 'E-1', 'demo-run', 'DEMO-001');
+  const line = JSON.parse(await readFile(join(root, '.cland/qa/runs.jsonl'), 'utf8')) as RunLine;
+  assert.deepEqual(JSON.parse(recorded.stdout), line, 'the durable receipt matches stdout');
+  return { root, envelope, recorded, line };
+}
+
+test('demo recorder withholds PASS for missing independently declared facts and step errors', { skip: skipRun }, async t => {
+  const manifestRoot = await tempProject(t);
+  const manifest = join(manifestRoot, 'expected.json');
+  await writeFile(manifest, JSON.stringify(['connected', 'finished']));
+  for (const result of [
+    { result: 'PASS', evidence: [], facts: { connected: true } },
+    { result: 'PASS', evidence: [], facts: { connected: true, finished: true }, steps: [{ error: 'caught step failure' }] },
+  ]) {
+    const { line, recorded } = await demoRecord(t, result, [], { QA_EXPECTED_FACTS: manifest });
+    assert.equal(recorded.code, 2);
+    assert.equal(line.result, 'BLOCKED');
+  }
+});
+
+test('demo recorder scans every decoded capture before copying or acknowledging publication', { skip: skipRun }, async t => {
+  const fake = 'fixture'.repeat(10);
+  for (const text of [`http://127.0.0.1/auth?token=${fake}`, ['sk', 'proj', fake].join('-')]) {
+    const { root, envelope, recorded, line } = await demoRecord(t, { result: 'PASS', evidence: [] }, [{ name: 'safe.txt', text: 'safe' }, { name: 'unsafe.txt', text }]);
+    assert.equal(recorded.code, 2);
+    assert.equal(line.result, 'BLOCKED');
+    assert.deepEqual(line.evidence, []);
+    assert.equal((recorded.stdout + recorded.stderr).includes(fake), false);
+    assert.deepEqual(await readdir(join(root, '.cland/qa/E-1/demo-run')), [], 'no partial publication');
+    assert.equal(await stat(`${envelope}.cleaned`).then(() => true, () => false), false, 'source is kept for safe recovery');
+  }
+});
+
+test('demo recorder preserves legacy results and publishes complete declared facts after verified copies', { skip: skipRun }, async t => {
+  const manifestRoot = await tempProject(t);
+  const manifest = join(manifestRoot, 'expected.json');
+  await writeFile(manifest, JSON.stringify(['count', 'replayed']));
+  for (const extra of [{}, { QA_EXPECTED_FACTS: manifest }]) {
+    const result = { result: 'PASS', evidence: [], ...(extra.QA_EXPECTED_FACTS ? { facts: { count: 0, replayed: false } } : {}) };
+    const { root, envelope, recorded, line } = await demoRecord(t, result, undefined, extra, 'safe diagnostic');
+    assert.equal(recorded.code, 0, recorded.stderr);
+    assert.equal(line.result, 'PASS');
+    assert.deepEqual(line.evidence, ['.cland/qa/E-1/demo-run/grid.txt']);
+    assert.equal(await readFile(join(root, line.evidence[0]!), 'utf8'), 'General');
+    assert.equal(await readFile(`${envelope}.cleaned`, 'utf8'), 'acknowledged');
+  }
+});
+
+test('demo recorder refuses secret metadata and stderr without leaking diagnostics', { skip: skipRun }, async t => {
+  const fake = 'fixture'.repeat(10);
+  const secret = `http://127.0.0.1/auth?token=${fake}`;
+  for (const [detail, stderr] of [[{ message: secret }, ''], [{}, secret]] as const) {
+    const { recorded, line } = await demoRecord(t, { result: 'PASS', evidence: [], ...detail }, [], {}, stderr);
+    assert.equal(recorded.code, 2);
+    assert.equal(line.result, 'BLOCKED');
+    assert.equal((recorded.stdout + recorded.stderr).includes(fake), false);
+  }
+});
+
+test('demo recorder scans parsed JSON metadata and stderr before publishing safe captures', { skip: skipRun }, async t => {
+  const fake = 'opaque-fixture'.repeat(5);
+  for (const whitespace of ['\t', '\n']) {
+    const secret = `${['Bear', 'er'].join('')}${whitespace}${fake}`;
+    for (const [detail, stderr] of [[{ message: secret }, ''], [{}, secret]] as const) {
+      const { root, envelope, recorded, line } = await demoRecord(t, { result: 'PASS', evidence: [], ...detail }, undefined, {}, stderr);
+      assert.equal(recorded.code, 2);
+      assert.equal(line.result, 'BLOCKED');
+      assert.deepEqual(line.evidence, []);
+      assert.equal((recorded.stdout + recorded.stderr).includes(fake), false);
+      assert.deepEqual(await readdir(join(root, '.cland/qa/E-1/demo-run')), [], 'no partial publication');
+      assert.equal(await stat(`${envelope}.cleaned`).then(() => true, () => false), false, 'no cleanup acknowledgement');
+    }
+  }
+  const safe = await demoRecord(t, { result: 'PASS', evidence: [], message: 'worker\tconnected' }, undefined, {}, 'safe\ndiagnostic');
+  assert.equal(safe.recorded.code, 0);
+  assert.equal(safe.line.result, 'PASS');
+  assert.equal(await readFile(join(safe.root, safe.line.evidence[0]!), 'utf8'), 'General');
+  assert.equal(await readFile(`${safe.envelope}.cleaned`, 'utf8'), 'acknowledged');
+});
+
+test('demo recorder collects native case facts sidecars through the actual remote envelope', { skip: skipRun }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await mkdir(join(root, 'bin'));
+  await symlink(HEADLESS, join(root, 'bin/cland'));
+  const manifest = join(root, 'expected.json');
+  await writeFile(manifest, JSON.stringify(['count', 'replayed']));
+  const recorded = await record(join(root, '.cland/hub.json'), { QA_DEMO_EPIC: 'E-1', QA_EXPECTED_FACTS: manifest, FAKE_DEMO_EXEC: '1', PATH: `${join(root, 'bin')}:${process.env.PATH ?? ''}` }, 'run', 'E-1', 'native-facts', 'DEMO-001');
+  assert.equal(recorded.code, 0, recorded.stderr);
+  const line = JSON.parse(await readFile(join(root, '.cland/qa/runs.jsonl'), 'utf8')) as RunLine;
+  assert.equal(line.result, 'PASS');
+  assert.deepEqual(line.evidence, ['.cland/qa/E-1/native-facts/DEMO-001.facts.json']);
+  assert.deepEqual(JSON.parse(await readFile(join(root, line.evidence[0]!), 'utf8')), { facts: { count: 0, replayed: false }, steps: [{ error: null }] });
+  const failed = await record(join(root, '.cland/hub.json'), { QA_DEMO_EPIC: 'E-1', QA_EXPECTED_FACTS: manifest, FAKE_DEMO_EXEC: '1', PATH: `${join(root, 'bin')}:${process.env.PATH ?? ''}` }, 'run', 'E-1', 'native-error', 'DEMO-ERROR-001');
+  assert.equal(failed.code, 2);
+  const receipt = JSON.parse(failed.stdout) as RunLine;
+  assert.equal(receipt.result, 'BLOCKED');
+  assert.deepEqual(receipt.evidence, []);
+});
+
 test('QA recorder preserves two case receipts and publishes their blocked verdict', { skip: skipRun }, async (t) => {
   const root = await tempProject(t, 'cland-qa-skill-');
   await projectHub(t, root);
   const hubFile = join(root, '.cland', 'hub.json');
+  // rev-parse only needs a repository/ref; seed those filesystem facts without
+  // native Git setup in T2. The recorder CLI still reads the ref through Git.
+  const build = '0123456789abcdef0123456789abcdef01234567';
+  await mkdir(join(root, '.git/objects'), { recursive: true });
+  await mkdir(join(root, '.git/refs/heads'), { recursive: true });
+  await writeFile(join(root, '.git/HEAD'), 'ref: refs/heads/dev\n');
+  await writeFile(join(root, '.git/refs/heads/dev'), `${build}\n`);
+  await writeFile(join(root, '.git/config'), '[core]\nrepositoryformatversion = 0\nbare = false\n');
   const created = await cland(root, 'task', 'create', '--size', 'M', 'A fixture item', '--json');
   assert.equal(created.code, 0, created.stderr);
 
@@ -104,6 +217,7 @@ test('QA recorder preserves two case receipts and publishes their blocked verdic
   assert.deepEqual([pass.item, pass.run, pass.case, pass.surface, pass.result, pass.exit_code, pass.session], ['T-1', run, 'SHELL-001', 'headless-grid', 'PASS', 0, 'qa-1']);
   assert.equal(pass.method, 'cland --headless --qa qa/cases/SHELL-001.lua');
   assert.match(pass.build, /^[0-9a-f]{7,}$/);
+  assert.equal(pass.build, build);
   assert.deepEqual(pass.evidence, [`.cland/qa/T-1/${run}/SHELL-001.screen.txt`, `.cland/qa/T-1/${run}/SHELL-001.state.json`]);
   assert.match(await readFile(join(root, pass.evidence[0] as string), 'utf8'), /General/);
   assert.deepEqual([blocked.case, blocked.result, blocked.exit_code], ['NOPE-404', 'BLOCKED', 2]);

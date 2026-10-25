@@ -4,6 +4,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/qa-demo-policy.test.ts`](../../../hub/test/qa-demo-policy.test.ts) | [Notes](hub-test-qa-demo-policy.test.ts.md) |
+| [`hub/test/skills-qa.test.ts`](../../../hub/test/skills-qa.test.ts) | [Notes](hub-test-skills-qa.test.ts.md) |
 | [`hub/test/config-set.test.ts`](../../../hub/test/config-set.test.ts) | [Notes](hub-test-config-set.test.ts.md) |
 | [`hub/test/config-reload-component.test.ts`](../../../hub/test/config-reload-component.test.ts) | [Notes](hub-test-config-reload-component.test.ts.md) |
 | [`hub/test/accounts.test.ts`](../../../hub/test/accounts.test.ts) | [Notes](hub-test-accounts.test.ts.md) |

@@ -3608,6 +3608,8 @@ Release confirms absence by droplet id, including when an accepted deletion leav
 
 An epic QA verdict names the tested dev commit. A later dev tip is acceptable when the commit is still on dev and every intervening commit avoids the epic's surfaces: files changed by its task merges, found through their `Item:` trailers. An intervening edit (even reverted), deletion or rename touching a surface makes the verdict stale; the refusal names the commit and files. The same rule governs verdict admission, cached freshness and epic close. Stage QA retains its existing exact dev build rule. The QA recorder copies remote captures locally before stopping and records the executor, commit, lifetime and cost; macOS-only cases run locally at the same commit.
 
+Remote `qa-record.sh run` accepts `QA_EXPECTED_FACTS`, a local JSON-array file of required own keys in the case result's `facts` object. Native Lua cases supply it through `<case>.facts.json` in `CLAND_QA_OUT`; the recorder includes that sidecar as evidence and merges only fact/error fields, refusing duplicate fields. Missing/null facts or malformed declarations block recording PASS; false and zero remain valid facts. Nonempty recorded `error`/`errors`/`stepErrors` fields and nonzero native exits also block PASS. Legacy results need no fact declaration. The recorder scans metadata, stderr and all decoded captures before its first local copy, withholding recognized secrets with a value-free BLOCKED receipt and retaining remote sources. Manual notes, local runs and rescue recovery require their own pre-publication redaction/scan. See [demo recording policy](../docs/agents/qa-demo-recording.md) for formats and text-scanner limits; the helper's `--help` describes its interface.
+
 
 ### Tests
 

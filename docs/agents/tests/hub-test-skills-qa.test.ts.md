@@ -1,0 +1,9 @@
+# hub/test/skills-qa.test.ts
+
+`hub/test/skills-qa.test.ts` is T2: `qa-record.sh` is the CLI subject and the scripted headless fixture supplies native output. Demo regressions return envelopes from scratch files, preserving fake credentials outside argv. They read the exact durable runs.jsonl receipt and copied files, and observe the cleanup acknowledgement after successful publication. Unsafe second captures must leave no partial local files or cleanup acknowledgement. Legacy no-manifest and complete false/zero facts retain PASS.
+
+All shell children run from disposable roots through `fixtureEnvironment` after the last overlay. The build-stamp regression seeds only repository directories and a known ref through filesystem writes; the recorder CLI reads that ref through Git. No native Git setup runs in T2. No real hub process, provider or browser is needed for these demo-policy checks; the existing T3 demo contract retains those responsibilities.
+
+The sidecar regression executes the actual remote envelope script through the fake demo transport and a scripted native CLI. It proves a native case can supply facts without extending the headless wire shape, and that a caught step error in the sidecar blocks PASS. Every nested child rebuilds the sealed environment after its overlay.
+
+Escaped JSON metadata/stderr controls use opaque fake bearer values separated by tab/newline. They require a value-free BLOCKED receipt before any safe capture is copied or cleanup is acknowledged, while safe escaped whitespace still publishes. Run this file with the standard tier bootstrap in enforce mode to check the T2 boundary; retain the existing test-docs heading/index guard.
