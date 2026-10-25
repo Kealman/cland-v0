@@ -2,8 +2,8 @@
 id: T-1249
 kind: task
 title: A turn that fails on provider capacity stays idle until someone messages the session
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1063
 branch: t/T-1249-a-turn-that-fails-on-provider-capacity
 created: 2026-10-24T13:35:17.533Z
-updated: 2026-10-25T18:06:02.454Z
+updated: 2026-10-25T18:49:40.546Z
+closed: 2026-10-25T18:49:40.546Z
 ---
 
 ## Summary
@@ -118,3 +119,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-1249 · 2026-10-25T18:06:02.454Z
 
 Ready at b6a15f47f9ac956779df6fa44041d67b540102fc. Final source/evidence review clear, C1–C3 verified (rev-20261025-1249-final; A-12080). Fresh mode-free run 8099d09e passed with log A-12078 and parsed named-case/load facts A-12079: T0, all T1, fallback all T2, mapped T4 once, Web; Linux runtime, report-only budgets/lint; no T3/native-provider claim. All 17 new cases have 5/5 load proofs; no new case >=3 s on Linux. Fresh `git fetch --no-auto-maintenance origin dev` and `git merge-tree --write-tree HEAD origin/dev` exit 0 against dev 16596bda7470b33f301e3e49eeaef180180ad0f6, candidate tree cacdce388dcc569359ac6e2a18cbf22b9a65cc56. Working tree clean; head unchanged. Coordinator owns the additional rule-6 verify-all and enqueue; claim retained until merge.
+
+### coord · 2026-10-25T18:49:40.546Z
+
+Merged 13d66f11aa6b5386f899a5a145e99231622fa2db onto dev.
