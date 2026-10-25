@@ -39,6 +39,13 @@ use the scripted close/drain regression and held real-query resource check in
 and identity-probe results before restarting supervision; use the held-result
 matrix in `docs/agents/tests/hub-test-lifecycle-serialization.test.ts.md`.
 
+For Claude delivery confirmation, require the exact envelope-bearing turn-start;
+the legacy mod `injected` frame proves submission acceptance only. Use the
+re-exec bridge regression in `docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`
+and the fake-clock alarm routing in `docs/agents/tests/hub-test-inject-stalled.test.ts.md`.
+Coordinator alarms reach General and named Aides after five minutes of failed
+confirmation; recover with the named session's `cland session resume <name> --relaunch`.
+
 For local verification cancellation or compatibility recovery, use the sealed cancellation, recreated-root quarantine and blocked-queue seams in `docs/agents/tests.md`. Observe exact descendant death before root cleanup; retain the quarantine journal's old/new inodes and next-run admission receipt. Live machine locks are outside the fixture.
 
 For startup lease recovery and phase timing, follow the sealed T2 fake-provider receipts in `docs/agents/tests.md#implementer-test-selection`. The T3 retained-history scale guard counts suite checkpoints, explorer batches and per-item native reads through the first completed status reply; retain CPU/wall/step diagnostics, the gross hang guard and red count-based historical controls as `docs/agents/tests.md#startup-reply-byte-budgets-t-1038` describes.

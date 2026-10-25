@@ -11,7 +11,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
-import type { AdapterHost, HarnessProcess } from '../src/adapters/contract.ts';
+import type { AdapterHost, HarnessProcess, InjectFrame } from '../src/adapters/contract.ts';
+import type { Message } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
 import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -231,6 +232,52 @@ test('hub-launched Claude disables auto-update in both the filtered CLI environm
   assert.equal(bg.env.DIGITALOCEAN_TOKEN, undefined);
   const settings = JSON.parse(await readFile(bg.args[bg.args.indexOf('--settings') + 1]!, 'utf8'));
   assert.equal(settings.env.DISABLE_AUTOUPDATER, '1', 'the supervised background harness does not inherit CLI env');
+});
+
+test('Claude re-exec bridge acknowledgement without a model turn remains unconfirmed', async t => {
+  const f = await component(t);
+  const { hub, ui } = await f.open();
+  const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  const p = (launched.value as { process: HarnessProcess }).process;
+  const args = f.native.calls.find(call => call.args[0] === '--bg')!.args;
+  const settings = JSON.parse(await readFile(args[args.indexOf('--settings') + 1]!, 'utf8'));
+  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN });
+  const first = await peer();
+  await first.waitForPresence([p.name]);
+  const signal = async (event: string, payload: object) => {
+    const result = await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event, payload });
+    assert.equal(result.ok, true, result.error);
+  };
+  const bridge = await connectUi(t, hub.discovery, 'mod-bridge');
+  assert.equal((await bridge.request({ type: 'session.bridge', session: p.name, launch: p.sessionId })).ok, true);
+  const clause = await bridge.waitFor(frame => frame.type === 'inject') as InjectFrame;
+  await signal('mod-turn-start', { text: clause.text });
+  await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.ok((await readFile(join(f.root, '.cland/log/hub.log'), 'utf8')).includes(`"event":"injected","id":"${clause.message}"`));
+  bridge.close();
+  await first.close();
+  const second = await peer(); // Same launch identity, replacement spoke and bridge after re-exec.
+  await second.waitForPresence([p.name]);
+  const replacement = await connectUi(t, hub.discovery, 'mod-bridge');
+  assert.equal((await replacement.request({ type: 'session.bridge', session: p.name, launch: p.sessionId })).ok, true);
+  await signal('mod-turn-complete', {});
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: 'accepted by the replacement mod, never run' });
+  assert.equal(sent.ok, true, sent.error);
+  const id = (sent.value as { message: Message }).message.id;
+  const input = await replacement.waitFor(frame => frame.type === 'inject' && frame.message === id) as InjectFrame;
+  // Previous wire shape remains accepted, but prompt.submit success proves no model turn.
+  await signal('injected', { message: id });
+  await f.clock.advance(60_000);
+  await ui.request({ type: 'hub.status', flushLogs: true });
+  const log = await readFile(join(f.root, '.cland/log/hub.log'), 'utf8');
+  assert.match(log, new RegExp(`"event":"inject-unconfirmed","session":"coord","id":"${id}"`));
+  assert.equal(ui.frames.some(frame => frame.type === 'delivery' && frame.message === id && frame.stage === 'injected'), false);
+  // An unrelated turn cannot confirm this input; the exact envelope can, even after timeout.
+  await signal('mod-turn-start', { text: 'unrelated human prompt' });
+  assert.equal(ui.frames.some(frame => frame.type === 'delivery' && frame.message === id && frame.stage === 'injected'), false);
+  await signal('mod-turn-start', { text: input.text });
+  await ui.waitFor(frame => frame.type === 'delivery' && frame.message === id && frame.stage === 'injected');
 });
 
 for (const [role, reconnectAt, identity] of [['implementer', 5000, 'known'], ['coordinator', 0, 'known'], ['coordinator', 31_000, 'known'], ['coordinator', 5000, 'discovery'], ['coordinator', 5000, 'hook'], ['coordinator', 5000, 'flight']] as const) test(`Claude ${role} re-exec retains its row, role and claim with ${identity} identity and hello at ${reconnectAt}ms`, async t => {

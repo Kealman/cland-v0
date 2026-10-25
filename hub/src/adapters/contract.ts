@@ -222,7 +222,8 @@ export interface HarnessAdapter {
   /** Answer one native request. Resolve after delivery is confirmed; reject on failure.
    * noteDelivered reports whether the native protocol carried the optional note. Never reinterpret deny. */
   answerApproval?(process: HarnessProcess, requestId: string, answer: { choice: ApprovalChoice; note?: string }): Promise<{ noteDelivered: boolean }>;
-  /** A confirmation the harness sent through the hub (the mod's `injected`): settles a pending inject. */
+  /** A confirmed harness turn reported through the hub: settles a pending inject.
+   * Claude requires an envelope-bearing turn-start; its mod's `injected` is only submission acceptance. */
   confirm(process: HarnessProcess, messageId: string): void;
   /** What a signal posted from inside the session (`cland hook <event>`, with the harness's payload) means. */
   interpret(event: string, payload: Record<string, unknown>, process?: HarnessProcess, at?: number): Interpretation;

@@ -26,7 +26,11 @@ test('the mod respawns an expired bridge and injects once the hub serves again',
   const clock = new FakeClock();
   const env: Record<string, string> = { CLAND_SESSION_NAME: 'impl', CLAND_HUB_FILE: `${root}/.cland/hub.json`, CLAND_NODE: 'node', CLAND_CLI: 'cland' };
   let start: Hook | undefined;
-  register((event, hook) => { if (event === 'session.start') start = hook; });
+  let turnStart: Hook | undefined;
+  register((event, hook) => {
+    if (event === 'session.start') start = hook;
+    if (event === 'turn.start') turnStart = hook;
+  });
   let discovery: { socket: string; secret: string } | undefined;
   let ui: FrameClient;
   let spawns = 0;
@@ -66,11 +70,16 @@ test('the mod respawns an expired bridge and injects once the hub serves again',
         })();
       },
       run: async (argv, options) => {
-        assert.equal(argv[3], 'injected');
-        return ui.request({ type: 'session.signal', session: 'impl', event: 'injected', payload: JSON.parse(options.stdin) });
+        assert.ok(['injected', 'mod-turn-start'].includes(argv[3]!));
+        return ui.request({ type: 'session.signal', session: 'impl', event: argv[3], payload: JSON.parse(options.stdin) });
       },
     },
-    prompt: { submit: async ({ text }) => { prompts.push(text); return {}; } },
+    prompt: { submit: async ({ text }) => {
+      prompts.push(text);
+      assert.ok(turnStart);
+      await turnStart(engine, { text, turnId: prompts.length }, async event => event);
+      return {};
+    } },
   };
   assert.ok(start);
   await start(engine, {}, async event => event);

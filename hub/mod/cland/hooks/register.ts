@@ -3,7 +3,8 @@
 //
 //   inject  a bridge to the hub (`cland hook bridge`, a child process) prints each message for this session;
 //           the mod submits it with `$.prompt.submit` — a turn of its own once the session is idle — and,
-//           once it entered the session, confirms it (`cland hook injected`): the hub's stage `injected`.
+//           acknowledges submission (`cland hook injected`, retained for older hubs). The hub confirms
+//           stage `injected` from an envelope-bearing turn.start, not this submission acknowledgement.
 //           A message asked for again (a retry) is never submitted twice.
 //   state   `turn.start` and `turn.complete` (which fires on an interrupt too, where the Stop hook does not)
 //           are posted as `cland hook mod-turn-start` / `mod-turn-complete`, the latter with the turn's usage.
@@ -16,7 +17,7 @@ import type { EngineInterface as Engine, Register } from 'claude-code';
 type Config = { name: string; hubFile: string; node: string; cli: string; launch: string | null };
 
 let config: Config | null = null;
-/** What this module submitted, by hub message id: a retry waits on the same submission and confirms again. */
+/** What this module submitted, by hub message id: a retry waits on the same submission and acknowledges again. */
 const submitted = new Map<string, Promise<boolean>>();
 
 async function readConfig($: Engine): Promise<Config | null> {

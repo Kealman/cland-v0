@@ -79,8 +79,9 @@ export type SessionsOptions = {
 export const USAGE_EVENT_MS = 1000;
 /** A failed delivery left unconfirmed this long needs attention. */
 export const INJECT_STALLED_MS = 60_000;
+const COORDINATOR_INJECT_STALLED_MS = 5 * 60_000;
 const INJECT_RETRY_MAX_MS = 15 * 60_000;
-type UnconfirmedInject = { timer: ClockTimer; delay: number; retryAt: number };
+type UnconfirmedInject = { timer: ClockTimer; delay: number; retryAt: number; report: boolean };
 
 const untimed: Resumed = (work) => work();
 
@@ -1523,6 +1524,10 @@ export class Sessions {
       return { applied: true };
     }
     if (frame.event === 'injected') {
+      // Claude's legacy mod posts this when prompt.submit returns. After re-exec
+      // that can succeed without running a turn. Only its envelope-bearing
+      // turn-start hook below confirms delivery; keep accepting the old frame.
+      if (p.harness === 'claude-code') return { applied: true };
       const id = typeof payload.message === 'string' ? payload.message : null;
       if (id) this.#confirm(p, id);
       return { applied: true };
@@ -1724,11 +1729,14 @@ export class Sessions {
       if (reconnected) inflight.reconnected = true;
       return;
     }
-    // A new transport connection ends the disconnected episode. Its first failed
-    // submission needs its own completion log and immediate idle retry, even if
-    // a missing-bridge attempt failed earlier. Do this after any old flight ends.
-    if (reconnected) this.#clearUnconfirmedMessage(sessionId, messageId);
     const pending = this.#unconfirmed.get(sessionId)?.messages.get(messageId);
+    // Reconnect renews immediate retries and completion logging, but cannot
+    // postpone the alarm for a message that still has no model-turn receipt.
+    if (reconnected && pending) {
+      pending.delay = 0;
+      pending.retryAt = this.#core.clock.now().getTime();
+      pending.report = true;
+    }
     if (!reconnected && pending && this.#core.clock.now().getTime() < pending.retryAt) return;
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
     const message = this.#core.store.deliveryMessage(messageId, name);
@@ -1783,12 +1791,19 @@ export class Sessions {
     }
     const pending = episode.messages.get(messageId);
     if (pending) {
+      if (pending.report) {
+        pending.report = false;
+        this.#log({ event: 'inject-unconfirmed', session: this.#table.bySessionId(sessionId)!.name, id: messageId, error });
+        return;
+      }
       pending.delay = Math.min(pending.delay ? pending.delay * 2 : INJECT_STALLED_MS, INJECT_RETRY_MAX_MS);
       pending.retryAt = this.#core.clock.now().getTime() + pending.delay;
       return;
     }
     const p = this.#table.bySessionId(sessionId)!;
     this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error });
+    const coordinator = this.#core.store.roleOf(this.#core.connectionOf(sessionId)?.name ?? p.name) === 'coordinator';
+    const threshold = coordinator ? COORDINATOR_INJECT_STALLED_MS : INJECT_STALLED_MS;
     const current = episode;
     const timer = this.#core.clock.setTimeout(() => {
       const p = this.#table.bySessionId(sessionId);
@@ -1799,17 +1814,19 @@ export class Sessions {
         return;
       }
       current.noticed = true;
-      const text = `${this.#core.label(name)}: injection has remained unconfirmed for ${INJECT_STALLED_MS} ms (${error}); check the session's bridge and harness connection.`;
-      this.#core.noticeTo('agents', {
+      const isCoordinator = this.#core.store.roleOf(name) === 'coordinator';
+      const text = `${this.#core.label(name)}: injection has remained unconfirmed for ${threshold} ms (${error}); ${isCoordinator ? `recover with \`cland session resume ${name} --relaunch\`.` : "check the session's bridge and harness connection."}`;
+      this.#core.noticeTo(isCoordinator ? 'general' : 'agents', {
         kind: 'inject-stalled',
-        to: this.#core.store.roleOf(name) === 'coordinator' ? [] : ['coordinator'],
+        // Aides receive only direct named messages, never role broadcasts.
+        to: isCoordinator ? this.#core.store.sessionsWithRole('aide') : ['coordinator'],
         text, detail: { session: name, message: messageId },
       });
-    }, INJECT_STALLED_MS);
+    }, threshold);
     timer.unref();
     // One immediate idle retry tolerates a transient failure. Repeated failures then
     // wait 1, 2, 4, 8 and at most 15 minutes; reconnects bypass the wait.
-    current.messages.set(messageId, { timer, delay: 0, retryAt: this.#core.clock.now().getTime() });
+    current.messages.set(messageId, { timer, delay: 0, retryAt: this.#core.clock.now().getTime(), report: false });
   }
 
   #clearUnconfirmed(sessionId: string): void {

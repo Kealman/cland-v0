@@ -1,5 +1,14 @@
 # hub/test/claude-code-schedule.test.ts
 
+`Claude re-exec bridge acknowledgement without a model turn remains unconfirmed`
+uses the production adapter with the scripted native CLI, real frame/spoke edges
+and FakeClock. Replace the spoke and bridge under the same launch id, acknowledge
+the old `injected {message}` wire shape without a turn, then advance the 60-second
+confirmation window. Retain the exact `inject-unconfirmed` log and delivered-stage
+assertions. An unrelated turn stays insufficient; the exact envelope-bearing
+turn-start confirms the delivery even after its deadline. No harness process or
+browser is needed for this re-exec connection shape.
+
 `Claude close cancels a held native query and drains its callback before releasing
 ownership` is the T2 shutdown regression (T-1261). The scripted `execFile` edge
 holds an agents query and records cancellation. Close must remain pending until

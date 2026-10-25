@@ -223,15 +223,17 @@ test('sustained unconfirmed injection raises one routed notice per session episo
     return id;
   };
   for (const name of ['coord', 'impl']) {
+    const threshold = name === 'coord' ? 300_000 : 60_000;
     const first = await fail(name);
-    await clock.advance(59_999);
+    await clock.advance(threshold - 1);
     await ui.request({ type: 'session.list' });
     assert.equal(notices().filter(note => note.detail?.session === name).length, 0);
     await clock.advance(1);
     const frame = await ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'inject-stalled' && (f.message as Message).detail?.session === name);
     const note = frame.message as Message;
     assert.match(note.text, new RegExp(name));
-    assert.match(note.text, /60000 ms/);
+    assert.match(note.text, new RegExp(`${threshold} ms`));
+    assert.equal(note.topic, name === 'coord' ? 'general' : 'agents');
     assert.deepEqual(note.to, name === 'coord' ? [] : ['coord']);
     const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string; session?: string }> };
     assert.equal(events.rows.filter(row => row.text === note.text && row.session === name).length, name === 'coord' ? 1 : 0);
@@ -243,7 +245,7 @@ test('sustained unconfirmed injection raises one routed notice per session episo
     fake.idle(name);
     await ui.waitFor(f => f.type === 'delivery' && f.message === first && f.stage === 'injected');
     await fail(name);
-    await clock.advance(60_000);
+    await clock.advance(threshold);
     await eventually('new episode notices once', async () => {
       await ui.request({ type: 'session.list' });
       return notices().filter(note => note.detail?.session === name).length === 2 || undefined;
@@ -272,7 +274,60 @@ test('confirmation before the threshold cancels the unconfirmed-inject notice', 
   fake.busy('coord');
   fake.idle('coord');
   await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected');
-  await clock.advance(120_000);
+  await clock.advance(600_000);
   await ui.request({ type: 'session.list' });
   assert.ok(!ui.frames.some(f => f.type === 'message' && (f.message as Message).kind === 'inject-stalled'));
+});
+
+test('five minutes of unconfirmed Coordinator delivery alerts General and the named Aide despite reconnect', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const logs: Array<Record<string, unknown>> = [];
+  let reconnect!: NonNullable<AdapterHost['reconnected']>;
+  let fake!: FakeHarness;
+  const { discovery } = await projectHub(t, root, {}, { clock, log: entry => logs.push(entry), adapters: [(host, clock) => {
+    reconnect = host.reconnected!;
+    return fake = fakeHarness('claude-code', { host, clock });
+  }] });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const peers = [];
+  for (const [name, role] of [['coord', 'coordinator'], ['helper', 'aide']] as const) {
+    const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name, role });
+    assert.equal(launched.ok, true, launched.error);
+    const sessionId = (launched.value as { process: HarnessProcessView }).process.sessionId;
+    const peer = await inProcessSpoke(t, { cwd: root, discover: true, name, role, sessionId, launchToken: fake.spawns.at(-1)!.launchToken! });
+    await peer.waitForPresence([name]);
+    fake.idle(name);
+    peers.push({ peer, sessionId });
+  }
+  fake.scriptInject('coord', 'reject', 'reject', 'reject', 'accept');
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'Coordinator cannot run this' });
+  const id = (sent.value as { message: Message }).message.id;
+  await eventually('failed delivery receipt', () => logs.some(entry => entry.event === 'inject-unconfirmed' && entry.id === id) || undefined);
+  const notices = () => ui.frames.filter(frame => frame.type === 'message' && (frame.message as Message).kind === 'inject-stalled' && (frame.message as Message).topic === 'general').map(frame => frame.message as Message);
+  await clock.advance(240_000);
+  reconnect(peers[0]!.sessionId);
+  await eventually('reconnected failure receipt', () => logs.filter(entry => entry.event === 'inject-unconfirmed' && entry.id === id).length === 2 || undefined);
+  await clock.advance(59_999);
+  await ui.request({ type: 'session.list' });
+  assert.equal(notices().length, 0, 'no General escalation before five minutes');
+  const humanNotice = ui.waitFor(frame => frame.type === 'message' && (frame.message as Message).kind === 'inject-stalled' && (frame.message as Message).topic === 'general');
+  const aideNotice = peers[1]!.peer.waitForEvent(event => event.params.content.includes('cland session resume coord --relaunch'));
+  await clock.advance(1);
+  const note = (await humanNotice).message as Message;
+  await aideNotice;
+  assert.deepEqual(note.to, ['helper']);
+  assert.match(note.text, /coord.*300000 ms/);
+  assert.match(note.text, /cland session resume coord --relaunch/);
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string; session?: string }> };
+  assert.equal(events.rows.filter(row => row.text === note.text && row.session === 'coord').length, 1);
+  reconnect(peers[0]!.sessionId);
+  await eventually('third failed delivery receipt', () => logs.filter(entry => entry.event === 'inject-unconfirmed' && entry.id === id).length === 3 || undefined);
+  await clock.advance(600_000);
+  await ui.request({ type: 'session.list' });
+  assert.equal(notices().length, 1, 'reconnects and retries cannot flood the human');
+  fake.busy('coord');
+  fake.idle('coord');
+  await ui.waitFor(frame => frame.type === 'delivery' && frame.message === id && frame.stage === 'injected');
 });

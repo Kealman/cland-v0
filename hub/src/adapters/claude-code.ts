@@ -18,8 +18,8 @@ import { processAlive } from './processes.ts';
 //            session's own (T-20 decision D8): its sub-agents work there too.
 //   attach   `claude attach <background id>`, the harness's own.
 //   inject   the cland mod (`hub/mod/cland`): it keeps a bridge to the hub (`cland hook bridge`), submits each
-//            message with `$.prompt.submit` (which waits for the session to be idle) and confirms it with
-//            `cland hook injected`. A turn whose prompt carries the message's envelope confirms it too.
+//            message with `$.prompt.submit` (which waits for the session to be idle). Only a turn-start
+//            carrying the message's envelope confirms it; `cland hook injected` is submission acceptance.
 //   state    the hooks (`cland hook <event>`: SessionStart, UserPromptSubmit, Stop, StopFailure, PermissionRequest,
 //            PostToolUse, Notification, Elicitation) and the mod's `turn.start`/`turn.complete` (which also fires on
 //            an interrupt, where `Stop` does not) — pushed, reliable; `claude agents --json`, polled, as the fallback.
@@ -199,7 +199,7 @@ export function interpret(event: string, payload: Record<string, unknown>): Inte
   }
 }
 
-type Pending = { resolve: () => void; reject: (err: Error) => void; timer: NodeJS.Timeout };
+type Pending = { resolve: () => void; reject: (err: Error) => void; timer: ClockTimer };
 type Prompt = { messages?: string[]; resolve?: (messages: string[]) => void };
 /** Enough recent prompts for delayed hooks; eviction drops uncertain attribution rather than guessing. */
 const PROMPT_HISTORY_LIMIT = 64;
@@ -532,17 +532,17 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const key = `${p.sessionId}:${message.id}`;
     const existing = this.#pending.get(key);
     if (existing) {
-      clearTimeout(existing.timer);
+      this.#clock.clearTimeout(existing.timer);
       existing.reject(new Error('superseded by a retry'));
     }
     return new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const timer = this.#clock.setTimeout(() => {
         this.#pending.delete(key);
         reject(new Error(`the mod did not confirm the turn within ${this.#injectTimeoutMs} ms`));
       }, this.#injectTimeoutMs);
       this.#pending.set(key, { resolve, reject, timer });
       if (!send({ type: 'inject', session: p.name, message: message.id, text: envelope(message, topic) })) {
-        clearTimeout(timer);
+        this.#clock.clearTimeout(timer);
         this.#pending.delete(key);
         reject(new Error("the mod's bridge is closed"));
       }
@@ -554,7 +554,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const pending = this.#pending.get(key);
     if (!pending) return;
     this.#pending.delete(key);
-    clearTimeout(pending.timer);
+    this.#clock.clearTimeout(pending.timer);
     pending.resolve();
   }
 
@@ -828,7 +828,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#missingSince.clear();
     this.#watched.clear();
     for (const pending of this.#pending.values()) {
-      clearTimeout(pending.timer);
+      this.#clock.clearTimeout(pending.timer);
       pending.reject(new Error('the hub is stopping'));
     }
     this.#pending.clear();
