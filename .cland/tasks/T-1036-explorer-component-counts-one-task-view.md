@@ -2,8 +2,8 @@
 id: T-1036
 kind: task
 title: explorer-component counts one task.view for an unselected task under load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1043
 branch: t/T-1036-explorer-component-counts-one-task-view
 created: 2026-10-21T06:00:35.930Z
-updated: 2026-10-25T11:57:09.902Z
+updated: 2026-10-25T12:03:04.453Z
+closed: 2026-10-25T12:03:04.453Z
 ---
 
 ## Summary
@@ -95,3 +96,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear: cc94e143 / A-11861, audit A-11863 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11863-t-1036-final-evidence-at-e62c50b9.md). Independently parsed 3175/3175 ordinary passing records. All twenty generated explorer case 1–20 finish records and parent pass; parent11.246003015s is within authorized19s allowance, original zero-unselected-task and cursor assertions retained. Host T0 and Linux droplet T1/allT2/mappedT4 once/Web completed, workers2; no ordinaryT3/otherT4 or extraT4 load repetitions. Prepared-tree host typecheck was not repeated remotely. C1 carries source2 diagnosis; C2 established by twenty sequential child executions. Report-only warnings preserved, prior failed run remains partial failed evidence. No QA required.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T12:03:04.453Z
+
+Merged 9f31a3b7140f6c321eed297b66beca224591589c onto dev.

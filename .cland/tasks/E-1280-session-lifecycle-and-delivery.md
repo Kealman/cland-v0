@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:52:42.374Z
-updated: 2026-10-25T09:53:47.613Z
+updated: 2026-10-25T12:32:26.657Z
 ---
 
 ## Summary
@@ -35,6 +35,7 @@ stages:
         - T-1224
       - - T-1265
       - - T-1230
+        - T-1302
       - - T-1258
   - name: retry, reservations and launch values
     qa:

@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T10:23:22.644Z
-updated: 2026-10-25T11:50:05.945Z
+updated: 2026-10-25T12:22:00.390Z
 ---
 
 ## Destination
@@ -55,6 +55,11 @@ The spec `docs/spec/v0.3.md` "cland v0.3: remote control through Telegram and Di
 - [Sandbox bots for the prototypes: a Telegram bot, a Discord app, an ElevenLabs key](T-1291, .cland/tasks/T-1291-sandbox-bots-for-the-prototypes-a-telegram.md): the human placed the Telegram and Discord bot tokens and an ElevenLabs key in `~/.config/cland/sandbox-remote.secrets.toml` (mode 600) on 2026-10-25; ElevenLabs replaces xAI as the first STT provider because xAI no longer gives free credits; the sandbox project is `/Users/evgeniyivanov/Projects/cland/sandbox-remote`.
 ## Not yet specified
 
+- From the Q-1292 voice step: audio files and video notes are stored as artifacts without transcription; decide at Q-1295 whether they are transcribed like voice notes.
+- From the Q-1292 media step: the protocol has no upload frame (artifact.create takes a local path, which the web edge refuses, or UTF-8 text) and every created artifact posts its own ▣ message, so a photo with a caption would be two human messages; the prototype stores bytes in process as the human's artifact without the ▣ post. The spec needs an upload-or-attach frame for remote edges (and the web composer could use it too). Multipart turns \n into \r\n and TDLib counts the \r in entity offsets, so caption entities must be computed on the CRLF text or captions sent without entities. Album items are gathered for 1.5 s and the offset is confirmed before the group is stored: store before confirm (Q-1296).
+- From the Q-1292 cards step: an ask's outcome records who and when but not `via`, so a card answered in the workbench can only say "in the workbench" (approval outcomes already carry `via`); the hub should record `via` on ask outcomes too (decide at Q-1296 or the cut). A reply to a 📥 notice from another topic reaches that topic, but the agent's answer there is not mirrored (decision 2): decide whether a remote follows a thread it started. Cards of one inbox publication are sent oldest first while the inbox lists newest first. Cards are plain text with entities, not Rich Messages, so their edits stay simple.
+- Reaching the Aide from a remote (found by the Q-1292 prototype): `@aide` is not a mention the hub knows (the web launches an Aide from a button, the Aide is reached by name only), while round-1 decision 3 says mentions work as in the web and Q-1294 denies the remote any session launch. Decide at Q-1296 or the cut: address a running Aide by name only, or let a remote ask the Coordinator to launch one.
+- The human's own Telegram formatting is dropped on the way into General (plain text only); confirm this is acceptable at Q-1295.
 - The exact configuration shape (`[remote]`, `[telegram]`, `[discord]`, `[speech]` keys; hot reload or restart), the pairing state file and the secrets file format: after the API research.
 - The authority table's exact rows for a remote, the `via` values, and how an approval answered from a remote is recorded.
 - Catch-up details, rate limiting, the outbound queue's persistence, and where the human learns that the gateway is down (doctor, General, the workbench).

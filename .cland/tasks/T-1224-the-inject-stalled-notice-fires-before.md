@@ -2,8 +2,8 @@
 id: T-1224
 kind: task
 title: The inject-stalled notice fires before Codex app-servers finish reconnecting after a hub restart
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1049
 branch: t/T-1224-the-inject-stalled-notice-fires-before
 created: 2026-10-24T10:13:49.994Z
-updated: 2026-10-25T11:53:11.089Z
+updated: 2026-10-25T12:14:17.404Z
+closed: 2026-10-25T12:14:17.404Z
 ---
 
 ## Summary
@@ -25,6 +26,7 @@ After hub restarts #50 and #51 (2026-10-24), the hub posted "injection has remai
 
 - [x] C1. During the reconnect window after a hub start, a Codex session whose app-server reconnects and confirms within a startup grace (measured from the hub start, long enough to cover the observed 90 s) produces no inject-stalled notice; a session still unconfirmed after the grace still gets one (test with a fake app-server).
   - done: impl-1224 · 2026-10-25T11:50:31.885Z
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1224-final · 2026-10-25T12:07:55.076Z · commit f7e8de5d96001acc2dd74427ca28b06d1c3a9ecf
 
 ## Comments
 
@@ -69,3 +71,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at f7e8de5d; Standards/Spec audit A-11855 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11855-t-1224-source-review-at-f7e8de5d.md). Prior M1/M2 resolved: HOOK_USAGE exactly matches its owning frozen row; idempotent markServing anchors the fixed Codex-only 120s grace after daemon serving/discovery and standalone listener readiness, before recovery. Ordinary post-startup and five-minute Coordinator timeouts, confirmation cancellation and one-notice episode behavior remain intact. Slow-initialization fake-clock regressions preserve exact failure/confirmation and alarm assertions. C1 remains unverified until successful configured same-head runtime evidence; no suite/QA execution claimed by this source pass.
+
+### rev-34 · 2026-10-25T12:07:55.076Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1224-final
+commit: f7e8de5d96001acc2dd74427ca28b06d1c3a9ecf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear: run918a94f2 / A-11877; audit A-11878 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11878-t-1224-final-evidence-at-f7e8de5d.md), carrying source2/A-11855. Independently parsed3161 ordinary passes plus15 separate load passes. All3 new generated startup-grace cases pass ordinary+5/5 load, preserving delayed-before-serving setup, exact confirmation, fixed startup deadline, ordinary late failure and one-notice assertions. Existing8 inject-stalled regressions and help/compatibility/docs guards pass. HostT0 plus LinuxT1/allT2/mappedT4 once/Web complete; host typecheck prepared tree0650230c not repeated remotely. T3/otherT4 and extraT4 repetitions did not run; budget/lint warnings report-only. C1 verified; affected after-stage QA remains separate.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-25T12:14:17.404Z
+
+Merged e684fef926ff9de910f36d9e84d933a943e2c625 onto dev.

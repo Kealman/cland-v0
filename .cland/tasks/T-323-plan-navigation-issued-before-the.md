@@ -2,8 +2,8 @@
 id: T-323
 kind: task
 title: Plan navigation issued before the initial task and ladder snapshots is discarded instead of deferred
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1046
 branch: t/T-323-plan-navigation-issued-before-the
 created: 2026-10-13T10:43:14.266Z
-updated: 2026-10-25T11:46:33.974Z
+updated: 2026-10-25T12:07:54.387Z
+closed: 2026-10-25T12:07:54.387Z
 ---
 
 ## Summary
@@ -36,8 +37,10 @@ Keep or defer the requested navigation until its task and ladder preconditions s
 
 - [x] C1. `gp` and `:Cland view plan <id>` issued before the initial snapshots open the plan once they arrive, or report clearly that the item is not an epic or in one.
   - done: impl-323 · 2026-10-25T11:45:55.831Z
+  - verified: rev-26 [reviewer] · run rev-20261025-323-evidence-1 · 2026-10-25T12:01:51.934Z · commit 1f708c1f7503f4043e6e701e41b236b4431c0fb5
 - [x] C2. A headless test on the stub hub with delayed `hub.status` and `task.list` covers both outcomes.
   - done: impl-323 · 2026-10-25T11:45:56.331Z
+  - verified: rev-26 [reviewer] · run rev-20261025-323-evidence-1 · 2026-10-25T12:01:51.934Z · commit 1f708c1f7503f4043e6e701e41b236b4431c0fb5
 
 ## Comments
 
@@ -80,3 +83,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source audit A-11838 carried forward; M1 resolved, A-11842. Four-file sole-parent correction explicitly cancels pending plan requests on layout.show/successful back, preventing history-table resurrection. Real space-space held-snapshot regression retains original view/no notice/zero plan-fetch receipts; latest-plan, one-way cancellation, error and both-order outcome/defaults tests retained. Both axes clear, no new findings. A-11841 original red/green/static/existing-launcher excerpts and source/capture limits inspected. C1/C2 final runtime pending one ordinary configured exact-head receipt; no Linux/load/QA/landing claim.
+
+### rev-26 · 2026-10-25T12:01:51.934Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-323-evidence-1
+commit: 1f708c1f7503f4043e6e701e41b236b4431c0fb5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence CLEAR, A-11872, carrying full source-2/A-11842. Original A-11869 independently decoded:3195 ordinary test passes/440 files; separately95 actual load test passes across19 new identities, exactly5 each. All12 gp/command×epic/unparented/missing×snapshot-order cases, four replacement/cancellation/error controls including away/back, and three delayed-role/typed-value controls pass. M1 base0.385103294s+5/5. Existing mapped launcherT4 parent6.847172858s and20children pass;40native receipt diagnostic retained, one base execution/no T4 load repetitions. T0/allT1/fallbackallT2/T4/Web green on Linuxx64; noT3/fullsoak. Host prepared-tree check and report-onlylint/timing diagnostics separately attributed; no budget/QA/landing claim. C1/C2 verified, zero findings on both axes; Coordinator owns affected after-stageQA/merge.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T12:07:54.387Z
+
+Merged 9b3ae9f9c7bdce401899ddb5f0e555cc222d4098 onto dev.

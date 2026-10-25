@@ -3,7 +3,7 @@ id: T-1265
 kind: task
 title: 'A long-lived Codex session cannot reattach after a hub restart: app-server thread read fails with "Max payload size exceeded"'
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1029
 branch: t/T-1265-a-long-lived-codex-session-cannot
 created: 2026-10-24T22:20:46.414Z
-updated: 2026-10-25T10:41:15.568Z
+updated: 2026-10-25T12:27:41.606Z
 ---
 
 ## Summary
@@ -29,11 +29,13 @@ After hub restart #55 (2026-10-24 22:18:50Z), Reviewer rev-23 (codex, gpt-6.1-so
 ## Acceptance criteria
 
 - [x] C1. The Codex adapter reattaches a session whose thread read exceeds the client's default frame limit (raised limit, paged read, or a reattach path that does not read the whole thread), with a test at the fake app-server boundary (test).
-  - done: impl-1265 · 2026-10-25T10:25:28.970Z
   - verified: rev-31 [reviewer] · run rev-20261025-1265-final · 2026-10-25T10:41:15.454Z · commit ac28cf934e8408b4255442e81d21a555cb2a7960
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1265-final2 · 2026-10-25T12:23:31.437Z · commit 6f0bde2c6699717722f0aa7bd92efb30cf19737d
+  - done: impl-1265 · 2026-10-25T12:26:01.766Z
 - [x] C2. When reattach still fails, the session row says why (payload limit) instead of `[unknown]`, so the Coordinator knows to replace it (test).
-  - done: impl-1265 · 2026-10-25T10:25:29.155Z
   - verified: rev-31 [reviewer] · run rev-20261025-1265-final · 2026-10-25T10:41:15.454Z · commit ac28cf934e8408b4255442e81d21a555cb2a7960
+  - verified: rev-34 [reviewer] · run rev-34-20261025-1265-final2 · 2026-10-25T12:23:31.437Z · commit 6f0bde2c6699717722f0aa7bd92efb30cf19737d
+  - done: impl-1265 · 2026-10-25T12:26:02.563Z
 
 ## Comments
 
@@ -213,3 +215,48 @@ Final CLEAR, C1/C2 verified across accepted unchanged source and original same-h
 Durable final review: A-11743.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1265 · 2026-10-25T12:05:36.285Z
+
+Rule20 audit correction after Coordinator full run 7d122543/A-11875: actual failure `AssertionError: Expected values to be strictly deep-equal`, actual native params add `excludeTurns: true` at codex-adapter.test.ts:590. My original inventory wrongly called that T3 file unaffected. Exhaustive literal thread/resume and resume-param/threadCalls/excludeTurns searches in hub/test and nvim/test identify: codex-adapter.test.ts (exact QA relaunch params need new field; existing Implementer policy projection will become a full params assertion including it); codex-native.test.ts (metadata failure guard will also assert complete params, existing exact legacy two-call expectation retained); adapter-native-boundary.test.ts (method-level planted-fault routing, no params assertion; unchanged, will run). Fakes/scripted-codex.ts and fakes/codex/fake-codex.ts dispatch/log by method and tolerate optional fields, no params expectations to migrate. Direct fake TUI/late-client bare thread/resume calls intentionally retain the previous-client request for compatibility. Native transport's direct full-history request intentionally tests the frame bound, not adapter subscription. No native thread/resume match in nvim/test. No production behavior or wire-shape change in this correction.
+
+### rev-34 · 2026-10-25T12:09:19.683Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1265-source4
+commit: 6f0bde2c6699717722f0aa7bd92efb30cf19737d
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, A-11884 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11884-t-1265-corrected-consumer-source-review-at-6f0bde2c.md), carrying prior full audit/corrections A-11689/A-11703/A-11723. Sole-parent3-file test/docs correction preserves complete QA resume expectation with excludeTurns:true, strengthens Implementer to complete params, and adds exact T2 metadata request assertion. Original legacy two-request and previous-client paths retained; production unchanged, no dev merge. Corrected consumer inventory covers T3 params and method-only routing. A-11881 local precommit logs show80T3/33T2 passes with explicit tier/source limits, not new-head configured proof. C1/C2 remain unverified pending same-head mode-free evidence; Coordinator all-tier rerun and affected after-stage QA remain separate.
+
+### rev-34 · 2026-10-25T12:23:31.437Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1265-final2
+commit: 6f0bde2c6699717722f0aa7bd92efb30cf19737d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear: cb18610f/A-11899, audit A-11900 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11900-t-1265-corrected-head-final-evidence-at-6f0bde2c.md), carrying source4/A-11884. Native records3132 ordinary passes plus25 task load passes. All5 exact C1/C2 identities pass ordinary+5/5, preserving metadata/full params, legacy requests,101MiB receipt,513MiB rejection and row/CLI recovery assertions. Corrected Codex-adapter13/13 T3 passes; previously failing complete QA/Implementer policy case5.299680395s. HostT0 plus LinuxT1/allT2/changedT3once/Web complete; prepared-tree host typecheck not repeated remotely. OtherT3/T4/provider/stageQA absent, report-only warnings preserved. Parent rule6all remains failed; Coordinator's new-head all-tier rerun remains separate. C1/C2 verified; no findings.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-34 · 2026-10-25T12:27:41.606Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261025-1265-source5
+commit: fea3ca1fbd43d23d4286bf9a9d010e9be6ac05bb
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear at authorized merge fea3ca1f; A-11903 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11903-t-1265-authorized-merge-source-review-at-fea3ca1f.md), carrying source4/A-11884. Confirmed Coordinator b1503031 authorization and both parents. Sole scripted-codex conflict retains startupDelayMs options/pre-serving block and typed production stateReason delegation; exact metadata/legacy/native params controls unchanged. Inherited Sessions startup policy integrates without changing Codex payload reason; frozen SESSION_USAGE equality and diff check pass. A-11901 local exact-commit33T2/13T3/5T2 and static receipts retain platform/coverage limits; no configured proof at this head yet. C1/C2 remain unverified pending same-head mode-free evidence; Coordinator rule6all/stageQA separate.

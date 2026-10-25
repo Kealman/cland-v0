@@ -2,8 +2,8 @@
 id: T-1233
 kind: task
 title: Selection replay mutates the caller's repository with an unsealed Git environment
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1045
 branch: t/T-1233-selection-replay-mutates-the-caller-s
 created: 2026-10-24T11:03:29.065Z
-updated: 2026-10-25T11:58:48.583Z
+updated: 2026-10-25T12:22:03.430Z
+closed: 2026-10-25T12:22:03.430Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ The outer Git helper in hub/test/selection-replay.ts runs `git archive` and `git
 
 - [x] C1. The manual selection replay runs in a disposable clone with its own HOME, XDG and Git configuration, inherited `GIT_*` removed; it never adds or removes a worktree in the caller's repository (test).
   - done: impl-1233 · 2026-10-25T11:56:13.424Z
+  - verified: rev-26 [reviewer] · run rev-20261025-1233-evidence-3 · 2026-10-25T12:15:06.591Z · commit e951654c600df68eb8444579ba0f828734de40b0
 - [x] C2. The replay's existing assertions are kept and still pass (test).
   - done: impl-1233 · 2026-10-25T11:56:13.516Z
+  - verified: rev-26 [reviewer] · run rev-20261025-1233-evidence-3 · 2026-10-25T12:15:06.591Z · commit e951654c600df68eb8444579ba0f828734de40b0
 
 ## Comments
 
@@ -130,3 +133,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source correction CLEAR, A-11866; carry full source-3/A-11839 and authorized integration source-4/A-11864. Complete sole-parent commit diff deletes exactly the superseded guide paragraph; updated projection/growth controls and all lifecycle/sealing guidance remain. L1 resolved, zero findings on both axes; no runtime/test/tier/allowance or further dev-merge change. C1/C2 final verification remains pending one ordinary mode-free configured receipt at unchanged e951654c. Prior targeted macOS receipts and cancelled old-head A-11852 remain separately attributed; no transcription/test reruns or QA/landing claim.
+
+### rev-26 · 2026-10-25T12:15:06.591Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261025-1233-evidence-3
+commit: e951654c600df68eb8444579ba0f828734de40b0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence CLEAR, A-11892; carry source-5/A-11866 and prior full/integration chain. Original A-11888 independently parsed: 3258 ordinary tests / 440 files all pass, no load-gate finish records. Changed T3 file 101/101 once: native clone/sealing case 0.940405531 s, held writer stop/drain/root-removal control 0.229642981 s, retained coverage/time-share/own/historical-miss/fallback assertions 3.700178727 s all pass; shared manifest-growth control passes. T0/all T1/fallback all T2/changed T3/Web green on Linux x64. Remaining T3/T4 deferred, no repetition/full-occasion claim. Host prepared-tree check and report-only lint/timing/ratchet retained; +1.170 s T3 growth with incomplete base timing is not enforced budget failure. C1/C2 verified, zero findings. Old cancelled A-11852 remains historical. Coordinator owns enqueue/merge.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T12:22:03.430Z
+
+Merged 0026fcd09531b3dd1d630601b6bee942254584af onto dev.

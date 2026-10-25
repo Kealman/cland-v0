@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1041
 branch: t/T-1217-merge-queue-candidates-and-verification
 created: 2026-10-24T09:05:03.711Z
-updated: 2026-10-25T11:39:56.695Z
+updated: 2026-10-25T12:07:38.168Z
 ---
 
 ## Summary
@@ -133,3 +133,9 @@ Full NOT CLEAR. Standards 1 medium (M3); Spec 1 high (H1). C1 fails ownership/dr
 Durable review: A-11829.
 
 Criteria: C1 failed (H1/M3: incomplete native-close results and the fixture Git timeout can release ownership or remove roots while collector descendants remain unresolved.).
+
+### impl-1217 · 2026-10-25T12:07:38.168Z
+
+Coordinator decision 2776473b authorizes durable recovery, never an unbounded stop. Expanded shared-admission consumer inventory: territory lock wrappers are used by territory.ts (provision/undo/worktrees), hub/{dispatch,merge,releases}, tracker/offline-migrate, and their injected lock seams. Search covers all T1–T4 tests, nvim/web clients, shipped skills, QA, startup and persisted readers: relevant tests are territory-lock, push, release-item, task-migrate, tracker-native-boundary and harness; QA T-117 describes the existing lock. No wire field or role permission changes. The wrappers retain prior signatures; an absent recovery receipt performs no native recovery work and keeps existing behavior. New versioned-by-shape owner receipt is private runtime state; no previous reader exists. Doctor adds read-only owner visibility. Existing legacy run results/five-argument callers remain unchanged; maintenance now uses a separate gated owned runner that can hand off incomplete close durably. A private POSIX Node execve gate preserves the PID and birth identity while ensuring no Git work starts before the receipt is durable.
+
+T-543's precise identity helper is not part of this reviewed ancestry. Per Coordinator instruction use the current UTC processStarted/parseStarted identity helpers and record this dependency; recheck its landing before ready and incorporate only a Coordinator-posted shared fix/instruction. The recovery policy tests include dead/alive/mismatched/unverified/signal-surviving states; no identity mismatch authorizes a signal. The scratch helper now uses the same exec gate before its shared test ownership capture; a held descendant regression first failed with `writer ... is gone before the command rejects: true !== false`, then passed with owned group drainage. Infrastructure failures are not interpreted as missing Git objects.
