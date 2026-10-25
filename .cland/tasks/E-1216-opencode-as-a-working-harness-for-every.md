@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1015
 branch: null
 created: 2026-10-24T09:04:26.967Z
-updated: 2026-10-25T03:38:11.913Z
+updated: 2026-10-25T05:15:22.119Z
 ---
 
 ## Goal
@@ -123,3 +123,40 @@ C1/C2 reverified separately in this run; C3 failed. A-11592 contains exact case 
 This run is a local macOS read-only audit under message brief 8e8488c9. No new tests/suite/browser/demo lease or live restart/archive mutation. Six manual audit records saved; evidence secret-scanned. Artifact A-11592: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11592-e-1216-qa-re-audit-persistence-passes-per-run-qualification-usage-incomplete.md
 
 Criteria: C3 failed (Persistence fix passes, but six original qualifying Implementers plus oc-qa-1 and oc-1269 still lack visible usage; fresh examples do not establish each qualification run.).
+
+### oc-qa-2 · 2026-10-25T05:15:22.119Z
+
+verdict: qa
+result: clear
+by: oc-qa-2 [qa]
+run: qa-2026-10-25-1216s3
+commit: 0021ad47372493db52ae48386023fac9411e2031
+stage: re-qualification with durable usage
+stage_hash: cd65ea0f1a1c0fe4fbc0b82d407e43dfb193e1312b482da619f4b4ff729679d4
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| M1 | hub-api | PASS | .cland/qa/E-1216/qa-2026-10-25-1216s3/M1.out |
+| M2 | hub-api | PASS | .cland/qa/E-1216/qa-2026-10-25-1216s3/M2.out |
+| M3 | hub-api | PASS | .cland/qa/E-1216/qa-2026-10-25-1216s3/M3.out |
+| M4 | hub-api | PASS | .cland/qa/E-1216/qa-2026-10-25-1216s3/M4.out |
+| M5 | hub-api | PASS | .cland/qa/E-1216/qa-2026-10-25-1216s3/M5-archived.json, M5-cohort.json |
+| BUILD | hub-api | PASS | .cland/qa/E-1216/qa-2026-10-25-1216s3/BUILD-before.txt, BUILD-after.txt, plan-show.txt, own-session.json |
+
+Stage: re-qualification with durable usage. Result clear: every check in the stage brief passed.
+
+What ran: a clean detached worktree at dev 0021ad47372493db52ae48386023fac9411e2031 with node_modules symlinked from the project root; root hub/node_modules does not exist under the npm-workspaces install, so no such symlink was made (hub resolves through the root tree). HEAD, refs/heads/dev and origin/dev all equalled 0021ad47 before and after; worktree status empty. T-1271 (8b7a4bfa) and T-1266 (44211a6d) each carry an Item: trailer on dev. task plan show E-1216 reports this stage open with its cover complete; plan output retained in plan-show.txt.
+
+- M1: node --test hub/test/verifier-resolver.test.ts — exit 0, 6 pass; the case "a first line that continues after the item is one verifier request, never a role broadcast" passed (verifier-resolver.test.ts:122 verified by grep at this build).
+- M2: node --test hub/test/lead-permissions-component.test.ts — exit 0, 4 pass.
+- M3: node --test hub/test/heartbeat.test.ts — exit 0, 17 pass; the case "bare and prefixed continued requests suppress the missing-review row while an unrelated review stays stale" passed (heartbeat.test.ts:347).
+- M4: node --test --test-name-pattern="demo recorder scans parsed JSON metadata" hub/test/skills-qa.test.ts — exit 0, 1 test run and passed, reported case duration 759.996542 ms, under the report-only 2 s T2 budget (skills-qa.test.ts:146).
+- M5 (read-only live hub): cland session list --archived --json shows all three harness-opencode Implementer rows archived with a numeric usage.total: oc-1270 5,579,954 tokens / $0.050566764 (archived 03:34:55Z), oc-1271 20,020,342 / $0.139729416, oc-1266 9,655,966 / $0.104000406 (both archived 04:48:13Z).
+
+Platform: macOS Darwin arm64, node v24.21.0, local executor, one test file at a time; no droplet, no cost. No full suite ran here (the stage cover pair e2a5f207 Linux / 75391db6 macOS covers T3/T4), and no browser, demo lease or provider call was used. Wall time: hold taken 05:12:52Z, last record 05:15:02Z (~2 min 10 s).
+
+QA session own usage (session list --json, read 05:14Z): oc-qa-2, harness opencode, model opencode-go/deepseek-v4.1-flash#default, usage.total 1,414,590 tokens, cost $0.016582386.
+
+Findings: none. Stage verdicts carry no epic criterion marks; the epic Definition of done remains a separate run.
