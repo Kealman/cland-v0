@@ -86,6 +86,7 @@ export function writeBarrier(t: TestContext) {
 /** The Tracker-only seams (stageTree and writeGate) are not exposed by projectHub.
  * Compose the same store, dispatcher and socket edges here rather than use a daemon. */
 export async function planStageHub(t: TestContext, root: string, facts = new PlanGit(), options: {
+  stageTree?: (head: string) => Promise<string | null>;
   openDatabase?: (path: string) => DatabaseSync;
   memory?: boolean; locks?: string[]; watch?: ConstructorParameters<typeof Tracker>[0]['watch']; approval?: boolean; levels?: string[] | undefined; qaDefault?: QaPolicy; gate?: ReturnType<typeof writeBarrier> | undefined; settleBeforeHub?: (tracker: Tracker, signal: AbortSignal) => Promise<void>;
 } = {}) {
@@ -121,7 +122,7 @@ export async function planStageHub(t: TestContext, root: string, facts = new Pla
       const database = options.openDatabase?.(path) ?? new DatabaseSync(path);
       owners.push(() => { if (database.isOpen) database.close(); });
       return database;
-    }, ...(options.watch ? { watch: options.watch } : {}), planApproval: options.approval ? 'human' : 'none', git: facts.read, readBase: async () => 'dev', stageTree: async () => 'f'.repeat(40),
+    }, ...(options.watch ? { watch: options.watch } : {}), planApproval: options.approval ? 'human' : 'none', git: facts.read, readBase: async () => 'dev', stageTree: options.stageTree ?? (async () => 'f'.repeat(40)),
       ...(options.levels ? { levels: options.levels } : {}), ...(options.qaDefault ? { qaDefault: options.qaDefault } : {}),
       ...(options.gate ? { writeGate: options.gate.wait } : {}),
       log: entry => journal.write({ ...entry, event: String(entry.event) }),

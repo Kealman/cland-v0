@@ -6,13 +6,48 @@ import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
 import { drive } from './remote-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { eventually } from './harness.ts';
+import { eventually, projectHub, connectUi, inProcessSpoke } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { DropletExecutor, ProviderCapacityUnavailable } from '../src/executor/droplet/droplet.ts';
 import { Store } from '../src/hub/store.ts';
 import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
+
+test('a reported two-shard Linux stage cover counts on the first run after hub restart', async t => {
+  const setup = caseDeadlines(t);
+  const f = await setup.wait('sealed close fixture', () => integrated(setup.fixtures, '', 2, undefined, { machine: 'scripted' }));
+  f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const run = await f.launch('all', '--fresh', '--occasion', 'stage');
+  await setup.wait('both shard start receipts', () => startedShards(f, run.id));
+  for (const n of [1, 2]) f.machine.finish(`${run.id}-shard-${n}`, 0);
+  await f.clock.advance(1000);
+  const before = await drive(f, f.result(run.id));
+  assert.match(before.text, /stage cover missing macOS/);
+  assert.doesNotMatch(before.text, /missing Linux droplet/);
+  await f.verificationSettled();
+  await f.spoke.close(); f.ui.close(); await f.stop();
+  const restarted = await setup.wait('second hub start', () => projectHub(setup.fixtures, f.root, f.env, { clock: f.clock, droplet: f.dependencies,
+    durationContext: f.durationContext, syntheticProvider: { ...f.syntheticProvider, api: f.api.provider },
+    candidate: { head: async () => f.candidate.head, tree: async () => f.candidate.tree,
+      inspect: async () => ({ ...structuredClone(f.candidate), tierPlan: [] }) },
+  }));
+  const ui = await connectUi(setup.fixtures, restarted.discovery);
+  const coordinator = await inProcessSpoke(setup.fixtures, { discover: true, cwd: f.root, name: 'impl', sessionId: 'remote-impl', assignRole: false });
+  onCleanup(setup.fixtures, () => coordinator.close());
+  const cached = await coordinator.call<{ ok: boolean; id: string; cached?: { run: string }; error?: string }>('verify', {
+    mode: 'all', cwd: f.root, report: f.topic, to: ['impl'], occasion: 'stage', executor: 'droplet',
+  });
+  assert.equal(cached.ok, true, cached.error);
+  assert.equal(cached.cached?.run, run.id);
+  await f.clock.advance(1000);
+  await restarted.verificationSettled();
+  const after = await f.result(cached.id, ui);
+  assert.match(after.text, /stage cover missing macOS/);
+  assert.doesNotMatch(after.text, /missing Linux droplet/);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2, 'recovery creates no replacement machines');
+});
 
 test('two-shard stage result shows each shard T4 tier line', async t => {
   const f = await integrated(t, '', 2, undefined, { machine: 'scripted' });

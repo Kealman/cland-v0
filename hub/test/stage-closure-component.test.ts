@@ -3,10 +3,67 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
+import { mkdir } from 'node:fs/promises';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import type { StageCover } from '../src/hub/suites.ts';
 import { connectWsUi, eventually, startHub, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
+import { planStageHub, PlanGit, seedPlanStageCover } from './plan-stage-fixture.ts';
+import { connectUi, inProcessSpoke } from './harness.ts';
+
+test('stage QA recorded after restart stays pending then current with restored two-platform covers', async t => {
+  const root = await tempProject(t);
+  const facts = new PlanGit();
+  await mkdir(join(root, '.cland'));
+  await seedPlanStageCover(root, facts.head);
+  const first = await planStageHub(t, root, facts);
+  let ui = await connectUi(t, first.discovery);
+  const create = async (kind: string, title: string, parent?: string) => {
+    const r = await ui.request({ type: 'task.create', kind, title, parent, ...(kind === 'task' ? { size: 'S' } : {}) });
+    assert.equal(r.ok, true, r.error);
+    return (r.value as { item: ItemView }).item;
+  };
+  const epic = await create('epic', 'Restart QA'), child = await create('task', 'Evidence only', epic.id);
+  assert.equal((await ui.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: JSON.stringify({ stages: [
+    { name: 'build', qa: { scope: 'affected', when: 'after-stage' }, lanes: [[child.id]] },
+  ] }) })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: child.id })).ok, true);
+  const read = async () => {
+    const r = await ui.request({ type: 'task.plan', item: epic.id, op: 'show' });
+    assert.equal(r.ok, true, r.error);
+    return (r.value as { stages: NonNullable<ItemView['stages']> }).stages[0]!;
+  };
+  const before = await eventually('both covers are counted before restart without a QA closure', async () => {
+    const stage = await read();
+    return stage.cover?.linux && stage.cover.macos && !stage.cover.pending?.length ? stage : undefined;
+  });
+  assert.deepEqual(before.cover!.missing, []);
+  assert.equal(before.state, 'open', 'no prior QA closure can supply the restart proof');
+  ui.close(); await first.stop();
+  const tree = Promise.withResolvers<string>();
+  let treeStarted = false;
+  onCleanup(t, () => tree.resolve('f'.repeat(40)));
+  const second = await planStageHub(t, root, facts, { stageTree: async () => { treeStarted = true; return tree.promise; } });
+  ui = await connectUi(t, second.discovery);
+  const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'qa-restart', role: 'qa' });
+  onCleanup(t, () => qa.close());
+  await eventually('restored cover tree lookup is held', async () => { await read(); return treeStarted ? true : undefined; });
+  const verdict = await qa.call<{ ok: boolean; error?: string }>('task.comment', {
+    id: epic.id, verdict: 'qa', result: 'clear', run: 'post-restart', stage: 'build',
+  });
+  assert.equal(verdict.ok, true, verdict.error);
+  const pending = await read();
+  assert.deepEqual(pending.cover!.missing, []);
+  assert.deepEqual(pending.cover!.pending, ['Linux droplet', 'macOS']);
+  assert.equal(pending.verdict!.current, undefined, 'unresolved restored evidence is never recorded as stale');
+  tree.resolve('f'.repeat(40));
+  const after = await eventually('post-restart QA and original covers close the stage', async () => {
+    const stage = await read(); return stage.state === 'closed' ? stage : undefined;
+  });
+  assert.deepEqual(after.cover, before.cover);
+  assert.equal(after.verdict!.current, true);
+  assert.equal(after.verdict!.run, 'post-restart');
+});
 
 test('publication landings survive tracker reopen and require covers containing the published dev merge', async t => {
   const root = await tempProject(t);
