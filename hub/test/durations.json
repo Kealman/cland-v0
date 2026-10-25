@@ -9430,6 +9430,13 @@
       "expires": "2026-11-01",
       "reason": "T-1028 C1 requires twenty independently owned headless Neovim launcher cases in batches of two, with forty native TextChangedI receipts and original error/empty/outbound assertions. Linux x64 c-8 lon1 mode-free run 69adb5aa at 1bee70f9 (A-11758) passed all twenty children and the parent in 7.12978769 s; the generic 5 s new-identity gate alone failed. The Coordinator directed rounding 1.5x that measured passing sample upward to 11 s for Linux timing variance. T4 has no tier budget; fixture cleanup, input bounds, all twenty cases and every assertion stay unchanged."
     },
+    "hub/test/executor-safety-load.test.ts::foreign live leases settle 10/10 at two workers under CPU load": {
+      "seconds": 7.8,
+      "owner": "E-1282",
+      "added": "2026-10-25",
+      "expires": "2026-11-01",
+      "reason": "T-1259 C1 runs the foreign-lease case as two lanes of five with a CPU-burn sibling (macOS 10/10 under load). Its only Linux sample, the stage cover c915ca99 at 83d5c7fc (A-12008, c-8 lon1, workers 2), passed at 5.184 s and failed only the generic 5 s new-identity gate. The cap is about 1.5x that passing sample for Linux timing variance; no assertion, repetition count or load is relaxed. T4 has no tier budget."
+    },
     "hub/test/qa-lint-build.test.ts::committed brief corpus has no false absent file or title reports against the compiler source oracle": {
       "seconds": 18.7,
       "owner": "E-880",

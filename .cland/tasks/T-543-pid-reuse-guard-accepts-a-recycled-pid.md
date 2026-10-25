@@ -3,7 +3,7 @@ id: T-543
 kind: task
 title: PID-reuse guard accepts a recycled PID that started within the same ps second
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1038
 branch: t/T-543-pid-reuse-guard-accepts-a-recycled-pid
 created: 2026-10-15T22:29:59.157Z
-updated: 2026-10-25T12:57:19.341Z
+updated: 2026-10-25T15:28:56.375Z
 ---
 
 ## Summary
@@ -24,11 +24,11 @@ Found aside by impl-525 on T-525 (2026-10-15 22:29Z). `hub/src/hub/lock.ts:37-40
 
 ## Acceptance criteria
 - [x] C1. The identity check uses a start identity finer than one second where the platform offers one (for example `/proc/<pid>/stat` starttime on Linux, `proc_pidinfo` or `sysctl` kinfo on macOS), or adds a second discriminator (command, ppid or a nonce) so that two processes started in the same second never compare equal.
-  - done: impl-543 · 2026-10-25T11:35:11.813Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
+  - done: impl-543 · 2026-10-25T15:27:42.740Z
 - [x] C2. A test stages a same-second reused PID with a different identity and shows stop and cleanup refuse to signal it, while the real managed process is still signalled.
-  - done: impl-543 · 2026-10-25T12:41:02.456Z
   - verified: rev-34 [reviewer] · run rev-34-20261025-543-final · 2026-10-25T12:57:18.787Z · commit 2b4ac175d4b2df4f45ea11de40a81ec9dc66301b
+  - done: impl-543 · 2026-10-25T15:27:43.809Z
 
 ## Comments
 
@@ -222,3 +222,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear:4b32a51f/A-11937; audit A-11943 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11943-t-543-final-configured-evidence-at-2b4ac175.md), carrying source6/full safety review. Parsed3234ordinary+60load passing finish identities. Precise birth/persistence, same-second stop/cleanup refusal with positive signals, coherent ancestry, M4 durable checkpoint, M5 cache-to-signal and M6 host guard controls pass.3identity+8ownership+1emptyhub identities each5/5load; changedT3system33/cleanup37 once pass. HostT0/LinuxT1/allT2/changedT3/mappedT4once/Web complete; otherT3/T4/extraT4repetitions absent. Native Linux versus simulated Darwin limits explicit; accepted persisted legacy-upgrade/preupgrade-window policy retained. Report-only warnings unchanged, no new>=3s case allowance. Prior failed/incomplete runs remain excluded. C1/C2 verified; Coordinator premerge all check separate; QA none.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-543 · 2026-10-25T15:09:41.044Z
+
+Premerge regression diagnosis: local original stop fails with valid persisted Claude pid_identity; signal-refused identifies already-absent descendant retained from authoritative ps, not missing launch proof. Deterministic initial capture test red false!=true; late/grace capture red 'descendant native identity cannot be verified'. Narrow fix skips acquiring an unknown descendant only after pidAlive proves absence; live unknown still refuses, native signal checks unchanged. systemProcesses row/reply shape and outcome classes unchanged. Consumers audited: all3 adapters.stop, Sessions legacy upgrade, LaunchFiles rollback, local executor cancel/release/crash cleanup, orphan/fixture sweeps, suite-command watchdog, tests suite-timeouts/fixture-orphans/session-resume/scenario-hook-bridge plus system-processes. Search of production callers/QA/docs/skills done; prior contract inventory remains. Direct stop/resume source search in hub/test+nvim/test finds 78 files (excluding unrelated hub.stop). Running requested three full files individually, then all searched consumer files individually; generated list will be captured in correction evidence. Existing ready head2b4ac175 remains unmerged; working correction requires fresh review/verify.
+
+### impl-543 · 2026-10-25T15:28:46.584Z
+
+0405a629 correction complete locally. A-12007 diagnosis/red controls: saved Claude identity valid; dead transient descendant in stale ps snapshot blocked stop. Only ESRCH for an unverified leaf can settle it; live unknown/error/surviving listed branch still refuses. Five new deterministic guards; system-processes38/38pass. A-12011: all83 searched/alias/direct cleanup consumer files723/723 pass individually+serially (includes original3), zero skips/cancel; isolated cli-identity6/6 retry pass, earlier SQLite5 recorded local busy-lock flake per Coordinator. darwin arm64 Node24.21; no Linux/browser claim. Typecheck and full test:lint exit0 (135 report-only findings,0refusals). C1/C2done restored; requesting fresh source review before new mode-free verify.
