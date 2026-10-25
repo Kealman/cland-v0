@@ -76,9 +76,24 @@ const commandUsage: Readonly<Record<string, string>> = {
   unsubscribe: SUBSCRIPTIONS_USAGE,
   subscriptions: SUBSCRIPTIONS_USAGE,
 };
+
+// Keep subcommand help in sync with the advertised usage, including repeated
+// forms (plan and criterion), continuation lines and shared task options.
+const taskOptionsStart = TASK_USAGE.indexOf('                  every task command');
+const taskOptions = TASK_USAGE.slice(taskOptionsStart);
+const taskUsage = new Map<string, string>();
+for (const block of TASK_USAGE.slice(0, taskOptionsStart).split(/(?=^  task )/m)) {
+  const sub = /^  task (\S+)/.exec(block)?.[1];
+  if (sub) taskUsage.set(sub, (taskUsage.get(sub) ?? '') + block);
+}
+
 /** Undefined leaves argument parsing and command execution to the CLI. */
 export function commandHelp(command: string, args: readonly string[]): string | undefined {
   if (command === '--help' || command === '-h' || command === 'help') return usage;
+  if (command === 'task' && args.length === 2 && (args[1] === '--help' || args[1] === '-h')) {
+    const help = taskUsage.get(args[0]!);
+    return help === undefined ? undefined : help + taskOptions;
+  }
   if (args.length !== 1 || (args[0] !== '--help' && args[0] !== '-h')) return undefined;
   return Object.hasOwn(commandUsage, command) ? commandUsage[command] : undefined;
 }

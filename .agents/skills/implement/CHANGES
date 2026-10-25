@@ -111,3 +111,4 @@ T-1256: Require Claude envelope-bearing turn-start confirmation and point to re-
 - T-1036: Document summary-only descendant verdict facts and the settled explorer-card T2/T4 regression seams.
 T-323: Point early Neovim navigation and launcher defaults to held-snapshot regressions and post-reply view/form receipts.
 T-1224: Document Codex's fixed startup injection-alarm grace and its scripted app-server boundary regressions.
+T-1300: Document immediate task subcommand help without hub/config requirements.

@@ -1,4 +1,4 @@
-// T2: three real CLI launches prove entry-point wiring; the full table is T1.
+// T2: four real CLI launches prove entry-point wiring; the full table is T1.
 import './cover-quiet.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -28,6 +28,20 @@ test('cland --help retains its pre-refactor output byte for byte', async t => {
     });
   // execFile resolves only after the real child has exited successfully.
   assert.equal(actual.stdout, expected);
+  assert.equal(actual.stderr, '');
+  assert.deepEqual(fixture.snapshot(), before);
+});
+
+test('cland task criterion --help exits 0 with criterion usage without a hub or project changes', async t => {
+  const fixture = sealedHelpProject(t);
+  const before = fixture.snapshot();
+  const actual = await clandCliLaunch(() => execCli(process.execPath, [entry, 'task', 'criterion', '--help'], {
+    cwd: fixture.project, env: fixtureEnvironment(fixture.root, process.env), timeout: 5000,
+  }));
+  assert.match(actual.stdout, /^  task criterion <id> <done\|verify\|fail\|edit\|remove> <C-n>/);
+  assert.match(actual.stdout, /^  task criterion <id> add <text>$/m);
+  assert.match(actual.stdout, /^  task criterion <id> normalize /m);
+  assert.doesNotMatch(actual.stdout, /^  task (?!criterion )/m);
   assert.equal(actual.stderr, '');
   assert.deepEqual(fixture.snapshot(), before);
 });

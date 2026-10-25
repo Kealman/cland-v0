@@ -21,6 +21,10 @@ When editing a kept upstream skill, append the change and item as a new line in 
 
 If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask.
 
+For task CLI syntax, use `cland task <subcommand> --help` (or `-h`)
+immediately after the subcommand: it prints its forms and shared options without
+requiring a hub or valid project configuration.
+
 Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.

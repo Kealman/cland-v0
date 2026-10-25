@@ -2,8 +2,9 @@
 
 Every command and group listed by `cland --help` accepts `--help` or `-h`
 immediately after its name, including `cland task --help`, `cland hub -h` and
-`cland session --help`. These print usage and exit 0 without a running hub or
-project changes.
+`cland session --help`. Every task subcommand also accepts these immediate flags,
+such as `cland task criterion --help`, printing only its own forms and the shared
+task options. Help exits 0 without a running hub, valid config or project changes.
 
 Issues, specs and tickets for this repo live as **items** in cland's own tracker: one Markdown file per item in `.cland/tasks/` (`<id>-<slug>.md`), committed with the work. Use the `cland task` CLI for every operation; in this repo run it as `node hub/bin/cland.ts task …` from the repo root (or put `hub/bin/cland.ts` on PATH as `cland`). Ordinary commands talk to the project's hub (the offline `task migrate` command requires it stopped), so a hub must be running: if a command says `no hub running`, run `node hub/bin/cland.ts hub start`. Don't write item files by hand when a command can do it.
 

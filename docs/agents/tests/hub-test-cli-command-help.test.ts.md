@@ -19,4 +19,8 @@ top-level usage without adding a dispatch entry. The T1 table must fail that
 named row. Remove the mutation and rerun the complete table. There is no
 letters-only command-name restriction.
 
-The [T2 executable help checks](hub-test-cli-help.test.ts.md) prove the real entry-point wiring with exactly three child launches.
+The task subcommand inventory matches the advertised task usage. Each named
+subcommand checks both immediate flags, its own usage only and shared options;
+unknown commands and non-immediate flags remain for normal argument parsing.
+
+The [T2 executable help checks](hub-test-cli-help.test.ts.md) prove the real entry-point wiring with four child launches.

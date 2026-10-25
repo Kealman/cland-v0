@@ -1853,12 +1853,16 @@ immediately after its name: it prints its usage and exits 0 without a running
 hub or project changes. The executable calls the pure `commandHelp` entry in
 `src/cli/help.ts` before importing command implementations. It uses the
 command-owned entries in `src/cli/usage.ts`; release, sync and publish share
-the release usage block. Other argument paths keep their existing parsing.
+the release usage block. Every task subcommand also accepts an immediate help
+flag (`cland task criterion --help`), showing that subcommand's forms and shared
+task options. This includes offline migrate and import-github, and requires
+neither valid configuration nor a hub. Other argument paths keep their existing parsing.
 The T1 table in `test/cli-command-help.test.ts` derives its command list from
 that same advertised top-level help and checks both flags in process. Adding
-a listed command without help support fails the table. T2 `test/cli-help.test.ts`
-keeps exactly three real CLI launches: top-level `--help`, `hub --help` and
-`session -h`, checking frozen output and sealed project/profile immutability.
+a listed command without help support fails the table. The table also checks
+every advertised task subcommand and both flags. T2 `test/cli-help.test.ts` keeps four real
+CLI launches: top-level `--help`, `hub --help`, `session -h` and
+`task criterion --help`, checking output and sealed project/profile immutability.
 
 The root `package.json` owns cland's version. `src/version.ts` reads it for
 `cland --version`, the spoke's MCP server info, hub discovery and every managed

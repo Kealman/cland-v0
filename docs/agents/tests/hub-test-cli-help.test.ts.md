@@ -2,11 +2,12 @@
 
 The [T1 command help table](hub-test-cli-command-help.test.ts.md) covers every advertised command and both flags in process.
 
-`hub/test/cli-help.test.ts` is T2 and makes exactly three bounded real CLI
-launches: `--help`, `hub --help` and `session -h`. Each runs through `execFile`
+`hub/test/cli-help.test.ts` is T2 and makes four bounded real CLI
+launches: `--help`, `hub --help`, `session -h` and `task criterion --help`. Each runs through `execFile`
 in its own sealed scratch fixture with invalid config and no hub, awaits the
-child's successful exit, asserts empty stderr and compares stdout against the
-independent frozen help fixtures. The complete top-level bytes remain frozen.
+child's successful exit and asserts empty stderr. The original three compare
+stdout against independent frozen help fixtures; criterion help asserts all
+three documented forms and excludes other task commands. The complete top-level bytes remain frozen.
 Every launch also asserts that project and profile contents/modes/mtimes are
 unchanged. No child writer remains when its scratch directory is removed.
 

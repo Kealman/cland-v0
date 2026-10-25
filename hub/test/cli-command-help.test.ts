@@ -4,6 +4,29 @@ import { test } from 'node:test';
 import { commandHelp } from '../src/cli/help.ts';
 import { sealedHelpProject } from './cli-usage-fixture.ts';
 
+const taskCommands = ['create', 'view', 'migrate', 'plan', 'list', 'comment', 'edit', 'close', 'link', 'hold', 'criterion', 'rank', 'claim', 'import-github'];
+
+test('task help advertises the complete tested subcommand inventory', () => {
+  const advertised = [...commandHelp('task', ['--help'])!.matchAll(/^  task (\S+)/gm)].map(match => match[1]);
+  assert.deepEqual([...new Set(advertised)].sort(), [...taskCommands].sort());
+});
+
+for (const sub of taskCommands) test(`task ${sub} answers both immediate help flags with its own usage`, () => {
+  for (const flag of ['--help', '-h']) {
+    const help = commandHelp('task', [sub, flag]);
+    assert.equal(typeof help, 'string', `task ${sub} ${flag} resolves before execution`);
+    assert.ok(help!.startsWith(`  task ${sub} `));
+    assert.deepEqual([...new Set([...help!.matchAll(/^  task (\S+)/gm)].map(match => match[1]))], [sub]);
+    assert.match(help!, /every task command takes --json, and --as <name> \[--role r\]/);
+  }
+});
+
+test('task help leaves ordinary arguments, unknown commands and non-immediate flags to parsing', () => {
+  for (const args of [['criterion'], ['criterion', 'T-1', '--help'], ['criterion', '--help', 'extra'], ['unknown', '--help'], ['toString', '-h'], ['list', '--json']]) {
+    assert.equal(commandHelp('task', args), undefined, args.join(' '));
+  }
+});
+
 test('every command listed by cland --help answers both help flags without a hub or project changes', t => {
   const fixture = sealedHelpProject(t);
   const before = fixture.snapshot();
