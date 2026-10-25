@@ -1367,6 +1367,7 @@ export class Sessions {
       }
     }
     const publish = (found: Extract<ResumeResult, { found: true }>, pidStarted: string | null) => {
+      if (this.#closed) throw new Error('the hub is closing');
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
       const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null };
@@ -1386,6 +1387,9 @@ export class Sessions {
       return { found: true, process: this.view(process), ...work };
     };
     const settled = resumed(() => {
+      // Close stops the adapters before draining admitted lifecycle operations.
+      // A late native result must not restart supervision or publish into shutdown.
+      if (this.#closed) throw new Error('the hub is closing');
       if (!r.found) {
         const current = row();
         if (!relaunch && r.alive && current.status === 'running') {

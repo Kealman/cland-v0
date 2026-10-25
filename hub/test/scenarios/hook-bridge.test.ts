@@ -32,13 +32,14 @@ test('a bridge exits after its real hub stops even while its parent and stdout r
   await eventually('bridge attached', () => output.includes('"type":"bridged"') ? true : undefined);
   ui.close();
   await hub.stop();
+  // Hold startup recovery itself, so its native completion crosses adapter close.
+  const configDir = (await fake.calls()).find(call => call.args[0] === 'agents')!.configDir;
+  await writeFile(join(configDir, 'agents-hold'), '');
   // The same bridge reads the new discovery and attaches after a short restart.
-  const stoppedResources = hubResources();
+  const stoppedResources = hubResources(true);
   t.after(() => stoppedResources.cancel());
   const restarted = await stoppedResources.run(() => projectHub(t, root, fake.env));
   await eventually('bridge reattached after restart', () => output.split('"type":"bridged"').length >= 3 ? true : undefined);
-  const configDir = (await fake.calls()).find(call => call.args[0] === 'agents')!.configDir;
-  await writeFile(join(configDir, 'agents-hold'), '');
   const queryPid = Number(await eventually('native agents query entered its hold', () => readFile(join(configDir, 'agents-started'), 'utf8').catch(() => undefined)));
   ownProcess(t, queryPid);
   await restarted.stop();

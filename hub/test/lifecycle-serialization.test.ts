@@ -6,12 +6,13 @@ import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { LaunchFiles } from '../src/adapters/launch-files.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
-import { Sessions } from '../src/adapters/sessions.ts';
+import { Sessions, type SessionsOptions } from '../src/adapters/sessions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { createHubBase } from '../src/hub/server.ts';
 import { parseRoles } from '../src/roles/config.ts';
 import { FakeClock } from './fake-clock.ts';
 import { tempProject } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 function deferred() {
   let resolve!: () => void;
@@ -19,14 +20,14 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) => void) {
+async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) => void, processStarted?: SessionsOptions['processStarted']) {
   const root = await tempProject(t);
   let roles = parseRoles('[coordinator.launch]\nharness = "test"\n');
   const clock = new FakeClock();
   const hub = createHubBase({ clock, secret: 'test', roles: { get: () => roles } });
   const table = new ProcessTable(':memory:', clock);
-  const sessions = new Sessions({ core: hub.core, table, root, ...(log ? { log } : {}) });
-  t.after(async () => { await sessions.close(); table.close(); hub.close(); });
+  const sessions = new Sessions({ core: hub.core, table, root, env: fixtureEnvironment(root, {}), ...(log ? { log } : {}), ...(processStarted ? { processStarted } : {}) });
+  t.after(async () => { await sessions.close(); table.close(); await hub.close(); });
   const p = { name: 'impl', harness: 'test', role: null, model: null, cwd: root, pid: null, pidStarted: null, harnessId: null, sessionId: 'stable-id', harnessSessionId: 'conversation', startedAt: '', status: 'stopped' as const };
   table.put(p);
   sessions.register({
@@ -38,6 +39,48 @@ async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) =>
   });
   return { root, table, sessions, hub, revokeStop: () => { roles = parseRoles('[coordinator.launch]\nharness = "test"\n[coordinator.permissions]\ntools = []\n'); } };
 }
+
+for (const outcome of ['found', 'alive', 'identity'] as const) test(`shutdown drains a held ${outcome} resume without restarting supervision or publishing its result`, { timeout: 1000 }, async t => {
+  const entered = deferred(), gate = deferred(), closed = deferred();
+  t.after(() => gate.resolve()); // Release before fixture cleanup even if setup hits the test bound.
+  const records: Array<Record<string, unknown>> = [];
+  const f = await fixture(t, entry => records.push(entry), async () => {
+    entered.resolve(); await gate.promise; return 'fixture-start';
+  });
+  const before = { ...f.table.get('impl')!, status: 'running' as const };
+  f.table.put(before);
+  let watches = 0;
+  f.sessions.register({ ...f.sessions.adapter('test'),
+    resume: async p => {
+      if (outcome !== 'identity') { entered.resolve(); await gate.promise; }
+      return outcome === 'alive' ? { found: false, alive: true, reason: 'native discovery unavailable' }
+        : { found: true, process: { ...p, ...(outcome === 'identity' ? { pid: 91001 } : {}), model: 'late-model' }, state: 'idle' };
+    },
+    watch: () => { watches++; },
+    close: () => closed.resolve(),
+  });
+  // Observe the result immediately, including a shutdown rejection, so no native
+  // completion or failing assertion can strand the lifecycle drain in cleanup.
+  const result = f.sessions.resume('impl').then(value => ({ value, error: undefined }), error => ({ value: undefined, error }));
+  let closing: void | Promise<void>;
+  try {
+    await entered.promise;
+    closing = f.sessions.close();
+    await closed.promise; // Adapter closure, not elapsed time, releases the late completion.
+    gate.resolve();
+    const answer = await result;
+    await closing;
+    assert.match(String(answer.error), /the hub is closing/);
+    assert.equal(watches, 0, 'a closed adapter cannot be asked to watch again');
+    assert.deepEqual(f.table.get('impl'), before, 'the late resume cannot replace the persisted process');
+    assert.equal(records.some(entry => ['session-launched', 'session-resumed', 'session-resume-unavailable'].includes(String(entry.event))), false);
+    assert.equal(f.sessions.lifecyclePending(), false, 'the held operation actually drained');
+  } finally {
+    gate.resolve();
+    await result;
+    await f.sessions.close();
+  }
+});
 
 test('a delayed failing relaunch cannot undo another relaunch that commits to the same files', async t => {
   const f = await fixture(t);

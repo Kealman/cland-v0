@@ -29,7 +29,9 @@ For adapter shutdown, preserve both synchronous and promise-returning `close`
 implementations. Drain transient native CLI callbacks before releasing storage;
 use the scripted close/drain regression and held real-query resource check in
 `docs/agents/tests/hub-test-claude-code-schedule.test.ts.md` and
-`docs/agents/tests/hub-test-scenarios-hook-bridge.test.ts.md`.
+`docs/agents/tests/hub-test-scenarios-hook-bridge.test.ts.md`. Fence late resume
+and identity-probe results before restarting supervision; use the held-result
+matrix in `docs/agents/tests/hub-test-lifecycle-serialization.test.ts.md`.
 
 For local verification cancellation or compatibility recovery, use the sealed cancellation, recreated-root quarantine and blocked-queue seams in `docs/agents/tests.md`. Observe exact descendant death before root cleanup; retain the quarantine journal's old/new inodes and next-run admission receipt. Live machine locks are outside the fixture.
 
