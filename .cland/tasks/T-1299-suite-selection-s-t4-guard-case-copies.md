@@ -3,7 +3,7 @@ id: T-1299
 kind: task
 title: suite-selection's T4 guard case copies every production loadGuard into a one-guard fixture
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1282
 blocked_by: []
 regression_of: T-1259
 found_by: cover
-topic: null
-branch: null
+topic: topic-1048
+branch: t/T-1299-suite-selection-s-t4-guard-case-copies
 created: 2026-10-25T11:30:32.519Z
-updated: 2026-10-25T11:30:32.519Z
+updated: 2026-10-25T11:31:08.748Z
 ---
 
 ## Summary

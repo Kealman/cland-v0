@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1045
 branch: t/T-1233-selection-replay-mutates-the-caller-s
 created: 2026-10-24T11:03:29.065Z
-updated: 2026-10-25T11:30:36.015Z
+updated: 2026-10-25T11:30:49.535Z
 ---
 
 ## Summary
