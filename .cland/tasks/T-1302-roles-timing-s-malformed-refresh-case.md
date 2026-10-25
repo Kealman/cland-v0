@@ -3,8 +3,9 @@ id: T-1302
 kind: task
 title: roles-timing's malformed-refresh case reads its clock before T-1230's async refresh completes
 state: open
-status: planned
+status: in progress
 size: XS
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
@@ -12,10 +13,10 @@ parent: E-1280
 blocked_by: []
 regression_of: T-1230
 found_by: cover
-topic: null
-branch: null
+topic: topic-1053
+branch: t/T-1302-roles-timing-s-malformed-refresh-case
 created: 2026-10-25T12:32:13.237Z
-updated: 2026-10-25T12:32:27.130Z
+updated: 2026-10-25T12:33:55.811Z
 ---
 
 ## Summary
@@ -26,4 +27,10 @@ The fix waits on the refresh's own completion receipt (the `roles-unreadable` ev
 
 ## Acceptance criteria
 
-- [ ] C1. The case passes 5/5 locally and on the Linux droplet at the fix head with its four assertions unchanged, and waits on a refresh completion receipt rather than a counted setImmediate; a negative control that skips the wait fails.
+- [ ] C1. The case passes in the item's mode-free verify on the Linux droplet (changed T3 file, once) and 5/5 locally at the fix head, with its four assertions unchanged; it waits on a refresh completion receipt rather than a counted setImmediate or a timer, and a negative control that skips the wait fails.
+
+## Comments
+
+### impl-1302 · 2026-10-25T12:33:36.231Z
+
+Initial inspection: clean task branch at 422fc48f; no prior uncommitted work. Confirmed specified seam: existing T3 roles-timing subprocess test, observing RolesFile's roles-unreadable event before stop/readback, retaining all four assertions. A-11669 traces T-1230 to roles/config.ts async inventory; no shared contract or production behavior changes needed. Will record existing failure as red/skip-wait control, use a bounded event receipt, run file five times locally, and obtain five Linux executions at reviewed head.
