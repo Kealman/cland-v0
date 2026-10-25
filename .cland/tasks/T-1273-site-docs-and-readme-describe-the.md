@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1022
 branch: t/T-1273-site-docs-and-readme-describe-the
 created: 2026-10-25T06:50:39.988Z
-updated: 2026-10-25T07:16:47.634Z
+updated: 2026-10-25T07:29:32.696Z
 ---
 
 ## Summary
@@ -90,3 +90,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified. A-11633 audits A-11629 inventory/dispositions, A-11631 original local excerpts/build tail and exact-head configured A-11632/run08cf4af6. 3114 ordinary passes/438 file passes; separately three new T1 identities each5/5. Stale-claim scan, identical command/source paths and installer-fact contracts pass; site build retains 23pages/Complete/exit0 with known i18n/404 warnings. Local partial capture/per-command source-hash limits preserved, not complete exact-commit replay. T0/T1/all fallback hub+Neovim T2/Web green; host25.47s/tree47cf680890e552bf0bd1b2368e6bb6e7f778a4fd not remotely repeated. Linux c8lon1/Node24.21/nvim.12.5, HeadlessShell156/v1248; lifetime766s/$0.0532 not wall. Report-only lint133/60, one missing baseline and duration warnings retained. No T3/T4, dedicated changed-tab interaction, clean-machine install, E-778 demo, publication or QA claim. No findings; Coordinator owns enqueue/merge.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-25T07:29:32.696Z
+
+Published marketing marketing/T-1273-install at 4d80c698b4f49deedf0f68afa70fa46cef85548a (GitHub default branch and site); dev a6f349d992396e719ee2f1549c4c50c1a41b3ccb.
