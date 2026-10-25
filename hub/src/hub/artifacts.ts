@@ -14,7 +14,17 @@ export class ArtifactError extends Error {
 }
 const extensions: Record<ArtifactKind, string> = { prompt: '.md', note: '.md', page: '.html', diagram: '.mmd', file: '.txt' };
 
-export async function createArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; kind: 'human' | 'agent'; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock): Promise<Artifact> {
+const creations = new WeakMap<Store, Promise<unknown>>();
+
+/** All callers sharing an index serialize preparation through registration or cleanup. */
+export function createArtifact(...args: Parameters<typeof prepareArtifact>): Promise<Artifact> {
+  const store = args[0], resumed = args[5];
+  const operation = (creations.get(store) ?? Promise.resolve()).then(() => resumed(() => prepareArtifact(...args)));
+  creations.set(store, operation.catch(() => {}));
+  return operation;
+}
+
+async function prepareArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; kind: 'human' | 'agent'; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock): Promise<Artifact> {
   if (!root) throw new ArtifactError('artifact-unavailable', 'this hub serves no project for artifacts');
   if (!(typeof request.kind === 'string' && Object.hasOwn(extensions, request.kind))) throw new ArtifactError('artifact-kind', 'kind must be prompt, note, page, diagram or file');
   if (typeof request.title !== 'string' || !request.title.trim()) throw new ArtifactError('artifact-title', 'an artifact needs a title');
@@ -68,7 +78,7 @@ export async function createArtifact(store: Store, root: string | undefined, req
   const prepared = resumed(() => {
     authorize();
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'artifact';
-    const id = store.nextArtifactId(); // caller serializes creations: reserved across the file write
+    const id = store.nextArtifactId(); // the per-store creation queue holds this id across the file write
     const path = join(dir, `${id}-${slug}${folder ? '' : extension}`);
     return { id, path, opening: folder ? mkdir(path) : open(path, 'wx') };
   });

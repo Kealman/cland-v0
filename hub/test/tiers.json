@@ -52,6 +52,7 @@
     "hub/test/artifact-cleanup-unit.test.ts": "T1",
     "hub/test/artifact-cli-lifecycle.test.ts": "T3",
     "hub/test/artifact-cli.test.ts": "T2",
+    "hub/test/artifact-create-unit.test.ts": "T1",
     "hub/test/artifact-delete.test.ts": "T2",
     "hub/test/artifact-folders.test.ts": "T2",
     "hub/test/artifact-lifecycle.test.ts": "T2",

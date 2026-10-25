@@ -4832,6 +4832,8 @@ Kinds are `prompt`, `note`, `page`, `diagram`, and `file`. Give exactly one of `
 
 The result includes `artifact`, `id`, and `path`. The topic message carries a structured `artifact` field, and session deliveries name `artifact_id` and `artifact_path` in their envelope. Publication obeys the message size cap and the session's send rate limit; refusal leaves no file or index entry. The file content itself is not subject to the message text cap (wire frames retain their existing maximum size).
 
+Creations sharing a hub index queue through file preparation, registration and failure cleanup, including automatic suite and shard logs. Concurrent requests receive distinct ids; a refused publication releases its prepared path before the next creation starts.
+
 The Coordinator and Aides may share in any topic. Other roles may share in their claimed or assigned item's topic or a topic where a request was delivered to them; General and Agents are available to the Coordinator and Aides. Invalid kinds, missing files, unknown topics, invalid titles, and ambiguous sources return typed errors; forbidden topics return `forbidden`. The CLI enforces the same session identity and permissions as spoke calls.
 
 ```sh

@@ -1,4 +1,5 @@
 model-invocable (Init)
+artifact creation concurrency and refusal cleanup T1 seam (T-521)
 merge-batch T0 receipts, bisection and full-plan confirmation guidance (T-1018)
 hub review request (T-226)
 review before verify (D25, T-322)

@@ -33,6 +33,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/account-fixture-env.test.ts`](../../../hub/test/account-fixture-env.test.ts) | [Notes](hub-test-account-fixture-env.test.ts.md) |
 | [`hub/src/hub/store.test.ts`](../../../hub/src/hub/store.test.ts) | [Notes](hub-src-hub-store.test.ts.md) |
 | [`hub/test/artifact-cleanup-unit.test.ts`](../../../hub/test/artifact-cleanup-unit.test.ts) | [Notes](hub-test-artifact-cleanup-unit.test.ts.md) |
+| [`hub/test/artifact-create-unit.test.ts`](../../../hub/test/artifact-create-unit.test.ts) | [Notes](hub-test-artifact-create-unit.test.ts.md) |
 | [`hub/test/approval-records.test.ts`](../../../hub/test/approval-records.test.ts) | [Notes](hub-test-approval-records.test.ts.md) |
 | [`hub/test/approval-restart.test.ts`](../../../hub/test/approval-restart.test.ts) | [Notes](hub-test-approval-restart.test.ts.md) |
 | [`hub/test/ask-outcomes.test.ts`](../../../hub/test/ask-outcomes.test.ts) | [Notes](hub-test-ask-outcomes.test.ts.md) |
