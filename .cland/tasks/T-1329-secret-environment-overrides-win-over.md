@@ -2,8 +2,8 @@
 id: T-1329
 kind: task
 title: Secret environment overrides win over the file and join the sessions' deny-list
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1085
 branch: t/T-1329-secret-environment-overrides-win-over
 created: 2026-10-26T07:54:41.838Z
-updated: 2026-10-26T12:01:18.310Z
+updated: 2026-10-26T12:41:04.242Z
+closed: 2026-10-26T12:41:04.242Z
 ---
 
 ## Summary
@@ -88,3 +89,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear, A-12381; original A-12379/run a26dab25 exits0 at source-2 d4e20387e. Independent audit:3409 ordinary passes including nested,459 files,10 separate actual load passes (two new resolver/file-only T1 cases each5/5). Changed T3 generic filter, actual fake-Claude launch/session and held-cancellation/root-retention cases pass once at .056359231/1.762679969/.036953781 s; no repetitions. Exact names/metadata/receipts and existing filter getter, fixture poison, CLI/secrets/help/docs assertions checked. No new case >=3 s; T3 selected added wall2.791 s excludes machine wait. T0/all T1/fallback all T2/changed T3/Web complete; broader T3/T4 deferred. Linux droplet Node24.21/Neovim0.12.5/HeadlessShell156.0.8078.4 v1248; life682 s/$0.0474. Host typecheck reused, diagnostics report-only including T3 ratchet/incomplete base. Coordinator faa116f6-approved generic speech stand-in only; E-1311 actual launcher and separate integrated cover/landing remain distinct.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-26T12:41:04.242Z
+
+Merged 22136129ccb1c7dca63566e8229d38d1904479e7 onto dev.

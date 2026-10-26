@@ -3,7 +3,7 @@ id: T-1330
 kind: task
 title: Telegram token validation and every held secret registered with the remote redactor
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1084
 branch: t/T-1330-telegram-token-validation-and-every-held
 created: 2026-10-26T07:54:42.430Z
-updated: 2026-10-26T12:12:45.649Z
+updated: 2026-10-26T12:12:46.647Z
 ---
 
 ## Summary

@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1083
 branch: t/T-1331-the-remote-and-speech-configuration-keys
 created: 2026-10-26T07:54:42.573Z
-updated: 2026-10-26T12:12:15.660Z
+updated: 2026-10-26T12:46:07.331Z
 ---
 
 ## Summary
@@ -29,9 +29,11 @@ Add the keys `[remote] mute_default`, `[remote.telegram] enabled` and `format`, 
 ## Acceptance criteria
 
 - [x] C1. `cland init` renders the four sections with their defaults, and `cland update` adds them to a project that lacks them without touching other keys (test).
-  - done: impl-1331 · 2026-10-26T11:55:47.137Z
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final · 2026-10-26T12:24:39.598Z · commit 9918cb61fe32cc2d6e9d8e305a842044ad3ca13f
+  - done: impl-1331 · 2026-10-26T12:45:35.348Z
 - [x] C2. `cland config set remote.telegram.enabled true` with a token present and `cland hub reload` starts a test messenger, and `false` with a reload stops it (test).
-  - done: impl-1331 · 2026-10-26T11:55:47.418Z
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final · 2026-10-26T12:24:39.598Z · commit 9918cb61fe32cc2d6e9d8e305a842044ad3ca13f
+  - done: impl-1331 · 2026-10-26T12:45:36.060Z
 
 ## Comments
 
@@ -74,3 +76,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source review clear; A-12378 resolves M1–M4/L1 and carries the unchanged source1 audit. Only two frozen rows migrated with unchanged assertion sources/order; remote apply attribution retains valid roles admission; post-prepare checks protect both source snapshots; registered heldRemoteBoundary controls own missing/aborted setup and disposal; T1 guide is correctly indexed. A-12375 retains actual local correction red/green outputs/native exits with implementation-tree/provenance limits. No configured/Linux/load evidence yet; C1/C2 runtime verification remains pending. Submit one ordinary mode-free configured verify at this unchanged head and request final evidence review; no dev merge requested.
+
+### impl-1331 · 2026-10-26T12:13:47.017Z
+
+Configured run 8aa40cc7 at source-clear 5790b51bc finished exit0, 3414 ordinary tests all pass, plus 50 passing load-gate samples (10 new identities ×5); T0/T1/T2/Web completed, T3/T4 absent under task selection. Log A-12382. Linux x64 6.8.0-142, droplet c-8 lon1, Node24.21.0, Neovim0.12.5, Chrome Headless Shell156.0.8078.4/v1248 installed; workers2, lifetime745s/cost$0.0517. Duration/lint/ratchet reports are report-only, with over-budget lines retained. Coordinator decision864cd392 authorized one durations-only successor: 9918cb61f adds 4.626s allowance for activation case, E-880, added2026-10-26/expires2026-11-25. Exact samples: Linux ordinary3.035164865s and load worst3.083795257s (A-12382), original local1.012606083s (A-12375); ceil(1.5×worst to ms). No new execution is claimed at9918cb61f; no second mode-free run required by Coordinator unless Reviewer requests. Source review of metadata delta precedes final evidence review.
+
+### rev-31 · 2026-10-26T12:14:32.467Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-delta1
+commit: 9918cb61fe32cc2d6e9d8e305a842044ad3ca13f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized duration-only source delta clear; A-12385. Exactly one seven-line allowance, 4.626 s from ceil-ms(1.5×actual worst load 3.083795257 s), with original local/Linux receipts and Coordinator 864cd392 attribution, open E-880 and approved UTC dates within its configured legacy-owner span. No executable/test/help/assertion delta or merge. A-12378 full source carries. Prior configured A-12382 remains attributed to 5790b51bc; Coordinator explicitly permits that evidence carry for this transcription-only successor. No additional mode-free run requested. C1/C2 remain pending final evidence settlement.
+
+### rev-31 · 2026-10-26T12:24:39.598Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-final
+commit: 9918cb61fe32cc2d6e9d8e305a842044ad3ca13f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1/C2 verified. A-12390 contains independent exact-name/type/outcome/load audit and supersedes A-12389's single missing-baseline filename typo. Executed run8aa40cc7/A-12382 is at5790b51bc, explicitly carried to current9918cb61f under Coordinator864cd392 for the one reviewed allowance-only delta; no new-head execution claimed. 3414 ordinary passes +50 additional load passes, ten new identities5/5 each; init15/15, config-set19/19, strict usage1/1, help4/4. HostT0/allT1/fallbackallT2/Web complete, no remoteT3/T4. Linuxc8lon1 Node24.21/Nvim0.12.5 HeadlessShell156/v1248, lifetime745s/$0.0517; host gate TREE reuse separated. Report-only135lint/61files, two missing baselines, nine budget warnings/Webwall/ratchet limits retained. Reviewed4.626s allowance uses actual3.083795257s worst load and retained local sample. No real-platform/phone/speech claim; QA none/after-stage, Coordinator owns separate enqueue/rule6/integration gates.
+
+Criteria: C1 verified, C2 verified.
