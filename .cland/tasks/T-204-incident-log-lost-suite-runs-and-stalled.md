@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-24T18:37:42.910Z
+updated: 2026-10-26T00:27:51.402Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -398,3 +398,7 @@ Recovery: coord moved all but the newest 5 coverage pointers to `.cland/run/cove
 ### coord · 2026-10-24T18:37:42.910Z
 
 Incident 2026-10-24 17:28–18:36Z: the coord Claude Code session restarted (its background monitors were orphaned; the hub re-sent the role clause at 18:36Z). Effect: impl-1255 waited about 34 min (18:02→18:37Z) for the coordinator-only verify all resubmit at T-1255 d04f0291, and the human's 18:31Z question waited 6 min. No work was lost; the hub kept deliveries in history. Cause not yet known (auto-update re-exec or a harness restart).
+
+### coord · 2026-10-26T00:27:51.402Z
+
+Incident 2026-10-26 00:26Z: the macOS stage cover eb2ca0d8 at dev 998612a6 (A-12206) exited 1 with 0 failing tests. Its T3 hub phase passed (1256 passed, 1 skipped), but the load gate failed all 5 macOS repetitions of T-543's new Linux-only test. The test uses `{ skip: process.platform !== 'linux' }`, a skip with no reason, and the load gate counts a skip only when it carries a reason string. The macOS T3 Neovim, T4 and Web phases didn't run. The Linux cover 20f137a5 at the same tree was green. Fix item T-1318 (regression of T-543); both covers rerun after it lands. Cost: one cover pair, about 40 minutes.

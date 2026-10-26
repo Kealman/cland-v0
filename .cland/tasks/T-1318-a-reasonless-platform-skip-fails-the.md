@@ -11,10 +11,10 @@ assignee: null
 parent: E-1284
 blocked_by: []
 regression_of: T-543
-topic: null
+topic: topic-1070
 branch: t/T-1318-a-reasonless-platform-skip-fails-the
 created: 2026-10-26T00:27:25.158Z
-updated: 2026-10-26T00:27:38.719Z
+updated: 2026-10-26T00:27:55.571Z
 ---
 
 ## Summary
