@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1083
 branch: t/T-1331-the-remote-and-speech-configuration-keys
 created: 2026-10-26T07:54:42.573Z
-updated: 2026-10-26T12:46:07.331Z
+updated: 2026-10-26T13:14:00.283Z
 ---
 
 ## Summary
@@ -30,10 +30,14 @@ Add the keys `[remote] mute_default`, `[remote.telegram] enabled` and `format`, 
 
 - [x] C1. `cland init` renders the four sections with their defaults, and `cland update` adds them to a project that lacks them without touching other keys (test).
   - verified: rev-31 [reviewer] · run rev-20261026-1331-final · 2026-10-26T12:24:39.598Z · commit 9918cb61fe32cc2d6e9d8e305a842044ad3ca13f
-  - done: impl-1331 · 2026-10-26T12:45:35.348Z
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final2 · 2026-10-26T13:02:22.016Z · commit ab60aa31ae799a0f2fbb292e4e940b143f847dd4
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final3 · 2026-10-26T13:06:24.015Z · commit 47a88ac73fe147db561925f84628025c71e4a06f
+  - done: impl-1331 · 2026-10-26T13:11:48.625Z
 - [x] C2. `cland config set remote.telegram.enabled true` with a token present and `cland hub reload` starts a test messenger, and `false` with a reload stops it (test).
   - verified: rev-31 [reviewer] · run rev-20261026-1331-final · 2026-10-26T12:24:39.598Z · commit 9918cb61fe32cc2d6e9d8e305a842044ad3ca13f
-  - done: impl-1331 · 2026-10-26T12:45:36.060Z
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final2 · 2026-10-26T13:02:22.016Z · commit ab60aa31ae799a0f2fbb292e4e940b143f847dd4
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final3 · 2026-10-26T13:06:24.015Z · commit 47a88ac73fe147db561925f84628025c71e4a06f
+  - done: impl-1331 · 2026-10-26T13:11:48.863Z
 
 ## Comments
 
@@ -108,3 +112,76 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified. A-12390 contains independent exact-name/type/outcome/load audit and supersedes A-12389's single missing-baseline filename typo. Executed run8aa40cc7/A-12382 is at5790b51bc, explicitly carried to current9918cb61f under Coordinator864cd392 for the one reviewed allowance-only delta; no new-head execution claimed. 3414 ordinary passes +50 additional load passes, ten new identities5/5 each; init15/15, config-set19/19, strict usage1/1, help4/4. HostT0/allT1/fallbackallT2/Web complete, no remoteT3/T4. Linuxc8lon1 Node24.21/Nvim0.12.5 HeadlessShell156/v1248, lifetime745s/$0.0517; host gate TREE reuse separated. Report-only135lint/61files, two missing baselines, nine budget warnings/Webwall/ratchet limits retained. Reviewed4.626s allowance uses actual3.083795257s worst load and retained local sample. No real-platform/phone/speech claim; QA none/after-stage, Coordinator owns separate enqueue/rule6/integration gates.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-31 · 2026-10-26T12:48:04.735Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-delta2
+commit: ab60aa31ae799a0f2fbb292e4e940b143f847dd4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge-delta source clear; A-12400. Read-only parent-object/line-edit union checks establish no extra executable changes; all shared docs/skill/index/help/frozen content preserved, only docs/agents/secrets.md manual resolution keeping both sections. A-12397 local secrets-environment 2pass/1fail remains failed, actual empty marker vs expected signal handled. Coordinator c06065bd routes this to claimed T-1339 and authorizes continuation. Injected-env/validation wiring remains explicitly assigned to T-1330 by17ce0a94/d79ce055. No merged-head configured pass or current criteria verification claimed. Submit one ordinary mode-free run at unchanged ab60aa31a; if T-1339 recurs retain/report its actual run. Prior rule6 47c63421 at9918cb61 remains separate/running on review read; Coordinator permits carry for this docs-only resolution and owns final gate.
+
+### rev-31 · 2026-10-26T13:02:22.016Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-final2
+commit: ab60aa31ae799a0f2fbb292e4e940b143f847dd4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head merged final evidence clear; C1/C2 verified. A-12407 independent audit of2a3d6c26/A-12405:3416 ordinary passes+50 additional load passes, ten new identities5/5. init15/15, config-set19/19, strict usage1/1/help4/4, imported secrets-resolution2/2 all actual base outcomes. HostT0/allT1/fallbackallT2/Web complete, remoteT3/T4 absent. Local secrets-environment2pass/1fail remains red under Coordinator c06065bd/T-1339; that T3 file was not selected remotely, no reclassification. T-1330 integration boundaries retained. Linuxc8lon1 Node24.21/Nvim0.12.5 HeadlessShell156/v1248, life664s/$0.0461, host gateTREEreuse explicit. Report-only135lint/61files/3missingbaselines/five budget warnings/Webwall/ratchet retained, current activation maxload2.745935407 below unchanged approved4.626cap. Separate rule647c63421 at9918cb61 remains Coordinator-owned without terminal claim here. No Reviewer executions.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-31 · 2026-10-26T13:06:23.551Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-delta3
+commit: 47a88ac73fe147db561925f84628025c71e4a06f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized metadata merge source clear; A-12409. Exactly tracker updates plus durations.json relative to ab60aa31a, no executable/test/assertion delta. Parsed merged durations minus unchanged own4.626s/E880 stanza deep-equals complete second-parent dev;14 removals/2renewals preserved, other fields untouched. Static local lint0 retained in A-12408. Coordinator05e1ff06 explicitly authorizes no new mode-free run for this resolution. Prior source/evidence chain carries with actual executed heads preserved; no current-head runtime claim.
+
+### rev-31 · 2026-10-26T13:06:24.015Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-final3
+commit: 47a88ac73fe147db561925f84628025c71e4a06f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final carried evidence clear; C1/C2 verified at47a88ac73 under explicit Coordinator05e1ff06 metadata-only carry, no new execution claimed. A-12409 preserves independently audited2a3d6c26/A-12405 atab60aa31a:3416ordinary+50loadpasses, ten new identities5/5, exact C1/C2/control receipts; T0/allT1/fallbackallT2/Web, remoteT3/T4 absent. A-12407 full runtime provenance/warnings remain. LocalT1339red stays red/unexecuted remotely; T1330 integration boundary unchanged. Separate rule647c63421 remains9918cb61, no terminal all-green outcome asserted here. No extra suite requested; Coordinator owns enqueue/rule6.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1331 · 2026-10-26T13:11:47.884Z
+
+Rule6 correction at95b030e99: unchanged lifecycle leak case reproduced red at47a88ac73 (nested code0 vs expected1). Root cause was duplicate roles.stop introduced by adding early reload drainage but retaining original late stop. Removed only later duplicate; retained early owner join. Existing test source/assertions unchanged (git diff --exit-code confirmed); no new interval, timeout or fixture behavior. Local macOS working-tree fix checks: targeted positive leak control1/1, full project-hub-lifecycle4/4, config-set19/19, cli-imports3/3, typecheck/wording/diffcheck green. Original red/green outputs retained in artifact. New indexed per-test doc only. Rule647c63421/A-12410 stays red at9918cb61; no configured current-head pass claimed, fresh review then mode-free run required.
+
+### rev-31 · 2026-10-26T13:14:00.283Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-source3
+commit: 95b030e9950b83a2540818af728afdf8aff77f82
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Lifecycle correction source clear; A-12414. Only executable delta removes late duplicate roles.stop; early gateway/reload join remains before edge/store teardown, cached stop/failure collection unchanged. Existing lifecycle tests/helpers/assertions/intervals/timeouts untouched; indexed exact-heading guide added. A-12413 original local red shows nested child actual0/expected1; corrected target1/1, lifecycle4/4, config-set19/19/imports3/3 retain working-tree/macOS attribution, not configured proof. Prior rule6 47c63421/A-12410 remains RED at9918cb61f. C1/C2 current-head runtime verification pending one mode-free run; Coordinator owns fresh rule6 after ready. No new dev merge or Reviewer execution.
