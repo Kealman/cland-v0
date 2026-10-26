@@ -8,7 +8,7 @@
 // what it needs through the port below, so its private state stays its own.
 import { nameRefusal } from '../names.ts';
 import { randomUUID } from 'node:crypto';
-import type { AnswerAttribution, AskCard, HubEvent, Message, SendOutcome, Topic, TopicMessage } from '../protocol.ts';
+import type { AnswerAttribution, HumanActionVia, RemoteVia, AskCard, HubEvent, Message, SendOutcome, Topic, TopicMessage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { cardOf, type AskRow, type Store } from './store.ts';
 import { TopicRefusal, type TopicMove } from './topics.ts';
@@ -42,7 +42,7 @@ export type AskPort = {
   nextLead: (from: string, topic: Topic, forwarding?: boolean) => string | null;
   sendFromSession: (from: string, topic: string, to: string, text: string, replyTo: string, kind: 'question' | 'decision', answerTo?: string, attribution?: AnswerAttribution) => { message: Message; outcomes: SendOutcome[] };
   /** The human writes into a topic: the answer goes this way. */
-  sendFromHuman: (topic: string, text: string, to: string[], answerTo: string, attribution: AnswerAttribution) => { message: TopicMessage; outcomes: SendOutcome[] };
+  sendFromHuman: (topic: string, text: string, to: string[], answerTo: string, attribution: AnswerAttribution, via?: RemoteVia) => { message: TopicMessage; outcomes: SendOutcome[] };
   /** A hub note in a topic to one session: recorded, delivered now or queued. */
   noteTo: (topic: string, session: string, text: string) => void;
 };
@@ -87,7 +87,7 @@ export class Asks {
       id: message.id,
       outcome: upstream?.status === 'declined' && message.text === `declined: ${upstream.reason}`
         ? upstream
-        : { status: 'answered', text: message.text, by: message.answered_as === 'human' ? 'human' : message.answered_by ?? message.from, at: message.ts },
+        : { status: 'answered', text: message.text, by: message.answered_as === 'human' ? 'human' : message.answered_by ?? message.from, at: message.ts, via: upstream?.via ?? message.via },
       ...(attribution ? { attribution } : {}),
     });
   }
@@ -211,7 +211,7 @@ export class Asks {
    * carrying `answer_to`, addressed to the session that asked; the ask is answered. With no other ask open the topic
    * no longer waits for the human: the human spoke last, so it waits for the agent.
    */
-  answer(id: string, option?: number, text?: string, standIn?: string, declined = false, reason?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+  answer(id: string, option?: number, text?: string, standIn?: string, declined = false, reason?: string, via: HumanActionVia = 'neovim'): { message: TopicMessage; outcomes: SendOutcome[] } {
     const p = this.#port;
     const a = p.store.ask(id);
     if (!a) throw new TopicRefusal(`no ask "${id}"`);
@@ -243,8 +243,8 @@ export class Asks {
     p.store.closeAsk(a.id, 'answered', at, {
       id: '', attribution,
       outcome: declined
-        ? { status: 'declined', reason: reason?.trim() ?? '', by: standIn ?? 'human', at }
-        : { status: 'answered', text: body, by: standIn ?? 'human', at, ...(option !== undefined ? { option } : {}) },
+        ? { status: 'declined', reason: reason?.trim() ?? '', by: standIn ?? 'human', at, via }
+        : { status: 'answered', text: body, by: standIn ?? 'human', at, via, ...(option !== undefined ? { option } : {}) },
       ...(option !== undefined ? { option } : {}),
     });
     let sent: { message: TopicMessage; outcomes: SendOutcome[] };
@@ -253,7 +253,7 @@ export class Asks {
       // whose current holder inherited the question (`role.state` lists it)
       const askedAs = p.store.message(a.id)?.fromRole;
       const to = askedAs !== undefined && p.store.roleOf(a.from) !== askedAs ? askedAs : a.from;
-      sent = p.sendFromHuman(a.topic, body, [to], a.id, attribution);
+      sent = p.sendFromHuman(a.topic, body, [to], a.id, attribution, via === 'telegram' || via === 'discord' ? via : undefined);
     } catch (err) {
       p.store.reopenAsk(a.id);
       throw err;

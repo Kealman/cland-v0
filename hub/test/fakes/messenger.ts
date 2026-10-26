@@ -1,5 +1,5 @@
 import { frameClient } from '../harness.ts';
-import type { HubFrame } from '../../src/protocol.ts';
+import type { HubFrame, RemoteVia } from '../../src/protocol.ts';
 import type { RemoteStatus } from '../../src/remote/gateway.ts';
 
 export function testRemoteStates() {
@@ -11,7 +11,9 @@ export function testRemoteStates() {
 }
 
 /** A platform boundary only: requests and receipts use the existing frame protocol. */
-export function testMessenger(id = 'test', options: { startError?: Error } = {}) {
+export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia; startError?: Error } = 'telegram') {
+  const options: { via?: RemoteVia; startError?: Error } = typeof source === 'string' ? { via: source } : source;
+  const via = options.via ?? 'telegram';
   let send: ((frame: Record<string, unknown>) => void) | undefined;
   let receive!: (chunk: string) => void;
   let started = false;
@@ -23,7 +25,7 @@ export function testMessenger(id = 'test', options: { startError?: Error } = {})
     send(JSON.parse(line) as Record<string, unknown>);
   }, fn => { receive = fn; }, () => {});
   return {
-    id, client,
+    id, via, client,
     get started() { return started; },
     get stopped() { return stopped; },
     get running() { return loop !== undefined && !stopped; },

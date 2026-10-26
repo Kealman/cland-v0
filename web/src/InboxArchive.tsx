@@ -1,14 +1,15 @@
 import { useEffect, useId, useState } from 'react';
 import type { Inbox, InboxDeparture } from '../../shared/wire/index.ts';
 import type { ConnectionState } from './connection.ts';
+import { sourceLabel } from './provenance.ts';
 import { useInboxVisit } from './inbox-visit.tsx';
 import s from './InboxArea.module.css';
 
 function outcomeText(row: InboxDeparture) {
   const outcome = row.outcome;
   if (!outcome) return '';
-  if ('status' in outcome) return `${outcome.status === 'declined' ? outcome.reason : `${outcome.option ? `${outcome.option} ` : ''}${outcome.text}`} · ${outcome.by}`;
-  return `${outcome.choice} · ${outcome.by} · ${outcome.via}`;
+  if ('status' in outcome) return `${outcome.status === 'declined' ? outcome.reason : `${outcome.option ? `${outcome.option} ` : ''}${outcome.text}`} · ${outcome.by}${outcome.via ? ` · ${sourceLabel(outcome.via)}` : ''}`;
+  return `${outcome.choice} · ${outcome.by} · ${sourceLabel(outcome.via)}`;
 }
 
 export function InboxArchive({ connection, now }: { connection: ConnectionState; now: number }) {

@@ -1,6 +1,6 @@
 import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
 import { mergeHumanMarks } from './human-marks.ts';
-import type { AnswerAttribution, HumanMessageKind } from '../protocol.ts';
+import type { AnswerAttribution, HumanMessageKind, RemoteVia } from '../protocol.ts';
 import { ModelRing } from './model-ring.ts';
 import { heartbeatDigest } from './heartbeat.ts';
 import { defaultCrew } from '../crew.ts';
@@ -538,7 +538,7 @@ export class HubCore {
       identity: id => this.sessionIdentity(id),
       nextLead: (from, topic, forwarding) => this.#questionLead(from, topic, forwarding),
       sendFromSession: (from, topic, to, text, replyTo, kind, answerTo, attribution) => this.sendFromSession(from, [to], text, replyTo, topic, undefined, undefined, undefined, kind, undefined, false, answerTo, undefined, undefined, attribution),
-      sendFromHuman: (topic, text, to, answerTo, attribution) => this.sendFromHuman(topic, text, to, undefined, answerTo, undefined, undefined, undefined, attribution),
+      sendFromHuman: (topic, text, to, answerTo, attribution, via) => this.sendFromHuman(topic, text, to, undefined, answerTo, undefined, undefined, undefined, attribution, undefined, via),
       // an ask withdrawn or cancelled: a notice in its topic to the asker, through the one notice path
       noteTo: (topic, session, text) => {
         if (this.noticeInTopic(topic, { kind: 'ask-closed', text, to: [session] }) === null) throw new Error(`no topic "${topic}"`);
@@ -560,7 +560,8 @@ export class HubCore {
         const process = this.#processRows?.().find(p => p.sessionId === record.sessionId);
         const item = process?.item ?? this.#sessionItems(record.sessionId)[0];
         const topic = item ? this.#store.topics().find(t => t.item === item) : undefined;
-        this.sendFromHuman(topic?.id ?? 'general', note, [process?.name ?? record.session]);
+        const via = record.outcome?.via;
+        this.sendFromHuman(topic?.id ?? 'general', note, [process?.name ?? record.session], undefined, undefined, undefined, undefined, undefined, undefined, undefined, via === 'telegram' || via === 'discord' ? via : undefined);
       },
       idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
       idle: (session, minutes) => this.publishEvent({ session }, 'session.state', `${session} idle ${minutes} min`, { lifecycle: 'long idle' }),
@@ -3107,7 +3108,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. Only a Question starts a wait for its addressee; every kind marks the topic read.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution, kind: HumanMessageKind = 'message'): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution, kind: HumanMessageKind = 'message', via?: RemoteVia): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -3152,7 +3153,7 @@ export class HubCore {
       from: HUMAN,
       fromKind: 'human',
       kind,
-      via: 'hub',
+      via: via ?? 'hub',
       to: [...sessions, ...placeholders],
       text,
       ts: this.#now().toISOString(),

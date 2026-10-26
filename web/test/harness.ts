@@ -64,7 +64,7 @@ export async function reconnectUntilLive(page: Page): Promise<void> {
   assert.equal(await page.evaluate(live), true, 'fake-clock hub reconnect is Live');
 }
 
-export async function webFixture(t: TestContext, options: { cliLink?: boolean | 'qr'; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void> } = {}) {
+export async function webFixture(t: TestContext, options: { cliLink?: boolean | 'qr'; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void>; gatewayRemotes?: ProjectHubOptions['gatewayRemotes'] } = {}) {
   const root = await tempProject(t, 'w-');
   // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.
   // Keep it short and owned, including the browser's artifacts and crash paths.
@@ -74,7 +74,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean | 
   process.env.PLAYWRIGHT_BROWSERS_PATH = browserCache;
   const env = await accountFixtureEnvironment({ TMPDIR: root, TMP: root, TEMP: root, PLAYWRIGHT_BROWSERS_PATH: browserCache });
   await options.prepare?.(root);
-  const hubOptions = { ...(options.clock ? { clock: options.clock } : {}), ...(options.accountReader ? { accountReader: options.accountReader } : {}) };
+  const hubOptions = { ...(options.gatewayRemotes ? { gatewayRemotes: options.gatewayRemotes } : {}), ...(options.clock ? { clock: options.clock } : {}), ...(options.accountReader ? { accountReader: options.accountReader } : {}) };
   let hub = await projectHub(t, root, {}, hubOptions);
   const openers = join(root, 'openers');
   if (options.cliLink) {

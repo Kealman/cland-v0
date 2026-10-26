@@ -3,6 +3,7 @@ import type { AskCard as Card } from '../../shared/wire/index.ts';
 import type { ConnectionState } from './connection.ts';
 import type { Shortcut } from './keymap.ts';
 import { BottomSheet } from './BottomSheet.tsx';
+import { sourceLabel } from './provenance.ts';
 import { usePhone } from './phone.ts';
 import s from './AskCard.module.css';
 
@@ -37,7 +38,7 @@ export function AskCard({ id, topic, card, connection, context = 'ask', phoneOpe
   const outcome = card.outcome;
   if (card.state !== 'open') return <div tabIndex={0} data-key-context={context} data-ask-id={id} data-ask-state={card.state} className={s.folded} title={card.question}>
     <span data-ask-outcome>{outcome ? outcome.status === 'declined' ? `Declined: ${outcome.reason}` : `${outcome.option ? `${outcome.option} ` : ''}${outcome.text}` : card.state}</span>
-    {outcome && <><span> · {outcome.by} · </span><time dateTime={outcome.at}>{new Date(outcome.at).toLocaleString()}</time></>}
+    {outcome && <><span> · {outcome.by}{outcome.via && <> · <span>{sourceLabel(outcome.via)}</span></>} · </span><time dateTime={outcome.at}>{new Date(outcome.at).toLocaleString()}</time></>}
   </div>;
   const controls = <section tabIndex={0} data-key-context={phone ? "sheet" : context} data-ask-id={id} data-ask-state="open" className={s.card} data-phone-sheet={phone || undefined} data-editing={editing || undefined} aria-label={card.question}>
     <div className={s.heading}><h3>{card.question}</h3>{!phone && !card.to && <a href={`#inbox/${encodeURIComponent(id)}`} onClick={event => { event.preventDefault(); openInbox(id, event.currentTarget); }}>In Inbox</a>}</div>

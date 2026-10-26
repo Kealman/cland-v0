@@ -647,6 +647,7 @@
     "nvim/test/progress-counts-component.test.ts": "T2",
     "nvim/test/qa-shipped.test.ts": "T4",
     "nvim/test/qa.test.ts": "T3",
+    "nvim/test/remote-via.test.ts": "T2",
     "nvim/test/rulebook-component.test.ts": "T2",
     "nvim/test/rulebook.test.ts": "T3",
     "nvim/test/scenarios/workbench.test.ts": {
@@ -701,6 +702,7 @@
     "web/test/phone.test.ts": "Web",
     "web/test/plan.test.ts": "Web",
     "web/test/readme.test.ts": "Web",
+    "web/test/remote-via.test.ts": "Web",
     "web/test/session-actions.test.ts": "Web",
     "web/test/session-drawer.test.ts": "Web",
     "web/test/session-launch.test.ts": "Web",

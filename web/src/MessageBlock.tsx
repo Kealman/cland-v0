@@ -6,6 +6,7 @@ import { AskCard } from './AskCard.tsx';
 import { InlineArtifact } from './artifacts/InlineArtifact.tsx';
 import { useMessageWithdrawal } from './message-withdrawal.ts';
 import s from './MessageBlock.module.css';
+import { remoteSource } from './provenance.ts';
 import { usePhone } from './phone.ts';
 
 const roles: Record<string, string> = { human: 'Human', aide: 'Aide', coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', hub: 'Hub', other: 'Other' };
@@ -46,6 +47,7 @@ export function MessageBlock({ message, connection, showTopic = false }: { messa
         <span data-message-role className={s.role}>{roles[role]}</span>
         <span>→ {message.to.length ? message.to.map(name => name === 'human' ? 'you' : name).join(', ') : 'you'}</span>
         <span>{shownKind}</span>
+        {remoteSource(message.via) && <span>{remoteSource(message.via)}</span>}
         {showTopic && <span data-message-topic={message.topic}>{connection.topics?.find(topic => topic.id === message.topic)?.title ?? message.topic}</span>}
         {verdict && <span data-verdict={verdict.result} className={verdict.result === 'clear' ? s.verified : s.failed}>
           {verdict.result === 'clear' && message.fromKind === 'agent' ? <ItemText text={message.text.split(/[\r\n]/)[0]!} /> : `${verdict.kind} ${verdict.result}`}

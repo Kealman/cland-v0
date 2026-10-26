@@ -288,6 +288,8 @@ function Thread:_build(m, prev, answer)
       -- name [Role], as everywhere (spec 4.4): the role's label, never its key
       put(require('cland.state').label(name, mm.fromRole):sub(#name + 1), group)
     end
+    local source = require('cland.provenance').remote(mm.via)
+    if source then put(' · ' .. source, 'ClandDim') end
     if mm.fromRole == 'aide' then put(' · speaks for you', group) end
     local to = addressees(mm)
     if #to > 0 then
@@ -334,6 +336,10 @@ function Thread:_build(m, prev, answer)
     local declined = card and type(card.outcome) == 'table' and card.outcome.status == 'declined'
     if declined then
       put('  declined: ' .. tostring(card.outcome.reason):gsub('[\r\n]+', ' '), 'ClandDim')
+    end
+    if card and type(card.outcome) == 'table' then
+      local source = require('cland.provenance').remote(card.outcome.via)
+      if source then put(' · ' .. source, 'ClandDim') end
     end
     if card then
       local st = declined and { 'declined', 'ClandDim' } or card.state == 'open' and card.to and { card.forwarded and 'forwarded' or ('waiting for ' .. card.to), 'ClandDim' } or require('cland.ask_card').STATE[card.state] or { tostring(card.state), 'ClandDim' }

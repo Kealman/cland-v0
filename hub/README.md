@@ -564,6 +564,17 @@ Any own `as` field is refused. The gateway owns the client hello and subscribes
 to model frames; a remote cannot open another identity or subscription. Local,
 web and spoke clients retain their existing policies and wire shapes.
 
+Each remote supplies its trusted `via` (`telegram` or `discord`) to the gateway.
+The gateway passes it as in-process request metadata on the shared conversation,
+never as a client-controlled frame field. Human messages and answer messages
+record that value; ask and approval outcomes carry it into live cards, history
+and the durable inbox archive. Denial notes sent as human messages when a
+harness cannot carry them retain it too. Both workbenches show `via Telegram`
+or `via Discord` on remote messages and outcomes. Local messages keep `hub`;
+local approval sources remain `neovim`, `web` and `harness`. No new feature
+negotiation or protocol version is required: old hello and request shapes work,
+and clients accept ask outcomes without `via` from an older hub or stored row.
+
 ## Connection events filter
 
 `subscribe` accepts `filter?: EventsFilter`, the same fields as `events.list`:
@@ -998,15 +1009,17 @@ An **ask** is a question the Coordinator puts to the human inside a topic (spec 
 
 An answered `AskCard` also carries `outcome`, both in the live `ask` event and on
 later `topic.history` pages. Its shape is
-`{status: "answered", text: "<full answer>", option?: n, by: "<answerer>", at: "<ISO time>"}`.
+`{status: "answered", text: "<full answer>", option?: n, by: "<answerer>", at: "<ISO time>", via?: "<source>"}`.
 `option` is 1-based and absent for a free answer; `text` is the chosen option's
 text or the trimmed free answer, including every line. `by` is `human`, the
 self-declared stand-in name, or the answering agent's name; forwarded decisions
-preserve a recorded stand-in. `at` is the answer time. The outcome is stored on
+preserve a recorded stand-in and the upstream outcome source. `at` is the answer time.
+New human outcomes record `via` as `neovim`, `web`, `telegram` or `discord`;
+agent answers record `session`. The field is optional for older rows and hubs. The outcome is stored on
 the ask, independently of the reply message, and survives hub restarts. Existing
 `answer`, `option` and attribution fields stay available. Legacy rows without a
 stored outcome omit it. A declined outcome is
-`{status: "declined", reason: "<trimmed full reason>", by, at}`; it omits `text`
+`{status: "declined", reason: "<trimmed full reason>", by, at, via?}`; it omits `text`
 and `option` and retains the reason independently of its delivery message.
 
 A human ask records its inbox wait atomically at creation, even before a client
@@ -1043,11 +1056,11 @@ An `ApprovalRecord` adds `sessionId`, optional `role` and `topic`, `kind` (`comm
 
 `AdapterHost.approvalRequested(sessionId, request)` reports a native request and `approvalClosed(sessionId, nativeRequestId, outcome)` reports its close. The hub allowlists the subject's `command`, `cwd`, `reason`, `files` and `change`, limiting the UTF-8 JSON subject to 64 KiB; no other tool input is carried. `command` also stays at the row's top level for existing clients. A request's record travels in the snapshot's inbox and an `approval {approval: ApprovalRecord}` delta on each change, beside the coalesced `inbox` delta. Repeated request/close reports are idempotent. The in-process fake adapter exposes `raiseApproval` and `closeApproval` to drive this boundary.
 
-A closed record carries `outcome: {choice, note?, by, via, at}`, where `choice` is one of the choices above, `answered in the harness`, or `withdrawn`; `via` is `neovim`, `web` or `harness`. The closed delta folds the record to its outcome; the pending row leaves for the durable seven-day inbox archive with that outcome and attribution. State-only fallback closes report `answered in the harness`, without inferring consent. Nothing answers an approval on a timer or by default: it waits for the human, the harness's own answer, or withdrawal.
+A closed record carries `outcome: {choice, note?, by, via, at}`, where `choice` is one of the choices above, `answered in the harness`, or `withdrawn`; `via` is `neovim`, `web`, `telegram`, `discord` or `harness`. The closed delta folds the record to its outcome; the pending row leaves for the durable seven-day inbox archive with that outcome and attribution. State-only fallback closes report `answered in the harness`, without inferring consent. Nothing answers an approval on a timer or by default: it waits for the human, the harness's own answer, or withdrawal.
 
 `approval.answer {id, approval, choice, note?}` is a human-only client frame, allowed through the authenticated web edge and local Neovim connection. `approval` is the complete record id; `choice` is `once` (Approve once), `always` (Always for this command), or `deny`. The note is optional, including for Deny. Notes must fit the configured human-message byte cap (8192 bytes by default), checked before reservation or native delivery so the topic fallback can carry them. Every agent session, Aides included, is refused; there is no agent tool or CLI answer command. TUI-only records refuse with `answer in Neovim`; missing records and choices the record does not offer are refused without changing it.
 
-The gate reserves the first valid answer synchronously: its `answering` delta carries the intended `outcome` with `by: human`, `via: neovim|web` and `at`. A competing or later answer is refused with `approval already answered by <by> via <via> at <at>`, including after the closed outcome has entered the durable archive. Successful delivery returns `{approval: <closed record>}` and broadcasts one closed delta to every subscriber. An adapter confirmation that identifies the same human outcome preserves that attribution; matching only the choice is insufficient.
+The gate reserves the first valid answer synchronously: its `answering` delta carries the intended `outcome` with `by: human`, `via: neovim|web|telegram|discord` and `at`. A competing or later answer is refused with `approval already answered by <by> via <via> at <at>`, including after the closed outcome has entered the durable archive. Successful delivery returns `{approval: <closed record>}` and broadcasts one closed delta to every subscriber. An adapter confirmation that identifies the same human outcome preserves that attribution; matching only the choice is insufficient.
 
 A harness TUI can win while a hub answer is in flight. A native resolution observed before Codex's response-write receipt, or an OpenCode reply refused as not found after an attached client answered, closes the record with the harness's outcome. The losing hub answer is refused with who answered and when; its attempted choice and note do not replace the winner. OpenCode's HTTP reply receipt distinguishes its own confirmation from another client's event, including when both chose Deny.
 

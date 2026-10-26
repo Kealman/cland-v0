@@ -8,7 +8,9 @@
 export type FromKind = 'human' | 'agent' | 'hub';
 
 // hub/src/protocol.ts
-export type Via = 'session' | 'hub';
+export type RemoteVia = 'telegram' | 'discord';
+export type HumanActionVia = 'neovim' | 'web' | RemoteVia;
+export type Via = 'session' | 'hub' | RemoteVia;
 
 // hub/src/protocol.ts
 export type HumanMessageKind = 'message' | 'decision' | 'question';
@@ -160,7 +162,7 @@ export type Message = {
 
 // hub/src/protocol.ts
 /** The durable decision carried by an ask and its inbox departure. */
-export type AskOutcome = { by: string; at: string } & (
+export type AskOutcome = { by: string; at: string; via?: Via | HumanActionVia } & (
   | { status: 'answered'; text: string; option?: number }
   | { status: 'declined'; reason: string }
 );
@@ -246,7 +248,7 @@ export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: s
 
 // hub/src/protocol.ts
 export type ApprovalChoice = 'once' | 'always' | 'deny';
-export type ApprovalOutcome = { choice: ApprovalChoice | 'answered in the harness' | 'withdrawn'; note?: string; by: string; via: 'neovim' | 'web' | 'harness'; at: string };
+export type ApprovalOutcome = { choice: ApprovalChoice | 'answered in the harness' | 'withdrawn'; note?: string; by: string; via: HumanActionVia | 'harness'; at: string };
 export type ApprovalSubject = { command?: string; cwd?: string; reason?: string; files?: string[]; change?: string };
 /** One harness request, retaining the original inbox fields for existing clients. */
 export type ApprovalRecord = { layer?: Layer; id: string; session: string; sessionId: string; role?: string; label: string; harness: string | null; kind: 'command' | 'file change' | 'other'; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn: 'hub' | 'tui'; attach: string | null; since: string; topic?: string; state: 'pending' | 'answering' | 'closed'; outcome?: ApprovalOutcome; command?: string };

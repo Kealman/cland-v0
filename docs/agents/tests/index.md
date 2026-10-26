@@ -239,3 +239,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/tracker-ready-native.test.ts`](../../../hub/test/tracker-ready-native.test.ts) | [Notes](hub-test-tracker-ready-native.test.ts.md) |
 | [`hub/test/suite-timeouts.test.ts`](../../../hub/test/suite-timeouts.test.ts) | [Notes](hub-test-suite-timeouts.test.ts.md) |
 | [`hub/test/suite-check.test.ts`](../../../hub/test/suite-check.test.ts) | [Notes](hub-test-suite-check.test.ts.md) |
+| [`nvim/test/remote-via.test.ts`](../../../nvim/test/remote-via.test.ts) | [Notes](nvim-test-remote-via.test.ts.md) |
+| [`web/test/remote-via.test.ts`](../../../web/test/remote-via.test.ts) | [Notes](web-test-remote-via.test.ts.md) |

@@ -66,6 +66,7 @@ import {
   isSpokeRequest,
   parseFrame,
   type HubFrame,
+  type RemoteVia,
   type HubStatus,
   type Message,
   type RefusalCode,
@@ -125,8 +126,8 @@ export type Control = {
 };
 
 export type Conversation = {
-  /** One frame as it arrived on the wire. */
-  receive: (raw: string) => void;
+  /** One frame; only the in-process gateway supplies trusted messenger provenance. */
+  receive: (raw: string, via?: RemoteVia) => void;
   /** The transport closed. */
   closed: () => void;
 };
@@ -1662,7 +1663,7 @@ export class Dispatcher {
       }
     };
 
-    const clientRequest = (frame: Record<string, unknown>) => {
+    const clientRequest = (frame: Record<string, unknown>, via?: RemoteVia) => {
       // Retired frames are outside the protocol, but old clients need a useful refusal.
       if (frame.type === 'inbox.dismiss' || frame.type === 'inbox.dismiss_all') {
         return peer.send({ type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
@@ -1709,7 +1710,7 @@ export class Dispatcher {
             return answer(core.withdrawHumanMessage(frame.topic, frame.message));
           }
           case 'topic.send': {
-            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, undefined, undefined, frame.kind);
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, undefined, undefined, frame.kind, via);
             return answer({ message, outcomes });
           }
           case 'topic.rename':
@@ -1781,13 +1782,13 @@ export class Dispatcher {
             return answer(core.unmute(frame.a, frame.b));
           case 'approval.answer': {
             const resumed = this.#guard.resumer(frame.type, client);
-            return later(frame.type, core.inbox.answerApproval(frame.approval, frame.choice, frame.note, transport.edge === 'web' ? 'web' : 'neovim', (sessionId, requestId, value) => {
+            return later(frame.type, core.inbox.answerApproval(frame.approval, frame.choice, frame.note, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), (sessionId, requestId, value) => {
               if (!this.#sessions) throw new Error('the hub has no adapters');
               return this.#sessions.answerApproval(sessionId, requestId, value);
             }, resumed).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
           case 'topic.answer':
-            return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason));
+            return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim')));
           case 'events.list': {
             const resumed = this.#guard.resumer(frame.type);
             return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter ?? eventsFilter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
@@ -1986,7 +1987,7 @@ export class Dispatcher {
       return again !== null;
     };
 
-    const handle = (frame: Record<string, unknown>): void => {
+    const handle = (frame: Record<string, unknown>, via?: RemoteVia): void => {
         if (kind === 'spoke') {
           // A replaced or closing socket's buffered frames would act under a name it no longer holds.
           if (!peer.isOpen() || connection === null || !core.isCurrent(connection)) {
@@ -2309,11 +2310,11 @@ export class Dispatcher {
           return;
         }
         if (frame.type === 'merge' && isClientRequest(frame)) return merge(frame as import('../protocol.ts').MergeRequest, caller);
-        clientRequest(frame);
+        clientRequest(frame, via);
     };
 
     return {
-      receive: (raw) => {
+      receive: (raw, via) => {
         if (done) return;
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
@@ -2326,7 +2327,7 @@ export class Dispatcher {
           return hello(frame);
         }
         // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
-        this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame));
+        this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame, transport.edge === 'gateway' ? via : undefined));
       },
       closed: () => {
         done = true;

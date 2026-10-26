@@ -2,6 +2,7 @@
 local api = vim.api
 local state = require('cland.state')
 local visibility = require('cland.visibility')
+local provenance = require('cland.provenance')
 local ask_card = require('cland.ask_card')
 
 local M = {}
@@ -25,7 +26,7 @@ local function outcome_label(outcome)
   return choice .. ' by ' .. (outcome.by == 'human' and 'the human' or outcome.by)
 end
 local function outcome_text(outcome)
-  return outcome_label(outcome) .. ' via ' .. outcome.via .. ' at ' .. outcome.at
+  return outcome_label(outcome) .. ' ' .. (provenance.remote(outcome.via) or ('via ' .. outcome.via)) .. ' at ' .. outcome.at
 end
 
 function M.approval_changed(record)
@@ -109,7 +110,9 @@ local function render_row(c, entry, selected)
     if r.state == 'closed' and type(r.outcome) == 'table' then
       info.text = outcome_text(r.outcome)
       local summary = outcome_label(r.outcome)
-      local where_when = c.width >= 90 and (r.outcome.via .. ' · ' .. r.outcome.at) or clock(r.outcome.at)
+      local source = provenance.remote(r.outcome.via)
+      if source then summary = summary .. ' ' .. source end
+      local where_when = c.width >= 90 and ((source and '' or r.outcome.via .. ' · ') .. r.outcome.at) or clock(r.outcome.at)
       c:add({ { ' ✓ ' .. summary, 'ClandDim' } }, { { where_when .. ' ', 'ClandDim' } }, info)
       return
     end
@@ -216,6 +219,12 @@ function M.render(c, full, buf)
     local rows = state.S.inbox.archive or {}
     for _, r in ipairs(rows) do
       local text = r.kind .. ' · ' .. r.subject .. ' · ' .. first_line(r.text)
+      if type(r.outcome) == 'table' then
+        local o = r.outcome
+        local detail = o.status and ((o.status == 'declined' and o.reason or o.text) .. ' · ' .. o.by) or outcome_label(o)
+        if o.via and o.via ~= vim.NIL then detail = detail .. ' · ' .. provenance.label(o.via) end
+        text = text .. ' · ' .. detail
+      end
       -- Wrap the archive so when and why are visible in the narrow panel too.
       for _, line in ipairs(wrapped(text, c.width - 2)) do c:add({ { ' ' .. line, 'ClandDim' } }) end
       for _, line in ipairs(wrapped(r.ts .. ' · ' .. r.reason, c.width - 2)) do c:add({ { ' ' .. line, 'ClandDim' } }) end

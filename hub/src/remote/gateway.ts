@@ -1,11 +1,12 @@
 import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
-import { PROTOCOL_VERSION, type HubFrame } from '../protocol.ts';
+import { PROTOCOL_VERSION, type HubFrame, type RemoteVia } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { remoteRedactor } from './redact.ts';
 
 /** One active remote per messenger. The gateway owns its lifetime and frame port. */
 export type Remote = {
   id: string;
+  via: RemoteVia;
   start: (send: (frame: Record<string, unknown>) => void) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
   /** Lifetime promise for the platform loop; stop must settle it and drain its writers. */
@@ -72,7 +73,7 @@ export class Gateway {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
           const id = `gateway-${++this.#nextId}`;
           this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
-          this.#conversation!.receive(JSON.stringify({ ...frame, id }));
+          this.#conversation!.receive(JSON.stringify({ ...frame, id }), remote.via);
         });
       } catch (error) {
         this.#disable(remote, error);

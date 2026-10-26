@@ -31,6 +31,11 @@ For gateway routing, authority or remote failure isolation, use the sealed frame
 test-messenger seam in `docs/agents/tests/hub-test-gateway.test.ts.md`. Keep
 authority before replay/actor resolution and resolve reply topics from stored
 messages. Platform clients use the gateway's frame port, never a hub credential.
+Messenger provenance is trusted per-request metadata, not a frame field; keep
+remote messages, ask outcomes, approval outcomes and fallback denial notes in
+step. Preserve optional-source compatibility for old ask outcomes; the headless
+workbench regressions are `web/test/remote-via.test.ts` and
+`nvim/test/remote-via.test.ts`.
 
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 

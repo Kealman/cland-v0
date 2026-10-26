@@ -3,6 +3,7 @@ import type { ApprovalChoice, ApprovalRecord } from '../../shared/wire/index.ts'
 import type { ConnectionState } from './connection.ts';
 import type { Shortcut } from './keymap.ts';
 import { BottomSheet } from './BottomSheet.tsx';
+import { sourceLabel } from './provenance.ts';
 import { usePhone } from './phone.ts';
 import s from './AskCard.module.css';
 import a from './ApprovalCard.module.css';
@@ -29,7 +30,7 @@ export function ApprovalCard({ record, connection, phoneOpen, closePhone }: { re
   };
   if (record.state === 'closed') return <div tabIndex={0} data-approval-outcome className={`${s.folded} ${a.folded}`}>{record.outcome && <>
     <span>{({ once: 'Approved once', always: 'Approved always', deny: 'Denied', withdrawn: 'Withdrawn', 'answered in the harness': 'Answered in the harness' })[record.outcome.choice]} by {record.outcome.by === 'human' ? 'the human' : record.outcome.by}</span>
-    <span> · {record.outcome.via} · </span><time dateTime={record.outcome.at}>{new Date(record.outcome.at).toLocaleString()}</time>
+    <span> · {sourceLabel(record.outcome.via)} · </span><time dateTime={record.outcome.at}>{new Date(record.outcome.at).toLocaleString()}</time>
   </>}</div>;
   const recovering = connection.recoveringApprovals?.has(record.id);
   const disabled = !!recovering || !connection.live || pending || record.state !== 'pending';

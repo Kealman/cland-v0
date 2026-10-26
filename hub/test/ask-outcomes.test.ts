@@ -55,7 +55,7 @@ test('C1: an option outcome stays on the thread entry in live cards and later hi
   const mark = ui.frames.length;
   const changed = ui.waitFor(f => f.type === 'ask' && f.ask === asked.ask && (f.card as AskCard).state === 'answered' && ui.frames.indexOf(f) >= mark);
   const answer = await ok<{ message: TopicMessage }>(ui, { type: 'topic.answer', ask: asked.ask, option: 2 });
-  const expected = { status: 'answered', text: 'allocated', option: 2, by: 'human', at: '2026-10-22T07:00:01.000Z' };
+  const expected = { via: 'neovim', status: 'answered', text: 'allocated', option: 2, by: 'human', at: '2026-10-22T07:00:01.000Z' };
   const card = (await changed).card as AskCard;
   assert.deepEqual(card.outcome, expected);
   assert.equal(card.answer, answer.message.id);
@@ -79,7 +79,7 @@ test('C2: the inbox publishes an answered departure with the thread outcome and 
   await ok(ui, { type: 'topic.answer', ask: asked.ask, option: 2 });
   await clock.advance(250);
   const inbox = (await departureFrame).inbox as Inbox;
-  const expected = { status: 'answered', text: 'allocated', option: 2, by: 'human', at: '2026-10-22T08:00:00.000Z' };
+  const expected = { via: 'neovim', status: 'answered', text: 'allocated', option: 2, by: 'human', at: '2026-10-22T08:00:00.000Z' };
   assert.deepEqual(inbox.departures?.map(d => [d.id, d.reason, d.outcome]), [[asked.ask, 'answered', expected]]);
   assert.equal(inbox.asks.length, 0);
   const history = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'general' });
@@ -105,7 +105,7 @@ test('C3: a free answer retains its full text and answerer in the thread and dep
   const changed = ui.waitFor(f => f.type === 'ask' && f.ask === asked.ask && (f.card as AskCard).state === 'answered' && ui.frames.indexOf(f) >= mark);
   const departed = ui.waitFor(f => f.type === 'inbox' && ui.frames.indexOf(f) >= mark);
   const answer = await ok<{ message: TopicMessage }>(ui, { type: 'topic.answer', ask: asked.ask, text: '  Wait for QA.\nThen ship.  ', as: { name: 'stand-in' } });
-  const expected = { status: 'answered', text: 'Wait for QA.\nThen ship.', by: 'stand-in', at: '2026-10-22T09:00:00.000Z' };
+  const expected = { via: 'neovim', status: 'answered', text: 'Wait for QA.\nThen ship.', by: 'stand-in', at: '2026-10-22T09:00:00.000Z' };
   assert.equal(answer.message.text, expected.text);
   assert.deepEqual(((await changed).card as AskCard).outcome, expected);
   await clock.advance(250);
@@ -157,7 +157,7 @@ test('declining C3: thread and inbox departure retain the reason, answerer and t
   const changed = ui.waitFor(f => f.type === 'ask' && f.ask === asked.ask && (f.card as AskCard).state === 'answered' && ui.frames.indexOf(f) >= mark);
   const departed = ui.waitFor(f => f.type === 'inbox' && (f.inbox as Inbox).departures?.some(d => d.id === asked.ask) === true && ui.frames.indexOf(f) >= mark);
   await ok(ui, { type: 'topic.answer', ask: asked.ask, declined: true, reason: '  QA pending.\nWait for its report.  ', as: { name: 'stand-in' } });
-  const expected = { status: 'declined', reason: 'QA pending.\nWait for its report.', by: 'stand-in', at: '2026-10-22T10:00:00.000Z' };
+  const expected = { via: 'neovim', status: 'declined', reason: 'QA pending.\nWait for its report.', by: 'stand-in', at: '2026-10-22T10:00:00.000Z' };
   assert.deepEqual(((await changed).card as AskCard).outcome, expected);
   await clock.advance(250);
   const inbox = (await departed).inbox as Inbox;

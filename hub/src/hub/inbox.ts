@@ -10,7 +10,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
-import type { ApprovalChoice, ApprovalOutcome, HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, InboxRequest, InboxMessage, InboxPlan, InboxDeparture, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
+import type { ApprovalChoice, ApprovalOutcome, HumanActionVia, HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, InboxRequest, InboxMessage, InboxPlan, InboxDeparture, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from './budget.ts';
 import { HygieneError } from './hygiene.ts';
@@ -390,7 +390,7 @@ export class InboxBoard {
     return true;
   }
 
-  async answerApproval(id: string, choice: ApprovalChoice, note: string | undefined, via: 'neovim' | 'web', deliver: (sessionId: string, requestId: string, answer: { choice: ApprovalChoice; note?: string }) => Promise<{ noteDelivered: boolean }>, resumed: Resumed): Promise<InboxApproval> {
+  async answerApproval(id: string, choice: ApprovalChoice, note: string | undefined, via: HumanActionVia, deliver: (sessionId: string, requestId: string, answer: { choice: ApprovalChoice; note?: string }) => Promise<{ noteDelivered: boolean }>, resumed: Resumed): Promise<InboxApproval> {
     const record = this.#approvals.get(id);
     const previous = record?.outcome ?? this.#port.store.inboxOutcome('approval', id);
     if (previous && 'via' in previous) throw new Error(`approval already answered by ${previous.by} via ${previous.via} at ${previous.at}`);

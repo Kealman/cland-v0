@@ -2,9 +2,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { connectUi, inProcessSpoke, projectHub, tempProject, until } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
 import { testMessenger, testRemoteStates } from './fakes/messenger.ts';
 import { WEB_AUTHORITY } from '../src/hub/web-authority.ts';
-import type { Inbox, TopicMessage } from '../src/protocol.ts';
+import type { Inbox, InboxApproval, TopicMessage } from '../src/protocol.ts';
 import { Gateway } from '../src/remote/gateway.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { caseDeadlines } from './case-deadlines.ts';
@@ -250,7 +251,7 @@ test('gateway mirrors General and delivers a reply as the human, then stops with
   const messenger = testMessenger();
   const log: Array<Record<string, unknown>> = [];
   // Previous Remote shape: no run hook and synchronous start/receive/stop.
-  const legacy = { id: messenger.id, start: messenger.start, receive: (frame: import('../src/protocol.ts').HubFrame) => { void messenger.receive(frame); }, stop: messenger.stop };
+  const legacy = { id: messenger.id, via: messenger.via, start: messenger.start, receive: (frame: import('../src/protocol.ts').HubFrame) => { void messenger.receive(frame); }, stop: messenger.stop };
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [legacy], log: entry => { log.push(entry); } });
   assert.equal(messenger.started, true, 'the hub starts its gateway remote');
   const welcome = await messenger.client.waitFor(f => f.type === 'welcome');
@@ -277,15 +278,16 @@ test('gateway mirrors General and delivers a reply as the human, then stops with
   assert.throws(() => messenger.client.send({ type: 'topic.send', topic: 'general', text: 'after stop' }), /not running/);
 });
 
-test('gateway allows General, same-topic replies, asks, approvals and status/inbox reads through the frame protocol', async t => {
+for (const via of ['telegram', 'discord'] as const) test(`gateway ${via} records messages, ask outcomes and approvals through the old client frames`, async t => {
   const root = await tempProject(t);
-  const messenger = testMessenger();
-  const hub = await projectHub(t, root, {}, { gatewayRemotes: [messenger] });
+  const messenger = testMessenger(via, { via });
+  const hub = await projectHub(t, root, {}, { gatewayRemotes: [messenger], clock: new FakeClock() });
   const local = await connectUi(t, hub.discovery);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-  const general = await messenger.client.request({ type: 'topic.send', topic: 'general', text: 'new remote message' });
+  const general = await messenger.client.request({ type: 'topic.send', topic: 'general', text: 'new remote message', via: via === 'telegram' ? 'discord' : 'telegram' });
   assert.equal(general.ok, true, general.error);
   assert.equal((general.value as { message: TopicMessage }).message.fromKind, 'human');
+  assert.equal((general.value as { message: TopicMessage }).message.via, via);
   const sent = (general.value as { message: TopicMessage }).message;
   const delivery = await messenger.client.waitFor(f => f.type === 'delivery' && f.message === sent.id && f.stage === 'delivered');
   assert.equal(delivery.message, sent.id);
@@ -307,17 +309,41 @@ test('gateway allows General, same-topic replies, asks, approvals and status/inb
   assert.equal(answered.ok, true, answered.error);
   assert.equal((answered.value as { message: TopicMessage }).message.from, 'human');
   assert.equal((answered.value as { message: TopicMessage }).message.answerTo, asked.ask);
+  assert.equal((answered.value as { message: TopicMessage }).message.via, via);
+  const closedAsk = await local.request({ type: 'topic.history', topic });
+  assert.equal((closedAsk.value as { messages: TopicMessage[] }).messages.find(m => m.id === asked.ask)!.ask!.outcome!.via, via);
   const launched = await local.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
   assert.equal(launched.ok, true, launched.error);
   const approvalId = `${(launched.value as { process: { sessionId: string } }).process.sessionId}:remote-command`;
-  const approvalFrame = messenger.client.waitFor(f => f.type === 'inbox' && (f.inbox as Inbox).approvals.some(a => a.id === approvalId));
+  const approvalFrame = messenger.client.waitFor(f => f.type === 'approval' && (f.approval as InboxApproval).id === approvalId);
   hub.fakes.codex!.raiseApproval('worker', { id: 'remote-command', kind: 'command', subject: { command: 'echo remote' }, choices: ['once', 'deny'] });
-  const approval = ((await approvalFrame).inbox as Inbox).approvals.find(a => a.id === approvalId)!;
+  const approval = (await approvalFrame).approval as InboxApproval;
+  hub.fakes.codex!.approvalNotes = false;
   const approved = await messenger.client.request({ type: 'approval.answer', approval: approval.id, choice: 'deny', note: 'remote denial' });
   assert.equal(approved.ok, true, approved.error);
   assert.equal((approved.value as { approval: { state: string; outcome: { by: string; choice: string } } }).approval.state, 'closed');
   assert.equal((approved.value as { approval: { outcome: { by: string } } }).approval.outcome.by, 'human');
+  assert.equal((approved.value as { approval: { outcome: { via: string } } }).approval.outcome.via, via);
   assert.deepEqual(hub.fakes.codex!.approvalAnswers.map(a => [a.requestId, a.choice, a.note]), [['remote-command', 'deny', 'remote denial']]);
+  // No features were negotiated by connectUi: retain the previous hello/request shape.
+  const archive = await local.request({ type: 'inbox.list', archive: true });
+  const departures = (archive.value as Inbox).archive!;
+  assert.equal(departures.find(row => row.id === asked.ask)!.outcome!.via, via);
+  assert.equal(departures.find(row => row.id === approval.id)!.outcome!.via, via);
+  const history = await local.request({ type: 'topic.history', topic: 'general' });
+  assert.equal((history.value as { messages: TopicMessage[] }).messages.find(m => m.id === sent.id)!.via, via);
+  const note = (history.value as { messages: TopicMessage[] }).messages.find(m => m.text === 'remote denial')!;
+  assert.equal(note.via, via, 'a denial note the harness cannot carry keeps its messenger source');
+  const declined = await coord.call<{ ok: boolean; ask: string }>('ask', { topic, question: 'Ship now?', options: ['Ship'] });
+  const decline = await messenger.client.request({ type: 'topic.answer', ask: declined.ask, declined: true, reason: 'Wait for QA' });
+  assert.equal(decline.ok, true, decline.error);
+  const read = await local.request({ type: 'topic.history', topic });
+  assert.deepEqual((read.value as { messages: TopicMessage[] }).messages.find(m => m.id === declined.ask)!.ask!.outcome, {
+    status: 'declined', reason: 'Wait for QA', by: 'human', via,
+    at: (decline.value as { message: TopicMessage }).message.ts,
+  });
+  const ordinary = await local.request({ type: 'topic.send', topic: 'general', text: 'Local source', via });
+  assert.equal((ordinary.value as { message: TopicMessage }).message.via, 'hub', 'wire fields cannot spoof provenance');
   for (const type of ['hub.status', 'task.list', 'inbox.list']) {
     const result = await messenger.client.request({ type });
     assert.equal(result.ok, true, `${type}: ${result.error}`);
@@ -353,7 +379,7 @@ test('gateway rejects new non-General messages, forged replies and attached arti
 test('two messenger remotes share one conversation and receive only their own request results', async t => {
   const root = await tempProject(t);
   const first = testMessenger('first');
-  const second = testMessenger('second');
+  const second = testMessenger('second', 'discord');
   const log: Array<Record<string, unknown>> = [];
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [first, second], log: entry => { log.push(entry); } });
   const [status, tasks] = await Promise.all([
@@ -368,6 +394,8 @@ test('two messenger remotes share one conversation and receive only their own re
   const sent = await first.client.request({ type: 'topic.send', topic: 'general', text: 'both remotes' });
   const id = (sent.value as { message: TopicMessage }).message.id;
   for (const remote of [first, second]) assert.equal(((await remote.client.waitFor(f => f.type === 'message' && (f.message as TopicMessage).id === id)).message as TopicMessage).id, id);
+  const sources = await Promise.all([first, second].map(remote => remote.client.request({ type: 'topic.send', topic: 'general', text: remote.id })));
+  assert.deepEqual(sources.map(result => (result.value as { message: TopicMessage }).message.via), ['telegram', 'discord']);
   await hub.stop();
   assert.equal(first.stopped, true);
   assert.equal(second.stopped, true);

@@ -29,6 +29,20 @@ Register release and drainage cleanup before triggering startup; only the
 already-started remotes need stopping. The dispatcher hello deadline begins
 after remote setup, so a held platform start owns no waiting conversation.
 
+Remote provenance uses `testMessenger(id, via)` (`telegram` by default), or
+`testMessenger(id, { via, startError })` to combine source and startup faults. The
+platform source travels as trusted `Conversation.receive` metadata on the one
+shared conversation; a frame's own `via` cannot override it. The Telegram and
+Discord cases use a fake clock and observe the exact `approval` delta, then
+read ask outcomes, denial-note messages and archive entries through a local
+client with the previous hello/request shape (no features). Preserve declines,
+native choice/note receipts and simultaneous sends from both sources.
+
+Workbench proof is in `web/test/remote-via.test.ts` and
+`nvim/test/remote-via.test.ts`; the latter replays committed frames and accepts
+legacy ask outcomes with no source. These tests involve no real platform,
+token, native harness or GUI browser.
+
 Failure isolation uses the fake messenger's startup error, controlled run-loop
 rejection and synchronous/asynchronous receive faults. Check both broadcast
 fanout and correlated results. Inject `testRemoteStates()` through
