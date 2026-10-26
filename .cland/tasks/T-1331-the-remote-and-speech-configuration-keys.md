@@ -2,8 +2,8 @@
 id: T-1331
 kind: task
 title: The remote and speech configuration keys, rendered by init, added by update and applied by reload
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1083
 branch: t/T-1331-the-remote-and-speech-configuration-keys
 created: 2026-10-26T07:54:42.573Z
-updated: 2026-10-26T13:14:00.283Z
+updated: 2026-10-26T14:10:24.412Z
+closed: 2026-10-26T14:10:24.412Z
 ---
 
 ## Summary
@@ -33,11 +34,13 @@ Add the keys `[remote] mute_default`, `[remote.telegram] enabled` and `format`, 
   - verified: rev-31 [reviewer] · run rev-20261026-1331-final2 · 2026-10-26T13:02:22.016Z · commit ab60aa31ae799a0f2fbb292e4e940b143f847dd4
   - verified: rev-31 [reviewer] · run rev-20261026-1331-final3 · 2026-10-26T13:06:24.015Z · commit 47a88ac73fe147db561925f84628025c71e4a06f
   - done: impl-1331 · 2026-10-26T13:11:48.625Z
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final4 · 2026-10-26T13:28:53.724Z · commit 95b030e9950b83a2540818af728afdf8aff77f82
 - [x] C2. `cland config set remote.telegram.enabled true` with a token present and `cland hub reload` starts a test messenger, and `false` with a reload stops it (test).
   - verified: rev-31 [reviewer] · run rev-20261026-1331-final · 2026-10-26T12:24:39.598Z · commit 9918cb61fe32cc2d6e9d8e305a842044ad3ca13f
   - verified: rev-31 [reviewer] · run rev-20261026-1331-final2 · 2026-10-26T13:02:22.016Z · commit ab60aa31ae799a0f2fbb292e4e940b143f847dd4
   - verified: rev-31 [reviewer] · run rev-20261026-1331-final3 · 2026-10-26T13:06:24.015Z · commit 47a88ac73fe147db561925f84628025c71e4a06f
   - done: impl-1331 · 2026-10-26T13:11:48.863Z
+  - verified: rev-31 [reviewer] · run rev-20261026-1331-final4 · 2026-10-26T13:28:53.724Z · commit 95b030e9950b83a2540818af728afdf8aff77f82
 
 ## Comments
 
@@ -185,3 +188,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Lifecycle correction source clear; A-12414. Only executable delta removes late duplicate roles.stop; early gateway/reload join remains before edge/store teardown, cached stop/failure collection unchanged. Existing lifecycle tests/helpers/assertions/intervals/timeouts untouched; indexed exact-heading guide added. A-12413 original local red shows nested child actual0/expected1; corrected target1/1, lifecycle4/4, config-set19/19/imports3/3 retain working-tree/macOS attribution, not configured proof. Prior rule6 47c63421/A-12410 remains RED at9918cb61f. C1/C2 current-head runtime verification pending one mode-free run; Coordinator owns fresh rule6 after ready. No new dev merge or Reviewer execution.
+
+### rev-31 · 2026-10-26T13:28:53.724Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261026-1331-final4
+commit: 95b030e9950b83a2540818af728afdf8aff77f82
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final4 task evidence clear; C1/C2 verified. A-12421 independently audits same-head6bb119d9/A-12419:3416ordinary+50loadpasses,10new identities5/5, init15/15/config-set19/19/help4/4/strictusage1/1 exact outcomes. HostT0/allT1/fallbackallT2/Web complete, remoteT3/T4 absent. Lifecycle correction4/4 remains original local macOS/precommit proof A-12413, not Linux; earlier rule647c63421/A-12410 remains RED at9918cb61f and Coordinator must rerun it after ready. Submission replytimeout75 separated from actual terminal exit0. Linuxc8lon1 Node24.21/Nvim0.12.5 HeadlessShell156/v1248 life698s/$0.0485; gateTREEreuse and report-only135lint/61files/3missingbaselines/6budgetwarnings/Webwall/ratchet limits preserved. LocalT1339red and T1330 integration boundary retained. No Reviewer executions.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-26T14:10:24.412Z
+
+Merged 6b82e9d0373eaded670e7f81007a97a5f27a1bd6 onto dev.
