@@ -3,7 +3,7 @@ id: T-1328
 kind: task
 title: The git-ignored secrets file and cland secret set, list and unset
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1082
 branch: t/T-1328-the-git-ignored-secrets-file-and-cland
 created: 2026-10-26T07:54:41.571Z
-updated: 2026-10-26T09:11:31.915Z
+updated: 2026-10-26T10:18:53.247Z
 ---
 
 ## Summary
@@ -28,9 +28,13 @@ A project holds its messenger tokens and speech keys in a git-ignored `.cland/se
 ## Acceptance criteria
 
 - [x] C1. A secrets file at mode 644 is tightened to 600 at hub start, a symlinked file is refused with a reason, and `git status` never lists the file (test).
-  - done: impl-1328 · 2026-10-26T09:11:02.770Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1328-evidence-1 · 2026-10-26T09:26:17.240Z · commit c00a79a01dae3768698ca578c63f25ec11e91b38
+  - done: impl-1328 · 2026-10-26T10:03:23.673Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1328-evidence-2 · 2026-10-26T10:18:53.004Z · commit dcc15d02140ceb86d6047fe44a6a38cba6a26b7a
 - [x] C2. A value piped to `cland secret set telegram.token` lands in the file, `list` shows only its name and fingerprint prefix, `unset` removes it, and the value appears in no command output, log line or process argv (test).
-  - done: impl-1328 · 2026-10-26T09:11:02.845Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1328-evidence-1 · 2026-10-26T09:26:17.240Z · commit c00a79a01dae3768698ca578c63f25ec11e91b38
+  - done: impl-1328 · 2026-10-26T10:03:24.130Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1328-evidence-2 · 2026-10-26T10:18:53.004Z · commit dcc15d02140ceb86d6047fe44a6a38cba6a26b7a
 
 ## Comments
 
@@ -92,3 +96,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source settlement clear, A-12346, carrying A-12341/A-12345's complete audit and resolved M1–M4. Entire parent delta is one specific documented trailing deadline reason at secrets-git.test.ts:64; M5 resolved without changing timeout, native receipt/cleanup assertions, tiers, baseline or guard. Original runtime/typecheck receipts stay attributed to 3c53d1365; narrow local lint red/green is attributed to claimant. No reviewer execution. C1/C2 runtime verification remains pending one exact-head mode-free configured result and named/generated case timing/load facts. No dev merge/full task request; Coordinator cover/landing separate.
+
+### rev-26 · 2026-10-26T09:26:17.240Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1328-evidence-1
+commit: c00a79a01dae3768698ca578c63f25ec11e91b38
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, A-12351; original A-12350/run e07e545d exits 0 at source-cleared c00a79a01. Independent progress-record audit: 3407 ordinary passes (nested included), 458 file finishes, plus 45 separate actual load passes (nine new T1/T2 identities each 5/5). All 12 new cases pass; changed T3 native managed/custom ignore and SIGTERM/ABORT_ERR close/output/root-removal controls ran once, no repetitions. C1 startup 600/symlink/native Git controls and C2 exact stdin/store/fingerprint/unset/no-output/log/argv assertions checked. Largest new base1.558632271 s, max load1.504486871 s; no >=3 s Linux case allowance. T0/all T1/fallback all T2/changed T3/Web complete; no broader T3/T4 or integrated-cover claim. Linux c-8 lon1, Node24.21/Neovim0.12.5, isolated HeadlessShell156.0.8078.4 v1248; life753 s/$0.0523. Host typecheck reused, not repeated remotely. Lint/budgets/12 missing baselines/T3 growth remain report-only. Coordinator separate cover/landing; T-1329 and real credentials excluded.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1328 · 2026-10-26T10:03:23.567Z
+
+Coordinator full cover 119d19dc/A-12352 at c00a79a01 exposed `loaded 22 modules (budget 21)` in unchanged CLI import guard. Reproduced locally (2/3, hub status22/tasklist17), then fixed/pushed dcc15d021 by moving resolveSecrets from shared project.ts to a dynamic import inside serveProject's existing startup lock/try before skeleton/logs/listeners. Only ensureSkeleton production caller is serveProject; secret CLI still directly uses its needed resolver. No signatures/wire schemas or budgets/guards changed. Local macOS serial candidate-tree checks: cli-imports3/3 (hub20/task15), secretsT2 5/5, inputT1 4/4, nativeGitT3 3/3, docs3/3, typecheck green, wording guard0findings. New guide/index and skill change record committed. Prior ready/evidence receipts remain attributed to c00a79a01; fresh source/verify/evidence needed.
+
+### rev-26 · 2026-10-26T10:05:00.512Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1328-source-4
+commit: dcc15d02140ceb86d6047fe44a6a38cba6a26b7a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source-4 clear, A-12354. Seven-file import-boundary correction inspected against prior clear chain. A-12352 old-head full cover actually fails import guard: loaded22/budget21 at24209; old task green did not run that T3 guard. project.ts no longer statically imports resolver; serveProject dynamically loads/validates inside existing acquired-lock try before ensureSkeleton/logs/listeners, same catch releases on failure. Guard/budgets/tests/signatures/wire unchanged; correct guide/index and skill/CHANGES present. A-12353 local unchanged guard red/green (hub20/task15), startup/CLI/stream/Git/docs/typecheck reports remain attributed macOS evidence. No reviewer execution. Fresh exact-head mode-free configured result required before runtime marks; Coordinator fresh full cover remains separate and must include unchanged import guard.
+
+### rev-26 · 2026-10-26T10:18:53.004Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1328-evidence-2
+commit: dcc15d02140ceb86d6047fe44a6a38cba6a26b7a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Renewed final task evidence clear, A-12356, exact source-4 head dcc15d021. Original A-12355/run5aac9237 exit0 independently parsed:3407 ordinary passes/nested included,458 files,45 separate actual load passes (nine new T1/T2 identities each5/5); changed T3 three named Git/cancellation identities once, no repetitions. Exact C1 startup600/symlink/native managed/custom-ignore and C2 stdin/persistence/fingerprint/unset/raw-output/log/argv assertions checked. Max new base1.408630769 s/load1.256868608 s; no >=3 s allowance. T3 added wall .766 s excludes machine wait. T0/all T1/fallback all T2/changed T3/Web complete on Linux droplet Node24.21/Neovim0.12.5/HeadlessShell156.0.8078.4 v1248; life676 s/$0.0470. Host typecheck reused, diagnostics report-only. Crucially cli-imports has NO receipt here: A-12352 remains old-head full-cover red, A-12353 local recovery remains local, Coordinator fresh full cover must execute that guard. Replace stale C1/C2 marks; no integrated full-cover/real-credential/native-terminal-exit claim.
+
+Criteria: C1 verified, C2 verified.
