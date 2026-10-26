@@ -26,9 +26,24 @@ launcher seam in E-1311. This file does not claim to exercise a speech provider.
 
 `cancelled command with a missing close receipt retains its root until native
 close and output drain` arms filesystem observers before launch, waits for a
-positive readiness file, cancels, then holds the native SIGTERM handler. While
+complete readiness-file content, cancels, then holds the native SIGTERM handler. While
 root removal is waiting on the owner's same barrier, it proves the exact signal
 receipt, missing close/result and retained root. Explicit stdin release permits
 native exit; only then does removal complete, with the native exit/signal and
 ABORT_ERR outcome asserted. This exercises cancellation without relying on the
 ordinary body await or the execFile timeout as cleanup.
+
+The cancellation fixture deliberately creates `stopping` empty and publishes
+`stopping-incomplete` only after that write finishes. The parent observes that
+receipt, asserts the file is empty and the cancellation receipt still pending,
+then creates `complete-stopping`. The child's prearmed filesystem observer writes
+`signal handled`; only those exact bytes resolve the cancellation observer. This
+handshake exposes the create-before-content race without sleeps or CPU load.
+Readiness and cancellation have separate bounded waits, and the final content
+assertions remain. Repeat the named case sequentially when checking this race;
+an existence-only observer must fail at the pending-receipt assertion.
+Before stdin releases the held child, the parent closes its filesystem observer
+and awaits its native `close` event with a separate bound, then asserts that
+receipt. This happens in `finally` even on assertion failure, so the observer's
+content reads cannot race the explicit root removal. The child release and
+removal join still run if the observer-close check fails.

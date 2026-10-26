@@ -2,6 +2,7 @@
 import './cover-quiet.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { once } from 'node:events';
 import { existsSync, readFileSync, watch, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -64,21 +65,38 @@ test('cancelled command with a missing close receipt retains its root until nati
   const { root, remove } = await secretProject(t);
   const ready = Promise.withResolvers<void>();
   const stopping = Promise.withResolvers<void>();
-  const timer = setTimeout(() => {
+  const partial = Promise.withResolvers<void>();
+  let stoppingObserved = false;
+  void stopping.promise.then(() => { stoppingObserved = true; }, () => {});
+  let timer = setTimeout(() => {
     ready.reject(new Error('command readiness receipt missing'));
-    stopping.reject(new Error('command cancellation receipt missing'));
-  }, 5000); // lint-allow-wall-clock: bound native readiness/cancellation receipts, never an elapsed-time assertion
+  }, 5000); // lint-allow-wall-clock: bound native readiness separately from cancellation, never an elapsed-time assertion
   void stopping.promise.catch(() => {});
+  void partial.promise.catch(() => {});
   const watcher = watch(root, () => {
-    if (existsSync(join(root, 'ready'))) ready.resolve();
-    if (existsSync(join(root, 'stopping'))) stopping.resolve();
+    if (existsSync(join(root, 'ready')) && readFileSync(join(root, 'ready'), 'utf8') === 'waiting for input') ready.resolve();
+    if (existsSync(join(root, 'stopping')) && readFileSync(join(root, 'stopping'), 'utf8') === 'signal handled') stopping.resolve();
+    if (existsSync(join(root, 'stopping-incomplete'))) partial.resolve();
   });
+  let observerClosed = false;
+  watcher.once('close', () => { observerClosed = true; });
   beforeDirectories(t, () => { watcher.close(); clearTimeout(timer); });
   const controller = new AbortController();
   // Observer and root's stop/drain barrier are armed before launching this held child.
   const command = launchSecretCommand(t, root, `
     const fs = require('node:fs');
-    process.on('SIGTERM', () => fs.writeFileSync('stopping', 'signal handled'));
+    let cancelling = false;
+    const publication = fs.watch('.', () => {
+      if (!fs.existsSync('complete-stopping')) return;
+      publication.close();
+      fs.writeFileSync('stopping', 'signal handled');
+    });
+    process.on('SIGTERM', () => {
+      if (cancelling) return;
+      cancelling = true;
+      fs.writeFileSync('stopping', '');
+      fs.writeFileSync('stopping-incomplete', '');
+    });
     process.stdin.once('data', () => process.exit(0));
     fs.writeFileSync('ready', 'waiting for input');
   `, { signal: controller.signal, env: fakeSecrets });
@@ -87,18 +105,35 @@ test('cancelled command with a missing close receipt retains its root until nati
   void command.closed.then(() => { closed = true; });
   void command.result.then(() => { settled = true; });
   await ready.promise;
+  clearTimeout(timer);
   assert.equal(readFileSync(join(root, 'ready'), 'utf8'), 'waiting for input');
+  timer = setTimeout(() => {
+    partial.reject(new Error('partial cancellation marker receipt missing'));
+    stopping.reject(new Error('command cancellation receipt missing'));
+  }, 5000); // lint-allow-wall-clock: bound cancellation receipts after readiness, never an elapsed-time assertion
   controller.abort(new Error('intentional generic command cancellation'));
   const removing = remove();
   try {
+    await partial.promise;
+    assert.equal(readFileSync(join(root, 'stopping'), 'utf8'), '', 'marker exists before its content is published');
+    assert.equal(stoppingObserved, false, 'an empty marker is not the cancellation receipt');
+    writeFileSync(join(root, 'complete-stopping'), '');
     await stopping.promise;
     assert.equal(readFileSync(join(root, 'stopping'), 'utf8'), 'signal handled');
     assert.equal(closed, false, 'a signal is not the missing native close receipt');
     assert.equal(settled, false, 'the result still waits for close/output completion');
     assert.equal(existsSync(root), true, 'beforeRemove retains the live writer root');
   } finally {
-    command.endInput('release');
-    await removing;
+    try {
+      const observerClose = once(watcher, 'close', { signal: AbortSignal.timeout(5000) });
+      watcher.close();
+      clearTimeout(timer);
+      await observerClose;
+      assert.equal(observerClosed, true, 'filesystem observer closes before child release and root removal');
+    } finally {
+      command.endInput('release');
+      await removing;
+    }
   }
   const result = await command.result;
   assert.equal(closed, true);
