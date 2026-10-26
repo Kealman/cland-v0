@@ -61,7 +61,7 @@ and observe start/stop completion before claiming reload applied. Keep the
 legacy `gatewayRemotes` seam and CLI import budget unchanged.
 
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
-T1 service/T2 frame seams. Keep `Inbox.pairings` optional for older hubs, and
+T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and
 strip pairing rows and counts at the remote boundary. Trusted pairing callbacks
 invalidate read replay at persistence, before coalesced inbox publication.
 

@@ -283,6 +283,7 @@
     "hub/test/orphan-sweep-lock.test.ts": "T3",
     "hub/test/outbox-gateway.test.ts": "T2",
     "hub/test/outbox.test.ts": "T1",
+    "hub/test/pairing-approval.test.ts": "T2",
     "hub/test/pairing-codes.test.ts": "T2",
     "hub/test/pairing-service.test.ts": "T1",
     "hub/test/permissions.test.ts": "T2",

@@ -44,6 +44,7 @@ export const WEB_AUTHORITY = {
   'merge': true,
   'merge.queue': true,
   'models.list': true,
+  'pairing.approve': 'grants new remote access',
   'prompt.send': true,
   'publish': 'publishes project files',
   'push': 'pushes project history',

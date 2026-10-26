@@ -659,9 +659,27 @@ expiry removes the waiting record rather than making a remote-visible archive ro
 
 `InboxBoard.pairingCodes.get(id)` resolves only a live request for the local
 approval handler; `clear(messenger)` clears that messenger's waiting requests
-without changing its stranger counts. Approval and the `cland remote` command
-are the scope of T-1333/T-1334; issuing a code grants no remote access. The
-service's change notification invalidates dispatcher read replay immediately at
+without changing its stranger counts. `pairing.approve {messenger, code}` returns
+`{pairing: {userId, chatId, guildId, name}}`. Only a human `nvim` or `cli` client
+on the local Unix socket, or Neovim on parent-owned stdio, may call it; any own
+`as` field is refused. The web
+authority explicitly refuses this grant and the gateway's table excludes it,
+even if a remote or browser claims a Neovim client name. Invalid, expired,
+consumed and wrong-messenger codes grant no access. Identity comes from the
+stored request, never from extra caller fields. Binding and removal of all that
+messenger's waiting codes commit together in `hub.db`, preserving TEXT ids.
+
+After replacement, the gateway calls the adapter's optional
+`pairingReplaced(previous, text)` with the captured old numeric destination and
+one line: "This project is now paired with another chat." The adapter sends it
+to that destination, not its current pairing. The gateway redacts the callback
+and owns its asynchronous work through shutdown. A failed send cannot roll back
+the committed grant; it follows ordinary remote failure isolation. A missing or
+disabled adapter reports `remote-pairing-notice-unavailable`; old adapters without
+this callback remain compatible. Native adapters must implement the callback
+and use their platform delivery policy. The `cland remote` command is T-1334;
+issuing a code grants no remote access. The service's change notification
+invalidates dispatcher read replay immediately at
 persistence, independently of the coalesced inbox delta. Platform factories remain
 injected until their native clients are available; no real messenger is needed
 for the [component regression](../docs/agents/tests/hub-test-pairing-codes.test.ts.md).

@@ -13,6 +13,8 @@ export type Remote = {
   via: RemoteVia;
   start: (send: (frame: Record<string, unknown>) => void, pair?: (identity: Pairing) => string | null) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
+  /** Send one line to the captured old destination, never the newly paired chat. */
+  pairingReplaced?: (previous: Pairing, text: string) => void | Promise<void>;
   /** Lifetime promise for the platform loop; stop must settle it and drain its writers. */
   run?: () => Promise<void>;
   stop: () => void | Promise<void>;
@@ -141,6 +143,19 @@ export class Gateway {
     const observed = work.catch(error => { this.#disable(remote, error); });
     this.#work.add(observed);
     void observed.then(() => { this.#work.delete(observed); });
+  }
+
+  pairingReplaced(messenger: RemoteVia, previous: Pairing): void {
+    const remote = this.#started.find(remote => remote.via === messenger);
+    if (!this.#open || !remote || this.#disabled.has(remote) || !remote.pairingReplaced) {
+      this.#log({ event: 'remote-pairing-notice-unavailable', remote: messenger });
+      return;
+    }
+    try {
+      const safe = this.#output({ userId: previous.userId, chatId: previous.chatId, guildId: previous.guildId, text: previous.name, note: 'This project is now paired with another chat.' });
+      const work = remote.pairingReplaced({ userId: safe.userId, chatId: safe.chatId, guildId: safe.guildId, name: safe.text }, safe.note);
+      if (work) this.#observe(remote, work);
+    } catch (error) { this.#disable(remote, error); }
   }
 
   #receive(remote: Remote, frame: HubFrame): void {

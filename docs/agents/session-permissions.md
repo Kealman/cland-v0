@@ -27,6 +27,9 @@ topic, answer asks and approvals, and read status, tasks and inbox. All other
 requests, actor overrides and artifact sends are refused before dispatch.
 Pairing rows and their counts stay local; ids in the `pairing:` namespace are
 also refused by the gateway's ordinary ask/approval answer handlers.
+`pairing.approve` grants access only for an unattributed human CLI or Neovim
+client on the local Unix socket, or Neovim on parent-owned stdio; the web explicitly refuses it. No session role
+has that grant. See [pairing](pairing.md).
 This policy applies only to the gateway edge; existing session, local client
 and web authority remain separate.
 

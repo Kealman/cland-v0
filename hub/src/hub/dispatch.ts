@@ -114,6 +114,7 @@ export type Peer = {
 
 /** What only the process running the hub can answer: its facts, and stopping it. */
 export type Control = {
+  pairingReplaced?: (messenger: RemoteVia, previous: import('../remote/state.ts').Pairing) => void;
   webLink?: (qr?: boolean) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
   webRevoke?: (id: string) => Promise<import('../protocol.ts').WebRevokeResult>;
@@ -1787,6 +1788,23 @@ export class Dispatcher {
               if (!this.#sessions) throw new Error('the hub has no adapters');
               return this.#sessions.answerApproval(sessionId, requestId, value);
             }, resumed).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+          }
+          case 'pairing.approve': {
+            const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
+              || transport.edge === 'stdio' && client === 'nvim';
+            if (!local || Object.hasOwn(frame, 'as'))
+              throw new Error('pairing approval requires the human CLI or Neovim on a local connection');
+            const row = core.inbox.pairingCodes.get(`pairing:${frame.messenger}:${frame.code}`);
+            if (!row) throw new Error('no live pairing code for this messenger');
+            const pairing = { userId: row.userId, chatId: row.chatId, guildId: row.guildId, name: row.name };
+            const remote = core.store.remotes.forMessenger(frame.messenger);
+            const previous = remote.pairing();
+            core.store.transaction(() => {
+              remote.setPairing(pairing);
+              core.inbox.pairingCodes.clear(frame.messenger);
+            });
+            if (previous) this.#options.control?.pairingReplaced?.(frame.messenger, previous);
+            return answer({ pairing });
           }
           case 'topic.answer':
             return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim')));

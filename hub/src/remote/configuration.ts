@@ -3,6 +3,7 @@ import type { ProjectConfig } from '../init/config.ts';
 import type { RemoteVia } from '../protocol.ts';
 import { Gateway, type Remote } from './gateway.ts';
 import type { Secrets } from './secrets.ts';
+import type { Pairing } from './state.ts';
 
 export type RemoteSettings = Pick<ProjectConfig, 'remote' | 'speech'>;
 /** Native platform construction stays injectable; credentials never enter frames. */
@@ -46,6 +47,10 @@ export class ConfiguredGateway {
     });
     this.#work = work.catch(() => {});
     return work;
+  }
+
+  pairingReplaced(messenger: RemoteVia, previous: Pairing): void {
+    this.#gateway?.pairingReplaced(messenger, previous);
   }
 
   async stop(): Promise<void> {

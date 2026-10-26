@@ -302,6 +302,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
       // tests only: how long a queued message and a remembered name last (the default is a day)
       ...(Number(env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
+        pairingReplaced: (messenger, previous) => gateway?.pairingReplaced(messenger, previous),
         webSessions: () => {
           if (!web) throw new Error('the web edge is unavailable');
           return web.sessions();

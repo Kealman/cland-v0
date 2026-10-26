@@ -14,6 +14,7 @@ import type { FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { FakeClock } from './fake-clock.ts';
+import { testMessenger } from './fakes/messenger.ts';
 
 function withCodes(client: FrameClient) {
   return { ...client, request: (frame: { type: string } & Record<string, unknown>) => client.request(frame) as Promise<{ ok: boolean; value?: unknown; error?: string; code?: string }> };
@@ -74,6 +75,29 @@ test('web refuses hub.reload with CLI and Neovim guidance; the Unix socket still
   assert.equal(allowed.ok, true, allowed.error);
 });
 
+test('the signed-in web edge cannot approve a live pairing even with a Neovim hello', async t => {
+  const root = await tempProject(t);
+  const remote = testMessenger('telegram');
+  const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote], clock: new FakeClock() });
+  const nvim = await connectUi(t, hub.discovery, 'nvim');
+  const { origin, cookie } = await signIn(t, nvim);
+  const { web } = await browserSocket(t, origin, cookie, false);
+  const welcome = web.waitFor(frame => frame.type === 'welcome');
+  web.send({ type: 'hello', protocol: 2, client: 'nvim' });
+  assert.equal((await welcome).name, 'human');
+  remote.pair({ userId: '12345', chatId: '12345', guildId: null, name: 'Fixture human' });
+  const before = await web.request({ type: 'inbox.list' });
+  const row = (before.value as import('../src/protocol.ts').Inbox).pairings![0]!;
+  const frame = { type: 'pairing.approve', messenger: row.messenger, code: row.code };
+  const denied = await web.request(frame);
+  assert.equal(denied.ok, false);
+  assert.equal(denied.code, 'cli-neovim-only');
+  assert.match(denied.error!, /grants new remote access/);
+  const after = await web.request({ type: 'inbox.list' });
+  assert.deepEqual((after.value as import('../src/protocol.ts').Inbox).pairings, [row]);
+  assert.equal((await nvim.request(frame)).ok, true, 'the refused web request did not consume the code');
+});
+
 // Local preconditions stay intact: these cases prove entry to the existing
 // handler, without publishing, invoking Git or acquiring provider resources.
 const refusedCases: Array<{ frame: { type: string } & Record<string, unknown>; localError?: RegExp }> = [
@@ -86,6 +110,7 @@ const refusedCases: Array<{ frame: { type: string } & Record<string, unknown>; l
   { frame: { type: 'executor.retire-legacy', confirmRegisteredHubs: false }, localError: /legacy retirement requires the default user ledger/ },
   { frame: { type: 'task.migrate', dryRun: true }, localError: /the hub is running; stop the hub and run cland task migrate/ },
   { frame: { type: 'web.link' } },
+  { frame: { type: 'pairing.approve', messenger: 'telegram', code: 'ABCDEFGH' }, localError: /human CLI or Neovim/ },
   { frame: { type: 'artifact.delete', artifact: 'A-999' }, localError: /^no artifact file is available$/ },
   { frame: { type: 'task.import', repo: 'example/project', issues: [] } },
   { frame: { type: 'session.signal', session: 'absent', event: 'idle' } },

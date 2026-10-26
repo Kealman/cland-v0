@@ -8,10 +8,19 @@ result privately; `null` is silence. A frame actor never supplies the messenger
 source. Issuing a code grants no authority.
 
 Approval callers resolve `InboxBoard.pairingCodes.get(id)` at the grant boundary,
-then clear that messenger's other waiting codes with `clear(messenger)`. The local
-approval handler and command are T-1333/T-1334. Remotes receive neither pairing
+then bind the stored identity and clear that messenger's waiting codes in one
+transaction. Call `pairing.approve {messenger, code}` from a human `nvim` or `cli`
+connection on the local Unix socket, or Neovim on parent-owned stdio. It returns `{pairing}` with numeric ids as
+strings and the display name. An attributed shell, other client, web connection
+or remote cannot grant access. The CLI command is T-1334. Remotes receive neither pairing
 rows nor their needs-you count; the web cannot grant access. Existing one-argument
 `Remote.start(send)` adapters and inbox replies without `pairings` remain valid.
+
+Implement `Remote.pairingReplaced(previous, text)` in platform adapters to send
+the fixed replacement line to the captured old chat. The gateway owns and drains
+that callback, applies the shared redactor and isolates failures; the new grant
+has already committed. See the [approval frame regression](tests/hub-test-pairing-approval.test.ts.md)
+for authority, expiry, numeric persistence, replacement and shutdown receipts.
 
 Use the [T2 frame/fake-messenger seam](tests/hub-test-pairing-codes.test.ts.md)
 for routing and the [T1 service seam](tests/hub-test-pairing-service.test.ts.md)

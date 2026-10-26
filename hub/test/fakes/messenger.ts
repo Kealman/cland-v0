@@ -26,12 +26,14 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
   let stopped = false;
   let loop: ReturnType<typeof Promise.withResolvers<void>> | undefined;
   let receiveFailure: { error: Error; type: string; async: boolean } | undefined;
+  const replacements: Array<{ pairing: Pairing; text: string }> = [];
   const client = frameClient(line => {
     if (!send || stopped) throw new Error('test messenger is not running');
     send(JSON.parse(line) as Record<string, unknown>);
   }, fn => { receive = fn; }, () => {});
   return {
-    id, via, client, delivery,
+    id, via, client, delivery, replacements,
+    pairingReplaced(pairing: Pairing, text: string) { replacements.push({ pairing: { ...pairing }, text }); },
     pair(identity: Pairing): string | null {
       if (!pair || stopped) throw new Error('test messenger pairing is not running');
       return pair(identity);

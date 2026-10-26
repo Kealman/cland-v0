@@ -654,6 +654,7 @@ export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
+  | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
   | DemoRequest
@@ -1045,6 +1046,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean');
     case 'web.link':
       return f.qr === undefined || typeof f.qr === 'boolean';
+    case 'pairing.approve':
+      return (f.messenger === 'telegram' || f.messenger === 'discord') && typeof f.code === 'string' && /^[A-HJ-NP-Z2-9]{8}$/.test(f.code);
     case 'web.session':
     case 'web.sessions':
     case 'hub.stop':

@@ -878,6 +878,7 @@ export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
+  | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
   | DemoRequest
