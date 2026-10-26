@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { join } from 'node:path';
 import { Store } from '../src/hub/store.ts';
-import { Outbox } from '../src/remote/outbox.ts';
+import { Outbox, type OutboxClient } from '../src/remote/outbox.ts';
 import { tempProject } from './harness.ts';
 import { heldRemoteBoundary } from './fakes/held-remote-boundary.ts';
 import { FakeClock } from './fake-clock.ts';
-import { outboxMessenger } from './fakes/outbox-messenger.ts';
+import { heldOutboxReconnect, outboxMessenger } from './fakes/outbox-messenger.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
 
 test('an attempt is durable before each send and the platform message map precedes completion', async t => {
   const root = await tempProject(t);
@@ -254,4 +255,300 @@ test('a source that closes during delivery reconciliation is dropped before rese
     assert.equal(remote.outbox()[0]?.state, 'dropped');
     assert.equal(remote.attempts(id).length, 1);
   } finally { db.close(); }
+});
+
+test('a job queued during a held send leaves in that same drain', { timeout: 5000 }, async t => {
+  const { hold, db, outbox, messenger } = await heldOutbox(t);
+  try {
+    const first = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'first' } });
+    const setup = hold.setup();
+    const draining = hold.own(outbox.drain());
+    await hold.clock.advance(0);
+    await setup;
+    const second = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'arrived during send' } });
+    hold.resume();
+    await draining;
+    assert.deepEqual(messenger.delivered.map(job => job.id), [first, second]);
+    assert.deepEqual(db.remotes.forMessenger('telegram').outbox().map(job => job.state), ['sent', 'sent']);
+  } finally { await hold.dispose(); }
+});
+
+async function clockedOutbox(t: import('node:test').TestContext, recovery?: {
+  random?: () => number; reconnect?: (signal: AbortSignal) => Promise<boolean>; sourceOpen?: () => boolean;
+  release?: () => void;
+}) {
+  let db: Store | undefined;
+  let outbox: Outbox | undefined;
+  let disposing: Promise<void> | undefined;
+  const dispose = () => disposing ??= (async () => {
+    recovery?.release?.();
+    try { await outbox?.stop(); } finally { db?.close(); }
+  })();
+  // Register before tempProject's root cleanup; this fixture owns no process.
+  t.after(dispose);
+  const root = await tempProject(t);
+  db = new Store(join(root, 'hub.db'));
+  const clock = new FakeClock();
+  const remote = db.remotes.forMessenger('telegram');
+  const messenger = outboxMessenger();
+  const client: OutboxClient = { ...messenger, ...(recovery?.reconnect ? { reconnect: recovery.reconnect } : {}) };
+  outbox = new Outbox(remote, client, { clock,
+    ...(recovery?.random ? { random: recovery.random } : {}),
+    ...(recovery?.sourceOpen ? { sourceOpen: recovery.sourceOpen } : {}),
+  });
+  return { db, clock, remote, messenger, client, outbox, dispose };
+}
+
+test('retry_after above five minutes resumes at five minutes with a new durable attempt', { timeout: 5000 }, async t => {
+  const { clock, remote, messenger, outbox, dispose } = await clockedOutbox(t);
+  try {
+    messenger.rateLimit(900_000);
+    const id = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'rate limited' } });
+    const draining = outbox.drain();
+    await clock.advance(299_999);
+    assert.equal(remote.attempts(id)[0]?.outcome, 'never-left', 'client non-delivery proof is durable');
+    assert.equal(remote.outbox()[0]?.state, 'queued');
+    assert.equal(messenger.delivered.length, 0);
+    await clock.advance(1);
+    assert.equal(remote.outbox()[0]?.state, 'sent');
+    assert.equal(remote.attempts(id).length, 2);
+    assert.equal(remote.attempts(id)[1]?.at, '2026-10-16T12:05:00.000Z');
+    await draining;
+    assert.deepEqual(messenger.delivered.map(job => job.id), [id]);
+    assert.equal(outbox.missed().count, 0, 'rate limiting is not an outage');
+    assert.equal(clock.pending, 0);
+  } finally { await dispose(); }
+});
+
+test('reconnection grows with injected jitter to a thirty-second ceiling and resets after recovery', { timeout: 5000 }, async t => {
+  const connections: number[] = [];
+  const samples = [0, 0.5, 1, 0.5, 0.5, 0.5, 1, 0];
+  const { clock, remote, messenger, outbox, dispose } = await clockedOutbox(t, {
+    random: () => samples.shift()!, reconnect: async () => {
+      connections.push(clock.now().getTime() - at);
+      if (connections.length === 2) throw new Error('fixture-private-reconnect-diagnostic');
+      return connections.length >= 7;
+    },
+  });
+  const at = clock.now().getTime();
+  try {
+    outbox.setAvailable(false);
+    const id = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'after recovery' } });
+    const draining = outbox.drain();
+    await clock.advance(76_499);
+    assert.deepEqual(connections, [500, 2000, 6000, 12000, 24000, 46500]);
+    assert.equal(remote.outbox()[0]?.state, 'queued');
+    await clock.advance(1);
+    assert.deepEqual(connections, [500, 2000, 6000, 12000, 24000, 46500, 76500]);
+    assert.equal(remote.outbox()[0]?.state, 'sent');
+    await draining;
+    assert.deepEqual(messenger.delivered.map(job => job.id), [id]);
+    outbox.setAvailable(false);
+    const next = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'next outage' } });
+    const again = outbox.drain();
+    await clock.advance(500);
+    assert.equal(connections.at(-1), 77000, 'successful recovery resets the exponential delay');
+    assert.equal(remote.outbox().find(job => job.id === next)?.state, 'sent');
+    await again;
+    assert.deepEqual(messenger.delivered.map(job => job.id), [id, next]);
+    assert.equal(remote.get('outbox.unavailable'), null);
+    assert.equal(clock.pending, 0);
+    assert.equal(samples.length, 0);
+    assert.equal(JSON.stringify([remote.outbox(), remote.attempts(id)]).includes('fixture-private-reconnect-diagnostic'), false);
+  } finally { await dispose(); }
+});
+
+for (const boundary of ['retry_after', 'reconnect delay', 'reconnect exchange'] as const) {
+  test(`stop cancels ${boundary} and joins the drain before storage closes`, { timeout: 5000 }, async t => {
+    const exchange = heldOutboxReconnect();
+    const { clock, remote, messenger, outbox, dispose } = await clockedOutbox(t, {
+      random: () => 0, reconnect: exchange.reconnect, release: exchange.release,
+    });
+    try {
+      const id = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'stop during wait' } });
+      if (boundary === 'retry_after') messenger.rateLimit(900_000);
+      else outbox.setAvailable(false);
+      const draining = outbox.drain();
+      await clock.advance(boundary === 'reconnect exchange' ? 500 : 0);
+      if (boundary === 'retry_after') assert.equal(remote.attempts(id)[0]?.outcome, 'never-left');
+      else if (boundary === 'reconnect exchange') assert.equal(exchange.entered, true);
+      const stopping = outbox.stop();
+      await stopping;
+      await draining;
+      assert.equal(exchange.exited, boundary === 'reconnect exchange', 'stop observes the client abort receipt');
+      assert.equal(exchange.settled, boundary === 'reconnect exchange', 'the held exchange actually settled');
+      assert.equal(remote.outbox()[0]?.state, 'queued');
+      assert.equal(messenger.delivered.length, 0);
+      await clock.advance(900_000);
+      assert.equal(messenger.calls.length, boundary === 'retry_after' ? 1 : 0);
+      assert.equal(exchange.entered, boundary === 'reconnect exchange');
+      assert.equal(clock.pending, 0);
+      await assert.rejects(outbox.drain(), /stopped/);
+    } finally { await dispose(); }
+  });
+}
+
+test('a reconciliation retry_after waits before resending', { timeout: 5000 }, async t => {
+  const { clock, remote, messenger, client, outbox, dispose } = await clockedOutbox(t);
+  try {
+    const id = outbox.enqueue({ kind: 'card', source: 'ask-1', payload: { text: 'interrupted card' } });
+    const job = remote.outbox()[0]!;
+    remote.writeOutbox({ ...job, state: 'sending' }, { id: 'interrupted', job: id, at: job.created, outcome: null });
+    client.prove = async () => ({ status: 'never-left', retryAfterMs: 1500 });
+    const draining = outbox.drain();
+    await clock.advance(1499);
+    assert.equal(remote.attempts(id)[0]?.outcome, 'never-left');
+    assert.equal(messenger.delivered.length, 0);
+    await clock.advance(1);
+    assert.equal(remote.outbox()[0]?.state, 'sent');
+    assert.equal(remote.attempts(id)[1]?.at, '2026-10-16T12:00:01.500Z');
+    await draining;
+    assert.deepEqual(messenger.delivered.map(job => job.id), [id]);
+  } finally { await dispose(); }
+});
+
+test('recovery preserves uncertain delivery fences while draining new jobs', { timeout: 5000 }, async t => {
+  const { clock, remote, messenger, client, outbox, dispose } = await clockedOutbox(t, {
+    random: () => 0, reconnect: async () => { messenger.recover(); return true; },
+  });
+  try {
+    messenger.loseReceipt();
+    let proofs = 0;
+    client.prove = async () => { proofs++; return { status: 'unknown' }; };
+    const id = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'lost receipt' } });
+    const draining = outbox.drain();
+    await clock.advance(0);
+    assert.equal(remote.outbox()[0]?.state, 'uncertain');
+    const missed = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'offline' } });
+    const next = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'new job' } });
+    await clock.advance(500);
+    assert.equal(remote.outbox().find(job => job.id === next)?.state, 'sent');
+    await draining;
+    assert.equal(proofs, 1, 'an unknown proof is not spun or treated as reconnection failure');
+    assert.equal(remote.outbox().find(job => job.id === id)?.state, 'uncertain');
+    assert.equal(remote.outbox().find(job => job.id === missed)?.state, 'missed');
+    assert.deepEqual(messenger.delivered.map(job => job.id), [id, next]);
+    assert.equal(remote.attempts(id).length, 1);
+    assert.equal(clock.pending, 0);
+  } finally { await dispose(); }
+});
+
+test('a source closed during retry_after is dropped and newly queued work leaves in the same drain', { timeout: 5000 }, async t => {
+  let open = true;
+  const { clock, remote, messenger, outbox, dispose } = await clockedOutbox(t, { sourceOpen: () => open });
+  try {
+    messenger.rateLimit(1000);
+    const id = outbox.enqueue({ kind: 'card', source: 'ask-1', payload: { text: 'closing card' } });
+    const draining = outbox.drain();
+    await clock.advance(0);
+    assert.equal(remote.attempts(id)[0]?.outcome, 'never-left');
+    open = false;
+    const next = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'arrived during rate wait' } });
+    await clock.advance(1000);
+    assert.equal(remote.outbox().find(job => job.id === id)?.state, 'dropped');
+    assert.equal(remote.outbox().find(job => job.id === next)?.state, 'sent');
+    await draining;
+    assert.equal(remote.attempts(id).length, 1);
+    assert.deepEqual(messenger.delivered.map(job => job.id), [next]);
+    assert.equal(clock.pending, 0);
+  } finally { await dispose(); }
+});
+
+test('an arrival after the final empty read joins the exposed owner and sends before that owner completes', { timeout: 5000 }, async t => {
+  const { clock, remote, messenger, outbox, dispose } = await clockedOutbox(t);
+  const read = remote.outbox.bind(remote);
+  try {
+    const first = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'first' } });
+    let second: string | undefined;
+    let joined: Promise<void> | undefined;
+    let observed = false;
+    // Observe the durable Store boundary without changing its returned snapshot.
+    // Arm before drain; schedule arrival immediately after its final empty read.
+    remote.outbox = () => {
+      const rows = read();
+      if (!observed && rows.length === 1 && rows[0]?.state === 'sent') {
+        observed = true;
+        queueMicrotask(() => {
+          second = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'completion arrival' } });
+          joined = outbox.drain();
+        });
+      }
+      return rows;
+    };
+    const draining = outbox.drain();
+    await clock.advance(0);
+    assert.equal(observed, true, 'the observer saw the final empty read after durable delivery');
+    assert.equal(joined, draining, 'the arrival joined the original exposed owner');
+    await draining;
+    assert.deepEqual(messenger.delivered.map(job => job.id), [first, second]);
+    assert.deepEqual(read().map(job => job.state), ['sent', 'sent']);
+  } finally { remote.outbox = read; await dispose(); }
+});
+
+test('omitted reconnect abort receipt expires and the registered disposer independently releases and joins the exchange', { timeout: 5000 }, async t => {
+  const exchange = heldOutboxReconnect(false);
+  const { clock, db, remote, messenger, outbox, dispose } = await clockedOutbox(t, {
+    random: () => 0, reconnect: exchange.reconnect, release: exchange.release,
+  });
+  try {
+    const id = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'owned without abort' } });
+    outbox.setAvailable(false);
+    // Arm a finite observer for the actual abort receipt before starting stop.
+    const receipt = assert.rejects(within(exchange.abortReceipt, 1500, clock,
+      () => new Error('reconnect abort receipt incomplete after 1500 ms')), /abort receipt incomplete/);
+    const draining = outbox.drain();
+    await clock.advance(500);
+    assert.equal(exchange.entered, true);
+    const stopping = outbox.stop();
+    await clock.advance(1000);
+    await receipt;
+    assert.equal(exchange.exited, false);
+    assert.equal(exchange.settled, false, 'the omitted abort has not released the producer');
+    assert.equal(remote.outbox().find(job => job.id === id)?.state, 'queued');
+    await dispose();
+    await stopping;
+    await draining;
+    assert.equal(exchange.settled, true, 'fixture release drained the actual exchange before database closure');
+    assert.equal(exchange.exited, false, 'cleanup cannot fabricate the production abort receipt');
+    assert.equal(messenger.delivered.length, 0);
+    assert.equal(messenger.calls.length, 0);
+    assert.equal(clock.pending, 0);
+    await assert.rejects(outbox.drain(), /stopped/);
+    assert.throws(() => db.remotes.forMessenger('telegram').outbox(), /not open|closed/i);
+  } finally { await dispose(); }
+});
+
+test('the final-read arrival recheck retains the original unknown-proof fence', { timeout: 5000 }, async t => {
+  const { clock, remote, messenger, client, outbox, dispose } = await clockedOutbox(t);
+  const read = remote.outbox.bind(remote);
+  try {
+    const id = outbox.enqueue({ kind: 'card', source: null, payload: { text: 'uncertain' } });
+    const job = read()[0]!;
+    remote.writeOutbox({ ...job, state: 'uncertain' }, { id: 'old', job: id, at: job.created, outcome: 'unknown' });
+    let proofs = 0;
+    client.prove = async () => { proofs++; return { status: 'unknown' }; };
+    let next: string | undefined;
+    let joined: Promise<void> | undefined;
+    let observed = false;
+    remote.outbox = () => {
+      const rows = read();
+      if (!observed && proofs === 1 && rows.length === 1 && rows[0]?.state === 'uncertain') {
+        observed = true;
+        queueMicrotask(() => {
+          next = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'new after unknown proof' } });
+          joined = outbox.drain();
+        });
+      }
+      return rows;
+    };
+    const draining = outbox.drain();
+    await clock.advance(0);
+    assert.equal(observed, true);
+    assert.equal(joined, draining);
+    await draining;
+    assert.equal(proofs, 1);
+    assert.deepEqual(messenger.delivered.map(job => job.id), [next]);
+    assert.equal(remote.attempts(id).length, 1);
+    assert.deepEqual(read().map(job => job.state), ['uncertain', 'sent']);
+  } finally { remote.outbox = read; await dispose(); }
 });

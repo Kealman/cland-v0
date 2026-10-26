@@ -50,7 +50,10 @@ For remote outbox changes, read `hub/README.md#durable-remote-outbox` and use
 `docs/agents/tests/hub-test-outbox.test.ts.md` for client proof/attempt receipts,
 `docs/agents/tests/hub-test-outbox-gateway.test.ts.md` for outage and source
 closure through frames. Keep immutable attempted payloads, stable job identities
-and the unknown-delivery fence; join the drain before releasing storage.
+and the unknown-delivery fence. Re-read queue arrivals within the active drain;
+use injected Clock/random for capped retryAfterMs and reconnect equal jitter,
+with no independent hub timer loop. Keep legacy clients optional-field compatible;
+stop cancels delays and aborts/joins reconnect before releasing storage.
 
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 

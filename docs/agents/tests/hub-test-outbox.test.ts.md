@@ -24,3 +24,39 @@ aborted-setup controls exercise that same registered disposal path and retain
 one-owner/send-count, post-stop admission, closed-database and drained-timer
 assertions. A lexical finally calls the registered disposer but is not its only
 owner. Payload merging is allowed only before the first attempt.
+
+Retain the held-send arrival regression: enqueue the second job after the
+bounded send-entry receipt, then join the original drain and assert both sent
+rows and exact platform delivery ids. For `retryAfterMs`, advance FakeClock to
+one millisecond before and then exactly at the deadline; assert the durable
+non-delivery proof, queued row and fresh attempt timestamp. The above-five-minute
+case resumes at 300,000 ms. Also retain the shorter reconciliation hint, source
+closure and a new arrival during the wait.
+
+Observe the final empty read through the owned Store seam without changing its
+snapshot. Enqueue in a microtask after that read; assert the arrival joins the
+original exposed promise and both jobs are sent before it completes. The
+unknown-proof variant must retain one proof and one attempt across the completion
+recheck, leaving that row uncertain while sending the new job.
+
+Inject `random` samples 0, 0.5 and 1 for reconnect's equal jitter. Observe actual
+exchange times through failed/throwing attempts, the 30,000 ms ceiling and reset
+after success. A healthy exchange must not authorize resending an unknown
+delivery; retain exact attempt count and delivered ids beside a newly queued job
+and missed General row. Old-shape clients without `reconnect` or retry hints
+remain covered by the original outage/restart tests.
+
+Register the clocked fixture's unconditional resource disposer and independent
+held reconnect release before acquiring SQLite or triggering the producer. The
+fixture uses `TestContext.after` before `tempProject` registers root removal;
+it has no process to own and no direct `process-cleanup.ts` import (the T1
+lexical admission rule requires a machine tier for that module). The
+disposer releases the fixture independently of production abort, joins stop and
+the actual exchange, then closes SQLite. Cleanup release must not fabricate the
+`exited` abort receipt. The omitted-abort control expires its bounded observer,
+uses that same disposer and proves exchange settlement, missing abort receipt,
+zero sends, post-stop refusal, closed SQLite and zero timers.
+Stop must cancel both delay kinds, abort and join an active reconnect
+exchange, retain the queued job and leave no timer or later send. An independent
+finite test timeout bounds a missing client receipt; advancing time alone is
+never the final delivery assertion. No wall-clock wait is used.

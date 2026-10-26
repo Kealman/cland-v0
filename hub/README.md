@@ -616,8 +616,13 @@ strings. The additive `target` column migrates existing hub.db rows; absent
 targets retain the previous row shape. Jobs and attempts keep insertion order,
 including at equal injected-clock timestamps.
 
-`drain()` makes one pass over the queued jobs and unresolved attempts present
-at entry. Concurrent callers share its promise. Before calling `client.send`,
+`drain()` re-reads queued jobs and unresolved attempts before finishing, so jobs
+enqueued during a send, rate-limit wait or reconnection leave in that same drain
+when delivery is possible. Concurrent callers share its promise. Each unresolved
+job is visited once per pass; an unknown proof does not spin. The completion
+owner checks enqueue revisions after the last read, then clears ownership and
+settles its promise synchronously; a microtask arrival at that read still joins
+the same owner and is drained before it completes. Before calling `client.send`,
 it atomically writes `sending` and an attempt with a null outcome. The client's
 `send(job, attempt)` and `prove(job, attempt)` return one of:
 
@@ -625,14 +630,28 @@ it atomically writes `sending` and an attempt with a null outcome. The client's
   attempt outcome commit together before completion is reported.
 - `never-left`, the client's positive proof that resending that immutable job
   is safe. The stable job id is the idempotency identity (for example Discord's
-  enforced nonce); each send still has a new attempt id.
+  enforced nonce); each send still has a new attempt id. An optional
+  `retryAfterMs` carries a platform `retry_after`, converted to milliseconds by
+  the client. A finite nonnegative value pauses the whole drain for at most
+  300,000 ms (five minutes; zero waits 1 ms), retaining the job as queued,
+  including General. Rate limiting is not an outage. The same hint on a
+  reconciliation proof waits before a resend. Invalid hints use ordinary
+  failure handling. The source is checked again after the wait.
 - `unknown`, which never permits another send. A thrown/rejected native error
   also means unknown; the outbox retains only that enum, never the native error.
 
 An interrupted or uncertain attempt is reconciled with `prove` before a resend;
 a healthy connection alone is no proof. A failure marks the remote unavailable
-in hub.db. `setAvailable(true)` permits a later recovery pass, retaining the
-proof fence. General jobs that cannot go out are terminal `missed` rows rather
+in hub.db. Clients may supply `reconnect(signal)`, returning true only after a
+successful exchange. Within the active drain, reconnect attempts wait with
+exponential equal jitter: a 1,000 ms window doubles after each failed exchange
+up to 30,000 ms; each delay is uniformly drawn from half to all of that window
+and rounded to milliseconds. A successful exchange resets the window, marks
+the remote available and revisits waiting jobs, retaining the proof fence.
+Thrown reconnect errors count as failure and are never stored. Without that
+optional callback, `drain()` settles offline jobs and returns;
+`setAvailable(true)` permits a later recovery pass as before. General jobs that
+cannot go out during an outage are terminal `missed` rows rather
 than a late replay. `missed()` returns their count and earliest creation time
 for the gap line, durably and per remote; it does not consume those facts.
 Gap-line delivery/acknowledgement belongs to the messenger's catch-up policy.
@@ -641,10 +660,15 @@ Adapters supply `sourceOpen(job)` for expiring cards/notices; it is checked even
 while unavailable and again after reconciliation, dropping a closed source
 without another send. The default callback treats jobs as nonexpiring; an
 outcome edit that must survive source closure should remain open to that policy.
-`stop()` fences enqueue/drain and joins the current delivery before store
-teardown. The adapter must first cancel/settle any held platform I/O. No timer,
-retry delay or reconnection loop is owned here; pacing, capped retry_after,
-backoff and queue arrivals during a drain are T-1325's separate scope.
+`stop()` fences enqueue/drain, cancels any rate-limit/backoff delay, aborts the
+reconnect signal and joins all current client work before store teardown.
+Clients must settle a reconnect exchange on abort; the adapter must also
+cancel/settle held send/proof I/O. Waits live only in the active drain, using the
+injected `Clock` (default `realClock`) and `random` source (default `Math.random`,
+returning a number in [0, 1]). There is no independent hub timer loop. Delay and
+backoff progress is transient; jobs, attempt proofs and availability remain
+durable. Existing clients/results need no new fields, and no store migration
+is needed for drain scheduling. Per-chat/bucket pacing remains the client's job.
 
 ## Connection events filter
 
