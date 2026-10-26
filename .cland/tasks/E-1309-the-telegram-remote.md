@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.394Z
-updated: 2026-10-25T14:12:33.592Z
+updated: 2026-10-26T19:09:11.962Z
 ---
 
 ## Goal
@@ -80,3 +80,24 @@ In a scratch project with a made-up token, QA enables Telegram, plays a stranger
 - Research: `docs/research/telegram-remote.md` on `research/telegram-remote` (2a81ecc9), 38 rules; `docs/research/messenger-bridges.md` on `research/messenger-bridges` (ffee79d8).
 - Code: `hub/src/executor/droplet/api.ts` and `hub/test/fakes/digitalocean/fake-api.ts` (a platform client and its fake).
 - GLOSSARY: Remote, Gateway, Gap line and Outbox (added for v0.3); General.
+
+## Plan
+
+```yaml
+stages:
+  - name: telegram remote
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1340
+        - T-1341
+        - T-1342
+        - T-1346
+      - - T-1343
+        - T-1347
+        - T-1345
+      - - T-1344
+      - - T-1348
+        - T-1349
+```
