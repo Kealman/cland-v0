@@ -2,8 +2,8 @@
 id: T-1330
 kind: task
 title: Telegram token validation and every held secret registered with the remote redactor
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1084
 branch: t/T-1330-telegram-token-validation-and-every-held
 created: 2026-10-26T07:54:42.430Z
-updated: 2026-10-26T12:12:46.647Z
+updated: 2026-10-26T15:19:06.371Z
+closed: 2026-10-26T15:19:06.371Z
 ---
 
 ## Summary
@@ -29,11 +30,13 @@ Validate a Telegram token against `^[1-9]\d{0,16}:[A-Za-z0-9_-]{24,}$` within 80
 ## Acceptance criteria
 
 - [x] C1. A malformed Telegram token is refused with a reason that does not contain it, before any URL is built (test).
-  - done: impl-1330 · 2026-10-26T11:40:09.537Z
   - verified: rev-32 [reviewer] · run rev-20261026-1330-final · 2026-10-26T12:12:45.649Z · commit 2c4152d64db80afde95f19a1725144fa2007e95f
+  - done: impl-1330 · 2026-10-26T14:20:58.145Z
+  - verified: rev-32 [reviewer] · run rev-20261026-1330-final2 · 2026-10-26T14:38:11.023Z · commit 30701dd93a60e1546e42ce71f312f0c89b7601fb
 - [x] C2. An error, log line, journal record and artifact produced through the gateway that carried a registered token or key contain it only masked (test).
-  - done: impl-1330 · 2026-10-26T11:56:15.986Z
   - verified: rev-32 [reviewer] · run rev-20261026-1330-final · 2026-10-26T12:12:45.649Z · commit 2c4152d64db80afde95f19a1725144fa2007e95f
+  - done: impl-1330 · 2026-10-26T14:20:58.385Z
+  - verified: rev-32 [reviewer] · run rev-20261026-1330-final2 · 2026-10-26T14:38:11.023Z · commit 30701dd93a60e1546e42ce71f312f0c89b7601fb
 
 ## Comments
 
@@ -115,3 +118,39 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-12384 audits original A-12383 exact-head run6fe279be. 3417 ordinary passes/459files,65 separate load passes (13×5), nofail/cancel/skip. C1 fixed value-free validation before setup and repair; C2 registration/isolation/rotation/marker masking, actual status/log/cleanup/frame/native journal/artifact bytes, wire collisions, previous plain-callable policy and held-write cleanup all have named base+5/5 receipts. HostMacT0 27.054s/exclusiongate14d5e2ff reused, Linuxc8lon1 Node24.21 Nvim.12.5 T1/allfallbackT2/Web, Headless156.0.8078.4/1248; noT3/T4/nativeprovider/QA claim. Life823s/$0.0571, budgets/tier/lint report-only135/61. Approved direct reload API/native sink scope accepted; T-1331 second-lander wiring remains integration work. Prior host failure retained. C1/C2verified, no remaining findings.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1330 · 2026-10-26T14:12:07.905Z
+
+Authorized last-lander integration after T-1331: consumer inventory now includes daemon resolveRemoteSecrets closure (startup and ProjectConfiguration.prepareApply reload), ConfiguredGateway update/factory in remote/configuration.ts, config-set.test.ts, project-hub-lifecycle.test.ts, T-1329 secrets-resolution/secrets-environment tests and their guides. Existing resolver overlay API, file-only CLI reads, help fixture bytes and both tier entries must be retained. Added scope: use serveProject's explicit env at both resolutions and register final resolved values before reload gateway.update. Existing gateway protocol, native sink, previous-callable and short-secret controls remain unchanged.
+
+### rev-32 · 2026-10-26T14:22:48.677Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261026-1330-source4
+commit: 30701dd93a60e1546e42ce71f312f0c89b7601fb
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized integration delta clear; A-12427 carries prior full source and inspects overlays, wiring, docs/help/fixtures/tiers/new fixture consumers. Final file/env values validate after overrides, daemon explicit env is used at startup/reload, and same per-project registry registers before configured replacement construction/activation. Frozen SECRET_USAGE/CONFIG_USAGE equal source; existing masking/protocol/cleanup controls unchanged. No remaining Standards/Spec findings. C1/C2 need fresh exact-head configured runtime evidence; A-12383 remains historical at2c4152d64. A-12426 is local macOS targeted T1/T2+existing T3 output, no browser/provider/suite/load proof. Reviewer ran no tests. One mode-free task verify may proceed here; Coordinator rule6 separate.
+
+### rev-32 · 2026-10-26T14:38:11.023Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261026-1330-final2
+commit: 30701dd93a60e1546e42ce71f312f0c89b7601fb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-12433 audits original A-12432 run02f2305c at source4 head. 3433 ordinary passes/460files plus85 separate load passes (17×5), nofail/cancel/skip. C1/C2 named validation, all-four rotation/status/log/frame/native sinks, protocol/callable/cleanup controls pass; new explicit-env startup+reload, invalid-env pre-construction refusal and replacement-failure masking all base+5/5. Maxnew.238166039s, noallowance needed. HostMacT0 26.915s/exclusiongated8f579e2 reused, Linuxc8lon1 T1/allfallbackT2/fullWeb Headless156.0.8078.4/1248; noT3/T4/nativeprovider/QA/rule6claim. Life782s/$0.0543, runtime budgets/tier/lint report-only135/61. Old-headA-12383 remains historical. C1/C2verified; no findings; Coordinator rule6 separate.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-26T15:19:06.371Z
+
+Merged 17cd89d26fa74c1bee330b69ba427bd29ea7a336 onto dev.
