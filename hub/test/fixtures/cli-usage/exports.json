@@ -90,5 +90,8 @@
   ],
   "WEB_USAGE": [
     "WEB_USAGE"
+  ],
+  "SECRET_USAGE": [
+    "SECRET_USAGE"
   ]
 }

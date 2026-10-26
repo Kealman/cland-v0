@@ -12,6 +12,12 @@ const help = commandHelp(command, rest);
 if (help !== undefined) {
   process.stdout.write(help);
 } else switch (command) {
+  case 'secret':
+    try {
+      const { runSecret } = await import('../src/cli/secret.ts');
+      process.exitCode = await runSecret(rest);
+    } catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : 'secret operation failed'}\n`); process.exitCode = 1; }
+    break;
   case 'models':
     try {
       const { runModels } = await import('../src/cli/models.ts');

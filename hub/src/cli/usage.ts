@@ -64,6 +64,8 @@ const commandUsage = {
 
   MODELS_USAGE: "  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n",
 
+  SECRET_USAGE: "  secret set <name>   read a value from stdin or a hidden prompt, never argv\n  secret list         print stored names and 12-character SHA-256 fingerprint prefixes only\n  secret unset <name> remove one stored value\n                  names: telegram.token, discord.token, speech.elevenlabs_key, speech.xai_key\n                  project-local .cland/secrets.toml, mode 600; no running hub required\n                  custom ignore files: put /secrets.toml last among non-comment rules before set/unset\n",
+
   CONFIG_USAGE: "  config set <section.key> <value> [--json]  validate and save one managed config.toml value\n                  verification.coverage_map_retention: positive pointer count (default 10); applies on next map publication after reload\n                  web.port: 0 keeps the first free port; 1–65535 overrides it; a taken port disables only the web edge\n                  web.bind: IPv4/IPv6 address (default 127.0.0.1); only the web edge binds there\n                  web.origin: HTTPS tunnel origin (empty: none); Host + Origin match sets Secure; forwarded headers ignored\n                  web.dist: bundle directory (empty: installed web/dist); web settings apply after a hub restart\n",
 
   QA_LINT_USAGE: "  qa lint <brief> [--commit <sha>]   check a QA brief against this build's help and built-in roles, without executing commands\n                  checks table ids/surfaces, commands/flags in code, variable rm operands and literal counts\n                  runs offline in production installs without development dependencies\n                  Aide verification checks named report recipients and reserved modes/occasions\n                  checks named test files/titles/patterns and literal selectors in committed source\n                  --commit defaults to HEAD of the current repository; ignores uncommitted source\n                  surfaces: headless-grid, tmux, web-terminal, hub-api, real-browser\n                  exits 0 when clean, 1 with one file:line finding per line, 2 for usage/read errors\n  qa lint --help|-h  print brief lint help\n",
@@ -95,6 +97,7 @@ export const {
   DEMO_USAGE,
   MODELS_USAGE,
   CONFIG_USAGE,
+  SECRET_USAGE,
   QA_LINT_USAGE,
   WEB_USAGE,
 } = commandUsage;

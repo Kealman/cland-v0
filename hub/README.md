@@ -2038,6 +2038,36 @@ mark. `hub/package.json` has no version. `CLAND_VERSION_OVERRIDE` is for tests
 that simulate an update. A release bump is an ordinary commit merged before
 the release's dry run; `cland release` does not write the version.
 
+## Project secrets
+
+`cland secret set <name>` reads one value from stdin or a hidden terminal prompt;
+it accepts no value argument. Supported names are `telegram.token`,
+`discord.token`, `speech.elevenlabs_key` and `speech.xai_key`. Run it in an
+initialized project; it works with the hub stopped. Use the hidden prompt or
+pipe from a credential source, keeping the value out of shell history and argv.
+
+Values live in `.cland/secrets.toml`, in `[telegram]`, `[discord]` and `[speech]`
+tables with string values. Writes replace the file atomically at mode 600.
+The resolver checks and tightens an existing file to 600 before hub startup
+opens its logs or listeners; symbolic links, non-regular files and multiple
+hard links are refused. Parse errors report a fixed reason without quoting
+the file. The resolver returns only the four supported dotted keys.
+
+`cland secret list` prints one stored name and its 12-character SHA-256
+fingerprint prefix per line; an empty store prints nothing. `cland secret unset
+<name>` removes just that value. Set and unset print only the operation and name.
+Input is a nonempty line of at most 4096 bytes, with no control characters;
+piped input loses only one final LF or CRLF. File reads are limited to 64 KiB.
+
+The managed `.cland/.gitignore`, refreshed by init, update, hub startup and secret
+writes, ignores `secrets.toml` and temporary writes. A project-owned unmarked
+ignore file is preserved. Set and unset refuse before reading stdin unless its
+final non-comment rule is exactly `secrets.toml` or `/secrets.toml`; add that rule
+after any negations before storing keys. The command leaves custom bytes intact.
+The local hub authentication file `.cland/secret` is separate. Messenger and
+speech credentials are never sent through a hub frame. Secret writes save the
+file only; loading a messenger and applying rotation belong to its reload path.
+
 ## cland setup
 
 Run `cland setup [dir]` after `cland init`. It uses the current directory or the

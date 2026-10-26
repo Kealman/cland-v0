@@ -31,6 +31,7 @@ ui.json.lock*
 hub.lock*
 hub.sock
 secret
+secrets.toml
 journal.jsonl
 log/
 run/
@@ -115,13 +116,7 @@ export function findDiscovery(cwd: string): string | null {
  */
 export function ensureSkeleton(l: Layout): string {
   mkdirSync(l.logDir, { recursive: true });
-  let current: string | null = null;
-  try {
-    current = readFileSync(l.gitignore, 'utf8');
-  } catch {
-    /* absent */
-  }
-  if (current === null || (current.startsWith(MANAGED_MARK) && current !== GITIGNORE)) writeFileSync(l.gitignore, GITIGNORE);
+  ensureGitignore(l);
   let secret = '';
   try {
     secret = readFileSync(l.secret, 'utf8').trim();
@@ -135,6 +130,17 @@ export function ensureSkeleton(l: Layout): string {
   // a secret file someone loosened is tightened again
   if ((statSync(l.secret).mode & 0o777) !== 0o600) chmodSync(l.secret, 0o600);
   return secret;
+}
+
+/** Shared managed ignore writer; unmarked project-owned files remain untouched. */
+export function ensureGitignore(l: Layout): void {
+  let current: string | null = null;
+  try {
+    current = readFileSync(l.gitignore, 'utf8');
+  } catch {
+    /* absent */
+  }
+  if (current === null || (current.startsWith(MANAGED_MARK) && current !== GITIGNORE)) writeFileSync(l.gitignore, GITIGNORE);
 }
 
 /** Written whole or not at all (a reader never sees half a file), mode 0600: it carries the secret. */

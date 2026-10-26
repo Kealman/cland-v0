@@ -1,0 +1,106 @@
+// Project-local credential storage. Values never cross the hub's frame boundary.
+import { constants, closeSync, fchmodSync, fstatSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash, randomBytes } from 'node:crypto';
+import { join } from 'node:path';
+import { parse, stringify } from 'smol-toml';
+import { symlinkOnPath } from '../init/files.ts';
+
+export const SECRET_NAMES = ['telegram.token', 'discord.token', 'speech.elevenlabs_key', 'speech.xai_key'] as const;
+export type SecretName = typeof SECRET_NAMES[number];
+export type Secrets = Partial<Record<SecretName, string>>;
+
+/** File-only resolver shared by startup, CLI and remote/speech consumers. Missing is empty. */
+export function resolveSecrets(root: string): Secrets {
+  const path = join(root, '.cland/secrets.toml');
+  if (symlinkOnPath(root, path) !== null) throw new Error('.cland/secrets.toml: symlink refused; replace it with a regular file');
+  let fd: number;
+  try { fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw new Error('.cland/secrets.toml: cannot open a regular file (symlinks refused)');
+  }
+  let text: string;
+  try {
+    const info = fstatSync(fd);
+    if (!info.isFile() || info.nlink !== 1) throw new Error('.cland/secrets.toml: expected a regular file with one link');
+    if ((info.mode & 0o7777) !== 0o600) fchmodSync(fd, 0o600);
+    if (info.size > 65_536) throw new Error('.cland/secrets.toml: file too large');
+    text = readFileSync(fd, 'utf8');
+  } catch {
+    throw new Error('.cland/secrets.toml: cannot read a private regular file (mode 600, one link, at most 64 KiB)');
+  } finally { closeSync(fd); }
+  let parsed: Record<string, unknown>;
+  try { parsed = parse(text); }
+  catch { throw new Error('.cland/secrets.toml: invalid TOML; fix the file without sharing its contents'); }
+  const secrets: Secrets = {};
+  for (const [section, table] of Object.entries(parsed)) {
+    if (!['telegram', 'discord', 'speech'].includes(section) || !table || typeof table !== 'object' || Array.isArray(table)) {
+      throw new Error('.cland/secrets.toml: unsupported secret section');
+    }
+    for (const [key, value] of Object.entries(table)) {
+      const name = `${section}.${key}`;
+      if (!isSecretName(name) || typeof value !== 'string') throw new Error('.cland/secrets.toml: expected supported dotted names with string values');
+      secrets[name] = value;
+    }
+  }
+  return secrets;
+}
+
+export function isSecretName(name: string): name is SecretName {
+  return (SECRET_NAMES as readonly string[]).includes(name);
+}
+
+/** Public diagnostics use a short SHA-256 fingerprint, never a value. */
+export function secretFingerprint(value: string): string {
+  return createHash('sha256').update(value).digest('hex').slice(0, 12);
+}
+
+/** One credential per input line; no terminal control bytes or unbounded input. */
+export function validateSecretValue(value: string): void {
+  if (!value || Buffer.byteLength(value) > 4096 || /[\x00-\x1f\x7f]/.test(value)) {
+    throw new Error('secret value must be a nonempty single line of at most 4096 bytes without control characters');
+  }
+}
+
+export function setSecret(root: string, name: SecretName, value: string): void {
+  validateSecretValue(value);
+  const secrets = resolveSecrets(root);
+  secrets[name] = value;
+  saveSecrets(root, secrets);
+}
+
+export function unsetSecret(root: string, name: SecretName): void {
+  const secrets = resolveSecrets(root);
+  if (!Object.hasOwn(secrets, name)) return;
+  delete secrets[name];
+  saveSecrets(root, secrets);
+}
+
+function saveSecrets(root: string, secrets: Secrets): void {
+  const path = join(root, '.cland/secrets.toml');
+  if (symlinkOnPath(root, path) !== null) throw new Error('.cland/secrets.toml: symlink refused; replace it with a regular file');
+  const tables: Record<string, Record<string, string>> = {};
+  for (const name of SECRET_NAMES) {
+    const value = secrets[name];
+    if (value === undefined) continue;
+    const [section, key] = name.split('.') as [string, string];
+    (tables[section] ??= {})[key] = value;
+  }
+  const tmp = join(root, '.cland', `.secrets-${randomBytes(12).toString('hex')}.tmp`);
+  let fd: number | undefined;
+  try {
+    fd = openSync(tmp, 'wx', 0o600);
+    fchmodSync(fd, 0o600);
+    writeFileSync(fd, stringify(tables));
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = undefined;
+    if (symlinkOnPath(root, path) !== null) throw new Error('symlink');
+    renameSync(tmp, path);
+  } catch {
+    throw new Error('.cland/secrets.toml: cannot save private file; check permissions and symlinks');
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+    rmSync(tmp, { force: true });
+  }
+}

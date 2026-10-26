@@ -93,6 +93,9 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
     // Recheck inside the lock: an automatic start may have begun before the stop marker existed.
     if (options.autostart && autostartDeferred(root)) throw new AutostartDeferred();
     if (!options.autostart) clearHubStop(root);
+    // Only serving loads credentials; lightweight project/CLI reads keep their import budget.
+    const { resolveSecrets } = await import('../remote/secrets.ts');
+    resolveSecrets(root);
     secret = ensureSkeleton(l);
   } catch (err) {
     lock.release();

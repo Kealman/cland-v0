@@ -37,6 +37,15 @@ step. Preserve optional-source compatibility for old ask outcomes; the headless
 workbench regressions are `web/test/remote-via.test.ts` and
 `nvim/test/remote-via.test.ts`.
 
+For project secret storage or CLI input, read `docs/agents/secrets.md` and use
+the T1 stream, T2 startup/CLI and native Git seams in
+`docs/agents/tests/hub-test-secrets.test.ts.md`. Share `resolveSecrets(root)`;
+keep values in stdin or the private file and diagnostics limited to fixed reasons.
+Preserve custom ignore bytes and require a final literal secrets rule before
+input. Use the fixture's registered close/output barrier before root removal.
+Load credentials only at daemon startup, keeping `project.ts` import-free of
+the resolver; preserve the CLI import-budget guard and T2 startup receipts.
+
 For remote persistence and poller ownership, use `Store.remotes` on the existing
 hub.db handle, with platform ids kept as strings/TEXT. The T1 storage/lease seams
 and T2 frame/restart/stop receipts are documented in
