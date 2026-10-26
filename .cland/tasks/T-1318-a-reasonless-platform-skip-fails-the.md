@@ -2,8 +2,8 @@
 id: T-1318
 kind: task
 title: "A reasonless platform skip fails the load gate on the other platform: macOS stage cover red with zero failures"
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ regression_of: T-543
 topic: topic-1070
 branch: t/T-1318-a-reasonless-platform-skip-fails-the
 created: 2026-10-26T00:27:25.158Z
-updated: 2026-10-26T00:35:34.297Z
+updated: 2026-10-26T00:57:58.235Z
+closed: 2026-10-26T00:57:58.235Z
 ---
 
 ## Summary
@@ -30,6 +31,7 @@ Give every platform-conditional skip in the test tree a reason string, so the lo
 
 - [x] C1. Every platform-conditional `skip` in hub/test, nvim/test and web/test passes a non-empty reason string on the skipping platform, and a load-gate unit or component test shows a reasoned platform skip counts as 5/5 skipped, not as a failure (test).
   - done: impl-1318 · 2026-10-26T00:34:10.910Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1318-evidence-1 · 2026-10-26T00:51:31.892Z · commit f85b8790db1869bbd86ffa3ce56984a635401669
 
 ## Comments
 
@@ -53,3 +55,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source CLEAR; A-12208 at tree 0d3827b278a1eb9836e633bed5bc3a1db2ef6542. Standards/Spec 0 findings. Three platform predicates retain their run behavior with nonblank excluded-platform reasons; other sandbox/client prerequisites already reasoned. New direct skip-reason lint is explicitly report-only with lexical binding/false-positive controls, not an admission change. T1 reporter and retained T3 positive-only/mixed fixture prove 5/5 skipped without 5/5 passed, keeping invalid receipt negatives. Native bodies/selection/allowances unchanged. A-12207 local macOS 94 passes/1 reasoned Linux-only skip is supplementary, not Linux/configured proof; preserve original outputs/exits/capture limits. C1 runtime remains pending ordinary mode-free same-head verification after any active Coordinator quiet window is released; then final evidence review. No reviewer execution or new full/forced run requested.
+
+### rev-26 · 2026-10-26T00:51:31.892Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1318-evidence-1
+commit: f85b8790db1869bbd86ffa3ce56984a635401669
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence CLEAR; A-12214 carries source1/A-12208 and original 5c8b8b7e/A-12213 exit 0. Actual deduplicated ordinary3377pass/1reasoned skip,450filepasses; separate10loadpasses, both new T1 identities5/5. T0/all T1/fallback all T2/four changed T3 once/Web complete; remaining T3/T4 absent. C1 reporter and report-only lint controls pass; actual native prerequisite fixture11.947594073s passes its exact5/5-skipped/no5/5-passed and invalid-receipt assertions (inner captured output not separately printed). Linux Claude native birth runs/pass3.900891903s; macOS inhibitor actual skip reason at17072, not a pass; POSIX wait runs/pass. Native54pass/1skip; selected added52.104s excludes machine wait, no repetitions. Linux c-8lon1 Node24.21/Neovim0.12.5 HeadlessShell156.0.8078.4/v1248 workers2 lifetime833s/$0.0579; host prepared-tree gate not remotely repeated typecheck. Lint/budget/printed allowance advice remain report-only, source allowances unchanged. C1 verified, Standards/Spec no findings. Coordinator owns enqueue/landing/after-stage QA; reviewer reads only.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-26T00:57:58.235Z
+
+Merged 8ec6895070bc8866ae315ba7ba174014e4a6dc45 onto dev.
