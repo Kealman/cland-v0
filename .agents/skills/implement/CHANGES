@@ -153,4 +153,5 @@ T-1328: Document the shared project-secret resolver, private CLI input and the s
 T-1328 review: Enforce custom-ignore protection before input and document native child close/output ownership and per-file guidance.
 T-1328 full cover: Keep credential imports at the actual daemon-start boundary and retain lightweight CLI import budgets.
 
+T-1331: Document remote/speech config reload, injected messenger and completion receipts.
 T-1329: Document environment-first secret resolution, file-only CLI edits and the shared final child credential filter.

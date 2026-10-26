@@ -29,6 +29,8 @@ export type ProjectConfig = {
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
   artifacts: { retentionDays: number };
   web: { port: number; dist: string; bind: string; origin: string };
+  remote: { muteDefault: boolean; telegram: { enabled: boolean; format: 'rich' | 'entities' }; discord: { enabled: boolean } };
+  speech: { provider: 'elevenlabs' | 'command' | ''; model: string; language: string; maxSeconds: number; command: string[] };
   keys: { layouts: string[] };
   hygiene: { eventLimit: RateLimit; rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
 };
@@ -48,6 +50,8 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
   artifacts: { retentionDays: 30 },
   web: { port: 0, dist: '', bind: '127.0.0.1', origin: '' },
+  remote: { muteDefault: false, telegram: { enabled: false, format: 'rich' }, discord: { enabled: false } },
+  speech: { provider: 'elevenlabs', model: 'scribe_v2', language: '', maxSeconds: 600, command: [] },
   keys: { layouts: [] },
   hygiene: { eventLimit: { ...EVENT_LIMIT }, rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
 });
@@ -194,6 +198,29 @@ port = ${c.web.port}
 # Empty serves the installed web/dist; a development bundle path is relative to the project root.
 dist = ${JSON.stringify(c.web.dist)}
 
+# Remote and speech changes apply on cland hub reload (config set applies them immediately).
+[remote]
+# The initial mute state for a new pairing.
+mute_default = ${c.remote.muteDefault}
+
+[remote.telegram]
+# Active only when enabled with a resolved token. Tokens belong in cland secret, never here.
+enabled = ${c.remote.telegram.enabled}
+format = ${JSON.stringify(c.remote.telegram.format)}
+
+[remote.discord]
+enabled = ${c.remote.discord.enabled}
+
+[speech]
+# elevenlabs, command, or empty to turn transcription off.
+provider = ${JSON.stringify(c.speech.provider)}
+model = ${JSON.stringify(c.speech.model)}
+# Empty detects the language.
+language = ${JSON.stringify(c.speech.language)}
+max_seconds = ${c.speech.maxSeconds}
+# The command provider's argv; no shell expansion.
+command = ${JSON.stringify(c.speech.command)}
+
 # Archived artifact files are removed after this many days; their index entries stay.
 [artifacts]
 retention_days = ${c.artifacts.retentionDays}
@@ -215,6 +242,43 @@ const positive = (v: unknown): number | undefined => (typeof v === 'number' && N
 export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env, { strict = false }: { strict?: boolean } = {}): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
   const c = defaultConfig(fallbackName);
+  const table = (value: unknown, key: string): Record<string, unknown> => {
+    if (value === undefined) return {};
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value instanceof Date) throw new Error(`${key} must be a table`);
+    return value as Record<string, unknown>;
+  };
+  const remote = table(doc.remote, 'remote');
+  const telegram = table(remote.telegram, 'remote.telegram');
+  const discord = table(remote.discord, 'remote.discord');
+  for (const [source, key, target, field] of [
+    [remote, 'remote.mute_default', c.remote, 'muteDefault'],
+    [telegram, 'remote.telegram.enabled', c.remote.telegram, 'enabled'],
+    [discord, 'remote.discord.enabled', c.remote.discord, 'enabled'],
+  ] as const) {
+    const value = source[key.split('.').at(-1)!];
+    if (value === undefined) continue;
+    if (typeof value !== 'boolean') throw new Error(`${key} must be a boolean`);
+    Reflect.set(target, field, value);
+  }
+  if (telegram.format !== undefined) {
+    if (telegram.format !== 'rich' && telegram.format !== 'entities') throw new Error('remote.telegram.format must be rich or entities');
+    c.remote.telegram.format = telegram.format;
+  }
+  const speech = table(doc.speech, 'speech');
+  if (speech.provider !== undefined) {
+    if (speech.provider !== 'elevenlabs' && speech.provider !== 'command' && speech.provider !== '') throw new Error('speech.provider must be elevenlabs, command or empty');
+    c.speech.provider = speech.provider;
+  }
+  for (const key of ['model', 'language'] as const) {
+    if (speech[key] === undefined) continue;
+    if (typeof speech[key] !== 'string') throw new Error(`speech.${key} must be a string`);
+    c.speech[key] = speech[key];
+  }
+  if (speech.max_seconds !== undefined) c.speech.maxSeconds = workerCount(speech.max_seconds, 'speech.max_seconds');
+  if (speech.command !== undefined) {
+    if (!Array.isArray(speech.command) || !speech.command.every(value => typeof value === 'string' && !value.includes('\0'))) throw new Error('speech.command must be a list of strings without NUL bytes');
+    c.speech.command = [...speech.command];
+  }
   const publish = (doc.publish ?? {}) as Record<string, unknown>;
   if (publish.allow_paths !== undefined) {
     if (!Array.isArray(publish.allow_paths) || !publish.allow_paths.every(path => typeof path === 'string' && /^(?!\/)(?!.*(?:^|\/)\.\.?(?:\/|$))[^*?\\]+(?:\/\*\*)?$/.test(path))) throw new Error('publish.allow_paths must contain exact relative paths or directory/** prefixes');

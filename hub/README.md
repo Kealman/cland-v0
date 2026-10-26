@@ -1263,6 +1263,28 @@ parameters. New launches use the loaded role defaults. Droplet cap reads now use
 the loaded snapshot too: a config-only edit takes effect after reload, including
 in `cland executor status`.
 
+The `[remote]`, `[remote.telegram]`, `[remote.discord]` and `[speech]` sections
+are rendered by init and added to managed configs by update, preserving configured
+values. Defaults are `remote.mute_default = false`, Telegram `enabled = false`
+and `format = "rich"` (`rich` or `entities`), Discord `enabled = false`, and speech
+`provider = "elevenlabs"` (`elevenlabs`, `command` or empty/off), `model = "scribe_v2"`,
+`language = ""` (detect), `max_seconds = 600` (positive integer), `command = []`
+(the command provider's argv). All nine keys apply live through `config set`,
+explicit reload or SIGHUP. Each reload resolves the project's secrets again;
+a messenger is active only when enabled with a resolved nonempty token.
+
+The platform factory is currently injected through `serveProject`'s
+`gatewayMessenger` option; tests use `testMessenger` and make no platform calls.
+Without a platform factory no native messenger is started. A changed remote/speech
+snapshot or resolved secret drains the configured gateway and creates its enabled
+messengers again; an unchanged reload retains it. The reload result follows the
+start/stop receipts and a second source-stamp check immediately before publication.
+A source edited during platform preparation refuses with retry guidance and keeps
+the previous config/roles snapshots. Secret or gateway application failures are
+reported as remote configuration failures and preserve valid role admission. Pairing and outbox storage remain in `hub.db`. Real platform
+clients and speech execution are provided by their own items. The existing
+`gatewayRemotes` fixture option retains its unconditional startup behavior.
+
 The role file retains its 500 ms auto-refresh and refresh before launches. A role
 edit validates and publishes the entire pair; config-only edits wait for an
 explicit reload or SIGHUP. A failed pair stays in force until a corrected role

@@ -48,6 +48,12 @@ input. Use the fixture's registered close/output barrier before root removal.
 Load credentials only at daemon startup, keeping `project.ts` import-free of
 the resolver; preserve the CLI import-budget guard and T2 startup receipts.
 
+For remote/speech configuration or reload, use the template/writer and frame/CLI
+seams in `docs/agents/tests/hub-test-config-set.test.ts.md`. Inject
+`gatewayMessenger` with the test messenger, resolve secrets inside the daemon,
+and observe start/stop completion before claiming reload applied. Keep the
+legacy `gatewayRemotes` seam and CLI import budget unchanged.
+
 For remote persistence and poller ownership, use `Store.remotes` on the existing
 hub.db handle, with platform ids kept as strings/TEXT. The T1 storage/lease seams
 and T2 frame/restart/stop receipts are documented in

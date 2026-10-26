@@ -7,6 +7,202 @@ import { join } from 'node:path';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cland, eventually, projectHub, tempProject } from './harness.ts';
 import { writeAtomic } from '../src/init/files.ts';
+import { testMessenger } from './fakes/messenger.ts';
+import type { RemoteSettings } from '../src/remote/configuration.ts';
+import { heldRemoteBoundary } from './fakes/held-remote-boundary.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+
+test('a remote secrets reload refusal retains valid role admission and the last-good pair', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Remote refusal');
+  config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  await writeFile(join(root, '.cland/roles.toml'), '[reviewer.launch]\nharness="claude-code"\nmodel="stable"\n');
+  const logs: Record<string, unknown>[] = [];
+  const hub = await projectHub(t, root, {}, { log: entry => { logs.push(entry); } });
+  const ui = await connectUi(t, hub.discovery);
+  const before = (await ui.request({ type: 'hub.status' })).value as { config: unknown };
+  await writeFile(join(root, '.cland/secrets.toml'), '[broken');
+  const refused = await ui.request({ type: 'hub.reload' });
+  assert.equal(refused.ok, false);
+  assert.match(String(refused.error), /secrets.toml: invalid TOML/);
+  const launch = await ui.request({ type: 'session.launch', name: 'after-remote-refusal', role: 'reviewer' });
+  assert.equal(launch.ok, true, JSON.stringify(launch));
+  assert.equal(hub.fakes['claude-code']!.spawns.find(spawn => spawn.name === 'after-remote-refusal')?.model, 'stable');
+  assert.deepEqual(((await ui.request({ type: 'hub.status' })).value as { config: unknown }).config, before.config);
+  assert.equal(logs.some(entry => entry.event === 'roles-unreadable'), false, 'a remote application failure is not a role policy error');
+  assert.ok(logs.some(entry => entry.event === 'config-reload-failed' && entry.file === 'remote configuration' && String(entry.error).includes('secrets.toml: invalid TOML')));
+});
+
+test('config set and hub reload start and stop configured messengers only with a token', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Remote settings');
+  config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const remotes: ReturnType<typeof testMessenger>[] = [];
+  const hub = await projectHub(t, root, {}, { gatewayMessenger: (via, _token, _settings) => {
+    const remote = testMessenger(via, via);
+    remotes.push(remote);
+    return remote;
+  } });
+  for (const via of ['telegram', 'discord'] as const) {
+    const enabled = await cland(root, 'config', 'set', `remote.${via}.enabled`, 'true');
+    assert.equal(enabled.code, 0, enabled.stderr);
+    assert.equal((await cland(root, 'hub', 'reload')).code, 0);
+    assert.equal(remotes.length, 0, 'enabled without token stays inactive');
+    // Made-up secrets enter through a private fixture file, never argv or a frame.
+    await writeFile(join(root, '.cland/secrets.toml'), `[${via}]\ntoken="123456:made_up_test_token_abcdefghijk"\n`, { mode: 0o600 });
+    const loaded = await cland(root, 'hub', 'reload', '--json');
+    assert.equal(loaded.code, 0, loaded.stderr);
+    const remote = remotes.at(-1)!;
+    await remote.client.waitFor(frame => frame.type === 'welcome');
+    assert.equal(remote.started, true);
+    assert.equal((await remote.client.request({ type: 'hub.status' })).ok, true);
+    assert.equal((await cland(root, 'hub', 'reload')).code, 0);
+    assert.equal(remotes.length, 1, 'an unchanged reload retains the connected messenger');
+    const disabled = await cland(root, 'config', 'set', `remote.${via}.enabled`, 'false');
+    assert.equal(disabled.code, 0, disabled.stderr);
+    assert.equal((await cland(root, 'hub', 'reload')).code, 0);
+    assert.equal(remote.stopped, true, 'reload result follows messenger stop receipt');
+    await unlink(join(root, '.cland/secrets.toml'));
+    remotes.length = 0;
+  }
+  await hub.stop();
+});
+
+async function heldConfiguration(t: Parameters<typeof tempProject>[0], receipt = true) {
+  const hold = heldRemoteBoundary(t, receipt);
+  let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
+  hold.close(() => within(hub?.stop() ?? Promise.resolve(), 1000));
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/secrets.toml'), '[telegram]\ntoken="123456:made_up_test_token_abcdefghijk"\n', { mode: 0o600 });
+  const config = defaultConfig('Held reload');
+  config.verification.lockPath = join(root, 'suite.lock');
+  const path = join(root, '.cland/config.toml');
+  const rolePath = join(root, '.cland/roles.toml');
+  await writeFile(path, renderConfig(config));
+  await writeFile(rolePath, '[reviewer.launch]\nharness="claude-code"\nmodel="stable"\n');
+  const remote = testMessenger('telegram');
+  hub = await projectHub(t, root, {}, { gatewayMessenger: () => ({ ...remote, start: async send => {
+    await hold.hold();
+    remote.start(send);
+  } }) });
+  const ui = await connectUi(t, hub.discovery);
+  return { hold, root, config, path, rolePath, remote, hub, ui,
+    reload: () => hold.own(ui.request({ type: 'hub.reload' }, 1000)),
+    stop: () => within(hold.own(hub!.stop()), 1000),
+  };
+}
+
+test('shutdown joins a messenger start held during config reload before removing its store', { timeout: 5000 }, async t => {
+  const f = await heldConfiguration(t);
+  try {
+    f.config.remote.telegram.enabled = true;
+    await writeFile(f.path, renderConfig(f.config));
+    const started = f.hold.setup();
+    const reloading = f.reload();
+    await started;
+    const stopping = f.stop();
+    f.hold.resume();
+    await stopping;
+    await reloading.catch(() => {}); // Closing the edge may win the request response.
+    assert.equal(f.remote.stopped, true);
+    assert.equal(f.remote.running, false);
+  } finally { await f.hold.dispose(); }
+});
+
+for (const failure of ['missing receipt', 'aborted setup'] as const) {
+  test(`held reload disposal drains the messenger after ${failure}`, { timeout: 5000 }, async t => {
+    const f = await heldConfiguration(t, false);
+    f.config.remote.telegram.enabled = true;
+    await writeFile(f.path, renderConfig(f.config));
+    const setup = f.hold.setup();
+    const failed = assert.rejects(setup, failure === 'missing receipt' ? /setup receipt deadline reached/ : /setup cancelled/);
+    const actual = f.hold.actual();
+    const reloading = f.reload();
+    await actual;
+    if (failure === 'missing receipt') await f.hold.clock.advance(1000);
+    else f.hold.setupAbort.abort(new Error('remote fixture setup cancelled'));
+    await failed;
+    await f.hold.dispose();
+    assert.equal((await reloading).ok, true, 'disposal releases and joins the held reload before closing the hub');
+    await within(f.hub.stopped, 1000);
+    assert.equal(f.remote.stopped, true, 'the hub stop receipt follows the messenger stop');
+    assert.equal(f.remote.running, false);
+    assert.equal(f.hold.clock.pending, 0);
+  });
+}
+
+for (const source of ['config', 'roles'] as const) {
+  test(`reload refuses ${source} source edits during held messenger preparation and retains the last-good pair`, { timeout: 5000 }, async t => {
+    t.mock.timers.enable({ apis: ['setInterval'] }); // Explicit reload owns this race, not the role watcher.
+    const f = await heldConfiguration(t);
+    try {
+      const before = (await f.ui.request({ type: 'hub.status' })).value as { config: unknown; verification: { remoteBudget: number } };
+      f.config.remote.telegram.enabled = true;
+      f.config.verification.remoteBudget = 3;
+      await writeFile(f.path, renderConfig(f.config));
+      const setup = f.hold.setup();
+      const reloading = f.reload();
+      await setup;
+      if (source === 'config') {
+        f.config.verification.remoteBudget = 8;
+        await writeFile(f.path, renderConfig(f.config) + '# edited while preparing\n');
+      } else await writeFile(f.rolePath, '[reviewer.launch]\nharness="claude-code"\nmodel="changed-during-preparation"\n');
+      f.hold.resume();
+      const refused = await reloading;
+      assert.equal(refused.ok, false, JSON.stringify(refused));
+      assert.match(String(refused.error), new RegExp(`${source}.toml changed during reload; retry`));
+      const retained = (await f.ui.request({ type: 'hub.status' })).value as { config: unknown; verification: { remoteBudget: number } };
+      assert.deepEqual(retained.config, before.config);
+      assert.equal(retained.verification.remoteBudget, before.verification.remoteBudget);
+      const listed = (await f.ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
+      assert.equal(listed.roles.find(role => role.role === 'reviewer')?.launch.model, 'stable');
+    } finally { await f.hold.dispose(); }
+  });
+}
+
+test('startup and reload supply every remote and speech setting to the messenger factory', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/secrets.toml'), '[telegram]\ntoken="123456:made_up_test_token_abcdefghijk"\n', { mode: 0o600 });
+  const config = defaultConfig('Factory settings');
+  config.verification.lockPath = join(root, 'suite.lock');
+  config.remote.telegram.enabled = true;
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const settings: RemoteSettings[] = [];
+  const remotes: ReturnType<typeof testMessenger>[] = [];
+  const hub = await projectHub(t, root, {}, { gatewayMessenger: (via, token, snapshot) => {
+    assert.equal(token === '123456:made_up_test_token_abcdefghijk', true, 'factory receives the resolved fixture token privately');
+    settings.push(snapshot);
+    const remote = testMessenger(via, via);
+    remotes.push(remote);
+    return remote;
+  } });
+  assert.equal(remotes[0]!.running, true, 'enabled with token starts at hub startup');
+  const ui = await connectUi(t, hub.discovery);
+  for (const [key, value] of [
+    ['remote.mute_default', true], ['remote.telegram.format', 'entities'], ['remote.discord.enabled', true],
+    ['speech.provider', 'command'], ['speech.model', 'custom'], ['speech.language', 'en'],
+    ['speech.max_seconds', 90], ['speech.command', ['transcribe', '--input']],
+  ]) {
+    const reply = await ui.request({ type: 'config.set', key, value });
+    assert.equal(reply.ok, true, JSON.stringify(reply));
+  }
+  assert.deepEqual(settings.at(-1), {
+    remote: { muteDefault: true, telegram: { enabled: true, format: 'entities' }, discord: { enabled: true } },
+    speech: { provider: 'command', model: 'custom', language: 'en', maxSeconds: 90, command: ['transcribe', '--input'] },
+  });
+  const reply = await ui.request({ type: 'hub.reload' });
+  assert.equal(reply.ok, true, JSON.stringify(reply));
+  const applied = (reply.value as { applied: string[] }).applied;
+  for (const key of ['remote.mute_default', 'remote.telegram.enabled', 'remote.telegram.format', 'remote.discord.enabled', 'speech.provider', 'speech.model', 'speech.language', 'speech.max_seconds', 'speech.command']) assert.ok(applied.includes(key), key);
+  await hub.stop();
+  assert.equal(remotes.every(remote => remote.stopped), true);
+});
 
 async function fixture(t: Parameters<typeof tempProject>[0]) {
   const root = await tempProject(t);

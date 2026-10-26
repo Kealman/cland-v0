@@ -29,6 +29,15 @@ The [CLI import guard](tests/hub-test-cli-imports.test.ts.md) protects that boun
 The existing role clauses already require secret isolation; this local command
 adds no frame, role permission or role-clause line.
 
+For remote configuration, use `cland config set remote.telegram.enabled true`
+and `cland hub reload`; activation requires a resolved token and an installed
+platform factory. Every remote/speech key reloads; init renders defaults and update
+fills older managed configs. The current injectable messenger factory is exercised
+with fakes, with no platform or speech call. See
+[configuration tests](tests/hub-test-config-set.test.ts.md) for its receipt and
+shutdown seams. Existing role clauses cover reload and secret isolation; no role
+permission changes.
+
 Every session/worker child filters remote tokens and speech keys alongside
 `DIGITALOCEAN_TOKEN` with `withoutExecutorCredentials` from
 `shared/executor-credentials.ts` after its last environment overlay. Keep the

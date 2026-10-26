@@ -8,6 +8,59 @@ import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
 import { defaultConfig, parseConfig, provisionConfig, renderConfig } from '../src/init/config.ts';
 import { setConfigValue } from '../src/init/config-set.ts';
 import { Report } from '../src/init/files.ts';
+import { parse } from 'smol-toml';
+
+test('init renders remote and speech defaults and update adds them while preserving existing settings', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-remote-config-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  provisionConfig(new Report(root), path, root);
+  const expectedRemote = { mute_default: false, telegram: { enabled: false, format: 'rich' }, discord: { enabled: false } };
+  const expectedSpeech = { provider: 'elevenlabs', model: 'scribe_v2', language: '', max_seconds: 600, command: [] };
+  const initial = JSON.parse(JSON.stringify(parse(readFileSync(path, 'utf8'))));
+  assert.deepEqual(initial.remote, expectedRemote);
+  assert.deepEqual(initial.speech, expectedSpeech);
+  const older = '# managed by cland 0.2.2\n[project]\nname="Custom name"\n[verification]\nworkers=7\n[web]\nport=12345\n';
+  writeFileSync(path, older);
+  provisionConfig(new Report(root), path, root);
+  const updated = JSON.parse(JSON.stringify(parse(readFileSync(path, 'utf8'))));
+  assert.deepEqual(updated.remote, expectedRemote);
+  assert.deepEqual(updated.speech, expectedSpeech);
+  assert.deepEqual(parseConfig(readFileSync(path, 'utf8'), 'scratch', {}), parseConfig(older, 'scratch', {}));
+  const once = readFileSync(path, 'utf8');
+  provisionConfig(new Report(root), path, root);
+  assert.equal(readFileSync(path, 'utf8'), once);
+});
+
+test('remote and speech settings writer round-trips every key and refuses invalid values unchanged', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-remote-values-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  writeFileSync(path, renderConfig(defaultConfig('Configured remote')));
+  for (const [key, value] of [
+    ['remote.mute_default', true], ['remote.telegram.enabled', true],
+    ['remote.telegram.format', 'entities'], ['remote.discord.enabled', true],
+    ['speech.provider', 'command'], ['speech.model', 'custom-model'],
+    ['speech.language', 'en'], ['speech.max_seconds', 90], ['speech.command', ['transcribe', '--input', 'audio file']],
+  ] as const) assert.deepEqual(setConfigValue(root, path, key, value, {}), value);
+  const config = parseConfig(readFileSync(path, 'utf8'), 'scratch', {});
+  assert.deepEqual(config.remote, { muteDefault: true, telegram: { enabled: true, format: 'entities' }, discord: { enabled: true } });
+  assert.deepEqual(config.speech, { provider: 'command', model: 'custom-model', language: 'en', maxSeconds: 90, command: ['transcribe', '--input', 'audio file'] });
+  const before = readFileSync(path, 'utf8');
+  for (const [key, value] of [
+    ['remote.mute_default', 1], ['remote.telegram.enabled', 'true'], ['remote.discord.enabled', []],
+    ['remote.telegram.format', 'html'], ['speech.provider', 'xai'], ['speech.model', false],
+    ['speech.language', []], ['speech.max_seconds', 0], ['speech.max_seconds', 1.5], ['speech.command', 'transcribe'], ['speech.command', [1]],
+  ]) {
+    assert.throws(() => setConfigValue(root, path, String(key), value, {}), /must be/);
+    assert.equal(readFileSync(path, 'utf8'), before);
+  }
+  for (const text of ['remote=true', '[remote]\ntelegram=[]', '[remote]\ndiscord="off"', 'speech=[]']) {
+    assert.throws(() => parseConfig(text, 'scratch', {}), /must be a table/);
+  }
+});
 
 test('update keeps setup declines when refreshing the managed config', t => {
   const root = mkdtempSync(join(tmpdir(), 'cland-setup-config-'));

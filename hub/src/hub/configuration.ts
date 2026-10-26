@@ -54,7 +54,9 @@ export class ProjectConfiguration implements RolesSource {
   readonly resumed: Resumed;
   readonly apply: (config: ProjectConfig) => void;
   readonly readSourceCommit: (() => Promise<string | null>) | undefined;
-  constructor(layout: Layout, config: ProjectConfig | null, log: LogFn, env: NodeJS.ProcessEnv, resumed: Resumed, apply: (config: ProjectConfig) => void, readSourceCommit?: () => Promise<string | null>) {
+  readonly prepareApply: ((config: ProjectConfig) => Promise<void>) | undefined;
+  constructor(layout: Layout, config: ProjectConfig | null, log: LogFn, env: NodeJS.ProcessEnv, resumed: Resumed, apply: (config: ProjectConfig) => void, readSourceCommit?: () => Promise<string | null>, prepareApply?: (config: ProjectConfig) => Promise<void>) {
+    this.prepareApply = prepareApply;
     this.readSourceCommit = readSourceCommit;
     this.layout = layout; this.log = log; this.env = env; this.resumed = resumed; this.apply = apply;
     this.#config = config ?? defaultConfig(basename(layout.root));
@@ -207,14 +209,23 @@ export class ProjectConfiguration implements RolesSource {
       const [lastConfigStamp, lastRoleStamp] = await Promise.all([this.#fileStamp(this.layout.config), this.#fileStamp(this.layout.roles)]);
       if (lastConfigStamp !== configStamp) { file = this.layout.config; throw new Error('config.toml changed during reload; retry'); }
       if (lastRoleStamp !== stamp) throw new Error('roles.toml changed during reload; retry');
+      file = 'remote configuration';
+      await this.prepareApply?.(config);
+      // Platform setup may yield for an arbitrary time. Recheck the source pair
+      // at publication, just as we do before allowing any platform side effect.
+      const [preparedConfigStamp, preparedRoleStamp] = await Promise.all([this.#fileStamp(this.layout.config), this.#fileStamp(this.layout.roles)]);
+      file = this.layout.config;
+      if (preparedConfigStamp !== configStamp) throw new Error('config.toml changed during reload; retry');
+      file = this.layout.roles;
+      if (preparedRoleStamp !== stamp) throw new Error('roles.toml changed during reload; retry');
       return resumed(() => {
         if (this.#stopped) throw new Error('hub is stopping');
         this.apply(config);
         this.#config = config; this.#roles = roles; this.#stamp = stamp; this.#attemptStamp = stamp;
         this.#rolesError = null;
-        this.log({ event: 'roles-loaded', path: file, launch: Object.fromEntries([...roles].map(([role, definition]) => [role, definition.launch])) });
+        this.log({ event: 'roles-loaded', path: this.layout.roles, launch: Object.fromEntries([...roles].map(([role, definition]) => [role, definition.launch])) });
         if (configText !== null) this.#status = { loadedAt: new Date().toISOString(), sourceCommit };
-        const applied = ['verification.prepare', 'verification.check', 'verification.test', 'verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.soak', 'verification.dev_t3_every', 'merge.batch_tiers', 'verification.droplet', 'keys.layouts', 'plan.approval', 'roles'];
+        const applied = ['verification.prepare', 'verification.check', 'verification.test', 'verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.soak', 'verification.dev_t3_every', 'merge.batch_tiers', 'verification.droplet', 'keys.layouts', 'plan.approval', 'remote.mute_default', 'remote.telegram.enabled', 'remote.telegram.format', 'remote.discord.enabled', 'speech.provider', 'speech.model', 'speech.language', 'speech.max_seconds', 'speech.command', 'roles'];
         for (const warning of warnings) this.log({ event: 'config-reload-warning', file: this.layout.config, warning });
         this.log({ event: 'config-reloaded', ...this.#status, applied, warnings });
         return { ...this.#status, applied, warnings };

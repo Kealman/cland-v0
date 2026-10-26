@@ -1,4 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { ConfiguredGateway, type MessengerFactory } from '../remote/configuration.ts';
+import type { Secrets } from '../remote/secrets.ts';
 import { Gateway, type Remote, type RemoteStates } from '../remote/gateway.ts';
 import { PollerLease, nativePollerProcesses, type PollerProcesses } from '../remote/poller-lease.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
@@ -71,7 +73,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -89,13 +91,16 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
     throw err;
   }
   let secret: string;
+  let resolveRemoteSecrets!: () => Secrets;
+  let remoteSecrets: Secrets;
   try {
     // Recheck inside the lock: an automatic start may have begun before the stop marker existed.
     if (options.autostart && autostartDeferred(root)) throw new AutostartDeferred();
     if (!options.autostart) clearHubStop(root);
     // Only serving loads credentials; lightweight project/CLI reads keep their import budget.
     const { resolveSecrets } = await import('../remote/secrets.ts');
-    resolveSecrets(root);
+    resolveRemoteSecrets = () => resolveSecrets(root);
+    remoteSecrets = resolveRemoteSecrets();
     secret = ensureSkeleton(l);
   } catch (err) {
     lock.release();
@@ -124,7 +129,7 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
   const journal = new Journal(journalPath(l.dir), () => clock.now(), { history: startupHistory, log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
   const agents = agentsRecord();
   let hub!: HubBase;
-  let gateway: Gateway | undefined;
+  let gateway: Gateway | ConfiguredGateway | undefined;
   const tapped = agents.tap(journal.tap(processLog));
   log = entry => {
     // Keep the existing start receipts for failed-start diagnostics. A separate
@@ -201,7 +206,11 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
     }
   }, planHistory: startupHistory, ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
-  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined);
+  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined, async next => {
+    const secrets = resolveRemoteSecrets();
+    if (gateway instanceof ConfiguredGateway) await gateway.update(next, secrets);
+    remoteSecrets = secrets;
+  });
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
   const rules = new RulebookFile(l.rules, () => roles.get().keys(), log, requestGuard.resumer('rules.refresh'));
@@ -389,6 +398,8 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
         await attempt(() => maintenanceRecovery);
         unreportMaintenance();
         await attempt(() => gateway?.stop());
+        // Stop the config/role owner once, joining reload before edges and storage close.
+        await attempt(() => roles.stop());
         await attempt(() => edge?.close());
         await attempt(() => ws?.close());
         await attempt(() => web?.close());
@@ -404,7 +415,6 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
         await attempt(() => agents.attach(null));
         await attempt(() => hub.close());
         await attempt(() => rules.stop());
-        await attempt(() => roles.stop());
         // Discovery and lock go last, including when an earlier disposer failed.
         await attempt(() => removeDiscovery(l.discovery, process.pid));
         await attempt(() => journal.write({ event: 'hub-stopped', pid: process.pid }));
@@ -445,19 +455,27 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
     }
   }
 
+  const startGateway = async () => {
+    const create = (remotes: readonly Remote[]) => new Gateway(hub.dispatcher, remotes, {
+      state: options.gatewayState ?? store.remotes, log,
+      lease: new PollerLease(store.remotes, { clock, processes: options.gatewayProcesses ?? nativePollerProcesses(env) }),
+    });
+    if (options.gatewayMessenger) {
+      gateway = new ConfiguredGateway(options.gatewayMessenger, create);
+      await gateway.update(roles.config(), remoteSecrets);
+    } else if (options.gatewayRemotes?.length) {
+      gateway = create(options.gatewayRemotes);
+      await gateway.start();
+    }
+  };
+
   const primeInbox = () => {
     try { hub.core.inbox.needsYou(); }
     catch (error) { log({ event: 'inbox-failed', error: String(error) }); }
   };
   if (ws === null || edge === null) {
     try {
-      if (options.gatewayRemotes?.length) {
-        gateway = new Gateway(hub.dispatcher, options.gatewayRemotes, {
-          state: options.gatewayState ?? store.remotes, log,
-          lease: new PollerLease(store.remotes, { clock, processes: options.gatewayProcesses ?? nativePollerProcesses(env) }),
-        });
-        await gateway.start();
-      }
+      await startGateway();
     } catch (error) {
       await stop();
       throw error;
@@ -483,13 +501,7 @@ export async function serveProject(root: string, options: { gatewayState?: Remot
     adapters = projectSessions({ ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.useSessions(adapters.sessions);
     await adapters.sessions.sweepArchive();
-    if (options.gatewayRemotes?.length) {
-      gateway = new Gateway(hub.dispatcher, options.gatewayRemotes, {
-        state: options.gatewayState ?? store.remotes, log,
-        lease: new PollerLease(store.remotes, { clock, processes: options.gatewayProcesses ?? nativePollerProcesses(env) }),
-      });
-      await gateway.start();
-    }
+    await startGateway();
   } catch (error) {
     try { await stop(); }
     catch (cleanup) { throw new AggregateError([error, cleanup], 'hub adapter startup failed', { cause: error }); }

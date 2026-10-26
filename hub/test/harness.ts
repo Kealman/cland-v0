@@ -398,6 +398,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  gatewayMessenger?: import('../src/remote/configuration.ts').MessengerFactory;
   gatewayProcesses?: import('../src/remote/poller-lease.ts').PollerProcesses;
   gatewayRemotes?: readonly import('../src/remote/gateway.ts').Remote[];
   gatewayState?: import('../src/remote/gateway.ts').RemoteStates;

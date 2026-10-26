@@ -32,7 +32,9 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/codex-delivery.test.ts`](../../../hub/test/codex-delivery.test.ts) | [Notes](hub-test-codex-delivery.test.ts.md) |
 | [`hub/test/qa-demo-policy.test.ts`](../../../hub/test/qa-demo-policy.test.ts) | [Notes](hub-test-qa-demo-policy.test.ts.md) |
 | [`hub/test/skills-qa.test.ts`](../../../hub/test/skills-qa.test.ts) | [Notes](hub-test-skills-qa.test.ts.md) |
+| [`hub/test/init-config.test.ts`](../../../hub/test/init-config.test.ts) | [Notes](hub-test-init-config.test.ts.md) |
 | [`hub/test/config-set.test.ts`](../../../hub/test/config-set.test.ts) | [Notes](hub-test-config-set.test.ts.md) |
+| [`hub/test/project-hub-lifecycle.test.ts`](../../../hub/test/project-hub-lifecycle.test.ts) | [Notes](hub-test-project-hub-lifecycle.test.ts.md) |
 | [`hub/test/config-reload-component.test.ts`](../../../hub/test/config-reload-component.test.ts) | [Notes](hub-test-config-reload-component.test.ts.md) |
 | [`hub/test/accounts.test.ts`](../../../hub/test/accounts.test.ts) | [Notes](hub-test-accounts.test.ts.md) |
 | [`hub/test/suite-runner-contract.test.ts`](../../../hub/test/suite-runner-contract.test.ts) | [Notes](hub-test-suite-runner-contract.test.ts.md) |
