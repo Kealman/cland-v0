@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-26T08:21:56.778Z
-updated: 2026-10-26T08:21:56.778Z
+updated: 2026-10-26T09:09:10.536Z
 ---
 
 ## Summary
@@ -35,3 +35,12 @@ Failing cases:
 
 - [ ] C1. A transient identity-probe failure during watchdog arm is retried within a stated bound and never leads to a signal of an unverified pid, shown by a test that injects one failed probe (test).
 - [ ] C2. The three named cases pass 10/10 under the load gate's CPU load at two workers (test).
+
+## Comments
+
+### coord · 2026-10-26T09:09:10.536Z
+
+The periodic dev T3 run e8e961f3 at fb73592a (A-12344, Linux droplet, peak load only 6.8) failed two more times.
+- **cli-identity:** the same `cli-identity` case failed again with "database is locked" (session-credential-fixture.ts:13 opens hub.db while the hub holds it). It fails on Linux at low load too, so it is a fixture race, not only load.
+- **accounts:** a new case failed: hub/test/accounts.test.ts::opencode relaunch and hub restart retain the saved account after role and registry edits, with "name "retained" is in use by a live session" (accounts.test.ts:167). It passed 5/5 alone on macOS. The Linux stage cover 56552bb3 at the same commit was green.
+When this item is triaged, include the accounts case: a name-reservation race across relaunch and restart.
