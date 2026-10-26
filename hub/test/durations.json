@@ -60,9 +60,11 @@
       "A-12220",
       "A-12224",
       "A-12333",
-      "A-12338"
+      "A-12338",
+      "A-12476",
+      "A-12480"
     ],
-    "commit": "fb73592a164a277fbd5cffb3bf390e268f47fd96"
+    "commit": "79d5885e019a1fccc378f2e24a4f1d66b046aed2"
   },
   "budget": {
     "testSeconds": 5,
@@ -2731,6 +2733,50 @@
     "web/test/remote-via.test.ts": {
       "seconds": 2.558818,
       "tests": 2
+    },
+    "hub/test/gateway-secrets.test.ts": {
+      "seconds": 1.243399,
+      "tests": 13
+    },
+    "hub/test/pairing-approval.test.ts": {
+      "seconds": 1.027792,
+      "tests": 10
+    },
+    "hub/test/pairing-codes.test.ts": {
+      "seconds": 1.094528,
+      "tests": 8
+    },
+    "hub/test/pairing-service.test.ts": {
+      "seconds": 0.038907,
+      "tests": 3
+    },
+    "hub/test/remote-cli.test.ts": {
+      "seconds": 9.920741,
+      "tests": 18
+    },
+    "hub/test/secret-input.test.ts": {
+      "seconds": 0.006052,
+      "tests": 4
+    },
+    "hub/test/secrets-environment.test.ts": {
+      "seconds": 2.884657,
+      "tests": 3
+    },
+    "hub/test/secrets-git.test.ts": {
+      "seconds": 0.807835,
+      "tests": 3
+    },
+    "hub/test/secrets-resolution.test.ts": {
+      "seconds": 0.037739,
+      "tests": 3
+    },
+    "hub/test/secrets-validation.test.ts": {
+      "seconds": 0.00652,
+      "tests": 3
+    },
+    "hub/test/secrets.test.ts": {
+      "seconds": 3.313361,
+      "tests": 5
     }
   },
   "tests": {
@@ -7423,7 +7469,97 @@
     "hub/test/remote-state.test.ts::waiting codes, stranger counts, message maps and outbox attempts survive a database reopen": 0.019206,
     "nvim/test/remote-via.test.ts::remote message and ask rows and Inbox outcomes name Telegram and Discord, retaining old outcomes": 0.327587,
     "web/test/remote-via.test.ts::client reads the previous ask outcome shape without via in history and the archive": 0.896213,
-    "web/test/remote-via.test.ts::remote messages, ask decisions and Codex approvals show their source in the thread and Inbox": 1.662605
+    "web/test/remote-via.test.ts::remote messages, ask decisions and Codex approvals show their source in the thread and Inbox": 1.662605,
+    "hub/test/cli-command-help.test.ts::remote help names all four commands and their local client and token prerequisites": 0.000145,
+    "hub/test/cli-help.test.ts::cland remote --help exits 0 without a hub or project changes": 0.10285,
+    "hub/test/config-set.test.ts::a remote secrets reload refusal retains valid role admission and the last-good pair": 0.170155,
+    "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": 2.69059,
+    "hub/test/config-set.test.ts::held reload disposal drains the messenger after aborted setup": 0.075689,
+    "hub/test/config-set.test.ts::held reload disposal drains the messenger after missing receipt": 0.099932,
+    "hub/test/config-set.test.ts::reload refuses config source edits during held messenger preparation and retains the last-good pair": 0.082909,
+    "hub/test/config-set.test.ts::reload refuses roles source edits during held messenger preparation and retains the last-good pair": 0.081736,
+    "hub/test/config-set.test.ts::shutdown joins a messenger start held during config reload before removing its store": 0.082068,
+    "hub/test/config-set.test.ts::startup and reload supply every remote and speech setting to the messenger factory": 0.240331,
+    "hub/test/gateway-secrets.test.ts::an invalid injected Telegram override is refused before the configured messenger is constructed": 0.017312,
+    "hub/test/gateway-secrets.test.ts::cancelled remote sink cleanup drains a held journal write and observes native close before removing its root": 0.004252,
+    "hub/test/gateway-secrets.test.ts::daemon registers every resolved secret before gateway status and logs are written": 0.117522,
+    "hub/test/gateway-secrets.test.ts::gateway masks inbound and outbound frames while preserving message structure and long text": 0.119213,
+    "hub/test/gateway-secrets.test.ts::gateway preserves routing or disables safely for opaque credential general": 0.080544,
+    "hub/test/gateway-secrets.test.ts::gateway preserves routing or disables safely for opaque credential id": 0.127244,
+    "hub/test/gateway-secrets.test.ts::gateway preserves routing or disables safely for opaque credential result": 0.074225,
+    "hub/test/gateway-secrets.test.ts::gateway retains only masked cleanup errors after registered secret rotation": 0.109814,
+    "hub/test/gateway-secrets.test.ts::hub refuses a malformed Telegram token before starting any messenger and releases its lock": 0.172033,
+    "hub/test/gateway-secrets.test.ts::previous plain-function redaction injection masks structured payloads with the supplied policy": 0.084176,
+    "hub/test/gateway-secrets.test.ts::reload registers every rotated secret before constructing a replacement messenger": 0.114333,
+    "hub/test/gateway-secrets.test.ts::shared remote output API masks journal and artifact writes after rotation without truncating documents": 0.105333,
+    "hub/test/gateway-secrets.test.ts::startup and reload resolve the explicit daemon environment without changing process.env": 0.117398,
+    "hub/test/init-config.test.ts::init renders remote and speech defaults and update adds them while preserving existing settings": 0.009732,
+    "hub/test/init-config.test.ts::remote and speech settings writer round-trips every key and refuses invalid values unchanged": 0.032885,
+    "hub/test/pairing-approval.test.ts::a configured messenger notice failure is redacted without rolling back the new numeric pairing": 0.098132,
+    "hub/test/pairing-approval.test.ts::a previous Remote shape without a replacement callback remains usable and reports the missing notice": 0.095567,
+    "hub/test/pairing-approval.test.ts::discord approval persists numeric ids, clears its codes and tells the replaced chat once": 0.086586,
+    "hub/test/pairing-approval.test.ts::expired, missing, malformed and wrong-messenger codes grant no access": 0.104829,
+    "hub/test/pairing-approval.test.ts::Neovim can approve through its trusted parent-owned stdio connection": 0.089168,
+    "hub/test/pairing-approval.test.ts::only the local Neovim client and human CLI can approve a waiting code": 0.145482,
+    "hub/test/pairing-approval.test.ts::replacement notice text uses the shared registered-secret redactor": 0.103515,
+    "hub/test/pairing-approval.test.ts::shutdown drains a held replacement notice after granting the new pairing (setup receipt: false)": 0.105551,
+    "hub/test/pairing-approval.test.ts::shutdown drains a held replacement notice after granting the new pairing (setup receipt: true)": 0.113115,
+    "hub/test/pairing-approval.test.ts::telegram approval persists numeric ids, clears its codes and tells the replaced chat once": 0.085847,
+    "hub/test/pairing-codes.test.ts::a stranger receives an eight-character pairing code with numeric id and the approve command": 0.165896,
+    "hub/test/pairing-codes.test.ts::discord keeps three waiting codes and replies twice per stranger, then stays silent across restart": 0.161365,
+    "hub/test/pairing-codes.test.ts::discord pairing rows need the human, expire at 900000 ms and never reach either remote": 0.096214,
+    "hub/test/pairing-codes.test.ts::pairing callbacks keep registered secrets out of inbox identity text after gateway integration": 0.199233,
+    "hub/test/pairing-codes.test.ts::telegram keeps three waiting codes and replies twice per stranger, then stays silent across restart": 0.128806,
+    "hub/test/pairing-codes.test.ts::telegram pairing rows need the human, expire at 3600000 ms and never reach either remote": 0.105142,
+    "hub/test/pairing-codes.test.ts::the CLI inbox lists waiting pairings with ids and the command to copy": 0.237578,
+    "hub/test/pairing-codes.test.ts::the remote inbox projection preserves the previous wire shape from an older hub": 0.000294,
+    "hub/test/pairing-service.test.ts::local approval can resolve a live pairing by id and clear only its messenger": 0.016932,
+    "hub/test/pairing-service.test.ts::remote needs-you excludes pairing when time crosses expiry during projection (ordinary request: false)": 0.011781,
+    "hub/test/pairing-service.test.ts::remote needs-you excludes pairing when time crosses expiry during projection (ordinary request: true)": 0.010194,
+    "hub/test/remote-cli.test.ts::messenger test failures redact credentials and disable only the failing remote": 0.41896,
+    "hub/test/remote-cli.test.ts::older-hub fixture disposes its native listener after aborted setup": 0.00186,
+    "hub/test/remote-cli.test.ts::older-hub fixture disposes its native listener after missing receipt": 0.003318,
+    "hub/test/remote-cli.test.ts::older-hub fixture reports a native bind error and disposes through its setup owner": 0.001923,
+    "hub/test/remote-cli.test.ts::remote approve discord prints the stored paired name and numeric id": 0.254157,
+    "hub/test/remote-cli.test.ts::remote approve telegram prints the stored paired name and numeric id": 0.376089,
+    "hub/test/remote-cli.test.ts::remote CLI accepts the previous approval reply and reports unsupported frames from an older hub": 0.603114,
+    "hub/test/remote-cli.test.ts::remote management refuses remote and attributed callers and legacy clients keep serving": 0.441205,
+    "hub/test/remote-cli.test.ts::remote status keeps public bot links and omits credential-bearing or foreign links": 0.116732,
+    "hub/test/remote-cli.test.ts::remote status reports loaded fingerprints, pairing and messenger facts without secrets": 0.662468,
+    "hub/test/remote-cli.test.ts::remote test after token rotation masks a colliding display name and refuses a colliding numeric id": 1.527988,
+    "hub/test/remote-cli.test.ts::remote test discord checks the client and sends one line only to the paired chat": 0.57408,
+    "hub/test/remote-cli.test.ts::remote test telegram checks the client and sends one line only to the paired chat": 0.59196,
+    "hub/test/remote-cli.test.ts::remote unpair discord forgets only that binding": 0.795959,
+    "hub/test/remote-cli.test.ts::remote unpair telegram forgets only that binding": 0.765287,
+    "hub/test/remote-cli.test.ts::rotating the discord token through secret set and hub reload reconnects with the numeric pairing and mute retained": 1.351397,
+    "hub/test/remote-cli.test.ts::rotating the telegram token through secret set and hub reload reconnects with the numeric pairing and mute retained": 1.321031,
+    "hub/test/remote-cli.test.ts::shutdown joins a held messenger test before releasing its store": 0.113213,
+    "hub/test/secret-input.test.ts::hidden secret input cancellation restores raw mode without printing the partial value": 0.000596,
+    "hub/test/secret-input.test.ts::hidden secret input edits without echo and restores terminal mode after confirmation": 0.003161,
+    "hub/test/secret-input.test.ts::hidden secret input preserves an already flowing stream": 0.000278,
+    "hub/test/secret-input.test.ts::piped secret input preserves spaces and strips only the final CRLF": 0.002017,
+    "hub/test/secrets-environment.test.ts::cancelled command with a missing close receipt retains its root until native close and output drain": 0.230011,
+    "hub/test/secrets-environment.test.ts::generic speech stand-in command receives no remote secrets after the final overlay filter": 0.084795,
+    "hub/test/secrets-environment.test.ts::real fake harness launch and session receive none of the four remote secret overrides": 2.569851,
+    "hub/test/secrets-git.test.ts::cancelled secret CLI joins native close and incomplete output before owned root removal": 0.161919,
+    "hub/test/secrets-git.test.ts::managed gitignore keeps secrets out of native git status with an unignored positive control": 0.072599,
+    "hub/test/secrets-git.test.ts::secret writes refuse unprotected custom ignores before reading stdin and preserve protected custom bytes": 0.573317,
+    "hub/test/secrets-resolution.test.ts::all four environment overrides win over file values and work without a file": 0.020243,
+    "hub/test/secrets-resolution.test.ts::secret file edits and reads remain file-only while environment overrides are present": 0.008825,
+    "hub/test/secrets-resolution.test.ts::Telegram validation applies after environment overrides without blocking repair of a stored value": 0.008671,
+    "hub/test/secrets-validation.test.ts::opaque credentials beginning with a redaction marker are fully masked on repeated writes": 0.000603,
+    "hub/test/secrets-validation.test.ts::registration retains every resolved credential across reload and isolates projects": 0.001741,
+    "hub/test/secrets-validation.test.ts::resolved Telegram tokens are refused with fixed diagnostics before provider setup": 0.004176,
+    "hub/test/secrets.test.ts::hub start refuses symlinked secrets without changing their target or leaving a lock": 0.007352,
+    "hub/test/secrets.test.ts::hub start tightens secrets to 600 before serving": 0.231121,
+    "hub/test/secrets.test.ts::secret commands preserve other names through rotation and refuse symlinks on reads and writes": 1.397088,
+    "hub/test/secrets.test.ts::secret commands refuse value arguments, unknown names, empty input and malformed TOML without echoing input": 0.89136,
+    "hub/test/secrets.test.ts::secret set accepts stdin only, list prints names and fingerprints, and unset removes one value without leaking it": 0.78644,
+    "hub/test/web-authority.test.ts::the signed-in web edge cannot approve a live pairing even with a Neovim hello": 0.127803,
+    "hub/test/web-authority.test.ts::web refuses pairing.approve; Unix retains its normal handler": 0.092663,
+    "hub/test/web-authority.test.ts::web refuses remote.status; Unix retains its normal handler": 0.115215,
+    "hub/test/web-authority.test.ts::web refuses remote.test; Unix retains its normal handler": 0.079886,
+    "hub/test/web-authority.test.ts::web refuses remote.unpair; Unix retains its normal handler": 0.08907
   },
   "allow": {
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {
