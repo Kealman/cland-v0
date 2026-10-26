@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1074
 branch: null
 created: 2026-10-25T14:11:59.144Z
-updated: 2026-10-26T02:29:09.298Z
+updated: 2026-10-26T03:41:12.244Z
 ---
 
 ## Goal
@@ -82,18 +82,13 @@ In a scratch project, QA starts the hub with two test messengers behind the gate
 
 ```yaml
 stages:
-  - name: edge and authority
+  - name: gateway edge
     qa:
       scope: none
       when: after-stage
     lanes:
       - - T-1321
       - - T-1327
-  - name: via, state, outbox and isolation
-    qa:
-      scope: none
-      when: after-stage
-    lanes:
       - - T-1322
       - - T-1323
         - T-1324

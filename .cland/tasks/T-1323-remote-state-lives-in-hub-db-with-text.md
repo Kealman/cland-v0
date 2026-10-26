@@ -3,7 +3,7 @@ id: T-1323
 kind: task
 title: Remote state lives in hub.db with TEXT ids, and a poller lease keeps one gateway per project
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-26T02:28:46.856Z
-updated: 2026-10-26T02:28:46.856Z
+updated: 2026-10-26T03:41:13.067Z
 ---
 
 ## Summary

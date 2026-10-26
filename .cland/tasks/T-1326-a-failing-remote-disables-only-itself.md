@@ -3,7 +3,7 @@ id: T-1326
 kind: task
 title: A failing remote disables only itself; the hub, the web edge and other remotes serve on
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-26T02:28:47.457Z
-updated: 2026-10-26T02:28:47.457Z
+updated: 2026-10-26T03:41:13.969Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1322
 kind: task
 title: Remote actions record via telegram or discord on messages, answers, approvals and ask outcomes, shown in both workbenches
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-26T02:28:46.572Z
-updated: 2026-10-26T02:28:46.572Z
+updated: 2026-10-26T03:41:12.931Z
 ---
 
 ## Summary

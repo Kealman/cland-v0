@@ -3,7 +3,7 @@ id: T-1325
 kind: task
 title: The outbox drain, the retry_after cap and reconnection backoff
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-26T02:28:47.280Z
-updated: 2026-10-26T02:28:47.280Z
+updated: 2026-10-26T03:41:13.629Z
 ---
 
 ## Summary

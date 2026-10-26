@@ -3,7 +3,7 @@ id: T-1324
 kind: task
 title: "A durable outbox per remote: attempts, provable resends, merged edits, dropped closed jobs, missed General jobs"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-26T02:28:46.997Z
-updated: 2026-10-26T02:28:46.997Z
+updated: 2026-10-26T03:41:13.406Z
 ---
 
 ## Summary
