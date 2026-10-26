@@ -2,8 +2,8 @@
 id: T-1341
 kind: task
 title: Telegram polling with store-then-confirm offsets, dedupe and paired-chat filtering
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1093
 branch: t/T-1341-telegram-polling-with-store-then-confirm
 created: 2026-10-26T19:09:06.217Z
-updated: 2026-10-26T22:02:19.432Z
+updated: 2026-10-26T23:17:03.038Z
+closed: 2026-10-26T23:17:03.038Z
 ---
 
 ## Summary
@@ -108,3 +109,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, C1/C2 verified from original exact-head run 1a2d58e9-c77b-4f44-8b94-2a1eca36e8e6 / A-12501, exit 0. Independently parsed 3,506 ordinary passes plus 40 separate scoped load passes (eight identities x5). All six polling controls, SQLite transaction/reopen and fake injection cases pass base+5/5. Native corrected SIGKILL/restart case passes once at line 17962, body 1.625961050 s; selected changed-T3 wall 2.681 s excludes machine wait, no repetitions. New identities below3s. T0/all T1/fallback all T2/changed T3/Web completed; broader T3/T4 absent. Linux c-8 lon1, Node24.21.0, Neovim0.12.5, isolated Headless Shell156.0.8078.4/v1248. Old A-12497 remains failed historical partial evidence; no retrospective OS-state claim. Full exact timings/report-only/host-gate limits in A-12502: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12502-t-1341-final-same-head-linux-evidence-at-2f4766fcd.md. No Reviewer execution/delegation. Coordinator owns additional cover and landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-26T23:17:03.038Z
+
+Merged 4ae1d8070c78de63e1c1964600c8887c4e781eec onto dev.
