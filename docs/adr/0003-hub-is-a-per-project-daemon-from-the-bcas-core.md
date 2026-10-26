@@ -63,3 +63,31 @@ the LAN address, and refuses loopback alone. `cland doctor` warns for a network
 bind without a tunnel because plain HTTP exposes cookies and lacks phone
 notifications/install support. This supersedes the loopback-only web restriction;
 the spokes' admission and binding remain as decided above.
+
+
+## Amendment, 2026-10-26: the outbound-only gateway edge (v0.3 §3.1, T-1327)
+
+For v0.3, we choose the [Gateway](../../GLOSSARY.md#hub) as an edge of the one
+frame protocol inside the hub process, as decided in
+[spec §3.1](../spec/v0.3.md#31-the-gateway-edge-and-its-authority). It starts and
+stops with the hub and holds one conversation with the dispatcher, receiving
+client frames and sending client requests as the identity `human`, never as a
+session or a role ([ADR 0001](0001-roles-are-hub-held-state.md)). Its connections
+are outbound-only: Telegram long polling and Discord's gateway WebSocket and
+HTTPS. This adds no new protocol, socket or listener, and no hub secret; it needs no
+webhook, tunnel or public address. Reusing the dispatcher keeps remote control
+inside the hub's existing frame boundary without another sidecar or transport.
+
+The gateway has its own deny-by-default authority table, checked before dispatch,
+following the web edge's pattern in
+[`web-authority.ts`](../../hub/src/hub/web-authority.ts) with narrower authority:
+`topic.send` into General or as a reply into the replied-to message's topic,
+`topic.answer`, `approval.answer`, and only the reads `hub.status`, `task.list`
+and `inbox.list`. Session launch or stop, release, push, sync, configuration,
+artifact actions and pairing approval remain outside a remote's authority.
+Media uploads are the hub's own act, attributed to the human, and count as a send.
+
+The glossary names the paired messenger chat a
+[Remote](../../GLOSSARY.md#remotes) and its durable outbound queue an
+[Outbox](../../GLOSSARY.md#remotes). This amendment records the v0.3 design
+decision; it is not a claim that the gateway implementation has shipped.
