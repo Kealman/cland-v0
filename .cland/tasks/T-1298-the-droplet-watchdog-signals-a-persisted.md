@@ -2,8 +2,8 @@
 id: T-1298
 kind: task
 title: The droplet watchdog signals a persisted pid on a whole-second start time
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1068
 branch: t/T-1298-the-droplet-watchdog-signals-a-persisted
 created: 2026-10-25T10:54:46.064Z
-updated: 2026-10-25T23:17:45.257Z
+updated: 2026-10-26T00:02:02.798Z
+closed: 2026-10-26T00:02:02.798Z
 ---
 
 ## Summary
@@ -109,3 +110,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence CLEAR; A-12192 carries source3/A-12185 plus actual configured d6734e00/A-12190 exit 0. Deduplicated ordinary records: 3320 pass, 1 known macOS-only skip, no fail/cancel/todo; 447 file passes. Separate load-gate: all 21 new watchdog identities have 5/5 actual passes (105), max 0.068949186 s. C1 precise replacement refusal, one-time durable adoption, proof/persistence refusals, TERM/KILL controls and M3/M4 concurrency/cleanup cases all pass. Native changed T3 once: 13 passes, unchanged macOS inhibitor skip; actual birth/rearm and held release/exit assertions pass. Selected added wall 13.342 s excludes machine wait, not file/body or lifetime; no other T3/T4 or native repetitions claimed. T0/all T1/fallback all T2/Web green on Linux c-8 lon1, Node24.21.0/Neovim0.12.5, Headless Shell156.0.8078.4/v1248, workers2, lifetime736s/$0.0511. Host prepared-tree gate not repeated remotely; lint/budget/ratchet warnings remain report-only. Standards/Spec no findings; C1 verified. Coordinator owns enqueue/landing and after-stage QA; no reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-26T00:02:02.798Z
+
+Merged 02438dd37b562d80da24d880687300b2d24a4f5e onto dev.
