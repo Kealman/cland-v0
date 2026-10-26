@@ -398,6 +398,8 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  /** Fabricated inputs for the subject hub only; inherited/child environments stay sealed. */
+  syntheticRemoteSecrets?: import('../src/remote/secrets.ts').Secrets;
   gatewayMessenger?: import('../src/remote/configuration.ts').MessengerFactory;
   gatewayProcesses?: import('../src/remote/poller-lease.ts').PollerProcesses;
   gatewayRemotes?: readonly import('../src/remote/gateway.ts').Remote[];
@@ -447,7 +449,15 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   const sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra });
   const accountEnv = options.scratchAccountPaths ? scratchAccountEnvironment(root, sealed, options.scratchAccountPaths) : sealed;
   const gitEnv = options.scratchGitConfig ? scratchGitEnvironment(root, accountEnv, options.scratchGitConfig) : accountEnv;
-  const env = options.syntheticProvider ? syntheticProviderEnvironment(gitEnv, options.syntheticProvider, options.droplet?.api) : gitEnv;
+  const providerEnv = options.syntheticProvider ? syntheticProviderEnvironment(gitEnv, options.syntheticProvider, options.droplet?.api) : gitEnv;
+  // Deliberate fake credentials belong to the in-process subject, like syntheticProvider.
+  // Every child still applies withoutExecutorCredentials after its final overlay.
+  const env = options.syntheticRemoteSecrets ? { ...providerEnv,
+    CLAND_TELEGRAM_TOKEN: options.syntheticRemoteSecrets['telegram.token'],
+    CLAND_DISCORD_TOKEN: options.syntheticRemoteSecrets['discord.token'],
+    ELEVENLABS_API_KEY: options.syntheticRemoteSecrets['speech.elevenlabs_key'],
+    XAI_API_KEY: options.syntheticRemoteSecrets['speech.xai_key'],
+  } : providerEnv;
   const resources = hubResources();
   // The CLI redirects startup stderr into this file. Embedded hubs use the same
   // asynchronous sink explicitly, including its flush barrier for hub.status.

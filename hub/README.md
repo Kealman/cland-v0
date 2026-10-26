@@ -542,12 +542,30 @@ remains a shutdown error. A directly constructed gateway defaults to a memory
 sink; the daemon supplies hub.db storage, overridable through `gatewayState`.
 Sinks expose `status()` and `setStatus()`. A new start resets that remote's
 status before setup.
-`src/remote/redact.ts` exports `remoteRedactor(secrets)` for the gateway's
-`redact` option: registered values and conservative URL, Bearer and token/key
-contexts are replaced in one pass before state, log or cleanup error output;
-reasons are flattened and capped at 500 characters. Callers register secrets
-before use; this seam reads no secrets file. The hub supplies its ordinary log
-sink in both startup paths. The existing `start(send)` contract stays unchanged.
+`src/remote/redact.ts` exports `remoteRedactor(secrets)`, a project-owned mutable
+registry. Its callable form masks registered values and conservative URL, Bearer
+and token/key contexts, flattens diagnostics and caps them at 500 characters.
+`.text(text)` masks full documents while preserving whitespace and length apart
+from replacements; `.value(record)` masks nested JSON string values for journal records while
+preserving schema keys. `redactFrame(frame, policy)` masks content fields and
+refuses a credential collision with routing or correlation values before dispatch
+or delivery, disabling only that remote. It never rewrites protocol identities. Repeated masking preserves inserted markers. `.register(values)`
+adds credentials and retains rotated values for late errors from old consumers.
+The daemon resolves and validates secrets before opening logs or listeners, then
+calls `validateAndRegisterSecrets(secrets, remoteOutput)` and supplies that registry
+to both gateway startup paths. The same closure uses the daemon
+environment and registers the final resolution on reload before gateway replacement. Gateway inbound/outbound frames, status reasons,
+logs and cleanup errors pass this boundary. Existing plain-function redaction
+injection supplies the same policy to diagnostics and structured content. Reload
+reuses the project registry, so old and new credential values are masked during
+replacement construction and cleanup. Each in-process project owns a separate registry.
+
+Every new remote or speech write must use this API before its sink: `.text` for
+artifact contents, `.value` for journal records and `redactFrame` for frames; use the callable
+form for diagnostic errors. Remote artifacts have no producer in the current
+gateway, which refuses artifact actions. The native journal and artifact sink
+regressions exercise the shared API for media/speech producers. The existing
+`start(send)` contract stays unchanged.
 
 `src/remote/authority.ts` permits exactly these existing requests:
 
@@ -2073,7 +2091,15 @@ tables with string values. Writes replace the file atomically at mode 600.
 The resolver checks and tightens an existing file to 600 before hub startup
 opens its logs or listeners; symbolic links, non-regular files and multiple
 hard links are refused. Parse errors report a fixed reason without quoting
-the file. The resolver returns only the four supported dotted keys.
+the file. The resolver returns only the four supported dotted keys. Before provider setup,
+Telegram tokens must match `^[1-9]\d{0,16}:[A-Za-z0-9_-]{24,}$` and have at most
+80 characters; refusals use a fixed reason without echoing the value. Discord
+tokens are opaque. Storage-only reads remain separate from provider resolution,
+so set/unset can repair a malformed stored Telegram token and list still shows
+only fingerprints. Startup and reload register every resolved token and speech key
+with the project's remote redactor before messenger setup. The daemon passes its
+explicit environment to the resolver at both boundaries, falling back to the
+process environment only when no daemon environment was supplied.
 
 At hub/provider resolution, `CLAND_TELEGRAM_TOKEN`, `CLAND_DISCORD_TOKEN`,
 `ELEVENLABS_API_KEY` and `XAI_API_KEY` override `telegram.token`, `discord.token`,

@@ -53,3 +53,16 @@ test('secret file edits and reads remain file-only while environment overrides a
   assert.equal(Object.keys(readSecretsFile(root)).length, 0, 'unset removes only the file value without copying overrides');
   assert.ok(resolveSecrets(root)['discord.token'] === overrides.CLAND_DISCORD_TOKEN, 'unset leaves the environment override active');
 });
+
+test('Telegram validation applies after environment overrides without blocking repair of a stored value', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-secret-validation-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, '.cland'));
+  setSecret(root, 'telegram.token', `123456:${'fake_file_'.repeat(4)}`);
+  assert.throws(() => resolveSecrets(root, { CLAND_TELEGRAM_TOKEN: 'malformed-fake-env' }), error => {
+    assert.ok((error as Error).message === 'telegram.token: invalid token format (at most 80 characters)', 'environment refusal is value-free');
+    return true;
+  });
+  setSecret(root, 'telegram.token', 'malformed-fake-file');
+  assert.ok(resolveSecrets(root, overrides)['telegram.token'] === overrides.CLAND_TELEGRAM_TOKEN, 'a valid environment override wins before provider validation');
+});

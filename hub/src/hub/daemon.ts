@@ -1,3 +1,4 @@
+import { remoteRedactor } from '../remote/redact.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { ConfiguredGateway, type MessengerFactory } from '../remote/configuration.ts';
 import type { Secrets } from '../remote/secrets.ts';
@@ -91,6 +92,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
     throw err;
   }
   let secret: string;
+  const remoteOutput = remoteRedactor();
   let resolveRemoteSecrets!: () => Secrets;
   let remoteSecrets: Secrets;
   try {
@@ -98,8 +100,12 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
     if (options.autostart && autostartDeferred(root)) throw new AutostartDeferred();
     if (!options.autostart) clearHubStop(root);
     // Only serving loads credentials; lightweight project/CLI reads keep their import budget.
-    const { resolveSecrets } = await import('../remote/secrets.ts');
-    resolveRemoteSecrets = () => resolveSecrets(root);
+    const { resolveSecrets, validateAndRegisterSecrets } = await import('../remote/secrets.ts');
+    resolveRemoteSecrets = () => {
+      const secrets = resolveSecrets(root, env);
+      validateAndRegisterSecrets(secrets, remoteOutput);
+      return secrets;
+    };
     remoteSecrets = resolveRemoteSecrets();
     secret = ensureSkeleton(l);
   } catch (err) {
@@ -457,7 +463,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
 
   const startGateway = async () => {
     const create = (remotes: readonly Remote[]) => new Gateway(hub.dispatcher, remotes, {
-      state: options.gatewayState ?? store.remotes, log,
+      state: options.gatewayState ?? store.remotes, log, redact: remoteOutput,
       lease: new PollerLease(store.remotes, { clock, processes: options.gatewayProcesses ?? nativePollerProcesses(env) }),
     });
     if (options.gatewayMessenger) {

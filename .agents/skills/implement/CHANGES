@@ -152,6 +152,8 @@ T-1325 review: Document final-read completion ownership and independently releas
 T-1328: Document the shared project-secret resolver, private CLI input and the stream/startup/native-Git test seams.
 T-1328 review: Enforce custom-ignore protection before input and document native child close/output ownership and per-file guidance.
 T-1328 full cover: Keep credential imports at the actual daemon-start boundary and retain lightweight CLI import budgets.
+T-1330: Point validation, rotation registration and remote/speech writes at the project-scoped redactor and native sink receipts.
 
 T-1331: Document remote/speech config reload, injected messenger and completion receipts.
 T-1329: Document environment-first secret resolution, file-only CLI edits and the shared final child credential filter.
+T-1330 integration: Resolve with the explicit daemon environment and reuse validation/registration before reload activation.

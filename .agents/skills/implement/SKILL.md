@@ -39,14 +39,20 @@ workbench regressions are `web/test/remote-via.test.ts` and
 
 For project secret storage or CLI input, read `docs/agents/secrets.md` and use
 the T1 stream, T2 startup/CLI and native Git seams in
-`docs/agents/tests/hub-test-secrets.test.ts.md`. Share `resolveSecrets(root)` for hub/provider values (environment overrides win);
+`docs/agents/tests/hub-test-secrets.test.ts.md`. Share `resolveSecrets(root, env)`
+for hub/provider values (environment overrides win);
 use `readSecretsFile(root)` for file-only CLI reads and edits. Filter all four remote
 secret environment names with `withoutExecutorCredentials` after child overlays,
-including the speech command launcher. Keep values in stdin or the private file and diagnostics limited to fixed reasons.
+including the speech command launcher. Keep values in stdin or the private file
+and diagnostics limited to fixed reasons.
 Preserve custom ignore bytes and require a final literal secrets rule before
-input. Use the fixture's registered close/output barrier before root removal.
-Load credentials only at daemon startup, keeping `project.ts` import-free of
-the resolver; preserve the CLI import-budget guard and T2 startup receipts.
+input. For validation, rotation registration or remote/speech output, use
+`docs/agents/tests/hub-test-gateway-secrets.test.ts.md`: one project-owned registry
+and the shared validation/registration boundary before provider activation. Use
+the fixture's registered close/output barrier before root removal.
+Import credential code inside daemon startup and reuse its resolver closure on
+reload, passing the daemon environment and registering before gateway activation.
+Keep `project.ts` import-free; preserve the CLI import budget and startup receipts.
 
 For remote/speech configuration or reload, use the template/writer and frame/CLI
 seams in `docs/agents/tests/hub-test-config-set.test.ts.md`. Inject

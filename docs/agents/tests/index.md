@@ -5,6 +5,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | Test file | Guidance |
 | --- | --- |
 | [`hub/test/cli-imports.test.ts`](../../../hub/test/cli-imports.test.ts) | [Notes](hub-test-cli-imports.test.ts.md) |
+| [`hub/test/gateway-secrets.test.ts`](../../../hub/test/gateway-secrets.test.ts) | [Notes](hub-test-gateway-secrets.test.ts.md) |
+| [`hub/test/secrets-validation.test.ts`](../../../hub/test/secrets-validation.test.ts) | [Notes](hub-test-secrets-validation.test.ts.md) |
 | [`hub/test/secrets.test.ts`](../../../hub/test/secrets.test.ts) | [Notes](hub-test-secrets.test.ts.md) |
 | [`hub/test/secret-input.test.ts`](../../../hub/test/secret-input.test.ts) | [Notes](hub-test-secret-input.test.ts.md) |
 | [`hub/test/secrets-git.test.ts`](../../../hub/test/secrets-git.test.ts) | [Notes](hub-test-secrets-git.test.ts.md) |

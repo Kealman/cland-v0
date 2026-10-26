@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { parse, stringify } from 'smol-toml';
 import { symlinkOnPath } from '../init/files.ts';
+import type { RemoteRedactor } from './redact.ts';
 
 export const SECRET_NAMES = ['telegram.token', 'discord.token', 'speech.elevenlabs_key', 'speech.xai_key'] as const;
 export type SecretName = typeof SECRET_NAMES[number];
@@ -23,6 +24,7 @@ export function resolveSecrets(root: string, env: NodeJS.ProcessEnv = process.en
     const value = env[SECRET_ENV[name]];
     if (value !== undefined) secrets[name] = value;
   }
+  validateSecrets(secrets);
   return secrets;
 }
 
@@ -61,6 +63,20 @@ export function readSecretsFile(root: string): Secrets {
     }
   }
   return secrets;
+}
+
+/** Validate before any provider constructs a credential-bearing URL. Discord is opaque. */
+export function validateSecrets(secrets: Secrets): void {
+  const token = secrets['telegram.token'];
+  if (token !== undefined && (token.length > 80 || !/^[1-9]\d{0,16}:[A-Za-z0-9_-]{24,}$/.test(token) || /[\r\n]/.test(token))) {
+    throw new Error('telegram.token: invalid token format (at most 80 characters)');
+  }
+}
+
+/** Startup/reload boundary: validate the complete resolution before registering any value. */
+export function validateAndRegisterSecrets(secrets: Secrets, redactor: RemoteRedactor): void {
+  validateSecrets(secrets);
+  redactor.register(Object.values(secrets));
 }
 
 export function isSecretName(name: string): name is SecretName {

@@ -1,7 +1,7 @@
 import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
 import { PROTOCOL_VERSION, type HubFrame, type RemoteVia } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { remoteRedactor } from './redact.ts';
+import { remoteRedactor, redactFrame, redactValue, type RemoteRedactor } from './redact.ts';
 import type { GatewayLease } from './poller-lease.ts';
 
 /** One active remote per messenger. The gateway owns its lifetime and frame port. */
@@ -39,6 +39,7 @@ export class Gateway {
   readonly #state: RemoteStates;
   readonly #log: LogFn;
   readonly #redact: (text: string) => string;
+  readonly #output: RemoteRedactor['value'];
   #conversation: Conversation | undefined;
   #nextId = 0;
   #open = false;
@@ -55,8 +56,12 @@ export class Gateway {
       status: () => ({ ...(statuses.get(id) ?? { disabled: false, reason: null }) }),
       setStatus: status => { statuses.set(id, { ...status }); },
     }) };
-    this.#log = options.log ?? (() => {});
     this.#redact = options.redact ?? remoteRedactor();
+    // Previous callers may still supply a plain diagnostic function.
+    const registered = this.#redact as Partial<RemoteRedactor>;
+    const text = Object.hasOwn(registered, 'text') && typeof registered.text === 'function' ? registered.text : this.#redact;
+    this.#output = input => redactFrame(input, text);
+    this.#log = entry => options.log?.(redactValue(entry, text));
   }
 
   start(): Promise<void> {
@@ -85,7 +90,8 @@ export class Gateway {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
           const id = `gateway-${++this.#nextId}`;
           this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
-          this.#conversation!.receive(JSON.stringify({ ...frame, id }), remote.via);
+          try { this.#conversation!.receive(JSON.stringify(this.#output({ ...frame, id })), remote.via); }
+          catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
         });
       } catch (error) {
         this.#disable(remote, error);
@@ -127,7 +133,7 @@ export class Gateway {
   #receive(remote: Remote, frame: HubFrame): void {
     if (this.#disabled.has(remote)) return;
     try {
-      const work = remote.receive(frame);
+      const work = remote.receive(this.#output(frame));
       if (work) this.#observe(remote, work);
     }
     catch (error) { this.#disable(remote, error); }
