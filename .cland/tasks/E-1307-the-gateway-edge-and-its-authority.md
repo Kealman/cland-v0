@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.144Z
-updated: 2026-10-25T14:11:59.144Z
+updated: 2026-10-26T02:28:57.102Z
 ---
 
 ## Goal
@@ -77,3 +77,26 @@ In a scratch project, QA starts the hub with two test messengers behind the gate
 - Research: `docs/research/messenger-bridges.md` on `research/messenger-bridges` (ffee79d8), the failure classes and the patterns behind the outbox and the lease.
 - Code: `hub/src/hub/web-edge.ts`, `hub/src/hub/web-authority.ts`, `hub/src/hub/dispatch.ts`, `hub/src/hub/core.ts`, `hub/src/hub/asks.ts`, `hub/src/hub/inbox.ts`, `hub/src/hub/store.ts`, `shared/wire/index.ts`; `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - GLOSSARY: Gateway, Remote and Outbox (added for v0.3); Hub, Ask, Approval.
+
+## Plan
+
+```yaml
+stages:
+  - name: edge and authority
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1321
+      - - T-1327
+  - name: via, state, outbox and isolation
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1322
+      - - T-1323
+        - T-1324
+        - T-1325
+      - - T-1326
+```
