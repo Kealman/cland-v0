@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:40:57.049Z
-updated: 2026-10-25T14:13:56.821Z
+updated: 2026-10-26T17:49:38.344Z
 ---
 
 ## Goal
@@ -38,3 +38,13 @@ The planning of v0.3 is complete: `docs/spec/v0.3.md` (status complete), the glo
 What the human decided for the build (Q-1297): the Coordinator leads, decides the crew by the project's rules and approves every epic plan itself; QA runs every demo on fake platform servers in the suite (a fake Bot API, a fake Discord gateway and REST, a fake speech provider); the human joins one live run on the sandbox bots, Telegram and Discord from the phone, only before the release (E-1314); real tokens never go to droplets. The build starts after 0.2.2 ships, on the human's word.
 
 Practicalities: the human's bot tokens and ElevenLabs key live in `~/.config/cland/sandbox-remote.secrets.toml` (mode 600; never print, copy into a repository or delete; the live run reads it by path). The prototype sandbox `/Users/evgeniyivanov/Projects/cland/sandbox-remote` is stopped (hub and stand-in Coordinator); it can be restarted by its HOW-TO-TRY.md for reference. Two throwaway folders from the Discord prototype, `/Users/evgeniyivanov/Projects/cland/sandbox-discord-fake` and `sandbox-remote-two`, hold only fake tokens and id-only logs and may be deleted. The repository's `.git/gc.log` (and the research worktrees' copies) block automatic maintenance: a `git prune` when convenient.
+
+### coord · 2026-10-26T17:49:38.344Z
+
+Human decision, General, 2026-10-26 17:49Z (msg 9079df95): «по поводу живого прогона, давай без песочных, а сразу подключим к текущему проекту и проверим все, в смысле чтобы у меня были сразу ремоуты на этом проекте настроеные, чтобы несколько раз отдельно это не делать».
+This replaces the sandbox-bot live run in Q-1297 and E-1314. The live run before release connects real Telegram and Discord remotes to this project, cland/v0, and they stay configured afterwards.
+Unchanged:
+- Only the human creates the bots and places the tokens: `cland secret set telegram.token` and `discord.token` from stdin in this project, git-ignored in .cland/secrets.toml.
+- Real tokens never go to droplets. Verify bundles carry only the committed tree, and T-1329 keeps the token variables off every child environment.
+- The sandbox secrets file is not used.
+- QA demos stay on the fake platform servers.
