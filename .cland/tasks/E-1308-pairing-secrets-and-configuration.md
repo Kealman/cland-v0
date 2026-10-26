@@ -2,7 +2,8 @@
 id: E-1308
 kind: epic
 title: Pairing, secrets and configuration
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.3
@@ -11,10 +12,11 @@ assignee: null
 parent: R-1278
 blocked_by:
   - E-1307
-topic: null
+topic: topic-1092
 branch: null
 created: 2026-10-25T14:11:59.271Z
-updated: 2026-10-26T12:44:52.850Z
+updated: 2026-10-26T19:58:04.699Z
+closed: 2026-10-26T19:58:04.699Z
 ---
 
 ## Goal
@@ -50,13 +52,21 @@ QA runs the demo below on `dev` through the CLI, the hub's frame protocol and a 
 In a scratch project, QA sets the three secrets with `cland secret set` from stdin, reads `cland secret list`, unsets one, and checks the file's mode, its absence from `git status` and the refusal of a symlinked file. With the four environment overrides set in the hub's environment, QA reads a fake harness session's environment and finds none of them, and feeds a malformed Telegram token and reads a refusal that does not echo it. QA runs `cland update` in an older project and reads the new sections, then enables and disables a test messenger with `cland config set` and `cland hub reload`. As a stranger on the test messenger QA gets a code and its limits, tries to approve it through the web edge and the gateway and is refused, approves it from Neovim's connection, pairs again with `cland remote approve` and reads the line to the old chat, then runs every `cland remote` subcommand and rotates the token.
 
 - [ ] C1. `.cland/secrets.toml` holds the four names, is git-ignored by the managed `.cland/.gitignore`, is tightened to mode 600 at hub start and is refused as a symlink.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.337Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 - [ ] C2. `cland secret set` reads only stdin or a hidden prompt, `list` shows names and fingerprint prefixes only, `unset` removes a name, and no value reaches any output, log line or process listing.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.338Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 - [ ] C3. The four environment overrides win over the file and are on the sessions' deny-list beside `DIGITALOCEAN_TOKEN`, so no session and no speech command inherits them.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.338Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 - [ ] C4. A Telegram token is validated before any URL is built, and one redactor masks tokens and keys in everything the gateway and the speech seam write.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.338Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 - [ ] C5. `cland init` renders the `[remote]`, `[remote.telegram]`, `[remote.discord]` and `[speech]` keys with their defaults, `cland update` adds them, and `cland hub reload` applies every key, connecting or disconnecting a messenger.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.338Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 - [ ] C6. Pairing codes have 8 characters without 0, O, 1 and I, live one hour on Telegram and 15 minutes on Discord, wait at most three at once, and a stranger gets at most two replies.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.338Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 - [ ] C7. Approving a pairing is accepted only from Neovim and the CLI, binds the numeric ids in `hub.db`, replaces an earlier pairing with a line to the old chat, and clears the other waiting codes.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.338Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 - [ ] C8. `cland remote status`, `approve`, `unpair` and `test` behave as spec §3.10 says, and a rotated token keeps the pairing after `cland hub reload`.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1308 · 2026-10-26T19:57:44.338Z · commit 94b56ad73c091a8da1e30d4d401474645d5688ff
 
 ## Constraints
 
@@ -97,3 +107,39 @@ stages:
       - - T-1330
       - - T-1339
 ```
+
+## Comments
+
+### qa-677 · 2026-10-26T19:57:44.338Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-26-677-1308
+commit: 94b56ad73c091a8da1e30d4d401474645d5688ff
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Observation |
+|---|---|---|---|
+| M1 | hub-api | PASS | 5/5 + 3/3; mode 600, symlink refusal, all four names and native Git ignore with positive control |
+| M2 | hub-api | PASS | 4/4 plus M1; stdin/hidden stream, list fingerprints, unset, malformed inputs, no value in native CLI output/argv |
+| M3 | hub-api | PASS | 3/3 + 3/3; overrides win; fake harness and speech stand-in receive no remote credentials |
+| M4 | hub-api | PASS | 3/3 + 13/13; validation precedes provider setup; frame/journal/artifact masking survives rotation |
+| M5 | hub-api | PASS | 15/15 + 19/19; defaults/update/round-trip and all reload keys, messenger connection and shutdown |
+| M6 | hub-api | PASS | 8/8 + 3/3; alphabet, both exact lifetimes, three waiting/two replies, restart persistence and expiry exclusion |
+| M7 | hub-api | PASS | 10/10 + 44/44 plus M6; local authority, trusted stdio, numeric persistence, replacement notice, cleared codes and web refusal |
+| M8 | hub-api | PASS | 18/18 + 18/18; status/approve/unpair/test for both messengers, failure isolation, old replies, rotation retains pairing/mute |
+| M9 | hub-api | PASS | 8/8 children closed done; clear same-source-head review/green verify; landed; stage closed; T-1332 exception recorded; both covers green |
+
+QA clear: C1,C2,C3,C4,C5,C6,C7,C8 verified at 94b56ad73c091a8da1e30d4d401474645d5688ff, run qa-dod-2026-10-26-677-1308. No findings.
+
+Fifteen files ran serially once in a clean detached checkout on local macOS arm64 / Node v24.21.0: 169 native tests, 169 passes, 0 failures/skips/cancellations/todos. Actual generated case names were matched by hash to both cover receipts and native summaries checked separately from exit status. M2/M7 reuse earlier cases without adding counts. Shared sealed fixture environments and disposable projects; only fabricated values. Captures screened/redacted before saving (five conservative label masks, zero suppressed lines). Sandbox secrets file never read. No real messenger, browser, full-suite rerun, build or timing/load claim. Web-authority exercises frame transport; browser binary not applicable to this local run.
+
+M9 independently matches all eight children’s clear hub review and green native same-source-head verify to equivalent squash landings in both green stage covers. Covers at 79d5885e019a1fccc378f2e24a4f1d66b046aed2 / tree 0652e7abe9ca161dd43c10628749560425e341fb: Linux 95b8e738/A-12476 (4970 pass, 9 skip), macOS 4caa8495/A-12480 (4978 pass, 1 skip), each 4979 tests and 0 failures; all 169 scoped names pass in each. T0, T1–T4 base and Web complete; 14 T4 files base-only, outer repetitions skipped. Budget/ratchet/lint report-only. Linux x64 6.8.0-142-generic, macOS arm64 27.0.0; Node24.21.0/Nvim0.12.5. Linux Headless Shell156.0.8078.4 / Playwright1248; exact historical macOS browser binary unrecorded. Linux c-8 lon1 shard lifetimes1304402/1347159ms, costs$0.09058347222222222/$0.09355270833333333, total$0.18413618055555556; lifetimes are not test wall times. Local executor has no droplet cost.
+
+T-1332 original full 0421f9fe/A-12445 remains failed: "live hub protocol drifted; run npm run test:nvim-fixtures", actual inbox.pairings: [] absent from expected. Coordinator’s fixture-only rule-6 exception is recorded on the item. Independently checked the sole added fixture line at e10bf44f; its green task run covered T0/T1/T2/Web, and the owning generated test passes in BOTH later stage covers. T-1328 prior A-12357 also remains failed ("native process identity unavailable for pid 71345; fixture preserved"); its later same-head run and exact owning case in both stage covers pass. No causal flake claim.
+
+Freshness current:true at the requested build; no demo lease. Full commands, case names/hashes, source/declaration checks, recorder M1–M9, child/cover evidence, exception and failure text, and publication scan: A-12483, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12483-e-1308-dod-qa-clear-at-94b56ad7/report.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
