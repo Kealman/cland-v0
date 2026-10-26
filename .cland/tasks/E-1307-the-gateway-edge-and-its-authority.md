@@ -2,7 +2,8 @@
 id: E-1307
 kind: epic
 title: The gateway edge and its authority
-state: open
+state: closed
+criterion_seq: 9
 labels:
   - epic
   - v0.3
@@ -13,7 +14,8 @@ blocked_by: []
 topic: topic-1074
 branch: null
 created: 2026-10-25T14:11:59.144Z
-updated: 2026-10-26T03:41:12.244Z
+updated: 2026-10-26T09:06:38.240Z
+closed: 2026-10-26T09:06:38.240Z
 ---
 
 ## Goal
@@ -48,14 +50,23 @@ QA runs the demo below on `dev` through the hub's frame protocol, with the test 
 In a scratch project, QA starts the hub with two test messengers behind the gateway. It posts in General as an agent and reads the message at both, sends from one and reads it in General as the human's message with its `via`, and tries every refused request. It answers an ask and a fake Codex approval through the gateway and reads "via Telegram" in headless Neovim and headless Chromium. It restarts the hub and reads the state back, a Discord-sized id included. It makes one test messenger refuse sends while three General messages pass and an open card's ask is answered, then reads the missed count and the dropped card and checks that nothing leaves twice. It starts a second gateway on the same `hub.db`, and makes the other test messenger throw at start while the first and the web edge keep serving. Finally QA reads the ADR 0003 amendment.
 
 - [ ] C1. The gateway runs inside the hub as the identity `human` on one dispatcher conversation, with no new socket, listener or hub secret, and starts and stops with the hub.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C2. A remote may only send into General or reply into the replied-to topic, answer, approve and read `hub.status`, `task.list` and `inbox.list`, and every other request, pairing approval included, is refused with a reason.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C3. Messages, answers, approvals and ask outcomes from a remote record `via`, and Neovim and the web show it.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C4. The remote's state lives in `hub.db` with no separate file and survives a hub restart unchanged, Discord ids above 2^53 included as TEXT.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C5. The outbox records an attempt before each send, resends only what provably never left, merges edits, drops jobs whose source closed, and counts General jobs missed during an outage.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C6. A job queued while the outbox drains leaves in that drain, a `retry_after` wait never exceeds 5 minutes, and reconnection backs off with jitter and a cap.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C7. A second gateway on the same `hub.db` waits on the poller lease for up to 60 seconds and stops nothing.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C8. A remote that fails at start or later disables only itself, and the hub, the web edge and the other remote serve on.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 - [ ] C9. ADR 0003 carries an amendment naming the gateway as an outbound-only edge of the one frame protocol with its own authority table.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-26-677-1307 · 2026-10-26T09:05:22.500Z · commit a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
 
 ## Constraints
 
@@ -95,3 +106,40 @@ stages:
         - T-1325
       - - T-1326
 ```
+
+## Comments
+
+### qa-677 · 2026-10-26T09:05:22.500Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-26-677-1307
+commit: a5d678520989ed9fc11ae0ddc211736e5a7f3dd3
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+QA clear at a5d678520989ed9fc11ae0ddc211736e5a7f3dd3; run qa-dod-2026-10-26-677-1307. All manual checks in qa/briefs/E-1307.md passed. Verified C1,C2,C3,C4,C5,C6,C7,C8,C9. No findings.
+
+| Check | Result | Observation |
+|---|---|---|
+| M1 | PASS | 18/18; identity, conversation, lifecycle, authority and remote failure isolation |
+| M2 | PASS | No new listener, socket or hub secret; existing dispatcher and lifecycle |
+| M3 | PASS | 6/6 + 11/11 + 1/1 + 2/2; source attribution and prior outcome compatibility |
+| M4 | PASS | 4/4 + 9/9; restart persistence, TEXT ids, gateway lease |
+| M5 | PASS | 25/25 + 1/1; durable attempt/map, fencing, coalescing, source recheck and outage policy |
+| M6 | PASS | All four named drain/rate-limit/reconnect cases passed |
+| M7 | PASS | 9/9 plus gateway lease cases; wait, owner preservation, expiry and release |
+| M8 | PASS | 3/3 plus stored/logged failure-reason redaction case |
+| M9 | PASS | Outbound-only in-process edge; one protocol; human identity; authority table |
+| M10 | PASS | 7/7 children closed done, clear review plus same-head green verify; landed; stage closed; both covers green and scoped names present |
+
+Local clean detached checkout; macOS arm64 / Node v24.21.0. Eleven files ran serially once: 89 tests, 89 passes, 0 failures/skips/cancellations/todos. Native generated names and summaries checked independently of exit 0. M6 and the reused M7/M8 gateway evidence add no tests. Web built at the pin with matching source stamp; isolated Playwright chromium_headless_shell-1248, Google Chrome for Testing 156.0.8078.4, dedicated scratch profile, positive 4-to-0 browser cleanup censuses. No human browser or real platforms used.
+
+M10 independently matched all seven child latest clear reviews to green same-source-head native verifies, equivalent squash landings and ancestry into the stage covers. Linux 56552bb3/A-12333 and macOS f6f259ee/A-12338 at fb73592a164a277fbd5cffb3bf390e268f47fd96 are green and contain all 89 scoped names. T0, T1-T4 base and Web completed; 14 T4 files base-only, outer repetitions skipped. Budget/ratchet/lint were report-only. Linux x64 6.8.0-142-generic, Node24.21.0, Nvim0.12.5, Headless Shell156.0.8078.4; two c-8 lon1 shards lifetimes1386781/1388978ms, total cost$0.19276104166666666. macOS arm64 27.0.0 local cover; historical exact browser binary unrecorded. No new full suite, performance measurement or wall-time claim.
+
+Earlier macOS A-12337 remains failed: "database is locked"; "could not verify the droplet watchdog process identity"; "remote group started: not within 30000 ms" with nested fixture lifetime expiry. Coordinator classified these as load flakes and filed T-1335; no independent causal reproduction claimed. All three exact names pass in each later green cover.
+
+Freshness current:true at pinned SHA; no demo lease. Recorder M1-M10, complete criterion-to-case mapping, commands and receipts, redacted diagnostics and publication scan: A-12342, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12342-e-1307-dod-qa-clear-at-a5d67852/report.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
