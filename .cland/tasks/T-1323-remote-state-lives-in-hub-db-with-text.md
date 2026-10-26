@@ -2,8 +2,8 @@
 id: T-1323
 kind: task
 title: Remote state lives in hub.db with TEXT ids, and a poller lease keeps one gateway per project
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1077
 branch: t/T-1323-remote-state-lives-in-hub-db-with-text
 created: 2026-10-26T02:28:46.856Z
-updated: 2026-10-26T04:52:59.365Z
+updated: 2026-10-26T05:51:07.334Z
+closed: 2026-10-26T05:51:07.334Z
 ---
 
 ## Summary
@@ -29,11 +30,13 @@ Store migrations add the remote tables. Discord ids are stored as TEXT, since th
 ## Acceptance criteria
 
 - [x] C1. Remote state written before a hub restart reads back unchanged after it, a chat id above 2^53 included, with no state file outside `hub.db` (test).
-  - done: impl-1323 · 2026-10-26T04:25:24.056Z
   - verified: rev-26 [reviewer] · run rev-20261026-1323-evidence-1 · 2026-10-26T04:52:59.008Z · commit 7cd3b8251f088ff3764ed89840d8c06af5a28b35
+  - done: impl-1323 · 2026-10-26T05:24:08.663Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1323-evidence-2 · 2026-10-26T05:38:59.708Z · commit 2c3ca6381d8d230ea00ebad54aaa4f6b9ef8d626
 - [x] C2. A second gateway on the same `hub.db` waits on the held lease for up to 60 seconds, signals and stops nothing, and takes the lease once it is released or its holder is provably dead (test).
-  - done: impl-1323 · 2026-10-26T04:37:34.426Z
   - verified: rev-26 [reviewer] · run rev-20261026-1323-evidence-1 · 2026-10-26T04:52:59.008Z · commit 7cd3b8251f088ff3764ed89840d8c06af5a28b35
+  - done: impl-1323 · 2026-10-26T05:24:08.745Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1323-evidence-2 · 2026-10-26T05:38:59.708Z · commit 2c3ca6381d8d230ea00ebad54aaa4f6b9ef8d626
 
 ## Comments
 
@@ -119,3 +122,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head task evidence clear; A-12297. A-12296/run987f83a2 matches source-clear A-12295; independent progress deduplication reconciles3363 ordinary passes/451 file passes and100 separate load test passes (20 new identities ×5), no fail/cancel/skip. Exact restart/TEXT round trips, CAS/dead/reused/unknown identities, exact fake60s, cancellation/held/missed/aborted cleanup, redacted status/log, authenticated web status/root and positive socket close assertions all have named passes. T0/all T1/fallback all T2/Web completed; no T3/T4/full integration claim. New identities below3s, no allowance; host prepared-tree typecheck reuse/report-only limits retained. C1/C2 verified; no remaining findings or reviewer execution. Coordinator separately owns required rule-6 all before enqueue.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-26T05:24:03.195Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1323-source-4
+commit: 2c3ca6381d8d230ea00ebad54aaa4f6b9ef8d626
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge-delta source clear; A-12304. Coordinator-authorized dev merge checked through immutable parent/blob comparisons: imported-only files equal landed dev, task-only files equal cleared parent; six shared files retain both payloads and tier ordering. README keeps provenance plus complete storage/lease sections; gateway retains Remote.via metadata alongside unchanged acquisition/abort/disable/release drainage. No Standards/Spec findings. A-12303 local38/38/typed checks retain targeted/source limits, not new-head configured evidence. Reviewer remerge-diff unavailable because temporary object directory is forbidden; no writes/retry, direct comparisons independently audited resolution. Run one mode-free verify at this head, refresh done marks and request final C1/C2 evidence. Coordinator64e85610 conditionally accepts old-head rule-6 all7f305ab1 once green; not a current same-head full-cover claim.
+
+### rev-26 · 2026-10-26T05:38:59.708Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1323-evidence-2
+commit: 2c3ca6381d8d230ea00ebad54aaa4f6b9ef8d626
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head task evidence clear; A-12306. A-12305/run52719514 matches A-12304 source head; independent progress audit reconciles3367 ordinary passes/453 file passes and100 separate scoped load passes (20 new identities ×5), no failures/cancellations/skips. Exact persistence/TEXT/restart, native-fact/CAS/fake60s, cancellation/held/missed/aborted disposal, redacted persisted status and authenticated web/positive-close assertions pass; imported gateway/provenance/Neovim/Web compatibility also passes. T0/all T1/fallback all T2/Web only, no T3/T4/full-cover claim. All new base/load cases below3s; host prepared-tree typecheck reuse and report-only diagnostics retained. C1/C2 verified at merged head replacing stale marks; no findings/reviewer execution. Coordinator's conditionally accepted old-head rule-6 all7f305ab1 remains separate with no green result claimed here.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-26T05:51:07.334Z
+
+Merged 3713286ab83d5191acb657510325c6ee0e1c76cb onto dev.
