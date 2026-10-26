@@ -105,3 +105,33 @@ test('a failed completion rolls back the job, attempt outcome and platform recei
     assert.deepEqual(remote.message('chat', message.messageId), message);
   } finally { db.close(); }
 });
+
+test('Telegram dedupe receipts and offset commit together and survive reopening', async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'hub.db');
+  const store = new Store(path);
+  try {
+    const remote = store.remotes.forMessenger('telegram');
+    const fault = new DatabaseSync(path);
+    try { fault.exec(`create trigger fail_telegram_offset before insert on remote_state
+      when new.messenger = 'telegram' and new.key = 'telegram.offset'
+      begin select raise(abort, 'fixture offset failure'); end`); }
+    finally { fault.close(); }
+    assert.throws(() => remote.confirmTelegramUpdate(1, 'message:101:7'), /fixture offset failure/);
+    assert.equal(remote.get('telegram.update:1'), null);
+    assert.equal(remote.get('telegram.message:101:7'), null);
+    assert.equal(remote.get('telegram.offset'), null);
+    const recover = new DatabaseSync(path);
+    try { recover.exec('drop trigger fail_telegram_offset'); } finally { recover.close(); }
+    remote.confirmTelegramUpdate(1, 'message:101:7');
+    remote.confirmTelegramUpdate(0);
+  } finally { store.close(); }
+  const reopened = new Store(path);
+  try {
+    const remote = reopened.remotes.forMessenger('telegram');
+    assert.equal(remote.get('telegram.update:1'), '1');
+    assert.equal(remote.get('telegram.message:101:7'), '1');
+    assert.equal(remote.get('telegram.offset'), '2', 'a duplicate older update never moves the cursor backwards');
+    assert.equal(reopened.remotes.forMessenger('discord').get('telegram.offset'), null);
+  } finally { reopened.close(); }
+});

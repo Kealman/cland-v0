@@ -14,3 +14,10 @@ then checks the complete old job object before and after reopening through Store
 Keep missing targets absent from old row shapes. A native NOT NULL failure on a
 platform receipt proves `writeOutbox` rolls back the job and attempt as well as
 the message map; a successful retry is the positive control.
+
+`Telegram dedupe receipts and offset commit together and survive reopening`
+uses a native SQLite trigger to reject the offset insert. It retains absent
+update/message receipts and offset after failure, then removes the fault,
+confirms successfully and reopens the database. The earlier-id confirmation
+keeps the literal next offset 2; the Discord scope remains empty. This tests the
+savepoint boundary independently of the poller's successful exit.

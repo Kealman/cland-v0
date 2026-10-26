@@ -34,7 +34,7 @@ native test bound catches a missing simulated deadline; it is not a wait.
 
 `await fakeTelegram(t, { clock? })` registers its cleanup owner before binding
 an ephemeral `127.0.0.1` HTTP listener and
-returns `{ url, waitForPoll, waitForPollClose, waitForConnectionClose, close }`. Supply the exported
+returns `{ url, waitForPoll, waitForPollClose, waitForConnectionClose, waitForRequest, close }`. Supply the exported
 `TELEGRAM_TEST_TOKEN` only to the client or a private disposable secret store.
 The fake never reads the environment, HOME or a credentials file. Its shared
 `onCleanup` owner is already installed when setup begins. Close aborts setup,
@@ -64,6 +64,7 @@ POST controls take JSON:
 | Path | Parameters | Receipt |
 | --- | --- | --- |
 | `/control/say` | `user: "human"` (default) or `"stranger"`, `text` | Queued message update. Human id/chat 101, stranger id/chat 202. |
+| `/control/update` | Arbitrary update body without `update_id` | Assigns the next id and queues the redacted body, deliberately bypassing kind/identity filtering for negative controls. |
 | `/control/duplicate` | `update_id` | Adds the exact queued update again, retaining both ids. |
 | `/control/membership` | `user`, `status: "member"` or `"kicked"` | Queued `my_chat_member` update for the bot. |
 | `/control/fault` | `method`, HTTP `code`, optional `echoToken`, `retry_after`, `response` | Arms one refusal for that method; does not accept a send. |
@@ -84,3 +85,10 @@ confirms them; empty positive-timeout polls wait on the injected clock and wake
 when a control queues an update. Faults supply conflicts explicitly. This is a
 test boundary, not a full Telegram implementation or a claim about real clients'
 rendering, server retention or rate-limit enforcement.
+
+`waitForRequest(method, accepts?)` observes a token-free request id, method and
+redacted parameters before the fake handles it. Arm it before the action, including
+immediate zero-timeout polls. `Telegram fake injects unlisted update kinds with
+redacted request observations` retains the fabricated-secret positive control,
+the injected channel-post body, exact request parameters and matching TCP-close
+id. Production callers must still filter, even when allowed_updates is explicit.

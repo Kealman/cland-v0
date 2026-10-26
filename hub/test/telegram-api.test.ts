@@ -249,3 +249,23 @@ test('Telegram fake observes a native bind error and closes through the same own
   await fixture.close();
   assert.deepEqual(fixture.receipts(), { listening: false, closed: true, connections: 0, handlers: 0, nativeError: 'EADDRINUSE' });
 });
+
+test('Telegram fake injects unlisted update kinds with redacted request observations', async t => {
+  const fake = await fakeTelegram(t);
+  const queued = await control<{ update_id: number; channel_post: { text: string } }>(fake.url, 'update', {
+    channel_post: { text: `synthetic secret ${TELEGRAM_TEST_TOKEN}` },
+  });
+  assert.equal(queued.update_id, 1);
+  assert.equal(queued.channel_post.text, 'synthetic secret [redacted]');
+  const requested = fake.waitForRequest('getUpdates', receipt => receipt.params.timeout === 0);
+  const closed = fake.waitForConnectionClose('getUpdates');
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });
+  const updates = await api.getUpdates({ timeout: 0, allowed_updates: ['message'] });
+  assert.deepEqual(updates, [queued], 'the fault injection deliberately bypasses Telegram filtering so the client must filter');
+  const request = await requested;
+  assert.equal(request.method, 'getUpdates');
+  assert.deepEqual(request.params, { timeout: 0, allowed_updates: ['message'] });
+  assert.equal((await closed).id, request.id);
+  const state = await control(fake.url, 'state');
+  assert.equal(JSON.stringify(state).includes(TELEGRAM_TEST_TOKEN), false);
+});

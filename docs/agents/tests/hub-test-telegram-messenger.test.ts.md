@@ -11,7 +11,8 @@ send` omits `gatewayMessenger`/`gatewayRemotes` injection. It seeds a numeric
 pairing through the storage API, then retains the successful `remote.test`
 reply, exact fake chat/message and `remote.status` traffic/bot-link facts.
 This isolates factory construction and the existing callback contract; it does
-not claim chat pairing or polling is implemented by the adapter.
+not claim chat pairing or mirroring is implemented by the adapter. Polling
+is covered separately in the polling component and restart guides.
 Keep projectHub's native resource check: the client closes each HTTP connection
 instead of leaving a socket and idle timer in fetch's global keep-alive pool.
 Arm the fake's `waitForConnectionClose('sendMessage')` before `remote.test` and
@@ -34,7 +35,8 @@ reply proves failure stays within the remote. Stop the hub before reading
 durable log/journal bytes; the successful artifact creation reply owns that file.
 
 `Telegram configuration reload starts the native client only when enabled`
-retains zero requests while disabled, `getMe` after the exact reload result,
+retains zero requests while disabled, `getMe` and the first held `getUpdates`
+after the exact reload result (arm the poll observer before reload),
 unchanged-client retention, then disable completion and an unavailable test.
 The daemon's explicit environment selects the fake root on startup and reload.
 Set the fixture's verification lock path to `join(root, 'suite.lock')` before

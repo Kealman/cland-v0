@@ -165,3 +165,5 @@ T-1334: Point remote command, status/test callback and token rotation work to th
 
 T-1340: Route Telegram fetch/client and native factory work to the T2 fake Bot API controls and production frame receipts.
 T-1340 source-1: Require pre-bind fake ownership, bounded control requests and startup lifetime cancellation receipts.
+
+2026-10-26 · T-1341: document the filtered Telegram handler registry, durable confirmation, paced unhandled input and component/native-crash seams.

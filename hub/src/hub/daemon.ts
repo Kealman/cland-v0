@@ -495,7 +495,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
       await gateway.start();
     } else {
       const { messengerFactory } = await import('../remote/messenger.ts');
-      gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock), create);
+      gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock, { state: store.remotes, log }), create);
       await gateway.update(roles.config(), remoteSecrets);
     }
   };

@@ -3,6 +3,7 @@ import type { Pairing } from './state.ts';
 import type { RemoteConnection } from '../protocol.ts';
 import { realClock, type Clock } from '../hub/clock.ts';
 import { TelegramApi } from './telegram-api.ts';
+import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
 
 /** The gateway owns this client's lifetime, including explicit tests and old-chat notices. */
 export class TelegramRemote implements Remote {
@@ -12,13 +13,18 @@ export class TelegramRemote implements Remote {
   readonly #clock: Clock;
   readonly #abort = new AbortController();
   readonly #work = new Set<Promise<unknown>>();
+  readonly #polling: TelegramPollingOptions | undefined;
+  #botId = 0;
+  #running: Promise<void> | undefined;
   #stopped = false;
   #lastInbound: string | null = null;
   #lastOutbound: string | null = null;
   #botLink: string | null = null;
   #stopping: Promise<void> | undefined;
 
-  constructor(api: TelegramApi, clock: Clock = realClock) { this.#api = api; this.#clock = clock; }
+  constructor(api: TelegramApi, clock: Clock = realClock, polling?: TelegramPollingOptions) {
+    this.#api = api; this.#clock = clock; this.#polling = polling;
+  }
 
   #track<T>(operation: () => Promise<T>): Promise<T> {
     const work = Promise.resolve().then(() => {
@@ -33,6 +39,7 @@ export class TelegramRemote implements Remote {
   async #check(signal?: AbortSignal): Promise<void> {
     const bot = await this.#api.getMe({ signal: signal ? AbortSignal.any([this.#abort.signal, signal]) : this.#abort.signal });
     if (!bot || bot.is_bot !== true || !Number.isSafeInteger(bot.id)) throw new Error('Telegram getMe returned an invalid bot');
+    this.#botId = bot.id;
     this.#lastInbound = this.#clock.now().toISOString();
     this.#botLink = typeof bot.username === 'string' && /^[A-Za-z0-9_]{5,32}$/.test(bot.username) ? `https://t.me/${bot.username}` : null;
   }
@@ -41,6 +48,14 @@ export class TelegramRemote implements Remote {
     return this.#track(() => this.#check(signal));
   }
   receive(): void {}
+
+  run(): Promise<void> {
+    return this.#running ??= this.#track(async () => {
+      if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
+      await pollTelegram(this.#api, this.#clock, this.#botId, this.#polling, this.#abort.signal,
+        () => { this.#lastInbound = this.#clock.now().toISOString(); });
+    });
+  }
 
   test(pairing: Pairing | null, text: string): Promise<void> {
     return this.#track(async () => {

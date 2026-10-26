@@ -73,6 +73,12 @@ errors inside the client. Arm held-request observers before triggering and join
 native close receipts. The fake registers cleanup before bind; use its bounded
 control helper and setup/close receipts. Forward the gateway's optional start
 lifetime signal to startup I/O. Preserve explicit factory and legacy remote injection.
+For Telegram polling or update handlers, follow the filtered registry and durable
+confirmation contract in `hub/README.md#telegram-polling-and-durable-confirmation`
+and the component/crash guides in `docs/agents/tests/hub-test-telegram-polling.test.ts.md`
+and `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`. Attach pairing
+and mirror handlers to the registry; resolve only after durable, replay-safe
+handling. Keep unhandled input unconfirmed and paced, and join handler writers on stop.
 
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and

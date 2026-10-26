@@ -21,6 +21,7 @@ function reply(res: ServerResponse, status: number, body: unknown, headers: Reco
 }
 
 export type FakePollReceipt = { id: number; params: Record<string, unknown>; stalled: boolean };
+export type FakeRequestReceipt = { id: number; method: string; params: Record<string, unknown> };
 export type FakeConnectionReceipt = { id: number; method: string };
 type PendingPoll = FakePollReceipt & { res: ServerResponse; timer?: ClockTimer; ended: boolean };
 type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'hold';
@@ -99,6 +100,13 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         wake();
         return reply(res, 200, update);
       }
+      // Fault-injection boundary: deliberately permits unlisted/malformed update bodies.
+      if (req.method === 'POST' && req.url === '/control/update') {
+        const update = redact.value({ ...params, update_id: nextUpdate++ }) as TgUpdate;
+        updates.push(update);
+        wake();
+        return reply(res, 200, update);
+      }
       if (req.method === 'POST' && req.url === '/control/duplicate') {
         const update = updates.find(update => update.update_id === params.update_id);
         if (!update) return reply(res, 404, { error: 'no queued update with that id' });
@@ -150,6 +158,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
       const connection = { id: requests.length + 1, method };
       req.socket.once('close', () => { heldRequests.delete(connection.id); events.emit('connection-closed', connection); });
       requests.push({ method, params: redact.value(params) });
+      events.emit('request', { ...connection, params: redact.value(params) });
       const faultIndex = faults.findIndex(fault => fault.method === method);
       if (faultIndex >= 0) {
         const fault = faults.splice(faultIndex, 1)[0]!;
@@ -252,6 +261,8 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   let starting: Promise<ReturnType<typeof client>> | undefined;
   const client = (port: number) => ({
     url: `http://127.0.0.1:${port}`,
+    waitForRequest: (method: string, accepts: (receipt: FakeRequestReceipt) => boolean = () => true, signal = AbortSignal.timeout(5_000)) =>
+      observe<FakeRequestReceipt>(events, 'request', receipt => receipt.method === method && accepts(receipt), AbortSignal.any([signal, lifetime.signal])),
     waitForHeldRequest: (method: string, signal = AbortSignal.timeout(5_000)) => observe<FakeConnectionReceipt>(events,
       'request-held', receipt => receipt.method === method, AbortSignal.any([signal, lifetime.signal])),
     waitForConnectionClose: (method: string, signal = AbortSignal.timeout(5_000)) => observe<FakeConnectionReceipt>(events,

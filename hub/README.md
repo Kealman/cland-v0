@@ -1368,8 +1368,8 @@ start/stop receipts and a second source-stamp check immediately before publicati
 A source edited during platform preparation refuses with retry guidance and keeps
 the previous config/roles snapshots. Secret or gateway application failures are
 reported as remote configuration failures and preserve valid role admission. Pairing and outbox storage remain in `hub.db`. Telegram's native
-client supplies token checks and explicit sends; speech execution requires its
-provider. The existing
+client supplies token checks, explicit sends and durable-offset polling; accepted
+input awaits a registered pairing or mirror handler. Speech execution requires its provider. The existing
 `gatewayRemotes` fixture option retains its unconditional startup behavior.
 
 The role file retains its 500 ms auto-refresh and refresh before launches. A role
@@ -2236,8 +2236,8 @@ without test support refuse explicitly. Client failures are redacted and confine
 to that messenger. The gateway owns the callback through completion on shutdown.
 Telegram's built-in client checks `getMe` on startup and test, sends the test
 line when paired and sends replacement notices to the captured old chat. Its
-current adapter supplies these callbacks; receiving updates, pairing from the
-chat and mirroring General are separate from this client boundary. Discord's
+adapter supplies these callbacks and polls updates through the registry below.
+Chat pairing and mirroring General require their registered handlers. Discord's
 callbacks require an injected platform client. Both are tested without real
 platform credentials.
 
@@ -2273,6 +2273,49 @@ or 409 conflict to its caller; it does not retry or kill another consumer.
 
 The fake Bot API and its token-free human/stranger controls are described in
 the [client test guide](../docs/agents/tests/hub-test-telegram-api.test.ts.md).
+
+### Telegram polling and durable confirmation
+
+An enabled Telegram remote with a resolved token uses the daemon's existing
+`Store.remotes` handle and gateway poller lease. Its serial `getUpdates` loop
+requests exactly `message`, `edited_message`, `callback_query` and `my_chat_member`,
+with a 40-second online timeout and the client's 55-second HTTP deadline. Failed
+polls wait one injected-clock second before retrying with timeout zero; a successful
+exchange restores the 40-second timeout. A provider `retry_after` replaces that
+wait, bounded to five minutes. A 401 or 403 rejects the remote's lifetime and the
+gateway disables only that messenger. Conflict escalation, outage notices and
+catch-up policy are separate from this polling boundary.
+
+The loop filters before handlers, downloads or commands: only a private chat,
+a non-bot sender and the current pairing's chat and sender ids qualify. It
+re-reads the pairing for every update. The sole pairing exception is private
+`/start` input from a non-bot sender, routed only to a pairing handler. An
+unlisted or ambiguous update kind is consumed silently. Callback authority uses
+the presser, never the author of the bot's card; membership updates must concern
+this bot.
+
+`TelegramPollingOptions.handlers` is a first-matching registry. A handler declares
+`kind: "pairing"` for private starts, or defaults to paired input, supplies
+`accepts(update)` and resolves `handle(update, signal)` only after durable effects.
+Handlers must make replay after interrupted handling safe using stable platform
+ids. The loop then commits `telegram.update:<id>`, the applicable message/callback
+dedupe receipt and `telegram.offset` in one SQLite savepoint in `remote_state`.
+The next poll confirms that stored offset. Messages and edits share the
+`telegram.message:<chat>:<message>` receipt; callbacks use their own ids, so two
+button presses on one card are distinct. The outgoing `remote_messages` reply map
+remains independent. These keys persist across restarts without a new database.
+
+When accepted input has no matching handler, it stays unconfirmed. The loop
+waits one injected-clock second per retry and logs `telegram-update-unhandled`
+once for that blocked update, carrying only its numeric id. The default registry
+is empty until pairing/mirror handlers are attached; enabling a token alone does
+not forward chat text. Shutdown aborts the current poll and delay and joins the
+handler before the gateway releases its lease or storage. Legacy injected
+`TelegramRemote(api, clock)` clients retain their check/send-only lifetime.
+
+The [component guide](../docs/agents/tests/hub-test-telegram-polling.test.ts.md)
+and [crash/restart guide](../docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md)
+name the frame/fake and native-process receipts.
 
 ## cland setup
 

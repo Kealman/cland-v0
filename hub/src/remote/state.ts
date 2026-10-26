@@ -98,6 +98,20 @@ export class RemoteStore {
     this.#db.prepare(`insert into remote_state (messenger, key, value) values (?, ?, ?)
       on conflict (messenger, key) do update set value = excluded.value`).run(this.#id, key, value);
   }
+  /** Dedupe receipts and the next Telegram offset become durable together. */
+  confirmTelegramUpdate(updateId: number, dedupe?: string): void {
+    this.#db.exec('savepoint telegram_confirm');
+    try {
+      this.set(`telegram.update:${updateId}`, '1');
+      if (dedupe) this.set(`telegram.${dedupe}`, '1');
+      const offset = Math.max(Number(this.get('telegram.offset') ?? 0), updateId + 1);
+      this.set('telegram.offset', String(offset));
+      this.#db.exec('release telegram_confirm');
+    } catch (error) {
+      this.#db.exec('rollback to telegram_confirm; release telegram_confirm');
+      throw error;
+    }
+  }
   status(): RemoteStatus {
     const row = this.#db.prepare('select disabled, reason from remote_status where messenger = ?').get(this.#id);
     return { disabled: row?.disabled === 1, reason: row?.reason === null || !row ? null : String(row.reason) };
