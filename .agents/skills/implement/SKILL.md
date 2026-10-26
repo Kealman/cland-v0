@@ -27,6 +27,11 @@ requiring a hub or valid project configuration.
 
 Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
+For gateway routing or authority changes, use the sealed frame-protocol and
+test-messenger seam in `docs/agents/tests/hub-test-gateway.test.ts.md`. Keep
+authority before replay/actor resolution and resolve reply topics from stored
+messages. Platform clients use the gateway's frame port, never a hub credential.
+
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 
 Reservation-lock shutdown uses the cheaper T1 ownership and T2 `projectHub`

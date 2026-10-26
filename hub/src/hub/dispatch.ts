@@ -3,6 +3,7 @@ import { dependencyInstallText } from '../dependency-install.ts';
 import { ModelOutput } from './model-output.ts';
 import { composeSnapshot, snapshotFrames } from './snapshot.ts';
 import { webAuthorityRefusal } from './web-authority.ts';
+import { gatewayAuthorityRefusal } from '../remote/authority.ts';
 import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
 import { InvalidArgument, validateToolFrame } from '../tool-arguments.ts';
@@ -1425,8 +1426,8 @@ export class Dispatcher {
         log({ event: 'refused', edge: transport.edge, code: 'unauthorized' });
         return refuse('unauthorized', "the secret does not match this project's hub");
       }
-      if (transport.edge === 'web' && (!isClientHello(frame) || Object.hasOwn(frame, 'sessionId'))) {
-        return refuse('bad-hello', 'the web edge accepts only a client hello');
+      if ((transport.edge === 'web' || transport.edge === 'gateway') && (!isClientHello(frame) || Object.hasOwn(frame, 'sessionId'))) {
+        return refuse('bad-hello', `the ${transport.edge} edge accepts only a client hello`);
       }
       if (isHello(frame)) {
         credentialPending = true;
@@ -1485,14 +1486,14 @@ export class Dispatcher {
           return refuse('unauthorized', "a client connects over the hub's Unix socket or stdio, not the spokes' WebSocket");
         }
         kind = 'client';
-        client = transport.edge === 'web' ? HUMAN_SESSION : frame.client;
+        client = transport.edge === 'web' || transport.edge === 'gateway' ? HUMAN_SESSION : frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
         if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
         peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
         if (frame.resume) resumeModel(frame.resume);
         else if (features.includes('snapshot')) startSnapshot();
-        else if (features.includes('numbered-deltas')) subscribeModel();
+        else if (features.includes('numbered-deltas') || transport.edge === 'gateway') subscribeModel();
         return;
       }
       refuse('bad-hello', 'first frame must be a hello');
@@ -2011,6 +2012,13 @@ export class Dispatcher {
           // the session's name as it is now: another of its spokes may have renamed it
           if (frame.type === 'send' && frame.artifacts !== undefined) return attachedSend(frame, () => connection && core.isCurrent(connection) ? connection : null);
           return spokeRequest(frame, connection.name);
+        }
+        if (transport.edge === 'gateway') {
+          const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
+          if (refusal) {
+            audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
+            return peer.send(refusal);
+          }
         }
         if (transport.edge === 'web') {
           const refusal = webAuthorityRefusal(frame);

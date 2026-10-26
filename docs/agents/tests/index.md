@@ -4,6 +4,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/gateway.test.ts`](../../../hub/test/gateway.test.ts) | [Notes](hub-test-gateway.test.ts.md) |
 | [`hub/test/executor-watchdog.test.ts`](../../../hub/test/executor-watchdog.test.ts) | [Notes](hub-test-executor-watchdog.test.ts.md) |
 | [`hub/test/executor-lock-liveness.test.ts`](../../../hub/test/executor-lock-liveness.test.ts) | [Notes](hub-test-executor-lock-liveness.test.ts.md) |
 | [`hub/test/nvim-frame-refresh.test.ts`](../../../hub/test/nvim-frame-refresh.test.ts) | [Notes](hub-test-nvim-frame-refresh.test.ts.md) |

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { Gateway, type Remote } from '../remote/gateway.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { createWebEdge, type WebEdge } from './web-edge.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
@@ -69,7 +70,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -119,6 +120,7 @@ export async function serveProject(root: string, options: { gitMaintenanceRecove
   const journal = new Journal(journalPath(l.dir), () => clock.now(), { history: startupHistory, log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
   const agents = agentsRecord();
   let hub!: HubBase;
+  let gateway: Gateway | undefined;
   const tapped = agents.tap(journal.tap(processLog));
   log = entry => {
     // Keep the existing start receipts for failed-start diagnostics. A separate
@@ -382,6 +384,7 @@ export async function serveProject(root: string, options: { gitMaintenanceRecove
         await attempt(() => maintenance);
         await attempt(() => maintenanceRecovery);
         unreportMaintenance();
+        await attempt(() => gateway?.stop());
         await attempt(() => edge?.close());
         await attempt(() => ws?.close());
         await attempt(() => web?.close());
@@ -443,6 +446,15 @@ export async function serveProject(root: string, options: { gitMaintenanceRecove
     catch (error) { log({ event: 'inbox-failed', error: String(error) }); }
   };
   if (ws === null || edge === null) {
+    try {
+      if (options.gatewayRemotes?.length) {
+        gateway = new Gateway(hub.dispatcher, options.gatewayRemotes);
+        await gateway.start();
+      }
+    } catch (error) {
+      await stop();
+      throw error;
+    }
     primeInbox();
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     startMaintenanceRecovery();
@@ -464,6 +476,10 @@ export async function serveProject(root: string, options: { gitMaintenanceRecove
     adapters = projectSessions({ ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.useSessions(adapters.sessions);
     await adapters.sessions.sweepArchive();
+    if (options.gatewayRemotes?.length) {
+      gateway = new Gateway(hub.dispatcher, options.gatewayRemotes);
+      await gateway.start();
+    }
   } catch (error) {
     try { await stop(); }
     catch (cleanup) { throw new AggregateError([error, cleanup], 'hub adapter startup failed', { cause: error }); }

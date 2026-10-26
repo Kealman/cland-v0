@@ -20,6 +20,14 @@ Leads retain scoped launch/stop authority; listing needs no item claim.
 See the [permission table](../../hub/README.md#permissions) and the
 [regression seam](tests/hub-test-permissions.test.ts.md).
 
+The in-process gateway acts as `human`, subject to its own narrower
+[authority table](../../hub/README.md#gateway-authority). It has no session or
+role grant. A remote can send in General or reply in the original message's
+topic, answer asks and approvals, and read status, tasks and inbox. All other
+requests, actor overrides and artifact sends are refused before dispatch.
+This policy applies only to the gateway edge; existing session, local client
+and web authority remain separate.
+
 A roles file in error retains its last good grants and role listings, but refuses
 new role launches, fresh resumes and relaunches until corrected. The refusal names
 the file and invalid key/value with its accepted settings; fix that key before

@@ -165,6 +165,7 @@
     "hub/test/follows-native.test.ts": "T3",
     "hub/test/follows.test.ts": "T2",
     "hub/test/freshness.test.ts": "T3",
+    "hub/test/gateway.test.ts": "T2",
     "hub/test/git-maintenance-cli.test.ts": "T3",
     "hub/test/git-maintenance-recovery.test.ts": "T1",
     "hub/test/git-maintenance-startup.test.ts": "T2",

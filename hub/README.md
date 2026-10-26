@@ -182,6 +182,7 @@ fonts and the development loop. The hub serves this bundle on its web edge.
 | `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`, `topic.*`, `subscribe`), the `task.*` requests from either, the `session.*` requests (`src/adapters/requests.ts`), refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
 | `src/hub/merge.ts` | The task merge gate: hub verdict provenance, cached freshness, a queued squash merge and the item lifecycle; session-delayed worktree cleanup. |
 | `src/hub/budget.ts` | The request path's guard (T-67): every frame's handling timed against the budget (`slow-request`), and a read a connection repeats too fast answered with its previous answer (`too-fast`). |
+| `src/remote/gateway.ts`, `src/remote/authority.ts` | The in-process human gateway, one conversation shared by active messenger remotes, with a deny-by-default authority table before dispatch. |
 | `src/hub/server.ts` | The hub without listeners (`createHubBase`: core, dispatcher, prune) and the WebSocket edge (bearer secret check, frame size limit, keepalive sweep). `createHub` is both, with no human side at all. |
 | `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON lines, the secret carried in the hello. Bound under a private name and renamed into place; on close it removes the path only while the path is still the socket it bound. |
 | `src/hub/lines.ts` | The JSON-lines framing both byte-stream edges share: complete lines split off first, each held to the frame limit on its own, then only the unfinished remainder. |
@@ -514,6 +515,37 @@ After the wait, the spoke re-reads the live connection and the identity and role
 The readiness bound is below the harness tool-call deadlines: [Codex defaults to 60 s per tool](https://developers.openai.com/codex/config-reference/), and [OpenCode v2 defaults to 12 hours for execution](https://opencode.ai/v2/docs/mcp-servers). OpenCode's 30 s startup/catalog bounds apply to initialization and listing, which remain callable while the hub connects. The MCP SDK test client defaults to 60 s. cland's adapters leave these execution defaults in place. A normal tool can therefore spend at most 20 s waiting and 10 s awaiting a reply; `merge` and `session.launch` retain their existing separate 60 s reply bounds.
 
 `artifact.create` has a separate 120 s reply budget because folder publication queues behind other creations and copies files serially. `artifact.list` keeps the ordinary 10 s budget. The creation budget starts when the spoke sends the request; readiness can add up to 20 s before that. The outer harness/MCP tool deadline still applies and can expire before this longer spoke deadline. To receive the full creation budget, the caller must allow more than 120 s for a ready spoke, or more than 140 s including readiness and transport overhead. This override does not raise the outer deadline or cancel hub copying. If either deadline expires, publication may still finish: inspect `artifact.list` in the destination topic before retrying, since a new create can publish a duplicate. Durable operation ids and idempotent retries are not provided by this budget override.
+
+## Gateway authority
+
+`src/remote/gateway.ts` is an edge inside the hub process. When `serveProject`
+receives active `gatewayRemotes`, it starts one remote per messenger and opens
+one dispatcher conversation for all of them as `human`. Client model frames
+(messages, asks, approvals, inbox and delivery stages) fan out to the remotes;
+request ids are correlated per remote. The gateway stops accepting requests
+and closes its conversation before awaiting remote shutdown, ahead of store
+teardown. A stop during startup fences later remote acquisition and joins any
+held start before disposing its resources. The dispatcher conversation and its
+hello deadline begin only after remote setup completes. With no injected remotes
+there is no gateway conversation. This seam
+has no CLI configuration or real platform client, and adds no listener, socket,
+protocol frame or hub credential.
+
+`src/remote/authority.ts` permits exactly these existing requests:
+
+- `topic.send` into `general`, or with `replyTo` naming a stored message in the
+  requested topic. Cross-topic or missing-message replies are refused, including
+  in General. Sends carrying `artifacts` are refused.
+- `topic.answer` and `approval.answer`, through their existing human handlers.
+- `hub.status`, `task.list` and `inbox.list`.
+
+The dispatcher checks this deny-by-default policy before replay, validation or
+actor resolution. Every other request, including session lifecycle, release,
+push, sync, configuration, artifact actions, pairing approval and unknown frame
+names, returns `ok: false`, `code: "forbidden"` and a reason naming the request.
+Any own `as` field is refused. The gateway owns the client hello and subscribes
+to model frames; a remote cannot open another identity or subscription. Local,
+web and spoke clients retain their existing policies and wire shapes.
 
 ## Connection events filter
 
