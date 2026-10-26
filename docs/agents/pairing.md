@@ -12,7 +12,8 @@ then bind the stored identity and clear that messenger's waiting codes in one
 transaction. Call `pairing.approve {messenger, code}` from a human `nvim` or `cli`
 connection on the local Unix socket, or Neovim on parent-owned stdio. It returns `{pairing}` with numeric ids as
 strings and the display name. An attributed shell, other client, web connection
-or remote cannot grant access. The CLI command is T-1334. Remotes receive neither pairing
+or remote cannot grant access. `cland remote approve <messenger> <code>` prints the paired name and id.
+`cland remote unpair <messenger>` forgets that messenger’s binding. Remotes receive neither pairing
 rows nor their needs-you count; the web cannot grant access. Existing one-argument
 `Remote.start(send)` adapters and inbox replies without `pairings` remain valid.
 
@@ -26,3 +27,7 @@ Use the [T2 frame/fake-messenger seam](tests/hub-test-pairing-codes.test.ts.md)
 for routing and the [T1 service seam](tests/hub-test-pairing-service.test.ts.md)
 for local lookup, clearing and fake-clock expiry. Mutations invalidate synchronous
 read replay at persistence; the 250 ms inbox publication is a separate boundary.
+
+Remote management status, test and rotation receipts use the [sealed CLI and
+fake-messenger seam](tests/hub-test-remote-cli.test.ts.md). New pairings store
+the loaded `remote.mute_default`; token reload keeps numeric identity and mute.

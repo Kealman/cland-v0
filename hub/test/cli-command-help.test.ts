@@ -56,3 +56,12 @@ test('every command listed by cland --help answers both help flags without a hub
     process.env = previousEnv;
   }
 });
+
+test('remote help names all four commands and their local client and token prerequisites', () => {
+  const help = commandHelp('remote', ['--help']);
+  assert.equal(typeof help, 'string');
+  for (const command of ['status', 'approve', 'unpair', 'test']) assert.ok(help!.includes(`remote ${command}`), command);
+  assert.match(help!, /fingerprint/);
+  assert.match(help!, /human CLI/);
+  assert.match(help!, /client/);
+});

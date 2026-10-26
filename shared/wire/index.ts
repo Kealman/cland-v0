@@ -877,7 +877,24 @@ export type WebSession = { id: string; createdAt: string; lastUsedAt: string; so
 export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
+export type RemoteConnection = { connected: boolean; lastInbound: string | null; lastOutbound: string | null; botLink: string | null };
+export type RemoteStatusRow = {
+  messenger: RemoteVia;
+  token: { present: boolean; fingerprint: string | null };
+  pairing: { userId: string; chatId: string; guildId: string | null; name: string } | null;
+  connection: 'connected' | 'disconnected' | 'disabled';
+  reason: string | null;
+  lastInbound: string | null;
+  lastOutbound: string | null;
+  outboxDepth: number;
+  mute: boolean;
+  botLink: string | null;
+};
+export type RemoteStatusResult = { remotes: RemoteStatusRow[] };
+
 export type ClientRequest =
+  | { type: 'remote.status'; id: string }
+  | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest

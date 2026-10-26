@@ -160,3 +160,5 @@ T-1329: Document environment-first secret resolution, file-only CLI edits and th
 T-1332: Route pairing code, local lookup and remote exclusion work to the T1/T2 pairing seams.
 T-1330 integration: Resolve with the explicit daemon environment and reuse validation/registration before reload activation.
 T-1333: Route pairing approval changes to authority, numeric persistence and replacement drainage frame guidance.
+
+T-1334: Point remote command, status/test callback and token rotation work to the sealed CLI/frame regressions.

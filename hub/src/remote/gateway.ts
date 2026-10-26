@@ -1,5 +1,5 @@
 import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
-import { PROTOCOL_VERSION, type HubFrame, type RemoteVia } from '../protocol.ts';
+import { PROTOCOL_VERSION, type HubFrame, type RemoteVia, type RemoteConnection } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { remoteRedactor, redactFrame, redactValue, type RemoteRedactor } from './redact.ts';
 import type { GatewayLease } from './poller-lease.ts';
@@ -13,6 +13,10 @@ export type Remote = {
   via: RemoteVia;
   start: (send: (frame: Record<string, unknown>) => void, pair?: (identity: Pairing) => string | null) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
+  /** Successful platform exchanges, never inferred from starting a loop. */
+  status?: () => RemoteConnection;
+  /** Validate the token, then send exactly one line when a destination is paired. */
+  test?: (pairing: Pairing | null, text: string) => void | Promise<void>;
   /** Send one line to the captured old destination, never the newly paired chat. */
   pairingReplaced?: (previous: Pairing, text: string) => void | Promise<void>;
   /** Lifetime promise for the platform loop; stop must settle it and drain its writers. */
@@ -143,6 +147,29 @@ export class Gateway {
     const observed = work.catch(error => { this.#disable(remote, error); });
     this.#work.add(observed);
     void observed.then(() => { this.#work.delete(observed); });
+  }
+
+  async test(messenger: RemoteVia, pairing: Pairing | null): Promise<void> {
+    const remote = this.#started.find(remote => remote.via === messenger);
+    if (!this.#open || this.#closing || !remote || this.#disabled.has(remote) || !remote.test)
+      throw new Error('messenger test is unavailable; enable it with a token and a supported client');
+    const safe = this.#output({ userId: pairing?.userId ?? null, chatId: pairing?.chatId ?? null,
+      guildId: pairing?.guildId ?? null, text: pairing?.name ?? '', note: 'cland remote test' });
+    const destination = pairing ? { userId: safe.userId!, chatId: safe.chatId!, guildId: safe.guildId, name: safe.text } : null;
+    const work = Promise.resolve().then(() => remote.test!(destination, safe.note)).catch(error => {
+      this.#disable(remote, error);
+      throw new Error(this.#reason(error));
+    });
+    this.#observe(remote, work);
+    await work;
+  }
+
+  status(messenger: RemoteVia): RemoteConnection {
+    const remote = this.#started.find(remote => remote.via === messenger);
+    if (!this.#open || !remote || this.#disabled.has(remote) || !remote.status)
+      return { connected: false, lastInbound: null, lastOutbound: null, botLink: null };
+    try { return remote.status(); }
+    catch (error) { this.#disable(remote, error); return { connected: false, lastInbound: null, lastOutbound: null, botLink: null }; }
   }
 
   pairingReplaced(messenger: RemoteVia, previous: Pairing): void {

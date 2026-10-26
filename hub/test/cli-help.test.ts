@@ -47,6 +47,7 @@ test('cland task criterion --help exits 0 with criterion usage without a hub or 
 });
 
 for (const [command, flag, block] of [
+  ['remote', '--help', 'REMOTE_USAGE'],
   ['hub', '--help', 'HUB_USAGE'],
   ['session', '-h', 'SESSION_USAGE'],
 ] as const) test(`cland ${command} ${flag} exits 0 without a hub or project changes`, async t => {

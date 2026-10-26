@@ -320,6 +320,7 @@
     "hub/test/release-item.test.ts": "T3",
     "hub/test/release-t3-component.test.ts": "T2",
     "hub/test/release.test.ts": "T3",
+    "hub/test/remote-cli.test.ts": "T2",
     "hub/test/remote-fixture-lifecycle.test.ts": "T4",
     "hub/test/remote-scripted.test.ts": "T2",
     "hub/test/remote-state.test.ts": "T1",

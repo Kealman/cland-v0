@@ -93,5 +93,8 @@
   ],
   "SECRET_USAGE": [
     "SECRET_USAGE"
+  ],
+  "REMOTE_USAGE": [
+    "REMOTE_USAGE"
   ]
 }

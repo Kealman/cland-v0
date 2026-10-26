@@ -114,6 +114,9 @@ export type Peer = {
 
 /** What only the process running the hub can answer: its facts, and stopping it. */
 export type Control = {
+  remoteMuteDefault?: () => boolean;
+  remoteTest?: (messenger: RemoteVia, pairing: import('../remote/state.ts').Pairing | null) => Promise<void>;
+  remoteStatus?: () => import('../protocol.ts').RemoteStatusResult;
   pairingReplaced?: (messenger: RemoteVia, previous: import('../remote/state.ts').Pairing) => void;
   webLink?: (qr?: boolean) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
@@ -1789,6 +1792,27 @@ export class Dispatcher {
               return this.#sessions.answerApproval(sessionId, requestId, value);
             }, resumed).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
+          case 'remote.test':
+          case 'remote.unpair':
+          case 'remote.status': {
+            const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
+              || transport.edge === 'stdio' && client === 'nvim';
+            if (!local || Object.hasOwn(frame, 'as')) throw new Error('remote management requires the human CLI or Neovim on a local connection');
+            if (frame.type === 'remote.test') {
+              if (!this.#options.control?.remoteTest) throw new Error('messenger test is unavailable');
+              const pairing = core.store.remotes.forMessenger(frame.messenger).pairing();
+              const resumed = this.#guard.resumer(frame.type, client);
+              return later(frame.type, this.#options.control.remoteTest(frame.messenger, pairing).then(
+                () => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { messenger: frame.messenger, checked: true, sent: pairing !== null } } as HubFrame)),
+                error => resumed(() => Dispatcher.#failure(frame.id, error))));
+            }
+            if (frame.type === 'remote.unpair') {
+              core.store.remotes.forMessenger(frame.messenger).setPairing(null);
+              return answer({ messenger: frame.messenger, unpaired: true });
+            }
+            if (!this.#options.control?.remoteStatus) throw new Error('remote status is unavailable');
+            return answer(this.#options.control.remoteStatus());
+          }
           case 'pairing.approve': {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
               || transport.edge === 'stdio' && client === 'nvim';
@@ -1801,6 +1825,7 @@ export class Dispatcher {
             const previous = remote.pairing();
             core.store.transaction(() => {
               remote.setPairing(pairing);
+              remote.set('mute', String(this.#options.control?.remoteMuteDefault?.() ?? false));
               core.inbox.pairingCodes.clear(frame.messenger);
             });
             if (previous) this.#options.control?.pairingReplaced?.(frame.messenger, previous);

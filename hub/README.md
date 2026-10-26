@@ -677,11 +677,11 @@ and owns its asynchronous work through shutdown. A failed send cannot roll back
 the committed grant; it follows ordinary remote failure isolation. A missing or
 disabled adapter reports `remote-pairing-notice-unavailable`; old adapters without
 this callback remain compatible. Native adapters must implement the callback
-and use their platform delivery policy. The `cland remote` command is T-1334;
-issuing a code grants no remote access. The service's change notification
-invalidates dispatcher read replay immediately at
-persistence, independently of the coalesced inbox delta. Platform factories remain
-injected until their native clients are available; no real messenger is needed
+and use their platform delivery policy. Manage bindings with the
+[remote commands](#remote-commands); issuing a code grants no remote access.
+The service's change notification invalidates dispatcher read replay immediately at
+persistence, independently of the coalesced inbox delta. Platform factories are
+injected; native clients provide platform calls, and no real messenger is needed
 for the [component regression](../docs/agents/tests/hub-test-pairing-codes.test.ts.md).
 
 ## Durable remote outbox
@@ -2195,6 +2195,48 @@ after any negations before storing keys. The command leaves custom bytes intact.
 The local hub authentication file `.cland/secret` is separate. Messenger and
 speech credentials are never sent through a hub frame. Secret writes save the
 file only; loading a messenger and applying rotation belong to its reload path.
+
+## Remote commands
+
+The human's terminal uses the running project hub:
+
+```sh
+cland remote status [--json]
+cland remote approve telegram ABCDEFGH [--json]
+cland remote unpair telegram [--json]
+cland remote test telegram [--json]
+```
+
+Use `discord` in the same forms. Approval consumes the live code and prints the
+stored display name and numeric id. Unpair removes only that messenger's binding.
+The three management frames (`remote.status`, `remote.unpair`, `remote.test`)
+and `pairing.approve` accept only an unattributed human CLI or Neovim on the Unix
+socket, or Neovim on parent-owned stdio. Web, remotes and session shells refuse;
+no new role permission or clause is needed.
+
+Status reads loaded tokens, including environment overrides, and prints presence
+and the 12-character SHA-256 fingerprint only. Each messenger includes its pairing,
+connection state and sanitized failure reason, last inbound/outbound exchange,
+active outbox depth (`queued`, `sending`, `uncertain`), mute and public bot link.
+An adapter supplies successful-exchange facts through optional `Remote.status()`;
+a legacy adapter without that proof reports disconnected and unavailable facts.
+Public bot links are confined to Telegram usernames and Discord's bot invite;
+credential-bearing links are omitted. Status makes no platform call.
+
+Test calls the active adapter's optional `Remote.test(pairing, text)` to check its
+token and send the fixed line `cland remote test` once when paired. Without a
+pairing it checks only the token. Disabled/unconfigured messengers or clients
+without test support refuse explicitly. Client failures are redacted and confined
+to that messenger. The gateway owns the callback through completion on shutdown.
+This seam runs against the test messenger; live Telegram and Discord behavior
+requires their platform clients.
+
+For rotation, store the replacement with `cland secret set <messenger>.token`
+through stdin or the hidden prompt, then run `cland hub reload`. With an enabled
+configured client and resolved token, reload drains the old client and starts its
+replacement. Pairing ids and mute remain in `hub.db`; each new pairing starts
+with the loaded `remote.mute_default`. Environment overrides still take precedence.
+The speech provider's data-use line is supplied by the media/speech feature.
 
 ## cland setup
 

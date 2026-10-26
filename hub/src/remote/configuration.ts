@@ -49,6 +49,15 @@ export class ConfiguredGateway {
     return work;
   }
 
+  async test(messenger: RemoteVia, pairing: Pairing | null): Promise<void> {
+    if (this.#closing || !this.#gateway) throw new Error('messenger test is unavailable; enable it with a token and a supported client');
+    await this.#gateway.test(messenger, pairing);
+  }
+
+  status(messenger: RemoteVia) {
+    return this.#gateway?.status(messenger);
+  }
+
   pairingReplaced(messenger: RemoteVia, previous: Pairing): void {
     this.#gateway?.pairingReplaced(messenger, previous);
   }

@@ -30,8 +30,11 @@ also refused by the gateway's ordinary ask/approval answer handlers.
 `pairing.approve` grants access only for an unattributed human CLI or Neovim
 client on the local Unix socket, or Neovim on parent-owned stdio; the web explicitly refuses it. No session role
 has that grant. See [pairing](pairing.md).
-This policy applies only to the gateway edge; existing session, local client
-and web authority remain separate.
+`remote.status`, `remote.unpair` and `remote.test` use the same local human
+client boundary. They grant no session role permission, and the web and gateway
+refuse them. Existing role clauses cover local client and secret isolation;
+no role-clause lines are added.
+Gateway, local client and web authority remain separate.
 
 A roles file in error retains its last good grants and role listings, but refuses
 new role launches, fresh resumes and relaunches until corrected. The refusal names

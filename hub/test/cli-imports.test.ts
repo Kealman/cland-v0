@@ -45,6 +45,7 @@ test('database-free CLI commands never resolve node:sqlite in their import graph
     [['--help'], 0],
     [['--version'], 0],
     [['unknown-command'], 2],
+    [['remote', 'status'], 1],
     [['inbox'], 1],
     [['inbox', '--json'], 1],
     [['topic', 'answer', 'some-ask', '1'], 1],
@@ -122,7 +123,7 @@ test('subcommand import failures retain each dispatch error line and exit code',
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'cland-cli-failures-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const commands: Array<[string, string, number]> = [
-    ['account', 'account', 1], ['executor', 'executor', 1], ['verify', 'suite', 1], ['suite', 'suite', 1],
+    ['remote', 'remote', 1], ['account', 'account', 1], ['executor', 'executor', 1], ['verify', 'suite', 1], ['suite', 'suite', 1],
     ['open', 'open', 1], ['--headless', 'qa', 2], ['--qa', 'qa', 2], ['init', 'init', 1], ['update', 'init', 1],
     ['doctor', 'doctor', 2], ['hub', 'hub', 1], ['subscribe', 'subscriptions', 1],
     ['unsubscribe', 'subscriptions', 1], ['subscriptions', 'subscriptions', 1], ['artifact', 'artifact', 1],

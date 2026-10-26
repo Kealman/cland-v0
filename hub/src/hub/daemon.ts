@@ -17,7 +17,7 @@ import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // and plugs in no adapters: nothing could reach it, so it launches nothing.
 import { AutostartDeferred, autostartDeferred, clearHubStop, markHubStop, type Starter } from './startup.ts';
 import { AccountPoller } from '../accounts/poller.ts';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { access, unlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -302,6 +302,29 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
       // tests only: how long a queued message and a remembered name last (the default is a day)
       ...(Number(env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
+        remoteMuteDefault: () => roles.config().remote.muteDefault,
+        remoteTest: async (messenger, pairing) => {
+          if (!gateway) throw new Error('messenger test is unavailable; enable it with a token and a supported client');
+          await gateway.test(messenger, pairing);
+        },
+        remoteStatus: () => ({ remotes: (['telegram', 'discord'] as const).map(messenger => {
+          const remote = store.remotes.forMessenger(messenger);
+          const traffic = gateway?.status(messenger);
+          const status = remote.status();
+          const token = remoteSecrets[`${messenger}.token`];
+          // Public bot links survive generic URL masking only after host/shape validation
+          // and exact credential masking of the non-scheme portion.
+          const link = traffic?.botLink;
+          const publicLink = link && /^https:\/\/(?:t\.me\/[A-Za-z0-9_]{5,32}|discord\.com\/(?:api\/)?oauth2\/authorize\?client_id=\d+&scope=bot&permissions=117824)$/.test(link)
+            && remoteOutput.text(link.slice(8)) === link.slice(8) ? link : null;
+          return { ...remoteOutput.value({
+            messenger, token: { present: token !== undefined, fingerprint: token === undefined ? null : createHash('sha256').update(token).digest('hex').slice(0, 12) },
+            pairing: remote.pairing(), connection: status.disabled ? 'disabled' as const : traffic?.connected ? 'connected' as const : 'disconnected' as const,
+            reason: status.reason, lastInbound: traffic?.lastInbound ?? null, lastOutbound: traffic?.lastOutbound ?? null,
+            outboxDepth: remote.outbox().filter(job => ['queued', 'sending', 'uncertain'].includes(job.state)).length,
+            mute: remote.get('mute') === 'true',
+          }), botLink: publicLink };
+        }) }),
         pairingReplaced: (messenger, previous) => gateway?.pairingReplaced(messenger, previous),
         webSessions: () => {
           if (!web) throw new Error('the web edge is unavailable');

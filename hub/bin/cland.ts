@@ -12,6 +12,15 @@ const help = commandHelp(command, rest);
 if (help !== undefined) {
   process.stdout.write(help);
 } else switch (command) {
+  case 'remote':
+    try {
+      const { runRemote } = await import('../src/cli/remote.ts');
+      process.exitCode = await runRemote(rest);
+    } catch (err) {
+      process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exitCode = 1;
+    }
+    break;
   case 'secret':
     try {
       const { runSecret } = await import('../src/cli/secret.ts');

@@ -653,7 +653,24 @@ export type WebSession = { id: string; createdAt: string; lastUsedAt: string; so
 export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
+export type RemoteConnection = { connected: boolean; lastInbound: string | null; lastOutbound: string | null; botLink: string | null };
+export type RemoteStatusRow = {
+  messenger: RemoteVia;
+  token: { present: boolean; fingerprint: string | null };
+  pairing: { userId: string; chatId: string; guildId: string | null; name: string } | null;
+  connection: 'connected' | 'disconnected' | 'disabled';
+  reason: string | null;
+  lastInbound: string | null;
+  lastOutbound: string | null;
+  outboxDepth: number;
+  mute: boolean;
+  botLink: string | null;
+};
+export type RemoteStatusResult = { remotes: RemoteStatusRow[] };
+
 export type ClientRequest =
+  | { type: 'remote.status'; id: string }
+  | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
@@ -1046,8 +1063,12 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean');
     case 'web.link':
       return f.qr === undefined || typeof f.qr === 'boolean';
+    case 'remote.test':
+    case 'remote.unpair':
+      return f.messenger === 'telegram' || f.messenger === 'discord';
     case 'pairing.approve':
       return (f.messenger === 'telegram' || f.messenger === 'discord') && typeof f.code === 'string' && /^[A-HJ-NP-Z2-9]{8}$/.test(f.code);
+    case 'remote.status':
     case 'web.session':
     case 'web.sessions':
     case 'hub.stop':

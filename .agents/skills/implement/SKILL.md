@@ -60,6 +60,10 @@ seams in `docs/agents/tests/hub-test-config-set.test.ts.md`. Inject
 and observe start/stop completion before claiming reload applied. Keep the
 legacy `gatewayRemotes` seam and CLI import budget unchanged.
 
+For remote terminal commands, token rotation or messenger status/test callbacks,
+use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,
+legacy optional callbacks and previous-hub refusal coverage.
+
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and
 strip pairing rows and counts at the remote boundary. Trusted pairing callbacks

@@ -59,3 +59,11 @@ disables the remote safely on a credential collision. Plain-function injection
 uses the same supplied policy for structured content. Every new remote/speech journal,
 artifact, frame and diagnostic producer passes the matching API before writing.
 See [registration and output receipts](tests/hub-test-gateway-secrets.test.ts.md).
+
+`cland remote status` reports the hub’s loaded token presence and fingerprint,
+including environment overrides; `cland secret list` reports the file only.
+After storing a rotated token, run `cland hub reload`: it drains and replaces the
+configured client while retaining the numeric pairing and mute. An unchanged
+environment override still wins. `cland remote test <messenger>` uses the active
+client’s test callback; no installed client means an explicit unavailable refusal.
+See [remote command tests](tests/hub-test-remote-cli.test.ts.md).

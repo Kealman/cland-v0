@@ -259,3 +259,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`web/test/remote-via.test.ts`](../../../web/test/remote-via.test.ts) | [Notes](web-test-remote-via.test.ts.md) |
 | [`hub/test/secrets-resolution.test.ts`](../../../hub/test/secrets-resolution.test.ts) | [Notes](hub-test-secrets-resolution.test.ts.md) |
 | [`hub/test/secrets-environment.test.ts`](../../../hub/test/secrets-environment.test.ts) | [Notes](hub-test-secrets-environment.test.ts.md) |
+
+| [`hub/test/remote-cli.test.ts`](../../../hub/test/remote-cli.test.ts) | [Notes](hub-test-remote-cli.test.ts.md) |
