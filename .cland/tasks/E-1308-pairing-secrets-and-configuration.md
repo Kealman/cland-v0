@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.271Z
-updated: 2026-10-25T14:12:33.475Z
+updated: 2026-10-26T07:54:56.555Z
 ---
 
 ## Goal
@@ -78,3 +78,21 @@ In a scratch project, QA sets the three secrets with `cland secret set` from std
 - Research: `docs/research/telegram-remote.md` on `research/telegram-remote` (2a81ecc9), the token's form; `docs/research/messenger-bridges.md` on `research/messenger-bridges` (ffee79d8), pairing and secrets in other bridges.
 - Code: `shared/executor-credentials.ts` (the deny-list), `hub/src/init/config.ts` (the rendered configuration), `hub/src/cli/init.ts` (`cland init` and `cland update`), `hub/src/cli/config.ts`, `hub/src/cli/web.ts` and `hub/src/hub/web-authority.ts` (`web.link`), `hub/src/executor/droplet/api.ts` (the token-redaction precedent).
 - GLOSSARY: Pairing and Remote (added for v0.3).
+
+## Plan
+
+```yaml
+stages:
+  - name: secrets, keys and pairing
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1328
+        - T-1331
+        - T-1332
+        - T-1333
+        - T-1334
+      - - T-1329
+      - - T-1330
+```

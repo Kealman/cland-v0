@@ -58,9 +58,11 @@
       "A-12030",
       "A-12036",
       "A-12220",
-      "A-12224"
+      "A-12224",
+      "A-12333",
+      "A-12338"
     ],
-    "commit": "e090007b811ef4609d490207b55955e0adcfc1e8"
+    "commit": "fb73592a164a277fbd5cffb3bf390e268f47fd96"
   },
   "budget": {
     "testSeconds": 5,
@@ -2693,6 +2695,42 @@
     "hub/test/process-identity.test.ts": {
       "seconds": 0.00442,
       "tests": 6
+    },
+    "hub/src/remote/redact.test.ts": {
+      "seconds": 0.001645,
+      "tests": 3
+    },
+    "hub/test/gateway-state.test.ts": {
+      "seconds": 1.182759,
+      "tests": 9
+    },
+    "hub/test/gateway.test.ts": {
+      "seconds": 1.79869,
+      "tests": 18
+    },
+    "hub/test/outbox-gateway.test.ts": {
+      "seconds": 0.241184,
+      "tests": 1
+    },
+    "hub/test/outbox.test.ts": {
+      "seconds": 0.494063,
+      "tests": 25
+    },
+    "hub/test/poller-lease.test.ts": {
+      "seconds": 0.127621,
+      "tests": 9
+    },
+    "hub/test/remote-state.test.ts": {
+      "seconds": 0.083897,
+      "tests": 4
+    },
+    "nvim/test/remote-via.test.ts": {
+      "seconds": 0.327587,
+      "tests": 1
+    },
+    "web/test/remote-via.test.ts": {
+      "seconds": 2.558818,
+      "tests": 2
     }
   },
   "tests": {
@@ -7313,7 +7351,79 @@
     "hub/test/system-processes.test.ts::termination refuses a same-second recycled PID with a different native birth identity": 0.124098,
     "hub/test/system-processes.test.ts::termination requires a persisted legacy upgrade and refuses unreadable birth": 0.114225,
     "hub/test/system-processes.test.ts::termination still refuses a live descendant whose native birth is unreadable": 0.122677,
-    "hub/test/test-lint.test.ts::test skips report reasonless boolean conditions and accept platform reason strings": 0.187566
+    "hub/test/test-lint.test.ts::test skips report reasonless boolean conditions and accept platform reason strings": 0.187566,
+    "hub/src/remote/redact.test.ts::remote diagnostics flatten control characters and bound the retained reason after redaction": 0.000215,
+    "hub/src/remote/redact.test.ts::remote redaction replaces overlapping registered secrets once without rewriting markers": 0.001164,
+    "hub/src/remote/redact.test.ts::remote redaction scrubs URLs, Bearer credentials and quoted token/key assignments in one pass": 0.000266,
+    "hub/test/gateway-state.test.ts::a 60 second daemon poller conflict disables remotes without tearing down the hub or web edge": 0.24499,
+    "hub/test/gateway-state.test.ts::a gateway keeps its lease until the remote stop receipt and retains it on incomplete shutdown": 0.113357,
+    "hub/test/gateway-state.test.ts::a lease acquisition error is redacted into persisted remote status and logs while the hub serves": 0.083786,
+    "hub/test/gateway-state.test.ts::a second gateway waits on hub.db without stopping the serving owner and starts after release": 0.140876,
+    "hub/test/gateway-state.test.ts::daemon conflict disposal settles an omitted inspection receipt before hub and SQLite teardown": 0.140703,
+    "hub/test/gateway-state.test.ts::held remote stop disposal drains the consumer after aborted setup": 0.110759,
+    "hub/test/gateway-state.test.ts::held remote stop disposal drains the consumer after missing receipt": 0.122036,
+    "hub/test/gateway-state.test.ts::stopping a gateway during lease wait cancels startup without starting or stopping either messenger": 0.079187,
+    "hub/test/gateway-state.test.ts::the daemon keeps remote state only in hub.db across a hub restart, including TEXT ids above 2^53": 0.147065,
+    "hub/test/gateway.test.ts::a failed remote cleanup is logged and retained as a redacted shutdown failure without stopping its peer": 0.071547,
+    "hub/test/gateway.test.ts::a remote rejecting on a message frame cannot break fanout or the web edge": 0.087095,
+    "hub/test/gateway.test.ts::a remote rejecting on a result frame cannot break fanout or the web edge": 0.086124,
+    "hub/test/gateway.test.ts::a remote run loop failing after serving stores its reason while the hub, web and another remote serve on": 0.138537,
+    "hub/test/gateway.test.ts::a remote throwing at start disables only itself while another remote and the web edge serve": 0.16466,
+    "hub/test/gateway.test.ts::a remote throwing on a message frame cannot break fanout or the web edge": 0.119434,
+    "hub/test/gateway.test.ts::a remote throwing on a result frame cannot break fanout or the web edge": 0.091844,
+    "hub/test/gateway.test.ts::failed startup cleanup can drain while the other remote and hub keep serving": 0.080432,
+    "hub/test/gateway.test.ts::gateway discord records messages, ask outcomes and approvals through the old client frames": 0.129199,
+    "hub/test/gateway.test.ts::gateway mirrors General and delivers a reply as the human, then stops with the hub": 0.143837,
+    "hub/test/gateway.test.ts::gateway refuses every other request before dispatch, including pairing and actor overrides": 0.094379,
+    "hub/test/gateway.test.ts::gateway rejects new non-General messages, forged replies and attached artifact sends without writing a message": 0.084097,
+    "hub/test/gateway.test.ts::gateway shutdown joins run and receive writers after the remote stop receipt": 0.076743,
+    "hub/test/gateway.test.ts::gateway stop drains a held start without starting later remotes or reopening admission": 0.081284,
+    "hub/test/gateway.test.ts::gateway telegram records messages, ask outcomes and approvals through the old client frames": 0.113022,
+    "hub/test/gateway.test.ts::hub shutdown closes gateway admission and awaits the remote stop receipt before closing its edges": 0.080072,
+    "hub/test/gateway.test.ts::remote failure reasons are redacted before reaching the state sink or hub log": 0.078146,
+    "hub/test/gateway.test.ts::two messenger remotes share one conversation and receive only their own request results": 0.078238,
+    "hub/test/outbox-gateway.test.ts::an outage counts three General jobs as missed, drops an answered ask card and never replays them on recovery": 0.241184,
+    "hub/test/outbox.test.ts::a job queued during a held send leaves in that same drain": 0.021735,
+    "hub/test/outbox.test.ts::a pre-existing unfinished attempt is reconciled as never-left before any resend": 0.015843,
+    "hub/test/outbox.test.ts::a pre-existing unfinished attempt is reconciled as sent before any resend": 0.015184,
+    "hub/test/outbox.test.ts::a pre-existing unfinished attempt is reconciled as unknown before any resend": 0.015713,
+    "hub/test/outbox.test.ts::a reconciliation retry_after waits before resending": 0.021524,
+    "hub/test/outbox.test.ts::a rejected platform failure is unknown, never proof or a persisted native error": 0.020825,
+    "hub/test/outbox.test.ts::a source closed during retry_after is dropped and newly queued work leaves in the same drain": 0.022233,
+    "hub/test/outbox.test.ts::a source that closes during delivery reconciliation is dropped before resending": 0.020346,
+    "hub/test/outbox.test.ts::a thrown platform failure is unknown, never proof or a persisted native error": 0.019413,
+    "hub/test/outbox.test.ts::an arrival after the final empty read joins the exposed owner and sends before that owner completes": 0.020881,
+    "hub/test/outbox.test.ts::an attempt is durable before each send and the platform message map precedes completion": 0.031658,
+    "hub/test/outbox.test.ts::concurrent drains share the send owner and shutdown fences new work before joining delivery": 0.017109,
+    "hub/test/outbox.test.ts::held outbox disposal drains delivery and closes SQLite after aborted setup": 0.014925,
+    "hub/test/outbox.test.ts::held outbox disposal drains delivery and closes SQLite after missing receipt": 0.015197,
+    "hub/test/outbox.test.ts::omitted reconnect abort receipt expires and the registered disposer independently releases and joins the exchange": 0.017227,
+    "hub/test/outbox.test.ts::pre-entry shutdown disposes omitted setup and actual-entry observers without starting a client send": 0.018106,
+    "hub/test/outbox.test.ts::reconnection grows with injected jitter to a thirty-second ceiling and resets after recovery": 0.023344,
+    "hub/test/outbox.test.ts::recovery preserves uncertain delivery fences while draining new jobs": 0.021831,
+    "hub/test/outbox.test.ts::retry_after above five minutes resumes at five minutes with a new durable attempt": 0.020549,
+    "hub/test/outbox.test.ts::stop cancels reconnect delay and joins the drain before storage closes": 0.019627,
+    "hub/test/outbox.test.ts::stop cancels reconnect exchange and joins the drain before storage closes": 0.019805,
+    "hub/test/outbox.test.ts::stop cancels retry_after and joins the drain before storage closes": 0.020178,
+    "hub/test/outbox.test.ts::the final-read arrival recheck retains the original unknown-proof fence": 0.020874,
+    "hub/test/outbox.test.ts::two queued edits of one target leave as one latest edit, without merging other targets or attempted edits": 0.020496,
+    "hub/test/outbox.test.ts::unknown delivery stays fenced across restart even when sending works again": 0.01944,
+    "hub/test/poller-lease.test.ts::a contender takes a lease whose process is dead": 0.009007,
+    "hub/test/poller-lease.test.ts::a contender takes a lease whose process is reused-within-the-same-ps-second": 0.009573,
+    "hub/test/poller-lease.test.ts::a late death observation cannot overwrite a new owner that acquired during the native probe": 0.011102,
+    "hub/test/poller-lease.test.ts::a live or unreadable holder is preserved and the contender reports the exact 60 second deadline": 0.011671,
+    "hub/test/poller-lease.test.ts::a poller lease survives reopening hub.db and an unreadable own birth cannot claim it": 0.01973,
+    "hub/test/poller-lease.test.ts::a second poller waits on the same hub.db and acquires only after the owner releases": 0.035022,
+    "hub/test/poller-lease.test.ts::cancelling lease startup drains its wait and preserves the current owner": 0.009604,
+    "hub/test/poller-lease.test.ts::held native probe disposal drains the writer after aborted setup": 0.009819,
+    "hub/test/poller-lease.test.ts::held native probe disposal drains the writer after missing receipt": 0.012093,
+    "hub/test/remote-state.test.ts::a failed completion rolls back the job, attempt outcome and platform receipt together": 0.016364,
+    "hub/test/remote-state.test.ts::pre-outbox hub.db rows retain their previous shape while edit targets migrate additively": 0.018973,
+    "hub/test/remote-state.test.ts::remote pairing and cursors survive reopening hub.db without rounding Discord ids": 0.029354,
+    "hub/test/remote-state.test.ts::waiting codes, stranger counts, message maps and outbox attempts survive a database reopen": 0.019206,
+    "nvim/test/remote-via.test.ts::remote message and ask rows and Inbox outcomes name Telegram and Discord, retaining old outcomes": 0.327587,
+    "web/test/remote-via.test.ts::client reads the previous ask outcome shape without via in history and the archive": 0.896213,
+    "web/test/remote-via.test.ts::remote messages, ask decisions and Codex approvals show their source in the thread and Inbox": 1.662605
   },
   "allow": {
     "hub/test/suite-recovery.test.ts::admission quarantines a dead run’s recreated root and releases both compatibility locks": {
