@@ -28,3 +28,22 @@ receipt, absence of later remote acquisition and refused post-stop admission.
 Register release and drainage cleanup before triggering startup; only the
 already-started remotes need stopping. The dispatcher hello deadline begins
 after remote setup, so a held platform start owns no waiting conversation.
+
+Failure isolation uses the fake messenger's startup error, controlled run-loop
+rejection and synchronous/asynchronous receive faults. Check both broadcast
+fanout and correlated results. Inject `testRemoteStates()` through
+`projectHub`'s `gatewayState`; observe its exact disabled/reason row and the
+matching `remote-disabled` log before asserting the failed remote's stop
+receipt. Keep the healthy remote's real request/result and message-id receipt,
+and an authenticated web `/ws` client's successful requests after each fault.
+The web fixture uses only HTTP and WebSocket clients, with no browser binary.
+
+For held cleanup, prove healthy startup completes while the failed stop is
+pending, then release and drain in `finally` so a red startup deadline cannot
+strand fixture writers. For shutdown, hold run and receive separately past the
+remote stop receipt and release each before observing final completion. A stop
+failure stays owned, is attempted once and reaches final shutdown only as a
+redacted error. A synthetic registered credential must be absent from both the
+state sink and hub log; retain a readable reason and matching log/state values.
+T-1326's sink is intentionally independent of the hub.db table wiring owned by
+T-1323; its evidence proves the injected storage boundary.

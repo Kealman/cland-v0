@@ -27,7 +27,7 @@ requiring a hub or valid project configuration.
 
 Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
-For gateway routing or authority changes, use the sealed frame-protocol and
+For gateway routing, authority or remote failure isolation, use the sealed frame-protocol and
 test-messenger seam in `docs/agents/tests/hub-test-gateway.test.ts.md`. Keep
 authority before replay/actor resolution and resolve reply topics from stored
 messages. Platform clients use the gateway's frame port, never a hub credential.

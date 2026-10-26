@@ -1,13 +1,27 @@
 import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
 import { PROTOCOL_VERSION, type HubFrame } from '../protocol.ts';
+import type { LogFn } from '../log.ts';
+import { remoteRedactor } from './redact.ts';
 
 /** One active remote per messenger. The gateway owns its lifetime and frame port. */
 export type Remote = {
   id: string;
   start: (send: (frame: Record<string, unknown>) => void) => void | Promise<void>;
-  receive: (frame: HubFrame) => void;
+  receive: (frame: HubFrame) => void | Promise<void>;
+  /** Lifetime promise for the platform loop; stop must settle it and drain its writers. */
+  run?: () => Promise<void>;
   stop: () => void | Promise<void>;
 };
+
+export type RemoteStatus = { disabled: boolean; reason: string | null };
+export type RemoteStates = {
+  forMessenger: (id: string) => {
+    status: () => RemoteStatus;
+    setStatus: (status: RemoteStatus) => void;
+  };
+};
+
+export type GatewayOptions = { state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
 
 /** An in-process edge: all remotes share one human dispatcher conversation. */
 export class Gateway {
@@ -15,6 +29,12 @@ export class Gateway {
   readonly #remotes: readonly Remote[];
   readonly #started: Remote[] = [];
   readonly #pending = new Map<string, { remote: Remote; id: string }>();
+  readonly #disabled = new Set<Remote>();
+  readonly #stops = new Map<Remote, Promise<void>>();
+  readonly #work = new Set<Promise<void>>();
+  readonly #state: RemoteStates;
+  readonly #log: LogFn;
+  readonly #redact: (text: string) => string;
   #conversation: Conversation | undefined;
   #nextId = 0;
   #open = false;
@@ -22,9 +42,16 @@ export class Gateway {
   #starting: Promise<void> | undefined;
   #stopping: Promise<void> | undefined;
 
-  constructor(dispatcher: Pick<Dispatcher, 'open'>, remotes: readonly Remote[]) {
+  constructor(dispatcher: Pick<Dispatcher, 'open'>, remotes: readonly Remote[], options: GatewayOptions = {}) {
     this.#dispatcher = dispatcher;
     this.#remotes = [...remotes];
+    const statuses = new Map<string, RemoteStatus>();
+    this.#state = options.state ?? { forMessenger: id => ({
+      status: () => ({ ...(statuses.get(id) ?? { disabled: false, reason: null }) }),
+      setStatus: status => { statuses.set(id, { ...status }); },
+    }) };
+    this.#log = options.log ?? (() => {});
+    this.#redact = options.redact ?? remoteRedactor();
   }
 
   start(): Promise<void> {
@@ -39,12 +66,17 @@ export class Gateway {
       if (this.#closing) throw new Error('gateway stopped during startup');
       // A partially started remote still owns resources that stop must drain.
       this.#started.push(remote);
-      await remote.start(frame => {
-        if (!this.#open) throw new Error('gateway is not running');
-        const id = `gateway-${++this.#nextId}`;
-        this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
-        this.#conversation!.receive(JSON.stringify({ ...frame, id }));
-      });
+      this.#state.forMessenger(remote.id).setStatus({ disabled: false, reason: null });
+      try {
+        await remote.start(frame => {
+          if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
+          const id = `gateway-${++this.#nextId}`;
+          this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
+          this.#conversation!.receive(JSON.stringify({ ...frame, id }));
+        });
+      } catch (error) {
+        this.#disable(remote, error);
+      }
     }
     if (this.#closing) throw new Error('gateway stopped during startup');
     // Start the dispatcher's hello deadline only once every remote has bound its port.
@@ -58,14 +90,61 @@ export class Gateway {
           const pending = this.#pending.get(frame.id);
           if (!pending) return;
           this.#pending.delete(frame.id);
-          pending.remote.receive({ ...frame, id: pending.id });
+          this.#receive(pending.remote, { ...frame, id: pending.id });
         } else {
-          for (const remote of this.#remotes) remote.receive(frame);
+          for (const remote of this.#started) this.#receive(remote, frame);
         }
       },
     }, { authenticated: true, edge: 'gateway' });
     this.#open = true;
     this.#conversation.receive(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, client: 'human' }));
+    for (const remote of this.#started) {
+      if (this.#closing || this.#disabled.has(remote) || !remote.run) continue;
+      try { this.#observe(remote, remote.run()); }
+      catch (error) { this.#disable(remote, error); }
+    }
+  }
+
+  #observe(remote: Remote, work: Promise<void>): void {
+    const observed = work.catch(error => { this.#disable(remote, error); });
+    this.#work.add(observed);
+    void observed.then(() => { this.#work.delete(observed); });
+  }
+
+  #receive(remote: Remote, frame: HubFrame): void {
+    if (this.#disabled.has(remote)) return;
+    try {
+      const work = remote.receive(frame);
+      if (work) this.#observe(remote, work);
+    }
+    catch (error) { this.#disable(remote, error); }
+  }
+
+  #disable(remote: Remote, error: unknown): void {
+    if (this.#disabled.has(remote)) return;
+    this.#disabled.add(remote);
+    for (const [id, pending] of this.#pending) if (pending.remote === remote) this.#pending.delete(id);
+    const reason = this.#reason(error);
+    this.#state.forMessenger(remote.id).setStatus({ disabled: true, reason });
+    this.#log({ event: 'remote-disabled', remote: remote.id, reason });
+    // Keep ownership of partial startup and runtime resources through their stop receipt.
+    void this.#stopRemote(remote).catch(error => {
+      // stopRemote has already replaced the original error with a sanitized Error.
+      this.#log({ event: 'remote-stop-failed', remote: remote.id, reason: error.message });
+    });
+  }
+
+  #reason(error: unknown): string {
+    return this.#redact(error instanceof Error ? error.message : String(error));
+  }
+
+  #stopRemote(remote: Remote): Promise<void> {
+    let stopping = this.#stops.get(remote);
+    if (!stopping) {
+      stopping = Promise.resolve().then(() => remote.stop()).catch(error => { throw new Error(this.#reason(error)); });
+      this.#stops.set(remote, stopping);
+    }
+    return stopping;
   }
 
   stop(): Promise<void> {
@@ -81,9 +160,10 @@ export class Gateway {
     // Startup cannot acquire another remote or conversation after the closing fence.
     // Join a held start before disposing anything it can still write or acquire.
     await this.#starting?.catch(() => {});
-    for (const { remote, id } of this.#pending.values()) await attempt(() => remote.receive({ type: 'result', id, ok: false, error: 'gateway stopped before the answer' }));
+    for (const { remote, id } of this.#pending.values()) this.#receive(remote, { type: 'result', id, ok: false, error: 'gateway stopped before the answer' });
     this.#pending.clear();
-    for (const remote of this.#started) await attempt(() => remote.stop());
+    for (const remote of this.#started) await attempt(() => this.#stopRemote(remote));
+    await Promise.all(this.#work);
     if (failures.length) throw new AggregateError(failures, 'gateway shutdown failed');
   }
 }

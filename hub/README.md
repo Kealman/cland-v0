@@ -531,6 +531,23 @@ there is no gateway conversation. This seam
 has no CLI configuration or real platform client, and adds no listener, socket,
 protocol frame or hub credential.
 
+Each remote's startup, optional `run()` lifetime promise and synchronous or
+promise-returning `receive` are isolated. A failure fences only that remote's
+requests and frame deliveries, clears its pending correlations, records
+`{disabled: true, reason}` through the gateway's `state.forMessenger(id)` sink
+and logs `remote-disabled`. Its partially acquired resources stop once, while
+the hub, web edge and other remotes continue serving even during that cleanup.
+Shutdown joins all run/receive work and remote stop receipts; a failed cleanup
+remains a shutdown error. The sink defaults to memory; callers may inject a
+durable sink with `status()` and `setStatus()`. A new start resets that remote's
+status before setup. `serveProject` accepts the injected sink as `gatewayState`.
+`src/remote/redact.ts` exports `remoteRedactor(secrets)` for the gateway's
+`redact` option: registered values and conservative URL, Bearer and token/key
+contexts are replaced in one pass before state, log or cleanup error output;
+reasons are flattened and capped at 500 characters. Callers register secrets
+before use; this seam reads no secrets file. The hub supplies its ordinary log
+sink in both startup paths. The existing `start(send)` contract stays unchanged.
+
 `src/remote/authority.ts` permits exactly these existing requests:
 
 - `topic.send` into `general`, or with `replyTo` naming a stored message in the

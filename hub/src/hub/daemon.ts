@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { Gateway, type Remote } from '../remote/gateway.ts';
+import { Gateway, type Remote, type RemoteStates } from '../remote/gateway.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { createWebEdge, type WebEdge } from './web-edge.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
@@ -70,7 +70,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { gatewayState?: RemoteStates; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -448,7 +448,7 @@ export async function serveProject(root: string, options: { gatewayRemotes?: rea
   if (ws === null || edge === null) {
     try {
       if (options.gatewayRemotes?.length) {
-        gateway = new Gateway(hub.dispatcher, options.gatewayRemotes);
+        gateway = new Gateway(hub.dispatcher, options.gatewayRemotes, { ...(options.gatewayState ? { state: options.gatewayState } : {}), log });
         await gateway.start();
       }
     } catch (error) {
@@ -477,7 +477,7 @@ export async function serveProject(root: string, options: { gatewayRemotes?: rea
     hub.dispatcher.useSessions(adapters.sessions);
     await adapters.sessions.sweepArchive();
     if (options.gatewayRemotes?.length) {
-      gateway = new Gateway(hub.dispatcher, options.gatewayRemotes);
+      gateway = new Gateway(hub.dispatcher, options.gatewayRemotes, { ...(options.gatewayState ? { state: options.gatewayState } : {}), log });
       await gateway.start();
     }
   } catch (error) {

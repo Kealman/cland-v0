@@ -23,6 +23,7 @@
     "hub/src/hub/store.test.ts": "T1",
     "hub/src/hub/worktrees.test.ts": "T3",
     "hub/src/log.test.ts": "T1",
+    "hub/src/remote/redact.test.ts": "T1",
     "hub/test/account-cli.test.ts": "T2",
     "hub/test/account-coalescing.test.ts": "T2",
     "hub/test/account-fixture-env.test.ts": "T2",

@@ -1,12 +1,23 @@
 import { frameClient } from '../harness.ts';
 import type { HubFrame } from '../../src/protocol.ts';
+import type { RemoteStatus } from '../../src/remote/gateway.ts';
+
+export function testRemoteStates() {
+  const rows = new Map<string, RemoteStatus>();
+  return { forMessenger: (id: string) => ({
+    status: () => ({ ...(rows.get(id) ?? { disabled: false, reason: null }) }),
+    setStatus: (status: RemoteStatus) => { rows.set(id, { ...status }); },
+  }) };
+}
 
 /** A platform boundary only: requests and receipts use the existing frame protocol. */
-export function testMessenger(id = 'test') {
+export function testMessenger(id = 'test', options: { startError?: Error } = {}) {
   let send: ((frame: Record<string, unknown>) => void) | undefined;
   let receive!: (chunk: string) => void;
   let started = false;
   let stopped = false;
+  let loop: ReturnType<typeof Promise.withResolvers<void>> | undefined;
+  let receiveFailure: { error: Error; type: string; async: boolean } | undefined;
   const client = frameClient(line => {
     if (!send || stopped) throw new Error('test messenger is not running');
     send(JSON.parse(line) as Record<string, unknown>);
@@ -15,8 +26,24 @@ export function testMessenger(id = 'test') {
     id, client,
     get started() { return started; },
     get stopped() { return stopped; },
-    start(request: (frame: Record<string, unknown>) => void) { send = request; started = true; },
-    receive(frame: HubFrame) { receive(`${JSON.stringify(frame)}\n`); },
-    stop() { stopped = true; },
+    get running() { return loop !== undefined && !stopped; },
+    fail(error: Error) {
+      if (!loop) throw new Error('test messenger run loop has not started');
+      loop.reject(error);
+    },
+    failReceive(error: Error, type = 'message', async = false) { receiveFailure = { error, type, async }; },
+    start(request: (frame: Record<string, unknown>) => void) {
+      send = request; started = true;
+      if (options.startError) throw options.startError;
+    },
+    receive(frame: HubFrame): void | Promise<void> {
+      if (receiveFailure?.type === frame.type) {
+        if (receiveFailure.async) return Promise.reject(receiveFailure.error);
+        throw receiveFailure.error;
+      }
+      receive(`${JSON.stringify(frame)}\n`);
+    },
+    run() { loop = Promise.withResolvers<void>(); return loop.promise; },
+    stop() { stopped = true; loop?.resolve(); },
   };
 }

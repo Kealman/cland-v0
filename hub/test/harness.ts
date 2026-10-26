@@ -398,6 +398,7 @@ export async function isolateVerification(root: string): Promise<void> {
 
 export type ProjectHubOptions = {
   gatewayRemotes?: readonly import('../src/remote/gateway.ts').Remote[];
+  gatewayState?: import('../src/remote/gateway.ts').RemoteStates;
   artifactOpen?: typeof import('node:fs/promises').open;
   syntheticProvider?: SyntheticProvider;
   scratchAccountPaths?: ScratchAccountPaths;
