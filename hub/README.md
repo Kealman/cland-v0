@@ -525,9 +525,12 @@ one dispatcher conversation for all of them as `human`. Client model frames
 request ids are correlated per remote. The gateway stops accepting requests
 and closes its conversation before awaiting remote shutdown, ahead of store
 teardown. A stop during startup fences later remote acquisition and joins any
-held start before disposing its resources. The dispatcher conversation and its
+held start before disposing its resources. `Remote.start` accepts an optional
+third lifetime `AbortSignal`, aborted before that join; native clients use it
+to cancel startup network calls. Older clients may retain their existing
+zero/two-argument start methods. The dispatcher conversation and its
 hello deadline begin only after remote setup completes. With neither injected
-remotes nor an enabled, credentialed messenger supplied by `gatewayMessenger`, there is no gateway conversation. The configuration
+remotes nor an enabled, credentialed messenger, there is no gateway conversation. Telegram uses the built-in fetch client; an explicit `gatewayMessenger` replaces the native factory. The configuration
 conditions are described under [Reloading project configuration](#reloading-project-configuration).
 The gateway adds no listener, socket, protocol frame or hub credential.
 
@@ -1354,16 +1357,19 @@ and `format = "rich"` (`rich` or `entities`), Discord `enabled = false`, and spe
 explicit reload or SIGHUP. Each reload resolves the project's secrets again;
 a messenger is active only when enabled with a resolved nonempty token.
 
-The platform factory is currently injected through `serveProject`'s
-`gatewayMessenger` option; tests use `testMessenger` and make no platform calls.
-Without a platform factory no native messenger is started. A changed remote/speech
+The default platform factory constructs Telegram's plain-fetch client. Explicit
+`gatewayMessenger` and legacy `gatewayRemotes` injection remain available; Discord
+requires an injected factory and otherwise reports its client as unavailable.
+Tests use `testMessenger` or the loopback fake Bot API with fabricated credentials.
+A changed remote/speech
 snapshot or resolved secret drains the configured gateway and creates its enabled
 messengers again; an unchanged reload retains it. The reload result follows the
 start/stop receipts and a second source-stamp check immediately before publication.
 A source edited during platform preparation refuses with retry guidance and keeps
 the previous config/roles snapshots. Secret or gateway application failures are
-reported as remote configuration failures and preserve valid role admission. Pairing and outbox storage remain in `hub.db`. Real platform
-clients and speech execution are provided by their own items. The existing
+reported as remote configuration failures and preserve valid role admission. Pairing and outbox storage remain in `hub.db`. Telegram's native
+client supplies token checks and explicit sends; speech execution requires its
+provider. The existing
 `gatewayRemotes` fixture option retains its unconditional startup behavior.
 
 The role file retains its 500 ms auto-refresh and refresh before launches. A role
@@ -2228,8 +2234,12 @@ token and send the fixed line `cland remote test` once when paired. Without a
 pairing it checks only the token. Disabled/unconfigured messengers or clients
 without test support refuse explicitly. Client failures are redacted and confined
 to that messenger. The gateway owns the callback through completion on shutdown.
-This seam runs against the test messenger; live Telegram and Discord behavior
-requires their platform clients.
+Telegram's built-in client checks `getMe` on startup and test, sends the test
+line when paired and sends replacement notices to the captured old chat. Its
+current adapter supplies these callbacks; receiving updates, pairing from the
+chat and mirroring General are separate from this client boundary. Discord's
+callbacks require an injected platform client. Both are tested without real
+platform credentials.
 
 For rotation, store the replacement with `cland secret set <messenger>.token`
 through stdin or the hidden prompt, then run `cland hub reload`. With an enabled
@@ -2237,6 +2247,32 @@ configured client and resolved token, reload drains the old client and starts it
 replacement. Pairing ids and mute remain in `hub.db`; each new pairing starts
 with the loaded `remote.mute_default`. Environment overrides still take precedence.
 The speech provider's data-use line is supplied by the media/speech feature.
+
+### Telegram Bot API client
+
+`src/remote/telegram-api.ts` uses Node 24 `fetch` and handwritten types, with no
+Telegram library. The daemon validates the token through the shared secret
+validator before the client constructs a URL. It passes the project-owned
+redactor into the client, which keeps only sanitized provider facts in
+`TelegramError` (`method`, numeric `code`, `description`, optional `retryAfter`
+in seconds). Raw fetch exceptions, causes and URLs never leave the client.
+
+The default root is `https://api.telegram.org`. The daemon environment's
+`CLAND_TELEGRAM_API_ROOT` may override it with an explicit loopback HTTP root
+and port for fake-platform runs. Other hosts, credentials in the root, queries
+and fragments refuse with fixed diagnostics; redirects refuse too. Ordinary
+requests close their HTTP connection after the response, keeping the remote's
+lifetime independent of fetch's global keep-alive pool. They have a 35-second
+HTTP deadline. `getUpdates` accepts an explicit
+`allowed_updates` and a 0–50 second poll timeout, with an HTTP deadline of
+`max(35 seconds, poll timeout + 15 seconds)`. Zero is for offline polls; the
+polling loop chooses 30–50 seconds when online. Deadlines and timestamps use a
+complete `Clock`; caller cancellation aborts the request and every completion
+clears its owned timer. The client makes one request and returns any 429 wait
+or 409 conflict to its caller; it does not retry or kill another consumer.
+
+The fake Bot API and its token-free human/stranger controls are described in
+the [client test guide](../docs/agents/tests/hub-test-telegram-api.test.ts.md).
 
 ## cland setup
 

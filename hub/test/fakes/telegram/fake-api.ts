@@ -1,0 +1,301 @@
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { EventEmitter } from 'node:events';
+import type { Socket } from 'node:net';
+import type { TestContext } from 'node:test';
+import type { TgMessage, TgUpdate, TgUser } from '../../../src/remote/telegram-api.ts';
+import { remoteRedactor } from '../../../src/remote/redact.ts';
+import { realClock, type Clock, type ClockTimer } from '../../../src/hub/clock.ts';
+import { onCleanup } from '../../process-cleanup.ts';
+import { abortable, within } from '../../../src/executor/droplet/deadline.ts';
+
+/** Fabricated credential only; the fake never reads the environment or a secrets file. */
+export const TELEGRAM_TEST_TOKEN = '123456789:cland_fixture_telegram_0000000000';
+const BOT: TgUser = { id: 123456789, is_bot: true, first_name: 'cland fixture', username: 'cland_fixture_bot' };
+const HUMAN: TgUser = { id: 101, is_bot: false, first_name: 'Fixture human' };
+const STRANGER: TgUser = { id: 202, is_bot: false, first_name: 'Fixture stranger' };
+
+function reply(res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
+  if (res.destroyed || res.writableEnded) return;
+  res.writeHead(status, { 'content-type': 'application/json', ...headers });
+  res.end(JSON.stringify(body));
+}
+
+export type FakePollReceipt = { id: number; params: Record<string, unknown>; stalled: boolean };
+export type FakeConnectionReceipt = { id: number; method: string };
+type PendingPoll = FakePollReceipt & { res: ServerResponse; timer?: ClockTimer; ended: boolean };
+type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'hold';
+type Fault = { method: string; code: number; echoToken: boolean; retryAfter?: number; response?: FaultResponse };
+
+function observe<T>(events: EventEmitter, event: string, accepts: (value: T) => boolean, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () => { events.off(event, received); signal.removeEventListener('abort', aborted); };
+    const received = (value: T) => { if (accepts(value)) { cleanup(); resolve(value); } };
+    const aborted = () => { cleanup(); reject(new Error('fake Telegram observation aborted or exceeded its time bound')); };
+    events.on(event, received);
+    signal.addEventListener('abort', aborted, { once: true });
+    if (signal.aborted) aborted();
+  });
+}
+
+type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; port?: number };
+
+/** Own every native resource before binding, including abandoned setup. */
+export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
+  const clock = options.clock ?? realClock;
+  const events = new EventEmitter();
+  const lifetime = new AbortController();
+  const redact = remoteRedactor([TELEGRAM_TEST_TOKEN]);
+  const messages: TgMessage[] = [];
+  let updates: TgUpdate[] = [];
+  const requests: Array<{ method: string; params: Record<string, unknown> }> = [];
+  const faults: Fault[] = [];
+  const pendingPolls = new Map<number, PendingPoll>();
+  const closedPolls = new Set<number>();
+  const heldRequests = new Map<number, FakeConnectionReceipt>();
+  let stall = false;
+  let nextPoll = 1;
+  let nextMessage = 1;
+  let nextUpdate = 1;
+  let redirectsFollowed = 0;
+  const nativeListening = Promise.withResolvers<void>();
+  const listening = Promise.withResolvers<void>();
+  const nativeClosed = Promise.withResolvers<void>();
+  const connections = new Map<Socket, Promise<void>>();
+  const handlers = new Set<Promise<void>>();
+  let didListen = false, didClose = false, invoked = false;
+  let nativeError: string | null = null;
+  const receipt = (poll: PendingPoll): FakePollReceipt => ({ id: poll.id, params: structuredClone(poll.params), stalled: poll.stalled });
+  const available = () => updates.slice(0, 100);
+  const finish = (poll: PendingPoll, status = 200) => {
+    if (poll.ended) return;
+    poll.ended = true;
+    clock.clearTimeout(poll.timer);
+    reply(poll.res, status, status === 200 ? { ok: true, result: available() }
+      : { ok: false, error_code: status, description: 'Fake Telegram stopped' });
+  };
+  const wake = () => {
+    for (const poll of pendingPolls.values()) if (!poll.stalled && available().length) finish(poll);
+  };
+  async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    try {
+      if (lifetime.signal.aborted) { req.destroy(); res.destroy(); return; }
+      if (req.method === 'GET' && req.url === '/control/state') return reply(res, 200, {
+        messages, requests, pendingPolls: [...pendingPolls.values()].map(receipt), heldRequests: [...heldRequests.values()], redirectsFollowed,
+      });
+      if (req.url === '/redirect-target') {
+        redirectsFollowed++;
+        return reply(res, 200, { ok: true, result: BOT });
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      if (lifetime.signal.aborted) return;
+      const params = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as Record<string, unknown>;
+      if (req.method === 'POST' && req.url === '/control/say') {
+        const user = params.user === 'stranger' ? STRANGER : HUMAN;
+        const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
+          chat: { id: user.id, type: 'private' }, from: user, text: String(params.text ?? '') };
+        const update: TgUpdate = { update_id: nextUpdate++, message };
+        updates.push(redact.value(update));
+        wake();
+        return reply(res, 200, update);
+      }
+      if (req.method === 'POST' && req.url === '/control/duplicate') {
+        const update = updates.find(update => update.update_id === params.update_id);
+        if (!update) return reply(res, 404, { error: 'no queued update with that id' });
+        updates.push(structuredClone(update));
+        wake();
+        return reply(res, 200, { duplicated: update.update_id });
+      }
+      if (req.method === 'POST' && req.url === '/control/membership') {
+        if (params.status !== 'member' && params.status !== 'kicked') return reply(res, 400, { error: 'status must be member or kicked' });
+        const user = params.user === 'stranger' ? STRANGER : HUMAN;
+        const update: TgUpdate = { update_id: nextUpdate++, my_chat_member: {
+          chat: { id: user.id, type: 'private' }, from: user, date: 1_793_044_800,
+          old_chat_member: { user: BOT, status: 'member' },
+          new_chat_member: { user: BOT, status: params.status, ...(params.status === 'kicked' ? { until_date: 0 } : {}) },
+        } };
+        updates.push(update);
+        wake();
+        return reply(res, 200, update);
+      }
+      if (req.method === 'POST' && req.url === '/control/stall') {
+        if (typeof params.enabled !== 'boolean') return reply(res, 400, { error: 'enabled must be boolean' });
+        stall = params.enabled;
+        return reply(res, 200, { enabled: stall });
+      }
+      if (req.method === 'POST' && req.url === '/control/release-polls') {
+        const released = [...pendingPolls.values()].filter(poll => !poll.ended).map(poll => poll.id);
+        for (const poll of pendingPolls.values()) finish(poll);
+        return reply(res, 200, { released });
+      }
+      if (req.method === 'POST' && req.url === '/control/fault') {
+        if (typeof params.method !== 'string' || typeof params.code !== 'number' || !Number.isInteger(params.code) || params.code < 300 || params.code > 599)
+          return reply(res, 400, { error: 'fault needs a method and HTTP error code' });
+        const response = params.response;
+        if (response !== undefined && !['redirect', 'invalid-json', 'malformed-error', 'disconnect', 'hold'].includes(String(response)))
+          return reply(res, 400, { error: 'unsupported fault response' });
+        const retryAfter = params.retry_after;
+        if (retryAfter !== undefined && (typeof retryAfter !== 'number' || !Number.isInteger(retryAfter) || retryAfter < 0))
+          return reply(res, 400, { error: 'retry_after must be nonnegative integer seconds' });
+        faults.push({ method: params.method, code: params.code, echoToken: params.echoToken === true,
+          ...(typeof retryAfter === 'number' ? { retryAfter } : {}),
+          ...(typeof response === 'string' ? { response: response as FaultResponse } : {}),
+        });
+        return reply(res, 200, { armed: true });
+      }
+      const route = /^\/bot([^/]+)\/([A-Za-z]+)$/.exec(req.url ?? '');
+      if (req.method !== 'POST' || !route || route[1] !== TELEGRAM_TEST_TOKEN)
+        return reply(res, 401, { ok: false, error_code: 401, description: 'Unauthorized' });
+      const method = route[2]!;
+      const connection = { id: requests.length + 1, method };
+      req.socket.once('close', () => { heldRequests.delete(connection.id); events.emit('connection-closed', connection); });
+      requests.push({ method, params: redact.value(params) });
+      const faultIndex = faults.findIndex(fault => fault.method === method);
+      if (faultIndex >= 0) {
+        const fault = faults.splice(faultIndex, 1)[0]!;
+        // A deliberate echo exercises the client's error boundary; never capture it.
+        if (fault.response === 'hold') {
+          heldRequests.set(connection.id, connection);
+          events.emit('request-held', connection);
+          return;
+        }
+        if (fault.response === 'disconnect') { res.destroy(); return; }
+        if (fault.response === 'redirect') return reply(res, fault.code, {}, { location: '/redirect-target' });
+        if (fault.response === 'invalid-json') {
+          res.writeHead(fault.code, { 'content-type': 'application/json' });
+          res.end(`invalid JSON ${TELEGRAM_TEST_TOKEN}`);
+          return;
+        }
+        if (fault.response === 'malformed-error') return reply(res, fault.code, { ok: false,
+          error_code: { value: TELEGRAM_TEST_TOKEN }, description: { value: TELEGRAM_TEST_TOKEN }, parameters: { retry_after: TELEGRAM_TEST_TOKEN } });
+        return reply(res, fault.code, { ok: false, error_code: fault.code,
+          description: fault.echoToken ? `Forced fake refusal ${TELEGRAM_TEST_TOKEN}` : 'Forced fake refusal',
+          ...(fault.retryAfter !== undefined ? { parameters: { retry_after: fault.retryAfter } } : {}),
+        }, fault.retryAfter !== undefined ? { 'retry-after': String(fault.retryAfter) } : {});
+      }
+      if (method === 'getMe') return reply(res, 200, { ok: true, result: BOT });
+      if (method === 'getUpdates') {
+        if (typeof params.offset === 'number') updates = updates.filter(update => update.update_id >= Number(params.offset));
+        if (!stall && (available().length || !Number(params.timeout))) return reply(res, 200, { ok: true, result: available() });
+        const poll: PendingPoll = { id: nextPoll++, params: redact.value(params), stalled: stall, res, ended: false };
+        pendingPolls.set(poll.id, poll);
+        res.once('close', () => {
+          clock.clearTimeout(poll.timer);
+          pendingPolls.delete(poll.id);
+          closedPolls.add(poll.id);
+          events.emit('poll-closed', poll.id);
+        });
+        if (!stall) poll.timer = clock.setTimeout(() => finish(poll), Math.min(50, Number(params.timeout)) * 1_000);
+        events.emit('poll', receipt(poll));
+        return;
+      }
+      if (method === 'sendMessage' || method === 'sendRichMessage') {
+        const rich = params.rich_message as { markdown?: unknown } | undefined;
+        const text = method === 'sendMessage' ? params.text : rich?.markdown;
+        if (typeof text !== 'string') return reply(res, 400, { ok: false, error_code: 400, description: 'Missing text or rich_message.markdown' });
+        const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
+          chat: { id: Number(params.chat_id), type: 'private' }, from: BOT, text };
+        messages.push(redact.value(message));
+        return reply(res, 200, { ok: true, result: message });
+      }
+      return reply(res, 404, { ok: false, error_code: 404, description: 'Unknown method' });
+    } catch { reply(res, 400, { ok: false, error_code: 400, description: 'Invalid fake request' }); }
+  }
+  const server = createServer((req, res) => {
+    const work = handle(req, res);
+    handlers.add(work);
+    void work.then(() => handlers.delete(work), () => handlers.delete(work));
+  });
+  server.on('connection', peer => {
+    const closed = Promise.withResolvers<void>();
+    connections.set(peer, closed.promise);
+    peer.once('close', () => { connections.delete(peer); closed.resolve(); });
+    peer.on('error', () => peer.destroy());
+    if (lifetime.signal.aborted) peer.destroy();
+  });
+  server.once('listening', () => {
+    didListen = true;
+    nativeListening.resolve();
+    if (options.publishListening !== false) listening.resolve();
+  });
+  server.once('close', () => { didClose = true; nativeClosed.resolve(); });
+  server.on('error', error => {
+    nativeError = (error as NodeJS.ErrnoException).code ?? 'unknown';
+    listening.reject(new Error(`fake Telegram listen failed: ${nativeError}`));
+  });
+  void listening.promise.catch(() => {});
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    lifetime.abort();
+    for (const poll of pendingPolls.values()) finish(poll, 503);
+    for (const peer of connections.keys()) peer.destroy();
+    let closed: Promise<void> = Promise.resolve();
+    if (invoked && !didClose) {
+      server.close(error => {
+        if (error && (error as NodeJS.ErrnoException).code === 'ERR_SERVER_NOT_RUNNING' && !didListen) {
+          didClose = true;
+          nativeClosed.resolve();
+        }
+      });
+      closed = nativeClosed.promise;
+    } else if (!invoked) didClose = true;
+    const results = await Promise.allSettled([
+      within(closed, 1_000, realClock, () => new Error('fake Telegram native server close incomplete after 1000 ms')),
+      within((async () => {
+        while (connections.size || handlers.size) await Promise.allSettled([...connections.values(), ...handlers]);
+      })(), 1_000, realClock, () => new Error('fake Telegram connection/handler drainage incomplete after 1000 ms')),
+    ]);
+    const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+    if (failures.length) throw new AggregateError(failures, 'fake Telegram disposal incomplete');
+  })();
+  onCleanup(t, close);
+  let starting: Promise<ReturnType<typeof client>> | undefined;
+  const client = (port: number) => ({
+    url: `http://127.0.0.1:${port}`,
+    waitForHeldRequest: (method: string, signal = AbortSignal.timeout(5_000)) => observe<FakeConnectionReceipt>(events,
+      'request-held', receipt => receipt.method === method, AbortSignal.any([signal, lifetime.signal])),
+    waitForConnectionClose: (method: string, signal = AbortSignal.timeout(5_000)) => observe<FakeConnectionReceipt>(events,
+      'connection-closed', receipt => receipt.method === method, AbortSignal.any([signal, lifetime.signal])),
+    waitForPoll: (signal = AbortSignal.timeout(5_000)) => observe<FakePollReceipt>(events, 'poll', () => true,
+      AbortSignal.any([signal, lifetime.signal])),
+    waitForPollClose: (id: number, signal = AbortSignal.timeout(5_000)) => closedPolls.has(id) ? Promise.resolve(id)
+      : observe<number>(events, 'poll-closed', closed => closed === id, AbortSignal.any([signal, lifetime.signal])),
+    close,
+  });
+  const start = () => starting ??= (async () => {
+    const signal = AbortSignal.any([t.signal, lifetime.signal, ...(options.signal ? [options.signal] : [])]);
+    try {
+      const ready = within(abortable(listening.promise, signal), 1_000, options.setupClock ?? realClock,
+        () => new Error('fake Telegram listening receipt deadline reached'));
+      void ready.catch(() => {});
+      signal.throwIfAborted();
+      invoked = true;
+      server.listen({ port: options.port ?? 0, host: '127.0.0.1', signal: lifetime.signal });
+      await ready;
+      signal.throwIfAborted();
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('fake Telegram did not bind loopback');
+      return client(address.port);
+    } catch (error) {
+      const reason = signal.aborted ? 'fake Telegram setup aborted' : redact(error instanceof Error ? error.message : String(error));
+      await close();
+      throw new Error(reason);
+    }
+  })();
+  return {
+    start, close,
+    listening: () => within(nativeListening.promise, 1_000, realClock, () => new Error('fake Telegram native listening receipt missing')),
+    receipts: () => ({ listening: didListen, closed: didClose, connections: connections.size, handlers: handlers.size, nativeError }),
+  };
+}
+
+export async function fakeTelegram(t: TestContext, options: FakeOptions = {}) { return fakeTelegramFixture(t, options).start(); }
+
+/** One bounded control boundary covers headers and the complete JSON/text body. */
+export async function telegramControl<T>(root: string, operation: string, params?: object) {
+  const response = await fetch(`${root}/control/${operation}`, { signal: AbortSignal.timeout(5_000),
+    ...(params ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(params) } : {}),
+  });
+  const text = await response.text();
+  return { status: response.status, body: JSON.parse(text) as T, text };
+}

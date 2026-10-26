@@ -29,6 +29,10 @@ Register release and drainage cleanup before triggering startup; only the
 already-started remotes need stopping. The dispatcher hello deadline begins
 after remote setup, so a held platform start owns no waiting conversation.
 
+The optional third start argument is a lifetime signal, aborted before joining
+partially started work. Native Telegram's held getMe cancellation proof is in
+the [messenger guide](hub-test-telegram-messenger.test.ts.md).
+
 Remote provenance uses `testMessenger(id, via)` (`telegram` by default), or
 `testMessenger(id, { via, startError })` to combine source and startup faults. The
 platform source travels as trusted `Conversation.receive` metadata on the one

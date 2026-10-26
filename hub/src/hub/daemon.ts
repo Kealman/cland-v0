@@ -490,12 +490,13 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
       state: options.gatewayState ?? store.remotes, log, redact: remoteOutput, pairing: hub.core.inbox.pairingCodes,
       lease: new PollerLease(store.remotes, { clock, processes: options.gatewayProcesses ?? nativePollerProcesses(env) }),
     });
-    if (options.gatewayMessenger) {
-      gateway = new ConfiguredGateway(options.gatewayMessenger, create);
-      await gateway.update(roles.config(), remoteSecrets);
-    } else if (options.gatewayRemotes?.length) {
+    if (!options.gatewayMessenger && options.gatewayRemotes?.length) {
       gateway = create(options.gatewayRemotes);
       await gateway.start();
+    } else {
+      const { messengerFactory } = await import('../remote/messenger.ts');
+      gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock), create);
+      await gateway.update(roles.config(), remoteSecrets);
     }
   };
 

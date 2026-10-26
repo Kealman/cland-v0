@@ -35,10 +35,12 @@ The existing role clauses already require secret isolation; this local command
 adds no frame, role permission or role-clause line.
 
 For remote configuration, use `cland config set remote.telegram.enabled true`
-and `cland hub reload`; activation requires a resolved token and an installed
-platform factory. Every remote/speech key reloads; init renders defaults and update
-fills older managed configs. The current injectable messenger factory is exercised
-with fakes, with no platform or speech call. See
+and `cland hub reload`; activation requires a resolved token. The daemon has a
+built-in Telegram fetch client; Discord requires an injected platform factory.
+Every remote/speech key reloads; init renders defaults and update fills older
+managed configs. Explicit factory and legacy remote injection retain their test
+seams. Telegram checks and sends are exercised on a loopback fake, with no real
+platform or speech call. See
 [configuration tests](tests/hub-test-config-set.test.ts.md) for its receipt and
 shutdown seams. Existing role clauses cover reload and secret isolation; no role
 permission changes.
@@ -67,3 +69,10 @@ configured client while retaining the numeric pairing and mute. An unchanged
 environment override still wins. `cland remote test <messenger>` uses the active
 client’s test callback; no installed client means an explicit unavailable refusal.
 See [remote command tests](tests/hub-test-remote-cli.test.ts.md).
+
+For Telegram client errors and API-root overrides, use the
+[Bot API boundary](tests/hub-test-telegram-api.test.ts.md) and
+[native messenger frame receipts](tests/hub-test-telegram-messenger.test.ts.md).
+Pass the daemon's environment and project registry to the factory. Token-bearing
+URLs stay inside the fetch client; provider errors retain only sanitized facts.
+The existing role clauses cover these boundaries without new permissions.

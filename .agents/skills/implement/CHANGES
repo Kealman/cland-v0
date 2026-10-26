@@ -162,3 +162,6 @@ T-1330 integration: Resolve with the explicit daemon environment and reuse valid
 T-1333: Route pairing approval changes to authority, numeric persistence and replacement drainage frame guidance.
 
 T-1334: Point remote command, status/test callback and token rotation work to the sealed CLI/frame regressions.
+
+T-1340: Route Telegram fetch/client and native factory work to the T2 fake Bot API controls and production frame receipts.
+T-1340 source-1: Require pre-bind fake ownership, bounded control requests and startup lifetime cancellation receipts.

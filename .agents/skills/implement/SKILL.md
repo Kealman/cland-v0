@@ -64,6 +64,16 @@ For remote terminal commands, token rotation or messenger status/test callbacks,
 use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,
 legacy optional callbacks and previous-hub refusal coverage.
 
+For Telegram Bot API or native messenger changes, use the T2 loopback/fake-control
+and production-factory frame seams in
+`docs/agents/tests/hub-test-telegram-api.test.ts.md` and
+`docs/agents/tests/hub-test-telegram-messenger.test.ts.md`. Reuse secret validation
+and the project redactor before constructing a token-bearing URL; keep raw fetch
+errors inside the client. Arm held-request observers before triggering and join
+native close receipts. The fake registers cleanup before bind; use its bounded
+control helper and setup/close receipts. Forward the gateway's optional start
+lifetime signal to startup I/O. Preserve explicit factory and legacy remote injection.
+
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and
 strip pairing rows and counts at the remote boundary. Trusted pairing callbacks

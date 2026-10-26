@@ -11,7 +11,8 @@ import { gatewayInbox } from './authority.ts';
 export type Remote = {
   id: string;
   via: RemoteVia;
-  start: (send: (frame: Record<string, unknown>) => void, pair?: (identity: Pairing) => string | null) => void | Promise<void>;
+  /** Optional lifetime signal is aborted before the gateway joins an in-flight start. */
+  start: (send: (frame: Record<string, unknown>) => void, pair?: (identity: Pairing) => string | null, signal?: AbortSignal) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
   /** Successful platform exchanges, never inferred from starting a loop. */
   status?: () => RemoteConnection;
@@ -111,7 +112,7 @@ export class Gateway {
             const reply = this.#pairing!.issue(remote.via, { userId: safe.userId, chatId: safe.chatId, guildId: safe.guildId, name: safe.text });
             return reply === null ? null : this.#output({ text: reply }).text;
           } catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
-        } : undefined);
+        } : undefined, this.#leaseAbort.signal);
       } catch (error) {
         this.#disable(remote, error);
       }
