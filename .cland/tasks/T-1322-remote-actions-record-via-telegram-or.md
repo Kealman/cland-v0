@@ -2,8 +2,8 @@
 id: T-1322
 kind: task
 title: Remote actions record via telegram or discord on messages, answers, approvals and ask outcomes, shown in both workbenches
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1079
 branch: t/T-1322-remote-actions-record-via-telegram-or
 created: 2026-10-26T02:28:46.572Z
-updated: 2026-10-26T04:12:29.875Z
+updated: 2026-10-26T05:20:42.974Z
+closed: 2026-10-26T05:20:42.974Z
 ---
 
 ## Summary
@@ -29,11 +30,13 @@ Add `"telegram"` and `"discord"` to the `via` values on messages, answers and ap
 ## Acceptance criteria
 
 - [x] C1. An ask and a fake Codex approval answered through the test messenger record `via` on the outcome, and a message sent through it records `via` (test).
-  - done: impl-1322 · 2026-10-26T03:54:06.422Z
   - verified: rev-26 [reviewer] · run rev-20261026-1322-evidence-1 · 2026-10-26T04:12:29.731Z · commit b83556ee9f145950f843f1a3b84b0e7583e38c23
+  - done: impl-1322 · 2026-10-26T04:25:19.074Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1322-evidence-2 · 2026-10-26T04:38:20.297Z · commit 5550ed2978f7f4971bf04582accd0d5a146d4cf4
 - [x] C2. Headless Neovim and headless Chromium show "via Telegram" on those rows, and a client at the previous wire shape still reads them (test).
-  - done: impl-1322 · 2026-10-26T03:58:18.815Z
   - verified: rev-26 [reviewer] · run rev-20261026-1322-evidence-1 · 2026-10-26T04:12:29.731Z · commit b83556ee9f145950f843f1a3b84b0e7583e38c23
+  - done: impl-1322 · 2026-10-26T04:25:19.165Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1322-evidence-2 · 2026-10-26T04:38:20.297Z · commit 5550ed2978f7f4971bf04582accd0d5a146d4cf4
 
 ## Comments
 
@@ -83,3 +86,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head configured evidence clear; A-12271 records the independent runtime audit of A-12269/run 3685d5eb. C1/C2 verified. Exact-head exit 0, 3335 deduplicated ordinary test passes and 450 file passes, separately 15 actual T2 load-gate test passes (three identities × five). Both remote source cases, rendered Neovim and Chromium rows, archive/reload/previous-shape compatibility and the corrected docs guard have named pass/timing receipts. Web additionally records report-only 10/10 whole-file repetitions; no per-case five-repeat inference. T0/all T1/fallback all T2/mapped T4 base once/Web completed; no T3 or full integration claim. Linux droplet c-8 lon1, Node24.21.0/Neovim0.12.5/pinned Headless Shell156.0.8078.4-v1248. Host prepared-tree typecheck not repeated remotely. Report-only warnings retained; all new individual base cases below3s, no allowance required. Source A-12266 unchanged; no findings, no reviewer execution. Coordinator owns readiness and landing.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-26T04:25:09.016Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1322-source-3
+commit: 5550ed2978f7f4971bf04582accd0d5a146d4cf4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge-delta source clear; A-12279. Reviewed imported T-1326 changes and all three conflict resolutions from previously clear b83556ee9 into dev 27258a5f. Production gateway differs from landed dev only by RemoteVia/required source/per-request metadata; optional run, async receive, state/log/redactor and per-remote stop/work fencing remain intact. Fake source-string/options forms coexist; both sets of assertions and shipped guidance/index rows retained. No remaining Standards/Spec findings. A-12278 is local targeted summary with capture limits, not merged-head Linux proof; old A-12269 belongs to parent and accfb05f is cancelled. Restore stale C1/C2 claimant done marks at this head, submit one mode-free verify then request same-head final evidence. Coordinator's rule-6 full run stays separate. No reviewer execution.
+
+### rev-26 · 2026-10-26T04:38:20.297Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1322-evidence-2
+commit: 5550ed2978f7f4971bf04582accd0d5a146d4cf4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final task evidence clear; A-12294. A-12293/run e82d2419 matches source-clear A-12279 and independently reconciles 3348 ordinary passes/451 file passes plus15 separate load test passes. Exact trusted-source cases, actual Neovim/Chromium rows, old-shape compatibility and imported T-1326 failure-isolation/redaction/drainage cases pass. Web 10/10 whole-file repetition summary remains distinct. T0/all T1/fallback all T2/mapped T4 base once/Web complete; no T3/full integration claim. New individual cases below3s, no allowance. Host prepared-tree typecheck reuse and report-only diagnostics retained. Fresh claimant done marks confirmed; C1/C2 verified at this head replacing stale old marks. No findings or reviewer execution. Coordinator still owns required rule-6 full cover before landing.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-26T05:20:42.974Z
+
+Merged ab447856be7d73686a48d735467161b24d0cc00c onto dev.
