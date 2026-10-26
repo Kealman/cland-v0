@@ -11,8 +11,8 @@ import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError, apiTimeoutMs } from './api.ts';
-import { accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
-import { testTiming } from './watchdog.ts';
+import { accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
+import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
@@ -87,6 +87,13 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     this.#leaseChanges.set(lease.lease, work);
     try { return await work; }
     finally { if (this.#leaseChanges.get(lease.lease) === work) this.#leaseChanges.delete(lease.lease); }
+  }
+
+  #watchdogOptions(lease: DropletLease): WatchdogOptions {
+    return { checkpoint: watchdog => this.#changeLease(lease, async () => {
+      await upgradeWatchdog(this.root, lease, watchdog);
+      this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
+    }) };
   }
 
   async deliver(lease: DropletLease, run: RunRef, committedOnly = false) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).deliver(lease, run, committedOnly); }
@@ -331,7 +338,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
           accountRelease(lease, lease.deleteStarted ?? this.clock.now().toISOString(), this.clock);
           await this.#save(lease);
           await settleSpend(lease, this.#env, this.dependencies.processes);
-          await (this.dependencies.host ?? processHost).stopWatchdog(lease, this.#env);
+          await (this.dependencies.host ?? processHost).stopWatchdog(lease, this.#env, this.#watchdogOptions(lease));
           await rm(join(leaseDir(this.root, lease), 'key'), { force: true });
           await rm(join(leaseDir(this.root, lease), 'key.pub'), { force: true });
           this.logger({ event: 'executor-lease-released', lease: lease.lease, id: lease.resource, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd });
@@ -372,7 +379,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       const snapshotRecovery = await readRecoveries(this.root);
       const token = Boolean(this.#env.DIGITALOCEAN_TOKEN);
       const all = await readLeases(this.root);
-      const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ...(l.attention ? { attention: l.attention } : {}), ageMs: this.clock.now().getTime() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await within((this.dependencies.host ?? processHost).watchdogAlive(l, this.#env), 250, this.clock).catch(() => false) })));
+      const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ...(l.attention ? { attention: l.attention } : {}), ageMs: this.clock.now().getTime() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await within((this.dependencies.host ?? processHost).watchdogAlive(l, this.#env, this.#watchdogOptions(l)), 250, this.clock).catch(() => false) })));
       // Capability 1 promises that every transaction preserves legacyRetired and
       // stops reading/writing the legacy ledger once that marker is activated.
       const spend = { ...await inspectSpend((await this.#config()).verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes, true), legacyRetirement: 1 as const };
@@ -418,11 +425,20 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         continue;
       }
       if (!this.#env.DIGITALOCEAN_TOKEN) continue;
-      if (lease.state !== 'releasing' && liveLease(lease, this.clock) && (restart || lease.watchdog) && !await (this.dependencies.host ?? processHost).watchdogAlive(lease, this.#env)) {
-        const watchdog = await (this.dependencies.host ?? processHost).armWatchdog(dir, this.#env);
+      if (lease.state !== 'releasing' && liveLease(lease, this.clock) && (restart || lease.watchdog) && !await (this.dependencies.host ?? processHost).watchdogAlive(lease, this.#env, this.#watchdogOptions(lease))) {
+        let watchdog: NonNullable<DropletLease['watchdog']>;
+        try { watchdog = await (this.dependencies.host ?? processHost).armWatchdog(dir, this.#env); }
+        catch (error) {
+          // A concurrent release can make the child exit during its native
+          // birth probe. armWatchdog stops it through its owned handle; no rearm
+          // is needed once the durable lease has entered release.
+          const current = await readLease(dir);
+          if (current.state === 'released' || current.state === 'releasing') continue;
+          throw error;
+        }
         const rearmed = await this.#changeLease(lease, async () => {
           const current = await readLease(dir);
-          const sameWatchdog = current.watchdog?.pid === lease.watchdog?.pid && current.watchdog?.startedUtc === lease.watchdog?.startedUtc;
+          const sameWatchdog = current.watchdog?.pid === lease.watchdog?.pid && current.watchdog?.startedUtc === lease.watchdog?.startedUtc && current.watchdog?.pidIdentity === lease.watchdog?.pidIdentity;
           Object.assign(lease, current);
           if (lease.state === 'released' || lease.state === 'releasing' || !sameWatchdog) return false;
           lease.watchdog = watchdog;

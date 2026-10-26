@@ -136,3 +136,6 @@ T-290: Document roles-file launch refusal/recovery and the two-reader fake-adapt
 T-1154: Document T1 late-lock ownership and T2 reservation/shard shutdown receipts with durable next-hub settlement.
 native exited-state receipts and separate parent reaping boundary (T-543)
 native-exited ancestors retain uncertain surviving branches (T-543)
+T-1298: Document detached watchdog native identity, durable legacy migration and lowest-tier refusal/checkpoint seams.
+T-1298 review M3: Cover provider-release/inspection ordering and the shared lease-writer fence against native-identity downgrade.
+T-1298 review M4: Require pre-start disposal, independent abortable setup and underlying checkpoint drainage for held-writer fixtures.

@@ -3660,6 +3660,24 @@ It survives a stopped or crashed hub. Restart consumes that receipt into the
 `executor-watchdog-fired` journal event, recovers interrupted creates by name,
 releases active leases with no run, and re-arms dead watchdogs for live leases.
 
+New watchdog records retain `pid` and UTC `startedUtc` and add `pidIdentity`,
+using Linux boot-id/start ticks or macOS native microsecond birth. Restart
+liveness and each destructive signal compare that native identity; a PID reused
+within the same `ps` second is left alone. A legacy record upgrades once after a
+matching UTC start is bracketed by the same readable native birth. The executor
+fsyncs that identity into the latest lease before signalling, preserving concurrent
+lease changes and refusing a changed watchdog. Every in-process full lease write
+and the ownership-only checkpoint share a per-lease queue; a stale release or run
+snapshot retains the already persisted native identity for that same watchdog.
+The checkpoint patches the latest state inside the queue, so it cannot restore
+an earlier release state. Missing/mismatched proof or failed
+persistence grants no signal authority. Same-second reuse before that first
+legacy observation retains the old risk. Native child handles remain the stop
+authority until their close receipt; restart waits accept native identity change
+or OS PID absence, while an unreadable live probe alone proves no exit. A release
+that makes a replacement exit during its birth probe suppresses that rearm only
+after the durable lease is `releasing` or `released`.
+
 Release confirms deletion by listing droplets and keys before marking a lease
 released or removing its key files. An unconfirmed deletion stays `releasing`;
 lease recovery retries it every minute and its watchdog remains armed. A lost

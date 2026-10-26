@@ -201,6 +201,7 @@ The runner narrows the admitted file selection to that tier, preserving all T1
 rules and coverage-selected T2 files.
 
 Native PID birth identity tests and the stop/cleanup compatibility seams are indexed in [process identity](tests/hub-test-process-identity.test.ts.md).
+Detached droplet watchdog ownership and durable legacy upgrades use the [watchdog seams](tests/hub-test-executor-watchdog.test.ts.md).
 
 ### Test levels (D53)
 

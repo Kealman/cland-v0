@@ -152,6 +152,7 @@
     "hub/test/executor-safety-load.test.ts": "T4",
     "hub/test/executor-safety.test.ts": "T3",
     "hub/test/executor-spend.test.ts": "T1",
+    "hub/test/executor-watchdog.test.ts": "T1",
     "hub/test/executor.test.ts": "T3",
     "hub/test/fake-claude-cleanup.test.ts": "T3",
     "hub/test/fake-harness-capabilities.test.ts": "T1",

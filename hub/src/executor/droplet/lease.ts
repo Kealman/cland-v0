@@ -1,7 +1,7 @@
 import { realClock, type Clock } from '../../hub/clock.ts';
 import { randomUUID } from 'node:crypto';
 import { open, mkdir, readFile, readdir, rename, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
 
@@ -24,7 +24,7 @@ export type DropletLease = Lease & {
   snapshot?: import('./prepare.ts').Snapshot;
   demo?: { epic: string; commit: string; ready?: boolean; commands?: import('../../verification-commands.ts').VerificationCommands };
   execution?: { head: string; delivered?: boolean; started?: boolean; startedAt?: string; unreachableSince?: string };
-  watchdog?: { pid: number; startedUtc: string };
+  watchdog?: { pid: number; startedUtc: string; pidIdentity?: string };
 };
 export type WatchdogReceipt = { fired: string; deleted: number[]; confirmedAt: string; deleteStarted: string };
 
@@ -41,10 +41,41 @@ export async function durableJson(path: string, value: unknown): Promise<void> {
 }
 export const leaseRoot = (root: string): string => join(root, '.cland/run/executor/leases');
 export const leaseDir = (root: string, lease: DropletLease): string => join(leaseRoot(root), lease.lease);
+const writes = new Map<string, Promise<void>>();
+async function leaseWrite(dir: string, work: () => Promise<void>): Promise<void> {
+  const key = resolve(dir);
+  const previous = writes.get(key) ?? Promise.resolve();
+  const pending = previous.catch(() => {}).then(work);
+  writes.set(key, pending);
+  try { await pending; }
+  finally { if (writes.get(key) === pending) writes.delete(key); }
+}
+const sameWatchdog = (left: DropletLease['watchdog'], right: DropletLease['watchdog']): boolean => Boolean(left && right && left.pid === right.pid && left.startedUtc === right.startedUtc);
 export async function writeLease(root: string, lease: DropletLease): Promise<void> {
   const dir = leaseDir(root, lease);
-  await mkdir(dir, { recursive: true, mode: 0o700 });
-  await durableJson(join(dir, 'lease.json'), lease);
+  await leaseWrite(dir, async () => {
+    await mkdir(dir, { recursive: true, mode: 0o700 });
+    let current: DropletLease | undefined;
+    try { current = await readLease(dir); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    // A provider/run writer can still hold the old shape while inspection
+    // checkpoints native ownership. That identity must never be downgraded.
+    if (sameWatchdog(current?.watchdog, lease.watchdog) && !lease.watchdog!.pidIdentity && current?.watchdog?.pidIdentity) {
+      lease.watchdog = { ...lease.watchdog!, pidIdentity: current.watchdog.pidIdentity };
+    }
+    await durableJson(join(dir, 'lease.json'), lease);
+  });
+}
+/** Patch only ownership, using the same queue as every full lease writer. */
+export async function upgradeWatchdog(root: string, lease: DropletLease, watchdog: NonNullable<DropletLease['watchdog']>): Promise<void> {
+  const dir = leaseDir(root, lease);
+  await leaseWrite(dir, async () => {
+    const current = await readLease(dir);
+    const recorded = current.watchdog;
+    if (!sameWatchdog(recorded, watchdog) || recorded?.pidIdentity && recorded.pidIdentity !== watchdog.pidIdentity) throw new Error('watchdog changed while upgrading its legacy process identity');
+    current.watchdog = watchdog;
+    await durableJson(join(dir, 'lease.json'), current);
+  });
 }
 export async function readLease(dir: string): Promise<DropletLease> {
   const lease = JSON.parse(await readFile(join(dir, 'lease.json'), 'utf8')) as DropletLease;

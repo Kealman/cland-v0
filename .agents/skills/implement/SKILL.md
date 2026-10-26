@@ -90,6 +90,16 @@ For startup lease recovery and phase timing, follow the sealed T2 fake-provider 
 
 For remote watchdog changes, use the executor-fake guidance in `docs/agents/tests.md#implementer-test-selection`: observe mirrored byte progress, the terminal timeout receipt and released resource; preserve the admitted stall limit across restart.
 
+For detached droplet watchdog PID ownership, use the T1 OS/checkpoint seam in
+`docs/agents/tests/hub-test-executor-watchdog.test.ts.md` and its native T3
+launch/rearm controls. Keep `pid`/UTC `startedUtc`, add native `pidIdentity`, and
+persist a coherent one-time legacy upgrade before any signal. Retain same-second
+reuse refusal, failed-proof/checkpoint controls and the release-during-probe case;
+hold provider release across inspection and prove full lease writers retain the
+durable upgrade and terminal state without a second legacy adoption. Register
+held-writer disposal before launch, bound/abort setup separately, and drain the
+underlying checkpoint as well as inspect's bounded reply before root removal.
+
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
 
 On `cover-quiet`, an authenticated refusal registers a durable one-shot

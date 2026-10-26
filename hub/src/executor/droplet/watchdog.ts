@@ -4,7 +4,7 @@ import { appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processStartedAsync } from '../../hub/lock.ts';
-import { pidAlive } from '../../project.ts';
+import { processIdentityAsync, processIdentitiesAsync } from '../../process-identity.ts';
 import { DigitalOceanApi } from './api.ts';
 import { settleSpend } from './spend.ts';
 import { deleteLeaseResources } from './cleanup.ts';
@@ -15,8 +15,30 @@ export const testTiming = (key: string, fallback: number, env: NodeJS.ProcessEnv
   const value = Number(env[key]);
   return value > 0 && Number.isFinite(value) ? value : fallback;
 };
-type WatchdogChild = { child: ChildProcess; startedUtc: string; closed: Promise<void> };
+type WatchdogChild = { child: ChildProcess; startedUtc: string; pidIdentity: string; closed: Promise<void> };
 const children = new Map<number, WatchdogChild>();
+
+/** OS boundary for restart recovery; native child handles stay owned separately. */
+export type WatchdogProcesses = {
+  started(pid: number, env: NodeJS.ProcessEnv): Promise<string | null>;
+  identity(pid: number, env: NodeJS.ProcessEnv, timeoutMs?: number): Promise<string | null>;
+  alive(pid: number): boolean;
+  signal(pid: number, signal: NodeJS.Signals): void;
+};
+const nativeProcesses: WatchdogProcesses = {
+  started: (pid, env) => processStartedAsync(pid, undefined, undefined, 'UTC', env),
+  identity: async (pid, env, timeoutMs) => (await processIdentitiesAsync([pid], env, timeoutMs)).get(pid) ?? null,
+  alive: pid => {
+    try { process.kill(pid, 0); return true; }
+    catch (error) { return (error as NodeJS.ErrnoException).code !== 'ESRCH'; }
+  },
+  signal: (pid, signal) => { process.kill(pid, signal); },
+};
+export type WatchdogOptions = {
+  processes?: WatchdogProcesses;
+  clock?: Clock;
+  checkpoint?: (watchdog: NonNullable<DropletLease['watchdog']>) => Promise<void>;
+};
 
 async function closedWithin(closed: Promise<void>, ms: number): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -25,42 +47,59 @@ async function closedWithin(closed: Promise<void>, ms: number): Promise<boolean>
   } finally { clearTimeout(timer); }
 }
 
-async function stoppedWithin(watchdog: NonNullable<DropletLease['watchdog']>, owned: WatchdogChild | undefined, ms: number, env: NodeJS.ProcessEnv): Promise<boolean> {
+async function stoppedWithin(watchdog: NonNullable<DropletLease['watchdog']>, owned: WatchdogChild | undefined, ms: number, env: NodeJS.ProcessEnv, options: WatchdogOptions): Promise<boolean> {
   if (owned) return closedWithin(owned.closed, ms);
   // After a hub restart there is no ChildProcess receipt. Observe the persisted
-  // identity disappearing; an unavailable ps probe alone is not proof of exit.
-  const deadline = Date.now() + ms;
-  while (Date.now() < deadline) {
-    if (!pidAlive(watchdog.pid)) return true;
-    const started = await processStartedAsync(watchdog.pid, Math.max(1, Math.min(1000, deadline - Date.now())), undefined, 'UTC', env);
-    if (started !== null && started !== watchdog.startedUtc) return true;
-    await pause(Math.min(25, Math.max(0, deadline - Date.now())));
+  // identity disappearing; an unavailable native probe alone is not proof of exit.
+  const clock = options.clock ?? realClock;
+  const processes = options.processes ?? nativeProcesses;
+  const deadline = clock.now().getTime() + ms;
+  while (clock.now().getTime() < deadline) {
+    if (!processes.alive(watchdog.pid)) return true;
+    const identity = await processes.identity(watchdog.pid, env, Math.max(1, Math.min(1000, deadline - clock.now().getTime())));
+    if (identity !== null && identity !== watchdog.pidIdentity) return true;
+    await pause(Math.min(25, Math.max(0, deadline - clock.now().getTime())), clock);
   }
   return false;
 }
-export async function watchdogAlive(lease: DropletLease, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+export async function watchdogAlive(lease: DropletLease, env: NodeJS.ProcessEnv = process.env, options: WatchdogOptions = {}): Promise<boolean> {
   if (!lease.watchdog) return false;
-  return await processStartedAsync(lease.watchdog.pid, undefined, undefined, 'UTC', env) === lease.watchdog.startedUtc;
+  const watchdog = lease.watchdog;
+  const processes = options.processes ?? nativeProcesses;
+  if (!watchdog.pidIdentity) {
+    // Legacy timestamps alone cannot authorize a signal. Bind one matching UTC
+    // start observation to a stable native birth, and persist before adopting it.
+    if (!options.checkpoint) return false;
+    const before = await processes.identity(watchdog.pid, env);
+    const started = await processes.started(watchdog.pid, env);
+    const after = await processes.identity(watchdog.pid, env);
+    if (!before || before !== after || started !== watchdog.startedUtc) return false;
+    await options.checkpoint({ ...watchdog, pidIdentity: before });
+    if (lease.watchdog !== watchdog) return false;
+    watchdog.pidIdentity = before;
+  }
+  const identity = await processes.identity(watchdog.pid, env);
+  return identity !== null && identity === watchdog.pidIdentity;
 }
-export async function stopWatchdog(lease: DropletLease, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+export async function stopWatchdog(lease: DropletLease, env: NodeJS.ProcessEnv = process.env, options: WatchdogOptions = {}): Promise<void> {
   if (!lease.watchdog) return;
   const watchdog = lease.watchdog;
   const candidate = children.get(watchdog.pid);
-  const owned = candidate?.startedUtc === watchdog.startedUtc ? candidate : undefined;
-  if (!owned && !await watchdogAlive(lease, env)) return;
+  const owned = candidate?.startedUtc === watchdog.startedUtc && (!watchdog.pidIdentity || candidate.pidIdentity === watchdog.pidIdentity) ? candidate : undefined;
+  if (!owned && (!await watchdogAlive(lease, env, options) || lease.watchdog !== watchdog)) return;
   const signal = async (signal: NodeJS.Signals) => {
     if (owned) { owned.child.kill(signal); return; }
     // Revalidate before each signal, including escalation: the old PID may have
     // been reaped and reused while we waited for its exit.
-    if (!await watchdogAlive(lease, env)) return;
-    try { process.kill(watchdog.pid, signal); }
+    if (!await watchdogAlive(lease, env, options) || lease.watchdog !== watchdog) return;
+    try { (options.processes ?? nativeProcesses).signal(watchdog.pid, signal); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
   };
   const grace = testTiming('CLAND_TEST_DROPLET_WATCHDOG_STOP_MS', 5000, env);
   await signal('SIGTERM');
-  if (await stoppedWithin(watchdog, owned, grace, env)) return;
+  if (await stoppedWithin(watchdog, owned, grace, env, options)) return;
   await signal('SIGKILL');
-  if (!await stoppedWithin(watchdog, owned, grace, env)) throw new Error('droplet watchdog did not stop within its time bound');
+  if (!await stoppedWithin(watchdog, owned, grace, env, options)) throw new Error('droplet watchdog did not stop within its time bound');
 }
 export async function armWatchdog(dir: string, env: NodeJS.ProcessEnv = process.env): Promise<NonNullable<DropletLease['watchdog']>> {
   const child = spawn(process.execPath, [fileURLToPath(import.meta.url), dir], { env, detached: true, stdio: 'ignore' });
@@ -68,17 +107,19 @@ export async function armWatchdog(dir: string, env: NodeJS.ProcessEnv = process.
   await new Promise<void>((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
   child.unref();
   const pid = child.pid!;
+  const before = await processIdentityAsync(pid, env);
   const startedUtc = await processStartedAsync(pid, undefined, undefined, 'UTC', env);
-  if (!startedUtc) {
+  const pidIdentity = await processIdentityAsync(pid, env);
+  if (!startedUtc || !before || before !== pidIdentity) {
     // This child is still ours, so its ChildProcess handle is safe to stop.
     child.kill('SIGKILL');
     await closedWithin(closed, testTiming('CLAND_TEST_DROPLET_WATCHDOG_STOP_MS', 5000, env));
     throw new Error('could not verify the droplet watchdog process identity');
   }
-  const owned = { child, startedUtc, closed };
+  const owned = { child, startedUtc, pidIdentity, closed };
   children.set(pid, owned);
   void closed.then(() => { if (children.get(pid) === owned) children.delete(pid); });
-  return { pid, startedUtc };
+  return { pid, startedUtc, pidIdentity };
 }
 
 export async function watchdog(dir: string, clock: Clock = realClock): Promise<void> {

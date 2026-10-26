@@ -18,6 +18,7 @@ import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { processIdentityAsync } from '../src/process-identity.ts';
 
 const exec = promisify(execFile);
 
@@ -308,6 +309,8 @@ test('restart re-arms a live creating lease with a dead watchdog', async t => {
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'still-creating' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
+  assert.equal(lease.watchdog!.pidIdentity, await processIdentityAsync(lease.watchdog!.pid, env), 'new watchdog records the native birth at launch');
+  assert.ok(lease.watchdog!.pidIdentity);
   process.kill(lease.watchdog!.pid, 'SIGTERM');
   const path = join(root, '.cland/run/executor/leases', lease.lease, 'lease.json');
   await writeFile(path, JSON.stringify({ ...lease, state: 'creating' }));
@@ -318,6 +321,7 @@ test('restart re-arms a live creating lease with a dead watchdog', async t => {
   assert.equal(value.leases[0].watchdogAlive, true);
   const rearmed = JSON.parse(await readFile(path, 'utf8'));
   ownProcess(t, rearmed.watchdog.pid);
+  assert.equal(rearmed.watchdog.pidIdentity, await processIdentityAsync(rearmed.watchdog.pid, env), 'restart persists the replacement native birth');
   assert.notEqual(rearmed.watchdog.pid, lease.watchdog!.pid);
   await flushProjectLogs(t, root);
   assert.match(await readFile(join(root, '.cland/journal.jsonl'), 'utf8'), /executor-watchdog-rearmed/);
