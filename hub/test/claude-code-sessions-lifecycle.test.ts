@@ -133,7 +133,7 @@ for (const boot of [true, false]) {
   });
 });
 
-test('Linux background Claude publishes a verifiable native birth and stops through the recorded PID', { skip: process.platform !== 'linux' }, async t => {
+test('Linux background Claude publishes a verifiable native birth and stops through the recorded PID', { skip: process.platform !== 'linux' ? 'requires Linux native process identity' : false }, async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { stopCrash: true, ignoreTerm: true, stopGraceMs: 500 });
   const { discovery } = await projectHub(t, root, fake.env);

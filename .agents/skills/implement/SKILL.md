@@ -102,6 +102,12 @@ underlying checkpoint as well as inspect's bounded reply before root removal.
 
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
 
+Platform-conditional skips supply a nonblank prerequisite reason on the skipping
+branch and `false` on the running branch. The report-only `skip-reason` census
+detects direct boolean skip options; see `docs/agents/tests.md#test-lint-reports`
+and the prerequisite receipt fixture in
+`docs/agents/tests/hub-test-durations-runner.test.ts.md` for `5/5 skipped` evidence.
+
 On `cover-quiet`, an authenticated refusal registers a durable one-shot
 `test-slot-available` hub report. Do other work or end the turn until it arrives;
 never poll with sleep or `cland verify queue`. Retry the targeted command after

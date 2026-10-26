@@ -4,6 +4,24 @@ import test from 'node:test';
 import { loadDiagnostic, redactLoadDiagnostic } from '../src/suite-load-diagnostics.ts';
 import LoadGateReporter from './load-gate-reporter.ts';
 
+test('a reasoned platform skip supplies five skipped receipts while a boolean skip supplies no proof', async () => {
+  const otherPlatform = process.platform === 'linux' ? 'darwin' : 'linux';
+  const skip = process.platform !== otherPlatform ? 'requires the other platform' : false;
+  for (const [value, expected] of [[skip, 5], [true, 0]] as const) {
+    const reporter = new LoadGateReporter({});
+    for (let repetition = 0; repetition < 5; repetition++) reporter.write({ type: 'test:pass', data: {
+      nesting: 0, file: import.meta.filename, line: 1, name: 'platform prerequisite', skip: value, details: {},
+    } });
+    reporter.end();
+    let output = '';
+    for await (const chunk of reporter) output += String(chunk);
+    const receipts = output.trim().split('\n').map(line => JSON.parse(line));
+    assert.equal(receipts.length, 5);
+    assert.equal(receipts.filter(receipt => receipt.skipReason === 'requires the other platform').length, expected);
+    assert.ok(receipts.every(receipt => receipt.passed === false && receipt.diagnostic === undefined));
+  }
+});
+
 test('load diagnostics retain assertions and causes without arbitrary error properties', () => {
   const assertion = new Error('expected a completion receipt');
   assertion.name = 'AssertionError';

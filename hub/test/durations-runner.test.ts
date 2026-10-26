@@ -287,20 +287,24 @@ test('task load gate leaves known tests alone and integrated runs add no repetit
 test('one load-gate fixture distinguishes all seven prerequisite receipt shapes', async t => {
   const { run, manifest, path, file, cwd } = await fixture(t);
   const journal = join(cwd, 'attempts');
+  const otherPlatform = process.platform === 'linux' ? 'darwin' : 'linux';
+  const platformCase = `test('platform prerequisite', {skip: process.platform !== ${JSON.stringify(otherPlatform)} ? 'fixture binary unavailable' : false}, () => {});`;
   // Positive-only run: rejection rows must not mask a bad suite exit for valid skips.
   await writeFile(file, `import test from 'node:test';
+  ${platformCase}
   test('static prerequisite', {skip: 'fixture binary unavailable'}, () => {});
   test('runtime prerequisite', t => t.skip('fixture binary unavailable'));`);
   await writeFile(path, JSON.stringify(manifest));
   const positive = await run(true);
   assert.equal(positive.code, 0, positive.output);
-  for (const name of ['static prerequisite', 'runtime prerequisite']) {
+  for (const name of ['platform prerequisite', 'static prerequisite', 'runtime prerequisite']) {
     assert.ok(positive.output.includes(`load gate: hub/test/fixture.test.ts::${name} skipped, not load-gated; 5/5 skipped; reasons: ["fixture binary unavailable"]`), positive.output);
     assert.ok(!positive.output.includes(`${name} 5/5 passed`), positive.output);
     const { suiteSummary } = await import('../src/hub/suites.ts');
     assert.ok(suiteSummary(positive.output).includes(`${name} skipped, not load-gated`), positive.output);
   }
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+  ${platformCase}
   test('static prerequisite', {skip: 'fixture binary unavailable'}, () => {});
   test('runtime prerequisite', t => t.skip('fixture binary unavailable'));
   test('boolean skip', {skip: true}, () => {});
@@ -316,7 +320,7 @@ test('one load-gate fixture distinguishes all seven prerequisite receipt shapes'
   await writeFile(path, JSON.stringify(manifest));
   const result = await run(true);
   assert.equal(result.code, 1, result.output);
-  for (const name of ['static prerequisite', 'runtime prerequisite']) {
+  for (const name of ['platform prerequisite', 'static prerequisite', 'runtime prerequisite']) {
     assert.ok(result.output.includes(`load gate: hub/test/fixture.test.ts::${name} skipped, not load-gated; 5/5 skipped; reasons: ["fixture binary unavailable"]`), result.output);
     assert.ok(!result.output.includes(`${name} 5/5 passed`), result.output);
     const { suiteSummary } = await import('../src/hub/suites.ts');

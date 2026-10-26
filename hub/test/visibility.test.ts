@@ -52,7 +52,7 @@ test('concurrent human choices safely recover a dead UI writer and preserve both
   assert.deepEqual(saved.visibility.topics, { general: 'pin', agents: 'mute' });
 });
 
-test('a preference disk wait leaves the serving path responsive', { skip: process.platform === 'win32' }, async t => {
+test('a preference disk wait leaves the serving path responsive', { skip: process.platform === 'win32' ? 'requires POSIX named pipes (mkfifo)' : false }, async t => {
   const { execFile } = await import('node:child_process');
   const { promisify } = await import('node:util');
   const root = await tempProject(t);

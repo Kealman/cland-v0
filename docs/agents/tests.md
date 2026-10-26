@@ -596,6 +596,12 @@ check. Use `npm run test:lint -- --details` for per-file tiers, the first twelve
 census findings and every reachable-resource path. `--details` also combines
 with `--shrink`. The summary names this opt-in command.
 
+The report-only `skip-reason` finding flags direct `node:test` options whose
+`skip` is literal `true`, a comparison, a negation or a blank string. It does
+not resolve arbitrary skip helpers or change admission. Platform skips use
+`skip: process.platform !== 'linux' ? 'requires Linux native process identity' : false`
+so every skipped repetition carries the prerequisite reason.
+
 The direct-source census remains a report of existing debt. The policy gate
 refuses growth, before verify reserves a queue slot or merge changes refs:
 `verify-test-lint` and `merge-test-lint` name the file, line and rule.

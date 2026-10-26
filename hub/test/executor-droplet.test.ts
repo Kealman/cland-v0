@@ -384,7 +384,7 @@ process.stdout.write(result.stdout || ''); process.exit(result.status ?? 1);
   assert.equal(pidAlive(replacement), false);
 });
 
-test('macOS inhibits idle sleep while the lease lives and drops the inhibitor after release', { skip: process.platform !== 'darwin' }, async t => {
+test('macOS inhibits idle sleep while the lease lives and drops the inhibitor after release', { skip: process.platform !== 'darwin' ? 'requires macOS caffeinate idle-sleep inhibition' : false }, async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   await providerEnv(t, api, root);

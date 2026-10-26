@@ -12,6 +12,23 @@ const input = (name: string): string => { assert.equal(typeof sources[name], 'st
 
 const file = 'hub/test/planted.test.ts';
 
+test('test skips report reasonless boolean conditions and accept platform reason strings', async () => {
+  for (const skip of ["process.platform !== 'linux'", "process.platform === 'win32'", 'true', '!available', "'  '"]) {
+    const source = `import test from 'node:test';\ntest('platform case', { skip: ${skip} }, () => {});`;
+    assert.deepEqual(lintTestSource(file, source, 'T1').findings, [
+      { file, line: 2, rule: 'skip-reason', message: 'skip needs a nonblank reason string when enabled' },
+    ], skip);
+  }
+  for (const skip of ['false', "'requires Linux native process identity'", "process.platform !== 'linux' ? 'requires Linux native process identity' : false"]) {
+    assert.deepEqual(lintTestSource(file, `import test from 'node:test'; test('platform case', { skip: ${skip} }, () => {});`, 'T1').findings, [], skip);
+  }
+  assert.deepEqual(lintTestSource(file, "const data = { skip: true }; const text = \"test('case', { skip: true })\";", 'T1').findings, []);
+  const aliased = "import { test as check } from 'node:test'; check('case', { 'skip': (process.platform !== 'darwin') }, () => {});";
+  assert.equal(lintTestSource(file, aliased, 'T1').findings[0]?.rule, 'skip-reason');
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  assert.deepEqual(await checkTestLint({ manifest: { version: 1, tests: { [file]: 'T1' } }, source: async () => aliased }), [], 'skip reasons are report-only, including new files');
+});
+
 test('direct facts keep source, path and tier separate from caller mutations', () => {
   const source = 'sleep(10);';
   const facts = testLintFacts(file, source, 'T1');

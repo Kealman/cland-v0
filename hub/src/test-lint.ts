@@ -10,7 +10,7 @@ import type { Tier, TierEntry, TierManifest } from './suite-shards.ts';
 let parser: typeof ts | undefined;
 const syntax = (): typeof ts => parser ??= createRequire(import.meta.url)('typescript') as typeof ts;
 
-export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle'; message: string };
+export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle' | 'skip-reason'; message: string };
 export type TestLintFile = { file: string; tier: Tier; qualifies: Tier; findings: TestLintFinding[]; reachable?: { tier: Tier; resources: TestLintFinding[] } };
 const processHelpers = new Set(['startDaemon', 'killDaemon', 'spawnSpoke', 'fakeClaude', 'fakeCodex', 'fakeOpenCode']);
 const socketHelpers = new Set(['projectHub', 'startHub', 'cland', 'clandWithEnv', 'connectUi', 'connectSocket', 'connectWsUi', 'inProcessSpoke']);
@@ -273,6 +273,21 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
   for (const node of nodes) if (ts.isCallExpression(node)) {
     const b = bindingOf(node.expression);
     const name = b?.name ?? nameOf(node.expression);
+    if (b?.module === 'test' && ['default', 'test', 'it', 'describe'].includes(name)) {
+      for (const argument of node.arguments) if (ts.isObjectLiteralExpression(argument)) {
+        for (const property of argument.properties) if (ts.isPropertyAssignment(property) && (ts.isStringLiteralLike(property.name) ? property.name.text : nameOf(property.name)) === 'skip') {
+          let value = property.initializer;
+          while (ts.isParenthesizedExpression(value) || ts.isAsExpression(value) || ts.isSatisfiesExpression(value)) value = value.expression;
+          const comparison = ts.isBinaryExpression(value) && [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken,
+            ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.LessThanToken,
+            ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.GreaterThanEqualsToken,
+            ts.SyntaxKind.InKeyword, ts.SyntaxKind.InstanceOfKeyword].includes(value.operatorToken.kind);
+          if (value.kind === ts.SyntaxKind.TrueKeyword || comparison
+            || ts.isPrefixUnaryExpression(value) && value.operator === ts.SyntaxKind.ExclamationToken
+            || ts.isStringLiteralLike(value) && !value.text.trim()) add(property, 'skip-reason', 'skip needs a nonblank reason string when enabled');
+        }
+      }
+    }
     if (b && ['fs', 'fs/promises'].includes(b.module) && sharedLockPath(node.arguments[0])) resource(node, 2, 'shared suite lock');
     if ((!b || harness(b.module)) && processHelpers.has(name)) {
       resource(node, 3, name);

@@ -3189,6 +3189,12 @@ node hub/bin/cland.ts --version
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
 
 At the repository root, `npm run check` runs typechecking and static/test lint.
+The test-lint census reports `skip-reason` for direct `node:test` skip options
+with literal `true`, comparisons, negations or blank strings. This finding is
+report-only; helper-returned skips are not resolved. Give platform conditions a
+nonblank reason on the skipping branch and `false` on the running branch.
+The load gate accepts five reasoned skips as `5/5 skipped`, without passing load
+proof; a reasonless skip fails. See [verification guidance](../docs/agents/tests.md).
 The pure fixture builder lives in `test-support/fixture-environment.ts`, with a
 compatibility export in `hub/test/fixture-environment.ts`. Native account fixtures
 keep their account builder at attach/replacement launches; prepare fixtures place

@@ -139,3 +139,4 @@ native-exited ancestors retain uncertain surviving branches (T-543)
 T-1298: Document detached watchdog native identity, durable legacy migration and lowest-tier refusal/checkpoint seams.
 T-1298 review M3: Cover provider-release/inspection ordering and the shared lease-writer fence against native-identity downgrade.
 T-1298 review M4: Require pre-start disposal, independent abortable setup and underlying checkpoint drainage for held-writer fixtures.
+T-1318: Document reasoned platform skips, the report-only skip-reason census and five-skipped receipt coverage.
