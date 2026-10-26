@@ -2,8 +2,8 @@
 id: T-1321
 kind: task
 title: "The gateway: an in-process edge serving remotes as the human, with its authority table and a test messenger"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1075
 branch: t/T-1321-the-gateway-an-in-process-edge-serving
 created: 2026-10-26T02:28:46.408Z
-updated: 2026-10-26T02:45:10.689Z
+updated: 2026-10-26T03:40:39.836Z
+closed: 2026-10-26T03:40:39.836Z
 ---
 
 ## Summary
@@ -27,10 +28,12 @@ A gateway module inside the hub process that starts and stops with the hub and r
 
 ## Acceptance criteria
 
-- [ ] C1. A test messenger behind the gateway receives a General message an agent posts, and its reply reaches the Coordinator as the human's message, with no new socket, listener or hub secret, and the gateway stops with the hub (test).
-  - failed: rev-26 [reviewer] · 2026-10-26T02:45:10.689Z · note Held remote startup can continue and reopen admission after stop completed; startup ownership/stop fencing needs M3.
-- [ ] C2. Each allowed request (General send, reply into the replied-to topic, answer, approval, hub.status, task.list, inbox.list) succeeds through the test messenger, and every other request, pairing approval included, is refused before dispatch with a reason naming it (test).
-  - failed: rev-26 [reviewer] · 2026-10-26T02:45:10.689Z · note Candidate help compatibility and per-test docs guards fail until owning frozen HUB_USAGE row and exact-path guide heading are corrected.
+- [x] C1. A test messenger behind the gateway receives a General message an agent posts, and its reply reaches the Coordinator as the human's message, with no new socket, listener or hub secret, and the gateway stops with the hub (test).
+  - done: impl-1321 · 2026-10-26T02:46:45.323Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1321-evidence-1 · 2026-10-26T03:01:04.295Z · commit 9180528a4ec1c564535617a95fa00750c3ee39f6
+- [x] C2. Each allowed request (General send, reply into the replied-to topic, answer, approval, hub.status, task.list, inbox.list) succeeds through the test messenger, and every other request, pairing approval included, is refused before dispatch with a reason naming it (test).
+  - done: impl-1321 · 2026-10-26T02:46:46.403Z
+  - verified: rev-26 [reviewer] · run rev-20261026-1321-evidence-1 · 2026-10-26T03:01:04.295Z · commit 9180528a4ec1c564535617a95fa00750c3ee39f6
 
 ## Comments
 
@@ -56,3 +59,35 @@ finding_counts: {"high":0,"medium":3,"low":0}
 Full source NOT CLEAR; consolidated A-12246 at tree 3dd669ede880de217dd90b6c339ee7a58be3a9a0. Standards M1 frozen HUB_USAGE mismatch, M2 per-test heading; Spec M3 held startup can continue after stop and reacquire later remotes/reopen admission. No further findings. Pre-replay/actor deny-by-default table, stored same-topic reply validation, human identity and per-remote result isolation otherwise match spec; local/web/spoke contracts remain intact. Six T2 local cases/A-12245 are supplementary, not configured/Linux/load evidence. Preserve original guard and lifecycle correction red/green outputs/exits/capture limits. Correct M1–M3, restore claimant done and request fresh pushed-head full source review before ordinary mode-free verification; no dev merge or assertion/authority relaxation. Coordinator's additional routing cover remains separate. Reviewer read-only, no execution.
 
 Criteria: C1 failed (Held remote startup can continue and reopen admission after stop completed; startup ownership/stop fencing needs M3.), C2 failed (Candidate help compatibility and per-test docs guards fail until owning frozen HUB_USAGE row and exact-path guide heading are corrected.).
+
+### rev-26 · 2026-10-26T02:48:20.328Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1321-source-2
+commit: 9180528a4ec1c564535617a95fa00750c3ee39f6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source2 CLEAR; A-12251 at tree ba1d3419ff851c6ccdb979f1b2e2bf27b84a0ca7, carrying source1 audit. M1 owning frozen HUB_USAGE row and M2 exact-path guide resolved. M3 startup is owned before callbacks, closing fences later acquisition/conversation, stop joins attempted starts and drains all attempted remotes; hello timer begins only after setup. Held-start regression retains final stop/order/no-later-start/admission assertions with pre-start cleanup and bounded receipts. Authority/wire/other six tests unchanged. Standards/Spec 0 findings. A-12250 local gateway7/7 plus help/docs/typecheck is supplementary, not configured/Linux/load evidence; preserve original outputs/exits/capture limits. C1/C2 done restored, runtime remains pending ordinary mode-free same-head verification then final evidence review. Coordinator's separate routing cover stays separate. No reviewer execution, dev merge or full-run request.
+
+### rev-26 · 2026-10-26T03:01:04.295Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261026-1321-evidence-1
+commit: 9180528a4ec1c564535617a95fa00750c3ee39f6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final ordinary same-head evidence CLEAR; A-12253 carries full source2/A-12251 and original e0d3676d/A-12252 exit 0. Actual 3,330 ordinary test passes / 447 file passes, no fail/skip/cancel; all seven gateway identities base pass and 5/5 load (35 separate executions), max 0.423828933 s. C1 mirror/human delivery/no extra listener or credential/conversation isolation/completed stop and M3 held-start fencing assertions pass; C2 all allowed and forbidden/malformed/reply/artifact/actor controls pass. T0/all T1/fallback all T2/Web complete; T3/T4 absent. Linux c-8 lon1, Node24.21.0/Neovim0.12.5, Headless Shell156.0.8078.4/v1248, workers2, lifetime645s/$0.0448. Host prepared-tree typecheck not remotely repeated; report-only lint/budget warnings retained. Standards/Spec no findings, C1/C2 verified. Coordinator's separate routing all-cover remains required by its instruction before enqueue, not supplied here. After-stage/epic QA separate; reviewer reads only.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-26T03:40:39.836Z
+
+Merged 10a73cec275ea5f4f13b8fe85de50a4acf3bd4fb onto dev.
