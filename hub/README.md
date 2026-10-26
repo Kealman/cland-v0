@@ -526,10 +526,10 @@ request ids are correlated per remote. The gateway stops accepting requests
 and closes its conversation before awaiting remote shutdown, ahead of store
 teardown. A stop during startup fences later remote acquisition and joins any
 held start before disposing its resources. The dispatcher conversation and its
-hello deadline begin only after remote setup completes. With no injected remotes
-there is no gateway conversation. This seam
-has no CLI configuration or real platform client, and adds no listener, socket,
-protocol frame or hub credential.
+hello deadline begin only after remote setup completes. With neither injected
+remotes nor an enabled, credentialed messenger supplied by `gatewayMessenger`, there is no gateway conversation. The configuration
+conditions are described under [Reloading project configuration](#reloading-project-configuration).
+The gateway adds no listener, socket, protocol frame or hub credential.
 
 Each remote's startup, optional `run()` lifetime promise and synchronous or
 promise-returning `receive` are isolated. A failure fences only that remote's
@@ -564,15 +564,16 @@ Every new remote or speech write must use this API before its sink: `.text` for
 artifact contents, `.value` for journal records and `redactFrame` for frames; use the callable
 form for diagnostic errors. Remote artifacts have no producer in the current
 gateway, which refuses artifact actions. The native journal and artifact sink
-regressions exercise the shared API for media/speech producers. The existing
-`start(send)` contract stays unchanged.
+regressions exercise the shared API for media/speech producers. Legacy `start(send)` implementations remain valid;
+pairing-capable adapters accept the optional trusted `pair` callback described below.
 
 `src/remote/authority.ts` permits exactly these existing requests:
 
 - `topic.send` into `general`, or with `replyTo` naming a stored message in the
   requested topic. Cross-topic or missing-message replies are refused, including
   in General. Sends carrying `artifacts` are refused.
-- `topic.answer` and `approval.answer`, through their existing human handlers.
+- `topic.answer` and `approval.answer`, through their existing human handlers,
+  excluding ids in the local `pairing:` namespace.
 - `hub.status`, `task.list` and `inbox.list`.
 
 The dispatcher checks this deny-by-default policy before replay, validation or
@@ -581,7 +582,9 @@ push, sync, configuration, artifact actions, pairing approval and unknown frame
 names, returns `ok: false`, `code: "forbidden"` and a reason naming the request.
 Any own `as` field is refused. The gateway owns the client hello and subscribes
 to model frames; a remote cannot open another identity or subscription. Local,
-web and spoke clients retain their existing policies and wire shapes.
+web and spoke clients retain their existing policies. Pairing rows are removed
+from remote inbox broadcasts, snapshots and `inbox.list` results, and excluded
+from remote inbox/status needs-you counts.
 
 Each remote supplies its trusted `via` (`telegram` or `discord`) to the gateway.
 The gateway passes it as in-process request metadata on the shared conversation,
@@ -622,7 +625,48 @@ persist their reasons and log `remote-disabled`. No remote has started, so none
 is stopped; the existing poller owner, hub and web edge remain serving. A stop
 requested while waiting cancels startup instead of recording a remote failure.
 
-### Durable remote outbox
+### Pairing codes
+
+`src/remote/pairing.ts` owns waiting requests and stranger reply counts on the
+existing `Store.remotes` tables in `hub.db`. A pairing-capable platform adapter
+receives `pair(identity)` as the optional second argument to `Remote.start`.
+It calls this trusted in-process callback for a stranger's pairing gesture,
+after validating the platform's private-chat/interaction identity. The callback
+uses the adapter's trusted `via`; it is not a remotely callable protocol frame.
+A string is one reply to send privately (ephemerally on Discord); `null` means
+silence. The adapter, not the callback, performs the platform send.
+The gateway applies its shared registered-secret policy to display names before
+persistence and to private reply text; numeric identity values keep the same
+refuse-on-routing-collision rule as frames.
+
+Each code has eight cryptographically random characters from
+`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. The reply includes the numeric user id,
+`cland remote approve <messenger> <code>` and the instruction to ask the project's
+owner to approve. Telegram requests expire after one hour; Discord requests after
+15 minutes. The hub's injected clock governs both the exact expiry and the next
+expiry timer, which is drained on shutdown. Startup also removes expired requests.
+Each messenger has at most three waiting codes. A sender gets at most two replies
+per messenger, including capacity refusals, then silence. Counts survive restart;
+a repeated live request reuses its code and original expiry. Names never identify.
+
+Local `inbox.list`, snapshots and pushed `inbox` frames carry optional `pairings`
+rows with `id = pairing:<messenger>:<code>`, numeric ids as strings, name, text,
+command, `since`, `expires` and `layer = now`. They count toward needs-you.
+No remote receives those rows or their count. Pairing ids are refused by the
+gateway's ordinary answer handlers before dispatch, as are all pairing-approval
+frame names. Existing inbox sections and departure kinds stay unchanged; pairing
+expiry removes the waiting record rather than making a remote-visible archive row.
+
+`InboxBoard.pairingCodes.get(id)` resolves only a live request for the local
+approval handler; `clear(messenger)` clears that messenger's waiting requests
+without changing its stranger counts. Approval and the `cland remote` command
+are the scope of T-1333/T-1334; issuing a code grants no remote access. The
+service's change notification invalidates dispatcher read replay immediately at
+persistence, independently of the coalesced inbox delta. Platform factories remain
+injected until their native clients are available; no real messenger is needed
+for the [component regression](../docs/agents/tests/hub-test-pairing-codes.test.ts.md).
+
+## Durable remote outbox
 
 `src/remote/outbox.ts` exports `Outbox` over one messenger's `RemoteStore`.
 Platform adapters own it under the gateway's poller lease. This is an internal
@@ -1154,13 +1198,14 @@ Answer origin is stored on the ask card and answer message as `answered_as: huma
 
 Sessions use `send` kind `request` with no `to`, a `request` of `review`, `qa` or `handover`, and a `subject` naming an item, artifact or session when they ask the human for that action. Any role may send a request; routine information uses `report`. These instructions live in the default role clauses and the project's `.cland/roles.toml`, which cland never rewrites. Running role sessions adopt changed clauses on their next launch; relaunch them after updating project clauses.
 
-The **inbox** (v0.1.2 §3.7, `InboxNow.dc.html`) carries four now sections, newest first within each: asks and command approvals, plan approvals, requests, then messages. Every row has its waiting start (`since`, also `ts` on asks/messages/requests); the approval carries `command` when the harness reported one.
+The **inbox** (v0.1.2 §3.7, `InboxNow.dc.html`) carries now sections, newest first within each: asks and command approvals, plan approvals, pairing approvals, requests, then messages. Every row has its waiting start (`since`, also `ts` on asks/messages/requests); the approval carries `command` when the harness reported one.
 
 | Section | What feeds it |
 | --- | --- |
 | `asks` | The open asks: `{"id","topic":{"id","title","item"?},"question","options","free","from","label","ts"}`. |
 | `approvals` | One pending `ApprovalRecord` per harness request, or one TUI-only record per waiting episode for adapters that report only state. Existing `id`, `session`, `label`, `harness`, `since`, `attach` and `command` fields remain. In either Neovim inbox view, `1` approves once, `2` approves always when offered, and `d` opens an optional denial note (Enter sends, Esc cancels). TUI-only rows keep Enter to attach. |
 | `plans` | Open epics with a valid plan whose approval is pending under `[plan] approval = "human"`: `{"id","subject","title","since","layer":"now"}`. No row under approval `none`. |
+| `pairings` (optional) | Live remote pairing codes, counted as needs-you; see [Pairing codes](#pairing-codes). Older hubs omit this section. |
 | `requests` | Unsettled explicit request messages: `{"id","from","fromRole"?,"request","subject","topic","text","ts","since","layer":"now"}`. |
 | `messages` | One row per now message addressed to the human, excluding progress, hub events, asks and requests. A waiting topic without an open ask contributes its latest eligible message. Each row carries `id`, sender/role, subject, topic, text, `ts`, `since` and layer. |
 | `waiting` | Topic metadata for older clients about topics waiting without an open ask; it no longer contributes to needsYou separately. |
@@ -1200,7 +1245,7 @@ winner closes the sheet and folds the row to its attributed outcome. TUI-only
 rows mark the command `answer in Neovim`, have no answer controls and never open
 a sheet, including Codex/OpenCode validation or payload-cap fallbacks.
 
-`needsYou` is the sum of now asks, command approvals, pending plans, open requests and now messages. `inbox.list`, pushed `inbox` events and `hub.status` agree. The workbench chip uses this count; the workbench and CLI render the four sections. Informational notifications appear only in the events view and never count, even when a project override raises them to `now`. A not-clear verdict and a session death appear there as warnings (D17). See [visibility classification](../docs/visibility.md). Human pin/mute choices use `visibility.set` (`surface: topics|sessions|artifacts`, `target`, `mode: pin|mute`), persist under `visibility` in `.cland/ui.json`, and publish a `visibility` invalidation event. They apply in the shared classifier to history, snapshots, live frames and now counts; session callers cannot set them. Preference writes are async and serialized with resumed-request measurement. Hub and Neovim share a nonempty directory lock at `ui.json.lock`; recovery removes only the dead owner's unique file, so a replacement writer is preserved. Uncertain PID owners remain held. Retention never removes an open ask or its message, or a waiting inbox request/message, whatever its age; an answered, withdrawn or cancelled ask goes with its message. Deleting a topic (its asks go with it) and a prune both publish the inbox again. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
+`needsYou` is the sum of now asks, command approvals, pending plans, live pairing codes, open requests and now messages. Remote reads exclude pairing codes. `inbox.list`, pushed `inbox` events and `hub.status` agree. The workbench chip uses this count; the CLI lists pairing rows with their id and copyable approve command. Dedicated workbench pairing cards belong to E-1313; existing workbench sections continue to render as before. Informational notifications appear only in the events view and never count, even when a project override raises them to `now`. A not-clear verdict and a session death appear there as warnings (D17). See [visibility classification](../docs/visibility.md). Human pin/mute choices use `visibility.set` (`surface: topics|sessions|artifacts`, `target`, `mode: pin|mute`), persist under `visibility` in `.cland/ui.json`, and publish a `visibility` invalidation event. They apply in the shared classifier to history, snapshots, live frames and now counts; session callers cannot set them. Preference writes are async and serialized with resumed-request measurement. Hub and Neovim share a nonempty directory lock at `ui.json.lock`; recovery removes only the dead owner's unique file, so a replacement writer is preserved. Uncertain PID owners remain held. Retention never removes an open ask or its message, or a waiting inbox request/message, whatever its age; an answered, withdrawn or cancelled ask goes with its message. Deleting a topic (its asks go with it) and a prune both publish the inbox again. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
 
 Rows leave by these rules:
 

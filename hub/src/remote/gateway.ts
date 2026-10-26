@@ -3,12 +3,15 @@ import { PROTOCOL_VERSION, type HubFrame, type RemoteVia } from '../protocol.ts'
 import type { LogFn } from '../log.ts';
 import { remoteRedactor, redactFrame, redactValue, type RemoteRedactor } from './redact.ts';
 import type { GatewayLease } from './poller-lease.ts';
+import type { PairingCodes } from './pairing.ts';
+import type { Pairing } from './state.ts';
+import { gatewayInbox } from './authority.ts';
 
 /** One active remote per messenger. The gateway owns its lifetime and frame port. */
 export type Remote = {
   id: string;
   via: RemoteVia;
-  start: (send: (frame: Record<string, unknown>) => void) => void | Promise<void>;
+  start: (send: (frame: Record<string, unknown>) => void, pair?: (identity: Pairing) => string | null) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
   /** Lifetime promise for the platform loop; stop must settle it and drain its writers. */
   run?: () => Promise<void>;
@@ -23,11 +26,12 @@ export type RemoteStates = {
   };
 };
 
-export type GatewayOptions = { lease?: GatewayLease; state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
+export type GatewayOptions = { pairing?: Pick<PairingCodes, 'issue'>; lease?: GatewayLease; state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
 
 /** An in-process edge: all remotes share one human dispatcher conversation. */
 export class Gateway {
   readonly #lease: GatewayLease | undefined;
+  readonly #pairing: Pick<PairingCodes, 'issue'> | undefined;
   readonly #leaseAbort = new AbortController();
   readonly #dispatcher: Pick<Dispatcher, 'open'>;
   readonly #remotes: readonly Remote[];
@@ -51,6 +55,7 @@ export class Gateway {
     this.#dispatcher = dispatcher;
     this.#remotes = [...remotes];
     this.#lease = options.lease;
+    this.#pairing = options.pairing;
     const statuses = new Map<string, RemoteStatus>();
     this.#state = options.state ?? { forMessenger: id => ({
       status: () => ({ ...(statuses.get(id) ?? { disabled: false, reason: null }) }),
@@ -92,7 +97,15 @@ export class Gateway {
           this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
           try { this.#conversation!.receive(JSON.stringify(this.#output({ ...frame, id })), remote.via); }
           catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
-        });
+        }, this.#pairing ? identity => {
+          if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
+          try {
+            // The display name is content; numeric identity stays routing and may never be rewritten.
+            const safe = this.#output({ userId: identity.userId, chatId: identity.chatId, guildId: identity.guildId, text: identity.name });
+            const reply = this.#pairing!.issue(remote.via, { userId: safe.userId, chatId: safe.chatId, guildId: safe.guildId, name: safe.text });
+            return reply === null ? null : this.#output({ text: reply }).text;
+          } catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
+        } : undefined);
       } catch (error) {
         this.#disable(remote, error);
       }
@@ -132,6 +145,8 @@ export class Gateway {
 
   #receive(remote: Remote, frame: HubFrame): void {
     if (this.#disabled.has(remote)) return;
+    if (frame.type === 'inbox') frame = { ...frame, inbox: gatewayInbox(frame.inbox) };
+    if (frame.type === 'snapshot' && frame.domain === 'inbox') frame = { ...frame, value: gatewayInbox(frame.value) };
     try {
       const work = remote.receive(this.#output(frame));
       if (work) this.#observe(remote, work);

@@ -271,7 +271,8 @@ export type InboxDeparture = { outcome?: AskOutcome | ApprovalOutcome; kind: Inb
 export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-stalled' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
 // hub/src/protocol.ts
-export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
+export type InboxPairing = { id: string; messenger: RemoteVia; code: string; userId: string; chatId: string; guildId: string | null; name: string; text: string; command: string; since: string; expires: string; layer: 'now' };
+export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; pairings?: InboxPairing[]; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
 
 // hub/src/protocol.ts
 export type EventKind = typeof EVENT_KINDS[number];

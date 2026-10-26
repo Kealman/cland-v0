@@ -60,8 +60,9 @@ test('the daemon keeps remote state only in hub.db across a hub restart, includi
   const path = join(root, '.cland', 'hub.db');
   const opened: string[] = [];
   const openDatabase = (path: string) => { opened.push(path); return new DatabaseSync(path); };
+  const clock = new FakeClock(new Date('2026-10-26T10:00:00Z')); // The persisted request stays live across this restart.
   const firstRemote = testMessenger('discord');
-  const first = await projectHub(t, root, {}, { gatewayRemotes: [firstRemote], openDatabase });
+  const first = await projectHub(t, root, {}, { gatewayRemotes: [firstRemote], openDatabase, clock });
   const database = new Store(path);
   const pairing = { userId: '9007199254740993', chatId: '1234567890123456789', guildId: '987654321098765432', name: 'Fixture human' };
   let messageId = '';
@@ -87,7 +88,7 @@ test('the daemon keeps remote state only in hub.db across a hub restart, includi
     assert.equal(database.remotes.pollerLease(), null, 'shutdown releases only after remote stop');
   } finally { await first.stop(); database.close(); }
   const secondRemote = testMessenger('discord');
-  const second = await projectHub(t, root, {}, { gatewayRemotes: [secondRemote], openDatabase });
+  const second = await projectHub(t, root, {}, { gatewayRemotes: [secondRemote], openDatabase, clock });
   const reopened = new Store(path);
   try {
     const status = await secondRemote.client.request({ type: 'hub.status' });

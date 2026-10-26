@@ -150,6 +150,7 @@
     "messages": [],
     "waiting": [],
     "needsYou": 0,
+    "pairings": [],
     "archiveToday": 0
   }
 }

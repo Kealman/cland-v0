@@ -129,6 +129,9 @@ export class RemoteStore {
       code: String(row.code), userId: String(row.user_id), chatId: String(row.chat_id), guildId: nullable(row.guild_id), name: String(row.name), created: String(row.created), expires: String(row.expires),
     }));
   }
+  removeRequest(code: string): void {
+    this.#db.prepare('delete from remote_requests where messenger = ? and code = ?').run(this.#id, code);
+  }
   countReply(userId: string): number {
     this.#db.prepare(`insert into remote_senders (messenger, user_id, replies) values (?, ?, 1)
       on conflict (messenger, user_id) do update set replies = replies + 1`).run(this.#id, userId);

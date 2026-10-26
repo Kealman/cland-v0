@@ -463,7 +463,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
 
   const startGateway = async () => {
     const create = (remotes: readonly Remote[]) => new Gateway(hub.dispatcher, remotes, {
-      state: options.gatewayState ?? store.remotes, log, redact: remoteOutput,
+      state: options.gatewayState ?? store.remotes, log, redact: remoteOutput, pairing: hub.core.inbox.pairingCodes,
       lease: new PollerLease(store.remotes, { clock, processes: options.gatewayProcesses ?? nativePollerProcesses(env) }),
     });
     if (options.gatewayMessenger) {

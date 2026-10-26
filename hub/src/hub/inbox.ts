@@ -17,6 +17,7 @@ import { HygieneError } from './hygiene.ts';
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { ItemSummary } from '../tracker/tracker.ts';
 import type { InboxWait, Store } from './store.ts';
+import { PairingCodes } from '../remote/pairing.ts';
 
 /** A session idle longer than this is worth a background event, unless the project's config says otherwise. */
 export const IDLE_NOTIFY_MS = 30 * 60 * 1000;
@@ -69,6 +70,7 @@ export type InboxPort = {
 };
 
 export class InboxBoard {
+  readonly pairingCodes: PairingCodes;
   readonly #port: InboxPort;
   readonly #clock: Clock;
   /** Departures accumulated by reads or the coalesced rebuild, published once with the next inbox delta. */
@@ -94,6 +96,7 @@ export class InboxBoard {
   constructor(port: InboxPort) {
     this.#port = port;
     this.#clock = port.clock ?? realClock;
+    this.pairingCodes = new PairingCodes(port.store.remotes, this.#clock, () => this.refresh());
     for (const { record: saved, fallback } of port.store.pendingApprovals()) {
       // A previous delivery attempt is not a native answer receipt.
       const { outcome: _attempt, ...facts } = saved;
@@ -118,6 +121,7 @@ export class InboxBoard {
 
   close(): void {
     this.#closed = true;
+    this.pairingCodes.close();
     if (this.#scheduled) this.#clock.clearTimeout(this.#scheduled);
     this.#scheduled = null;
     for (const t of this.#idle.values()) this.#clock.clearTimeout(t);
@@ -337,18 +341,19 @@ export class InboxBoard {
     }
     plans.sort((a, b) => b.since.localeCompare(a.since));
     placedApprovals.sort((a, b) => b.since.localeCompare(a.since));
-    const needsYou = rows.length;
+    const pairings = this.pairingCodes.waiting();
+    const needsYou = rows.length + pairings.length;
     const now = p.now(), today = new Date(now);
     // Status polls share the current projection. Time alone can move a message
     // to the old-message layer, so expire at that exact boundary as well.
-    let until = Infinity;
+    let until = Math.min(Infinity, ...pairings.map(row => Date.parse(row.expires)));
     for (const candidate of candidates) {
       const expires = Date.parse(candidate.message.ts) + OLD_MESSAGE_MS + 1;
       if (expires > now.getTime()) until = Math.min(until, expires);
     }
     this.#count = { value: needsYou, until };
     today.setHours(0, 0, 0, 0);
-    return { asks, approvals: placedApprovals, plans, requests, messages, waiting, needsYou,
+    return { asks, approvals: placedApprovals, plans, requests, messages, waiting, needsYou, pairings,
       archiveToday: p.store.inboxDeparturesToday(today.toISOString()),
       ...(archive ? { archive: p.store.inboxDepartures(new Date(now.getTime() - 7 * 86400_000).toISOString()) } : {}) };
   }
@@ -566,7 +571,12 @@ export class InboxBoard {
     this.#changed();
   }
 
-  needsYou(): number {
+  needsYou(includePairings = true): number {
+    if (!includePairings) {
+      // Use the rows and total from one projection even if expiry crosses a clock read.
+      const inbox = this.list();
+      return inbox.needsYou - (inbox.pairings?.length ?? 0);
+    }
     return this.#count && this.#port.now().getTime() < this.#count.until ? this.#count.value : this.list().needsYou;
   }
 

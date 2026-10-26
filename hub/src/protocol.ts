@@ -252,8 +252,9 @@ export type InboxDeparture = { outcome?: AskOutcome | ApprovalOutcome; kind: Inb
 
 export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-stalled' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
-/** The four now sections (§3.7); waiting remains as topic metadata for older clients. */
-export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
+export type InboxPairing = { id: string; messenger: RemoteVia; code: string; userId: string; chatId: string; guildId: string | null; name: string; text: string; command: string; since: string; expires: string; layer: 'now' };
+/** Pairings is additive: older hubs omit it. Waiting remains topic metadata for older clients. */
+export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; pairings?: InboxPairing[]; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
 
 /** Journal rows, newest first; cursors are opaque continuations over the append-only file. */
 export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat', 'rule'] as const;

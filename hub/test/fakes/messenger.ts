@@ -3,6 +3,7 @@ import type { HubFrame, RemoteVia } from '../../src/protocol.ts';
 import type { Outbox } from '../../src/remote/outbox.ts';
 import { outboxMessenger } from './outbox-messenger.ts';
 import type { RemoteStatus } from '../../src/remote/gateway.ts';
+import type { Pairing } from '../../src/remote/state.ts';
 
 export function testRemoteStates() {
   const rows = new Map<string, RemoteStatus>();
@@ -17,6 +18,7 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
   const options: { via?: RemoteVia; startError?: Error } = typeof source === 'string' ? { via: source } : source;
   const via = options.via ?? 'telegram';
   let send: ((frame: Record<string, unknown>) => void) | undefined;
+  let pair: ((identity: Pairing) => string | null) | undefined;
   let receive!: (chunk: string) => void;
   let outbox: Outbox | undefined;
   const delivery = outboxMessenger();
@@ -30,6 +32,10 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
   }, fn => { receive = fn; }, () => {});
   return {
     id, via, client, delivery,
+    pair(identity: Pairing): string | null {
+      if (!pair || stopped) throw new Error('test messenger pairing is not running');
+      return pair(identity);
+    },
     mirror(queue: Outbox) { outbox = queue; },
     get started() { return started; },
     get stopped() { return stopped; },
@@ -39,8 +45,9 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
       loop.reject(error);
     },
     failReceive(error: Error, type = 'message', async = false) { receiveFailure = { error, type, async }; },
-    start(request: (frame: Record<string, unknown>) => void) {
+    start(request: (frame: Record<string, unknown>) => void, pairing?: (identity: Pairing) => string | null) {
       send = request; started = true;
+      pair = pairing;
       if (options.startError) throw options.startError;
     },
     receive(frame: HubFrame): void | Promise<void> {

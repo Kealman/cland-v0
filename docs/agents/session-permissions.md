@@ -25,6 +25,8 @@ The in-process gateway acts as `human`, subject to its own narrower
 role grant. A remote can send in General or reply in the original message's
 topic, answer asks and approvals, and read status, tasks and inbox. All other
 requests, actor overrides and artifact sends are refused before dispatch.
+Pairing rows and their counts stay local; ids in the `pairing:` namespace are
+also refused by the gateway's ordinary ask/approval answer handlers.
 This policy applies only to the gateway edge; existing session, local client
 and web authority remain separate.
 

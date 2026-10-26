@@ -20,7 +20,7 @@ function age(since: string, now: number): string {
   return `${Math.floor(minutes / 1440)} d ${Math.floor(minutes % 1440 / 60)} h`;
 }
 
-/** The four now sections, uncapped. JSON remains the unmodified hub frame. */
+/** Current now sections, uncapped. JSON remains the unmodified hub frame. */
 function describe(v: Inbox): string {
   const lines: string[] = [], now = Date.now();
   const sender = (from: string, role?: string) => role ? `${from} [${role}]` : from;
@@ -30,6 +30,7 @@ function describe(v: Inbox): string {
       ...v.approvals.filter(a => !a.layer || a.layer === 'now').map(a => ({ since: a.since, text: `approval ${a.id}  ${a.session}  ${firstLine(a.command ?? a.subject.change ?? 'waiting for approval')}  ${a.state}  ${a.answerIn === 'tui' ? 'answer in Neovim' : a.choices.join(', ')}  from ${a.label}` })),
     ] },
     { title: 'Plan approvals', rows: (v.plans ?? []).map(p => ({ since: p.since, text: `plan ${p.id}  ${p.title}  ${p.stages ?? '?'} stages · ${p.lanes ?? '?'} lanes · ${p.items ?? '?'} items` })) },
+    { title: 'Pairing approvals', rows: (v.pairings ?? []).map(p => ({ since: p.since, text: `${p.id}  ${firstLine(p.text)}  ${p.command}` })) },
     { title: 'Requests to you', rows: (v.requests ?? []).map(r => ({ since: r.since, text: `${r.request} ${r.id}  ${r.subject}  ${firstLine(r.text)}  from ${sender(r.from, r.fromRole)}` })) },
     { title: 'Messages to you', rows: (v.messages ?? []).filter(m => !m.layer || m.layer === 'now').map(m => ({ since: m.since, text: `message ${m.id}  ${m.topic.item ?? m.topic.title} (${m.topic.id})  ${firstLine(m.text)}  from ${sender(m.from, m.fromRole)}` })) },
   ];

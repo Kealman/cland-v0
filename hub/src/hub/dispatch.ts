@@ -3,7 +3,7 @@ import { dependencyInstallText } from '../dependency-install.ts';
 import { ModelOutput } from './model-output.ts';
 import { composeSnapshot, snapshotFrames } from './snapshot.ts';
 import { webAuthorityRefusal } from './web-authority.ts';
-import { gatewayAuthorityRefusal } from '../remote/authority.ts';
+import { gatewayAuthorityRefusal, gatewayInbox } from '../remote/authority.ts';
 import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
 import { InvalidArgument, validateToolFrame } from '../tool-arguments.ts';
@@ -335,6 +335,7 @@ export class Dispatcher {
     }, () => options.projectConfig?.().merge ?? { queue: false, batch: 3, batchWaitMs: 600_000 }) : null;
     void this.#mergeQueueReady.then(() => { if (!this.#closed) this.#batches?.start(); });
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
+    options.core.inbox.pairingCodes.onChange(() => this.#guard.changed());
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
       this.#guard.changed();
@@ -1794,7 +1795,7 @@ export class Dispatcher {
             return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter ?? eventsFilter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
           case 'inbox.list':
-            return answer(core.inbox.list(frame.archive));
+            return answer(transport.edge === 'gateway' ? gatewayInbox(core.inbox.list(frame.archive)) : core.inbox.list(frame.archive));
           case 'inbox.decline':
             return answer(core.declineInboxRequest(frame.request));
           case 'inbox.read':
@@ -1882,7 +1883,7 @@ export class Dispatcher {
               const { harnesses: _harnesses, ...compact } = full;
               const base = frame.history === true ? full : compact;
               const tracker = this.#options.tracker;
-              return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+              return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(transport.edge !== 'gateway'), requests: { ...this.#guard.counters } } satisfies HubStatus };
             };
             if (frame.flushLogs === true && control.flushLogs) {
               const resumed = this.#guard.resumer(frame.type, client);

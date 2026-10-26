@@ -1,8 +1,14 @@
-import type { ClientRequest, HubFrame } from '../protocol.ts';
+import type { ClientRequest, HubFrame, Inbox } from '../protocol.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { SessionRequest } from '../adapters/requests.ts';
 
 type Rule = true | ((frame: Record<string, unknown>, topicOf: (message: string) => string | null) => string | null);
+
+/** Pairing rows are local access grants, never remote cards or notices. */
+export function gatewayInbox(inbox: Inbox): Inbox {
+  const { pairings, ...visible } = inbox;
+  return { ...visible, needsYou: visible.needsYou - (pairings?.length ?? 0) };
+}
 
 /** Deliberately partial: every absent action, including future frames, is refused. */
 export const GATEWAY_AUTHORITY = {
@@ -25,6 +31,8 @@ export const GATEWAY_AUTHORITY = {
 export function gatewayAuthorityRefusal(frame: Record<string, unknown>, topicOf: (message: string) => string | null): Extract<HubFrame, { ok: false }> | null {
   let reason: string | null;
   if (Object.hasOwn(frame, 'as')) reason = 'a remote cannot act as another identity';
+  else if (frame.type === 'topic.answer' && typeof frame.ask === 'string' && frame.ask.startsWith('pairing:')
+    || frame.type === 'approval.answer' && typeof frame.approval === 'string' && frame.approval.startsWith('pairing:')) reason = 'pairing approval is only available locally';
   else if (typeof frame.type !== 'string' || !Object.hasOwn(GATEWAY_AUTHORITY, frame.type)) reason = 'the gateway has no authority for this request';
   else {
     const rule = GATEWAY_AUTHORITY[frame.type as keyof typeof GATEWAY_AUTHORITY];

@@ -60,6 +60,11 @@ seams in `docs/agents/tests/hub-test-config-set.test.ts.md`. Inject
 and observe start/stop completion before claiming reload applied. Keep the
 legacy `gatewayRemotes` seam and CLI import budget unchanged.
 
+For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
+T1 service/T2 frame seams. Keep `Inbox.pairings` optional for older hubs, and
+strip pairing rows and counts at the remote boundary. Trusted pairing callbacks
+invalidate read replay at persistence, before coalesced inbox publication.
+
 For remote persistence and poller ownership, use `Store.remotes` on the existing
 hub.db handle, with platform ids kept as strings/TEXT. The T1 storage/lease seams
 and T2 frame/restart/stop receipts are documented in

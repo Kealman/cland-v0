@@ -156,4 +156,6 @@ T-1330: Point validation, rotation registration and remote/speech writes at the 
 
 T-1331: Document remote/speech config reload, injected messenger and completion receipts.
 T-1329: Document environment-first secret resolution, file-only CLI edits and the shared final child credential filter.
+
+T-1332: Route pairing code, local lookup and remote exclusion work to the T1/T2 pairing seams.
 T-1330 integration: Resolve with the explicit daemon environment and reuse validation/registration before reload activation.

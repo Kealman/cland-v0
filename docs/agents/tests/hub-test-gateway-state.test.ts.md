@@ -12,7 +12,9 @@ check its lease before the stop receipt; a rejected stop must retain the row.
 
 Restart the in-process hub and compare persisted records, including literal
 Discord-sized TEXT ids and a map to the exact sent hub message id. Capture
-database-open paths and directory entries around remote writes to prove they
+the request's creation time in the injected clock on both hubs so it remains
+live across the persistence assertion; expired requests are pruned at startup.
+Capture database-open paths and directory entries around remote writes to prove they
 use only hub.db, without a separate state file. Close supplementary Store
 handles after gateway shutdown and before disposable-directory cleanup.
 
