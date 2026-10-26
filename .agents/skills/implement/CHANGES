@@ -141,6 +141,7 @@ T-1298 review M3: Cover provider-release/inspection ordering and the shared leas
 T-1298 review M4: Require pre-start disposal, independent abortable setup and underlying checkpoint drainage for held-writer fixtures.
 T-1318: Document reasoned platform skips, the report-only skip-reason census and five-skipped receipt coverage.
 T-1321: Document the gateway frame/test-messenger seam, authority ordering and stored reply-topic boundary.
+T-1323: Document shared hub.db remote storage, TEXT platform ids and fake-time/process poller ownership and drainage seams.
 
 T-1322: Document trusted remote provenance, denial-note propagation and headless workbench compatibility tests.
 T-1326: Route remote failure-isolation work to the gateway frame/fake-messenger guidance, including disabled state/log and writer drainage receipts.

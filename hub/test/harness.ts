@@ -1,3 +1,4 @@
+import { fakePollerProcesses } from './fakes/poller-processes.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import { realClock, type Clock } from '../src/hub/clock.ts';
@@ -397,6 +398,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  gatewayProcesses?: import('../src/remote/poller-lease.ts').PollerProcesses;
   gatewayRemotes?: readonly import('../src/remote/gateway.ts').Remote[];
   gatewayState?: import('../src/remote/gateway.ts').RemoteStates;
   artifactOpen?: typeof import('node:fs/promises').open;
@@ -458,7 +460,10 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   }) : undefined);
   // No infrastructure child processes in T2. Native contracts opt in explicitly;
   // callers can override individual facts without restoring the other native probes.
+  const gatewayProcesses = fakePollerProcesses();
+  gatewayProcesses.rows.set(process.pid, { alive: true, started: 'fixture-hub-start', identity: 'fixture-hub-birth' });
   const probes = options.probes !== 'native' ? {
+    gatewayProcesses: gatewayProcesses.processes,
     priorityProbe: () => 0,
     lintWarmer: { request: () => {}, close: async () => {} },
     git: async () => null,

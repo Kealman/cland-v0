@@ -37,6 +37,15 @@ step. Preserve optional-source compatibility for old ask outcomes; the headless
 workbench regressions are `web/test/remote-via.test.ts` and
 `nvim/test/remote-via.test.ts`.
 
+For remote persistence and poller ownership, use `Store.remotes` on the existing
+hub.db handle, with platform ids kept as strings/TEXT. The T1 storage/lease seams
+and T2 frame/restart/stop receipts are documented in
+`docs/agents/tests/hub-test-remote-state.test.ts.md`,
+`docs/agents/tests/hub-test-poller-lease.test.ts.md` and
+`docs/agents/tests/hub-test-gateway-state.test.ts.md`. Use fake native process
+facts and fake time; retain live or unreadable holders, and release a lease
+only after positive remote stop receipts. Never signal a token consumer.
+
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 
 Reservation-lock shutdown uses the cheaper T1 ownership and T2 `projectHub`

@@ -1,0 +1,166 @@
+import type { DatabaseSync } from 'node:sqlite';
+
+// Additive tables on Store's existing hub.db handle. All platform ids are TEXT,
+// including Telegram ids, so no adapter can accidentally round a snowflake.
+const SCHEMA = `
+create table if not exists remote_state (
+  messenger text not null, key text not null, value text not null,
+  primary key (messenger, key)
+);
+create table if not exists remote_status (
+  messenger text primary key, disabled integer not null, reason text
+);
+create table if not exists remote_pairings (
+  messenger text primary key, user_id text not null, chat_id text not null,
+  guild_id text, name text not null
+);
+create table if not exists remote_requests (
+  messenger text not null, code text not null, user_id text not null, chat_id text not null,
+  guild_id text, name text not null, created text not null, expires text not null,
+  primary key (messenger, code)
+);
+create table if not exists remote_senders (
+  messenger text not null, user_id text not null, replies integer not null,
+  primary key (messenger, user_id)
+);
+create table if not exists remote_messages (
+  messenger text not null, chat_id text not null, message_id text not null,
+  topic text not null, message text, ask text, approval text,
+  primary key (messenger, chat_id, message_id)
+);
+create index if not exists remote_messages_source on remote_messages (messenger, message);
+create table if not exists remote_outbox (
+  messenger text not null, id text not null, kind text not null, source text,
+  state text not null, payload text not null, created text not null, updated text not null,
+  primary key (messenger, id)
+);
+create index if not exists remote_outbox_state on remote_outbox (messenger, state, created);
+create table if not exists remote_outbox_attempts (
+  messenger text not null, id text not null, job text not null, at text not null, outcome text,
+  primary key (messenger, id),
+  foreign key (messenger, job) references remote_outbox (messenger, id) on delete cascade
+);
+create index if not exists remote_outbox_attempt_job on remote_outbox_attempts (messenger, job, at);
+create table if not exists remote_poller_lease (
+  singleton integer primary key check (singleton = 1), owner text not null,
+  pid integer not null, started text not null, identity text not null
+);
+`;
+
+export type RemoteStatus = { disabled: boolean; reason: string | null };
+export type Pairing = { userId: string; chatId: string; guildId: string | null; name: string };
+export type PairingRequest = Pairing & { code: string; created: string; expires: string };
+export type RemoteMessage = { chatId: string; messageId: string; topic: string; message: string | null; ask: string | null; approval: string | null };
+/** Queue behaviour belongs to the outbox, not its persistence layer. */
+export type OutboxJob = { id: string; kind: string; source: string | null; state: string; payload: unknown; created: string; updated: string };
+export type OutboxAttempt = { id: string; job: string; at: string; outcome: string | null };
+export type PollerOwner = { owner: string; pid: number; started: string; identity: string };
+const nullable = (value: unknown): string | null => value === null ? null : String(value);
+
+/** Owned by Store: no connection, file, timer or independent shutdown to drain. */
+export class RemoteState {
+  readonly #db: DatabaseSync;
+  constructor(db: DatabaseSync) { this.#db = db; db.exec(SCHEMA); }
+  forMessenger(id: string): RemoteStore { return new RemoteStore(this.#db, id); }
+  pollerLease(): PollerOwner | null {
+    const row = this.#db.prepare('select * from remote_poller_lease where singleton = 1').get();
+    return row ? { owner: String(row.owner), pid: Number(row.pid), started: String(row.started), identity: String(row.identity) } : null;
+  }
+  /** Compare-and-swap after asynchronous native inspection; never evict a successor. */
+  takePollerLease(holder: PollerOwner, previous: string | null): boolean {
+    if (previous === null) return this.#db.prepare('insert or ignore into remote_poller_lease (singleton, owner, pid, started, identity) values (1, ?, ?, ?, ?)')
+      .run(holder.owner, holder.pid, holder.started, holder.identity).changes === 1;
+    return this.#db.prepare('update remote_poller_lease set owner = ?, pid = ?, started = ?, identity = ? where singleton = 1 and owner = ?')
+      .run(holder.owner, holder.pid, holder.started, holder.identity, previous).changes === 1;
+  }
+  releasePollerLease(owner: string): void {
+    this.#db.prepare('delete from remote_poller_lease where singleton = 1 and owner = ?').run(owner);
+  }
+}
+
+/** Messenger-scoped records; tokens and keys belong in the secrets file. */
+export class RemoteStore {
+  readonly #db: DatabaseSync;
+  readonly #id: string;
+  constructor(db: DatabaseSync, id: string) { this.#db = db; this.#id = id; }
+
+  get(key: string): string | null {
+    const row = this.#db.prepare('select value from remote_state where messenger = ? and key = ?').get(this.#id, key);
+    return row ? String(row.value) : null;
+  }
+  set(key: string, value: string | null): void {
+    if (value === null) { this.#db.prepare('delete from remote_state where messenger = ? and key = ?').run(this.#id, key); return; }
+    this.#db.prepare(`insert into remote_state (messenger, key, value) values (?, ?, ?)
+      on conflict (messenger, key) do update set value = excluded.value`).run(this.#id, key, value);
+  }
+  status(): RemoteStatus {
+    const row = this.#db.prepare('select disabled, reason from remote_status where messenger = ?').get(this.#id);
+    return { disabled: row?.disabled === 1, reason: row?.reason === null || !row ? null : String(row.reason) };
+  }
+  /** The gateway supplies an already-redacted reason; never persist a native error. */
+  setStatus(status: RemoteStatus): void {
+    this.#db.prepare(`insert into remote_status (messenger, disabled, reason) values (?, ?, ?)
+      on conflict (messenger) do update set disabled = excluded.disabled, reason = excluded.reason`)
+      .run(this.#id, status.disabled ? 1 : 0, status.reason);
+  }
+  pairing(): Pairing | null {
+    const row = this.#db.prepare('select user_id, chat_id, guild_id, name from remote_pairings where messenger = ?').get(this.#id);
+    return row ? { userId: String(row.user_id), chatId: String(row.chat_id), guildId: row.guild_id === null ? null : String(row.guild_id), name: String(row.name) } : null;
+  }
+  setPairing(pairing: Pairing | null): void {
+    if (!pairing) { this.#db.prepare('delete from remote_pairings where messenger = ?').run(this.#id); return; }
+    this.#db.prepare(`insert into remote_pairings (messenger, user_id, chat_id, guild_id, name) values (?, ?, ?, ?, ?)
+      on conflict (messenger) do update set user_id = excluded.user_id, chat_id = excluded.chat_id, guild_id = excluded.guild_id, name = excluded.name`)
+      .run(this.#id, pairing.userId, pairing.chatId, pairing.guildId, pairing.name);
+  }
+  putRequest(request: PairingRequest): void {
+    this.#db.prepare(`insert into remote_requests (messenger, code, user_id, chat_id, guild_id, name, created, expires) values (?, ?, ?, ?, ?, ?, ?, ?)
+      on conflict (messenger, code) do update set user_id = excluded.user_id, chat_id = excluded.chat_id,
+      guild_id = excluded.guild_id, name = excluded.name, created = excluded.created, expires = excluded.expires`)
+      .run(this.#id, request.code, request.userId, request.chatId, request.guildId, request.name, request.created, request.expires);
+  }
+  requests(): PairingRequest[] {
+    return this.#db.prepare('select * from remote_requests where messenger = ? order by created, code').all(this.#id).map(row => ({
+      code: String(row.code), userId: String(row.user_id), chatId: String(row.chat_id), guildId: nullable(row.guild_id), name: String(row.name), created: String(row.created), expires: String(row.expires),
+    }));
+  }
+  countReply(userId: string): number {
+    this.#db.prepare(`insert into remote_senders (messenger, user_id, replies) values (?, ?, 1)
+      on conflict (messenger, user_id) do update set replies = replies + 1`).run(this.#id, userId);
+    return this.replies(userId);
+  }
+  replies(userId: string): number {
+    return Number(this.#db.prepare('select replies from remote_senders where messenger = ? and user_id = ?').get(this.#id, userId)?.replies ?? 0);
+  }
+  putMessage(message: RemoteMessage): void {
+    this.#db.prepare(`insert into remote_messages (messenger, chat_id, message_id, topic, message, ask, approval) values (?, ?, ?, ?, ?, ?, ?)
+      on conflict (messenger, chat_id, message_id) do update set topic = excluded.topic,
+      message = excluded.message, ask = excluded.ask, approval = excluded.approval`)
+      .run(this.#id, message.chatId, message.messageId, message.topic, message.message, message.ask, message.approval);
+  }
+  message(chatId: string, messageId: string): RemoteMessage | null {
+    const row = this.#db.prepare('select * from remote_messages where messenger = ? and chat_id = ? and message_id = ?').get(this.#id, chatId, messageId);
+    return row ? { chatId: String(row.chat_id), messageId: String(row.message_id), topic: String(row.topic), message: nullable(row.message), ask: nullable(row.ask), approval: nullable(row.approval) } : null;
+  }
+  putOutbox(job: OutboxJob): void {
+    this.#db.prepare(`insert into remote_outbox (messenger, id, kind, source, state, payload, created, updated) values (?, ?, ?, ?, ?, ?, ?, ?)
+      on conflict (messenger, id) do update set kind = excluded.kind, source = excluded.source,
+      state = excluded.state, payload = excluded.payload, created = excluded.created, updated = excluded.updated`)
+      .run(this.#id, job.id, job.kind, job.source, job.state, JSON.stringify(job.payload), job.created, job.updated);
+  }
+  outbox(): OutboxJob[] {
+    return this.#db.prepare('select * from remote_outbox where messenger = ? order by created, id').all(this.#id).map(row => ({
+      id: String(row.id), kind: String(row.kind), source: nullable(row.source), state: String(row.state), payload: JSON.parse(String(row.payload)), created: String(row.created), updated: String(row.updated),
+    }));
+  }
+  putAttempt(attempt: OutboxAttempt): void {
+    this.#db.prepare(`insert into remote_outbox_attempts (messenger, id, job, at, outcome) values (?, ?, ?, ?, ?)
+      on conflict (messenger, id) do update set outcome = excluded.outcome`)
+      .run(this.#id, attempt.id, attempt.job, attempt.at, attempt.outcome);
+  }
+  attempts(job: string): OutboxAttempt[] {
+    return this.#db.prepare('select * from remote_outbox_attempts where messenger = ? and job = ? order by at, id').all(this.#id, job).map(row => ({
+      id: String(row.id), job: String(row.job), at: String(row.at), outcome: nullable(row.outcome),
+    }));
+  }
+}

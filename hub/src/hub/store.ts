@@ -6,6 +6,7 @@ const itemKey = (id: string): string => Number.isSafeInteger(idNumber(id)) ? `T-
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
+import { RemoteState } from '../remote/state.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
 import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, ThreadRun, TopicHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskOutcome, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
@@ -408,6 +409,7 @@ export function hasRoleMappedSession(path: string, sessionId: string): boolean {
 }
 
 export class Store implements HygieneMemory {
+  readonly remotes: RemoteState;
   readonly #db: DatabaseSync;
   readonly #statements = new Map<string, StatementSync>();
   #itemResolver: (id: string) => string | null = () => null;
@@ -431,6 +433,7 @@ export class Store implements HygieneMemory {
     });
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
     this.#db.exec(SCHEMA);
+    this.remotes = new RemoteState(this.#db);
     this.#migrate();
     this.#db.exec(LATE_INDEXES);
     this.#db.exec(SEQ_SETUP);

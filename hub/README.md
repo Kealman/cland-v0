@@ -538,9 +538,10 @@ requests and frame deliveries, clears its pending correlations, records
 and logs `remote-disabled`. Its partially acquired resources stop once, while
 the hub, web edge and other remotes continue serving even during that cleanup.
 Shutdown joins all run/receive work and remote stop receipts; a failed cleanup
-remains a shutdown error. The sink defaults to memory; callers may inject a
-durable sink with `status()` and `setStatus()`. A new start resets that remote's
-status before setup. `serveProject` accepts the injected sink as `gatewayState`.
+remains a shutdown error. A directly constructed gateway defaults to a memory
+sink; the daemon supplies hub.db storage, overridable through `gatewayState`.
+Sinks expose `status()` and `setStatus()`. A new start resets that remote's
+status before setup.
 `src/remote/redact.ts` exports `remoteRedactor(secrets)` for the gateway's
 `redact` option: registered values and conservative URL, Bearer and token/key
 contexts are replaced in one pass before state, log or cleanup error output;
@@ -574,6 +575,34 @@ or `via Discord` on remote messages and outcomes. Local messages keep `hub`;
 local approval sources remain `neovim`, `web` and `harness`. No new feature
 negotiation or protocol version is required: old hello and request shapes work,
 and clients accept ask outcomes without `via` from an older hub or stored row.
+
+### Remote storage and poller ownership
+
+`Store.remotes` uses Store's existing `hub.db` connection. The additive
+`remote_*` tables hold per-messenger status (`disabled`, already-redacted
+`reason`), pairings, waiting codes, stranger reply counts, cursor/resume/identify
+scalars, chat-message maps, outbox jobs and attempts. User, chat, guild and
+message ids are TEXT, including Telegram ids; Discord snowflakes must never
+pass through a JavaScript number. Outbox behaviour is separate from these
+storage primitives. Tokens and keys never belong in these tables.
+
+An active daemon gateway acquires the singleton `remote_poller_lease` before
+starting any remote. It records a unique owner id, PID, process start time and
+precise native birth identity. A second gateway checks for release or proven
+death for at most 60 seconds. A reused PID with a different native birth can be
+reclaimed; unreadable birth preserves the holder, and the ps timestamp alone
+never proves reuse. Native probes are capped by the remaining wait. Nothing
+signals or stops the holder. The lease is released after every owned remote's
+successful stop receipt; incomplete shutdown retains ownership for recovery.
+With no active remotes, no poller lease is taken. There is no separate remote
+state file or new CLI setting for this internal edge.
+
+The daemon supplies `Store.remotes` as the gateway's status sink unless a test
+injects `gatewayState`. Lease acquisition errors, including the 60-second
+conflict, disable all of that gateway's remotes through the shared redactor,
+persist their reasons and log `remote-disabled`. No remote has started, so none
+is stopped; the existing poller owner, hub and web edge remain serving. A stop
+requested while waiting cancels startup instead of recording a remote failure.
 
 ## Connection events filter
 

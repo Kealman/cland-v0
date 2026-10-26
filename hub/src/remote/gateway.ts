@@ -2,6 +2,7 @@ import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
 import { PROTOCOL_VERSION, type HubFrame, type RemoteVia } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { remoteRedactor } from './redact.ts';
+import type { GatewayLease } from './poller-lease.ts';
 
 /** One active remote per messenger. The gateway owns its lifetime and frame port. */
 export type Remote = {
@@ -22,10 +23,12 @@ export type RemoteStates = {
   };
 };
 
-export type GatewayOptions = { state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
+export type GatewayOptions = { lease?: GatewayLease; state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
 
 /** An in-process edge: all remotes share one human dispatcher conversation. */
 export class Gateway {
+  readonly #lease: GatewayLease | undefined;
+  readonly #leaseAbort = new AbortController();
   readonly #dispatcher: Pick<Dispatcher, 'open'>;
   readonly #remotes: readonly Remote[];
   readonly #started: Remote[] = [];
@@ -46,6 +49,7 @@ export class Gateway {
   constructor(dispatcher: Pick<Dispatcher, 'open'>, remotes: readonly Remote[], options: GatewayOptions = {}) {
     this.#dispatcher = dispatcher;
     this.#remotes = [...remotes];
+    this.#lease = options.lease;
     const statuses = new Map<string, RemoteStatus>();
     this.#state = options.state ?? { forMessenger: id => ({
       status: () => ({ ...(statuses.get(id) ?? { disabled: false, reason: null }) }),
@@ -63,6 +67,14 @@ export class Gateway {
   }
 
   async #start(): Promise<void> {
+    try { await this.#lease?.acquire(this.#leaseAbort.signal); }
+    catch (error) {
+      if (this.#closing) throw error;
+      // No platform has started. Disable the gateway's remotes, preserving the
+      // existing owner and every other hub edge; there is nothing here to stop.
+      for (const remote of this.#remotes) this.#disable(remote, error);
+      return;
+    }
     for (const remote of this.#remotes) {
       if (this.#closing) throw new Error('gateway stopped during startup');
       // A partially started remote still owns resources that stop must drain.
@@ -128,6 +140,7 @@ export class Gateway {
     const reason = this.#reason(error);
     this.#state.forMessenger(remote.id).setStatus({ disabled: true, reason });
     this.#log({ event: 'remote-disabled', remote: remote.id, reason });
+    if (!this.#started.includes(remote)) return;
     // Keep ownership of partial startup and runtime resources through their stop receipt.
     void this.#stopRemote(remote).catch(error => {
       // stopRemote has already replaced the original error with a sanitized Error.
@@ -151,6 +164,7 @@ export class Gateway {
   stop(): Promise<void> {
     this.#closing = true;
     this.#open = false;
+    this.#leaseAbort.abort();
     return this.#stopping ??= Promise.resolve().then(() => this.#stop());
   }
 
@@ -165,6 +179,8 @@ export class Gateway {
     this.#pending.clear();
     for (const remote of this.#started) await attempt(() => this.#stopRemote(remote));
     await Promise.all(this.#work);
+    // Incomplete drainage may leave a token consumer; keep its durable owner.
+    if (!failures.length) await attempt(() => this.#lease?.release());
     if (failures.length) throw new AggregateError(failures, 'gateway shutdown failed');
   }
 }
