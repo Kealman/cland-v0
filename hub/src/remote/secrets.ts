@@ -9,8 +9,25 @@ export const SECRET_NAMES = ['telegram.token', 'discord.token', 'speech.elevenla
 export type SecretName = typeof SECRET_NAMES[number];
 export type Secrets = Partial<Record<SecretName, string>>;
 
-/** File-only resolver shared by startup, CLI and remote/speech consumers. Missing is empty. */
-export function resolveSecrets(root: string): Secrets {
+const SECRET_ENV: Record<SecretName, string> = {
+  'telegram.token': 'CLAND_TELEGRAM_TOKEN',
+  'discord.token': 'CLAND_DISCORD_TOKEN',
+  'speech.elevenlabs_key': 'ELEVENLABS_API_KEY',
+  'speech.xai_key': 'XAI_API_KEY',
+};
+
+/** Hub/provider resolution: explicit environment values override stored values. */
+export function resolveSecrets(root: string, env: NodeJS.ProcessEnv = process.env): Secrets {
+  const secrets = readSecretsFile(root);
+  for (const name of SECRET_NAMES) {
+    const value = env[SECRET_ENV[name]];
+    if (value !== undefined) secrets[name] = value;
+  }
+  return secrets;
+}
+
+/** Stored values only: CLI edits must never copy environment overrides into the file. */
+export function readSecretsFile(root: string): Secrets {
   const path = join(root, '.cland/secrets.toml');
   if (symlinkOnPath(root, path) !== null) throw new Error('.cland/secrets.toml: symlink refused; replace it with a regular file');
   let fd: number;
@@ -64,13 +81,13 @@ export function validateSecretValue(value: string): void {
 
 export function setSecret(root: string, name: SecretName, value: string): void {
   validateSecretValue(value);
-  const secrets = resolveSecrets(root);
+  const secrets = readSecretsFile(root);
   secrets[name] = value;
   saveSecrets(root, secrets);
 }
 
 export function unsetSecret(root: string, name: SecretName): void {
-  const secrets = resolveSecrets(root);
+  const secrets = readSecretsFile(root);
   if (!Object.hasOwn(secrets, name)) return;
   delete secrets[name];
   saveSecrets(root, secrets);

@@ -39,8 +39,10 @@ workbench regressions are `web/test/remote-via.test.ts` and
 
 For project secret storage or CLI input, read `docs/agents/secrets.md` and use
 the T1 stream, T2 startup/CLI and native Git seams in
-`docs/agents/tests/hub-test-secrets.test.ts.md`. Share `resolveSecrets(root)`;
-keep values in stdin or the private file and diagnostics limited to fixed reasons.
+`docs/agents/tests/hub-test-secrets.test.ts.md`. Share `resolveSecrets(root)` for hub/provider values (environment overrides win);
+use `readSecretsFile(root)` for file-only CLI reads and edits. Filter all four remote
+secret environment names with `withoutExecutorCredentials` after child overlays,
+including the speech command launcher. Keep values in stdin or the private file and diagnostics limited to fixed reasons.
 Preserve custom ignore bytes and require a final literal secrets rule before
 input. Use the fixture's registered close/output barrier before root removal.
 Load credentials only at daemon startup, keeping `project.ts` import-free of

@@ -3,7 +3,7 @@ import { emitKeypressEvents } from 'node:readline';
 import type { Readable } from 'node:stream';
 import { ensureGitignore, layout, MANAGED_MARK, projectRoot } from '../project.ts';
 import { symlinkOnPath } from '../init/files.ts';
-import { isSecretName, resolveSecrets, SECRET_NAMES, secretFingerprint, setSecret, unsetSecret } from '../remote/secrets.ts';
+import { isSecretName, readSecretsFile, SECRET_NAMES, secretFingerprint, setSecret, unsetSecret } from '../remote/secrets.ts';
 
 const USAGE = 'usage: cland secret set <name> | list | unset <name>; set reads stdin or a hidden prompt, never a value argument';
 
@@ -16,14 +16,14 @@ export async function runSecret(args: string[], cwd = process.cwd()): Promise<nu
   const l = layout(root);
   if (!existsSync(l.dir)) throw new Error('no cland project here; run cland init first');
   if (sub === 'list') {
-    const secrets = resolveSecrets(root);
+    const secrets = readSecretsFile(root);
     for (const name of SECRET_NAMES) {
       const value = secrets[name];
       if (value !== undefined) process.stdout.write(`${name} ${secretFingerprint(value)}\n`);
     }
   } else {
     // Validate the file before reading stdin, and never follow a project-owned ignore symlink.
-    resolveSecrets(root);
+    readSecretsFile(root);
     if (symlinkOnPath(root, l.gitignore) !== null) throw new Error('.cland/.gitignore: symlink refused');
     ensureGitignore(l);
     const ignore = readFileSync(l.gitignore, 'utf8');

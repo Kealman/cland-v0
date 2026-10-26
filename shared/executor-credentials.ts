@@ -1,7 +1,10 @@
-/** Provider credentials used by the hub executor. Keep new provider token names here.
- * The current executor has no configurable token-variable name.
+/** Hub-only executor, messenger and speech credentials.
+ * Every child launch, including speech commands, filters these after overlays.
  */
-export const EXECUTOR_CREDENTIALS: ReadonlySet<string> = new Set(['DIGITALOCEAN_TOKEN']);
+export const EXECUTOR_CREDENTIALS: ReadonlySet<string> = new Set([
+  'DIGITALOCEAN_TOKEN', 'CLAND_TELEGRAM_TOKEN', 'CLAND_DISCORD_TOKEN',
+  'ELEVENLABS_API_KEY', 'XAI_API_KEY',
+]);
 
 /** Filter by name before reading values; never mutate the hub's API environment.
  * Apply after environment overlays so an overlay cannot restore a credential.

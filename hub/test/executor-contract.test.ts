@@ -25,10 +25,11 @@ test('executor credentials are stripped by name without reading values or changi
   const { machineEnv } = await import('../src/executor/droplet/machine.ts');
   const { suiteTestEnv } = await import('../src/verification-occasion.ts');
   const base = { PATH: '/fixture/bin', ANTHROPIC_API_KEY: 'test-harness-key' };
-  Object.defineProperty(base, 'DIGITALOCEAN_TOKEN', { enumerable: true, get: () => { throw new Error('credential value must not be read'); } });
+  const names = ['DIGITALOCEAN_TOKEN', 'CLAND_TELEGRAM_TOKEN', 'CLAND_DISCORD_TOKEN', 'ELEVENLABS_API_KEY', 'XAI_API_KEY'];
+  for (const name of names) Object.defineProperty(base, name, { enumerable: true, get: () => { throw new Error('credential value must not be read'); } });
   for (const filter of [withoutExecutorCredentials, machineEnv, suiteTestEnv.bind(null, undefined)]) {
     const env = filter(base);
-    assert.equal(Object.hasOwn(env, 'DIGITALOCEAN_TOKEN'), false);
+    for (const name of names) assert.equal(Object.hasOwn(env, name), false, name);
     assert.equal(env.PATH, '/fixture/bin');
     assert.equal(env.ANTHROPIC_API_KEY, 'test-harness-key', 'harness authentication remains available');
     assert.equal(Object.hasOwn(base, 'DIGITALOCEAN_TOKEN'), true, 'hub API environment is intact');

@@ -2053,6 +2053,23 @@ opens its logs or listeners; symbolic links, non-regular files and multiple
 hard links are refused. Parse errors report a fixed reason without quoting
 the file. The resolver returns only the four supported dotted keys.
 
+At hub/provider resolution, `CLAND_TELEGRAM_TOKEN`, `CLAND_DISCORD_TOKEN`,
+`ELEVENLABS_API_KEY` and `XAI_API_KEY` override `telegram.token`, `discord.token`,
+`speech.elevenlabs_key` and `speech.xai_key`, respectively. An absent variable
+falls back to the file; a present variable is an explicit override. An absent
+file is allowed. File safety and parsing checks still apply when overrides exist.
+Set these in the hub's launch environment; changing another shell's environment
+does not change a running hub's environment.
+
+All four names, alongside `DIGITALOCEAN_TOKEN`, are removed by the shared
+`withoutExecutorCredentials` filter after child environment overlays. Harnesses,
+verification workers and fixture children use that filter. The speech command
+provider must use the same final filter when its launcher is implemented in
+E-1311; its generic child contract is covered here without a speech provider or
+platform call. The hub retains its own credentials for provider requests.
+
+`cland secret` edits and lists the file only; environment overrides are never
+copied into it, changed by unset, or included in list output.
 `cland secret list` prints one stored name and its 12-character SHA-256
 fingerprint prefix per line; an empty store prints nothing. `cland secret unset
 <name>` removes just that value. Set and unset print only the operation and name.

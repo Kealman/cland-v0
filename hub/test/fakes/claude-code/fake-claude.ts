@@ -69,7 +69,7 @@ const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_COD
 const SELF = fileURLToPath(import.meta.url);
 recordCall('claude-code', process.argv.slice(2));
 
-type Job = { configDir: string; authVariables: string[]; id: string; sessionId: string; name: string | null; model: string | null; effort: string | null; cwd: string; resume: boolean; mcp: McpConfig; settings: Settings; pluginDir: string | null };
+type Job = { configDir: string; authVariables: string[]; remoteSecretNames: string[]; id: string; sessionId: string; name: string | null; model: string | null; effort: string | null; cwd: string; resume: boolean; mcp: McpConfig; settings: Settings; pluginDir: string | null };
 type McpConfig = { mcpServers?: Record<string, { command: string; args?: string[]; env?: Record<string, string> }> };
 type HookEntry = { matcher?: string; hooks: Array<{ type: string; command: string; async?: boolean }> };
 type Settings = { hooks?: Record<string, HookEntry[]>; env?: Record<string, string> };
@@ -185,6 +185,7 @@ async function startBackground(args: string[]): Promise<number> {
   const previous = resumeOf ? readdirSync(JOBS).filter((f) => f.endsWith('.json')).map((f) => readJson<Job>(join(JOBS, f))).find((j) => j?.sessionId === resumeOf && j.configDir === CONFIG_DIR) : undefined;
   const id = previous?.id ?? randomBytes(4).toString('hex');
   const job: Job = {
+    remoteSecretNames: ['CLAND_TELEGRAM_TOKEN', 'CLAND_DISCORD_TOKEN', 'ELEVENLABS_API_KEY', 'XAI_API_KEY'].filter(key => Object.hasOwn(process.env, key)),
     configDir: CONFIG_DIR, authVariables: AUTH_VARIABLES.filter(key => Object.hasOwn(process.env, key)),
     id,
     sessionId: previous?.sessionId ?? `${id}${crypto.randomUUID().slice(8)}`,
@@ -232,6 +233,7 @@ async function runSession(id: string): Promise<number> {
   const logFile = join(JOBS, `${id}.log`);
   const log = (line: string) => appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
   const env: Record<string, string> = { ...(process.env as Record<string, string>), ...(job.settings.env ?? {}) };
+  writeJson(join(JOBS, `${id}.environment`), { launch: job.remoteSecretNames, session: Object.keys(env) });
   if (env.FAKE_CLAUDE_BRIDGE_GRACE_MS) env.CLAND_TEST_BRIDGE_GRACE_MS = env.FAKE_CLAUDE_BRIDGE_GRACE_MS;
   const file = join(SESSIONS, `${id}.json`);
   const state: SessionFile = { configDir: job.configDir, pid: process.pid, id, sessionId: job.sessionId, cwd: job.cwd, kind: 'background', startedAt: Date.now(), name: job.name, status: 'idle' };

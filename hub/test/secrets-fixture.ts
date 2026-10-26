@@ -8,10 +8,13 @@ import { fileURLToPath } from 'node:url';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { beforeDirectories, ownDirectory } from './process-cleanup.ts';
 import { clandCliLaunch } from './tier-cli.ts';
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 import { remoteRedactor } from '../src/remote/redact.ts';
 
+type SyntheticCommandEnvironment = Partial<Record<'CLAND_TELEGRAM_TOKEN' | 'CLAND_DISCORD_TOKEN' | 'ELEVENLABS_API_KEY' | 'XAI_API_KEY' | 'CLAND_SPEECH_MIME' | 'CLAND_SPEECH_LANGUAGE', string>>;
+
 type Result = { code: number | null; signal: NodeJS.Signals | null; incomplete: string | null; stdout: string; stderr: string; argv: readonly string[]; leaked: boolean };
-type Command = { result: Promise<Result>; closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }>; stopAndDrain: () => Promise<void> };
+type Command = { result: Promise<Result>; closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }>; stopAndDrain: () => Promise<void>; endInput: (input: string) => void };
 type Owner = { root: string; commands: Set<Command>; values: Set<string> };
 const owners = new Map<string, Owner>();
 const entry = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
@@ -35,17 +38,23 @@ function ownerOf(cwd: string): Owner {
   }
 }
 
-function launch(t: TestContext, cwd: string, executable: string, args: string[], input?: string, signal?: AbortSignal): Command {
+function launch(t: TestContext, cwd: string, executable: string, args: string[], input?: string, signal?: AbortSignal, syntheticEnvironment: SyntheticCommandEnvironment = {}): Command {
   const owner = ownerOf(cwd);
   if (input) owner.values.add(input.replace(/\r?\n$/, ''));
+  const names = ['CLAND_TELEGRAM_TOKEN', 'CLAND_DISCORD_TOKEN', 'ELEVENLABS_API_KEY', 'XAI_API_KEY'] as const;
+  if (Object.keys(syntheticEnvironment).some(name => ![...names, 'CLAND_SPEECH_MIME', 'CLAND_SPEECH_LANGUAGE'].includes(name))) throw new Error('unsupported synthetic command environment name');
+  for (const name of names) {
+    if (syntheticEnvironment[name]) owner.values.add(syntheticEnvironment[name]!);
+  }
   const redact = remoteRedactor([...owner.values]);
   const redactLines = (text: string) => text.split('\n').map(redact).join('\n');
   const completion = Promise.withResolvers<Omit<Result, 'code' | 'signal'>>();
   const closure = Promise.withResolvers<{ code: number | null; signal: NodeJS.Signals | null }>();
   let didClose = false;
   let tail = '';
+  // cland-allow-child-env: sealed disposable fixture plus synthetic inputs exercise the production final-overlay credential filter
   const child = execFile(executable, args, {
-    cwd, env: fixtureEnvironment(owner.root, process.env),
+    cwd, env: withoutExecutorCredentials({ ...fixtureEnvironment(owner.root, process.env), ...syntheticEnvironment }),
     signal: signal ? AbortSignal.any([t.signal, signal]) : t.signal, timeout: 5000,
   }, (error, stdout, stderr) => {
     tail = redact(stderr.slice(-500));
@@ -72,7 +81,7 @@ function launch(t: TestContext, cwd: string, executable: string, args: string[],
     try { await Promise.race([Promise.allSettled([completion.promise, closure.promise, result]), expired]); }
     finally { clearTimeout(timer); }
   })();
-  const command = { result, closed: closure.promise, stopAndDrain };
+  const command = { result, closed: closure.promise, stopAndDrain, endInput: (input: string) => child.stdin!.end(input) };
   // Register before returning or sending input; root removal repeats this exact barrier.
   owner.commands.add(command);
   beforeDirectories(t, stopAndDrain);
@@ -95,4 +104,9 @@ export async function secretGit(t: TestContext, cwd: string, args: string[]): Pr
   const result = await launch(t, cwd, 'git', ['-c', 'gc.auto=0', ...args], '').result;
   if (result.code !== 0 || result.signal || result.incomplete) throw new Error(`secret Git incomplete: exit ${String(result.code)}; signal ${String(result.signal)}; ${result.stderr.slice(-500)}`);
   return result.stdout;
+}
+
+/** Generic command stand-in uses the CLI fixture's registered close/output owner. */
+export function launchSecretCommand(t: TestContext, cwd: string, script: string, options: { env?: SyntheticCommandEnvironment; signal?: AbortSignal } = {}): Command {
+  return launch(t, cwd, process.execPath, ['-e', script], undefined, options.signal, options.env);
 }
