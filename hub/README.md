@@ -604,6 +604,48 @@ persist their reasons and log `remote-disabled`. No remote has started, so none
 is stopped; the existing poller owner, hub and web edge remain serving. A stop
 requested while waiting cancels startup instead of recording a remote failure.
 
+### Durable remote outbox
+
+`src/remote/outbox.ts` exports `Outbox` over one messenger's `RemoteStore`.
+Platform adapters own it under the gateway's poller lease. This is an internal
+API with a fake client seam, without a CLI command or platform configuration.
+`enqueue` persists `general`, `card` and `edit` intents; edits require an opaque
+chat/message `target`. Consecutive queued edits with the same target and source
+coalesce to their latest payload only before any attempt. Platform ids remain
+strings. The additive `target` column migrates existing hub.db rows; absent
+targets retain the previous row shape. Jobs and attempts keep insertion order,
+including at equal injected-clock timestamps.
+
+`drain()` makes one pass over the queued jobs and unresolved attempts present
+at entry. Concurrent callers share its promise. Before calling `client.send`,
+it atomically writes `sending` and an attempt with a null outcome. The client's
+`send(job, attempt)` and `prove(job, attempt)` return one of:
+
+- `sent`, with the platform message map (`RemoteMessage`). The map, sent job and
+  attempt outcome commit together before completion is reported.
+- `never-left`, the client's positive proof that resending that immutable job
+  is safe. The stable job id is the idempotency identity (for example Discord's
+  enforced nonce); each send still has a new attempt id.
+- `unknown`, which never permits another send. A thrown/rejected native error
+  also means unknown; the outbox retains only that enum, never the native error.
+
+An interrupted or uncertain attempt is reconciled with `prove` before a resend;
+a healthy connection alone is no proof. A failure marks the remote unavailable
+in hub.db. `setAvailable(true)` permits a later recovery pass, retaining the
+proof fence. General jobs that cannot go out are terminal `missed` rows rather
+than a late replay. `missed()` returns their count and earliest creation time
+for the gap line, durably and per remote; it does not consume those facts.
+Gap-line delivery/acknowledgement belongs to the messenger's catch-up policy.
+
+Adapters supply `sourceOpen(job)` for expiring cards/notices; it is checked even
+while unavailable and again after reconciliation, dropping a closed source
+without another send. The default callback treats jobs as nonexpiring; an
+outcome edit that must survive source closure should remain open to that policy.
+`stop()` fences enqueue/drain and joins the current delivery before store
+teardown. The adapter must first cancel/settle any held platform I/O. No timer,
+retry delay or reconnection loop is owned here; pacing, capped retry_after,
+backoff and queue arrivals during a drain are T-1325's separate scope.
+
 ## Connection events filter
 
 `subscribe` accepts `filter?: EventsFilter`, the same fields as `events.list`:

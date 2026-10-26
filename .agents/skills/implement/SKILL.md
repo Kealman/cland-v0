@@ -46,6 +46,12 @@ and T2 frame/restart/stop receipts are documented in
 facts and fake time; retain live or unreadable holders, and release a lease
 only after positive remote stop receipts. Never signal a token consumer.
 
+For remote outbox changes, read `hub/README.md#durable-remote-outbox` and use
+`docs/agents/tests/hub-test-outbox.test.ts.md` for client proof/attempt receipts,
+`docs/agents/tests/hub-test-outbox-gateway.test.ts.md` for outage and source
+closure through frames. Keep immutable attempted payloads, stable job identities
+and the unknown-delivery fence; join the drain before releasing storage.
+
 For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md`.
 
 Reservation-lock shutdown uses the cheaper T1 ownership and T2 `projectHub`

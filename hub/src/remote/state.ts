@@ -52,7 +52,7 @@ export type Pairing = { userId: string; chatId: string; guildId: string | null; 
 export type PairingRequest = Pairing & { code: string; created: string; expires: string };
 export type RemoteMessage = { chatId: string; messageId: string; topic: string; message: string | null; ask: string | null; approval: string | null };
 /** Queue behaviour belongs to the outbox, not its persistence layer. */
-export type OutboxJob = { id: string; kind: string; source: string | null; state: string; payload: unknown; created: string; updated: string };
+export type OutboxJob = { id: string; kind: string; source: string | null; state: string; payload: unknown; created: string; updated: string; target?: string };
 export type OutboxAttempt = { id: string; job: string; at: string; outcome: string | null };
 export type PollerOwner = { owner: string; pid: number; started: string; identity: string };
 const nullable = (value: unknown): string | null => value === null ? null : String(value);
@@ -60,7 +60,12 @@ const nullable = (value: unknown): string | null => value === null ? null : Stri
 /** Owned by Store: no connection, file, timer or independent shutdown to drain. */
 export class RemoteState {
   readonly #db: DatabaseSync;
-  constructor(db: DatabaseSync) { this.#db = db; db.exec(SCHEMA); }
+  constructor(db: DatabaseSync) {
+    this.#db = db; db.exec(SCHEMA);
+    // Existing hub.db files predate edit targets; keep their rows and wire fields intact.
+    const columns = db.prepare('pragma table_info(remote_outbox)').all();
+    if (!columns.some(column => column.name === 'target')) db.exec('alter table remote_outbox add column target text');
+  }
   forMessenger(id: string): RemoteStore { return new RemoteStore(this.#db, id); }
   pollerLease(): PollerOwner | null {
     const row = this.#db.prepare('select * from remote_poller_lease where singleton = 1').get();
@@ -143,13 +148,27 @@ export class RemoteStore {
     return row ? { chatId: String(row.chat_id), messageId: String(row.message_id), topic: String(row.topic), message: nullable(row.message), ask: nullable(row.ask), approval: nullable(row.approval) } : null;
   }
   putOutbox(job: OutboxJob): void {
-    this.#db.prepare(`insert into remote_outbox (messenger, id, kind, source, state, payload, created, updated) values (?, ?, ?, ?, ?, ?, ?, ?)
+    this.#db.prepare(`insert into remote_outbox (messenger, id, kind, source, state, payload, created, updated, target) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
       on conflict (messenger, id) do update set kind = excluded.kind, source = excluded.source,
-      state = excluded.state, payload = excluded.payload, created = excluded.created, updated = excluded.updated`)
-      .run(this.#id, job.id, job.kind, job.source, job.state, JSON.stringify(job.payload), job.created, job.updated);
+      state = excluded.state, payload = excluded.payload, created = excluded.created, updated = excluded.updated, target = excluded.target`)
+      .run(this.#id, job.id, job.kind, job.source, job.state, JSON.stringify(job.payload), job.created, job.updated, job.target ?? null);
+  }
+  /** Persist the attempt fence or completion and message map as one SQLite unit. */
+  writeOutbox(job: OutboxJob, attempt?: OutboxAttempt, message?: RemoteMessage): void {
+    this.#db.exec('savepoint remote_outbox_write');
+    try {
+      this.putOutbox(job);
+      if (attempt) this.putAttempt(attempt);
+      if (message) this.putMessage(message);
+      this.#db.exec('release remote_outbox_write');
+    } catch (error) {
+      this.#db.exec('rollback to remote_outbox_write; release remote_outbox_write');
+      throw error;
+    }
   }
   outbox(): OutboxJob[] {
-    return this.#db.prepare('select * from remote_outbox where messenger = ? order by created, id').all(this.#id).map(row => ({
+    return this.#db.prepare('select * from remote_outbox where messenger = ? order by rowid').all(this.#id).map(row => ({
+      ...(row.target === null ? {} : { target: String(row.target) }),
       id: String(row.id), kind: String(row.kind), source: nullable(row.source), state: String(row.state), payload: JSON.parse(String(row.payload)), created: String(row.created), updated: String(row.updated),
     }));
   }
@@ -159,7 +178,7 @@ export class RemoteStore {
       .run(this.#id, attempt.id, attempt.job, attempt.at, attempt.outcome);
   }
   attempts(job: string): OutboxAttempt[] {
-    return this.#db.prepare('select * from remote_outbox_attempts where messenger = ? and job = ? order by at, id').all(this.#id, job).map(row => ({
+    return this.#db.prepare('select * from remote_outbox_attempts where messenger = ? and job = ? order by rowid').all(this.#id, job).map(row => ({
       id: String(row.id), job: String(row.job), at: String(row.at), outcome: nullable(row.outcome),
     }));
   }

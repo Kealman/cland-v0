@@ -1,6 +1,7 @@
 // T1: remote persistence on the hub's SQLite handle, no transport or process.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { Store } from '../src/hub/store.ts';
 import { tempProject } from './harness.ts';
@@ -59,4 +60,48 @@ test('waiting codes, stranger counts, message maps and outbox attempts survive a
     assert.deepEqual(other.outbox(), []);
     assert.deepEqual(other.attempts('job-1'), []);
   } finally { reopened.close(); }
+});
+
+
+test('pre-outbox hub.db rows retain their previous shape while edit targets migrate additively', async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'hub.db');
+  const legacy = new DatabaseSync(path);
+  try {
+    legacy.exec(`create table remote_outbox (
+      messenger text not null, id text not null, kind text not null, source text,
+      state text not null, payload text not null, created text not null, updated text not null,
+      primary key (messenger, id)
+    ); insert into remote_outbox values ('telegram', 'legacy', 'general', 'm1', 'queued', '{"text":"legacy"}', 'then', 'then');`);
+  } finally { legacy.close(); }
+  const db = new Store(path);
+  const old = { id: 'legacy', kind: 'general', source: 'm1', state: 'queued', payload: { text: 'legacy' }, created: 'then', updated: 'then' };
+  try {
+    const remote = db.remotes.forMessenger('telegram');
+    assert.deepEqual(remote.outbox(), [old], 'old readers see no synthetic optional field');
+    remote.putOutbox({ ...old, id: 'edit', kind: 'edit', target: '9007199254740993' });
+  } finally { db.close(); }
+  const reopened = new Store(path);
+  try {
+    assert.deepEqual(reopened.remotes.forMessenger('telegram').outbox(), [old, { ...old, id: 'edit', kind: 'edit', target: '9007199254740993' }]);
+  } finally { reopened.close(); }
+});
+
+test('a failed completion rolls back the job, attempt outcome and platform receipt together', async t => {
+  const root = await tempProject(t);
+  const db = new Store(join(root, 'hub.db'));
+  try {
+    const remote = db.remotes.forMessenger('telegram');
+    const job = { id: 'job', kind: 'card', source: 'ask', state: 'sending', payload: { text: 'Choose' }, created: 'then', updated: 'then' };
+    const attempt = { id: 'attempt', job: 'job', at: 'then', outcome: null };
+    remote.writeOutbox(job, attempt);
+    const message = { chatId: 'chat', messageId: '9007199254740993', topic: 'general', message: null, ask: 'ask', approval: null };
+    assert.throws(() => remote.writeOutbox({ ...job, state: 'sent' }, { ...attempt, outcome: 'sent' }, { ...message, chatId: null as unknown as string }), /NOT NULL/);
+    assert.deepEqual(remote.outbox(), [job]);
+    assert.deepEqual(remote.attempts('job'), [attempt]);
+    assert.equal(remote.message('chat', message.messageId), null);
+    remote.writeOutbox({ ...job, state: 'sent' }, { ...attempt, outcome: 'sent' }, message);
+    assert.equal(remote.outbox()[0]?.state, 'sent');
+    assert.deepEqual(remote.message('chat', message.messageId), message);
+  } finally { db.close(); }
 });

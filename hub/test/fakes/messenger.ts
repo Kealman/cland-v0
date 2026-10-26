@@ -1,5 +1,7 @@
 import { frameClient } from '../harness.ts';
 import type { HubFrame, RemoteVia } from '../../src/protocol.ts';
+import type { Outbox } from '../../src/remote/outbox.ts';
+import { outboxMessenger } from './outbox-messenger.ts';
 import type { RemoteStatus } from '../../src/remote/gateway.ts';
 
 export function testRemoteStates() {
@@ -16,6 +18,8 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
   const via = options.via ?? 'telegram';
   let send: ((frame: Record<string, unknown>) => void) | undefined;
   let receive!: (chunk: string) => void;
+  let outbox: Outbox | undefined;
+  const delivery = outboxMessenger();
   let started = false;
   let stopped = false;
   let loop: ReturnType<typeof Promise.withResolvers<void>> | undefined;
@@ -25,7 +29,8 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
     send(JSON.parse(line) as Record<string, unknown>);
   }, fn => { receive = fn; }, () => {});
   return {
-    id, via, client,
+    id, via, client, delivery,
+    mirror(queue: Outbox) { outbox = queue; },
     get started() { return started; },
     get stopped() { return stopped; },
     get running() { return loop !== undefined && !stopped; },
@@ -43,9 +48,12 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
         if (receiveFailure.async) return Promise.reject(receiveFailure.error);
         throw receiveFailure.error;
       }
+      if (outbox && frame.type === 'message' && frame.message.topic === 'general') {
+        outbox.enqueue({ kind: 'general', source: frame.message.id, payload: { text: frame.message.text } });
+      }
       receive(`${JSON.stringify(frame)}\n`);
     },
     run() { loop = Promise.withResolvers<void>(); return loop.promise; },
-    stop() { stopped = true; loop?.resolve(); },
+    stop() { stopped = true; loop?.resolve(); return outbox?.stop(); },
   };
 }

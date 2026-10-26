@@ -7,6 +7,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/gateway.test.ts`](../../../hub/test/gateway.test.ts) | [Notes](hub-test-gateway.test.ts.md) |
 | [`hub/test/gateway-state.test.ts`](../../../hub/test/gateway-state.test.ts) | [Notes](hub-test-gateway-state.test.ts.md) |
 | [`hub/test/poller-lease.test.ts`](../../../hub/test/poller-lease.test.ts) | [Notes](hub-test-poller-lease.test.ts.md) |
+| [`hub/test/outbox.test.ts`](../../../hub/test/outbox.test.ts) | [Notes](hub-test-outbox.test.ts.md) |
+| [`hub/test/outbox-gateway.test.ts`](../../../hub/test/outbox-gateway.test.ts) | [Notes](hub-test-outbox-gateway.test.ts.md) |
 | [`hub/test/remote-state.test.ts`](../../../hub/test/remote-state.test.ts) | [Notes](hub-test-remote-state.test.ts.md) |
 | [`hub/src/remote/redact.test.ts`](../../../hub/src/remote/redact.test.ts) | [Notes](hub-src-remote-redact.test.ts.md) |
 | [`hub/test/executor-watchdog.test.ts`](../../../hub/test/executor-watchdog.test.ts) | [Notes](hub-test-executor-watchdog.test.ts.md) |
