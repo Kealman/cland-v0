@@ -2,8 +2,8 @@
 id: T-1328
 kind: task
 title: The git-ignored secrets file and cland secret set, list and unset
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1082
 branch: t/T-1328-the-git-ignored-secrets-file-and-cland
 created: 2026-10-26T07:54:41.571Z
-updated: 2026-10-26T10:18:53.247Z
+updated: 2026-10-26T11:29:32.633Z
+closed: 2026-10-26T11:29:32.633Z
 ---
 
 ## Summary
@@ -143,3 +144,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Renewed final task evidence clear, A-12356, exact source-4 head dcc15d021. Original A-12355/run5aac9237 exit0 independently parsed:3407 ordinary passes/nested included,458 files,45 separate actual load passes (nine new T1/T2 identities each5/5); changed T3 three named Git/cancellation identities once, no repetitions. Exact C1 startup600/symlink/native managed/custom-ignore and C2 stdin/persistence/fingerprint/unset/raw-output/log/argv assertions checked. Max new base1.408630769 s/load1.256868608 s; no >=3 s allowance. T3 added wall .766 s excludes machine wait. T0/all T1/fallback all T2/changed T3/Web complete on Linux droplet Node24.21/Neovim0.12.5/HeadlessShell156.0.8078.4 v1248; life676 s/$0.0470. Host typecheck reused, diagnostics report-only. Crucially cli-imports has NO receipt here: A-12352 remains old-head full-cover red, A-12353 local recovery remains local, Coordinator fresh full cover must execute that guard. Replace stale C1/C2 marks; no integrated full-cover/real-credential/native-terminal-exit claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-26T11:29:32.633Z
+
+Merged 567c29e4e31fc43dad191125e5b56334c9dee6d6 onto dev.
