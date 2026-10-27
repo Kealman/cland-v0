@@ -2,8 +2,8 @@
 id: T-1358
 kind: task
 title: Plans, requests, item-topic messages and Claude Code approvals arrive as 📥 notices, and a reply goes to their topic
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1114
 branch: t/T-1358-plans-requests-item-topic-messages-and
 created: 2026-10-27T05:43:02.026Z
-updated: 2026-10-27T12:36:31.469Z
+updated: 2026-10-27T13:08:08.057Z
+closed: 2026-10-27T13:08:08.057Z
 ---
 
 ## Summary
@@ -36,13 +37,19 @@ Each notice is mapped in `remote_messages` with its topic and source message. A 
 
 - [x] C1. A Claude Code approval, a waiting plan, a review request and an item-topic message to the human each arrive once as a notice starting with 📥 with no `reply_markup`, and the plan notice offers no approve action (test).
   - verified: rev-31 [reviewer] · run rev-20261027-1358-final1 · 2026-10-27T12:18:49.284Z · commit 6a012904619ce05082e186b22efb00c7cc80509c
-  - done: impl-1358 · 2026-10-27T12:21:38.462Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1358-final2 · 2026-10-27T12:37:56.071Z · commit c1ee1b34cfa177207fe469237288076d7b58d882
+  - done: impl-1358 · 2026-10-27T12:41:04.314Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1358-final3 · 2026-10-27T13:01:44.345Z · commit 617ffb5642bc922e52017c59dbc761e401f887c1
 - [x] C2. A reply to the item-topic notice lands in that topic as a reply to its message "via Telegram", and the agent's ordinary answer in that topic is not sent to the chat (test).
   - verified: rev-31 [reviewer] · run rev-20261027-1358-final1 · 2026-10-27T12:18:49.284Z · commit 6a012904619ce05082e186b22efb00c7cc80509c
-  - done: impl-1358 · 2026-10-27T12:21:38.594Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1358-final2 · 2026-10-27T12:37:56.071Z · commit c1ee1b34cfa177207fe469237288076d7b58d882
+  - done: impl-1358 · 2026-10-27T12:41:04.443Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1358-final3 · 2026-10-27T13:01:44.345Z · commit 617ffb5642bc922e52017c59dbc761e401f887c1
 - [x] C3. A plan notice carries the `[web] origin` link when one is set and no link without one, and no notice contains a web credential (test).
   - verified: rev-31 [reviewer] · run rev-20261027-1358-final1 · 2026-10-27T12:18:49.284Z · commit 6a012904619ce05082e186b22efb00c7cc80509c
-  - done: impl-1358 · 2026-10-27T12:21:38.826Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1358-final2 · 2026-10-27T12:37:56.071Z · commit c1ee1b34cfa177207fe469237288076d7b58d882
+  - done: impl-1358 · 2026-10-27T12:41:04.669Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1358-final3 · 2026-10-27T13:01:44.345Z · commit 617ffb5642bc922e52017c59dbc761e401f887c1
 
 ## Comments
 
@@ -117,3 +124,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta CLEAR atc1ee1b34/treeb44bc568. A-12766: Standards0/Spec0 delta findings. Coordinator45f1f96f authorization and sole rev-34 hold confirmed. Independent decode shows REMOTE_USAGE source/golden equal, only owning fixture key differs from either parent; notice/source-topic versus referenced-General/public-origin lines and incoming Neovim+web wording retained. Strict help guards unchanged. Telegram code/test bodies unchanged; incoming Web files match landed dev; docs/skill CHANGES, sorted Web tier and exact guide/index preserve both flows. Prior source2/A-12756/final1A-12764 context retained without carrying runtime marks. A-12765 independently parsed19serialfiles/191pass/0fail/skip/everyexit0, macOS arm64 Node24.21 only; static gates separate/report-only135diagnostics. C1–C3 current runtime verification pending; old0b19a534/A-12763 covers6a0129046 only. No Reviewer executions/edits. Submit one unchanged-head mode-free configured verify then original-record final evidence review. Coordinator integrated gate and further T-1355 landed-dev integration per45f1f96f remain separate; a changed head needs source review first.
+
+### rev-34 · 2026-10-27T12:37:56.071Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1358-final2
+commit: c1ee1b34cfa177207fe469237288076d7b58d882
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-merged-head evidence CLEAR; allC1–C3 verified. A-12775 audits original9bcb2bd7/A-12772 against source3/A-12766 and source2 context: branch/hub/header c1ee1b34 agree, exit0. Independent generated finishes3695ordinarypass plus70separateloadpass (14newidentities×5),0fail/cancel/skip/todo. All13notice cases+fake-origin each ordinary1+load5/5; maxbase0.663126968s/load0.728209381s<3s, no allowance. Read criterion/assertion facts for real producer/button-free/dedup, source topic/no-follow and pre-fake producer-payload credential exclusion with positive source control; size/entity bounds/backlog chronological order and approved cabbd851General-reference routing retained. T0/allT1/fallbackallT2hub+Neovim/Web complete; T3/T4unrun, Web0newfiles/0reps. Linuxc-8lon1 kernel6.8.0-142-generic Node24.21/Neovim0.12.5 CHS156.0.8078.4/v1248 isolated; hostgate8501a3c0 reused not repeated remotecheck. Report-only135lint/fiveoverruns/twofilebaselines/ratchet warnings retained, infrastructure736s/$0.0511 not testwall. No Reviewer executions/edits/QA. Coordinator45f1f96f additionalT-1355landed-dev integration still applies before newready; a changed head needs fresh source review/required verification and cannot inherit this receipt. Coordinator integrated gate/enqueue/landing separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-34 · 2026-10-27T12:44:47.930Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1358-source4
+commit: 617ffb5642bc922e52017c59dbc761e401f887c1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Prompts/notices integration delta CLEAR at617ffb56/tree4682c939. A-12779: Standards0/Spec0 delta findings. Lead request/rev-31 handoff and Coordinator43b6ec12/45f1f96f authorization read; sole rev-34 hold. Required prompts+optionalwebOrigin constructor and sole caller retain both. Shared inbound#post applies prior source-topic/reference-to-General selection before native dispatch; answer stored callback precedes feedback, pending/abort cleanup retained. Prompt handler-before-inbound and /cancel do not steal mapped notice replies. Messenger-scoped answer/direct receipt lookup remains internal. Independent byte comparisons preserve notice models/all13notice/privacy fake/API assertions and landed incoming prompt/gateway/card tests. Whole-notice size/entities/stableordering unchanged; help/golden independently equal with both additions, docs/skill CHANGES retain both flows. A-12777 independently counted33serialfiles/317pass/all33exit0, macOS local only; static gates/report-only135diagnostics separate. C1–C3 current runtime marks pending new unchanged-head mode-free configured run; oldA-12772/A-12775 stayc1ee1b34-only. No Reviewer executions/edits. After run request original-record final evidence audit; Coordinator integrated gate/enqueue separate.
+
+### rev-34 · 2026-10-27T13:01:44.345Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1358-final3
+commit: 617ffb5642bc922e52017c59dbc761e401f887c1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final prompts/notices merged-head evidence CLEAR; allC1–C3 verified. A-12785 audits originalda2ccb03/A-12784 against source4/A-12779; branch/hub/header617ffb56 match and nativeexit0. Independent finishes3708ordinarypass+70separateloadpass across487files,0fail/cancel/skip/todo; all13notice+fakeorigin identities each ordinary1+load5/5. Maxnewbase0.707909545s/load0.815294332s<3s, no allowance. Current records retain real button-free/dedup/source-topic/no-follow/credential positive producer-payload controls, full size/entities/backlog-order and approvedGeneralreference semantics. All38incoming cards and20gateway cases also pass, including unknownprompt/lostmap, confirmedanswerowedfeedback and messenger stage lookup. HostT0/allT1/fallbackallT2hub+Neovim/Web complete; T3/T4unrun, Web0newfiles/0reps. Linuxc-8lon1 kernel6.8.0-142-generic Node24.21/Neovim0.12.5 CHS156.0.8078.4/v1248 isolated, workers2/Web4; hostgatefd4e87e6 reused not new remotecheck. Report-only135lint/overruns/twomissingbaselines/ratchet retained;866s/$0.0601 infrastructure not testwall. No Reviewer execution/edit/browser/QA. Priorc1ee1b34proof not reused. Lead fresh ready/conflict check; Coordinator integratedgate/enqueue/landing separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-27T13:08:08.057Z
+
+Merged b14ede7a5b4341a235cd20481d9030c6230331c4 onto dev.

@@ -3,7 +3,7 @@ id: T-1357
 kind: task
 title: Codex and OpenCode approvals arrive as cards with coloured choices, answered with `via` and shown as approved via Telegram
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1113
 branch: t/T-1357-codex-and-opencode-approvals-arrive-as
 created: 2026-10-27T05:43:01.767Z
-updated: 2026-10-27T12:36:05.524Z
+updated: 2026-10-27T12:43:13.598Z
 ---
 
 ## Summary
@@ -109,3 +109,24 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence CLEAR; C1–C4 verified. A-12771 audits original Coordinatorfull/all193644be/A-12769 against source2/A-12747: branch/hub/header c56107d1 match, original execution exit0. Independent generated finishes5083ordinarypass/8skip/0fail/cancel/todo across682files; no load repetitions. All11approval cases/native producer/headless source consumers pass; exact names/lines/timings in A-12771. Source assertions independently checked:5000-char safe styled card, scripted Codex command effect+commit before callback, scripted OpenCode denial+Web answer/edit, both approval outcomes rendered viaTelegram in headless Web/recorded-frame Neovim. Setup omission/abort and lost-result/closure/isolation controls pass. HostT0/LinuxT1/T2/T3/Web complete; T4 unrun and eight unrelated skips excluded. Linuxc-8lon1 kernel6.8.0-142-generic Node24.21/Neovim0.12.5 CHS156.0.8078.4/v1248, isolated browser; hostgate82cc511c reused, not remote typecheck. Newnative2.466389984s/Web2.541090363s<3s, no allowance per223fd314. Budget/lint/ratchet report-only warnings retained; no live-phone/installed-provider/QA claim. No Reviewer executions/edits. Lead fresh dev conflict check afterT-1355landing before ready perCoordinator; receipt applies only reviewed head, Coordinator enqueue/landing separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1357 · 2026-10-27T12:41:24.612Z
+
+After Coordinator-authorized landed-dev merge (4fee2cb2/43b6ec12), pushed 3bf8db785f0806a048457b28f10647ca0226aaf2, tree 8c98d36ac7a05e832e035bc4568ff89161fdf6d2, parents c56107d1a + c07b4bd0. One import conflict in telegram-cards retained approvals and TelegramPrompts; auxiliary prompt guard explicitly narrows ask/kind. No assertion/test changed. Delta source review requested/assigned rev-34. Merged-head macOS serial 35 files/339 passes, 0 skips/failures; typecheck/build/full test:lint 0 refusals/tier lint/diff checks pass. Evidence A-12776 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12776-t-1357-post-t-1355-merge-and-local-delta-evidence-at-3bf8db785.md). Prior full c561 run is not a current-head pass. Coordinator will submit a new rule-6 verify all after delta source clear.
+
+### rev-34 · 2026-10-27T12:42:53.975Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1357-source3
+commit: 3bf8db785f0806a048457b28f10647ca0226aaf2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Post-T-1355 merge delta CLEAR at3bf8db78/tree8c98d36a. A-12778: Standards0/Spec0 delta findings. Coordinator4fee2cb2/43b6ec12 authorized landed-dev integration. Import/manual guard resolution keeps approval.choice vs ask.option vs ask.kind routing, issued-key/card/chat checks, native approval pending receipt/terminal acknowledgement and prompt publication. Telegram constructor/result/handler ordering wires one inbound feedback owner with prompt stored callback while approval requests keep distinct ids; messenger-scoped answer recovery and endpoint redaction coexist. Independently compared prior approval/outbox/redactor/state/native/headless tests byte-identical and incoming prompts/inbound/ask tests equal landed dev; no assertion weakening. Frozen REMOTE_USAGE equals source; docs/skill CHANGES retain both features. A-12776 local339pass summary is macOS targeted evidence, not new Linux/full proof. No Reviewer executions/edits. C1–C4 runtime marks remain stale pending new exact-head Coordinator verify all. Lead reportready/fresh conflict check perauthorization; no extra mode-free task run. Old193644be/A-12769 remains parentc56107d1-only evidence.
+
+### impl-1357 · 2026-10-27T12:43:13.598Z
+
+Delta source3 clear at 3bf8db785f0806a048457b28f10647ca0226aaf2 / tree 8c98d36ac7a05e832e035bc4568ff89161fdf6d2, A-12778. Fresh origin/dev fetch c07b4bd0d835c3cd6f8dc6f9d9d616d4c1bd4d08; merge-tree --write-tree exit 0/result equals reviewed tree, no head change, clean/pushed. Reported ready for Coordinator's new rule-6 verify all. All current-head local 35-file/339-test and lint evidence in A-12776. Prior-parent runtime verdicts are not current-head coverage; C1–C4 await original full result at this merge head.
