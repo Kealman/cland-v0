@@ -2,7 +2,8 @@
 id: E-1310
 kind: epic
 title: Remote cards and approvals
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.3
@@ -11,10 +12,11 @@ assignee: null
 parent: R-1278
 blocked_by:
   - E-1309
-topic: null
+topic: topic-1124
 branch: null
 created: 2026-10-25T14:11:59.635Z
-updated: 2026-10-27T05:43:24.997Z
+updated: 2026-10-27T22:56:36.812Z
+closed: 2026-10-27T22:56:36.812Z
 ---
 
 ## Goal
@@ -49,13 +51,21 @@ QA runs the demo below on `dev` against the fake Bot API in the suite, with fake
 In a scratch project with the human paired on the fake, QA has a session ask a nine-option question with free answers allowed and answers it with a tap, then has three more asks posted and answers them with "Other answer…", "Decline…" with `/cancel`, and a typed reply to the card. It answers one ask in Neovim and one in the web and reads the outcome edits, replays a press on a closed card, presses as another account, and sends a late message. It approves a fake Codex approval and denies a fake OpenCode one from their cards and reads "approved via Telegram" in both inboxes, and reads a Claude Code approval, a waiting plan, a review request and an item-topic message as 📥 notices, replying to the last. It runs `/inbox`, then takes the remote offline for four minutes while one ask is answered in the web and another is posted, and reads the catch-up.
 
 - [ ] C1. An ask arrives as a card naming who asks and where, with one button per option, "Other answer…" when free answers are allowed and "Decline…", one button per row, and keys checked against the hub's record.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 - [ ] C2. A Codex or OpenCode approval arrives as a card with the truncated command and the harness's choices, and an answer from it is recorded with `via` and shown as "approved via Telegram".
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 - [ ] C3. Plans, requests, item-topic messages to the human and Claude Code approvals arrive as 📥 notices without buttons, and a reply to one goes to its topic without the remote following that thread.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 - [ ] C4. The first answer from any client or remote wins and is stored before Telegram is acknowledged, and every copy of the card turns into its outcome without buttons, naming the choice or the reason, who, where and when.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 - [ ] C5. "Other answer…" and "Decline…" send a ForceReply prompt, the next text or a reply to it answers, `/cancel` keeps the ask open, and a typed reply to the card answers it.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 - [ ] C6. A press on a closed card gets "Already answered", a foreign press is refused privately, and a late message answers no ask.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 - [ ] C7. Cards arrive oldest first, and `/inbox` re-sends every open card at the bottom or says "Nothing needs you".
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 - [ ] C8. After an outage the chat gets the cards it never received and the outcome edits that failed, and after more than 150 seconds every open card is re-sent with the old copy marked "↓ Re-sent below".
+  - verified: qa-677 [qa] · run qa-dod-2026-10-27-677-1310 · 2026-10-27T22:56:01.696Z · commit 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
 
 ## Constraints
 
@@ -122,3 +132,44 @@ Decisions on the open questions in the draft:
 6. Outcome times use hub-local HH:MM, the same format as the gap line.
 The cards model lives in a module that knows nothing about a particular messenger, so E-1312 adds only Discord rendering and interaction.
 Launch: stage 1 starts once E-1309 closes.
+
+### qa-677 · 2026-10-27T22:56:01.696Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-27-677-1310
+commit: 7ec62be14156a65b4c4b539d42bc95e3eeaa490e
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| case | surface / executor | result | evidence |
+| --- | --- | --- | --- |
+| M1 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-cards.test.ts.log |
+| M2 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-approvals.test.ts.log |
+| M3 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-notices.test.ts.log |
+| M4 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-cards.test.ts.log, hub_test_telegram-approvals.test.ts.log |
+| M5 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-cards.test.ts.log |
+| M6 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-cards.test.ts.log, hub_test_telegram-approvals.test.ts.log |
+| M7 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-cards.test.ts.log, hub_test_telegram-approvals.test.ts.log, hub_test_telegram-notices.test.ts.log, hub_test_telegram-commands.test.ts.log |
+| M8 | hub-api / local macOS | PASS | A-12931: hub_test_telegram-cards.test.ts.log, hub_test_telegram-approvals.test.ts.log, hub_test_telegram-catchup.test.ts.log |
+| M9 | hub-api / local macOS | PASS | A-12931: site_test_remote-docs.test.ts.log, hub_test_remote-docs.test.ts.log |
+| M10 | hub-api / local macOS | PASS (T-1357 waiver-qualified) | A-12931: C1-final.json; waiver-qualification.json; cover-summary.json |
+
+Findings: none in scope. All C1–C8 verified in this run. Build 7ec62be14156a65b4c4b539d42bc95e3eeaa490e, clean detached checkout; freshness current:true.
+
+Seven files ran serially on local darwin arm64 / Node v24.21.0: 120 passes, 0 failures/skips/cancellations, 115 distinct generated cases (the hub docs wrapper repeats five imported site cases). All 40 named requirements, including both generated typed-card cases, appear in passing output and pinned source. M2 checks durable via=telegram and rendered human via Telegram; M3 follows the recorded General routing decision for plan/TUI notice replies. Fake Bot API and fake harnesses only, sealed fixtureEnvironment + scratchGitEnvironment; no browser binary or real bot/account. No new full suite/load repetitions/demo lease; local lifetime and cost not applicable.
+
+M10: all nine children closed done, all three stages closed. Eight ordinary final-review-head green verifies map to their dev landing via Item/Reviewed-by trailers and identical source deltas. T-1357 is explicitly waiver-qualified under Coordinator decision 6f1d3c54-083e-466f-88d3-def827e900cc: clear delta review at 12d65628ef2602db3679a66e7cb838cce01261fe, parent full green c35b5656/A-12790 at 3bf8db785f0806a048457b28f10647ca0226aaf2, original serial receipts A-12794 independently sum 87 files/983 passes, plus integrated stage-2 and last-stage covers containing landing 9fd28437. There is NO passed verify at T-1357's final reviewed head; it is not counted as an ordinary same-head green.
+
+Historical last covers at c675faa34d7c1874d1aee14f2874814b11c276b5, tree 324a359b5fa6dfdd61761ffd2c78648c05060b20: Linux droplet 9f5adae6/A-12925, 5272 tests = 5263 passes +9 skips; macOS local 7872b156/A-12929, 5272 =5271 passes +1 skip; zero failures, native result0 and green cover records. Both include every landing and all 115 distinct scoped cases. T0/T1/T2/T3/base T4/Web complete; outer T4 repetitions skipped. Budgets, lint and ratchet report-only, not performance acceptance. Both Node24.21; Linux x64 CHS156.0.8078.4/build1248; historical macOS exact browser version unrecorded. Cover→pin changed only tracker, durations.json and brief; test blobs identical.
+
+Historical Linux shards c-8 lon1: cland-v0-2752a8a5 admission-through-finish1711.15s, provider lifetime1686.064s, $0.11708778; cland-v0-4923fe2d 1350.15s, lifetime1322.053s, $0.09180924; total$0.20889701. These provider lifetimes/costs are not pure test wall time. No new droplet for QA.
+
+Artifact A-12931: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12931-e-1310-dod-qa-clear-at-7ec62be1/report.md; complete exact-case output, source assertions, tracker/landing/cover receipts, ten recorder rows and publication scan. Verified copied evidence hashes before this verdict.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-27T22:56:36.812Z
+
+Closed on QA clear qa-dod-2026-10-27-677-1310 (A-12931) at dev 7ec62be1: C1–C8 verified, M1–M10 PASS; T-1357 waiver-qualified in M10 under coord's decision 6f1d3c54. Last stage covers at c675faa3: 9f5adae6 (Linux, A-12925) and 7872b156 (macOS, A-12929). Children T-1352–T-1360 landed.

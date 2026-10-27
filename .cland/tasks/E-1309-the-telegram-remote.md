@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1106
 branch: null
 created: 2026-10-25T14:11:59.394Z
-updated: 2026-10-27T08:22:30.747Z
+updated: 2026-10-27T22:51:49.465Z
 closed: 2026-10-27T08:22:30.747Z
 ---
 
@@ -159,3 +159,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### coord · 2026-10-27T08:22:30.747Z
 
 Closed on QA DoD clear qa-dod-2026-10-27-677-1309 (A-12653) at 2832a56d: C1–C10 verified. Stage "telegram remote" closed 10/10 on covers e420be49 (Linux) and a0265de4 (macOS) at 18a6f01b; durations refreshed in 2832a56d. No duration allowances owned by E-1309.
+
+### coord · 2026-10-27T22:51:49.465Z
+
+QA evidence note (coord, 2026-10-27 22:55Z, from qa-677's report in topic-1106): the supplemental local runs in the DoD verdict A-12653 (154 tests, 15 brief files plus 2 configuration supplements at 2832a56d) ran on Node v25.6.1, outside the package engines `>=24.13.0 <25`; A-12653 labels the runtime correctly. The verdict's test evidence still stands on Node 24: the stage covers at the tested tree, e420be49 (Linux droplet) and a0265de4 (macOS local), both ran every one of those files on Node 24. Disposition: no replay; the local Node 25 run is supplemental only. Follow-up filed for local runs and the QA recorder to refuse an unsupported Node.
