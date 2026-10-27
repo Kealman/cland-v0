@@ -432,6 +432,7 @@
     "hub/test/setup-hub-component.test.ts": "T2",
     "hub/test/setup-hub.test.ts": "T1",
     "hub/test/setup-machine.test.ts": "T3",
+    "hub/test/setup-pairing-component.test.ts": "T2",
     "hub/test/setup-project-kind.test.ts": "T1",
     "hub/test/setup-prompter.test.ts": "T1",
     "hub/test/setup-remote-component.test.ts": "T2",

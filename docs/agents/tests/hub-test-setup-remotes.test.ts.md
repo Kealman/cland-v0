@@ -1,5 +1,10 @@
 # hub/test/setup-remotes.test.ts
 
+The scripted runner also proves one optional extra wait when no Telegram code
+exists, messenger filtering and choosing among several row texts, followed by
+confirmation of the chosen identity. Inspect the approved code and returned
+identity independently of prompt consumption.
+
 T1 uses the ordered runner, strict scripted prompter and private disposable files.
 `fixtureEnvironment` seals HOME/XDG/Git; no process, hub or platform runs. The
 OpenCode-only machine avoids native trust or login operations.

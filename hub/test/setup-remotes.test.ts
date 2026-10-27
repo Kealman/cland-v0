@@ -9,6 +9,33 @@ import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts'
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { scriptedPrompter } from './setup-prompter.ts';
 import type { SetupOptions } from '../src/setup/types.ts';
+import type { Choice } from '../src/setup/prompter.ts';
+import type { SetupHub } from '../src/setup/hub.ts';
+import type { InboxPairing } from '../src/protocol.ts';
+
+function waitingPairing(code: string, messenger: 'telegram' | 'discord' = 'telegram'): InboxPairing {
+  return { id: code, messenger, code, userId: code === 'ABCDEFGH' ? '101' : '202', chatId: '101', guildId: null,
+    name: 'Fixture human', text: `Pair ${messenger} user? code ${code}`, command: `cland remote approve ${messenger} ${code}`,
+    since: '2026-10-27T00:00:00Z', expires: '2026-10-27T01:00:00Z', layer: 'now' };
+}
+
+function pairingFixture(t: test.TestContext) {
+  const f = fixture(t);
+  const config = defaultConfig('Remote setup');
+  config.remote.telegram.enabled = true;
+  writeFileSync(f.config, renderConfig(config));
+  writeFileSync(join(f.root, '.cland/secrets.toml'), '[telegram]\ntoken="123456:made_up_setup_token_abcdefghijk"\n', { mode: 0o600 });
+  const approved: string[] = [];
+  const client: SetupHub = {
+    running: async () => ({ pid: 42 }), start: async () => { throw new Error('unexpected start'); },
+    session: async () => null, launch: async () => {}, resume: async () => {}, attach: async () => '', reload: async () => {},
+    remotes: async () => ({ remotes: [{ messenger: 'telegram', token: { present: true, fingerprint: 'fixture' }, pairing: null,
+      connection: 'connected', reason: null, lastInbound: null, lastOutbound: null, outboxDepth: 0, mute: false, botLink: 'https://t.me/setup_fixture_bot' }] }),
+    pairings: async () => [],
+    approve: async (messenger, code) => { assert.equal(messenger, 'telegram'); approved.push(code); return { userId: '202', chatId: '202', guildId: null, name: 'Chosen human' }; },
+  };
+  return { ...f, client, approved };
+}
 
 function fixture(t: test.TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'setup-remotes-')));
@@ -154,4 +181,45 @@ test('a stored pairing without a loaded connected remote remains open for reload
   const line = result.report.steps.find(row => row.name === 'remote telegram')!;
   assert.equal(line.verdict, 'open');
   assert.equal(line.fix, 'cland hub reload');
+});
+
+for (const retry of [false, true]) test(`no Telegram code offers exactly one extra wait (accepted=${retry})`, async t => {
+  const f = pairingFixture(t);
+  let reads = 0;
+  f.client.pairings = async () => { reads++; return [waitingPairing('ABCDEFGH', 'discord')]; };
+  const script = scriptedPrompter([
+    { kind: 'confirm', question: 'Set up Telegram remote now?', answer: true },
+    { kind: 'pause', question: /press Start, then Enter/ },
+    { kind: 'confirm', question: 'No waiting code. Wait once more?', answer: retry },
+    ...(retry ? [{ kind: 'pause' as const, question: /press Start, then Enter/ }] : []),
+  ]);
+  const result = await setup({ ...f.options, interactive: true, yes: true, prompter: script, hub: f.client });
+  assert.equal(script.left().length, 0);
+  assert.equal(reads, retry ? 2 : 1);
+  const line = result.report.steps.find(row => row.name === 'remote telegram')!;
+  assert.equal(line.verdict, 'open');
+  assert.match(line.detail, /https:\/\/t.me\/setup_fixture_bot/);
+  assert.deepEqual(f.approved, []);
+});
+
+test('several waiting codes offer their row texts, filter the messenger and confirm the chosen identity', async t => {
+  const f = pairingFixture(t);
+  f.client.pairings = async () => [waitingPairing('DISCORDX', 'discord'), waitingPairing('ABCDEFGH'), waitingPairing('JKLMNPQR')];
+  const script = scriptedPrompter([
+    { kind: 'confirm', question: 'Set up Telegram remote now?', answer: true },
+    { kind: 'pause', question: /press Start, then Enter/ },
+    { kind: 'choose', question: 'Which pairing code?', answer: 'JKLMNPQR' },
+    { kind: 'confirm', question: 'Pair telegram user? code JKLMNPQR', answer: true },
+  ]);
+  const result = await setup({ ...f.options, interactive: true, yes: true, hub: f.client, prompter: {
+    ...script, choose: async <T extends string>(question: string, choices: readonly Choice<T>[], def: T): Promise<T> => {
+      assert.deepEqual(choices, ['ABCDEFGH', 'JKLMNPQR'].map(code => ({ value: code, label: waitingPairing(code).text })));
+      return script.choose<T>(question, choices, def);
+    },
+  } });
+  assert.equal(script.left().length, 0);
+  assert.deepEqual(f.approved, ['JKLMNPQR']);
+  const line = result.report.steps.find(row => row.name === 'remote telegram')!;
+  assert.equal(line.verdict, 'done');
+  assert.match(line.detail, /Chosen human \(202\)/);
 });

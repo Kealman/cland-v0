@@ -195,3 +195,5 @@ T-1340 source-1: Require pre-bind fake ownership, bounded control requests and s
 
 T-1365: Route setup remote/hidden prompt work to the sealed scripted and frame/fake guides; retain terminal ownership, shared secret/config paths and remote verdict semantics.
 2026-10-27 · T-1348 verification fix: scope recovery joins to active outages and preserve healthy command confirmation before later queued General work.
+
+T-1366: Add setup pairing's local CLI/fake Bot API guide, durable Start receipt, identity confirmation and bounded wait/decline guidance.

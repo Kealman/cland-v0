@@ -16,6 +16,16 @@ Explicit injected handlers keep first-match priority. Use the
 [native pairing regression](tests/hub-test-telegram-pairing.test.ts.md) for the
 CLI grant, stranger silence, blocked-bot reports and durable kick consumption.
 
+`cland setup` also uses the local human CLI connection. After enabling Telegram,
+it pauses with the bot link for Start and Enter, reads this messenger's waiting
+inbox rows and confirms the selected row before `pairing.approve`. Multiple rows
+offer a choice; an empty list offers one extra wait. No leaves the binding alone
+and prints the selected row's approve command. Nonterminal setup never approves:
+an enabled, unpaired remote reports `open` with the available bot link and command;
+a connected, paired rerun reports `ok`. The wait/choose/confirm helper is keyed
+by messenger so another platform can supply its own pairing gesture. See the
+[setup pairing regression](tests/hub-test-setup-pairing-component.test.ts.md).
+
 Approval callers resolve `InboxBoard.pairingCodes.get(id)` at the grant boundary,
 then bind the stored identity and clear that messenger's waiting codes in one
 transaction. Call `pairing.approve {messenger, code}` from a human `nvim` or `cli`

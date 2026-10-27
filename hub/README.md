@@ -93,6 +93,9 @@ commands. It exits 1 while a step is open or failed, 0 when all applicable steps
 are ready, and 130 on cancelled input. A running hub and Aide can be detected
 without a terminal. Explicit flags can permit the actions described above.
 
+The optional [Telegram step](#telegram-in-setup) guides bot creation, hidden token
+input and pairing on a separate identity confirmation; `--yes` accepts neither offer nor grant.
+
 Setup opens the workbench with `CLAND_OPEN_SESSION=aide-1`. Once the hub lists
 that session, the workbench opens its terminal in the centre in Terminal mode,
 once. `CLAND_OPEN_SESSION` can name another opening session; it is removed at
@@ -2669,17 +2672,23 @@ Environment overrides still win over the file. Reports show only fingerprints.
 Setup enables the remote through the config-set path, then reloads a running
 hub and checks its loaded remote status. Telegram activation requires a valid
 resolved token and network access to Telegram; setup tests use injected fakes.
-An enabled, connected remote with a retained pairing prints `done`. An unpaired
-remote stays `open`, with the bot's start link and
-`cland remote approve telegram <code>`: open the link, press Start, then approve
-the code returned by the bot. Pairing inside setup is not available in this step.
+An enabled, connected remote with a retained pairing prints `done`. For an
+unpaired remote, setup prints the bot's start link and pauses for Start, then
+Enter. It reads this messenger's waiting inbox rows, offers a choice when several
+wait, and confirms the selected identity with its name, numeric id and code.
+This confirmation defaults to No even with `--yes`. Yes approves through the
+local CLI connection and prints `done` with the paired name and id. No leaves
+`open` with that row's exact `cland remote approve telegram <code>` command.
+No waiting code offers one extra wait, then remains `open` with the bot link.
+If the hub is stopped, start it and rerun setup to pair.
 
 Without a terminal (including `--json`), setup asks nothing and changes no remote
 settings. An untouched Telegram remote prints `skip` with
 `cland secret set telegram.token`,
 `cland config set remote.telegram.enabled true` and `cland hub reload`.
 A token without enabling, or enabling without a token, prints `open` with the
-missing commands. A configured, unpaired remote also names the approve command.
+missing commands. A configured, unpaired remote also names the approve command
+and the bot link when the running hub knows it.
 With `--no-aide` and no running hub, a terminal can store the token and enable the
 managed config using the same validated atomic writer as config-set. It leaves
 reload and pairing `open`; it starts no hub. If a hub already runs, it can reload

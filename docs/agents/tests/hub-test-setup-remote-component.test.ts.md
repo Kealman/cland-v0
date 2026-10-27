@@ -9,7 +9,7 @@ No native browser, real platform, token, Git probe or harness child is used.
 The terminal flow proves BotFather guidance, the hidden question, private stored
 input and persisted enabling, then uses the reload completion and loaded remote
 status receipts. The unpaired row contains the bot link and approve command and
-precedes the Aide. Approval uses the real inbox code and frame port. A paired
+precedes the Aide after declining the extra wait. Approval uses the real inbox code and frame port. A paired
 JSON rerun asks nothing and reports `ok`; disabling and removing the token keeps
 the approved numeric identity, and a fresh accepted setup reports `done`.
 

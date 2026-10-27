@@ -1,11 +1,14 @@
 import { layout, readDiscovery } from '../project.ts';
 import { askHubFrame } from '../cli/socket-client.ts';
 import { startProjectHub } from '../cli/hub.ts';
-import type { HarnessProcessView, HubStatus, RemoteStatusResult } from '../protocol.ts';
+import type { HarnessProcessView, HubStatus, Inbox, InboxPairing, RemoteStatusResult, RemoteVia } from '../protocol.ts';
+import type { Pairing } from '../remote/state.ts';
 import type { HarnessId } from '../doctor/ranges.ts';
 
 export type SetupHub = {
   remotes?(): Promise<RemoteStatusResult>;
+  pairings?(): Promise<InboxPairing[]>;
+  approve?(messenger: RemoteVia, code: string): Promise<Pairing>;
   configure?(key: string, value: unknown): Promise<void>;
   reload?(): Promise<void>;
   running(): Promise<{ pid: number } | null>;
@@ -32,6 +35,8 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
   return {
     running,
     remotes: async () => await request({ type: 'remote.status' }) as RemoteStatusResult,
+    pairings: async () => (await request({ type: 'inbox.list' }) as Inbox).pairings ?? [],
+    approve: async (messenger, code) => (await request({ type: 'pairing.approve', messenger, code }) as { pairing: Pairing }).pairing,
     async configure(key, value) {
       const result = await request({ type: 'config.set', key, value }, 60_000) as { applies: string };
       if (result.applies !== 'now') throw new Error('configuration saved but not applied; run cland hub reload');

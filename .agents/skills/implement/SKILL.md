@@ -65,7 +65,11 @@ frame/fake messenger seams in `docs/agents/tests/hub-test-setup-remotes.test.ts.
 and `docs/agents/tests/hub-test-setup-remote-component.test.ts.md`. Reuse secret
 input/preflight and the config-set writer; release each terminal reader before
 the next question. Keep nonterminal untouched `skip`, partial `open`, default-No
-offers even with `--yes`, and pairing readback before `ok` or `done`.
+offers even with `--yes`, and pairing readback before `ok` or `done`. Setup
+pairing uses the local CLI/fake Bot API seam in
+`docs/agents/tests/hub-test-setup-pairing-component.test.ts.md`: inject Start
+during the pause and observe its durable offset before reading the waiting row;
+confirm its identity before approval, keeping no-code waits bounded and declines open.
 
 For remote terminal commands, token rotation or messenger status/test callbacks,
 use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,

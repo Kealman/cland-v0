@@ -49,6 +49,8 @@ test('terminal setup stores a hidden Telegram token, reloads through frames and 
   const script = scriptedPrompter([
     { kind: 'confirm', question: 'Set up Telegram remote now?', answer: true },
     { kind: 'secret', question: 'Telegram token:', answer: token },
+    { kind: 'pause', question: /press Start, then Enter/ },
+    { kind: 'confirm', question: 'No waiting code. Wait once more?', answer: false },
   ]);
   const code = await runSetup(['--yes', '--no-accounts'], f.root, fixtureEnvironment(f.root, {}), {
     stdinTTY: true, stdoutTTY: true, machine: f.machine, hub: f.client,

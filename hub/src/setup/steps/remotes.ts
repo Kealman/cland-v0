@@ -5,6 +5,7 @@ import { prepareSecretWrite } from '../../cli/secret.ts';
 import { resolveSecrets, secretFingerprint, setSecret, validateSecrets, validateSecretValue } from '../../remote/secrets.ts';
 import { Cancelled } from '../prompter.ts';
 import { setupHub } from '../hub.ts';
+import { pairRemote } from '../pairing.ts';
 import type { SetupStep } from '../types.ts';
 
 const TOKEN = 'cland secret set telegram.token';
@@ -25,7 +26,7 @@ export const remotes: SetupStep = async ({ root, env, machine, hub: injected, in
     const status = running && token && enabled ? (await client.remotes?.())?.remotes.find(row => row.messenger === 'telegram') : undefined;
     if (token && enabled && status?.token.present && status.connection === 'connected' && status.pairing) return [{ name, verdict: 'ok', detail: `configured and paired; token ${secretFingerprint(token)}` }];
     fix = [!token ? TOKEN : '', !enabled ? ENABLE : '', RELOAD, token && enabled && !status?.pairing ? APPROVE : ''].filter(Boolean).join('; ');
-    if (!interactive) return [{ name, verdict: !token && !enabled ? 'skip' : 'open', detail: 'optional Telegram remote', fix }];
+    if (!interactive) return [{ name, verdict: !token && !enabled ? 'skip' : 'open', detail: `optional Telegram remote${status?.botLink ? `; open ${status.botLink} and press Start` : ''}`, fix }];
     if (!await prompter.confirm('Set up Telegram remote now?', false)) return [{ name, verdict: 'skip', detail: 'Telegram declined' }];
     if (!token) {
       narrate?.('In Telegram, open @BotFather and send /newbot.\nChoose a name and a username for this project’s bot.\nCopy its token into the hidden prompt below.\n');
@@ -56,7 +57,7 @@ export const remotes: SetupStep = async ({ root, env, machine, hub: injected, in
     if (!after?.token.present || after.connection !== 'connected') return [{ name, verdict: 'open', detail: 'Telegram did not connect; check cland remote status', fix: RELOAD }];
     const detail = `enabled; token ${after.token.fingerprint}`;
     if (after.pairing) return [{ name, verdict: 'done', detail: `${detail}; paired` }];
-    return [{ name, verdict: 'open', detail: `${detail}; open ${after.botLink ?? 'the bot in Telegram'} and press Start`, fix: APPROVE }];
+    return [await pairRemote({ messenger: 'telegram', name, detail, link: after.botLink ?? 'the bot in Telegram', gesture: 'press Start', client, prompter })];
   } catch (error) {
     if (error instanceof Cancelled) throw error;
     // Provider/parser errors may contain input; setup diagnostics keep only fixed reasons.
