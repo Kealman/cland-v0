@@ -2,8 +2,8 @@
 id: T-1361
 kind: task
 title: Doctor names each remote's token, connection, pairing and stopped cause with its fix
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1102
 branch: t/T-1361-doctor-names-each-remote-s-token
 created: 2026-10-27T05:46:49.627Z
-updated: 2026-10-27T08:52:53.525Z
+updated: 2026-10-27T09:40:06.503Z
+closed: 2026-10-27T09:40:06.503Z
 ---
 
 ## Summary
@@ -40,14 +41,19 @@ The lines follow doctor's ok, warn and fail shape. A stopped remote is warn, wit
 
 - [x] C1. With a made-up Telegram token in the secrets file or in `CLAND_TELEGRAM_TOKEN`, doctor shows it as present with its 12-character fingerprint, and neither the text nor the `--json` output contains the value (test).
   - done: impl-1361 · 2026-10-27T05:55:57.160Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1361-evidence-2 · 2026-10-27T09:33:56.847Z · commit eddd05f311dc02bf790c62b04dc678012fd96045
 - [x] C2. Doctor shows each messenger's enabled state, connection and paired name and id from a running hub's remote status, and "hub not running" without one (test).
   - done: impl-1361 · 2026-10-27T05:55:57.246Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1361-evidence-2 · 2026-10-27T09:33:56.847Z · commit eddd05f311dc02bf790c62b04dc678012fd96045
 - [x] C3. A 401, a 403 and a lasting 409 produced on the fake Bot API each give doctor's cause line with the fix that General's notice for the same stop names (test).
   - done: impl-1361 · 2026-10-27T05:55:57.735Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1361-evidence-2 · 2026-10-27T09:33:56.847Z · commit eddd05f311dc02bf790c62b04dc678012fd96045
 - [x] C4. The test messenger's structured stops for 4004 and 4014 give doctor's "new token" and "Message Content toggle" lines with their fixes (test).
   - done: impl-1361 · 2026-10-27T05:55:57.821Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1361-evidence-2 · 2026-10-27T09:33:56.847Z · commit eddd05f311dc02bf790c62b04dc678012fd96045
 - [x] C5. During a doctor run with an active Telegram remote, the fake Bot API records no request and doctor opens no network connection (test).
   - done: impl-1361 · 2026-10-27T05:55:58.337Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1361-evidence-2 · 2026-10-27T09:33:56.847Z · commit eddd05f311dc02bf790c62b04dc678012fd96045
 
 ## Comments
 
@@ -147,3 +153,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Tier-split delta source clear, A-12665. Coordinator-authorized two trace controls/helper moved unchanged to T2 remote-state-migration; original five persistence cases remain T1. Product/credential-fixture unchanged; sorted tier row, exact indexed guide and skill provenance reviewed. A-12664 original admission red and actual lint green inspected; unsupported --list separately labeled. Nineteen final-head local macOS logs independently total 170 passes, no fail/cancel/skip. Refused submission ran no tests; both old Linux failures stay red. C1–C5 remain unverified pending Coordinator-owned exact-head verify all and original-record evidence review.
+
+### impl-1361 · 2026-10-27T09:32:52.580Z
+
+Final configured full run af6b34a7 at unchanged eddd05f311dc02bf790c62b04dc678012fd96045 exited0: T0/T1/T2/T3/Web complete; 4998 tests, 4990 passed, 0 failed/cancelled, 8 reasoned platform/tool skips. Original record A-12675. Linux droplet c-8 lon1, Node24.21.0/Neovim0.12.5; Web Chrome Headless Shell156.0.8078.4 build1248. Budget/test-lint gates remain report-only with warnings; no T4/load claim. Independently checked exact pass records for all9 doctor cases, C3 Telegram401/403/lasting409, 3 CLI compatibility/structured controls and 2 migration controls. All14 new cases max0.20758s; cli-identity previously failing case passes11.370s. Final original-record evidence review requested with all criteria verified at this exact head; prior red runs remain red.
+
+### rev-26 · 2026-10-27T09:33:56.847Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1361-evidence-2
+commit: eddd05f311dc02bf790c62b04dc678012fd96045
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear, A-12678; C1–C5 verified. Coordinator all af6b34a7/A-12675 independently yields 4,990 ordinary passes / 8 reasoned platform/tool skips, no fail/cancel/TODO, no load records. Exact doctor C1/C2/C4/C5 and Telegram 401/403/409 shared-notice C3 receipts pass; previous-wire/CLI and fresh0/legacy1/reopen0 migration controls pass. All14 new identities <3 s. Formerly failing exact cli-identity case passes 11.370460050 s, retaining report-only overrun; both old runs remain red. T0/T1/T2/T3/Web complete, T4 absent. Linux droplet and pinned Headless Shell156/v1248 recorded; host typecheck3e90ad83 reused, not remote-repeated. Budget/test-lint warnings retained. Source-4 unchanged; Coordinator owns enqueue/landing.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-27T09:40:06.503Z
+
+Merged 032d6dd4fd94bf8e8cd1f04bdb0f70450228aeb8 onto dev.
