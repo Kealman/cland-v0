@@ -9,6 +9,7 @@ import { configKeys } from '../src/init/config-set.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import type { CrewConfig } from '../src/crew.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
+import { SECRET_NAMES } from '../src/remote/secrets.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
 import { clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
@@ -31,6 +32,9 @@ function commandProblems(markdown: string): string[] {
   const problems: string[] = [];
   const keys = configKeys();
   for (const span of markdown.matchAll(/`([^`]+)`/g)) {
+    const secret = /^cland\s+secret\s+(?:set|unset)\s+(\S+)/.exec(span[1]!)?.[1]
+      ?? /^(?:telegram|discord|speech)\.[a-z_]+$/.exec(span[1]!)?.[0];
+    if (secret && !(SECRET_NAMES as readonly string[]).includes(secret)) problems.push(`unknown secret name: ${secret}`);
     const command = /^cland\s+([a-z][a-z-]*)(?:\s+([a-z][a-z-]*))?(?=\s|$)/.exec(span[1]!);
     if (!command) continue;
     const name = command[2] ? `${command[1]} ${command[2]}` : command[1]!;
@@ -51,12 +55,19 @@ test('onboarding names only shipped commands or explicitly pending release work'
   }
 });
 
-test('the onboarding command check rejects unknown commands and config keys', () => {
+test('the onboarding command check rejects unknown commands, config keys and secret names', () => {
   assert.deepEqual(commandProblems('`cland crew add` and `cland nonexistent`'), [
     'unknown command: cland crew add', 'unknown command: cland nonexistent',
   ]);
   assert.deepEqual(commandProblems('`cland config set plan.approval "human"`'), []);
   assert.deepEqual(commandProblems('`cland config set plan.unknown "human"`'), ['unknown config key: plan.unknown']);
+  assert.deepEqual(commandProblems('`cland remote status` and `cland secret list` and `telegram.token`'), []);
+  assert.deepEqual(commandProblems('`cland secret set telegram.token` and `cland secret unset speech.elevenlabs_key`'), []);
+  assert.deepEqual(commandProblems('`cland secret set telegram.unknown`'), ['unknown secret name: telegram.unknown']);
+  assert.deepEqual(commandProblems('`cland secret unset nonexistent`'), ['unknown secret name: nonexistent']);
+  assert.deepEqual(commandProblems('Setup stores `telegram.tokne` or `speech.unknown_key`.'), [
+    'unknown secret name: telegram.tokne', 'unknown secret name: speech.unknown_key',
+  ]);
 });
 
 // T1: every shipped skill file is stack-neutral without a hub or CLI process.
@@ -69,10 +80,14 @@ test('onboarding verification instructions are independent of npm', async () => 
 });
 
 // T1: the tour's stage structure is source-only, without a hub or CLI process.
-test('the onboarding tour has eight stages ending with Look now', async () => {
+test('the onboarding tour has nine stages ending with Look now', async () => {
   const markdown = await readFile(new URL('TOUR.md', SKILL), 'utf8');
   const stages = markdown.split(/^## /m).slice(1);
-  assert.equal(stages.length, 8);
+  assert.equal(stages.length, 9);
+  assert.match(stages[8]!, /^9\. Remote control\n/);
+  assert.match(stages[8]!, /^Look now: the Remotes row in the sessions panel\./m);
+  const skill = await readFile(new URL('SKILL.md', SKILL), 'utf8');
+  assert.match(skill, /nine stages/);
   for (const [index, stage] of stages.entries()) {
     assert.match(stage, new RegExp(`^${index + 1}\\. `));
     const paragraphs = stage.trim().split(/\n\s*\n/);

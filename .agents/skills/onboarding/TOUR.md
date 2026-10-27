@@ -54,3 +54,13 @@ The crew grows in steps; the Coordinator or I propose each one, you decide, and 
 4. Beyond this machine: test runs on rented remote machines within a daily spending cap you set, several accounts per agent for when one reaches its limit, and the web workbench in a browser (v0.2).
 
 Look now: the crew line in the sessions panel; it changes as the crew grows.
+
+## 9. Remote control
+
+A remote is your private Telegram chat with this project's bot. Once paired, it mirrors General and the inbox rows that need you, so you can follow the Coordinator away from the workbench. Write there to talk to the Coordinator, answer an ask on its card, or approve or deny a command on its approval card. The first answer from the phone or either workbench wins. `/status` shows the project's state; `/inbox` brings back its open cards; `/mute` quiets General while asks and approvals still arrive, and `/unmute` brings General back.
+
+Plans are approved in the workbench, and topics other than General stay there too; a notice may let you reply into its original topic. Pairing means approving which Telegram identity may act as you: that approval stays in Neovim or your terminal, never the phone or the web. For an enabled remote, the Remotes row in the sessions panel shows the connection, who is paired, mute, queued messages and the last error; a failure turns it red immediately.
+
+If you want a remote, run `cland setup` once in your own terminal. It guides you through creating the bot with BotFather, reads its token at a hidden prompt, enables Telegram, then asks you to open the bot link, press Start and confirm the waiting identity. This is the tour's exception to sessions running commands for you: the token belongs only in that hidden prompt, never in our conversation. Setup stores it as `telegram.token`; `cland secret list` shows only its name and fingerprint, and `cland remote status` shows the connection and pairing. If you already paired during setup, the row shows it now; an enabled remote waiting for pairing shows as unpaired. When all remotes are disabled, both workbenches omit the Remotes row; `cland remote status` still reports their state.
+
+Look now: the Remotes row in the sessions panel.
