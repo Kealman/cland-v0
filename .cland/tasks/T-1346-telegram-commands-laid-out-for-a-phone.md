@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1098
 branch: t/T-1346-telegram-commands-laid-out-for-a-phone
 created: 2026-10-26T19:09:07.381Z
-updated: 2026-10-27T00:25:32.551Z
+updated: 2026-10-27T01:10:25.000Z
 ---
 
 ## Summary
@@ -39,3 +39,7 @@ Pre-change consumer audit (rule 20): no hub wire shape/authority/schema changes 
 ### impl-1346 · 2026-10-27T00:25:32.550Z
 
 Checkpoint 281d3dfc8 and artifact A-12534 record five red→green command/menu cases. Local macOS targeted T2 telegram-commands.test.ts completed (5/5), telegram-pairing.test.ts completed (3/3); npm run typecheck completed. No T0–T4 suite, remote executor or browser evidence claimed. Coordinator decision 58808755-e6ca-4134-a495-9b05ac62cc2f keeps command replies direct, no outbox/jobs; durable native chat/message fence precedes replies, and replay after effect-before-receipt interruption emits no duplicate. Integration and source review await the required sibling landings; full verify is Coordinator-owned.
+
+### impl-1346 · 2026-10-27T01:10:25.000Z
+
+Integrated the landed T-1343 via origin/dev (ce423359), preserving rendering format and both receive paths; merged head 4a1fd1017. All six command cases pass, including the newly green long literal card split case. On this macOS local tree: npm run typecheck completed; targeted telegram-api (15/15), telegram-rendering (6/6), telegram-pairing (3/3) and cli-help (5/5) passed, run one file at a time. The updated help fixture is committed separately. No full-suite/Linux/browser evidence claimed. T-1344 and T-1349 must land and merge before source review.

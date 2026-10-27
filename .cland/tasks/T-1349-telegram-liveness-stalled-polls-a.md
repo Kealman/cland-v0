@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1097
 branch: t/T-1349-telegram-liveness-stalled-polls-a
 created: 2026-10-26T19:09:07.935Z
-updated: 2026-10-26T23:31:53.915Z
+updated: 2026-10-27T01:08:09.321Z
 ---
 
 ## Summary
@@ -61,3 +61,7 @@ finding_counts: {"high":0,"medium":3,"low":0}
 Full source review: A-12517. Standards: medium M1 (usage.ts:67, owning REMOTE_USAGE frozen-byte migration omitted) and M3 (telegram-liveness.test.ts:32, fake-clock startup awaits before independent setup bound/pre-start drainage ownership). Spec: medium M2 (telegram.ts:47, long provider detail consumes Gateway's 500-character reason before fixed recovery guidance). Findings include concrete correction/control requirements. C1/C2 remain unverified; no configured runtime, tests, build, browser or provider was run by this reviewer. A-12512 remains local macOS summary evidence only. Correct and commit the replacement head, restore claimant done marks as appropriate, and request fresh source review before verification.
 
 Criteria: C1 failed (Source review requires the frozen help migration and independently bounded owned fixture startup before configured verification.), C2 failed (Long provider descriptions truncate the fixed status cause/fix; fixture startup ownership and help bytes also need correction.).
+
+### impl-1349 · 2026-10-27T01:08:09.321Z
+
+After merging landed T-1343, audited the new receive/render path as a401/403 consumer. Its generic rich-rejection catch swallows auth/block errors and attempts plain fallback. This belongs to T-1349's fatal policy: rethrow401/403 into the existing #track boundary, while other rendering rejections retain fallback. New production-factory/fake rich401/403 controls will prove exactly one failed rich send, no fallback, fixed General/status cause/fix, closed poll and continued hub service. Consumers searched: TelegramRemote.receive, telegram-rendering tests and guide, README Telegram mirror section, implement renderer guidance, fake rich errors and messenger tests; no protocol/store migration.

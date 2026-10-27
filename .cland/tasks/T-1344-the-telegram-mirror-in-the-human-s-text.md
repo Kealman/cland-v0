@@ -2,8 +2,8 @@
 id: T-1344
 kind: task
 title: "The Telegram mirror in: the human's text, decision and question kinds, replies to topics, and the delivery reactions"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1095
 branch: t/T-1344-the-telegram-mirror-in-the-human-s-text
 created: 2026-10-26T19:09:06.927Z
-updated: 2026-10-27T00:19:59.604Z
+updated: 2026-10-27T02:06:44.588Z
+closed: 2026-10-27T02:06:44.588Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Inbound mapping through the gateway as the human (T-1321) with `via` (T-1322). M
 
 - [x] C1. Free text, `/decision`, `/question` and a message with bold text reach General as the human's messages of the right kind with `via = "telegram"` and the formatting dropped (test).
   - done: impl-1344 · 2026-10-26T23:45:43.243Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1344-final · 2026-10-27T02:00:40.302Z · commit 9549c6cd75d2cb4bfb59d1a0b47ed3d37e5c20a7
 - [x] C2. A reply to an agent's mirrored message lands in that message's topic, and the fake sees 👌 then 👀 in that order (test).
   - done: impl-1344 · 2026-10-26T23:45:43.328Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1344-final · 2026-10-27T02:00:40.302Z · commit 9549c6cd75d2cb4bfb59d1a0b47ed3d37e5c20a7
 
 ## Comments
 
@@ -86,3 +89,35 @@ Replacement source CLEAR at7b2a572c/tree82424899. A-12523 records Standards0/Spe
 ### impl-1344 · 2026-10-27T00:19:59.604Z
 
 Integrated landed T-1342 via dev4446cecd at intermediate head e7817e181 (pushed). Five conflicts resolved preserving pairing/notice handlers plus native ingress/receipt/recovery. Local serial Telegram T2: inbound7/API15/messenger4/pairing3/polling6 all pass; typecheck, help5/compatibility1 and diff checks pass on macOS Node24.21.0. No full verify or source-delta request at this intermediate head. Awaiting T-1343 landing per order decision3d9b5436; final merged head gets review and Coordinator-owned suite.
+
+### rev-34 · 2026-10-27T01:14:26.106Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1344-source3
+commit: 9549c6cd75d2cb4bfb59d1a0b47ed3d37e5c20a7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged source delta CLEAR at9549c6cd/tree3b0d22ba. A-12540: Standards0/Spec0 new delta findings. Both authorized landed-dev merge resolutions preserve pairing/notices, ingress/fourth native recovery callback, rich/entities constructor/API types, inbound result/delivery dispatch and General mirror filters. Original source2 identity/recovery/native crash/old-wire production and test files remain byte-identical. New real native-mirror→durable-map→human-reply integration retains source attribution, reactions/no echo and joined teardown; original arbitrary-topic proof remains. REMOTE_USAGE/CONFIG_USAGE owning fixtures independently equal production; strict guards/docs/skill CHANGES retained. Inherited T-1349 rich-error/fallback and diagnostic-order corrections remain separately assigned/unlanded, no claim fixed by this delta. No Reviewer tests/edits; A-12539 local macOS receipts are not Linux/full/Web evidence. C1/C2 done marks confirmed; runtime verification pending. Per Coordinator575d394d/b8ef1f17, lead reports exact head/fresh merge-tree for Coordinator sole head-bound verify all; no mode-free run. Final evidence must check generated cases/load facts/phases/platform/browser and new Linux duration allowances.
+
+### rev-34 · 2026-10-27T02:00:40.302Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1344-final
+commit: 9549c6cd75d2cb4bfb59d1a0b47ed3d37e5c20a7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence CLEAR. A-12549 independently audits raw A-12547/run3d48ff72 full/all exit0 against source3/A-12540, branch tip and task verify head9549c6cd. Unique generated finish records:4918pass/8skip/0fail across666files; no cancelled/todo, no load-repetition records. All required C1 input-kind/plaintext/human/via and C2 mapped/arbitrary-topic reply/ordered reactions pass, including real mirror-map/no-echo, mention parity, interrupted replay, exact drain handoff, durable lost-delivery recovery, old-wire identity and both native SIGKILL cases. Exact names/lines/durations in A-12549. C1/C2 verified. HostT0check and LinuxT1/T2/T3/Web complete; T4 unexecuted, no repetitions; eight skipped sandbox/macOS/OpenCode cases remain exclusions. Linuxx64 6.8.0-142-generic c-8lon1 Node24.21 Neovim0.12.5 CHS156.0.8078.4/Playwrightv1248 isolated browser; remote typecheck reused host gate743c1c61 (not a second Linux check). New native commit-window case1.848308612s<3s; Coordinator070099a2 confirms no allowance. Budgets/lint/T3ratchet remain report-only, not hidden or reclassified. No Reviewer executions/edits. Coordinator owns enqueue on ready; inherited T-1349 corrections remain separately scoped.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-27T02:06:44.588Z
+
+Merged c1bbef405843e295b1ae65e863cdffaddbee1a35 onto dev.
