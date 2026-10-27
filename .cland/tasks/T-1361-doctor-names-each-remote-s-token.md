@@ -3,7 +3,7 @@ id: T-1361
 kind: task
 title: Doctor names each remote's token, connection, pairing and stopped cause with its fix
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1102
 branch: t/T-1361-doctor-names-each-remote-s-token
 created: 2026-10-27T05:46:49.627Z
-updated: 2026-10-27T06:02:39.024Z
+updated: 2026-10-27T07:12:19.888Z
 ---
 
 ## Summary
@@ -84,3 +84,24 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, A-12606 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12606-t-1361-source-2-clearance-at-994f534a9.md. M1/M2/M3 resolved: frozen doctor-help only, sorted new tier row, CLI shared-table structured cause/fix with opaque-reason and literal old-wire regressions, unchanged legacy reason/JSON. A-12604 original guard red/green and serial matrix logs inspected: 17 files163 targeted macOS passes, all counters match manifest; requested15-file set148 plus doctor/state15, separate help6. No Linux/browser/full-suite claim; C1–C5 configured-runtime-unverified. Keep head stable and report ready for Coordinator all occasion/landing; no item verify.
+
+### impl-1361 · 2026-10-27T07:11:31.719Z
+
+Configured Linux full run 78578e27 at 994f534a9 did not pass: T0/T1/T2 exit 0, T3 exit 1 in cli-identity.test.ts with `Error: database is locked` from Store:439 via actorCredential; Web/T4 not completed. A-12635 is the durable raw receipt. Reported shared-defect candidate to lead T-1361; holding diagnosis and reviewed head for Coordinator classification/shared fix. All 13 newly added T-1361 generated cases in the Linux timing records passed, maximum observed 0.208066787 s, so none reaches the 3-second new-test allowance threshold. This partial evidence does not satisfy the full gate.
+
+### impl-1361 · 2026-10-27T07:11:49.877Z
+
+Coordinator classified run 78578e27's cli-identity/session-credential SQLite-lock failure as known unrelated flake T-1335, and reports 5/5 isolated passes at 994f534a. Those are Coordinator-reported targeted reruns, not a full gate pass. Coordinator will submit one flaky-rule retry after E-1309 stage covers; enqueue also waits for E-1309 demo verdict because this item touches its shared files. Holding source-clear head 994f534a95b809997f9ba27a35fd5de8ea689fb9 unchanged; no independent retry or diagnosis.
+
+### rev-26 · 2026-10-27T07:12:19.887Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261027-1361-evidence-1
+commit: 994f534a95b809997f9ba27a35fd5de8ea689fb9
+scope: evidence
+findings: [{"severity":"medium","text":"M1 Evidence: required full run 78578e27/A-12635 exits 1. Credential fixture opens Store after the owned daemon is SIGSTOPed and throws database is locked before the native CLI call/refusal assertions. T3 fails; Web/T4 coverage is incomplete. Shared/pre-existing classification remains unproven; preserve this failed receipt and obtain Coordinator diagnosis/recovery disposition before final runtime clearance.","file":"hub/test/cli-identity.test.ts","line":194}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-12636 records the independently inspected original failure. 4,575 ordinary passes, one failure and five reasoned skips; no scoped load records. T0/T1/T2 exit 0; executed T3 exits 1, Web zero executed tests. Nine doctor cases passed, but C1–C5 remain unverified pending accepted final evidence. Source-2 A-12606 remains unchanged; no new source-design finding and no Reviewer runtime reproduction. Coordinator owns diagnosis, recovery occasion and landing.

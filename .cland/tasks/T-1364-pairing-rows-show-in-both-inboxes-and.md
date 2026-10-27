@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1103
 branch: t/T-1364-pairing-rows-show-in-both-inboxes-and
 created: 2026-10-27T05:46:50.196Z
-updated: 2026-10-27T06:24:00.951Z
+updated: 2026-10-27T07:05:14.568Z
 ---
 
 ## Summary
@@ -96,3 +96,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Replacement source2 clear: A-12614, carrying full A-12608 review forward. Verified the complete delta from 4ab313acd: nvim/lua/cland/init.lua only, 1 insertion/2 deletions, no dev merge. Pairing open/approve/close guidance is folded into the existing Inbox continuation, restoring the previous popup line count while artifact-toggle text, ARTIFACT-001 QA case and all pairing/key assertions stay unchanged. Standards/Spec: no remaining findings. A-12613 supplies local serial macOS arm64 qa-shipped 32/32 (ARTIFACT-001 0.434 s), pairing Web 4/4 and typecheck; no replacement Linux/configured pass or duration claim. Prior 11778e7a remains failed partial evidence under evidence1. C1–C4 remain unverified. Per Coordinator 179bd4c5, report this exact source-clear head for its rule 6 verify all; no further mode-free item run.
+
+### impl-1364 · 2026-10-27T07:00:59.295Z
+
+Source3 candidate 26bc255904daed19738875c793fcfaeeaab3b547 pushed. Prior 1f987d26 remains RED: Web assertions 288/288 and loaded repetition 10/10 passed, but unallowed durations and eleven autostart-hub leaks made Web exit 1 (A-12630). Fix: await child-context Neovim disposal before parent Web hub close; keep native PID+close receipt and zero root-owned autostart-hub census, with cleanup of unexpected writers still failing as leaks. Old-parent ownership negative control failed the new pre-close native PID guard, restored scope passes. Local pairing file 5/5 (four top-level + native child), typecheck/lint/duration manifest pass. Coordinator-approved E-1313 allowances 9.2/8.2/4.7s expire 2026-11-03, correcting the initially invalid thirty-day request. No production changes in this delta. Fresh source review then new mode-free verification.
+
+### impl-1364 · 2026-10-27T07:03:03.148Z
+
+Source3 provenance correction at e00ac9c03ceb650cf777c9d32b66fd647e22aaa3: allowance reasons name the actual 4-worker Web measurement in A-12630 line23142, rather than configured general workers2. No cap, date, test or cleanup behavior change; manifest preflight and diff check pass. Replacement source review requested; runtime suite remains pending.
+
+### rev-32 · 2026-10-27T07:05:14.231Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261027-1364-evidence2
+commit: fa4a485638344215de698b2775535b9fbccc4b75
+scope: evidence
+findings: [{"severity":"medium","text":"At fa4a4856 the new desktop/phone identities lack measured allowances: A-12630 hard-refuses 6.077 s > 5 s and 5.463 s > 5 s despite passing assertions.","file":"hub/test/durations.json","line":9903},{"severity":"medium","text":"Parent-owned native Neovim is disposed after Web closes its shared hub, admitting autostart hub leaks. A-12630 records eleven root-owned hub serve --autostart cleanup PIDs after ordinary/repetition execution.","file":"web/test/pairing.test.ts","line":80}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Old-head evidence2 NOT CLEAR, A-12634: 1f987d26/A-12630 at fa4a4856 exited 1. Actual duration-budget refusals at 23126/23127 and eleven native autostart cleanup records at 23130–23140 prevent a usable pass. Raw ordinary 3623 passes plus 410 separate load executions; Web assertions 288/288 and aggregate report-only pairing repetitions 10/10 do not override failure/teardown. T0/T1/T2/mapped T4 exit 0, T3 absent, Web exit 1. Linux droplet; ordinary Web workers 4, repetition workers 2; host gate reused. No criterion is verified from this failed receipt. Replacement teardown/allowance source is reviewed separately at e00ac9c0.
+
+### rev-32 · 2026-10-27T07:05:14.568Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1364-source3
+commit: e00ac9c03ceb650cf777c9d32b66fd647e22aaa3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source3 clear at replacement e00ac9c0: A-12634, carrying A-12608/A-12614 forward. Complete three-file delta only; no production or UI assertion changes/dev merge. Awaited child context disposes native Neovim before parent Web hub cleanup; pre-Web native PID/close receipts and post-Web root-owned hub census retain zero-before/zero-after emergency cleanup assertions. Coordinator-approved E-1313 9.2/8.2/4.7 s allowances use exact red-run passing samples, added 2026-10-27/expires 2026-11-03; final reasons correctly identify ordinary Web workers 4. The prior low worker-count discrepancy is resolved. Standards/Spec: no remaining findings. A-12631 is local macOS 5/5 (4 parents+1 native child), positive native close/zero-leak diagnostics and negative-control summary, not a fresh Linux pass. Prior A-12630 remains failed under evidence2. C1–C4 runtime marks remain pending. Follow latest Coordinator 90524ac6: one standard mode-free task verify at this exact head, remeasure allowed cases and retain native zero-leak/close receipts, then request final evidence review.
