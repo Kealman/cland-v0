@@ -2897,10 +2897,6 @@
     "hub/test/remote-docs.test.ts": {
       "seconds": 0.000839,
       "tests": 1
-    },
-    "site/test/remote-docs.test.ts": {
-      "seconds": 0.004766,
-      "tests": 5
     }
   },
   "tests": {
@@ -7969,12 +7965,7 @@
     "hub/test/telegram-cards.test.ts::Telegram sixty-second catch-up sends the gap before missed cards without resending open cards": 0.503757,
     "hub/test/telegram-cards.test.ts::Telegram uncertain old-copy marker fallback stays incomplete while recovery and later polls progress": 0.852901,
     "hub/test/telegram-cards.test.ts::Telegram uncertain outage replacement survives restart without retiring its old copy or blocking other cards": 0.531749,
-    "hub/test/telegram-notices.test.ts::Telegram inbox resends all four notice kinds oldest first and a new notice reply retains its topic": 0.352455,
-    "site/test/remote-docs.test.ts::CLI reference lists exactly the remote and secret subcommands in usage": 0.001078,
-    "site/test/remote-docs.test.ts::Remote control is under Features and linked from the overview and web Remotes section": 0.000699,
-    "site/test/remote-docs.test.ts::remote documentation guard rejects unknown commands, config keys and secret names": 0.001998,
-    "site/test/remote-docs.test.ts::remote guide and web Remotes section use shipped commands, config keys and secret names": 0.000779,
-    "site/test/remote-docs.test.ts::remote guide distinguishes missed cards from outage replacements after 150 seconds": 0.000212
+    "hub/test/telegram-notices.test.ts::Telegram inbox resends all four notice kinds oldest first and a new notice reply retains its topic": 0.352455
   },
   "allow": {
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {
