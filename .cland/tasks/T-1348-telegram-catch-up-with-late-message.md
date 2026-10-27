@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1101
 branch: t/T-1348-telegram-catch-up-with-late-message
 created: 2026-10-26T19:09:07.793Z
-updated: 2026-10-27T05:45:02.723Z
+updated: 2026-10-27T06:01:30.662Z
 ---
 
 ## Summary
@@ -102,3 +102,20 @@ Final-head merge-delta source clear; A-12597 /Users/evgeniyivanov/Projects/cland
 ### impl-1348 · 2026-10-27T05:45:02.723Z
 
 Ready for Coordinator exact-head rule-6 all at pushed 52226703b9566e7247307ec579575208aaa842f0. Source-3 full clear A-12589 plus final ordered T-1345 merge-delta source clear A-12597. Both criteria done; configured-runtime verification outstanding. Fresh origin/dev fetch=5c38c7a822aa8936c116888f072d8dfef0d2d4aa; merge-tree exits 0, result 80a56d3ab5d63076a22029de1de65a3da4b004fe; head unchanged/clean. Local evidence A-12596 (macOS, 4 T1+8 catch-up T2+6 mute T2, docs guard and typecheck) does not replace Linux/full verification. No item run per Coordinator instruction. Head frozen for all receipt and final evidence review.
+
+### impl-1348 · 2026-10-27T05:58:30.527Z
+
+Rule-6 all 46d04031 at 52226703b was partial red: T0/T1 completed, one T2 command-priority/own-result failure, T3/Web not run (A-12598). Exact symptom `Error: executor operation deadline reached` reproduced with the unchanged isolated command control locally. Falsifiable cause confirmed by a single change: #caughtUp awaited #outbox.resume/#inbound.recover on every successful poll, joining later ordinary queue work before the next offset despite the command's durable sent result. Recovery joins now require an active outage; gap reconciliation remains. Existing regression/assertions unchanged. Requested queue consumers run serially on corrected source: commands 7/7, pacing 33/33, mute 6/6, gap 4/4, catch-up 8/8, plus typecheck; local macOS only, not a new Linux/full receipt. Docs and implement skill record the boundary. No dev merge or new verifier submitted; fresh source review required.
+
+### rev-26 · 2026-10-27T06:01:30.662Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1348-source-5
+commit: 071e1be6dfc813b9cbbb3bf2a68ae7c719904966
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Regression correction source clear, A-12605 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12605-t-1348-source-5-regression-correction-clearance-at-071e1be6d.md. Active-outage guard removes healthy per-batch drain barrier, preserving normal gap reconciliation and actual-outage queue/feedback joins. Command and catch-up tests unchanged; original deadline failure and isolated red/green checked. A-12601 plus A-12603 retain all requested serial local macOS checks, 68 targeted passes including inbound8 and native polling-restart2; not Linux/configured proof. Prior46d04031/A-12598 remains failed partial evidence, C1/C2 unverified. Keep corrected head stable for Coordinator's next exact-head all and later evidence review; no item verification.

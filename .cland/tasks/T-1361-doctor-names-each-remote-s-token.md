@@ -3,8 +3,9 @@ id: T-1361
 kind: task
 title: Doctor names each remote's token, connection, pairing and stopped cause with its fix
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1102
 branch: t/T-1361-doctor-names-each-remote-s-token
 created: 2026-10-27T05:46:49.627Z
-updated: 2026-10-27T05:48:13.177Z
+updated: 2026-10-27T06:02:39.024Z
 ---
 
 ## Summary
@@ -37,14 +38,49 @@ The lines follow doctor's ok, warn and fail shape. A stopped remote is warn, wit
 
 ## Acceptance criteria
 
-- [ ] C1. With a made-up Telegram token in the secrets file or in `CLAND_TELEGRAM_TOKEN`, doctor shows it as present with its 12-character fingerprint, and neither the text nor the `--json` output contains the value (test).
-- [ ] C2. Doctor shows each messenger's enabled state, connection and paired name and id from a running hub's remote status, and "hub not running" without one (test).
-- [ ] C3. A 401, a 403 and a lasting 409 produced on the fake Bot API each give doctor's cause line with the fix that General's notice for the same stop names (test).
-- [ ] C4. The test messenger's structured stops for 4004 and 4014 give doctor's "new token" and "Message Content toggle" lines with their fixes (test).
-- [ ] C5. During a doctor run with an active Telegram remote, the fake Bot API records no request and doctor opens no network connection (test).
+- [x] C1. With a made-up Telegram token in the secrets file or in `CLAND_TELEGRAM_TOKEN`, doctor shows it as present with its 12-character fingerprint, and neither the text nor the `--json` output contains the value (test).
+  - done: impl-1361 · 2026-10-27T05:55:57.160Z
+- [x] C2. Doctor shows each messenger's enabled state, connection and paired name and id from a running hub's remote status, and "hub not running" without one (test).
+  - done: impl-1361 · 2026-10-27T05:55:57.246Z
+- [x] C3. A 401, a 403 and a lasting 409 produced on the fake Bot API each give doctor's cause line with the fix that General's notice for the same stop names (test).
+  - done: impl-1361 · 2026-10-27T05:55:57.735Z
+- [x] C4. The test messenger's structured stops for 4004 and 4014 give doctor's "new token" and "Message Content toggle" lines with their fixes (test).
+  - done: impl-1361 · 2026-10-27T05:55:57.821Z
+- [x] C5. During a doctor run with an active Telegram remote, the fake Bot API records no request and doctor opens no network connection (test).
+  - done: impl-1361 · 2026-10-27T05:55:58.337Z
 
 ## Comments
 
 ### impl-1361 · 2026-10-27T05:48:13.177Z
 
 Rule 20 consumer inventory before changes: RemoteStatusRow/Result in hub/src/protocol.ts and generated shared/wire/index.ts (wire-conformance.ts); daemon.ts builder, dispatch.ts local-management handler and web-authority.ts gate; cli/remote.ts renderer; new doctor reader; telegram-liveness-fixture and Telegram messenger/liveness/pairing/inbound/mute/rendering/pacing frame tests; remote-cli and web-authority tests. Durable RemoteStatus readers/writers: remote/state.ts and gateway.ts, telegram.ts terminal membership write, remote-state.test.ts, gateway-state tests plus their fixtures. Search covered hub/src, hub/test (all tiers), nvim, web, shared, shipped .agents skills, qa briefs and docs/startup guidance. nvim/web have no existing remote.status consumer; permissions and startup paths remain unchanged. Keep reason and every prior field; add optional stopCause, read older rows/replies without it, migrate SQLite additively. Existing legacy messenger/status fakes stay valid, with explicit previous-wire-shape doctor coverage. Shared cause/fix wording will live in notices.ts and structured terminal Error metadata, never parsed from native error text.
+
+### rev-26 · 2026-10-27T05:59:06.245Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261027-1361-source-1
+commit: e3e20e6a27a7af1097ac2a361d92ab90d0493829
+scope: full
+findings: [{"severity":"medium","text":"M1 Standards: two added DOCTOR_USAGE lines are absent from its owning frozen commands.json row; reproduce unchanged compatibility/help red, fix only that row, retain original red/green output/exits.","file":"hub/src/cli/usage.ts","line":23},{"severity":"medium","text":"M2 Standards: doctor-remotes entry precedes doctor-harness-probe; place it after doctor-isolation and before doctor-run, preserving T2. Retain unchanged lint-tiers refusal and actual corrected pass.","file":"hub/test/tiers.json","line":121},{"severity":"medium","text":"M3 Spec: CLI status still formats legacy reason only, without shared-table stopCause rendering required by Coordinator decision1adaee6e. Known structured Discord stops can disagree with doctor when reason is generic. Render known causes/fixes from the shared table with no-cause legacy fallback and unchanged JSON compatibility; add a non-incidental red/green regression.","file":"hub/src/cli/remote.ts","line":29}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Consolidated full source audit complete: A-12600 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12600-t-1361-full-source-1-consolidated-findings-at-e3e20e6a.md. Standards M1/M2, Spec M3; no other source/fixture findings. Optional state/wire migration, shared Telegram notices/doctor table, local-only diagnostics, literal previous-wire regression and cleanup reviewed. A-12599 remains local macOS targeted summary, not configured/Linux proof; C1–C5 unverified. Fresh exact-head source review after corrections and Coordinator-required serial Telegram/remote-cli/gateway/outbox-gateway matrix. No item verification; Coordinator owns all occasion and landing.
+
+### impl-1361 · 2026-10-27T06:01:41.977Z
+
+Corrected source head 994f534a95b809997f9ba27a35fd5de8ea689fb9 (tree a88def3fa683d9a513f656fb64f2121b98b3cb4d), pushed clean to origin. M1/M2/M3 from A-12600 fixed; native guard/CLI red→green outputs preserved in A-12604. Coordinator-expanded serial matrix: all 12 Telegram files + remote-cli/gateway/outbox-gateway passed (148 cases); doctor-remotes 9 and remote-state 6 also passed, 163 total logged matrix cases with no fail/cancelled/skipped. Separate help compatibility 1 and full-help 5 passed; typecheck and static guards passed. macOS/local targeted T1/T2/T3 receipts only, no Linux/full suite/Web browser gate. A-12604 durable path: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12604-t-1361-corrected-source-and-serial-test-receipts-supersedes-a-12599. Legacy CLI renderer now directly consumes shared wording and has a previous-wire/no-cause regression; reason and JSON remain compatible. Coordinator owns rule-6 all after source clear.
+
+### rev-26 · 2026-10-27T06:02:39.024Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1361-source-2
+commit: 994f534a95b809997f9ba27a35fd5de8ea689fb9
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-12606 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12606-t-1361-source-2-clearance-at-994f534a9.md. M1/M2/M3 resolved: frozen doctor-help only, sorted new tier row, CLI shared-table structured cause/fix with opaque-reason and literal old-wire regressions, unchanged legacy reason/JSON. A-12604 original guard red/green and serial matrix logs inspected: 17 files163 targeted macOS passes, all counters match manifest; requested15-file set148 plus doctor/state15, separate help6. No Linux/browser/full-suite claim; C1–C5 configured-runtime-unverified. Keep head stable and report ready for Coordinator all occasion/landing; no item verify.

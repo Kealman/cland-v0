@@ -3,8 +3,9 @@ id: T-1364
 kind: task
 title: Pairing rows show in both inboxes, and Neovim's card approves them
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1103
 branch: t/T-1364-pairing-rows-show-in-both-inboxes-and
 created: 2026-10-27T05:46:50.196Z
-updated: 2026-10-27T05:49:23.632Z
+updated: 2026-10-27T06:24:00.951Z
 ---
 
 ## Summary
@@ -34,13 +35,64 @@ An approved, replaced or expired code leaves both inboxes when the next inbox up
 
 ## Acceptance criteria
 
-- [ ] C1. Headless Neovim shows a waiting Telegram code and a waiting Discord code from the test messenger as "Pair <Messenger> user <id> (<Name>)? code …" rows in the inbox (test).
-- [ ] C2. Approving from Neovim's card pairs the test messenger, and the row leaves both Neovim's and the web's inbox (test).
-- [ ] C3. Headless Chromium shows the row with "approve in the terminal or Neovim" and its `cland remote approve` command, at desktop and phone width, with no approve control and no key that approves (test).
-- [ ] C4. A code that expires under an injected clock leaves both inboxes (test).
+- [x] C1. Headless Neovim shows a waiting Telegram code and a waiting Discord code from the test messenger as "Pair <Messenger> user <id> (<Name>)? code …" rows in the inbox (test).
+  - done: impl-1364 · 2026-10-27T05:59:29.723Z
+- [x] C2. Approving from Neovim's card pairs the test messenger, and the row leaves both Neovim's and the web's inbox (test).
+  - done: impl-1364 · 2026-10-27T05:59:30.197Z
+- [x] C3. Headless Chromium shows the row with "approve in the terminal or Neovim" and its `cland remote approve` command, at desktop and phone width, with no approve control and no key that approves (test).
+  - done: impl-1364 · 2026-10-27T05:59:30.293Z
+- [x] C4. A code that expires under an injected clock leaves both inboxes (test).
+  - done: impl-1364 · 2026-10-27T05:59:30.714Z
 
 ## Comments
 
 ### impl-1364 · 2026-10-27T05:49:23.632Z
 
 Implementation seams: existing optional Inbox.pairings + pairing.approve; no wire/schema/authority changes. Consumer trace: shared/wire InboxPairing, hub inbox publication and remote filtering already own this contract; nvim state.set_inbox currently drops pairings and inbox rendering/actions omit them; web inbox-visit/InboxArea omit them. Web InboxArchive shares visit entries but reads only departures; Shell mounts visit provider. Existing stub/old-hub tests omit pairings and must remain valid. Planned evidence: headless Neovim real frame/fake-messenger grant and injected-clock expiry, and isolated Headless Shell desktop/phone inert controls and live removal. Preserve other ask/approval key regressions.
+
+### impl-1364 · 2026-10-27T06:00:04.108Z
+
+Implementation committed/pushed at 4ab313acd2fe68d9cf7f00f55faff4bee41059bf. C1–C4 done. Local macOS arm64: web/test/pairing.test.ts 4/4 pass (desktop/phone real keys, real headless Neovim + Headless Shell cross-client grant/expiry/split removal, previous optional-field wire compatibility); typecheck, tier/wording/test lint, diff check pass. No full suite or Linux receipt. Coordinator requested source-clear then ready, skipping item verify in favor of stage verify all. No per-item QA brief/policy required (after-stage none).
+
+### rev-32 · 2026-10-27T06:03:58.598Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1364-source
+commit: 4ab313acd2fe68d9cf7f00f55faff4bee41059bf
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear at 4ab313acd2: A-12608. Standards and Spec have no findings. Reviewed all 18 files: optional pairing state/counts in both Inbox clients, card-only Neovim approval/refusal through unchanged local hub authority, inert desktop/phone Web command fields, immediate authoritative visit/split-detail retirement, and docs/help/skill provenance. Four generated Web cases retain real headless Neovim grant keys, actual row/input keys, durable grant/snapshot boundaries, exact expiry/removal assertions and previous optional-field shape compatibility. A-12602 remains local macOS targeted evidence summary only; Linux timings/repetitions/configured suite coverage are absent. C1–C4 runtime verification remains pending. Follow Coordinator's E-1313 path: report source-clear ready head for its stage/full verify all, without a duplicate mode-free item run; final evidence must include the non-skipped cross-client identity and Linux duration assessment. No per-item QA brief; policy none/after-stage.
+
+### impl-1364 · 2026-10-27T06:22:02.545Z
+
+Remote run 11778e7a at 4ab313acd was RED: ARTIFACT-001 INCONCLUSIVE, `wait_for timed out after 5000 ms: toggle in help` (A-12612). Extra pairing help row caused overflow. Fixed at fa4a485638344215de698b2775535b9fbccc4b75: fold pairing hint into existing Inbox row; QA case unchanged. Serial macOS arm64 rechecks: qa-shipped.test.ts 32/32 pass (ARTIFACT-001 0.434s), pairing.test.ts 4/4 pass, typecheck pass. New head pushed; no dev merge after review. T3/Web evidence and Linux pairing timings remain missing from prior run. Per Coordinator request, fresh source review then ready; Coordinator will run verify all.
+
+### rev-32 · 2026-10-27T06:24:00.351Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261027-1364-evidence1
+commit: 4ab313acd2fe68d9cf7f00f55faff4bee41059bf
+scope: evidence
+findings: [{"severity":"medium","text":"The standalone pairing help row overflows the visible keys popup: unchanged ARTIFACT-001 fails INCONCLUSIVE with wait_for timed out after 5000 ms: toggle in help. Run 11778e7a/A-12612 is failed partial evidence; the artifact-toggle row is outside its captured popup.","file":"nvim/lua/cland/init.lua","line":445}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Old-head evidence disposition only, A-12614: 11778e7a/A-12612 at 4ab313acd is NOT CLEAR. Actual ARTIFACT-001 failure is INCONCLUSIVE, wait_for timed out after 5000 ms: toggle in help (raw 21315; failing finish 21143, 5.732342416 s). Linux droplet c-8 lon1; T0/T1/T2 green, mapped T4 failed; T3 absent and Web unrun/incomplete, no usable pairing UI timing. Duration/test lint report-only. This run establishes no C1–C4 runtime criterion; unchecked criteria remain unverified. Replacement fa4a48563 corrects the help source and is being reviewed separately; no old-head pass or unchanged retry is authorized.
+
+### rev-32 · 2026-10-27T06:24:00.951Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1364-source2
+commit: fa4a485638344215de698b2775535b9fbccc4b75
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Replacement source2 clear: A-12614, carrying full A-12608 review forward. Verified the complete delta from 4ab313acd: nvim/lua/cland/init.lua only, 1 insertion/2 deletions, no dev merge. Pairing open/approve/close guidance is folded into the existing Inbox continuation, restoring the previous popup line count while artifact-toggle text, ARTIFACT-001 QA case and all pairing/key assertions stay unchanged. Standards/Spec: no remaining findings. A-12613 supplies local serial macOS arm64 qa-shipped 32/32 (ARTIFACT-001 0.434 s), pairing Web 4/4 and typecheck; no replacement Linux/configured pass or duration claim. Prior 11778e7a remains failed partial evidence under evidence1. C1–C4 remain unverified. Per Coordinator 179bd4c5, report this exact source-clear head for its rule 6 verify all; no further mode-free item run.
