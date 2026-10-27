@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1109
 branch: t/T-1362-the-hub-pushes-remote-state-to-the
 created: 2026-10-27T05:46:49.834Z
-updated: 2026-10-27T09:55:21.568Z
+updated: 2026-10-27T10:11:56.242Z
 ---
 
 ## Summary
@@ -54,3 +54,55 @@ Test consumers audited: connection-{snapshot,resume,resync}, snapshot-framing, c
 ### impl-1362 · 2026-10-27T09:48:55.996Z
 
 Additional raw-socket consumer audit after the connect-frame red run: connectSocket.next consumers were searched across all tiers. assignRole in hub/test/harness.ts assumed that the next frame after welcome is its result; it must correlate the result and ignore additive events. Direct unfeatured human peers in tracker-component.test.ts, tracker.test.ts, request-guard-component.test.ts, daemon.test.ts and edges-component.test.ts need an explicit initial remote.state receipt before their positional result assertions. suite-admission-close.test.ts closes before consuming a result; session-async-processes-lifecycle and verify-all already correlate IDs; item-summary-lua/startup-replies-scale use feature snapshots; all session/progress/subscription/name-reservation/adapter/brief socket peers send spoke hellos and are unaffected. scenarios/hub-lifecycle closes without another read, unaffected. Production askHubFrame/CLI request clients correlate result IDs; Neovim ignores unknown frames and Web's switch ignores unknown event types. The standalone remote.state connect frame is limited to non-snapshot connects; featured clients get it atomically through sessions.remotes, retaining the seven existing domains and sequence transaction.
+
+### rev-26 · 2026-10-27T09:59:11.596Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261027-1362-source-1
+commit: a3d65fa49c26eac458943ee3d2b0b9b4c3d1b30d
+scope: full
+findings: [{"severity":"medium","text":"M1 Standards: added REMOTE_USAGE sentence has no matching update in its owning frozen commands.json row; unchanged usage/full-help guards disagree with production help. Correct only that row and retain original red/green receipts.","file":"hub/src/cli/usage.ts","line":67}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full read-only source audit in A-12694. Standards M1 only; no additional Spec finding. C1–C4 source coverage inspected, no runtime verification marks. Lead's reported uncommitted one-row correction is outside this exact commit. Request corrected pushed-head source review before verification; Coordinator owns required full cover.
+
+### rev-26 · 2026-10-27T09:59:57.313Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1362-source-2
+commit: 08ae15af1149359147986aa7850593354826df94
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source clear, Standards/Spec no remaining findings; A-12695 retains A-12694's full audit. Direct-child delta is exactly the owning REMOTE_USAGE frozen-row correction; original local red/green guard receipts A-12688–A-12691 inspected. No reviewer runtime execution, no C1–C4 runtime marks yet. Same-head mode-free task verification may proceed; Coordinator's separate required verify all remains before enqueue.
+
+### rev-26 · 2026-10-27T10:03:53.801Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1362-source-3
+commit: 9c1f56d2ba20d454c1e460ecfca68687c0116008
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge-delta source clear, A-12698. Both-parent integration and sole pairing.md conflict resolution inspected; no Standards/Spec findings. A-12697 local targeted summary retained without configured/Linux proof. C1-C4 runtime marks pending; old run A-12696 remains failed/T0 only. Coordinator 9bdcff4a explicitly replaces replacement task verification with verify all at this head; report ready under that direction.
+
+### rev-26 · 2026-10-27T10:11:56.242Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1362-source-4
+commit: 9ed32303577485dd8860b3c9d5316da9513b76fa
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Index-only delta source clear, A-12705. Three authored Guide rows now use the unchanged guard's established Notes/linked-test format. Original A-12702 failure inspected; this requirement was missed in earlier source review, not lost by merge. A-12704 local red/green and serial summary retained with limits. Both earlier runs remain failed; C1-C4 runtime verification pending Coordinator replacement verify all under c8d46650/9bdcff4a.
