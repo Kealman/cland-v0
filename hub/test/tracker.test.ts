@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { CONCURRENT_MS } from '../src/tracker/tracker.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
+import { reindexedAfter } from './tracker-reindex.ts';
 import { cland, flushProjectLogs, connectSocket, sleep, nativeProjectHub as projectHub, tempProject, type CliResult } from './harness.ts';
 
 type Summary = { id: string; title: string; state: string; status?: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
@@ -47,30 +48,18 @@ async function eventually(ms: number, check: () => Promise<void>): Promise<numbe
   throw last;
 }
 
-// Restored from T-772: native filesystem latency belongs at T3.
-// "Within a second" is the hub's latency: from the write to the hub's own `task-reindexed` log record (fs.watch's
-// event, the 100 ms debounce, the parse and the index write). Measured on a loaded machine, that part stays far below
-// a second; what took longer than a second was the test's own polling, each poll a `cland task list` process (node
-// start-up, a socket, a request). So the latency is asserted on the hub's timestamp, and the CLI only checks the
-// result, with a budget generous enough for a busy CI box (10 s).
-test('a hand edit of an item file is re-indexed within a second', async (t) => {
+// Native watcher completion belongs at T3; deterministic debounce coverage is in tracker-summary.test.ts.
+test('a hand edit of an item file is re-indexed before its CLI projections are checked', async (t) => {
   const root = await tempProject(t);
   await projectHub(t, root);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Original title', '--label', 'a'));
   const file = join(tasksDir(root), 'T-1-original-title.md');
   const text = await readFile(file, 'utf8');
-  const wrote = Date.now();
-  await writeFile(file, text.replace('title: Original title', 'title: Edited by hand').replace('state: open', 'state: closed').replace('  - a', '  - b'));
+  await reindexedAfter(t, root, file, () => writeFile(file,
+    text.replace('title: Original title', 'title: Edited by hand').replace('state: open', 'state: closed').replace('  - a', '  - b')));
 
-  await eventually(10_000, async () => {
-    const items = (await json<{ items: Summary[] }>(root, 'list', '--state', 'closed', '--label', 'b')).items;
-    assert.deepEqual(items.map((i) => [i.id, i.title]), [['T-1', 'Edited by hand']]);
-  });
-  const reindexed = (await hubLog(t, root)).find((e) => e.event === 'task-reindexed' && e.id === 'T-1' && e.source === 'hand');
-  assert.ok(reindexed, 'the re-index is logged');
-  const latency = Date.parse(String(reindexed.ts)) - wrote;
-  t.diagnostic(`re-indexed by the hub ${latency} ms after the write`);
-  assert.ok(latency < 1000, `re-indexed ${latency} ms after the write`);
+  const items = (await json<{ items: Summary[] }>(root, 'list', '--state', 'closed', '--label', 'b')).items;
+  assert.deepEqual(items.map((i) => [i.id, i.title]), [['T-1', 'Edited by hand']]);
   assert.deepEqual((await json<{ items: Summary[] }>(root, 'list', '--label', 'a')).items, []);
 
   // a file removed by hand leaves the index

@@ -9,7 +9,7 @@ import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { Tracker, DEBOUNCE_MS, type ItemChange } from '../src/tracker/tracker.ts';
 import { FakeClock } from './fake-clock.ts';
 import { handleTaskRequest, type TaskRequest } from '../src/tracker/requests.ts';
-import { tempProject } from './harness.ts';
+import { tempProject, until } from './harness.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 
@@ -170,6 +170,41 @@ for (const readable of [true, false]) test(`a post-publication I/O error preserv
   assert.equal(sources[0]!.endsWith(readable ? '.conflict' : '.tmp'), true);
   assert.equal(await files.readFile(join(root, '.cland/tasks', sources[0]!), 'utf8'), original.replace('title: Original', 'title: Editor save'));
   assert.match(await files.readFile(join(root, item.path), 'utf8'), /title: Original/);
+});
+
+test('hand edits settle for 100 ms after the last watcher notification before re-indexing', async t => {
+  const root = await tempProject(t);
+  let changed!: (name: string | null) => void;
+  let reads = 0;
+  const tracker = new Tracker({ root, db: ':memory:', clock: new FakeClock(), git: async () => null, readBase: async () => null,
+    watch: (_dir, handlers) => { changed = handlers.changed; return { close() {} }; },
+    files: { ...files, readFile: async (...args) => { reads++; return files.readFile(...args); } },
+  });
+  t.after(() => tracker.stop());
+  const item = await tracker.create({ id: 'human', name: 'human', role: null }, { size: 'S', title: 'Original' });
+  await tracker.start();
+  const events: ItemChange[] = [];
+  tracker.onChange(event => events.push(event));
+  await writeFile(join(root, item.path), (await files.readFile(join(root, item.path), 'utf8')).replace('title: Original', 'title: Hand edited'));
+  const before = reads;
+  assert.equal(DEBOUNCE_MS, 100);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    changed(item.file);
+    t.mock.timers.tick(99);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(reads, before);
+    changed(item.file);
+    t.mock.timers.tick(99);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(reads, before, 'the second notification restarts the settling window');
+    assert.equal(events.length, 0);
+    t.mock.timers.tick(1);
+  } finally { t.mock.timers.reset(); }
+  await until(() => events.some(event => event.id === item.id && event.item?.title === 'Hand edited'),
+    { what: 'the hand edit published after the fake debounce deadline' });
+  assert.deepEqual(events.map(event => [event.id, event.item?.title]), [[item.id, 'Hand edited']]);
+  assert.equal(tracker.list()[0]?.title, 'Hand edited');
 });
 
 test('watcher notifications and rescans ignore conflict captures without emitting an item change', async t => {

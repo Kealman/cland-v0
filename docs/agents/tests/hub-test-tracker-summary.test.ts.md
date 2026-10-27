@@ -22,3 +22,15 @@ lookups (before: nine reads, eight kind lookups). Adding parent, blockers,
 follows and regression references needs seven reads, six of them reference kind
 lookups (before: fifteen reads, fourteen kind lookups). Assertions retain canonical
 own ids, canonical referenced ids and unchanged missing references.
+
+## Watcher debounce
+
+`hand edits settle for 100 ms after the last watcher notification before re-indexing`
+injects the folder watcher, fake Git and tracker clock, and advances mocked
+`setTimeout` time. It asserts no reads or changes before the last notification's
+100 ms deadline, then waits for the exact edited item change and checks the
+indexed title. A second notification at 99 ms must restart the settling window.
+No elapsed wall time supplies evidence for the debounce contract.
+
+The native watcher receipt is covered separately in
+[`tracker.test.ts`](hub-test-tracker.test.ts.md).

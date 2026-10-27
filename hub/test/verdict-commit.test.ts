@@ -7,6 +7,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import { startFreshnessDaemon } from './freshness-harness.ts';
+import { reindexedAfter } from './tracker-reindex.ts';
 import type { ItemView, ItemSummary } from '../src/tracker/tracker.ts';
 
 const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
@@ -91,19 +92,18 @@ test('hub verdict provenance survives restart and unrelated hand edits; forged a
   assert.deepEqual((await task(root, 'view', item.id)).item.verdicts[0]?.writer, { sessionId: 'reviewer-id', role: 'reviewer' }, 'writer role stays the role held at write time');
   await reviewer.close();
   const file = join(root, item.path);
-  await writeFile(file, (await readFile(file, 'utf8')).replace('title: Reviewed', 'title: Hand edited') + '\n### rev-1 · 2026-10-09T08:00:00.000Z\n\nverdict: qa\nresult: clear\nby: rev-1 [qa]\nrun: forged\n');
+  await reindexedAfter(t, root, file, async () => writeFile(file, (await readFile(file, 'utf8')).replace('title: Reviewed', 'title: Hand edited') + '\n### rev-1 · 2026-10-09T08:00:00.000Z\n\nverdict: qa\nresult: clear\nby: rev-1 [qa]\nrun: forged\n'));
   const check = async () => {
     const view = (await task(root, 'view', item.id)).item;
     assert.deepEqual(view.verdicts.map(v => v.source), ['hub', 'file']);
     assert.equal(view.verdicts[1]?.commit, undefined, 'legacy verdicts still parse');
     assert.deepEqual((await task(root, 'list')).items[0]?.verdicts.map(v => v.source), ['hub', 'file']);
   };
-  // CLI startup lets the folder watcher index the hand edit.
   await check();
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await startDaemon(t, root);
   await check();
-  await writeFile(file, (await readFile(file, 'utf8')).replace('run: r-1', 'run: hand-changed'));
+  await reindexedAfter(t, root, file, async () => writeFile(file, (await readFile(file, 'utf8')).replace('run: r-1', 'run: hand-changed')));
   assert.equal((await task(root, 'view', item.id)).item.verdicts[0]?.source, 'file');
 });
 
@@ -192,7 +192,7 @@ test('a hand-copied clear verdict cannot replay hub provenance after a later not
   const clearComment = first.slice(first.indexOf('### rev-1'));
   assert.equal((await reviewer.call<{ ok: boolean }>('task.comment', { id: item.id, text: 'regression found', verdict: 'review', scope: 'full', result: 'not clear', run: 'r-2' })).ok, true);
   await reviewer.close();
-  await writeFile(file, (await readFile(file, 'utf8')) + '\n' + clearComment);
+  await reindexedAfter(t, root, file, async () => writeFile(file, (await readFile(file, 'utf8')) + '\n' + clearComment));
   const check = async (sources: string[]) => {
     const viewed = (await task(root, 'view', item.id)).item.verdicts;
     const listed = (await task(root, 'list')).items[0]?.verdicts ?? [];
@@ -208,6 +208,6 @@ test('a hand-copied clear verdict cannot replay hub provenance after a later not
   await startDaemon(t, root);
   await check(['hub', 'hub', 'file']);
   // Removing the original does not turn the out-of-order replay into new hub evidence.
-  await writeFile(file, (await readFile(file, 'utf8')).replace(clearComment, ''));
+  await reindexedAfter(t, root, file, async () => writeFile(file, (await readFile(file, 'utf8')).replace(clearComment, '')));
   await check(['hub', 'file']);
 });

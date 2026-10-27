@@ -624,8 +624,7 @@
     },
     "hub/test/tracker-summary.test.ts": {},
     "hub/test/tracker.test.ts": {
-      "wall-clock-wait": 2,
-      "wall-clock-assertion": 1
+      "wall-clock-wait": 2
     },
     "hub/test/typecheck.test.ts": {},
     "hub/test/v01-migration.test.ts": {},

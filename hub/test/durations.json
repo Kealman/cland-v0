@@ -5448,7 +5448,6 @@
     "hub/test/tracker-status.test.ts::review rechecks the live claim after its write await, even when the caller keeps its role": 0.859844,
     "hub/test/tracker-summary.test.ts::list summaries omit import metadata and bookkeeping frontmatter available in view": 0.043938,
     "hub/test/tracker.test.ts::a hand edit landing while the hub is writing the same item is overwritten, and the hub logs the conflict": 0.417833,
-    "hub/test/tracker.test.ts::a hand edit of an item file is re-indexed within a second": 1.063328,
     "hub/test/tracker.test.ts::a hub write and a hand edit at the same time: the last writer wins and the hub logs it": 3.219411,
     "hub/test/tracker.test.ts::task commands with no hub running fail with a clear error and do not start one": 0.350406,
     "hub/test/tracker.test.ts::where the folder cannot be watched the hub polls: a hand edit of an item and of roles.toml are still picked up": 2.094767,
