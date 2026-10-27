@@ -166,7 +166,7 @@ export class TelegramRemote implements Remote {
       () => {}, receipt, written => this.#late(written));
     if (this.#polling) {
       this.#prompts = new TelegramPrompts(this.#polling.store, this.#outbox, (type, fields, ingress) => this.#request(type, fields, ingress),
-        (fields, ingress, stored) => this.#inbound!.answer(fields, ingress, stored));
+        (fields, ingress, stored) => this.#inbound!.answer(fields, ingress, stored), written => this.#late(written));
       this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal, this.#prompts, this.#polling.webOrigin);
     }
     this.#pair = pair;
@@ -301,7 +301,7 @@ export class TelegramRemote implements Remote {
           });
         },
       }, ...(this.#prompts ? [this.#prompts.handler] : []), ...(this.#inbound ? [this.#inbound.handler] : [])];
-      await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers,
+      await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers, ...(this.#cards ? { foreignCard: this.#cards.foreign } : {}),
         initialOffline: !!this.#offline, offline: reason => this.#failed(reason), caughtUp: () => this.#caughtUp() }, this.#abort.signal,
         () => {
           this.#lastInbound = this.#clock.now().toISOString();

@@ -217,3 +217,8 @@ Artifact/post refusal consumer migration and separate post-commit diagnostic pro
 - T-1357: document approval-card native/Telegram receipts, cross-kind identity, bounded previews, inbox sources and outgoing-only endpoint masking.
 - T-1355: replace unavailable auxiliary actions with durable ForceReply prompt, cancellation, typed-reply and feedback/replay guidance.
 - T-1355 source review M1/M2: distinguish incomplete prompt publication from delivery, release the callback cursor with unknown sends fenced, consume unverifiable replies, and recover confirmed-answer feedback through native answer receipts.
+
+T-1356: Document stale-card local closure, private foreign-card refusal, late prompt exclusion and their frame/fake replay controls.
+- T-1356 source review M1: preserve the unknown stale-repair fallback fence without blocking callback confirmation or later input; add the accept-disconnect/restart control.
+
+- T-1356 post-T-1357 integration: apply native stale/foreign card safeguards to approvals, isolate typed/late approval replies from ask prompts, and release unknown-note input cursors while retaining send fences.

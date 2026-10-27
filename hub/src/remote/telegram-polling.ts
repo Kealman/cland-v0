@@ -14,6 +14,8 @@ export type TelegramUpdateHandler = {
 export type TelegramPollingOptions = {
   store: RemoteStore; handlers?: readonly TelegramUpdateHandler[]; log?: LogFn;
   notice?: (cause: string, fix: string, transition?: boolean) => void;
+  /** Native-only refusal on a mapped bot card; never dispatched as human input. */
+  foreignCard?: TelegramUpdateHandler;
   initialOffline?: boolean;
   offline?: (reason: string) => void;
   caughtUp?: () => Promise<boolean | void>;
@@ -83,10 +85,13 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
       const paired = store.pairing();
       const pairedInput = who && paired && who.userId === paired.userId && who.chatId === paired.chatId;
       const pairingStart = who && update.message && /^\/start(?:@[A-Za-z0-9_]+)?(?:\s|$)/.test(update.message.text ?? '');
-      const accepted = pairedInput || pairingStart;
+      const press = update.callback_query;
+      const foreign = !!(who && paired && !pairedInput && press?.message?.from?.id === botId
+        && press.message.from.is_bot === true && options.foreignCard?.accepts(update));
+      const accepted = pairedInput || pairingStart || foreign;
       const dedupe = who?.dedupe;
       if (accepted && (!dedupe || store.get(`telegram.${dedupe}`) === null)) {
-        const handler = options.handlers?.find(handler =>
+        const handler = foreign ? options.foreignCard : options.handlers?.find(handler =>
           (handler.kind === 'pairing' ? pairingStart : pairedInput) && handler.accepts(update));
         if (!handler) {
           if (unhandled !== update.update_id) {

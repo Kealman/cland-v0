@@ -2545,7 +2545,10 @@ carries ForceReply, because a message that ever carried it cannot be edited.
 Prompt intent, ask/mode and the chat's next-text wait are stored in `remote_state`;
 the accepted prompt maps to its intent with `ask: null`, outside editable card
 copies. A restart retains the wait. The next ordinary text answers that ask;
-an explicit reply to a prompt targets its own ask even after other text.
+an explicit reply to a prompt targets its own ask even after other text. During
+catch-up, unthreaded late text goes to General with its written/recovery times
+and keeps the prompt wait. An explicit late reply targets only its own mapped
+card or prompt, and answers only while that ask is open.
 Decline submits `declined: true` with the typed reason. `/cancel` clears the
 next-text wait, replies “Cancelled. The ask stays open.” and preserves the card's
 buttons; following ordinary text reaches General. A typed reply to a card
@@ -2570,7 +2573,14 @@ keyboard. Withdrawn asks name their asking session; cancelled asks say their
 topic or item closed. A closure received during an in-flight card send is kept
 until its accepted message map can be folded too. If another client wins between
 a tap's inbox read and answer request, the press receives `Already answered`
-and changes no outcome. Failed writes on an open ask remain retryable. `message is
+and changes no outcome. A known durable closure returns `Already answered`
+without any hub request, including after restart. If that native copy still
+shows buttons, the shared renderer queues its outcome edit again with a stable
+press key. If that repair's fallback send has an unknown outcome, its durable
+job remains fenced and the repair is marked incomplete; callback confirmation
+and later input still progress without retransmitting the reply.
+A retry of an already committed callback retains its saved receipt;
+confirmed callback ids stay deduplicated across restart. Failed writes on an open ask remain retryable. `message is
 not modified` settles successfully; another failed edit becomes one outcome
 reply to the original card. A 429 retains the edit and bot-wide hold, and
 401/403 stop the remote. Unattempted edits sharing a card's edit key merge to
@@ -2606,7 +2616,16 @@ neither record and answers the press. Closed never-left approval sends are
 also dropped; uncertain sends retain their fence. After a committed approval
 result is lost, replay observes the saved closed record, answers `Already
 answered` and never repeats the native command. Claude Code/TUI approvals do
-not acquire approval buttons. See the
+not acquire approval buttons. Known durable approval closures also answer
+`Already answered` without a hub request and repair that stale copy; foreign
+presses use the same private mapped-card refusal as asks. Repair fallbacks with
+unknown delivery stay fenced without blocking callback confirmation.
+
+Typed replies to an approval card never select a choice or borrow a waiting
+ask's prompt: an open card gets a use-buttons note and a known closed card gets
+a closed-approval note. Late unthreaded text stays marked in General. An
+accepted note whose receipt is lost is recorded incomplete and stays fenced;
+its input confirms and later input progresses without retransmitting the note. See the
 [approval card guide](../docs/agents/tests/hub-test-telegram-approvals.test.ts.md).
 
 ### Telegram needs-you notices
@@ -2679,7 +2698,13 @@ The loop filters before handlers, downloads or commands: only a private chat,
 a non-bot sender and the current pairing's chat and sender ids qualify. It
 re-reads the pairing for every update. The sole pairing exception is private
 `/start` input from a non-bot sender, routed only to a pairing handler. An
-unlisted or ambiguous update kind is consumed silently. Callback authority uses
+unlisted or ambiguous update kind is consumed silently. One narrow non-pairing
+exception uses `TelegramPollingOptions.foreignCard`: a foreign non-bot presser
+on this bot's own durably mapped card gets only `answerCallbackQuery` with
+`show_alert: true` and “This card is for the project's owner”. It makes no hub
+request and changes neither the ask nor the card; the ordinary update/callback
+receipts confirm and deduplicate it. Every other foreign update stays silent.
+The optional native refusal handler grants no human frame authority. Callback authority uses
 the presser, never the author of the bot's card; membership updates must concern
 this bot.
 

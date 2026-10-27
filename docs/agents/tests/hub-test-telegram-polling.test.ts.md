@@ -47,7 +47,12 @@ only event/update id, and no timers remain. Input is preserved for an installed
 handler; this does not exercise the native pairing/mirror features.
 
 Shared contract: `TelegramPollingOptions.handlers` selects the first applicable
-handler after authority filtering. Successful handler completion means durable
+handler after authority filtering. The optional native `foreignCard` refusal
+handler is separate from this registry: only a foreign non-bot callback on this
+bot's durably mapped card qualifies, and it sends no human frame. The card file
+proves the private alert, callback-id dedupe and silent non-card/forged-author
+controls; this registry fixture without that option preserves previous behavior.
+Successful handler completion means durable
 and replay-safe handling. Messages/edits dedupe by chat/message, callbacks by
 callback id, all updates by update id; offsets and dedupe commit together through
 `RemoteStore.confirmTelegramUpdate`. Keep the storage rollback proof in

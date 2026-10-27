@@ -27,10 +27,11 @@ async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
   const store = owner.store(join(root, '.cland/hub.db'));
   const state = store.remotes.forMessenger('telegram');
   state.setPairing(pairing);
+  const requests: Record<string, unknown>[] = [];
   const newRemote = (intercept?: (frame: HubFrame) => boolean) => {
     const remote = new TelegramRemote(new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock }), clock, { store: state });
     owner.close(() => remote.stop());
-    const gateway: Remote = { id: remote.id, via: remote.via, start: (...args) => remote.start(...args),
+    const gateway: Remote = { id: remote.id, via: remote.via, start: (send, ...args) => remote.start((frame, ingress) => { requests.push(frame); send(frame, ingress); }, ...args),
       receive: frame => intercept?.(frame) ? undefined : remote.receive(frame), run: () => remote.run(), stop: () => remote.stop() };
     return { remote, gateway };
   };
@@ -57,7 +58,7 @@ async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
     return { id, card: card! };
   };
   const stop = async () => { await web.dispose(); await hub.stop(); };
-  return { web, stop, owner, root, clock, fake, store, state, remote, hub, ui, coord, messages, ask, newRemote };
+  return { web, stop, owner, root, clock, fake, store, state, remote, hub, ui, coord, messages, ask, newRemote, requests };
 }
 
 test('Telegram nine-option free ask arrives as one entities card with eleven opaque button rows', async t => {
@@ -931,4 +932,252 @@ test('Telegram confirmed prompt answer recovers owed delivery feedback after com
   assert.deepEqual(requests.filter(request => request.method === 'setMessageReaction').map(request => request.params.reaction), [
     [{ type: 'emoji', emoji: '👌' }], [{ type: 'emoji', emoji: '👀' }],
   ]);
+});
+
+
+test('Telegram stale press on a closed mapped card makes no hub request and preserves its outcome across restart', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const folded = until(async () => (await f.messages()).some(row => row.message_id === card.message_id && row.text?.includes('Two · human via Neovim')),
+    { timeoutMs: 1000, what: 'closed card outcome edit' });
+  void folded.catch(() => {});
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: id, option: 2 })).ok, true);
+  await driveTelegram(f.clock, f.state, folded);
+  const outcome = f.store.ask(id)!.outcome;
+  await f.stop(); f.ui.close(); await f.coord.close();
+  const next = f.newRemote();
+  const initial = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  // A native stale copy may still display its old buttons; keep the original opaque key.
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: f.fake.url, clock: f.clock });
+  assert.ok(card.reply_markup && 'inline_keyboard' in card.reply_markup);
+  await api.editMessageText({ chat_id: '101', message_id: card.message_id, text: card.text!, reply_markup: card.reply_markup });
+  const before = f.requests.length;
+  const acknowledged = f.fake.waitForRequest('answerCallbackQuery');
+  const confirmed = f.fake.waitForPoll();
+  const press = await control<{ update_id: number; callback_query: object }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 2, column: 0 });
+  assert.equal((await within(acknowledged, 1000)).params.text, 'Already answered');
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, press.update_id + 1);
+  assert.deepEqual(f.requests.slice(before), [], 'a known closed card never reads or answers through the hub');
+  assert.deepEqual(f.store.ask(id)!.outcome, outcome);
+  assert.deepEqual((await f.messages()).find(row => row.message_id === card.message_id)!.reply_markup, { inline_keyboard: [] });
+  await hub.stop();
+  const replayRemote = f.newRemote();
+  const restarted = f.fake.waitForPoll();
+  const replayHub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [replayRemote.gateway] } });
+  await driveTelegram(f.clock, f.state, within(restarted, 1000));
+  const replayBefore = f.requests.length;
+  const replayed = f.fake.waitForPoll();
+  const duplicate = await control<{ update_id: number }>(f.fake.url, 'update', { callback_query: press.callback_query });
+  assert.equal((await within(replayed, 1000)).params.offset, duplicate.update_id + 1);
+  assert.deepEqual(f.requests.slice(replayBefore), []);
+  assert.deepEqual(f.store.ask(id)!.outcome, outcome);
+  await replayHub.stop();
+  const native = await control<{ requests: Array<{ method: string }> }>(f.fake.url, 'state');
+  assert.equal(native.requests.filter(row => row.method === 'answerCallbackQuery').length, 1);
+});
+
+test('Telegram foreign card press gets one private alert without hub frames or card changes and duplicate ids stay inert', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const before = f.requests.length;
+  const acknowledged = f.fake.waitForRequest('answerCallbackQuery');
+  const confirmed = f.fake.waitForPoll();
+  const press = await control<{ update_id: number; callback_query: object }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 2, column: 0, user: 'stranger' });
+  assert.equal((await within(confirmed, 1000)).params.offset, press.update_id + 1);
+  const native = await control<{ requests: Array<{ method: string; params: Record<string, unknown> }> }>(f.fake.url, 'state');
+  assert.equal(native.requests.filter(row => row.method === 'answerCallbackQuery').length, 1, 'foreign mapped-card press must receive its private refusal');
+  const ack = await within(acknowledged, 1000);
+  assert.equal(ack.params.text, "This card is for the project's owner");
+  assert.equal(ack.params.show_alert, true);
+  assert.deepEqual(f.requests.slice(before), []);
+  assert.equal(f.store.ask(id)!.state, 'open');
+  assert.deepEqual(await f.messages(), [card]);
+  const repeated = f.fake.waitForPoll();
+  const replay = await control<{ update_id: number }>(f.fake.url, 'update', { callback_query: press.callback_query });
+  assert.equal((await within(repeated, 1000)).params.offset, replay.update_id + 1);
+  assert.deepEqual(f.requests.slice(before), []);
+  await f.stop();
+  const final = await control<{ requests: Array<{ method: string }> }>(f.fake.url, 'state');
+  assert.equal(final.requests.filter(row => row.method === 'answerCallbackQuery').length, 1);
+  assert.equal(f.store.ask(id)!.state, 'open');
+  assert.deepEqual(await f.messages(), [card]);
+});
+
+test('Telegram late text goes to General marked late while its prompt wait and ask stay open', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  await forcePrompt(f, card);
+  const wait = f.state.get('telegram.prompt-wait:101');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'durably recorded poll outage' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  await f.clock.advance(2000);
+  const date = Math.floor(f.clock.now().getTime() / 1000);
+  const written = new Date(date * 1000).toTimeString().slice(0, 5);
+  const input = await control<{ update_id: number }>(f.fake.url, 'update', { message: { message_id: 9901, date,
+    chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' }, text: 'Late ordinary message' } });
+  const confirmed = f.fake.waitForPoll();
+  await f.clock.advance(8000);
+  const recovered = f.clock.now().toTimeString().slice(0, 5);
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  assert.equal(f.store.ask(id)!.state, 'open', 'late unthreaded text never consumes a waiting answer');
+  assert.equal(f.state.get('telegram.prompt-wait:101'), wait);
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; via?: string; answerTo?: string }> };
+  const message = history.messages.find(row => row.text.startsWith('Late ordinary message'))!;
+  assert.equal(message.text, `Late ordinary message\n\n(written on Telegram at ${written}; the hub was down until ${recovered})`);
+  assert.equal(message.answerTo, undefined);
+  assert.equal(message.via, 'telegram');
+  await f.stop();
+});
+
+for (const closed of [true, false]) test(`Telegram late reply to ${closed ? 'a closed' : 'an open'} card answers only its mapped open ask`, async t => {
+  const f = await fixture(t);
+  const first = await f.ask('Late reply target');
+  const second = await f.ask('Unrelated waiting ask');
+  await forcePrompt(f, second.card);
+  if (closed) {
+    const folded = until(async () => (await f.messages()).some(row => row.message_id === first.card.message_id && row.text?.includes('One · human via Neovim')),
+      { timeoutMs: 1000, what: 'closed reply target folded' });
+    void folded.catch(() => {});
+    assert.equal((await f.ui.request({ type: 'topic.answer', ask: first.id, option: 1 })).ok, true);
+    await driveTelegram(f.clock, f.state, folded);
+  }
+  const original = f.store.ask(first.id)!.outcome;
+  const wait = f.state.get('telegram.prompt-wait:101');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'late-reply poll outage recorded' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  const input = await control<{ update_id: number }>(f.fake.url, 'update', { message: { message_id: 9902, date: Math.floor(f.clock.now().getTime() / 1000),
+    chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' },
+    text: 'Late explicit answer', reply_to_message: first.card } });
+  const confirmed = f.fake.waitForPoll();
+  await f.clock.advance(10000);
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  assert.equal(f.store.ask(second.id)!.state, 'open');
+  assert.equal(f.state.get('telegram.prompt-wait:101'), wait);
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(row => row.text === 'Late explicit answer').map(row => row.answerTo), closed ? [] : [first.id]);
+  if (closed) {
+    assert.deepEqual(f.store.ask(first.id)!.outcome, original);
+    assert.ok((await f.messages()).some(row => row.text === 'This ask is already closed.'));
+  } else {
+    const outcome = f.store.ask(first.id)!.outcome!;
+    assert.equal(outcome.status, 'answered');
+    if (outcome.status === 'answered') assert.equal(outcome.text, 'Late explicit answer');
+  }
+  await f.stop();
+});
+
+test('Telegram late General routing survives feedback interruption and restart without consuming its prompt wait', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  await forcePrompt(f, card);
+  const wait = f.state.get('telegram.prompt-wait:101');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'interruption poll outage recorded' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  await control(f.fake.url, 'fault', { method: 'setMessageReaction', code: 500, response: 'hold' });
+  const held = f.fake.waitForHeldRequest('setMessageReaction');
+  const input = await control<{ update_id: number }>(f.fake.url, 'update', { message: { message_id: 9903, date: Math.floor(f.clock.now().getTime() / 1000),
+    chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' }, text: 'Late message before restart' } });
+  await f.clock.advance(10000);
+  const request = await within(held, 1000);
+  assert.equal(f.store.ask(id)!.state, 'open');
+  assert.equal(f.state.get(`telegram.update:${input.update_id}`), null);
+  const closed = f.fake.waitForConnectionClose('setMessageReaction');
+  await f.stop(); f.ui.close(); await f.coord.close();
+  assert.equal((await within(closed, 1000)).id, request.id);
+  const next = f.newRemote();
+  const confirmed = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  assert.equal(f.state.get('telegram.prompt-wait:101'), wait, 'replayed General input must not clear the prompt wait');
+  assert.equal(f.store.ask(id)!.state, 'open');
+  const ui = await connectUi(t, hub.discovery);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  const messages = history.messages.filter(row => row.text.startsWith('Late message before restart'));
+  assert.equal(messages.length, 1);
+  assert.match(messages[0]!.text, /written on Telegram at/);
+  assert.equal(messages[0]!.answerTo, undefined);
+  await hub.stop();
+});
+
+test('Telegram foreign input outside a bot-authored mapped card remains silent', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const before = f.requests.length;
+  const stranger = { id: 202, is_bot: false, first_name: 'Fixture stranger' };
+  const callback = { id: 'foreign-untrusted', from: stranger, data: 'not-an-authority' };
+  for (const body of [
+    { callback_query: { ...callback, message: { ...card, message_id: 99999 } } },
+    { callback_query: { ...callback, message: { ...card, from: stranger } } },
+    { callback_query: { ...callback, message: { ...card, chat: { id: 101, type: 'group' } } } },
+    { callback_query: { ...callback, from: { ...stranger, is_bot: true }, message: card } },
+    { message: { message_id: 9904, date: 1, chat: card.chat, from: stranger, text: 'foreign ordinary text' } },
+  ]) {
+    const confirmed = f.fake.waitForPoll();
+    const update = await control<{ update_id: number }>(f.fake.url, 'update', body);
+    assert.equal((await within(confirmed, 1000)).params.offset, update.update_id + 1);
+  }
+  assert.deepEqual(f.requests.slice(before), []);
+  assert.equal(f.store.ask(id)!.state, 'open');
+  assert.deepEqual(await f.messages(), [card]);
+  await f.stop();
+  const native = await control<{ requests: Array<{ method: string }> }>(f.fake.url, 'state');
+  assert.equal(native.requests.filter(row => row.method === 'answerCallbackQuery').length, 0);
+});
+
+test('Telegram uncertain stale-card outcome fallback releases its callback and later input across restart without retransmission', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const folded = until(async () => (await f.messages()).some(row => row.message_id === card.message_id && row.text?.includes('Two · human via Neovim')),
+    { timeoutMs: 1000, what: 'original stale-card outcome settled' });
+  void folded.catch(() => {});
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: id, option: 2 })).ok, true);
+  await driveTelegram(f.clock, f.state, folded);
+  const outcome = f.store.ask(id)!.outcome;
+  assert.ok(card.reply_markup && 'inline_keyboard' in card.reply_markup);
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: f.fake.url, clock: f.clock });
+  await api.editMessageText({ chat_id: '101', message_id: card.message_id, text: card.text!, reply_markup: card.reply_markup });
+  await control(f.fake.url, 'fault', { method: 'editMessageText', code: 400, description: 'Bad Request: message cannot be edited' });
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 500, response: 'accept-disconnect' });
+  const acknowledged = f.fake.waitForRequest('answerCallbackQuery');
+  const uncertain = until(() => f.state.outbox().some(job => job.source === id && job.state === 'uncertain'),
+    { timeoutMs: 1000, what: 'stale-card outcome fallback durably fenced' });
+  void uncertain.catch(() => {});
+  const confirmed = within(f.fake.waitForPoll(), 1000, undefined, () => new Error('stale callback confirmation blocked by unknown fallback'));
+  void confirmed.catch(() => {});
+  const press = await control<{ update_id: number; callback_query: { id: string } }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 2, column: 0 });
+  assert.equal((await within(acknowledged, 1000)).params.text, 'Already answered');
+  await driveTelegram(f.clock, f.state, uncertain);
+  assert.equal((await driveTelegram(f.clock, f.state, confirmed)).params.offset, press.update_id + 1);
+  assert.deepEqual(f.store.ask(id)!.outcome, outcome);
+  assert.equal(f.state.get(`telegram.press:${press.callback_query.id}`), 'Already answered');
+  assert.equal(f.state.get(`telegram.outcome-incomplete:${press.callback_query.id}`), `telegram.outcome:101:${card.message_id}:press:${press.callback_query.id}`);
+  const uncertainId = f.state.outbox().find(job => job.source === id && job.state === 'uncertain')!.id;
+  await f.stop(); f.ui.close(); await f.coord.close();
+  const next = f.newRemote();
+  const initial = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  const confirmedInput = f.fake.waitForPoll();
+  const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'After unknown stale outcome' });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmedInput, 1000))).params.offset, input.update_id + 1);
+  const ui = await connectUi(t, hub.discovery);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(row => row.text === 'After unknown stale outcome').map(row => row.answerTo), [undefined]);
+  assert.deepEqual(f.store.ask(id)!.outcome, outcome);
+  assert.equal(f.state.outbox().find(job => job.id === uncertainId)!.state, 'uncertain');
+  await hub.stop();
+  const native = await control<{ messages: TgMessage[]; requests: Array<{ method: string }> }>(f.fake.url, 'state');
+  assert.equal(native.messages.filter(row => row.reply_to_message?.message_id === card.message_id).length, 1, 'accepted unknown outcome reply is never retransmitted');
+  assert.equal(native.requests.filter(row => row.method === 'answerCallbackQuery').length, 1);
 });

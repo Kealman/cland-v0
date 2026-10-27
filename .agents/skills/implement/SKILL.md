@@ -173,6 +173,15 @@ restart, reply/cancel and later-input progression. Confirmed answer feedback
 recovery follows the messenger-scoped gateway.answer receipt to the current
 message/stage; keep ordinary-id lookup, other-messenger isolation and prior-wire
 refusal. A pre-offset replay alone does not prove confirmed-input recovery.
+Known closures return Already answered without a hub frame and repair stale
+buttons; retain saved callback receipts and callback-id dedupe across restart.
+An unknown stale-repair fallback stays fenced and incomplete while the closed
+callback cursor and later input progress; retain its accept-disconnect control.
+Only bot-authored mapped cards admit a foreign press for a private show_alert
+refusal with no hub frame or ask/card change. Keep other foreign input silent.
+Late unthreaded text reaches General marked late and keeps the prompt wait;
+explicit replies target only their own open ask. Retain the interrupted late
+feedback/restart and silent non-card/forged-author controls in the card guide.
 
 For Telegram approval cards, use the production-frame/fake-platform and scripted
 native seams in `docs/agents/tests/hub-test-telegram-approvals.test.ts.md`.
@@ -183,7 +192,12 @@ closure and source-closed versus uncertain-send controls. Both headless inboxes
 must show approved Codex and denied OpenCode outcomes via Telegram. Outgoing
 hub frames may mask harnessId/attach metadata; incoming frame routing remains
 strict. Preserve the native OpenCode producer regression and gateway-secrets
-refusal. These are existing human actions with no added role-clause lines.
+refusal. Apply the same known-closure/no-frame, private foreign refusal and
+unknown-repair cursor handling to approvals. Typed approval replies only get
+use-buttons/closed notes and never borrow an ask prompt; unknown note sends
+stay fenced/incomplete while input progresses. Retain approval stale/foreign
+restart, late prompt isolation and both accept-disconnect controls.
+These are existing human actions with no added role-clause lines.
 
 For Telegram phone commands or menu registration, use the sealed production-frame
 and fake Bot API seam in `docs/agents/tests/hub-test-telegram-commands.test.ts.md`.

@@ -66,3 +66,40 @@ receipt and retain stopped hub, closed server with zero connections/handlers,
 joined initial observer and closed SQLite. Replacing the initial-poll startup
 receipt with an already-resolved promise makes both controls fail; restoring
 the owned receipt passes. Native approval/command assertions are unchanged.
+
+
+T-1356 integration extends this same sealed frame/fake seam after T-1357 lands:
+
+- `Telegram stale approval press after restart returns Already answered without hub frames or changing the outcome`
+  closes through Neovim, restarts, restores the old native keyboard with its
+  original opaque keys and presses it. Keep the exact toast, confirmed offset,
+  zero outbound hub frames, unchanged stored outcome, empty repaired keyboard
+  and callback-id replay without a second acknowledgement.
+- `Telegram foreign approval press gets one private alert without hub frames or record changes across replay and restart`
+  requires one owner refusal with show_alert, no hub frames, unchanged native
+  card/pending outcome and a confirmed replay after component restart.
+- Both generated `Telegram late text and reply to … approval never consume another ask prompt`
+  cases retain a real waiting Other-answer prompt during a fake 503 outage.
+  Unthreaded text reaches General marked late. An explicit approval reply gets
+  a use-buttons or known-closed note, answers neither record, posts no General
+  reply and leaves the unrelated wait intact. An approval id is never passed
+  as a topic-message reply id.
+- `Telegram uncertain stale approval outcome stays fenced while callback and later input progress across restart`
+  refuses the repair edit, then accepts/disconnects its fallback. Keep the exact
+  uncertain job, incomplete marker, saved toast/outcome, callback offset, later
+  General input after restart, one accepted fallback and no retransmission.
+- `Telegram uncertain approval reply note confirms its input and never retransmits across restart`
+  accepts/disconnects the use-buttons note and retains its incomplete marker,
+  uncertain job, no approval answer or stray General post, confirmed input and
+  a later General receipt after restart. Note uncertainty releases only this
+  saved input's cursor; no unknown send is called successful.
+
+Original red receipts: the known closed approval emitted inbox.list; the foreign
+approval received zero callbacks; the late approval reply sent an invalid
+approval id as topic.send replyTo and failed `late approval input confirmation missing`;
+the unknown note failed `approval reply note blocked input confirmation`.
+The existing eleven approval cases and all 46 ask-card cases remain unchanged.
+Component restarts are not OS-crash claims. No new wire field, database column,
+role permission, browser or real platform is involved; the native incomplete
+note key is additive and the keyed outbox fence is unchanged. Linux durations
+and per-case load repetition receipts come from configured verification.

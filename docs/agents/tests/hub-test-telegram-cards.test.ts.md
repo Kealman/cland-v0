@@ -204,3 +204,47 @@ argument; existing one-argument consumers keep direct-id lookup. The exported
 RemoteReceipt and all wire frames stay unchanged. `gateway.test.ts` retains the
 same-identity other-messenger refusal and previous-wire action controls for
 native answer receipts, alongside ordinary input recovery.
+
+
+T-1356 retains the same sealed T2 frame/fake seam:
+
+- `Telegram stale press on a closed mapped card makes no hub request and preserves its outcome across restart`
+  closes through Neovim, restarts the component, restores a stale native keyboard
+  with its original opaque keys, then presses it. Keep `Already answered`, zero
+  outbound hub frames, the unchanged stored outcome and the removed keyboard.
+  A second restart replays the callback id and retains exactly one native toast.
+- `Telegram foreign card press gets one private alert without hub frames or card changes and duplicate ids stay inert`
+  requires the exact private owner refusal with `show_alert`, the confirmed
+  offset, zero hub requests and unchanged card/ask before and after callback-id
+  replay. `Telegram foreign input outside a bot-authored mapped card remains silent`
+  covers unmapped copies, forged card authors, groups, bot pressers and ordinary
+  foreign text. These are explicit negative controls for the admission exception.
+- `Telegram late text goes to General marked late while its prompt wait and ask stay open`
+  uses an actual fake 503 poll outage, a retained native timestamp and recovery;
+  keep the exact General text, Telegram source, absent answer target and original
+  wait. Both `Telegram late reply to … card answers only its mapped open ask`
+  cases preserve another ask's wait: the closed target gets a note and no General
+  post, while the open target alone gets the answer.
+- `Telegram late General routing survives feedback interruption and restart without consuming its prompt wait`
+  holds the native reaction after General commits, observes its exact TCP close,
+  restarts over the same store, and retains one marked General message, no ask
+  answer, the original wait and the confirmed update offset.
+
+Red receipts before implementation: the closed press emitted `inbox.list`;
+the foreign press had zero callback responses; late unthreaded input changed
+its waiting ask to `answered`. The existing transient callback test also guards
+saved `Answered` replay; a new stale press must not overwrite that receipt.
+No real platform, browser or OS crash is exercised. New cases have no latency
+claim; Linux duration and gate mode come from the task verifier's receipt.
+
+
+T-1356 source-review M1 adds
+`Telegram uncertain stale-card outcome fallback releases its callback and later input across restart without retransmission`.
+It closes the ask through Neovim, restores its stale keyboard, refuses the repair
+edit with a definite 400 and accepts/disconnects the fallback reply. Keep the
+uncertain job, saved Already answered toast, confirmed callback offset, unchanged
+hub outcome, restarted component and subsequent General input receipt. Exactly
+one native outcome reply and one callback answer remain after shutdown. The
+unknown fallback is marked incomplete and stays fenced; it cannot hold the
+already-closed callback cursor. The pre-fix run failed at the exact boundary with
+`stale callback confirmation blocked by unknown fallback`.

@@ -27,6 +27,22 @@ export class TelegramCards {
     this.#prompts = prompts; this.#webOrigin = webOrigin;
   }
 
+  readonly foreign: TelegramUpdateHandler = {
+    accepts: update => {
+      const message = update.callback_query?.message;
+      const mapped = message && this.#store.message(String(message.chat.id), String(message.message_id));
+      return !!(mapped?.ask || mapped?.approval);
+    },
+    handle: async update => {
+      try {
+        await this.#api.answerCallbackQuery({ callback_query_id: update.callback_query!.id,
+          text: "This card is for the project's owner", show_alert: true }, { signal: this.#signal });
+      } catch (error) {
+        if (!(error instanceof TelegramError && error.code === 400 && error.description.toLowerCase().includes('query is too old'))) throw error;
+      }
+    },
+  };
+
   readonly handler: TelegramUpdateHandler = {
     accepts: update => !!update.callback_query,
     handle: async update => {
@@ -37,9 +53,12 @@ export class TelegramCards {
       const button = raw ? JSON.parse(raw) as { ask?: string; approval?: string; chat: string; action: CardAction } : null;
       const receipt = `telegram.press:${press.id}`;
       let toast = 'This button is not available';
+      const closure = button && (button.approval ? this.#store.get(`telegram.approval-closure:${button.approval}`)
+        : button.ask ? this.#store.get(`telegram.card-closure:${button.ask}`) : null);
       if (button && mapped && (button.ask && mapped.ask === button.ask || button.approval && mapped.approval === button.approval) && button.chat === chat) {
         const saved = this.#store.get(receipt);
         if (saved && saved !== 'pending') toast = saved;
+        else if (saved !== 'pending' && closure) toast = 'Already answered';
         else {
           const inbox = await this.#request<import('../protocol.ts').Inbox>('inbox.list', {});
           const open = () => button.approval ? inbox.approvals.some(row => row.id === button.approval) : inbox.asks.some(ask => ask.id === button.ask);
@@ -74,6 +93,22 @@ export class TelegramCards {
         // already saved; terminal expiry must not block every later update.
         if (!(error instanceof TelegramError && error.code === 400 && error.description.toLowerCase().includes('query is too old'))) throw error;
       }
+      if (toast === 'Already answered' && closure && press.message?.reply_markup && 'inline_keyboard' in press.message.reply_markup
+        && press.message.reply_markup.inline_keyboard.some(row => row.length)) {
+        const message = String(press.message.message_id);
+        try {
+          const retry = { chat, message, press: press.id };
+          if (button!.approval) await this.approvalOutcome(button!.approval, JSON.parse(closure), retry);
+          else await this.outcome(button!.ask!, JSON.parse(closure), retry);
+        } catch (error) {
+          if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
+          const key = `telegram.outcome:${chat}:${message}:press:${press.id}`;
+          if (!this.#store.outbox().some(job => job.state === 'uncertain' && (job.payload as { key?: string }).key === key)) throw error;
+          // The answer is already closed and the toast saved. Leave an unknown
+          // fallback fenced, but release the callback cursor for later input.
+          this.#store.set(`telegram.outcome-incomplete:${press.id}`, key);
+        }
+      }
       await this.#prompts.publish(press.id);
     },
   };
@@ -93,15 +128,15 @@ export class TelegramCards {
     else if (frame.type === 'approval') await this.publishApprovals([frame.approval]);
   }
 
-  async approvalOutcome(id: string, outcome: import('../protocol.ts').ApprovalOutcome): Promise<void> {
+  async approvalOutcome(id: string, outcome: import('../protocol.ts').ApprovalOutcome, retry?: { chat: string; message: string; press: string }): Promise<void> {
     const pairing = this.#store.pairing();
     const model = this.#store.get(`telegram.approval-model:${id}`);
     if (!pairing || !model) return;
     this.#store.set(`telegram.approval-closure:${id}`, JSON.stringify(outcome));
     const card = approvalCard(JSON.parse(model));
-    await Promise.all(this.#store.messagesForApproval(id).filter(copy => copy.chatId === pairing.chatId).map(copy =>
+    await Promise.all(this.#store.messagesForApproval(id).filter(copy => copy.chatId === pairing.chatId && (!retry || copy.chatId === retry.chat && copy.messageId === retry.message)).map(copy =>
       this.#outbox.edit({ chat_id: copy.chatId, message_id: Number(copy.messageId), ...telegramCard(card, approvalOutcomeLine(outcome)), reply_markup: { inline_keyboard: [] } },
-      { key: `telegram.outcome:${copy.chatId}:${copy.messageId}`, source: id, topic: copy.topic, approval: id })));
+      { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : ''}`, source: id, topic: copy.topic, approval: id })));
   }
 
   async publishApprovals(approvals: InboxApproval[]): Promise<void> {
@@ -143,7 +178,7 @@ export class TelegramCards {
     }));
   }
 
-  async outcome(id: string, card: Pick<AskCard, 'state' | 'outcome'>): Promise<void> {
+  async outcome(id: string, card: Pick<AskCard, 'state' | 'outcome'>, retry?: { chat: string; message: string; press: string }): Promise<void> {
     const pairing = this.#store.pairing();
     if (!pairing) return;
     const model = this.#store.get(`telegram.card-model:${id}`);
@@ -156,10 +191,10 @@ export class TelegramCards {
     if (!line) return;
     const view = askCard(ask);
     const rendered = telegramCard(view, line);
-    await Promise.all(this.#store.messagesForAsk(id).filter(copy => copy.chatId === pairing.chatId).map(copy =>
+    await Promise.all(this.#store.messagesForAsk(id).filter(copy => copy.chatId === pairing.chatId && (!retry || copy.chatId === retry.chat && copy.messageId === retry.message)).map(copy =>
       this.#outbox.edit({ chat_id: copy.chatId, message_id: Number(copy.messageId), ...rendered,
         reply_markup: { inline_keyboard: [] } },
-      { key: `telegram.outcome:${copy.chatId}:${copy.messageId}`, source: id, topic: copy.topic, ask: id })));
+      { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : ''}`, source: id, topic: copy.topic, ask: id })));
   }
 
   async publish(asks: InboxAsk[]): Promise<void> {
