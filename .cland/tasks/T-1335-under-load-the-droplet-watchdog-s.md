@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1116
 branch: t/T-1335-under-load-the-droplet-watchdog-s
 created: 2026-10-26T08:21:56.778Z
-updated: 2026-10-27T15:35:49.872Z
+updated: 2026-10-27T16:15:02.690Z
 ---
 
 ## Summary
@@ -34,8 +34,10 @@ Failing cases:
 
 ## Acceptance criteria
 
-- [ ] C1. A transient identity-probe failure during watchdog arm is retried within a stated bound and never leads to a signal of an unverified pid, shown by a test that injects one failed probe (test).
-- [ ] C2. The named cases (executor-droplet watchdog rearm, cli-identity hub stop, executor-safety sentinel, and accounts.test.ts "opencode relaunch and hub restart retain the saved account after role and registry edits") pass 10/10 under the load gate's CPU load at two workers (test).
+- [x] C1. A transient identity-probe failure during watchdog arm is retried within a stated bound and never leads to a signal of an unverified pid, shown by a test that injects one failed probe (test).
+  - done: impl-1335 · 2026-10-27T16:06:27.148Z
+- [x] C2. The named cases (executor-droplet watchdog rearm, cli-identity hub stop, executor-safety sentinel, and accounts.test.ts "opencode relaunch and hub restart retain the saved account after role and registry edits") pass 10/10 under the load gate's CPU load at two workers (test).
+  - done: impl-1335 · 2026-10-27T16:06:27.231Z
 
 ## Comments
 
@@ -61,3 +63,24 @@ Seen again, 2026-10-27 14:49Z. The Linux stage cover 661e61fe at dev 91d2dc4a (A
 ### impl-1335 · 2026-10-27T15:35:49.872Z
 
 Seams and pre-change consumer inventory (rule 20): watchdog arm/stop uses the existing exported process-host OS boundary (T1 executor-watchdog.test.ts) and native executor-droplet.test.ts (T3); fixture changes use existing session/frame and fake-machine durable receipts. Full repository search for armWatchdog/WatchdogProcesses/WatchdogOptions and the arm refusal finds production consumers droplet.ts acquire/reconcile and dependencies.ts processHost; test consumers executor-watchdog.test.ts, executor-lock-liveness.test.ts, demo-release.test.ts and fakes/digitalocean/scripted-machine.ts; docs executor-argv-audit.md, executor-watchdog test guidance and hub README. No wire, list, persisted lease, credential, permission or refusal-class change is planned; arm retry is internal and preserves the existing error on exhaustion. Existing two-argument arm and legacy process-host fakes stay compatible. T3/T4 scan included all tests, QA briefs and shipped skills: no other direct arm consumers. Local tests withheld per cover-quiet; first prepared regression injects one unavailable native birth and requires a verified result without bare-PID signals.
+
+### impl-1335 · 2026-10-27T15:56:47.007Z
+
+Additional pre-change fixture inventory (rule 20): A-12826, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12826-t-1335-credential-fixture-consumer-inventory.md lists every direct session-credential-fixture consumer found across hub/nvim/web/qa/.agents/docs. Exported signatures, old actor shape, explicit credential/unknown/provisional branches and Store-object clients stay unchanged; all path clients use an existing hub-created schema. Deterministic held-WAL-writer regression at the SQLite/fixture seam reproduced the exact failure before the change: `database is locked`, new Store store.ts:439 → actorCredential:15 → sessionShell, fixture credential open/read 5380 ms on darwin/arm64. The writer is deliberately held on the same scratch database; positive BEGIN IMMEDIATE control confirms its lock. openDatabase sets busy_timeout=5000, replacing the earlier fixture timeout=10000. The live hub can be SIGSTOPped while holding that writer, so a full Store open cannot safely run migrations/backfills there. Coordinator directed the minimal fixture-only connection; production store remains unchanged.
+
+### impl-1335 · 2026-10-27T16:07:08.204Z
+
+Implementation committed/pushed to the local territory as 82e9309aa660f47d1451ff40f796e8356fc7cb66 on t/T-1335-under-load-the-droplet-watchdog-s. C1/C2 done marks refer to A-12827 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12827-t-1335-final-local-cpu-load-probe-five-identities-each-10-10.json): five exact identities each 10/10 on local darwin/arm64, two lanes and the owned CPU loop, browser none. A prior 9/10 CLI probe is superseded by the passing rerun; no suite claim is made. Watchdog arm defaults remain native; an explicit injected launch handle keeps its unit regression in T1 under static admission. The only post-probe code change was that test seam/type correction, with native default behavior unchanged. npm run typecheck, npm run test:lint (0 refusals; existing findings report-only), and npm run test:tiers pass. Coordinator requested all 77 direct hub/test credential-fixture importer files serially before review; 39 currently complete, 401 top-level passes, no skips/failures. The first nested-TMPDIR runner attempt failed native socket path length and is incomplete, not test evidence; the restarted runner uses sealed short scratch roots.
+
+### rev-26 · 2026-10-27T16:15:02.690Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261027-1335-source-1
+commit: 82e9309aa660f47d1451ff40f796e8356fc7cb66
+scope: full
+findings: [{"severity":"medium","text":"M1 Standards: new arm controls await setup promises without an independently live bound/cancellation while fake behaviour time is stopped (also lines50/101). Pre-register an owner that releases held replies, drains arm/stop work and clears fake child ownership on every exit; add missing/aborted setup controls through it, preserving all behaviour/signal assertions.","file":"hub/test/executor-watchdog.test.ts","line":74}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full consolidated source audit A-12833: Standards M1 medium, Spec 0. Retry deadline/birth coherence/late proof exclusion, receipt-driven sentinel expiry, saved-account disconnect, minimal credential SQLite and all shared consumers reviewed. New test setup ownership correction needs fresh pushed-head source review. Local A-12827/A-12831 working-tree/load facts remain distinct from exact-head configured/Linux proof; C1/C2 runtime marks pending. No additional findings, no Reviewer execution; QA none.
