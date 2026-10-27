@@ -2,8 +2,8 @@
 id: T-1356
 kind: task
 title: 'Stale, foreign and late input: "Already answered", a privately refused foreign press, and a late message that answers no ask'
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1115
 branch: t/T-1356-stale-foreign-and-late-input-already
 created: 2026-10-27T05:43:01.630Z
-updated: 2026-10-27T13:40:27.382Z
+updated: 2026-10-27T14:19:28.273Z
+closed: 2026-10-27T14:19:28.273Z
 ---
 
 ## Summary
@@ -35,12 +36,15 @@ A message that T-1348's catch-up marks as late never answers a waiting prompt (t
 - [x] C1. A press replayed on a card after its ask was answered gets "Already answered", sends no hub request, and the stored outcome is unchanged (test).
   - done: impl-1356 · 2026-10-27T12:50:18.306Z
   - verified: rev-32 [reviewer] · run rev-20261027-1356-final · 2026-10-27T13:04:17.603Z · commit 3caafb0b9b3df3011813413916fe02aa4afc52f2
+  - verified: rev-32 [reviewer] · run rev-20261027-1356-final2 · 2026-10-27T14:13:26.992Z · commit 98d6228dd682738a4c9e44522288b16a0ddf2def
 - [x] C2. A press on a card from another Telegram user gets one private answer with `show_alert`, sends no frame to the hub, and leaves the card and the ask unchanged (test).
   - done: impl-1356 · 2026-10-27T12:45:14.741Z
   - verified: rev-32 [reviewer] · run rev-20261027-1356-final · 2026-10-27T13:04:17.603Z · commit 3caafb0b9b3df3011813413916fe02aa4afc52f2
+  - verified: rev-32 [reviewer] · run rev-20261027-1356-final2 · 2026-10-27T14:13:26.992Z · commit 98d6228dd682738a4c9e44522288b16a0ddf2def
 - [x] C3. A late message that arrives while a prompt waits goes to General marked late and does not answer the ask, and a late reply to a closed card answers nothing (test).
   - done: impl-1356 · 2026-10-27T12:45:14.978Z
   - verified: rev-32 [reviewer] · run rev-20261027-1356-final · 2026-10-27T13:04:17.603Z · commit 3caafb0b9b3df3011813413916fe02aa4afc52f2
+  - verified: rev-32 [reviewer] · run rev-20261027-1356-final2 · 2026-10-27T14:13:26.992Z · commit 98d6228dd682738a4c9e44522288b16a0ddf2def
 
 ## Comments
 
@@ -115,3 +119,47 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Integration delta source clear; A-12797 audits both parents and the three resolutions under Coordinator ae653945. Landed notice/shared renderer/webOrigin/inbound reference/help behavior remains, together with T-1356 late prompt exclusion, foreign-card refusal, exact-copy repair key/filter and unknown-fallback cursor release. Polling/prompts and all 46 card tests are unchanged from accepted task source; docs retain both flows. Standards 0, Spec 0. A-12796 is local macOS targeted 29-file/300-pass summary only. Old A-12786/A-12787 and criterion runtime marks cover 3caafb0b, not this merge. C1–C3 stay runtime-pending until fresh mode-free configured same-head evidence; no verified marks added at source.
+
+### impl-1356 · 2026-10-27T13:48:24.140Z
+
+Pre-change integration consumer inventory after T-1357 landing: native telegram.button records now carry optional ask or approval; production consumers are TelegramCards handler/foreign handler plus TelegramPrompts explicit ask routing. Durable approval closure/model/maps are produced/read by TelegramCards, TelegramOutbox approvalOpen and RemoteStore messagesForApproval, and telegram-approvals.test.ts. New integration keeps old ask button/closure shapes and adds optional retry selection to approvalOutcome, matching the existing ask outcome seam. Searched all hub/nvim/web tests, fixture helpers, startup/QA guidance and shipped skills for TelegramCards, approval-closure/model, button and messagesForApproval: consumers remain telegram.ts, telegram-cards.ts, telegram-prompts.ts, telegram-outbox.ts, state.ts, telegram-cards/telegram-approvals tests and corresponding guides/implement skill. No wire/protocol/authority change; existing gateway previous-wire tests remain. Add frame/fake approval stale/foreign/late regressions before widening the native card handling.
+
+### impl-1356 · 2026-10-27T13:54:07.975Z
+
+Approval integration red→green at the same agreed frame/fake seams. A known closed approval initially emitted inbox.list, foreign approval got zero private responses, late explicit approval reply emitted topic.send replyTo=<approval-id> then failed `late approval input confirmation missing`, and accepted/disconnected use-buttons note failed `approval reply note blocked input confirmation`. Fixed: approval closure lookup/local repair uses exact approval copy and press-keyed uncertainty fence; foreign admission recognizes mapped approval cards; explicit approval replies get a saved use-buttons/known-closed note without selecting a choice or borrowing another ask; an uncertain note group stays fenced with additive telegram.answer-note-incomplete:<chat>:<message> receipt while confirming input. Existing ask/button wire shapes unchanged. Consumers of the new note key are TelegramPrompts writer and telegram-approvals regression only; existing keyed outbox readers unchanged. Added 6 generated approval regressions (stale restart, foreign restart/dedupe, late open/closed prompt isolation, unknown repair and unknown note restart/progression). Original 46 ask/11 approval assertions retained. Serial set and lints now rerunning before the single combined delta review.
+
+### rev-32 · 2026-10-27T13:57:35.591Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1356-delta2
+commit: 98d6228dd682738a4c9e44522288b16a0ddf2def
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Combined authorized notices/approvals integration source clear; A-12804 carries A-12781/A-12783/A-12797 plus both-parent source/test audit. Standards 0, Spec 0. Source-kind closure/map/action isolation, exact-copy repair key and unknown-fallback cursor release apply to approvals; typed approval replies save use-buttons/closed notes without choosing actions, invalid topic replies or borrowed ask waits. Exact uncertain-note job remains fenced/incomplete while input progresses. All 46 ask cases and eleven original approval assertions retained; six new approval regressions cover stale/foreign restart, late open/closed isolation and both uncertain-send paths. A-12803 is local macOS 30-file/318-pass evidence only. Old A-12786 is predecessor-only; A-12800 is cancelled with runtime counts unavailable. C1–C3 remain pending fresh configured same-head runtime and named/load receipts; no source criterion marks added.
+
+### impl-1356 · 2026-10-27T14:12:38.202Z
+
+Combined-head configured verification executed:105410f3-8142-4aec-a154-1705e21c3e72 / A-12805 at98d6228dd682738a4c9e44522288b16a0ddf2def.3735/3735 ordinary passes,0 failure/cancel/skip/todo. Host T0/check separate from Linux droplet T1/all fallback T2/Web; no T3/T4 claim. Linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0,Neovim0.12.5; Chrome Headless Shell156.0.8078.4/Playwrightv1248. Parsed actual primary timing pass receipts for46card/17approval cases, and exact5/5 scope=load-gate test-finish passes for all14new identities(70/70). Max new Linux test .544612s; no >=3s case/allowance needed. Report-only budgets/lint135findings,0refusals. Lifetime779s/cost$0.0541; T2load extra wall28.47s separate. Fresh fetch devb3282f9e + merge-tree exits0, merged tree44d18e9469b35a363b3ab66b91df30c11ee815d9. Final evidence review requested at unchanged clean head.
+
+### rev-32 · 2026-10-27T14:13:26.992Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1356-final2
+commit: 98d6228dd682738a4c9e44522288b16a0ddf2def
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final combined-head evidence clear; A-12806 audits raw A-12805 and carries combined source A-12804. Fresh configured 105410f3: 3735 ordinary cases/488 files all pass; host T0 retained separately from Linux c-8 lon1 all T1/fallback all T2/Web. All 46 ask and 17 approval cases pass. Fourteen task identities have exactly five explicit passing load receipts each (70/70, peak 0.544611918 s), including stale/foreign/restart, late open/closed prompt isolation and unknown repair/note progression with send fences intact. Existing eleven approval cases also have ordinary and 5/5 receipts. C1–C3 verified at this exact head, no findings. Budgets/lint/ratchet report-only, 135 findings/61 files; no T3/T4, real-provider or per-item QA claim. Old receipts remain predecessor-only; cancelled A-12800 is not a pass. Coordinator combined stage cover/merge/landing remain separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-27T14:19:28.273Z
+
+Merged 4754c8c1437bcdc24e69eb305d98c83f62331947 onto dev.
