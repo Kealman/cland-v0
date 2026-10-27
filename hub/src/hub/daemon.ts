@@ -495,7 +495,11 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
       await gateway.start();
     } else {
       const { messengerFactory } = await import('../remote/messenger.ts');
-      gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock, { state: store.remotes, log }), create);
+      const { remoteNotice } = await import('../remote/notices.ts');
+      gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock, {
+        state: store.remotes, log, projectName: () => remoteOutput.text(roles.config().name),
+        notice: (cause, fix) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'telegram', cause, fix),
+      }), create);
       await gateway.update(roles.config(), remoteSecrets);
     }
   };

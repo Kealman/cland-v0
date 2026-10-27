@@ -167,9 +167,9 @@ export class Gateway {
 
   status(messenger: RemoteVia): RemoteConnection {
     const remote = this.#started.find(remote => remote.via === messenger);
-    if (!this.#open || !remote || this.#disabled.has(remote) || !remote.status)
+    if (!this.#open || !remote || !remote.status)
       return { connected: false, lastInbound: null, lastOutbound: null, botLink: null };
-    try { return remote.status(); }
+    try { return { ...remote.status(), ...(this.#disabled.has(remote) ? { connected: false } : {}) }; }
     catch (error) { this.#disable(remote, error); return { connected: false, lastInbound: null, lastOutbound: null, botLink: null }; }
   }
 

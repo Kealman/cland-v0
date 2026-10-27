@@ -11,7 +11,8 @@ send` omits `gatewayMessenger`/`gatewayRemotes` injection. It seeds a numeric
 pairing through the storage API, then retains the successful `remote.test`
 reply, exact fake chat/message and `remote.status` traffic/bot-link facts.
 This isolates factory construction and the existing callback contract; it does
-not claim chat pairing or mirroring is implemented by the adapter. Polling
+not exercise chat pairing or mirroring. Native `/start` pairing and blocked-bot
+reporting are covered in [telegram-pairing.test.ts](hub-test-telegram-pairing.test.ts.md). Polling
 is covered separately in the polling component and restart guides.
 Keep projectHub's native resource check: the client closes each HTTP connection
 instead of leaving a socket and idle timer in fetch's global keep-alive pool.

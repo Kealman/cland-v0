@@ -79,6 +79,10 @@ and the component/crash guides in `docs/agents/tests/hub-test-telegram-polling.t
 and `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`. Attach pairing
 and mirror handlers to the registry; resolve only after durable, replay-safe
 handling. Keep unhandled input unconfirmed and paced, and join handler writers on stop.
+For native Telegram `/start`, blocked membership and disabled bot-link facts, use
+`docs/agents/tests/hub-test-telegram-pairing.test.ts.md`. Keep injected handlers
+first; fatal membership records its sanitized cause/General notice before
+consuming the update, so restart does not replay a kick.
 
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and

@@ -11,7 +11,10 @@ export type TelegramUpdateHandler = {
   accepts: (update: TgUpdate) => boolean;
   handle: (update: TgUpdate, signal: AbortSignal) => Promise<void>;
 };
-export type TelegramPollingOptions = { store: RemoteStore; handlers?: readonly TelegramUpdateHandler[]; log?: LogFn };
+export type TelegramPollingOptions = {
+  store: RemoteStore; handlers?: readonly TelegramUpdateHandler[]; log?: LogFn;
+  notice?: (cause: string, fix: string) => void;
+};
 
 function identity(update: TgUpdate, botId: number): { userId: string; chatId: string; dedupe?: string } | null {
   const kinds = Object.keys(update).filter(key => key !== 'update_id');

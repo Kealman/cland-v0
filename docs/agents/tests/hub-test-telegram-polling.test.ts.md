@@ -41,7 +41,7 @@ diagnostic` leaves the registry empty. Observe the first blocked-update log,
 advance one second, retain the actual repeat request and TCP close, then stop.
 The final offset remains absent, exactly two requests occurred, the sole log has
 only event/update id, and no timers remain. Input is preserved for an installed
-handler; this does not claim the pairing/mirror features are present.
+handler; this does not exercise the native pairing/mirror features.
 
 Shared contract: `TelegramPollingOptions.handlers` selects the first applicable
 handler after authority filtering. Successful handler completion means durable

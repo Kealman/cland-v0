@@ -7,6 +7,15 @@ strings. A platform adapter validates the pairing gesture and sends its callback
 result privately; `null` is silence. A frame actor never supplies the messenger
 source. Issuing a code grants no authority.
 
+With Telegram enabled and its token resolved, open the `t.me/<bot>` link from
+`cland remote status` and press Start in a private chat. The native client calls
+the trusted pairing callback for `/start`; the private reply contains the sender's
+numeric id, code and copyable approval command. The service owns reply limits
+and expiry. After local approval, `/start` names the loaded project instead.
+Explicit injected handlers keep first-match priority. Use the
+[native pairing regression](tests/hub-test-telegram-pairing.test.ts.md) for the
+CLI grant, stranger silence, blocked-bot reports and durable kick consumption.
+
 Approval callers resolve `InboxBoard.pairingCodes.get(id)` at the grant boundary,
 then bind the stored identity and clear that messenger's waiting codes in one
 transaction. Call `pairing.approve {messenger, code}` from a human `nvim` or `cli`

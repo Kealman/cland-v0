@@ -545,6 +545,12 @@ remains a shutdown error. A directly constructed gateway defaults to a memory
 sink; the daemon supplies hub.db storage, overridable through `gatewayState`.
 Sinks expose `status()` and `setStatus()`. A new start resets that remote's
 status before setup.
+Native Telegram membership kicks and HTTP 403 failures stop that remote and
+post one redacted hub notice in General with the cause and recovery instruction.
+`src/remote/notices.ts` owns that diagnostic boundary; it does not grant remote
+frame authority. Disabled status retains known bot links and successful traffic
+times while reporting disconnected. A fatal membership update records its cause
+and notice before consuming its cursor, so restart does not replay the kick.
 `src/remote/redact.ts` exports `remoteRedactor(secrets)`, a project-owned mutable
 registry. Its callable form masks registered values and conservative URL, Bearer
 and token/key contexts, flattens diagnostics and caps them at 500 characters.
@@ -638,6 +644,12 @@ after validating the platform's private-chat/interaction identity. The callback
 uses the adapter's trusted `via`; it is not a remotely callable protocol frame.
 A string is one reply to send privately (ephemerally on Discord); `null` means
 silence. The adapter, not the callback, performs the platform send.
+The native Telegram client registers a private `/start` handler after explicit
+injected handlers. Before approval it sends the callback's code/id/command
+reply; in the paired chat it names the loaded project instead. Start at the
+public `https://t.me/<bot>` link printed by `cland remote status` after the
+enabled client successfully checks its resolved token. Identity is the private
+chat and numeric sender, never the username in a command or display name.
 The gateway applies its shared registered-secret policy to display names before
 persistence and to private reply text; numeric identity values keep the same
 refuse-on-routing-collision rule as frames.
@@ -683,8 +695,8 @@ this callback remain compatible. Native adapters must implement the callback
 and use their platform delivery policy. Manage bindings with the
 [remote commands](#remote-commands); issuing a code grants no remote access.
 The service's change notification invalidates dispatcher read replay immediately at
-persistence, independently of the coalesced inbox delta. Platform factories are
-injected; native clients provide platform calls, and no real messenger is needed
+persistence, independently of the coalesced inbox delta. Platform factories remain
+injectable; native Telegram connects the callback to `/start`, and no real messenger is needed
 for the [component regression](../docs/agents/tests/hub-test-pairing-codes.test.ts.md).
 
 ## Durable remote outbox
@@ -1368,8 +1380,9 @@ start/stop receipts and a second source-stamp check immediately before publicati
 A source edited during platform preparation refuses with retry guidance and keeps
 the previous config/roles snapshots. Secret or gateway application failures are
 reported as remote configuration failures and preserve valid role admission. Pairing and outbox storage remain in `hub.db`. Telegram's native
-client supplies token checks, explicit sends and durable-offset polling; accepted
-input awaits a registered pairing or mirror handler. Speech execution requires its provider. The existing
+client supplies token checks, explicit sends, private `/start` pairing and durable-offset
+polling. Other accepted input awaits its registered mirror or command handler.
+Speech execution requires its provider. The existing
 `gatewayRemotes` fixture option retains its unconditional startup behavior.
 
 The role file retains its 500 ms auto-refresh and refresh before launches. A role
@@ -2236,8 +2249,8 @@ without test support refuse explicitly. Client failures are redacted and confine
 to that messenger. The gateway owns the callback through completion on shutdown.
 Telegram's built-in client checks `getMe` on startup and test, sends the test
 line when paired and sends replacement notices to the captured old chat. Its
-adapter supplies these callbacks and polls updates through the registry below.
-Chat pairing and mirroring General require their registered handlers. Discord's
+adapter supplies these callbacks, handles private `/start` pairing and polls
+updates through the registry below. Mirroring General requires its registered handler. Discord's
 callbacks require an injected platform client. Both are tested without real
 platform credentials.
 
@@ -2307,9 +2320,10 @@ remains independent. These keys persist across restarts without a new database.
 
 When accepted input has no matching handler, it stays unconfirmed. The loop
 waits one injected-clock second per retry and logs `telegram-update-unhandled`
-once for that blocked update, carrying only its numeric id. The default registry
-is empty until pairing/mirror handlers are attached; enabling a token alone does
-not forward chat text. Shutdown aborts the current poll and delay and joins the
+once for that blocked update, carrying only its numeric id. The native registry
+handles private `/start` and paired bot membership; other input requires its
+registered mirror or command handler. Enabling a token alone does not forward
+chat text. Shutdown aborts the current poll and delay and joins the
 handler before the gateway releases its lease or storage. Legacy injected
 `TelegramRemote(api, clock)` clients retain their check/send-only lifetime.
 
