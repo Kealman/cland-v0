@@ -278,3 +278,21 @@ test('an invalid injected Telegram override is refused before the configured mes
   assert.equal(constructed, false, 'provider construction has not built a credential-bearing URL');
   await assert.rejects(readFile(join(root, '.cland/hub.lock')), { code: 'ENOENT' });
 });
+
+test('gateway masks hub-owned endpoint metadata but still refuses a credential in an inbound routing field', async t => {
+  const root = await tempProject(t);
+  seed(root);
+  const messenger = testMessenger();
+  const state = testRemoteStates();
+  const hub = await projectHub(t, root, {}, { gatewayRemotes: [messenger], gatewayState: state });
+  const local = await connectUi(t, hub.discovery);
+  const before = await local.request({ type: 'topic.history', topic: 'general' });
+  assert.equal(before.ok, true, before.error);
+  assert.throws(() => messenger.client.send({ type: 'topic.send', id: 'inbound-endpoint', topic: 'general',
+    text: 'must not arrive', harnessId: `http://127.0.0.1:1234/${values['discord.token']}`, attach: 'http://127.0.0.1:1234' }), /protocol routing/);
+  await until(() => state.forMessenger(messenger.id).status().disabled, { timeoutMs: 1000, what: 'inbound routing refusal disables only its remote' });
+  assert.equal(state.forMessenger(messenger.id).status().reason, 'remote output would alter protocol routing');
+  const after = await local.request({ type: 'topic.history', topic: 'general' });
+  assert.equal((after.value as { messages: TopicMessage[] }).messages.some(message => message.text === 'must not arrive'), false);
+  assert.equal((await local.request({ type: 'inbox.list' })).ok, true);
+});

@@ -12,6 +12,7 @@
 // Hub composition is proven once in adapter-composition.test.ts. Approval snapshots, rejection,
 // input attribution and instruction-cleanup permutations live in opencode-native.test.ts (T2).
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { testMessenger } from './fakes/messenger.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -775,4 +776,29 @@ test('a lost instruction write is not treated as absent when cleanup sees no rou
   assert.equal(sent.ok, true, sent.error);
   await eventually('retried write acknowledged', async () => (await records()).some(row => row.event === 'injected' && row.id === unconfirmed.id) || undefined);
   assert.match((await entry())!, /you hold the role Implementer/);
+});
+
+
+test('a natively launched OpenCode session keeps the gateway serving across its process endpoint frame', { timeout: 20000 }, async t => {
+  const root = await tempProject(t), fake = await fakeOpenCode(t);
+  const messenger = testMessenger();
+  const disabled: Array<Record<string, unknown>> = [];
+  const hub = await projectHub(t, root, fake.env, { gatewayRemotes: [messenger], log: entry => {
+    if (entry.event === 'remote-disabled') disabled.push(entry);
+  } });
+  const ui = await connectUi(t, hub.discovery);
+  await ui.request({ type: 'subscribe' });
+  const processFrame = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as Harness).name === 'endpoint-worker' && !!(frame.process as Harness).harnessId, 10000);
+  await launch(ui, 'endpoint-worker', { role: 'coordinator' });
+  const process = (await processFrame).process as Harness;
+  assert.match(process.harnessId!, /^http:\/\/127\.0\.0\.1:\d+$/);
+  assert.deepEqual(disabled, [], 'native OpenCode process metadata must not disable the remote');
+  const reply = await messenger.client.request({ type: 'inbox.list' });
+  assert.equal(reply.ok, true, reply.error);
+  const remoteFrame = messenger.client.frames.find(frame => frame.type === 'session.process' && (frame.process as Harness).name === 'endpoint-worker');
+  assert.ok(remoteFrame, 'the gateway receives the actual production process publication');
+  assert.equal(JSON.stringify(remoteFrame).includes(process.harnessId!), false, 'native endpoint remains private');
+  const stopped = await ui.request({ type: 'session.stop', session: 'endpoint-worker' });
+  assert.equal(stopped.ok, true, stopped.error);
+  await hub.stop();
 });

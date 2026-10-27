@@ -1,7 +1,7 @@
 import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
 import { PROTOCOL_VERSION, type HubFrame, type RemoteVia, type RemoteConnection, type TopicMessage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { remoteRedactor, redactFrame, redactValue, type RemoteRedactor } from './redact.ts';
+import { remoteRedactor, redactFrame, redactHubFrame, redactValue, type RemoteRedactor } from './redact.ts';
 import type { GatewayLease } from './poller-lease.ts';
 import type { PairingCodes } from './pairing.ts';
 import type { Pairing } from './state.ts';
@@ -65,6 +65,7 @@ export class Gateway {
   readonly #log: LogFn;
   readonly #redact: (text: string) => string;
   readonly #output: RemoteRedactor['value'];
+  readonly #hubOutput: (frame: HubFrame) => HubFrame;
   readonly #changed: () => void;
   readonly #unsubscribers: Array<() => void> = [];
   #conversation: Conversation | undefined;
@@ -90,6 +91,7 @@ export class Gateway {
     const registered = this.#redact as Partial<RemoteRedactor>;
     const text = Object.hasOwn(registered, 'text') && typeof registered.text === 'function' ? registered.text : this.#redact;
     this.#output = input => redactFrame(input, text);
+    this.#hubOutput = frame => redactHubFrame(frame, text);
     this.#log = entry => options.log?.(redactValue(entry, text));
   }
 
@@ -218,7 +220,7 @@ export class Gateway {
     if (frame.type === 'inbox') frame = { ...frame, inbox: gatewayInbox(frame.inbox) };
     if (frame.type === 'snapshot' && frame.domain === 'inbox') frame = { ...frame, value: gatewayInbox(frame.value) };
     try {
-      const work = remote.receive(this.#output(frame));
+      const work = remote.receive(this.#hubOutput(frame));
       if (work) this.#observe(remote, work);
     }
     catch (error) { this.#disable(remote, error); }

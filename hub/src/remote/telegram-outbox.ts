@@ -31,11 +31,13 @@ export class TelegramOutbox {
   readonly #onSent: () => void;
   readonly #onError: (error: unknown) => void;
   readonly #askOpen: (id: string) => boolean | Promise<boolean>;
+  readonly #approvalOpen: (id: string) => boolean | Promise<boolean>;
   #stopping: Promise<void> | undefined;
 
   constructor(api: TelegramApi, clock: Clock, options: {
     store?: RemoteStore; signal?: AbortSignal; onError?: (error: unknown) => void; onSent?: () => void;
     askOpen?: (id: string) => boolean | Promise<boolean>;
+    approvalOpen?: (id: string) => boolean | Promise<boolean>;
   } = {}) {
     this.#api = api; this.#clock = clock;
     // Legacy injected remotes have no project store; their queue remains lifetime-local.
@@ -45,6 +47,7 @@ export class TelegramOutbox {
     this.#onSent = options.onSent ?? (() => {});
     this.#onError = options.onError ?? (() => {});
     this.#askOpen = options.askOpen ?? (() => true);
+    this.#approvalOpen = options.approvalOpen ?? (() => true);
   }
 
   send(params: SendMessage, facts: SendFacts = {}): Promise<void> {
@@ -139,10 +142,11 @@ export class TelegramOutbox {
         accepts: job => String(payload(job)?.params.chat_id) === chat,
         sourceOpen: async job => {
           const ask = payload(job)?.mapping.ask;
+          const approval = payload(job)?.mapping.approval;
           // Unknown sends keep their replay fence even after the ask closes.
           const previous = this.#store.attempts(job.id).at(-1);
-          if (job.kind !== 'card' || !ask || previous && previous.outcome !== 'never-left') return true;
-          const open = await this.#askOpen(ask);
+          if (job.kind !== 'card' || !ask && !approval || previous && previous.outcome !== 'never-left') return true;
+          const open = ask ? await this.#askOpen(ask) : await this.#approvalOpen(approval!);
           if (!open) this.#store.set(`telegram.outbox.source-closed:${job.id}`, '1');
           return open;
         },

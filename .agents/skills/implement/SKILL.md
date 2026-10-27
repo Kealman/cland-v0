@@ -174,6 +174,17 @@ recovery follows the messenger-scoped gateway.answer receipt to the current
 message/stage; keep ordinary-id lookup, other-messenger isolation and prior-wire
 refusal. A pre-offset replay alone does not prove confirmed-input recovery.
 
+For Telegram approval cards, use the production-frame/fake-platform and scripted
+native seams in `docs/agents/tests/hub-test-telegram-approvals.test.ts.md`.
+Keep ask/approval keys and maps distinct, offered styles/choices, bounded command
+and denial-note previews, and durable native outcomes before callback/offset.
+Retain cross-kind substitutions, component lost-result replay, all-copy harness
+closure and source-closed versus uncertain-send controls. Both headless inboxes
+must show approved Codex and denied OpenCode outcomes via Telegram. Outgoing
+hub frames may mask harnessId/attach metadata; incoming frame routing remains
+strict. Preserve the native OpenCode producer regression and gateway-secrets
+refusal. These are existing human actions with no added role-clause lines.
+
 For Telegram phone commands or menu registration, use the sealed production-frame
 and fake Bot API seam in `docs/agents/tests/hub-test-telegram-commands.test.ts.md`.
 Keep status/inbox reads within gateway authority, force text/entities for replies,

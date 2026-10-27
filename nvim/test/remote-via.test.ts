@@ -20,10 +20,11 @@ test('remote message and ask rows and Inbox outcomes name Telegram and Discord, 
   const archive = [
     { kind: 'ask', id: 'ask-remote', subject: 'general', text: card.question, since: ts, ts, reason: 'answered', outcome },
     { kind: 'approval', id: 'approval-remote', subject: 'worker', text: 'echo source', since: ts, ts, reason: 'answered', outcome: { choice: 'once', by: 'human', at: ts, via: 'telegram' } },
+    { kind: 'approval', id: 'opencode-denied', subject: 'opencode-worker', text: 'echo denied', since: ts, ts, reason: 'answered', outcome: { choice: 'deny', by: 'human', at: ts, via: 'telegram' } },
     { kind: 'ask', id: 'old-ask', subject: 'general', text: 'Previous hub', since: ts, ts, reason: 'answered', outcome: { status: 'answered', text: 'Legacy answer', by: 'human', at: ts } },
   ];
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: control,
-    CLAND_STUB_SCENARIO_JSON: JSON.stringify({ messages: { general: [message('remote-message', 'From the phone', 'telegram'), message('discord-message', 'Other phone', 'discord'), { id: 'ask-remote', from: 'coord', fromKind: 'agent', to: [], via: 'session', text: card.question, ts, topic: 'general', ask: card }] }, inbox: { archive, archiveToday: 3 } }) });
+    CLAND_STUB_SCENARIO_JSON: JSON.stringify({ messages: { general: [message('remote-message', 'From the phone', 'telegram'), message('discord-message', 'Other phone', 'discord'), { id: 'ask-remote', from: 'coord', fromKind: 'agent', to: [], via: 'session', text: card.question, ts, topic: 'general', ask: card }] }, inbox: { archive, archiveToday: 4 } }) });
   await waitInitialSnapshots(c);
   const thread = () => c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.views').topic('general').thread.buf,0,-1,false)");
   await c.waitScreen(s => s.includes('via Telegram') && s.includes('via Discord'), 'remote source labels rendered');
@@ -37,6 +38,7 @@ test('remote message and ask rows and Inbox outcomes name Telegram and Discord, 
   const inbox = (await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0,0,-1,false)")).join('\n');
   assert.match(inbox, /Continue.*via Telegram/);
   assert.match(inbox, /approved once.*via Telegram/);
+  assert.match(inbox, /denied.*via Telegram/);
   assert.match(inbox, /Legacy answer/);
   assert.doesNotMatch(inbox, /nil|undefined/);
   // A closed approval arriving during this visit folds with the source too.

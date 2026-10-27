@@ -55,6 +55,7 @@ export class TelegramRemote implements Remote {
     this.#format = rendering.format ?? 'rich';
     this.#outbox = new TelegramOutbox(api, clock, { ...(polling ? { store: polling.store } : {}), signal: this.#abort.signal,
       askOpen: async id => (await this.#request<Inbox>('inbox.list')).asks.some(ask => ask.id === id),
+      approvalOpen: async id => (await this.#request<Inbox>('inbox.list')).approvals.some(approval => approval.id === id),
       onSent: () => { this.#lastOutbound = this.#clock.now().toISOString(); },
       onError: error => {
         if (fatal(error)) void this.#track(async () => { throw error; }).catch(() => {});
@@ -204,7 +205,7 @@ export class TelegramRemote implements Remote {
       if (frame.ok) pending.resolve(frame.value); else pending.reject(new Error(frame.error));
       return;
     }
-    if ((frame.type === 'inbox' || frame.type === 'ask') && this.#cards) return this.#track(() => this.#transient(() => this.#cards!.receive(frame)));
+    if ((frame.type === 'inbox' || frame.type === 'ask' || frame.type === 'approval') && this.#cards) return this.#track(() => this.#transient(() => this.#cards!.receive(frame)));
     if (frame.type !== 'message' || frame.topic.id !== 'general') {
       if (this.#inbound) return this.#track(async () => { await this.#transient(() => this.#inbound!.receive(frame)); });
       return;

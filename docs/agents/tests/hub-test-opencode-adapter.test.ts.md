@@ -61,3 +61,11 @@ socket whose process has closed it. A focused failure-path case proves the
 fixture's own bound: with no probe it drains its listener and sockets, then
 exits with EADDRINUSE inside `FAKE_OPENCODE_COLLIDE_SETTLE_MS`; a taken
 competitor bind exits instead of hanging.
+
+T-1357 adds `a natively launched OpenCode session keeps the gateway serving
+across its process endpoint frame`: production `session.launch`, the fake native
+executable and real spoke produce an actual `session.process` with a loopback
+HTTP `harnessId`. The gateway must keep serving `inbox.list`; its process copy
+masks the endpoint. The test retains explicit session stop and hub shutdown.
+No test-built process projection supplies the endpoint. This is T3 native
+process evidence, separate from scripted approval command receipts in T2.

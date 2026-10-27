@@ -57,3 +57,12 @@ construction and checks actual masked status/log receipts for old and new values
 is constructed` asserts a fixed refusal, no provider construction and a released
 hub lock. These complement the file-only malformed-token and direct registry
 controls; no real platform or credential is used.
+
+Outgoing hub frames may mask the display-only `harnessId` and `attach` metadata
+without disabling the remote. Incoming frames continue through strict
+`redactFrame`; the endpoint/credential input regression observes the exact
+routing refusal, no written human message, and the other hub edge still serving.
+The native producer regression is in `opencode-adapter.test.ts`, and
+`remote/redact.test.ts` preserves secret masking and strict correlation ids.
+Doctor's local status diagnostics and the allowlisted `remote.state` rows carry
+no harness endpoint; these use the existing daemon registry and safe projection.

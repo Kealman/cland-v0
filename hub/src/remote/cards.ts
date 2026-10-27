@@ -1,7 +1,25 @@
-import type { AskCard, AskOutcome, Inbox, InboxAsk } from '../protocol.ts';
+import type { ApprovalChoice, ApprovalOutcome, AskCard, AskOutcome, Inbox, InboxApproval, InboxAsk } from '../protocol.ts';
 
-export type CardAction = { option: number } | { kind: 'other' | 'decline' };
-export type RemoteCard = { title: string; question: string; link?: string; preview?: 'message' | 'command'; buttons: Array<{ label: string; action: CardAction }> };
+export type CardAction = { option: number } | { kind: 'other' | 'decline' } | { choice: ApprovalChoice };
+export type RemoteCard = { title: string; question: string; truncated?: string; link?: string; preview?: 'message' | 'command'; buttons: Array<{ label: string; action: CardAction; style?: 'success' | 'primary' | 'danger' }> };
+
+export function approvalCard(approval: InboxApproval): RemoteCard {
+  const choices = { once: ['Approve once', 'success'], always: ['Always allow', 'primary'], deny: ['Deny', 'danger'] } as const;
+  return { title: `${approval.session} asks to run · ${approval.harness ?? 'harness'}`,
+    question: approval.subject.command ?? approval.command ?? approval.subject.files?.join('\n') ?? approval.subject.change ?? 'Approval requested',
+    truncated: 'full command in the workbench',
+    buttons: approval.choices.map(choice => ({ label: choices[choice][0], style: choices[choice][1], action: { choice } })),
+  };
+}
+
+export function approvalOutcomeLine(outcome: ApprovalOutcome): string {
+  const choice = outcome.choice === 'once' ? 'Approved once' : outcome.choice === 'always' ? 'Always allowed'
+    : outcome.choice === 'deny' ? 'Denied' : outcome.choice === 'withdrawn' ? 'Withdrawn' : 'Answered in the harness';
+  const note = outcome.note && [...outcome.note].length > 800
+    ? [...outcome.note].slice(0, 800).join('') + '… (full note in the workbench)' : outcome.note;
+  return attributedLine(`${choice}${note ? `: ${note}` : ''}`, outcome);
+}
+
 export type RemoteNotice = { id: string; kind: 'plan' | 'request' | 'message' | 'approval'; since: string; topic: string; reference?: string; card: RemoteCard };
 
 /** Notices share the card renderer, but offer no remote action. */
@@ -28,7 +46,10 @@ export function askCard(ask: InboxAsk): RemoteCard {
 }
 
 export function outcomeLine(outcome: AskOutcome): string {
-  const choice = outcome.status === 'declined' ? `Declined: ${outcome.reason}` : outcome.text;
+  return attributedLine(outcome.status === 'declined' ? `Declined: ${outcome.reason}` : outcome.text, outcome);
+}
+
+function attributedLine(choice: string, outcome: { by: string; via?: string; at: string }): string {
   const where = outcome.via === 'telegram' ? 'Telegram' : outcome.via === 'discord' ? 'Discord'
     : outcome.via === 'web' ? 'web' : outcome.via === 'neovim' ? 'Neovim' : outcome.via;
   return `${choice} · ${outcome.by}${where ? ` via ${where}` : ''} · ${new Date(outcome.at).toTimeString().slice(0, 5)}`;

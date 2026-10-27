@@ -613,6 +613,13 @@ local approval sources remain `neovim`, `web` and `harness`. No new feature
 negotiation or protocol version is required: old hello and request shapes work,
 and clients accept ask outcomes without `via` from an older hub or stored row.
 
+Outgoing hub frames mask harness endpoint/display fields (`harnessId` and
+`attach`) without treating them as remote routing. This keeps a launched
+OpenCode session's native server endpoint private while the remote serves.
+Incoming remote requests still use strict routing redaction: a credential or
+URL that would change an identifier or other routing field refuses and disables
+that remote before dispatch. This grants no remote lifecycle authority.
+
 ### Remote storage and poller ownership
 
 `Store.remotes` uses Store's existing `hub.db` connection. The additive
@@ -2500,7 +2507,7 @@ A successful `getMe` makes the send transport available for recovery.
 See the [pacing frame/fake guide](../docs/agents/tests/hub-test-telegram-pacing.test.ts.md).
 This internal scheduler adds no command, setting, permission or role-clause line.
 
-### Telegram ask cards
+### Telegram ask and approval cards
 
 With Telegram enabled, a resolved token and a paired private chat, an inbox
 publication sends each human ask as one text/entities card, outside the General
@@ -2580,6 +2587,28 @@ Card sends use the per-chat queue at card priority:
 commit together, including their own durable delivery receipt.
 See the [frame/fake card guide](../docs/agents/tests/hub-test-telegram-cards.test.ts.md).
 
+Codex and OpenCode approvals with `answerIn: "hub"` use the same shared card
+renderer. Each names the session and harness, then the command or changed files.
+Long commands are clipped with `full command in the workbench`; one message
+stays within 4,096 code points with one title entity. Only the offered choices
+appear: **Approve once** (success), **Always allow** (primary), **Deny** (danger),
+one per row. A press calls the existing `approval.answer` gate with trusted
+`via: "telegram"`; there is no second confirmation. Its native delivery and
+stored outcome complete before the direct callback acknowledgement and offset.
+Both workbenches show the approved/denied outcome `via Telegram`.
+
+Approval frames and inbox departures fold every mapped approval copy, including
+answers from the web or harness and harness withdrawal. Outcome text names the
+choice, actor, source and hub-local HH:MM and removes all buttons. Long denial
+notes keep an 800-code-point preview with `full note in the workbench`. Approval
+and ask buttons bind to distinct source fields: a key of the other kind changes
+neither record and answers the press. Closed never-left approval sends are
+also dropped; uncertain sends retain their fence. After a committed approval
+result is lost, replay observes the saved closed record, answers `Already
+answered` and never repeats the native command. Claude Code/TUI approvals do
+not acquire approval buttons. See the
+[approval card guide](../docs/agents/tests/hub-test-telegram-approvals.test.ts.md).
+
 ### Telegram needs-you notices
 
 With Telegram enabled, a resolved token and a paired private chat, inbox plans,
@@ -2612,6 +2641,7 @@ passes through the gateway's existing secret redactor. The public origin comes
 from validated configuration, without credentials, path, query or fragment;
 web settings apply after a hub restart. See the
 [notice frame/fake guide](../docs/agents/tests/hub-test-telegram-notices.test.ts.md).
+
 
 ### Telegram polling and durable confirmation
 

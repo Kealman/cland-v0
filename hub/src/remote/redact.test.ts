@@ -19,3 +19,13 @@ test('remote diagnostics flatten control characters and bound the retained reaso
   assert.equal(redact('failed\nprivate-value\u0000next'), 'failed [redacted] next');
   assert.equal(redact('x'.repeat(1000)).length, 500);
 });
+
+test('only hub output can mask endpoint and attach metadata while identifiers stay strict', async () => {
+  const { redactFrame, redactHubFrame } = await import('./redact.ts');
+  const redact = remoteRedactor(['synthetic-private-value']);
+  const process = { harnessId: 'http://127.0.0.1:1234/synthetic-private-value', attach: 'opencode --server http://127.0.0.1:1234/synthetic-private-value' };
+  const output = redactHubFrame({ type: 'result', id: 'metadata', ok: true, value: { process } }, redact.text);
+  assert.deepEqual(output, { type: 'result', id: 'metadata', ok: true, value: { process: { harnessId: '[redacted]', attach: 'opencode --server [redacted]' } } });
+  assert.throws(() => redactFrame({ type: 'inbox.list', id: 'metadata', ...process }, redact.text), /protocol routing/);
+  assert.throws(() => redactHubFrame({ type: 'result', id: 'synthetic-private-value', ok: true, value: {} }, redact.text), /protocol routing/);
+});

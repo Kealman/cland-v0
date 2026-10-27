@@ -214,5 +214,6 @@ Artifact/post refusal consumer migration and separate post-commit diagnostic pro
 - T-1358: point notice/routing changes at the sealed frame/fake guide, including referenced General replies without authority changes.
 - T-1358 source review: retain frozen-help row migration, whole-notice/header/link bounds and single-publication stable-order red/green controls.
 
+- T-1357: document approval-card native/Telegram receipts, cross-kind identity, bounded previews, inbox sources and outgoing-only endpoint masking.
 - T-1355: replace unavailable auxiliary actions with durable ForceReply prompt, cancellation, typed-reply and feedback/replay guidance.
 - T-1355 source review M1/M2: distinguish incomplete prompt publication from delivery, release the callback cursor with unknown sends fenced, consume unverifiable replies, and recover confirmed-answer feedback through native answer receipts.

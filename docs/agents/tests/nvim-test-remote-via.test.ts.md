@@ -12,3 +12,7 @@ run `node --test nvim/test/remote-via.test.ts` against the committed recordings.
 The recorder publishes only after a complete, passing, non-skipped receipt.
 Fixture cleanup stops and reaps Neovim and the stub before deleting scratch
 roots. No real messenger, token or key is used.
+
+T-1357 adds the denied OpenCode archive outcome beside the approved-once Codex
+row; both actual headless-rendered rows retain `via Telegram`. Refresh only this
+slice and commit its successful recording/manifest together.

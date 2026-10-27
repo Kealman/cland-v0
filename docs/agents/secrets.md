@@ -74,7 +74,7 @@ Keep one `remoteRedactor()` per project hub. Startup and reload call
 `validateAndRegisterSecrets(secrets, remoteOutput)` before provider setup;
 reuse that registry across rotation so old in-flight errors remain masked.
 The callable form bounds diagnostics; `.text` preserves full artifact text and
-`.value` preserves JSON record keys; `redactFrame` preserves frame routing or
+`.value` preserves JSON record keys; incoming `redactFrame` preserves frame routing or
 disables the remote safely on a credential collision. Plain-function injection
 uses the same supplied policy for structured content. Every new remote/speech journal,
 artifact, frame and diagnostic producer passes the matching API before writing.
@@ -120,3 +120,11 @@ For Telegram client errors and API-root overrides, use the
 Pass the daemon's environment and project registry to the factory. Token-bearing
 URLs stay inside the fetch client; provider errors retain only sanitized facts.
 The existing role clauses cover these boundaries without new permissions.
+
+Outgoing gateway hub frames separately mask `harnessId` and `attach` endpoint
+metadata, preserving schema keys without exposing native OpenCode URLs or
+registered secrets. This output exception never applies to remote input or
+correlation ids; inbound routing redaction remains strict. Doctor's local status
+and `remote.state` do not include harness endpoints. See the native producer
+proof in [OpenCode adapter tests](tests/hub-test-opencode-adapter.test.ts.md)
+and the [gateway secret guide](tests/hub-test-gateway-secrets.test.ts.md).

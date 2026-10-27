@@ -14,3 +14,8 @@ the client still renders its answerer and answer. Each source assertion targets 
 protocol value. The fixture observes browser descendants exit and hub stop
 before removing its scratch root. This is fake-platform, headless evidence;
 it makes no claim about Telegram or Discord on a real phone.
+
+T-1357 retains separate visible Codex approved-once and OpenCode denied outcomes
+and archive rows, each naming `via Telegram`. The messenger is a frame double;
+production Telegram press/native approval behaviour is covered separately by
+`hub/test/telegram-approvals.test.ts`.

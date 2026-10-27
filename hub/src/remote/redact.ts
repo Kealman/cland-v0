@@ -1,3 +1,5 @@
+import type { HubFrame } from '../protocol.ts';
+
 /** One project-owned registry. Keep rotated values until all old consumers have drained. */
 export type RemoteRedactor = ((text: string) => string) & {
   register: (secrets: readonly string[]) => void;
@@ -62,6 +64,16 @@ export function redactFrame<T>(input: T, redact: (text: string) => string): T {
   return mapStrings(input, (text, key) => {
     const masked = redact(text);
     if (masked !== text && !CONTENT_FIELDS.has(key)) throw new Error('remote output would alter protocol routing');
+    return masked;
+  });
+}
+
+/** Hub-owned endpoint/display metadata is never remote input or an action target. */
+export function redactHubFrame(input: HubFrame, redact: (text: string) => string): HubFrame {
+  return mapStrings(input, (text, key) => {
+    const masked = redact(text);
+    if (masked !== text && !CONTENT_FIELDS.has(key) && key !== 'harnessId' && key !== 'attach')
+      throw new Error('remote output would alter protocol routing');
     return masked;
   });
 }

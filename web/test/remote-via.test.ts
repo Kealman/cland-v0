@@ -17,9 +17,14 @@ test('remote messages, ask decisions and Codex approvals show their source in th
   assert.equal(launched.ok, true, launched.error);
   const approvalId = `${(launched.value as { process: { sessionId: string } }).process.sessionId}:source`;
   fixture.hub.fakes.codex!.raiseApproval('worker', { id: 'source', kind: 'command', subject: { command: 'echo source' }, choices: ['once', 'deny'] });
+  const opened = await local.request({ type: 'session.launch', name: 'opencode-worker', harness: 'opencode', role: 'implementer' });
+  assert.equal(opened.ok, true, opened.error);
+  const deniedId = `${(opened.value as { process: { sessionId: string } }).process.sessionId}:source`;
+  fixture.hub.fakes.opencode!.raiseApproval('opencode-worker', { id: 'source', kind: 'command', subject: { command: 'echo denied' }, choices: ['once', 'deny'] });
   await fixture.pageCase(t, async page => {
     await page.locator(`[data-object-id="${asked.ask}"]`).waitFor();
     await page.locator(`[data-object-id="${approvalId}"]`).waitFor();
+    await page.locator(`[data-object-id="${deniedId}"]`).waitFor();
     const sent = await messenger.client.request({ type: 'topic.send', topic: 'general', text: 'From the phone' });
     assert.equal(sent.ok, true, sent.error);
     const other = await discord.client.request({ type: 'topic.send', topic: 'general', text: 'From Discord' });
@@ -31,13 +36,18 @@ test('remote messages, ask decisions and Codex approvals show their source in th
     const ask = page.locator(`[data-inbox-kind="ask"] [data-ask-id="${asked.ask}"][data-ask-state="answered"]`);
     await ask.getByText('via Telegram', { exact: true }).waitFor();
     assert.match(await ask.innerText(), /Continue.*human.*via Telegram/s);
-    const approved = await messenger.client.request({ type: 'approval.answer', approval: approvalId, choice: 'deny' });
+    const approved = await messenger.client.request({ type: 'approval.answer', approval: approvalId, choice: 'once' });
     assert.equal(approved.ok, true, approved.error);
-    const approval = page.locator('[data-approval-outcome]');
+    const approval = page.locator('[data-inbox-kind="approval"]').filter({ has: page.locator(`[data-object-id="${approvalId}"]`) }).locator('[data-approval-outcome]');
     await approval.getByText(/via Telegram/).waitFor();
-    assert.match(await approval.innerText(), /Denied by the human.*via Telegram/s);
+    assert.match(await approval.innerText(), /Approved once by the human.*via Telegram/s);
+    const denied = await messenger.client.request({ type: 'approval.answer', approval: deniedId, choice: 'deny' });
+    assert.equal(denied.ok, true, denied.error);
+    const opencode = page.locator('[data-inbox-kind="approval"]').filter({ has: page.locator(`[data-object-id="${deniedId}"]`) }).locator('[data-approval-outcome]');
+    await opencode.getByText(/via Telegram/).waitFor();
+    assert.match(await opencode.innerText(), /Denied by the human.*via Telegram/s);
     await page.locator('[data-inbox-archive-toggle]').click();
-    for (const archived of [asked.ask, approvalId]) {
+    for (const archived of [asked.ask, approvalId, deniedId]) {
       const row = page.locator(`[data-inbox-archive-id="${archived}"]`);
       await row.getByText(/via Telegram/).waitFor();
       assert.match(await row.innerText(), /via Telegram/);
