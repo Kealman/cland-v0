@@ -2,8 +2,8 @@
 id: T-1364
 kind: task
 title: Pairing rows show in both inboxes, and Neovim's card approves them
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1103
 branch: t/T-1364-pairing-rows-show-in-both-inboxes-and
 created: 2026-10-27T05:46:50.196Z
-updated: 2026-10-27T07:23:46.322Z
+updated: 2026-10-27T08:32:34.906Z
+closed: 2026-10-27T08:32:34.906Z
 ---
 
 ## Summary
@@ -149,3 +150,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear at unchanged e00ac9c0: A-12641 independently audits 8d664bbb/A-12639 against source3/A-12634. Raw ordinary 3624 tests/477 files pass, zero failures/skips; T0 host gate reused, Linux droplet c-8 lon1 T1/all-fallback T2/mapped T4 qa-shipped/Web complete, T3 unselected/deferred. Actual Web workers 4, pinned Headless Shell 156.0.8078.4/1248; separate report-only Web repetitions 10/10 with two workers. Four required generated parent identities and native child all pass; desktop 5.768986988/phone 5.097544436/cross-client 2.623654545 s fit approved E-1313 9.2/8.2/4.7 s caps expiring 2026-11-03. C1–C4 exact real key, numeric grant/snapshot, inert Web field, expiry/split removal and previous-shape assertions are established. Native close exit null/SIGKILL and PID reaped before hub close; autostart census 0/0; no runner cleanup PIDs. Former ARTIFACT-001 passes 0.755276974 s and all 32 selected T4 cases pass. Existing budgets/lint/ratchet remain report-only; original failed receipts stay failed. Standards/Spec: no findings. C1–C4 verified. Coordinator's E-1309 demo landing hold is separate and remains in force; no further run requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-27T08:32:34.906Z
+
+Merged d6d7e467e414bebc94081d25240cb07aa5913e31 onto dev.
