@@ -2,8 +2,8 @@
 id: T-1349
 kind: task
 title: "Telegram liveness: stalled polls, a lasting 409, and a 401 or 403 that stops only this remote"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1097
 branch: t/T-1349-telegram-liveness-stalled-polls-a
 created: 2026-10-26T19:09:07.935Z
-updated: 2026-10-27T02:12:35.368Z
+updated: 2026-10-27T02:56:32.461Z
+closed: 2026-10-27T02:56:32.461Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Stall detection on the poll, 409 handling within T-1323's poller lease (ride out
 
 - [x] C1. A stalled poll restarts after its timeout plus 15 s under an injected clock, and a lasting 409 shows as "another consumer of the token" in General and `cland remote status` (test).
   - done: impl-1349 · 2026-10-27T02:10:22.727Z
+  - verified: rev-32 [reviewer] · run rev-20261027-1349-final · 2026-10-27T02:50:41.790Z · commit 882073164ec48fd6af182a137478783a504da19d
 - [x] C2. A 401 stops only the Telegram remote with its cause and fix in General while the hub and the web edge serve on (test).
   - done: impl-1349 · 2026-10-27T02:10:22.815Z
+  - verified: rev-32 [reviewer] · run rev-20261027-1349-final · 2026-10-27T02:50:41.790Z · commit 882073164ec48fd6af182a137478783a504da19d
 
 ## Comments
 
@@ -78,3 +81,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full replacement source review clear: A-12553. Reviewed all 18 task-diff files against landed dev c1bbef405 plus final integration. Standards: no findings; M1 owning frozen REMOTE_USAGE bytes now match unchanged guards, M3 pre-start ownership/independent readiness and missing/aborted setup drainage controls are present. Spec: no findings; M2 fixed cause/fix comes first with long-description status/CLI/General controls; liveness, 60-second conflicts, isolated failure/reload recovery and Coordinator-authorized fatal rich-send exception remain intact. Landed pairing, renderer, native ingress/receipt and inbound recovery seams are retained. A-12552 is 66/66 serial local darwin arm64 targeted evidence, not configured Linux/full-suite evidence. C1/C2 remain unverified pending the same-head runtime receipt. Follow Coordinator decision 78e4c76c: report this clear head for its single rule 6 verify all; do not submit a duplicate mode-free run. No per-item QA brief; policy none/after-stage.
+
+### rev-32 · 2026-10-27T02:50:41.790Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1349-final
+commit: 882073164ec48fd6af182a137478783a504da19d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged source-reviewed 882073164: A-12556 independently audits Coordinator run 913f2617 / A-12555. Actual raw finishes: 4,929 passes, 8 explicit T3 skips, 667 passing files; no failures/cancellations or load-gate repetitions. T0 macOS host check passed (exclusion gate f9afff47, not repeated on Linux); Linux droplet c-8 lon1 cland-v0-83bb37d8 completed T1/T2/T3/Web, no T4. Budgets/test lint/ratchet report-only, existing warnings retained. All 11 exact liveness identities passed (maximum 0.500901782 s), proving C1 poll deadline/retry + 60-second conflict General/CLI and C2 long 401 cause/fix with continued authenticated web/hub service; setup drainage, 403, fatal rich-before-fallback and unchanged-reload/membership recovery controls also passed. Supporting polling, pairing, rendering, inbound, frozen help and both native SIGKILL restart cases pass. The 8 platform/unavailable-binary exclusions do not skip any required task identity. Standards/Spec: no findings. C1/C2 verified; no further run requested. Droplet lifetime 2,005 s/$0.1393 is not suite wall; no real-provider/per-item QA or T4 claim.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-27T02:56:32.461Z
+
+Merged f5ae21c84c7cacec4044ae320b28b12a52ccda2e onto dev.
