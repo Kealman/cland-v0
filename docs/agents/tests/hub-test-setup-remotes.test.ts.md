@@ -1,0 +1,20 @@
+# hub/test/setup-remotes.test.ts
+
+T1 uses the ordered runner, strict scripted prompter and private disposable files.
+`fixtureEnvironment` seals HOME/XDG/Git; no process, hub or platform runs. The
+OpenCode-only machine avoids native trust or login operations.
+
+The untouched nonterminal control retains exact secret/config/reload commands,
+no questions and unchanged bytes. The partial-state matrix covers token-only,
+enabled-only and enabled/unpaired projects; missing commands remain explicit.
+A frozen prior `remote.status` reply with a stored pairing but no active loaded
+token stays open for reload. The default-No decline is repeated on a second run and writes neither config,
+secret nor ignore files. Accepted hidden input uses the shared private-file
+preflight, secret store and atomic config-set writer; under `--no-aide` without
+a hub, reload and pairing remain open. Invalid input repeats only the hidden
+question, names the format and stores only the next valid value.
+
+Secret comparisons use booleans and fixed messages: never let an assertion print
+input values or a remaining secret-answer script. Narration and reports are
+scanned for the exact synthetic input. Unsafe ignore rules refuse before the hidden question. The raw no-echo and
+terminal-release checks live in `hub/test/setup-prompter.test.ts`.

@@ -169,7 +169,7 @@ test('setup CLI hands over after the summary on each run, including --attach', a
     const calls: unknown[] = [];
     const io = {
       machine, hub, stdinTTY: true, stdoutTTY: true, write: (s: string) => { output += s; },
-      prompter: scriptedPrompter(args.includes('--attach') && !args.includes('--no-aide') ? [{ kind: 'pause', question: /Press Enter/ }] : []),
+      prompter: scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }, ...(args.includes('--attach') && !args.includes('--no-aide') ? [{ kind: 'pause' as const, question: /Press Enter/ }] : [])]),
       run: async (...input: Parameters<NonNullable<HandoverOptions['run']>>) => {
         assert.match(output, /\d+ ok, \d+ done, \d+ skip, 0 open, 0 fail\n/);
         calls.push(input);

@@ -29,6 +29,17 @@ For a custom unmarked `.cland/.gitignore`, put `/secrets.toml` last among its
 non-comment rules. Writes refuse before requesting input until that protection
 exists; the command preserves the file's bytes.
 
+`cland setup` offers Telegram after the hub and before the Aide. Its hidden
+question shares `readSecret` and `prepareSecretWrite` with the secret CLI; validate
+the Telegram format before storing. A decline is not persisted. `--yes` does not
+accept this offer, and `--json` uses nonterminal detection only. An untouched
+remote is `skip`, partial configuration is `open`, and a configured paired remote
+is `ok`. Without a running hub, `--no-aide` can store and enable locally through
+the shared config writer, leaving reload and pairing open. With a running hub,
+setup uses the unchanged config-set/reload/status frames, carrying no value.
+See [setup's frame receipts](tests/hub-test-setup-remote-component.test.ts.md)
+and [scripted setup checks](tests/hub-test-setup-remotes.test.ts.md).
+
 Use [the sealed test seams](tests/hub-test-secrets.test.ts.md) for changes here.
 The [CLI import guard](tests/hub-test-cli-imports.test.ts.md) protects that boundary.
 The existing role clauses already require secret isolation; this local command

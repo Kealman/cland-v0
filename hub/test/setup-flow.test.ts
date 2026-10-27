@@ -12,6 +12,8 @@ import { rolesTemplate } from '../src/roles/template.ts';
 import { CHOSEN, setRoleKey } from '../src/roles/editor.ts';
 import { harnessesInUse } from '../src/roles/harnesses.ts';
 
+const declineTelegram = { kind: 'confirm', question: 'Set up Telegram remote now?', answer: false } as const;
+
 function scratch(t: test.TestContext, trusted = true): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'cland-setup-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -42,7 +44,7 @@ test('installing Codex uses the terminal runner and its re-check decides done or
   const root = scratch(t);
   for (const installed of [true, false]) {
     let ran = false;
-    const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Install Codex now?', answer: true }]);
+    const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Install Codex now?', answer: true }, declineTelegram]);
     const output: string[] = [];
     const env = { HOME: root, PATH: '/tools' };
     const { report } = await setup({ noAide: true, root, env, interactive: true, yes: false, prompter: {
@@ -90,7 +92,7 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.equal(code, 1);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'skip'], ['opencode', 'ok'],
-    ['claude-code login', 'open'], ['opencode login', 'skip'], ['accounts', 'ok'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['aide', 'skip'],
+    ['claude-code login', 'open'], ['opencode login', 'skip'], ['accounts', 'ok'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['remote telegram', 'skip'], ['aide', 'skip'],
   ]);
   assert.equal(report.steps[4]?.fix, 'run: claude auth login');
   assert.equal(report.next, 'cland setup');
@@ -133,10 +135,10 @@ test('a declined installer persists across setup runs until an explicit install'
     },
     run: async () => { runs++; return 0; },
   };
-  const first = scriptedPrompter([{ kind: 'confirm', question: 'Install Codex now?', answer: false }]);
+  const first = scriptedPrompter([{ kind: 'confirm', question: 'Install Codex now?', answer: false }, declineTelegram]);
   await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter: first, machine: m });
   assert.deepEqual(parseConfig(config, 'project').setup.declinedInstalls, ['codex']);
-  const second = scriptedPrompter([]);
+  const second = scriptedPrompter([declineTelegram]);
   const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter: second, machine: m });
   const line = report.steps.find(s => s.name === 'codex')!;
   assert.equal(line.verdict, 'skip');
@@ -153,7 +155,7 @@ test('nonterminal detection and --yes never install or record a decline', async 
   for (const interactive of [false, true]) {
     let runs = 0, writes = 0;
     const config = renderConfig(defaultConfig('project'));
-    await setup({ noAide: true, root, env: { HOME: root }, interactive, yes: interactive, prompter: scriptedPrompter([]), machine: {
+    await setup({ noAide: true, root, env: { HOME: root }, interactive, yes: interactive, prompter: scriptedPrompter(interactive ? [declineTelegram] : []), machine: {
       ...machine,
       requiredHarnesses: async () => [],
       read: async () => config,
@@ -207,7 +209,7 @@ test('the first installed harness makes missing alternatives optional in the fin
   } });
   assert.equal(code, 1); // favourite still needs --harness or --yes without a terminal
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['remote telegram', 'skip'], ['aide', 'skip'],
   ]);
 });
 
@@ -253,8 +255,8 @@ test('all steps ok exits zero and points to cland; installer folders explain PAT
   } });
   assert.equal(code, 0);
   assert.equal(report.next, 'cland');
-  assert.deepEqual(report.summary, { ok: 10, done: 0, skip: 2, open: 0, fail: 0 });
-  assert.ok(report.steps.slice(0, -2).every(s => s.verdict === 'ok'));
+  assert.deepEqual(report.summary, { ok: 10, done: 0, skip: 3, open: 0, fail: 0 });
+  assert.ok(report.steps.slice(0, -3).every(s => s.verdict === 'ok'));
   assert.match(report.steps[1]!.detail, /not on your PATH yet: open a new shell/);
 });
 
@@ -275,7 +277,7 @@ test('login probe errors retain their detail with the exact login command', asyn
 test('Claude Code login uses a fresh check to decide done after the terminal command', async t => {
   const root = scratch(t);
   let runs = 0;
-  const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Sign in to Claude Code now?', answer: true }]);
+  const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Sign in to Claude Code now?', answer: true }, declineTelegram]);
   const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter, machine: {
     ...machine,
     requiredHarnesses: async () => ['claude-code'],
@@ -304,6 +306,7 @@ test('a signed-out login offers exactly one retry and the fresh result decides f
     const prompter = scriptedPrompter([
       { kind: 'confirm', question: 'Sign in to Claude Code now?', answer: true },
       { kind: 'confirm', question: 'Still signed out of Claude Code. Try once more?', answer: retry },
+      declineTelegram,
     ]);
     const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter, machine: {
       ...machine,
@@ -333,6 +336,7 @@ test('OpenCode login defaults to No and uses cland database after creating its f
     prompter: {
       ...scriptedPrompter([]),
       confirm: async (question, def) => {
+        if (question === declineTelegram.question) { assert.equal(def, false); return false; }
         assert.equal(question, 'Sign in to OpenCode now?');
         assert.equal(def, false);
         assert.match(output.join(''), /opencode auth login --standalone/);
@@ -368,7 +372,7 @@ test('OpenCode login defaults to No and uses cland database after creating its f
 
 test('signed-out Codex unused by any role has only a skip line without a login offer', async t => {
   const root = scratch(t);
-  const prompter = scriptedPrompter([]);
+  const prompter = scriptedPrompter([declineTelegram]);
   const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter, machine: {
     ...machine,
     requiredHarnesses: async () => [],
@@ -377,7 +381,7 @@ test('signed-out Codex unused by any role has only a skip line without a login o
   assert.deepEqual(report.steps.find(s => s.name === 'codex login'), {
     name: 'codex login', verdict: 'skip', detail: 'no role uses it',
   });
-  assert.deepEqual(prompter.asked, []);
+  assert.deepEqual(prompter.asked, [declineTelegram.question]);
 });
 
 test('without a terminal login reports exact commands without running even with yes', async t => {
@@ -399,7 +403,7 @@ test('without a terminal login reports exact commands without running even with 
 
 test('yes in a terminal still asks the login question and a decline skips with the command', async t => {
   const root = scratch(t);
-  const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Sign in to Claude Code now?', answer: false }]);
+  const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Sign in to Claude Code now?', answer: false }, declineTelegram]);
   const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: true, prompter, machine: {
     ...machine,
     requiredHarnesses: async () => ['claude-code'],
@@ -427,7 +431,7 @@ test('Claude Code and Codex login inherit the launch profile unchanged', async t
     let runs = 0;
     const { report } = await setup({ noAide: true, root, env, interactive: true, yes: false, prompter: {
       ...scriptedPrompter([]),
-      confirm: async (question, def) => { assert.equal(question, `Sign in to ${name} now?`); assert.equal(def, true); return true; },
+      confirm: async (question, def) => { if (question === declineTelegram.question) { assert.equal(def, false); return false; } assert.equal(question, `Sign in to ${name} now?`); assert.equal(def, true); return true; },
     }, machine: {
       ...machine,
       requiredHarnesses: async () => [id],

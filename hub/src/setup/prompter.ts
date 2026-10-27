@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import type { Readable, Writable } from 'node:stream';
+import { readSecret } from '../cli/secret.ts';
 
 export class Cancelled extends Error {
   override name = 'Cancelled';
@@ -7,11 +8,12 @@ export class Cancelled extends Error {
 
 export type Choice<T extends string> = { value: T; label: string };
 
-/** The only three questions setup asks, also implemented by the scripted test prompter. */
+/** Setup's four questions, also implemented by the scripted test prompter. */
 export type Prompter = {
   confirm(question: string, def: boolean): Promise<boolean>;
   choose<T extends string>(question: string, choices: readonly Choice<T>[], def: T): Promise<T>;
   pause(message: string): Promise<void>;
+  secret(question: string): Promise<string>;
 };
 
 /** Typed-ahead input in the answer's chunk is consumed; type a child's input after its prompt appears. */
@@ -35,6 +37,14 @@ export function readlinePrompter(io: { input: Readable; output: Writable }): Pro
     }
   };
   return {
+    async secret(question) {
+      checkInput();
+      try { return await readSecret(io.input, io.output, `${question} `); }
+      catch (error) {
+        if (error instanceof Error && /secret input (cancelled|ended before confirmation)/.test(error.message)) throw new Cancelled('input ended');
+        throw error;
+      }
+    },
     async confirm(question: string, def: boolean): Promise<boolean> {
       for (;;) {
         const answer = (await ask(`${question} [${def ? 'Y/n' : 'y/N'}] `)).toLowerCase();

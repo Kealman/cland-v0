@@ -6,6 +6,7 @@ export type PromptStep = ExpectedQuestion & (
   | { kind: 'confirm'; answer: boolean }
   | { kind: 'choose'; answer: string }
   | { kind: 'pause' }
+  | { kind: 'secret'; answer: string }
 );
 
 /** A strict, ordered script for setup's T1 flow tests. An empty script forbids questions. */
@@ -23,6 +24,11 @@ export function scriptedPrompter(script: readonly PromptStep[]): Prompter & { as
   return {
     asked,
     left: () => [...remaining],
+    async secret(question) {
+      const step = next(question);
+      assert.ok(step.kind === 'secret', `unexpected secret question: ${question}`);
+      return step.answer;
+    },
     async confirm(question) {
       const step = next(question);
       assert.ok(step.kind === 'confirm', `unexpected confirm question: ${question}`);

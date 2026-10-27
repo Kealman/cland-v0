@@ -1,10 +1,13 @@
 import { layout, readDiscovery } from '../project.ts';
 import { askHubFrame } from '../cli/socket-client.ts';
 import { startProjectHub } from '../cli/hub.ts';
-import type { HarnessProcessView, HubStatus } from '../protocol.ts';
+import type { HarnessProcessView, HubStatus, RemoteStatusResult } from '../protocol.ts';
 import type { HarnessId } from '../doctor/ranges.ts';
 
 export type SetupHub = {
+  remotes?(): Promise<RemoteStatusResult>;
+  configure?(key: string, value: unknown): Promise<void>;
+  reload?(): Promise<void>;
   running(): Promise<{ pid: number } | null>;
   start(): Promise<{ pid: number }>;
   session(name: string): Promise<Pick<HarnessProcessView, 'status'> | null>;
@@ -28,6 +31,12 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
   };
   return {
     running,
+    remotes: async () => await request({ type: 'remote.status' }) as RemoteStatusResult,
+    async configure(key, value) {
+      const result = await request({ type: 'config.set', key, value }, 60_000) as { applies: string };
+      if (result.applies !== 'now') throw new Error('configuration saved but not applied; run cland hub reload');
+    },
+    async reload() { await request({ type: 'hub.reload' }, 60_000); },
     async start() {
       let said = '';
       const write = (text: string) => { said += text; };

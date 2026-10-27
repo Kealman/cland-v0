@@ -22,17 +22,7 @@ export async function runSecret(args: string[], cwd = process.cwd()): Promise<nu
       if (value !== undefined) process.stdout.write(`${name} ${secretFingerprint(value)}\n`);
     }
   } else {
-    // Validate the file before reading stdin, and never follow a project-owned ignore symlink.
-    readSecretsFile(root);
-    if (symlinkOnPath(root, l.gitignore) !== null) throw new Error('.cland/.gitignore: symlink refused');
-    ensureGitignore(l);
-    const ignore = readFileSync(l.gitignore, 'utf8');
-    // A final literal rule cannot be undone by an earlier custom negation.
-    // Preserve ownership rather than rewriting a project-owned ignore file.
-    const lastRule = ignore.split(/\r?\n/).map(line => line.trimEnd()).filter(line => line && !line.startsWith('#')).at(-1);
-    if (!ignore.startsWith(MANAGED_MARK) && lastRule !== 'secrets.toml' && lastRule !== '/secrets.toml') {
-      throw new Error('.cland/.gitignore: add /secrets.toml as its final ignore rule before storing secrets');
-    }
+    prepareSecretWrite(root);
     if (sub === 'set') setSecret(root, name as typeof SECRET_NAMES[number], await readSecret());
     else unsetSecret(root, name as typeof SECRET_NAMES[number]);
     process.stdout.write(`${sub === 'set' ? 'set' : 'unset'} ${name}\n`);
@@ -40,12 +30,26 @@ export async function runSecret(args: string[], cwd = process.cwd()): Promise<nu
   return 0;
 }
 
+/** Both setup and secret set protect the destination before requesting a value. */
+export function prepareSecretWrite(root: string): void {
+  const l = layout(root);
+  readSecretsFile(root);
+  if (symlinkOnPath(root, l.gitignore) !== null) throw new Error('.cland/.gitignore: symlink refused');
+  ensureGitignore(l);
+  const ignore = readFileSync(l.gitignore, 'utf8');
+  // A final literal rule cannot be undone by an earlier custom negation.
+  const lastRule = ignore.split(/\r?\n/).map(line => line.trimEnd()).filter(line => line && !line.startsWith('#')).at(-1);
+  if (!ignore.startsWith(MANAGED_MARK) && lastRule !== 'secrets.toml' && lastRule !== '/secrets.toml') {
+    throw new Error('.cland/.gitignore: add /secrets.toml as its final ignore rule before storing secrets');
+  }
+}
+
 type SecretInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode?: (value: boolean) => unknown };
 
-export async function readSecret(input: SecretInput = process.stdin, prompt: Pick<NodeJS.WriteStream, 'write'> = process.stderr): Promise<string> {
+export async function readSecret(input: SecretInput = process.stdin, prompt: Pick<NodeJS.WriteStream, 'write'> = process.stderr, question = 'Secret: '): Promise<string> {
   if (input.isTTY) {
     if (!input.setRawMode) throw new Error('hidden secret input needs a raw terminal; pipe the value through stdin');
-    return hiddenSecret(input as SecretInput & { setRawMode: (value: boolean) => unknown }, prompt);
+    return hiddenSecret(input as SecretInput & { setRawMode: (value: boolean) => unknown }, prompt, question);
   }
   const chunks: Buffer[] = [];
   let size = 0;
@@ -59,13 +63,13 @@ export async function readSecret(input: SecretInput = process.stdin, prompt: Pic
 }
 
 /** Native raw input keeps the terminal from echoing typed or pasted credentials. */
-async function hiddenSecret(input: SecretInput & { setRawMode: (value: boolean) => unknown }, prompt: Pick<NodeJS.WriteStream, 'write'>): Promise<string> {
+async function hiddenSecret(input: SecretInput & { setRawMode: (value: boolean) => unknown }, prompt: Pick<NodeJS.WriteStream, 'write'>, question: string): Promise<string> {
   const wasRaw = Boolean(input.isRaw);
   const wasFlowing = input.readableFlowing === true;
   emitKeypressEvents(input);
   input.setRawMode(true);
   try {
-    prompt.write('Secret: ');
+    prompt.write(question);
     input.resume();
     return await new Promise<string>((resolve, reject) => {
       let value = '';

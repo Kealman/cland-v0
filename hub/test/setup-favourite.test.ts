@@ -183,8 +183,8 @@ test('an explicit install can supply the favourite selected in the same JSON set
   const report = JSON.parse(stdout);
   assert.equal(report.steps.find((s: { name: string }) => s.name === 'codex').verdict, 'done');
   assert.deepEqual(report.steps.find((s: { name: string }) => s.name === 'favourite'), { name: 'favourite', verdict: 'done', detail: 'codex' });
-  assert.deepEqual(report.steps.slice(-4, -2).map((s: { name: string }) => s.name), ['favourite', 'trust']);
-  assert.equal(report.steps.at(-3).verdict, 'ok');
+  assert.deepEqual(report.steps.filter((s: { name: string }) => s.name === 'favourite' || s.name === 'trust').map((s: { name: string }) => s.name), ['favourite', 'trust']);
+  assert.equal(report.steps.find((s: { name: string }) => s.name === 'trust').verdict, 'ok');
   assert.equal(parseRoles(await readFile(path, 'utf8')).get('aide')!.launch.harness, 'codex');
   assert.equal(await projectSetUp(options.root), true);
   assert.match(stderr, /chatgpt.com\/codex\/install.sh/);
@@ -201,7 +201,7 @@ test('an explicit favourite leaves missing trust open without yes', async t => {
     write: s => { stdout += s; }, narrate: () => {},
   });
   assert.equal(code, 1);
-  assert.deepEqual(JSON.parse(stdout).steps.slice(-4, -2).map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [['favourite', 'done'], ['trust', 'open']]);
+  assert.deepEqual(JSON.parse(stdout).steps.filter((s: { name: string }) => s.name === 'favourite' || s.name === 'trust').map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [['favourite', 'done'], ['trust', 'open']]);
   assert.equal(parseRoles(await readFile(path, 'utf8')).get('aide')!.launch.harness, 'codex');
   await assert.rejects(readFile(config), { code: 'ENOENT' });
 });

@@ -115,3 +115,48 @@ test('the fake prompter reports the text of an unexpected question', async () =>
     { kind: 'choose', question: 'Favourite?', answer: 'missing' },
   ]).choose('Favourite?', choices, 'codex'), /invalid scripted answer missing.*Favourite\?/);
 });
+
+test('secret questions hide input and release raw mode before the next question', { timeout: 500 }, async () => {
+  const input = Object.assign(new PassThrough(), {
+    isTTY: true, isRaw: false,
+    setRawMode(value: boolean) { this.isRaw = value; return this; },
+  });
+  const output = new PassThrough();
+  let said = '';
+  output.on('data', (chunk: Buffer) => { said += String(chunk); });
+  const prompter = readlinePrompter({ input, output });
+  const hidden = prompter.secret('Telegram token:');
+  assert.equal(input.isRaw, true);
+  input.write('made-up-x\x7ftoken\r');
+  assert.ok(await hidden === 'made-up-token', 'the hidden question returns edited input');
+  assert.ok(String(said) === 'Telegram token: \n', 'the hidden question prints only its prompt and newline');
+  assert.equal(input.isRaw, false);
+  assert.equal(input.listenerCount('keypress'), 0);
+  assert.equal(input.isPaused(), true);
+  const next = prompter.confirm('Continue?', false);
+  input.write('yes\n');
+  assert.equal(await next, true);
+  assert.ok(String(said) === 'Telegram token: \nContinue? [y/N] ', 'only the prompts are printed');
+  input.destroy();
+  output.destroy();
+});
+
+for (const ending of ['cancel', 'eof'] as const) test(`a hidden question releases the terminal after ${ending}`, { timeout: 500 }, async () => {
+  const input = Object.assign(new PassThrough(), {
+    isTTY: true, isRaw: false,
+    setRawMode(value: boolean) { this.isRaw = value; return this; },
+  });
+  const output = new PassThrough();
+  let said = '';
+  output.on('data', (chunk: Buffer) => { said += String(chunk); });
+  const pending = readlinePrompter({ input, output }).secret('Telegram token:');
+  input.write('partial-input');
+  if (ending === 'cancel') input.write('\x03');
+  else input.end();
+  await assert.rejects(pending, Cancelled);
+  assert.ok(String(said) === 'Telegram token: \n', 'the hidden question prints only its prompt and newline');
+  assert.equal(input.isRaw, false);
+  assert.equal(input.listenerCount('keypress'), 0);
+  input.destroy();
+  output.destroy();
+});

@@ -55,11 +55,11 @@ Then run setup in that same project folder:
 cland setup
 ```
 
-Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub and the Aide.
+Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub, offers Telegram remote setup and starts the Aide.
 
 It checks these steps in order: the initialised project; installed Claude Code,
 Codex and OpenCode; logins for harnesses used by roles; separate signed-in account
-profiles; your Favourite harness; folder trust; the project hub; and `aide-1`.
+profiles; your Favourite harness; folder trust; the project hub; optional Telegram remote setup; and `aide-1`.
 Each report line starts with `ok` (already ready), `done` (changed and rechecked),
 `skip`, `open` (needs action) or `fail`, with a fix when needed. Rerunning setup
 reuses the running hub and Aide and asks only about unfinished choices. A declined
@@ -81,7 +81,7 @@ receive trust too. OpenCode has no folder trust gate.
 | Flag | Effect |
 | --- | --- |
 | `--json` | Print one structured report; narration goes to stderr. Uses nonterminal policy. |
-| `--yes` | Allow harmless setup writes; installers still require `--install`, and logins and a new Aide require a terminal. Does not accept machine-wide accounts. |
+| `--yes` | Allow harmless setup writes; installers still require `--install`, and logins and a new Aide require a terminal. Does not accept machine-wide accounts or Telegram setup. |
 | `--install claude-code\|codex\|opencode` | Explicitly run that harness's installer, including after a decline. |
 | `--harness claude-code\|codex\|opencode` | Choose the Favourite from installed harnesses. |
 | `--no-accounts` | Skip the machine-wide accounts step. |
@@ -2550,7 +2550,8 @@ attaches in the current terminal instead; `--no-aide` skips the handover.
 
 Setup currently detects the project, then Claude Code, Codex and OpenCode, then
 the installed harnesses' logins, then records the favourite harness and grants
-project trust for every installed harness, in that order. Each line has `ok`,
+project trust for every installed harness, then starts the hub, offers Telegram
+remote setup and starts the Aide. Each line has `ok`,
 `done`, `skip`,
 `open` or `fail`, a detail and any fix. With no harness installed, all three
 installers are `open`; with one installed, missing alternatives are `skip` with
@@ -2599,15 +2600,51 @@ paths, says `done` after a write or `ok` when already trusted, and gives the
 harness's own trust dialog as the manual fix after a failure. Without a terminal
 and without `--yes`, missing trust stays `open` and no config is written.
 
-`--yes` accepts defaults only for questions marked harmless and permits the
-trust writes above, including with `--json`. It never authorizes installing
-or signing in. Later steps will add login actions, accounts, hub and Aide.
-They join the single ordered list in `src/setup/runner.ts` through `SetupOptions`.
+`--yes` accepts harmless defaults, trust writes and hub startup, including with
+`--json`. Installers need `--install`, logins and a new Aide need a terminal,
+and accounts and Telegram keep their own default-No questions. Steps join the
+single ordered list in `src/setup/runner.ts` through `SetupOptions`.
 Action steps must detect again after acting and let that detection decide their
 result. `src/setup/terminal.ts` runs a child with inherited terminal I/O (stdout
 redirects to stderr for JSON reports), ignores
 SIGINT and SIGQUIT in the parent while the child runs, restores its handlers,
 and returns the child's exit code or 128 plus its signal number.
+
+### Telegram in setup
+
+After the hub and before the Aide, setup checks the resolved Telegram token,
+`remote.telegram.enabled` and the hub's pairing. A configured, connected, paired remote
+prints `ok` without a question. Otherwise a terminal offers Telegram with default
+No, including under `--yes`. A decline prints `skip`, writes nothing and is
+offered again on the next terminal run.
+
+On yes, a missing token brings a few BotFather instructions: open `@BotFather`,
+send `/newbot`, choose the project's bot name and username, and paste its token
+at the hidden prompt. Setup uses the same raw, no-echo reader and private-file
+preflight as `cland secret set`; malformed input names the expected Telegram
+format and repeats the hidden question. An existing resolved token is reused.
+Environment overrides still win over the file. Reports show only fingerprints.
+
+Setup enables the remote through the config-set path, then reloads a running
+hub and checks its loaded remote status. Telegram activation requires a valid
+resolved token and network access to Telegram; setup tests use injected fakes.
+An enabled, connected remote with a retained pairing prints `done`. An unpaired
+remote stays `open`, with the bot's start link and
+`cland remote approve telegram <code>`: open the link, press Start, then approve
+the code returned by the bot. Pairing inside setup is not available in this step.
+
+Without a terminal (including `--json`), setup asks nothing and changes no remote
+settings. An untouched Telegram remote prints `skip` with
+`cland secret set telegram.token`,
+`cland config set remote.telegram.enabled true` and `cland hub reload`.
+A token without enabling, or enabling without a token, prints `open` with the
+missing commands. A configured, unpaired remote also names the approve command.
+With `--no-aide` and no running hub, a terminal can store the token and enable the
+managed config using the same validated atomic writer as config-set. It leaves
+reload and pairing `open`; it starts no hub. If a hub already runs, it can reload
+that hub. Custom unmarked configs and unsafe secret paths are left for repair.
+Existing role clauses cover secret isolation and local setup; this adds no role
+permission or clause line.
 
 ## cland init and cland update
 
@@ -5373,7 +5410,7 @@ DigitalOcean token to this environment. No installer makes a network request:
 the fake `curl` answers only the three official URLs, and rejects anything else.
 
 For QA, make a local `hub/test/setup-qa.try.ts` with the following, then run
-`node hub/test/setup-qa.try.ts` from a terminal (after setup ships). Claude Code
+`node hub/test/setup-qa.try.ts` from a terminal. Claude Code
 is missing, Codex is signed in and OpenCode is signed out:
 
 ```ts

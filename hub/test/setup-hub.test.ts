@@ -110,6 +110,7 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   const { options, client, calls, root } = fixture(t);
   options.env.HOME = root;
   options.yes = true;
+  options.prompter = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }]);
   writeFileSync(join(root, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));
   mkdirSync(join(root, '.codex'));
   writeFileSync(join(root, '.codex/config.toml'), `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`);
@@ -120,18 +121,19 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   ] });
   const first = await setup({ ...options, harness: 'codex' });
   assert.equal(first.code, 0, JSON.stringify(first.report.steps));
-  assert.deepEqual(first.report.steps.slice(-2).map(s => [s.name, s.verdict]), [['hub', 'done'], ['aide', 'done']]);
+  assert.deepEqual(first.report.steps.slice(-3).map(s => [s.name, s.verdict]), [['hub', 'done'], ['remote telegram', 'skip'], ['aide', 'done']]);
   assert.deepEqual(calls, ['start', { name: 'aide-1', role: 'aide', harness: 'codex', brief: "Run the onboarding skill; project: empty; harnesses: claude-code, codex; human's harness: codex" }]);
   client.running = async () => ({ pid: 42 });
   client.session = async () => ({ status: 'running' });
   calls.length = 0;
+  options.prompter = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }]);
   const second = await setup(options);
   assert.equal(second.code, 0);
-  assert.deepEqual(second.report.steps.slice(-2).map(s => [s.name, s.verdict]), [['hub', 'ok'], ['aide', 'ok']]);
+  assert.deepEqual(second.report.steps.filter(s => s.name === 'hub' || s.name === 'aide').map(s => [s.name, s.verdict]), [['hub', 'ok'], ['aide', 'ok']]);
   const nonterminal = { ...options, interactive: false, yes: false };
   const third = await setup(nonterminal);
   assert.equal(third.code, 0);
-  assert.deepEqual(third.report.steps.slice(-2).map(s => [s.name, s.verdict]), [['hub', 'ok'], ['aide', 'ok']]);
+  assert.deepEqual(third.report.steps.filter(s => s.name === 'hub' || s.name === 'aide').map(s => [s.name, s.verdict]), [['hub', 'ok'], ['aide', 'ok']]);
   client.session = async () => null;
   const missingAide = await setup(nonterminal);
   assert.equal(missingAide.code, 1);
@@ -139,8 +141,8 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   client.running = async () => null;
   const missingHub = await setup(nonterminal);
   assert.equal(missingHub.code, 1);
-  assert.deepEqual(missingHub.report.steps.slice(-2).map(s => [s.name, s.verdict]), [['hub', 'open'], ['aide', 'open']]);
-  assert.equal(missingHub.report.steps.at(-2)?.fix, 'cland hub start');
+  assert.deepEqual(missingHub.report.steps.filter(s => s.name === 'hub' || s.name === 'aide').map(s => [s.name, s.verdict]), [['hub', 'open'], ['aide', 'open']]);
+  assert.equal(missingHub.report.steps.find(s => s.name === 'hub')?.fix, 'cland hub start');
   assert.deepEqual(calls, []);
 });
 

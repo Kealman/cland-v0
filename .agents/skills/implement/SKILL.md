@@ -60,6 +60,13 @@ seams in `docs/agents/tests/hub-test-config-set.test.ts.md`. Inject
 and observe start/stop completion before claiming reload applied. Keep the
 legacy `gatewayRemotes` seam and CLI import budget unchanged.
 
+For setup's remote offer or hidden question, use the scripted runner and real
+frame/fake messenger seams in `docs/agents/tests/hub-test-setup-remotes.test.ts.md`
+and `docs/agents/tests/hub-test-setup-remote-component.test.ts.md`. Reuse secret
+input/preflight and the config-set writer; release each terminal reader before
+the next question. Keep nonterminal untouched `skip`, partial `open`, default-No
+offers even with `--yes`, and pairing readback before `ok` or `done`.
+
 For remote terminal commands, token rotation or messenger status/test callbacks,
 use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,
 legacy optional callbacks and previous-hub refusal coverage.

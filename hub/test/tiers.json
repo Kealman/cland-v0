@@ -434,6 +434,8 @@
     "hub/test/setup-machine.test.ts": "T3",
     "hub/test/setup-project-kind.test.ts": "T1",
     "hub/test/setup-prompter.test.ts": "T1",
+    "hub/test/setup-remote-component.test.ts": "T2",
+    "hub/test/setup-remotes.test.ts": "T1",
     "hub/test/setup-terminal.test.ts": "T1",
     "hub/test/setup-trust-lock.test.ts": "T2",
     "hub/test/setup-trust.test.ts": "T1",

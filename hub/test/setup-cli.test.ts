@@ -37,7 +37,7 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   assert.equal(report.version, VERSION);
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
-  assert.equal(report.steps.length, 12);
+  assert.equal(report.steps.length, 13);
   assert.equal(report.steps.find((s: { name: string }) => s.name === 'accounts').verdict, 'skip');
   assert.equal(report.steps.at(-1).verdict, 'open');
   assert.deepEqual(prompter.asked, []);
@@ -131,7 +131,7 @@ test('setup executable JSON reports open installers without running any harness'
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
   assert.deepEqual(report.steps.map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'skip'], ['hub', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'skip'], ['hub', 'skip'], ['remote telegram', 'skip'], ['aide', 'skip'],
   ]);
   assert.match(result.stderr, /without a terminal/);
 });
@@ -157,9 +157,9 @@ test('setup retains the CLI root spelling for Codex trust', async t => {
   let output = '';
   const io = { machine, prompter: scriptedPrompter([]), write: (s: string) => { output += s; }, narrate: () => {} };
   assert.equal(await runSetup([alias, '--json', '--no-aide'], root, { HOME: root }, io), 1);
-  assert.equal(JSON.parse(output).steps.at(-3).verdict, 'open');
+  assert.equal(JSON.parse(output).steps.find((row: { name: string }) => row.name === 'trust').verdict, 'open');
   await writeFile(file, canonical + `[projects.${JSON.stringify(alias)}]\ntrust_level = "trusted"\n`);
   output = '';
   assert.equal(await runSetup([alias, '--json', '--no-aide'], root, { HOME: root }, io), 0);
-  assert.equal(JSON.parse(output).steps.at(-3).verdict, 'ok');
+  assert.equal(JSON.parse(output).steps.find((row: { name: string }) => row.name === 'trust').verdict, 'ok');
 });
