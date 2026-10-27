@@ -1,7 +1,9 @@
 // T1: persisted watchdog ownership at the injected OS boundary, no processes or wall time.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { stopWatchdog, watchdogAlive, type WatchdogProcesses } from '../src/executor/droplet/watchdog.ts';
+import type { ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { armWatchdog, stopWatchdog, watchdogAlive, type WatchdogProcesses } from '../src/executor/droplet/watchdog.ts';
 import { leaseDir, readLease, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { FakeClock } from './fake-clock.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
@@ -17,6 +19,164 @@ const startedUtc = 'Sun Oct 25 12:00:00 2026';
 const original = 'linux:11111111-2222-3333-4444-555555555555:90001';
 const replacement = 'linux:11111111-2222-3333-4444-555555555555:90002';
 const lease = (pidIdentity?: string): DropletLease => ({ watchdog: { pid: 123, startedUtc, ...(pidIdentity ? { pidIdentity } : {}) } } as DropletLease);
+
+// Own the injected OS child and every observer before starting arm work. Setup
+// has an independently driven clock; the arm clock advances only for behaviour.
+function armFixture(t: TestContext, scenario: 'retry' | 'held' | 'changed') {
+  const clock = new FakeClock(0), setupClock = new FakeClock(0);
+  const lifetime = new AbortController();
+  const ready = Promise.withResolvers<void>(), reply = Promise.withResolvers<string | null>();
+  const signals: NodeJS.Signals[] = [];
+  const observations: Promise<void>[] = [], stops: Promise<void>[] = [];
+  let work: Promise<NonNullable<DropletLease['watchdog']>> | undefined;
+  let armed: NonNullable<DropletLease['watchdog']> | undefined;
+  let disposing: Promise<void> | undefined, drivingSetup: Promise<void> | undefined;
+  let drivingArm = Promise.resolve();
+  let entered = false, closed = false, joined = false, stopsJoined = false, observationsJoined = false, disposed = false;
+  let outcome: 'pending' | 'fulfilled' | 'rejected' = 'pending';
+  let armClockAtSetupFailure: number | undefined;
+  let probes = 0, starts = 0;
+  let publishReady = true, onEntered = () => {};
+  const advance = (ms: number) => drivingArm = drivingArm.then(() => clock.advance(ms));
+  const child = Object.assign(new EventEmitter(), {
+    pid: 2147483647, unref() {},
+    kill(signal: NodeJS.Signals) { signals.push(signal); closed = true; child.emit('close', 0, signal); return true; },
+  }) as unknown as ChildProcess;
+  const capture = () => {
+    if (entered) return;
+    entered = true;
+    if (publishReady) ready.resolve();
+    onEntered();
+  };
+  const processes: WatchdogProcesses = {
+    started: async () => {
+      if (++starts === 1 && scenario === 'changed') { capture(); return null; }
+      return startedUtc;
+    },
+    identity: async () => {
+      probes++;
+      if (scenario === 'retry' && probes === 1) { capture(); return null; }
+      if (scenario === 'held') { capture(); return reply.promise; }
+      return scenario === 'changed' && probes > 1 ? replacement : original;
+    },
+    alive: () => !closed,
+    signal: () => assert.fail('arming or owned-child cleanup never signals a bare PID'),
+  };
+  const stop = (record: NonNullable<DropletLease['watchdog']>) => {
+    const stopping = stopWatchdog({ watchdog: record } as DropletLease, {}, { processes, clock });
+    stops.push(stopping);
+    return stopping;
+  };
+  const dispose = () => disposing ??= (async () => {
+    lifetime.abort(new Error('watchdog arm fixture cancelled'));
+    reply.resolve(original);
+    // Join any admitted behavioural advance before draining arm's own deadline.
+    await advance(10_000);
+    const settled = await Promise.allSettled(work ? [work] : []);
+    joined = work !== undefined;
+    if (settled[0]?.status === 'fulfilled' && !closed) {
+      try { await stop(settled[0].value); } catch { /* retain the stop failure after draining every owner */ }
+    }
+    if (!closed) child.kill('SIGKILL');
+    const stopped = await Promise.allSettled(stops);
+    stopsJoined = true;
+    await Promise.allSettled(observations);
+    observationsJoined = true;
+    await drivingSetup;
+    await advance(0); // drains close continuations, including the owned-child map
+    disposed = true;
+    for (const result of stopped) if (result.status === 'rejected') throw result.reason;
+  })();
+  t.after(dispose);
+  const start = async (options: { publishReady?: boolean; signal?: AbortSignal; onEntered?: () => void } = {}) => {
+    if (work) throw new Error('arm fixture has one producer');
+    publishReady = options.publishReady ?? true;
+    onEntered = options.onEntered ?? (() => {});
+    const signal = AbortSignal.any([lifetime.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
+    const observed = within(abortable(ready.promise, signal), 1_000, setupClock,
+      () => new Error('watchdog arm setup receipt deadline reached'));
+    observations.push(observed);
+    void observed.catch(() => {});
+    work = armWatchdog('/owned/lease', {}, { processes, clock,
+      launch: () => { queueMicrotask(() => child.emit('spawn')); return child; } });
+    void work.then(record => { armed = record; outcome = 'fulfilled'; }, () => { outcome = 'rejected'; });
+    // The injected probe enters synchronously after spawn's queued microtask.
+    // Setup must keep progressing even if no readiness receipt is published.
+    drivingSetup = setupClock.advance(1_000);
+    try { await observed; }
+    catch (error) { armClockAtSetupFailure = clock.now().getTime(); await dispose(); throw error; }
+  };
+  return { child, signals, clock, setupClock, processes, start, stop, dispose, advance,
+    release: () => reply.resolve(original), completion: () => work!, armed: () => armed,
+    probes: () => probes, starts: () => starts,
+    receipts: () => ({ entered, joined, stopsJoined, observationsJoined, closed, disposed, outcome, armClockAtSetupFailure }),
+  };
+}
+
+test('watchdog arm retries one unavailable native birth before returning a verified identity', async t => {
+  const f = armFixture(t, 'retry');
+  try {
+    await f.start();
+    await f.advance(25);
+    const armed = await f.completion();
+    assert.deepEqual(armed, { pid: f.child.pid, startedUtc, pidIdentity: original });
+    assert.equal(f.probes(), 3, 'one unavailable probe, then two coherent native births');
+    assert.ok(f.clock.now().getTime() <= 10_000, 'the arm retry window is at most ten seconds');
+    assert.deepEqual(f.signals, [], 'no cleanup signal follows a successfully verified arm');
+    await f.stop(armed);
+    assert.deepEqual(f.signals, ['SIGTERM'], 'verified owned-child stop retains the positive signal control');
+  } finally { await f.dispose(); }
+});
+
+test('watchdog arm deadline cancels a held native probe without adopting or signalling its late reply', async t => {
+  const f = armFixture(t, 'held');
+  try {
+    await f.start();
+    const refused = assert.rejects(f.completion(), /could not verify the droplet watchdog process identity/);
+    await f.advance(10_000);
+    await refused;
+    assert.equal(f.clock.now().getTime(), 10_000);
+    assert.deepEqual(f.signals, ['SIGKILL'], 'cleanup uses only the owned child handle');
+    f.release();
+    await f.advance(0);
+    assert.equal(f.starts(), 0, 'late native proof cannot resume the expired arm');
+  } finally { await f.dispose(); }
+});
+
+test('watchdog arm never adopts a different native birth after an unavailable start probe', async t => {
+  const f = armFixture(t, 'changed');
+  try {
+    await f.start();
+    const refused = assert.rejects(f.completion(), /could not verify the droplet watchdog process identity/);
+    void refused.catch(() => {});
+    await f.advance(25);
+    await refused;
+    assert.equal(f.starts(), 1, 'a readable birth conflict refuses before another start probe');
+    assert.deepEqual(f.signals, ['SIGKILL'], 'only the owned child handle can clean up');
+  } finally { await f.dispose(); }
+});
+
+for (const failure of ['missing receipt', 'aborted setup'] as const) {
+  test(`watchdog arm owner drains held work after ${failure}`, async t => {
+    const f = armFixture(t, 'held');
+    const abort = new AbortController();
+    const failed = assert.rejects(f.start({ publishReady: false, signal: abort.signal,
+      ...(failure === 'aborted setup' ? { onEntered: () => abort.abort(new Error('cancel watchdog arm setup')) } : {}),
+    }), failure === 'missing receipt' ? /watchdog arm setup receipt deadline reached/ : /cancel watchdog arm setup/);
+    await failed; // start drives its own setup bound; the caller advances no clock
+    assert.deepEqual(f.receipts(), { entered: true, joined: true, stopsJoined: true, observationsJoined: true,
+      closed: true, disposed: true, outcome: 'fulfilled', armClockAtSetupFailure: 0 });
+    assert.deepEqual(f.signals, ['SIGTERM'], 'unconditional disposal joins and stops the verified owned child');
+    assert.ok(f.armed(), 'releasing the held reply is joined before child disposal');
+    await stopWatchdog({ watchdog: f.armed() } as DropletLease, {}, {
+      processes: { ...f.processes, identity: async () => replacement },
+    });
+    assert.deepEqual(f.signals, ['SIGTERM'], 'the closed child has left the owned-child map');
+    assert.equal(f.clock.pending, 0);
+    assert.equal(f.setupClock.pending, 0);
+    await f.dispose(); // the pre-registered owner is idempotent
+  });
+}
 
 test('persisted watchdog with same-second recycled PID is neither alive nor signalled', async () => {
   const signals: NodeJS.Signals[] = [];

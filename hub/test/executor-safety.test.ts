@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path';
 import { fixture, remoteWaitMs } from './remote-fixture.ts';
 import { nativeProjectHub as projectHub, cland, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
-import type { DropletLease } from '../src/executor/droplet/lease.ts';
+import { leaseDir, writeLease, type DropletLease, type WatchdogReceipt } from '../src/executor/droplet/lease.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
 const exec = promisify(execFile);
@@ -82,7 +82,7 @@ test('the periodic sweep reaps strays, re-arms a killed watchdog and retries fai
 });
 
 test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel nowhere', async t => {
-  const f = await fixture(t, { test: longTest, config: 'lifetime="20s"\nrun_timeout="18s"', env: { CLAND_TEST_EXECUTOR_MARGIN_MS: '1', CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS: '1', CLAND_TEST_EXECUTOR_LIFETIME_MS: '4000' } });
+  const f = await fixture(t, { test: longTest });
   await rm(join(f.root, '.cland/run/executor/snapshot.json'));
   assert.equal((await cland(f.root, 'executor', 'prepare', '--report', 'general')).code, 0);
   await eventually('prepare finished', async () => {
@@ -102,11 +102,34 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
   const lines = (await exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command='])).stdout;
   assert.ok(!lines.includes('cland-test-remote-suite-token'));
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
-  await eventually('watchdog deleted after stopped hub', () => f.api.droplets.length === 0 && f.api.keys.length === 0 ? true : undefined, 25000);
+  // Expiry is the behaviour under test; delivery and shutdown are setup. Let
+  // those receipts finish before publishing an expired durable lease to the
+  // detached watchdog, so host load cannot spend a four-second setup lifetime.
+  const stoppedLease = (await lease(f.root)).value;
+  assert.equal(stoppedLease.run, crash.id);
+  stoppedLease.deadline = new Date(0).toISOString();
+  await writeLease(f.root, stoppedLease);
+  // Restart resumes from the scheduler's saved lease copy as well as lease.json.
+  // The hub is stopped, so this fixture update has no concurrent database writer.
+  const db = new DatabaseSync(join(f.root, '.cland/hub.db'));
+  try {
+    const jobs = JSON.parse((db.prepare("select value from meta where key='suite-jobs'").get() as { value: string }).value);
+    const job = jobs.find((job: { id: string }) => job.id === crash.id);
+    assert.ok(job?.lease, 'the admitted crash run has a saved scheduler lease');
+    job.lease.deadline = stoppedLease.deadline;
+    db.prepare("update meta set value=? where key='suite-jobs'").run(JSON.stringify(jobs));
+  } finally { db.close(); }
+  const fired = await eventually('stopped-hub watchdog confirms deletion', async () => {
+    try { return JSON.parse(await readFile(join(leaseDir(f.root, stoppedLease), 'watchdog.json'), 'utf8')) as WatchdogReceipt; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
+  });
+  assert.ok(fired.confirmedAt);
+  assert.ok(fired.deleted.includes(stoppedLease.resource!));
+  assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
   const restart = await startDaemon(t, f.root, f.env, { syntheticProvider: f.syntheticProvider }); const ui = await connectUi(t, restart.discovery);
   assert.match((await f.result(crash.id, ui)).text, /remote machine lifetime expired/);
   assert.equal((await f.messages(crash.id, ui)).length, 1);
-  // The shortened lifetime can publish the crash result while restart recovery
+  // The expired lease can publish the crash result while restart recovery
   // still releases the fallback lease. executor.reap joins the startup sweep
   // (dispatch.ts: #dropletReady) before the separate lease-empty window starts.
   // Startup reconciliation + startup reap + requested reap each allow 15 s

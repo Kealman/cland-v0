@@ -7,6 +7,9 @@ import { mkdir } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { Worker } from 'node:worker_threads';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { Store } from '../src/hub/store.ts';
+import { sessionShell } from './session-credential-fixture.ts';
 import { tempProject } from './harness.ts';
 import { ownInitWriter } from './init-writer-owner.ts';
 
@@ -60,4 +63,38 @@ test('doctor reads the ownership snapshot after an overlapping exclusive writer 
     assert.equal(busy, true, 'the doctor connection actually encountered the held write lock');
     assert.deepEqual(rows, [{ name: 'impl', pid: 42, pid_started: 'original-start', status: 'running', cwd: '/project' }]);
   } finally { await owner.cleanup(); }
+});
+
+test('authorization fixture reads an existing credential while a stopped WAL writer holds the store', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  const path = join(root, '.cland/hub.db');
+  const credential = randomUUID();
+  const seeded = new Store(path);
+  try {
+    seeded.rememberSession('coord', 0);
+    seeded.rememberSessionId('coord', 'held-coord');
+    seeded.rememberRole('coord', 'coordinator');
+    seeded.rememberSessionCredential('held-coord', credential);
+    // Reproduce the full Store's once-only backfill trying to acquire a writer.
+    seeded.clearMeta('visibility-artifact-refs');
+  } finally { seeded.close(); }
+  const writer = new DatabaseSync(path);
+  const owner = ownInitWriter(t, writer);
+  writer.exec("begin immediate; insert into meta values ('held-writer', 'uncommitted')");
+  const competing = new DatabaseSync(path, { timeout: 0 });
+  try {
+    assert.throws(() => competing.exec('begin immediate'), error => (error as { errcode?: number }).errcode === 5,
+      'positive control: the exact fixture database has a held native WAL writer');
+    const start = performance.now();
+    try {
+      const shell = sessionShell(root, { CLAND_SESSION_NAME: 'coord', CLAND_SESSION_ID: 'held-coord' });
+      assert.equal(shell.CLAND_LAUNCH_TOKEN === credential, true, 'the existing session credential is preserved');
+      assert.deepEqual(sessionShell(root, { CLAND_SESSION_NAME: 'unknown' }), { CLAND_SESSION_NAME: 'unknown' });
+      assert.equal(writer.prepare("select value from meta where key='held-writer'").get()?.value, 'uncommitted',
+        'the fixture read did not release or replace the writer');
+    } finally {
+      t.diagnostic(`fixture credential open/read ${Math.round(performance.now() - start)} ms; held WAL writer; ${process.platform}/${process.arch}; no hub or child process`);
+    }
+  } finally { competing.close(); await owner.cleanup(); }
 });

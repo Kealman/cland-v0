@@ -1,6 +1,6 @@
 # hub/test/executor-watchdog.test.ts
 
-T1 tests the exported `watchdogAlive` and `stopWatchdog` OS boundary with injected
+T1 tests the exported `armWatchdog`, `watchdogAlive` and `stopWatchdog` OS boundary with injected
 native births, UTC starts, PID presence, signals and fake time. No real child,
 provider, socket or wall-clock wait is needed. The executor checkpoint cases use
 disposable lease files and `fixtureEnvironment`, with injected provider/lock facts.
@@ -48,3 +48,27 @@ Native launch/restart capture and the release/rearm interleaving remain in
 the actual native birth, and its held startup probe retains the released-lease
 and replacement-exit assertions. Synthetic T1 reuse does not claim real OS PID
 recycling; the native suite does not force same-second PID reuse.
+
+Arm controls inject the owned `ChildProcess` launch handle plus native probes and
+fake time. One unavailable birth must recover to a coherent birth/start/birth
+record within the 10-second retry window, without a bare-PID signal. A held
+probe must refuse at exactly 10 seconds, clean up through the owned handle and
+ignore its late reply. A changed readable birth after an unavailable UTC start
+must refuse before another start probe; ownership cannot reset between retries.
+Keep the successful owned-child SIGTERM control after arm and the existing
+restart no-signal controls. Native probe timeouts use the remaining window,
+capped at 3000 ms, and retry gaps use 25 ms of injected time. Failure cleanup's
+child-close bound is separate (5000 ms by default). These controls use no real
+process, wall-clock wait or new duration allowance.
+
+Every arm control registers its fixture owner before launch and arms the setup
+observer before starting arm work. An independent setup FakeClock progresses
+inside `start` through a 1000 ms bound; a missing probe receipt needs no caller
+advance of the arm clock. Combine fixture, test and explicit cancellation.
+Unconditional disposal releases the held native reply, joins admitted arm/stop
+work, setup observers and clock drivers, then observes fake-child close and the
+owned-child-map cleanup. Keep the missing-receipt and aborted-setup controls:
+they observe setup failure while arm time is still zero, join the late verified
+arm, stop it through its owned handle, and refuse a second stop when the public
+native-birth port reports a replacement. Timer counts only supplement those
+actual completion and close receipts. No real-time wait is added.

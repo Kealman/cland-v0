@@ -4654,7 +4654,13 @@ It survives a stopped or crashed hub. Restart consumes that receipt into the
 releases active leases with no run, and re-arms dead watchdogs for live leases.
 
 New watchdog records retain `pid` and UTC `startedUtc` and add `pidIdentity`,
-using Linux boot-id/start ticks or macOS native microsecond birth. Restart
+using Linux boot-id/start ticks or macOS native microsecond birth. Arming retries
+unreadable native birth or UTC-start probes for at most 10 seconds, with a 25 ms
+retry gap. Each native request is capped at 3 seconds or the remaining window;
+a late reply cannot resume an expired arm. Readable births must agree within
+and across attempts: a conflict refuses immediately. Exhaustion keeps the
+existing identity-verification refusal and cleans up only through the owned
+child handle, with a separate 5-second close bound. Restart
 liveness and each destructive signal compare that native identity; a PID reused
 within the same `ps` second is left alone. A legacy record upgrades once after a
 matching UTC start is bracketed by the same readable native birth. The executor

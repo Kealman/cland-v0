@@ -1727,9 +1727,14 @@ Neovim directly rather than through that fixture.
 ## Authenticated session fixtures
 
 Permission and dispatch fixtures opt in to `session-credential-fixture.ts` clients.
-These provision synthetic session credentials in the disposable store and attach
-them to known-session actors in both request and send frames; they preserve provisional identities rather than
-adopting them. `sessionShell` supplies the matching fixture environment for direct
+These read synthetic session credentials from the disposable store, provisioning
+only an absent credential, and attach them to known-session actors in both
+request and send frames; they preserve provisional identities rather than
+adopting them. Path-based wrappers open a minimal existing-schema SQLite
+connection: they never run Store schema, migrations or backfills alongside a
+live hub. Reading an existing credential is read-only even while a stopped hub
+holds a WAL writer; missing synthetic credentials still require a writable store.
+`sessionShell` supplies the matching fixture environment for direct
 CLI children. They test authorization after authentication, not credential
 admission. Credential admission tests use raw `harness.ts` clients and the real
 CLI, with credentials obtained from the fixture adapter's launch request.

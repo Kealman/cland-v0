@@ -333,7 +333,18 @@ For remote watchdog changes, use the executor-fake guidance in `docs/agents/test
 
 For detached droplet watchdog PID ownership, use the T1 OS/checkpoint seam in
 `docs/agents/tests/hub-test-executor-watchdog.test.ts.md` and its native T3
-launch/rearm controls. Keep `pid`/UTC `startedUtc`, add native `pidIdentity`, and
+launch/rearm controls. Arm retries unreadable proof for at most 10 seconds;
+keep changed-birth refusal across retries and a late-reply deadline control.
+Register arm-control disposal before launch, independently drive its setup-clock
+bound, and retain missing/aborted setup controls that drain held replies and
+arm/stop work through the same owner.
+The sentinel lifecycle fixture expires both durable lease copies only after the
+worker-start and hub-stop receipts. Saved-account fresh resume waits for the
+stopped spoke's new journalled disconnect, not only native stop. Authorization
+fixtures read existing credentials through a minimal SQLite connection, with no
+schema/migration writer; retain the held-WAL-writer control in
+`docs/agents/tests/hub-test-sqlite-contention.test.ts.md`.
+Keep `pid`/UTC `startedUtc`, add native `pidIdentity`, and
 persist a coherent one-time legacy upgrade before any signal. Retain same-second
 reuse refusal, failed-proof/checkpoint controls and the release-during-probe case;
 hold provider release across inspection and prove full lease writers retain the

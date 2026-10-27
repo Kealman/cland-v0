@@ -6,8 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nativeProjectHub as projectHub, cland, eventually, killDaemon, spawnSpoke, tempProject } from './harness.ts';
-import type { HarnessProcessView } from '../src/protocol.ts';
+import { nativeProjectHub as projectHub, cland, eventually, flushProjectLogs, killDaemon, spawnSpoke, tempProject } from './harness.ts';
+import type { HarnessProcessView, HubStatus } from '../src/protocol.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { ScratchAccountPaths } from './fixture-environment.ts';
 
@@ -162,7 +162,24 @@ for (const harness of ['codex', 'opencode']) test(`${harness} relaunch and hub r
   assert.equal(restarted.process.pid, after.pid);
   assert.ok(restarted.process.attach?.includes(`${variable}='${join(f.root, savedDir)}'`));
   // A fresh native conversation also retains the row's saved account.
+  // The native stop receipt does not acknowledge removal of the spoke's socket
+  // from the hub. A fresh conversation has a different identity and must wait
+  // for the old connection's actual disconnect, preserving name reservations.
+  await eventually('recovered spoke connected before stop', async () => {
+    const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+    return status.sessions.find(session => session.sessionId === p.sessionId && session.name === p.name);
+  });
+  const journal = async () => {
+    await flushProjectLogs(t, f.root);
+    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8'));
+  };
+  const beforeStop = (await journal()).length;
+  const disconnected = eventually('stopped spoke disconnect journalled', async () => (await journal()).slice(beforeStop)
+    .map(line => JSON.parse(line) as { event: string; name?: string })
+    .find(row => row.event === 'bye' && row.name === p.name));
+  void disconnected.catch(() => {});
   assert.equal((await ui.request({ type: 'session.stop', session: p.name }, 30000)).ok, true);
+  assert.equal((await disconnected).name, p.name);
   const fresh = await ui.request({ type: 'session.resume', session: p.name, fresh: true }, 30000);
   assert.equal(fresh.ok, true, fresh.error);
   const renewed = (fresh.value as { process: HarnessProcessView }).process;

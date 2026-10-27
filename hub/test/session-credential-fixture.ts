@@ -4,26 +4,49 @@ import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { Store } from '../src/hub/store.ts';
+import type { Store } from '../src/hub/store.ts';
 import { cland, clandWithEnv, connectUi, connectWsUi, dispatcherUi, type FrameClient } from './harness.ts';
+
+type CredentialStore = Pick<Store, 'sessionIdOf' | 'roleOf' | 'sessionCredential' | 'rememberSessionCredential'>;
+
+function credentialFor(store: CredentialStore, actor: Record<string, unknown>): Record<string, unknown> {
+  const name = typeof actor.name === 'string' ? actor.name : '';
+  const id = typeof actor.sessionId === 'string' ? actor.sessionId : store.sessionIdOf(name);
+  if (!id && store.roleOf(name) === null) return actor;
+  // Provisional-name tests deliberately have no stable id yet; do not adopt it here.
+  const sessionId = id ?? 'unknown';
+  let credential = store.sessionCredential(sessionId);
+  if (credential === null) {
+    store.rememberSessionCredential(sessionId, randomUUID());
+    credential = store.sessionCredential(sessionId);
+  }
+  return { ...actor, credential };
+}
 
 function actorCredential(source: string | Store, actor: Record<string, unknown>): Record<string, unknown> {
   if (actor.credential !== undefined) return actor;
-  // Bare socket fixtures keep their owned database directly below the scratch root.
-  const projectDb = typeof source === 'string' ? join(source, '.cland/hub.db') : '';
-  // T-1335: this second connection can overlap the live hub's startup writes.
-  const store = typeof source === 'string' ? new Store(existsSync(projectDb) ? projectDb : join(source, 'hub.db'),
-    path => new DatabaseSync(path, { timeout: 10_000 })) : source;
+  if (typeof source !== 'string') return credentialFor(source, actor);
+  // The hub owns schema/migrations. A second full Store can request the WAL
+  // writer while the fixture has SIGSTOPped that very owner (T-1335).
+  // Existing credentials need reads only, even while that writer stays held.
+  const projectDb = join(source, '.cland/hub.db');
+  const db = new DatabaseSync(existsSync(projectDb) ? projectDb : join(source, 'hub.db'));
   try {
-    const name = typeof actor.name === 'string' ? actor.name : '';
-    const id = typeof actor.sessionId === 'string' ? actor.sessionId : store.sessionIdOf(name);
-    if (!id && store.roleOf(name) === null) return actor;
-    // Provisional-name tests deliberately have no stable id yet; do not adopt it here.
-    const sessionId = id ?? 'unknown';
-    const credential = store.sessionCredential(sessionId) ?? randomUUID();
-    store.rememberSessionCredential(sessionId, credential);
-    return { ...actor, credential };
-  } finally { if (typeof source === 'string') store.close(); }
+    db.exec('pragma busy_timeout = 5000');
+    const read = (sql: string, key: string): string | null => {
+      const value = db.prepare(sql).get(key)?.value;
+      return typeof value === 'string' ? value : null;
+    };
+    return credentialFor({
+      sessionIdOf: name => read('select session_id as value from sessions where name = ?', name),
+      roleOf: name => read('select role as value from sessions where name = ?', name),
+      sessionCredential: id => read('select credential as value from session_credentials where session_id = ?', id),
+      rememberSessionCredential: (id, credential) => {
+        // Another fixture reader or the hub may have provisioned it meanwhile.
+        db.prepare('insert into session_credentials (session_id, credential) values (?, ?) on conflict (session_id) do nothing').run(id, credential);
+      },
+    }, actor);
+  } finally { db.close(); }
 }
 
 export function sessionClient(ui: FrameClient, source: string | Store): FrameClient {

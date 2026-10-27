@@ -4,9 +4,10 @@ import { appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processStartedAsync } from '../../hub/lock.ts';
-import { processIdentityAsync, processIdentitiesAsync } from '../../process-identity.ts';
+import { processIdentitiesAsync } from '../../process-identity.ts';
 import { DigitalOceanApi } from './api.ts';
 import { settleSpend } from './spend.ts';
+import { within } from './deadline.ts';
 import { deleteLeaseResources } from './cleanup.ts';
 import { accountRelease, durableJson, readLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 
@@ -20,13 +21,13 @@ const children = new Map<number, WatchdogChild>();
 
 /** OS boundary for restart recovery; native child handles stay owned separately. */
 export type WatchdogProcesses = {
-  started(pid: number, env: NodeJS.ProcessEnv): Promise<string | null>;
+  started(pid: number, env: NodeJS.ProcessEnv, timeoutMs?: number): Promise<string | null>;
   identity(pid: number, env: NodeJS.ProcessEnv, timeoutMs?: number): Promise<string | null>;
   alive(pid: number): boolean;
   signal(pid: number, signal: NodeJS.Signals): void;
 };
 const nativeProcesses: WatchdogProcesses = {
-  started: (pid, env) => processStartedAsync(pid, undefined, undefined, 'UTC', env),
+  started: (pid, env, timeoutMs) => processStartedAsync(pid, timeoutMs, undefined, 'UTC', env),
   identity: async (pid, env, timeoutMs) => (await processIdentitiesAsync([pid], env, timeoutMs)).get(pid) ?? null,
   alive: pid => {
     try { process.kill(pid, 0); return true; }
@@ -101,17 +102,49 @@ export async function stopWatchdog(lease: DropletLease, env: NodeJS.ProcessEnv =
   await signal('SIGKILL');
   if (!await stoppedWithin(watchdog, owned, grace, env, options)) throw new Error('droplet watchdog did not stop within its time bound');
 }
-export async function armWatchdog(dir: string, env: NodeJS.ProcessEnv = process.env): Promise<NonNullable<DropletLease['watchdog']>> {
-  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), dir], { env, detached: true, stdio: 'ignore' });
+type WatchdogArmOptions = WatchdogOptions & { launch?: (dir: string, env: NodeJS.ProcessEnv) => ChildProcess };
+export async function armWatchdog(dir: string, env: NodeJS.ProcessEnv = process.env, options: WatchdogArmOptions = {}): Promise<NonNullable<DropletLease['watchdog']>> {
+  const child = options.launch?.(dir, env) ?? spawn(process.execPath, [fileURLToPath(import.meta.url), dir], { env, detached: true, stdio: 'ignore' });
   const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
   await new Promise<void>((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
   child.unref();
   const pid = child.pid!;
-  const before = await processIdentityAsync(pid, env);
-  const startedUtc = await processStartedAsync(pid, undefined, undefined, 'UTC', env);
-  const pidIdentity = await processIdentityAsync(pid, env);
-  if (!startedUtc || !before || before !== pidIdentity) {
-    // This child is still ours, so its ChildProcess handle is safe to stop.
+  const clock = options.clock ?? realClock;
+  const processes = options.processes ?? nativeProcesses;
+  const deadline = clock.now().getTime() + 10_000;
+  const probeMs = () => Math.max(1, Math.min(3000, deadline - clock.now().getTime()));
+  let exited = false, finished = false;
+  void closed.then(() => { exited = true; });
+  let startedUtc: string | null = null, pidIdentity: string | null = null;
+  let observedBirth: string | null = null;
+  const active = () => !finished && !exited && clock.now().getTime() < deadline;
+  const verify = async () => {
+    while (active()) {
+      const before = await processes.identity(pid, env, probeMs());
+      if (!active()) return null;
+      if (before) {
+        if (observedBirth && before !== observedBirth) return null;
+        observedBirth = before;
+        const started = await processes.started(pid, env, probeMs());
+        if (!active()) return null;
+        if (started) {
+          const after = await processes.identity(pid, env, probeMs());
+          if (!active()) return null;
+          // A readable conflict can mean PID reuse. Never adopt that new birth.
+          if (after && after !== before) return null;
+          if (after) return { startedUtc: started, pidIdentity: after };
+        }
+      }
+      await pause(Math.min(25, Math.max(1, deadline - clock.now().getTime())), clock);
+    }
+    return null;
+  };
+  const proof = await within(verify(), 10_000, clock).catch(() => null);
+  finished = true;
+  if (proof && !exited && clock.now().getTime() < deadline) ({ startedUtc, pidIdentity } = proof);
+  if (!startedUtc || !pidIdentity) {
+    // No bare PID is signalled. Only our owned ChildProcess handle may clean up
+    // an unverified arm, including after retry exhaustion or an identity conflict.
     child.kill('SIGKILL');
     await closedWithin(closed, testTiming('CLAND_TEST_DROPLET_WATCHDOG_STOP_MS', 5000, env));
     throw new Error('could not verify the droplet watchdog process identity');
