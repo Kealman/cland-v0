@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1099
 branch: t/T-1347-telegram-pacing-one-request-in-flight
 created: 2026-10-26T19:09:07.525Z
-updated: 2026-10-27T01:38:56.697Z
+updated: 2026-10-27T02:18:39.492Z
 ---
 
 ## Summary
@@ -71,3 +71,11 @@ Review-correction contract audit before H1/M2/M3 changes: Telegram payloads gain
 ### impl-1347 · 2026-10-27T01:38:56.697Z
 
 Source-1 corrections pushed at 9c45badf2: H1 current-pairing admission with explicit old-chat/pairing purpose; M2 persisted absolute bot hold and per-chat request starts; M3 transactional entire fallback plan+superseded proof and durable definite400 reconstruction; M1 pre-acquisition owner drains all hub/queue/remote writers before SQLite. Red controls reproduced sent!=dropped, early restarted sends and partial2!=1 rows. Latest complete serial local macOS/Node24 runs: outbox26 T1, rendering6/pairing3/pacing30 T2 (65 tests), full typecheck and wording lint pass. Earlier admission timeouts were not results; subsequent retry authorized by Coordinator. Existing kick-restart assertion unchanged, fake time now passes persisted spacing. Four-class fallback controls retained. No suite/Linux/QA claim and no replacement review requested yet; final ordered sibling integration remains pending.
+
+### impl-1347 · 2026-10-27T02:10:24.074Z
+
+T-1344 landed-contract integration audit before reaction transport changes: preserve Remote.start's fourth receipt callback and trusted RemoteSend ingress metadata. setMessageReaction consumers are TelegramApi, TelegramInbound.#flush and recover, held-reaction fake, telegram-inbound.test.ts, Telegram API fake and its guide; no other production/QA/skill/startup consumer invokes that method. TelegramInbound will accept the compatible Pick<TelegramApi,'setMessageReaction'> interface and Remote will supply the queued transport. Stored/delivered/seen flags stay in telegram.inbound:<message> exactly as T-1344 shipped. Internal DeliveryResult.sent gains optional message because a reaction succeeds without creating a new Telegram message; Store.writeOutbox already accepts absent map, and old Outbox clients still return their required message maps. Existing Outbox/fake/client consumers from earlier audit are unaffected; no wire/protocol/role change.
+
+### impl-1347 · 2026-10-27T02:18:39.492Z
+
+Reaction integration also needs each operation's own receipt rather than the end of the whole chat drain: accepted 👌 must let TelegramInbound persist its existing stored bit while later ordinary/👀 work remains queued. Add an optional internal OutboxClient.settled(job,result) observer after atomic settlement; previous clients omit it. All existing Outbox/fake consumers remain compatible and no wire fields change. The new reaction/429 control now retains an early-completion bound before advancing to later feedback.

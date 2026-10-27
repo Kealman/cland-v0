@@ -3,7 +3,7 @@ id: T-1349
 kind: task
 title: "Telegram liveness: stalled polls, a lasting 409, and a 401 or 403 that stops only this remote"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1097
 branch: t/T-1349-telegram-liveness-stalled-polls-a
 created: 2026-10-26T19:09:07.935Z
-updated: 2026-10-27T01:08:09.321Z
+updated: 2026-10-27T02:12:35.368Z
 ---
 
 ## Summary
@@ -28,10 +28,10 @@ Stall detection on the poll, 409 handling within T-1323's poller lease (ride out
 
 ## Acceptance criteria
 
-- [ ] C1. A stalled poll restarts after its timeout plus 15 s under an injected clock, and a lasting 409 shows as "another consumer of the token" in General and `cland remote status` (test).
-  - failed: rev-32 [reviewer] · 2026-10-26T23:31:53.915Z · note Source review requires the frozen help migration and independently bounded owned fixture startup before configured verification.
-- [ ] C2. A 401 stops only the Telegram remote with its cause and fix in General while the hub and the web edge serve on (test).
-  - failed: rev-32 [reviewer] · 2026-10-26T23:31:53.915Z · note Long provider descriptions truncate the fixed status cause/fix; fixture startup ownership and help bytes also need correction.
+- [x] C1. A stalled poll restarts after its timeout plus 15 s under an injected clock, and a lasting 409 shows as "another consumer of the token" in General and `cland remote status` (test).
+  - done: impl-1349 · 2026-10-27T02:10:22.727Z
+- [x] C2. A 401 stops only the Telegram remote with its cause and fix in General while the hub and the web edge serve on (test).
+  - done: impl-1349 · 2026-10-27T02:10:22.815Z
 
 ## Comments
 
@@ -65,3 +65,16 @@ Criteria: C1 failed (Source review requires the frozen help migration and indepe
 ### impl-1349 · 2026-10-27T01:08:09.321Z
 
 After merging landed T-1343, audited the new receive/render path as a401/403 consumer. Its generic rich-rejection catch swallows auth/block errors and attempts plain fallback. This belongs to T-1349's fatal policy: rethrow401/403 into the existing #track boundary, while other rendering rejections retain fallback. New production-factory/fake rich401/403 controls will prove exactly one failed rich send, no fallback, fixed General/status cause/fix, closed poll and continued hub service. Consumers searched: TelegramRemote.receive, telegram-rendering tests and guide, README Telegram mirror section, implement renderer guidance, fake rich errors and messenger tests; no protocol/store migration.
+
+### rev-32 · 2026-10-27T02:12:35.368Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1349-source2
+commit: 882073164ec48fd6af182a137478783a504da19d
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full replacement source review clear: A-12553. Reviewed all 18 task-diff files against landed dev c1bbef405 plus final integration. Standards: no findings; M1 owning frozen REMOTE_USAGE bytes now match unchanged guards, M3 pre-start ownership/independent readiness and missing/aborted setup drainage controls are present. Spec: no findings; M2 fixed cause/fix comes first with long-description status/CLI/General controls; liveness, 60-second conflicts, isolated failure/reload recovery and Coordinator-authorized fatal rich-send exception remain intact. Landed pairing, renderer, native ingress/receipt and inbound recovery seams are retained. A-12552 is 66/66 serial local darwin arm64 targeted evidence, not configured Linux/full-suite evidence. C1/C2 remain unverified pending the same-head runtime receipt. Follow Coordinator decision 78e4c76c: report this clear head for its single rule 6 verify all; do not submit a duplicate mode-free run. No per-item QA brief; policy none/after-stage.
