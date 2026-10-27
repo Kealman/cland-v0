@@ -60,3 +60,19 @@ Stop must cancel both delay kinds, abort and join an active reconnect
 exchange, retain the queued job and leave no timer or later send. An independent
 finite test timeout bounds a missing client receipt; advancing time alone is
 never the final delivery assertion. No wall-clock wait is used.
+
+The chat-owned drain control queues two ordinary messages, another chat and a
+card at the same fake instant. Optional accepts/compare hooks must send the card
+then ordinary FIFO, leave the foreign row queued and retain the old no-options
+clients' FIFO/reconciliation receipts. Platform beforeNext waits precede fresh
+selection, so a card arriving during pacing may become the next send.
+
+The optional admit hook is synchronous and defaults to true. Telegram's
+component tests change pairing during pacing and after persistence reopen;
+Outbox must drop denied General as well as other kinds before a native send,
+and recheck admission after asynchronous reconciliation/source checks.
+
+The first durable-attempt case also supplies an optional settled callback and
+reads committed sent state and message mapping through its independent Store
+inside that callback. Previous clients omit the observer. A sent reaction may
+omit a new platform-message map; message-producing clients retain theirs.

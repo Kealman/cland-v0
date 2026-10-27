@@ -10,14 +10,14 @@ type Receipt = { chat: string; message: number; stored: boolean; delivered: bool
 export class TelegramInbound {
   readonly #store: RemoteStore;
   readonly #send: RemoteSend;
-  readonly #api: TelegramApi;
+  readonly #api: Pick<TelegramApi, 'setMessageReaction'>;
   readonly #signal: AbortSignal;
   readonly #sent: () => void;
   readonly #receipt: RemoteReceipt | undefined;
   readonly #pending = new Map<string, { resolve: (message: TopicMessage) => void; reject: (error: Error) => void; receipt: Receipt }>();
   readonly #reactions = new Map<string, Promise<void>>();
   #next = 0;
-  constructor(store: RemoteStore, send: RemoteSend, api: TelegramApi, signal: AbortSignal, sent: () => void, receipt?: RemoteReceipt) {
+  constructor(store: RemoteStore, send: RemoteSend, api: Pick<TelegramApi, 'setMessageReaction'>, signal: AbortSignal, sent: () => void, receipt?: RemoteReceipt) {
     this.#store = store; this.#send = send; this.#api = api; this.#signal = signal; this.#sent = sent; this.#receipt = receipt;
   }
   async recover(): Promise<void> {

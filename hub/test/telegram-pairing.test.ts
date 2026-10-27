@@ -28,6 +28,7 @@ test('Telegram private starts respect stranger limits and CLI approval names the
   let poll = await within(initial, 1_000);
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const say = async (user: 'human' | 'stranger', text: string) => {
+    await clock.advance(1_000);
     const confirmed = fake.waitForPoll();
     const update = await control<TgUpdate>(fake.url, 'say', { user, text });
     poll = await within(confirmed, 1_000, undefined, () => new Error('Telegram /start durable handling receipt missing'));
@@ -98,6 +99,7 @@ for (const source of ['membership', '403'] as const) test(`Telegram stops and re
   if (source === 'membership') await control(fake.url, 'membership', { status: 'kicked' });
   else {
     await control(fake.url, 'fault', { method: 'sendMessage', code: 403, echoToken: true });
+    await clock.advance(1_000);
     const failed = await ui.request({ type: 'remote.test', messenger: 'telegram' });
     assert.equal(failed.ok, false);
     assert.match(failed.error!, /bot blocked \(403\).*unblock the bot in Telegram, then run cland hub reload/);
@@ -108,7 +110,7 @@ for (const source of ['membership', '403'] as const) test(`Telegram stops and re
   assert.equal(status.code, 0, status.stderr);
   assert.match(status.stdout, /connection: disabled .*bot blocked \(403\)/);
   assert.match(status.stdout, /bot: https:\/\/t.me\/cland_fixture_bot/);
-  assert.match(status.stdout, /last inbound: 2026-10-16T12:00:00.000Z/);
+  assert.ok(status.stdout.includes(`last inbound: ${source === '403' ? '2026-10-16T12:00:01.000Z' : '2026-10-16T12:00:00.000Z'}`));
   assert.match(status.stdout, /last outbound: 2026-10-16T12:00:00.000Z/);
   const before = await control<{ requests: unknown[]; messages: TgMessage[] }>(fake.url, 'state');
   assert.equal(before.messages.length, 1);
@@ -128,6 +130,8 @@ for (const source of ['membership', '403'] as const) test(`Telegram stops and re
   assert.equal(clock.pending, 0);
   if (source === 'membership') {
     ui.close();
+    // Restart after the persisted interval; pending /start still needs its send receipt.
+    await clock.advance(1_000);
     const resumed = fake.waitForPoll();
     const restarted = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
     const resumedPoll = await within(resumed, 1_000, undefined, () => new Error('restart replayed the already reported kick'));

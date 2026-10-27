@@ -103,6 +103,18 @@ export class RemoteStore {
     this.#db.prepare(`insert into remote_state (messenger, key, value) values (?, ?, ?)
       on conflict (messenger, key) do update set value = excluded.value`).run(this.#id, key, value);
   }
+  /** Synchronous replacement planning and its receipt commit as one unit. */
+  transaction<T>(write: () => T): T {
+    this.#db.exec('savepoint remote_state_write');
+    try {
+      const result = write();
+      this.#db.exec('release remote_state_write');
+      return result;
+    } catch (error) {
+      this.#db.exec('rollback to remote_state_write; release remote_state_write');
+      throw error;
+    }
+  }
   /** Dedupe receipts and the next Telegram offset become durable together. */
   confirmTelegramUpdate(updateId: number, dedupe?: string): void {
     this.#db.exec('savepoint telegram_confirm');

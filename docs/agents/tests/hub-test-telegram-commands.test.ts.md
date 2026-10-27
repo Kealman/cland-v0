@@ -25,9 +25,11 @@ The replay case arms `hold-after-send` before `/cancel`. The held native receipt
 and actual fake message prove the reply committed; shutdown closes that exact
 HTTP request before the scratch hub restarts. The replayed input reaches its
 stored offset without another reply. This is in-process restart/response-loss
-coverage, not a process-crash or exactly-once transport claim. Direct replies
-have no outbox; a lost reply requires a new human command. Keep the durable native
-identity before the first send, and the final single-message assertion.
+coverage, not a process-crash or exactly-once transport claim. The queued
+transport's unknown attempt stays fenced, and the durable command identity
+prevents a new logical reply. A new human command remains the recovery for an
+unknown reply. Keep identity before the first queue write and the final
+single-message assertion.
 
 The long-card case keeps General in rich format and sends an ask below the hub's
 8 KiB cap but above Telegram's 4096-code-point bound. It checks numbered plain
@@ -38,3 +40,17 @@ as reply markup.
 
 All completion waits are bounded independently of setup. Keep FakeClock timer
 counts empty after hub stop and retain native poll-close receipts before removal.
+
+T-1347 integration retains every menu, text/entity, native offset, ask, literal
+part, lost-receipt and TCP-close assertion. Multi-reply/split/reopen cases use a
+pre-owned Store observer with the shared driveTelegram helper. Each native hub,
+including its restart, belongs to that owner before observer disposal. Only
+persisted pacing deadlines advance fake time; pending HTTP stays on native I/O.
+
+`Telegram command replies obey the bot hold at ordinary priority and confirm
+their own durable result` posts two General messages, queues /help during an
+eight-second 429, then posts later General. No message arrives at7999ms; the
+accepted order must be General/General/help/General. Retain help entities, its
+durable Telegram id/map and maximum one in flight. The command's next-poll
+confirmation must arrive while the later General is still queued, proving its
+own receipt does not wait for the whole chat drain.

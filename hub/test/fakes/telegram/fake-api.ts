@@ -39,7 +39,7 @@ export type FakePollReceipt = { id: number; params: Record<string, unknown>; sta
 export type FakeRequestReceipt = { id: number; method: string; params: Record<string, unknown> };
 export type FakeConnectionReceipt = { id: number; method: string };
 type PendingPoll = FakePollReceipt & { res: ServerResponse; timer?: ClockTimer; ended: boolean };
-type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'hold' | 'hold-after-send';
+type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'accept-disconnect' | 'hold' | 'hold-after-send';
 type Fault = { method: string; code: number; echoToken: boolean; description?: string; retryAfter?: number; response?: FaultResponse };
 
 function observe<T>(events: EventEmitter, event: string, accepts: (value: T) => boolean, signal: AbortSignal): Promise<T> {
@@ -66,6 +66,10 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   let updates: TgUpdate[] = [];
   const requests: Array<{ method: string; params: Record<string, unknown> }> = [];
   const faults: Fault[] = [];
+  const sends: Array<{ id: number; chat: string; at: number }> = [];
+  const inFlight = new Map<string, number>();
+  const maxInFlight: Record<string, number> = {};
+  const releases = new Map<number, () => void>();
   const pendingPolls = new Map<number, PendingPoll>();
   const closedPolls = new Set<number>();
   const heldRequests = new Map<number, FakeConnectionReceipt>();
@@ -97,7 +101,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
     try {
       if (lifetime.signal.aborted) { req.destroy(); res.destroy(); return; }
       if (req.method === 'GET' && req.url === '/control/state') return reply(res, 200, {
-        messages, requests, pendingPolls: [...pendingPolls.values()].map(receipt), heldRequests: [...heldRequests.values()], redirectsFollowed,
+        messages, requests, sends, maxInFlight, pendingPolls: [...pendingPolls.values()].map(receipt), heldRequests: [...heldRequests.values()], redirectsFollowed,
       });
       if (req.url === '/redirect-target') {
         redirectsFollowed++;
@@ -157,11 +161,17 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         for (const poll of pendingPolls.values()) finish(poll);
         return reply(res, 200, { released });
       }
+      if (req.method === 'POST' && req.url === '/control/release-requests') {
+        if (!Array.isArray(params.ids)) return reply(res, 400, { error: 'ids must be an array' });
+        const released = params.ids.filter(id => typeof id === 'number' && releases.has(id));
+        for (const id of released) releases.get(id)!();
+        return reply(res, 200, { released });
+      }
       if (req.method === 'POST' && req.url === '/control/fault') {
         if (typeof params.method !== 'string' || typeof params.code !== 'number' || !Number.isInteger(params.code) || params.code < 300 || params.code > 599)
           return reply(res, 400, { error: 'fault needs a method and HTTP error code' });
         const response = params.response;
-        if (response !== undefined && !['redirect', 'invalid-json', 'malformed-error', 'disconnect', 'hold', 'hold-after-send'].includes(String(response)))
+        if (response !== undefined && !['redirect', 'invalid-json', 'malformed-error', 'disconnect', 'accept-disconnect', 'hold', 'hold-after-send'].includes(String(response)))
           return reply(res, 400, { error: 'unsupported fault response' });
         const retryAfter = params.retry_after;
         if (params.description !== undefined && (typeof params.description !== 'string' || params.description.length > 4_000))
@@ -181,20 +191,34 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
       const method = route[2]!;
       const connection = { id: requests.length + 1, method };
       req.socket.once('close', () => { heldRequests.delete(connection.id); events.emit('connection-closed', connection); });
+      if (method === 'sendMessage' || method === 'sendRichMessage' || method === 'setMessageReaction') {
+        const chat = String(params.chat_id);
+        sends.push({ id: connection.id, chat, at: clock.now().getTime() });
+        const active = (inFlight.get(chat) ?? 0) + 1;
+        inFlight.set(chat, active);
+        maxInFlight[chat] = Math.max(maxInFlight[chat] ?? 0, active);
+        res.once('close', () => inFlight.set(chat, inFlight.get(chat)! - 1));
+      }
       requests.push({ method, params: redact.value(params) });
       events.emit('request', { ...connection, params: redact.value(params) });
+      let loseReceipt = false;
       let holdAfterSend = false;
       const faultIndex = faults.findIndex(fault => fault.method === method);
       if (faultIndex >= 0) {
         const fault = faults.splice(faultIndex, 1)[0]!;
         // A deliberate echo exercises the client's error boundary; never capture it.
-        if (fault.response === 'hold-after-send' && method === 'sendMessage') holdAfterSend = true;
-        else {
-          if (fault.response === 'hold') {
+        if (fault.response === 'hold') {
+          await new Promise<void>(resolve => {
+            const release = () => { releases.delete(connection.id); heldRequests.delete(connection.id); resolve(); };
+            releases.set(connection.id, release);
+            res.once('close', release);
             heldRequests.set(connection.id, connection);
             events.emit('request-held', connection);
-            return;
-          }
+          });
+          if (res.destroyed || lifetime.signal.aborted) return;
+        } else if (fault.response === 'accept-disconnect') loseReceipt = true;
+        else if (fault.response === 'hold-after-send' && method === 'sendMessage') holdAfterSend = true;
+        else {
           if (fault.response === 'disconnect') { res.destroy(); return; }
           if (fault.response === 'redirect') return reply(res, fault.code, {}, { location: '/redirect-target' });
           if (fault.response === 'invalid-json') {
@@ -245,9 +269,10 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
           chat: { id: Number(params.chat_id), type: 'private' }, from: BOT, text };
         messages.push(redact.value(message));
+        if (loseReceipt) { res.destroy(); return; }
         if (holdAfterSend) {
           heldRequests.set(connection.id, connection);
-          events.emit('request-held', connection); // The platform effect is committed; the response is deliberately absent.
+          events.emit('request-held', connection); // Accepted effect, deliberately missing response.
           return;
         }
         return reply(res, 200, { ok: true, result: message });

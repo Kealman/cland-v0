@@ -3,15 +3,17 @@ import { realClock, type Clock } from '../hub/clock.ts';
 import type { OutboxJob, OutboxAttempt, RemoteMessage, RemoteStore } from './state.ts';
 
 /** Only the platform client can attest delivery; a thrown error is never proof. */
-export type DeliveryResult = { status: 'sent'; message: RemoteMessage }
-  | { status: 'never-left'; retryAfterMs?: number } | { status: 'unknown' };
+export type DeliveryResult = { status: 'sent'; message?: RemoteMessage }
+  | { status: 'never-left'; retryAfterMs?: number } | { status: 'unknown' } | { status: 'superseded' };
 export type OutboxClient = {
   send: (job: OutboxJob, attempt: OutboxAttempt) => Promise<DeliveryResult>;
   prove: (job: OutboxJob, attempt: OutboxAttempt) => Promise<DeliveryResult>;
+  /** Observe the durable settlement, including its message map when present. */
+  settled?: (job: OutboxJob, result: DeliveryResult) => void;
   /** A successful exchange, never evidence about an earlier delivery. */
   reconnect?: (signal: AbortSignal) => Promise<boolean>;
 };
-export type OutboxInput = { kind: 'general' | 'card' | 'edit'; source: string | null; target?: string; payload: unknown };
+export type OutboxInput = { kind: 'general' | 'card' | 'edit' | 'message'; source: string | null; target?: string; payload: unknown };
 
 /** One owner per remote, under the gateway's poller lease; no independent timer. */
 export class Outbox {
@@ -24,10 +26,18 @@ export class Outbox {
   #queueRevision = 0;
   #stopped = false;
   #wakeWait: (() => void) | undefined;
+  readonly #beforeNext: (() => Promise<void>) | undefined;
+  readonly #compare: ((a: OutboxJob, b: OutboxJob) => number) | undefined;
+  readonly #admit: (job: OutboxJob) => boolean;
+  readonly #accepts: (job: OutboxJob) => boolean;
   readonly #sourceOpen: (job: OutboxJob) => boolean | Promise<boolean>;
-  constructor(store: RemoteStore, client: OutboxClient, options: { clock?: Clock; random?: () => number; sourceOpen?: (job: OutboxJob) => boolean | Promise<boolean> } = {}) {
+  constructor(store: RemoteStore, client: OutboxClient, options: { clock?: Clock; random?: () => number; sourceOpen?: (job: OutboxJob) => boolean | Promise<boolean>; accepts?: (job: OutboxJob) => boolean; admit?: (job: OutboxJob) => boolean; beforeNext?: () => Promise<void>; compare?: (a: OutboxJob, b: OutboxJob) => number } = {}) {
     this.#store = store; this.#client = client; this.#clock = options.clock ?? realClock;
     this.#random = options.random ?? Math.random;
+    this.#beforeNext = options.beforeNext;
+    this.#compare = options.compare;
+    this.#admit = options.admit ?? (() => true);
+    this.#accepts = options.accepts ?? (() => true);
     this.#sourceOpen = options.sourceOpen ?? (() => true);
   }
   enqueue(input: OutboxInput): string {
@@ -98,7 +108,12 @@ export class Outbox {
   async #drain(visited: Set<string>): Promise<void> {
     let backoff = 1000;
     while (!this.#stopped) {
-      const next = this.#store.outbox().find(job => !visited.has(job.id) && ['queued', 'sending', 'uncertain'].includes(job.state));
+      const candidates = () => this.#store.outbox()
+        .filter(job => this.#accepts(job) && !visited.has(job.id) && ['queued', 'sending', 'uncertain'].includes(job.state))
+        .sort(this.#compare ?? (() => 0));
+      if (this.#beforeNext && candidates().length) await this.#beforeNext();
+      if (this.#stopped) break;
+      const next = candidates()[0];
       if (!next) {
         if (this.#available() || !this.#client.reconnect) break;
         // Equal jitter: half to all of an exponential window, capped at 30 s.
@@ -120,6 +135,9 @@ export class Outbox {
       if (this.#stopped) break;
       // A source check may yield while a queued edit is replaced; bind its latest intent.
       job = this.#store.outbox().find(row => row.id === job.id)!;
+      if (!this.#admit(job)) {
+        job.state = 'dropped'; job.updated = this.#clock.now().toISOString(); this.#store.putOutbox(job); continue;
+      }
       if (!this.#available()) {
         if (job.kind === 'general') { job.state = 'missed'; job.updated = this.#clock.now().toISOString(); this.#store.putOutbox(job); }
         continue;
@@ -138,6 +156,9 @@ export class Outbox {
         }
         if (this.#stopped) break;
       }
+      if (!this.#admit(job)) {
+        job.state = 'dropped'; job.updated = this.#clock.now().toISOString(); this.#store.putOutbox(job); continue;
+      }
       const attempt: OutboxAttempt = { id: randomUUID(), job: job.id, at: this.#clock.now().toISOString(), outcome: null };
       job.state = 'sending';
       this.#store.writeOutbox(job, attempt);
@@ -150,15 +171,16 @@ export class Outbox {
         visited.delete(job.id);
         continue;
       }
-      if (result.status !== 'sent') this.setAvailable(false);
+      if (result.status !== 'sent' && result.status !== 'superseded') this.setAvailable(false);
     }
   }
   #settle(job: OutboxJob, attempt: OutboxAttempt, result: DeliveryResult): void {
     // A rate-limit refusal is positive non-delivery, not an offline General gap.
-    job.state = result.status === 'sent' ? 'sent' : this.#retryAfter(result) !== undefined ? 'queued'
+    job.state = result.status === 'superseded' ? 'dropped' : result.status === 'sent' ? 'sent' : this.#retryAfter(result) !== undefined ? 'queued'
       : job.kind === 'general' ? 'missed' : result.status === 'never-left' ? 'queued' : 'uncertain';
     job.updated = this.#clock.now().toISOString();
     attempt.outcome = result.status;
     this.#store.writeOutbox(job, attempt, result.status === 'sent' ? result.message : undefined);
+    this.#client.settled?.(job, result);
   }
 }

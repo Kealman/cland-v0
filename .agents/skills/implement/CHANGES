@@ -178,6 +178,15 @@ T-1340 source-1: Require pre-bind fake ownership, bounded control requests and s
 2026-10-26 · T-1343: route Telegram General rendering to frame/fake and pure conversion receipts, preserving entity boundaries and durable part mappings.
 2026-10-26 · T-1342: route native Telegram pairing, blocked diagnostics and consumed-kick replay to the production frame/CLI and fake Bot API regression.
 
+2026-10-27 · T-1347: route Telegram send pacing, bot-wide 429 holds and rich error classes to durable frame/fake receipts; retain old Outbox scheduling defaults.
+
+2026-10-27 · T-1347 source-1: require current-pairing send admission, persisted pacing deadlines, atomic fallback planning/recovery and pre-acquisition fixture ownership.
 2026-10-27 · T-1346: route phone commands/menu reconciliation to sealed frame/fake receipts, including direct-reply replay fencing and card scope.
 2026-10-27 · T-1344 merge: preserve pairing and inbound feedback guidance together after integrating landed T-1342.
 2026-10-27 · T-1344 mirror merge: retain mirror-out guidance with inbound receipt/recovery guidance and add the native mirror/reply integration receipt.
+
+2026-10-27 · T-1347 T-1344 integration: queue delivery-reaction transport with ordinary priority and durable individual receipts, preserving inbound feedback/recovery state.
+
+2026-10-27 · T-1347 T-1346 integration: route command replies and numbered parts through ordinary-priority per-chat sends with entities, durable ids and unchanged command replay fencing.
+
+2026-10-27 · T-1347 source-2: arm setup observation before native acquisition, release held startup resources before joining, stop late hubs, and consolidate fake API fault documentation.

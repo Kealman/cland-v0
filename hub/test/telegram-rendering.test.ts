@@ -27,9 +27,13 @@ async function fixture(t: TestContext, format: 'rich' | 'entities' = 'rich') {
   try { store.remotes.forMessenger('telegram').setPairing({ userId: '101', chatId: '101', guildId: null, name: 'Fixture human' }); }
   finally { store.close(); }
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
+  let observer: Store | undefined;
+  onCleanup(t, async () => { await hub.stop(); observer?.close(); });
+  observer = new Store(join(root, '.cland/hub.db'));
+  const state = observer.remotes.forMessenger('telegram');
   const ui = await connectUi(t, hub.discovery);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-  return { root, fake, hub, ui, coord, clock };
+  return { root, fake, hub, ui, coord, clock, state };
 }
 
 test('Telegram mirrors an agent report as Rich Markdown with its author and kind', async t => {
@@ -50,12 +54,14 @@ test('Telegram mirrors an agent report as Rich Markdown with its author and kind
 });
 
 test('Telegram falls back after a Rich Message rejection to text and UTF-16 entities', async t => {
-  const { fake, hub, coord } = await fixture(t);
+  const { fake, hub, coord, clock, state: remoteState } = await fixture(t);
   assert.equal((await telegramControl(fake.url, 'fault', { method: 'sendRichMessage', code: 400 })).status, 200);
   const received = fake.waitForRequest('sendMessage');
   const closed = fake.waitForConnectionClose('sendMessage');
   void closed.catch(() => {});
   assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', kind: 'report', text: '# Check\n\n😀 **ready** and `code`' })).ok, true);
+  await until(() => remoteState.outbox().some(job => job.state === 'dropped'), { what: 'durable rich rejection and replacement' });
+  await clock.advance(1_000);
   const request = await received;
   assert.deepEqual(request.params, { chat_id: '101', text: 'coord · report\nCheck\n\n😀 ready and code', entities: [
     { type: 'bold', offset: 0, length: 14 }, { type: 'bold', offset: 15, length: 5 },
@@ -69,7 +75,7 @@ test('Telegram falls back after a Rich Message rejection to text and UTF-16 enti
 });
 
 test('Telegram entities format sends numbered parts without clipping a styled span', async t => {
-  const { root, fake, hub, coord } = await fixture(t, 'entities');
+  const { root, fake, hub, coord, clock, state: remoteState } = await fixture(t, 'entities');
   const paragraph = 'a'.repeat(3500);
   const text = `${paragraph}\n\n**${'😀'.repeat(900)}**`;
   const store = new Store(join(root, '.cland/hub.db'));
@@ -84,6 +90,8 @@ test('Telegram entities format sends numbered parts without clipping a styled sp
   const closed = fake.waitForConnectionClose('sendMessage');
   void closed.catch(() => {});
   assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', kind: 'report', text })).ok, true);
+  await until(() => remoteState.outbox().filter(job => job.state === 'sent').length === 1, { what: 'first numbered part committed' });
+  await clock.advance(1_000);
   const last = await received;
   await closed;
   await persisted;
@@ -128,7 +136,7 @@ test('Telegram silently sends progress and hub notices and filters echoes answer
     { ask: { question: 'Ship?', options: ['yes'], free: true, state: 'open' as const }, text: 'human ask' },
     { topic: 'agents', text: 'agents traffic' },
     { topic: 'item-topic', text: 'item traffic' },
-  ]) await remote.receive(frame(fields));
+  ]) { await remote.receive(frame(fields)); await clock.advance(1_000); }
   await remote.stop();
   const state = await telegramControl<{ messages: Array<{ text: string }>; requests: Array<{ method: string; params: Record<string, unknown> }> }>(fake.url, 'state');
   assert.equal(state.status, 200);
@@ -158,7 +166,7 @@ test('Telegram excludes actual General ask and answer frames while mirroring a w
 });
 
 test('Telegram quoted code passes provider nesting checks and leaves the remote serving', async t => {
-  const { fake, hub, coord, clock } = await fixture(t, 'entities');
+  const { fake, hub, coord, clock, state: remoteState } = await fixture(t, 'entities');
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock });
   const codeRejected = fake.waitForRequest('sendMessage');
@@ -184,6 +192,8 @@ test('Telegram quoted code passes provider nesting checks and leaves the remote 
   assert.equal((await quoteClosed).id, quoteRequest.id);
   const quotedState = await telegramControl<{ messages: Array<{ text: string }> }>(fake.url, 'state');
   assert.deepEqual(quotedState.body.messages.map(message => message.text), ['coord · report\nrun cmd\nkeep care']);
+  await until(() => remoteState.outbox().some(job => job.state === 'sent'), { what: 'quoted report delivery committed' });
+  await clock.advance(1_000);
   const next = fake.waitForRequest('sendMessage', request => request.params.text === 'coord · report\nstill serving');
   const closed = fake.waitForConnectionClose('sendMessage');
   void closed.catch(() => {});

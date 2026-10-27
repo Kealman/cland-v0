@@ -53,5 +53,13 @@ and the existing format option together in the native factory.
 Keep `telegram-messenger`, `telegram-api`, `telegram-polling`, `cli-imports` and
 `project-hub-lifecycle` regressions for existing constructor/factory injection,
 startup/reload and joined cleanup. No frame, reply, permission or clause changes
-are required. Pacing and outage/catch-up are separate behaviours; these cases
+are required. Pacing is covered in [telegram-pacing](hub-test-telegram-pacing.test.ts.md); outage/catch-up is separate; these cases
 make no rate, recovery or live-client rendering claim.
+
+Pacing integration: keep a Store observer owned until hub stop. After a rich
+400, await its durable dropped/replaced job before advancing the fake clock
+1,000 ms to the plain send. For numbered parts, wait for the first accepted job
+before advancing to the second. Sequential native receive controls advance only
+after each receive completes. These advances schedule work; exact accepted parts,
+entities and source maps remain the assertions. The nesting test waits for the
+quoted report's committed send before advancing for its following report.

@@ -73,3 +73,14 @@ nonempty text or decision/question commands. Pairing starts, other commands,
 media, edits and cards retain their dedicated handlers. The durable input id
 comes from trusted native metadata, never a frame field; preserve the previous
 wire regression in [gateway.test.ts](hub-test-gateway.test.ts.md).
+
+T-1347 transport integration retains every history, offset, ordered-reaction,
+TCP-close, held-settlement and lost-delivery recovery assertion. TelegramInbound
+accepts the compatible setMessageReaction-only transport interface; TelegramRemote
+supplies its per-chat queue while all stored/delivered/seen writes remain here.
+`driveTelegram` uses persisted queue/deadline receipts to advance FakeClock between
+reactions, including a persisted uncertain attempt before recovery. It never
+advances during pending native HTTP. The pre-acquisition pacing owner owns each
+Store, every hub start/restart and the custom held reaction's release/drain.
+Reaction success carries no new message map; an unknown prior transport intent
+stays fenced while the existing inbound recovery reconciles its feedback state.

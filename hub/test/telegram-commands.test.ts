@@ -3,14 +3,23 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject, until } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { setSecret } from '../src/remote/secrets.ts';
 import { Store } from '../src/hub/store.ts';
 import { fakeTelegram, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { control, pairing } from './telegram-polling-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
+import { pacingOwner, driveTelegram } from './telegram-pacing-fixture.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
+
+function commandPacing(t: import('node:test').TestContext, root: string, clock: FakeClock, hub: Awaited<ReturnType<typeof projectHub>>) {
+  const owner = pacingOwner(t);
+  owner.close(() => hub.stop());
+  const observer = owner.store(join(root, '.cland/hub.db'));
+  const state = observer.remotes.forMessenger('telegram');
+  return { drive: <T>(work: Promise<T>) => driveTelegram(clock, state, work), ownHub: (next: Awaited<ReturnType<typeof projectHub>>) => owner.close(() => next.stop()) };
+}
 
 const menu = [
   { command: 'status', description: 'Hub, sessions and queues' },
@@ -145,13 +154,14 @@ test('Telegram inbox repeats open asks and cancel leaves them open while start n
   try { store.remotes.forMessenger('telegram').setPairing(pairing); } finally { store.close(); }
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-  let poll = await within(polling, 1_000);
+  const { drive, ownHub } = commandPacing(t, root, clock, hub);
+  let poll = await drive(within(polling, 1_000));
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const say = async (text: string) => {
     const confirmed = fake.waitForPoll();
     const update = await control<{ update_id: number }>(fake.url, 'say', { text });
-    poll = await within(confirmed, 1_000, undefined, () => new Error(`${text} durable handling receipt missing`));
+    poll = await drive(within(confirmed, 1_000, undefined, () => new Error(`${text} durable handling receipt missing`)));
     assert.equal(poll.params.offset, update.update_id + 1);
     const state = await control<{ requests: Array<{ method: string; params: { text: string; entities?: unknown[]; parse_mode?: string } }> }>(fake.url, 'state');
     return state.requests.filter(request => request.method === 'sendMessage').map(request => request.params);
@@ -162,7 +172,7 @@ test('Telegram inbox repeats open asks and cancel leaves them open while start n
   assert.equal(asked.ok, true);
   const strangerConfirmed = fake.waitForPoll();
   const stranger = await control<{ update_id: number }>(fake.url, 'say', { user: 'stranger', text: '/start' });
-  poll = await within(strangerConfirmed, 1_000);
+  poll = await drive(within(strangerConfirmed, 1_000));
   assert.equal(poll.params.offset, stranger.update_id + 1);
   replies = await say('/inbox');
   const inboxReply = replies.at(-1)!;
@@ -182,7 +192,7 @@ test('Telegram inbox repeats open asks and cancel leaves them open while start n
   assert.ok(Array.isArray(replies.at(-1)!.entities));
   const closed = fake.waitForPollClose(poll.id);
   await hub.stop();
-  assert.equal(await within(closed, 1_000), poll.id);
+  assert.equal(await drive(within(closed, 1_000)), poll.id);
   assert.equal(clock.pending, 0);
 });
 
@@ -199,28 +209,30 @@ test('Telegram command replay does not repeat a reply committed before its lost 
   try { store.remotes.forMessenger('telegram').setPairing(pairing); } finally { store.close(); }
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-  await within(polling, 1_000);
+  const { drive, ownHub } = commandPacing(t, root, clock, hub);
+  await drive(within(polling, 1_000));
   await control(fake.url, 'fault', { method: 'sendMessage', code: 503, response: 'hold-after-send' });
   const committed = fake.waitForHeldRequest('sendMessage');
   const update = await control<{ update_id: number }>(fake.url, 'say', { text: '/cancel' });
-  const commit = await within(committed, 1_000);
+  const commit = await drive(within(committed, 1_000));
   const state = await control<{ messages: Array<{ text: string }> }>(fake.url, 'state');
   assert.equal(state.messages.length, 1);
   assert.equal(state.messages[0]!.text, 'Replay fixture — Cancel\n\nCancelled. The ask stays open.');
   const responseClosed = fake.waitForConnectionClose('sendMessage');
   await hub.stop();
-  assert.equal((await within(responseClosed, 1_000)).id, commit.id);
+  assert.equal((await drive(within(responseClosed, 1_000))).id, commit.id);
   const replayed = fake.waitForPoll();
   const restarted = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-  const poll = await within(replayed, 1_000);
+  ownHub(restarted);
+  const poll = await drive(within(replayed, 1_000));
   assert.equal(poll.params.offset, update.update_id + 1, 'replayed command reaches its durable confirmation');
   const after = await control<typeof state>(fake.url, 'state');
-  // Direct command replies have no outbox. A crash-lost reply is not replayed;
-  // the human runs the command again. Native chat/message identity fences effects.
+  // The outbox fences the unknown transport receipt, and native command identity
+  // prevents a new logical reply; the human can issue a new command.
   assert.equal(after.messages.length, 1);
   const closed = fake.waitForPollClose(poll.id);
   await restarted.stop();
-  assert.equal(await within(closed, 1_000), poll.id);
+  assert.equal(await drive(within(closed, 1_000)), poll.id);
   assert.equal(clock.pending, 0);
 });
 
@@ -238,7 +250,8 @@ test('Telegram command replies split long literal card text without treating it 
   try { store.remotes.forMessenger('telegram').setPairing(pairing); } finally { store.close(); }
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-  await within(polling, 1_000);
+  const { drive, ownHub } = commandPacing(t, root, clock, hub);
+  await drive(within(polling, 1_000));
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const question = '**literal** _text_ [link](target)\n' + '📦'.repeat(1000) + 'q'.repeat(3500);
   const asked = await coord.call<{ ok: boolean }>('ask', { question, options: ['Keep'], topic: 'general' });
@@ -246,7 +259,7 @@ test('Telegram command replies split long literal card text without treating it 
   const before = await control<{ requests: unknown[] }>(fake.url, 'state');
   const confirmed = fake.waitForPoll();
   const update = await control<{ update_id: number }>(fake.url, 'say', { text: '/inbox' });
-  const poll = await within(confirmed, 1_000);
+  const poll = await drive(within(confirmed, 1_000));
   assert.equal(poll.params.offset, update.update_id + 1);
   const state = await control<{ requests: Array<{ method: string; params: { text: string; entities: Array<{ type: string; offset: number; length: number }> } }> }>(fake.url, 'state');
   const replies = state.requests.slice(before.requests.length).filter(request => request.method === 'sendMessage').map(request => request.params);
@@ -267,6 +280,58 @@ test('Telegram command replies split long literal card text without treating it 
   assert.ok(body.includes(question), JSON.stringify({ beginning: body.slice(0, 160), actualLength: body.length, questionLength: question.length }));
   const closed = fake.waitForPollClose(poll.id);
   await hub.stop();
-  assert.equal(await within(closed, 1_000), poll.id);
+  assert.equal(await drive(within(closed, 1_000)), poll.id);
+  assert.equal(clock.pending, 0);
+});
+
+test('Telegram command replies obey the bot hold at ordinary priority and confirm their own durable result', { timeout: 5_000 }, async t => {
+  const owner = pacingOwner(t);
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const fake = await fakeTelegram(t, { clock });
+  owner.close(() => fake.close(), { startupOnly: true });
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Queued phone');
+  config.remote.telegram = { enabled: true, format: 'entities' };
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  setSecret(root, 'telegram.token', TELEGRAM_TEST_TOKEN);
+  const db = owner.store(join(root, '.cland/hub.db'));
+  const state = db.remotes.forMessenger('telegram');
+  state.setPairing(pairing);
+  const hub = await owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock);
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await control(fake.url, 'fault', { method: 'sendMessage', code: 429, retry_after: 8 });
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'first ordinary' })).ok, true);
+  await until(() => !!state.outbox()[0] && state.attempts(state.outbox()[0]!.id)[0]?.outcome === 'never-left',
+    { what: 'General 429 durable before command reply' });
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'second ordinary' })).ok, true);
+  const confirmed = fake.waitForPoll();
+  void confirmed.catch(() => {});
+  const update = await control<{ update_id: number }>(fake.url, 'say', { text: '/help' });
+  await until(() => state.outbox().length === 3, { what: 'command reply durably queued after existing ordinary sends' });
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'later ordinary' })).ok, true);
+  await clock.advance(7_999);
+  assert.deepEqual((await control<{ messages: unknown[] }>(fake.url, 'state')).messages, []);
+  await clock.advance(1);
+  for (let sent = 1; sent <= 3; sent++) {
+    await until(() => state.outbox().filter(job => job.state === 'sent').length === sent, { what: `durable ordinary or command send ${sent}` });
+    if (sent < 3) await clock.advance(1_000);
+  }
+  const poll = await within(confirmed, 1_000);
+  assert.equal(poll.params.offset, update.update_id + 1);
+  assert.equal(state.outbox().at(-1)?.state, 'queued', 'the command receipt does not wait for later ordinary work');
+  await clock.advance(1_000);
+  await until(() => state.outbox().every(job => job.state === 'sent'), { what: 'remaining ordinary send accepted' });
+  await hub.stop();
+  const actual = await control<{ messages: Array<{ message_id: number; text: string }>; maxInFlight: Record<string, number>; requests: Array<{ method: string; params: { text?: string; entities?: unknown[] } }> }>(fake.url, 'state');
+  assert.deepEqual(actual.messages.map(message => message.text.split('\n')[0]),
+    ['you · message', 'you · message', 'Queued phone — Help', 'you · message']);
+  assert.match(actual.messages[0]!.text, /first ordinary$/);
+  assert.match(actual.messages[1]!.text, /second ordinary$/);
+  assert.match(actual.messages[3]!.text, /later ordinary$/);
+  const reply = actual.requests.find(request => request.params.text?.startsWith('Queued phone — Help'))!;
+  assert.ok(reply.params.entities!.length > 0, 'command entities survive the shared send redirect');
+  assert.ok(state.message('101', String(actual.messages[2]!.message_id)), 'accepted command reply has a durable message id');
+  assert.deepEqual(actual.maxInFlight, { '101': 1 });
   assert.equal(clock.pending, 0);
 });

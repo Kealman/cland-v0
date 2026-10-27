@@ -5,6 +5,7 @@ import { realClock, type Clock } from '../hub/clock.ts';
 import { TelegramApi, TelegramError, type TgUpdate } from './telegram-api.ts';
 import { TELEGRAM_COMMANDS, telegramHelp, telegramCommand, telegramStatus, telegramInbox, commandParts, plainCommandReply } from './telegram-commands.ts';
 import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
+import { TelegramOutbox } from './telegram-outbox.ts';
 import { TelegramInbound } from './telegram-inbound.ts';
 import { plainParts } from './telegram-render.ts';
 
@@ -15,6 +16,7 @@ export class TelegramRemote implements Remote {
   readonly id = 'telegram';
   readonly via = 'telegram';
   readonly #api: TelegramApi;
+  readonly #outbox: TelegramOutbox;
   readonly #clock: Clock;
   readonly #abort = new AbortController();
   readonly #work = new Set<Promise<unknown>>();
@@ -37,6 +39,10 @@ export class TelegramRemote implements Remote {
   constructor(api: TelegramApi, clock: Clock = realClock, polling?: TelegramRemoteOptions, rendering: { format?: 'rich' | 'entities' } = {}) {
     this.#api = api; this.#clock = clock; this.#polling = polling;
     this.#format = rendering.format ?? 'rich';
+    this.#outbox = new TelegramOutbox(api, clock, { ...(polling ? { store: polling.store } : {}), signal: this.#abort.signal,
+      onSent: () => { this.#lastOutbound = this.#clock.now().toISOString(); },
+      onError: error => { void this.#track(async () => { throw error; }).catch(() => {}); },
+    });
   }
 
   #track<T>(operation: () => Promise<T>): Promise<T> {
@@ -44,9 +50,8 @@ export class TelegramRemote implements Remote {
       if (this.#stopped || this.#fatal) throw new Error('Telegram remote is stopped');
       return operation();
     }).catch(error => {
-      if (!this.#abort.signal.aborted && error instanceof TelegramError && [401, 403, 409].includes(error.code)) {
-        const cause = error.code === 401 ? 'wrong or revoked token (401)'
-          : error.code === 403 ? 'bot blocked (403)' : 'another consumer of the token (409)';
+      if ((!this.#abort.signal.aborted || this.#fatal) && error instanceof TelegramError && [401, 403, 409].includes(error.code)) {
+        const cause = error.code === 401 ? 'wrong or revoked token (401)' : error.code === 403 ? 'bot blocked (403)' : 'another consumer of the token (409)';
         const fix = error.code === 401 ? 'set a new token with cland secret set telegram.token, then run cland hub reload'
           : error.code === 403 ? 'unblock the bot in Telegram, then run cland hub reload'
             : 'stop the other token consumer, then run cland hub reload';
@@ -69,14 +74,15 @@ export class TelegramRemote implements Remote {
     const bot = await this.#api.getMe({ signal: signal ? AbortSignal.any([this.#abort.signal, signal]) : this.#abort.signal });
     if (!bot || bot.is_bot !== true || !Number.isSafeInteger(bot.id)) throw new Error('Telegram getMe returned an invalid bot');
     this.#botId = bot.id;
+    this.#outbox.setAvailable(true);
     this.#lastInbound = this.#clock.now().toISOString();
     this.#botLink = typeof bot.username === 'string' && /^[A-Za-z0-9_]{5,32}$/.test(bot.username) ? `https://t.me/${bot.username}` : null;
   }
 
   start(send: RemoteSend, pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt): Promise<void> {
     this.#sendFrame = send;
-    if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, this.#api, this.#abort.signal,
-      () => { this.#lastOutbound = this.#clock.now().toISOString(); }, receipt);
+    if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, { setMessageReaction: async params => { await this.#outbox.react(params); return true; } }, this.#abort.signal,
+      () => {}, receipt);
     this.#pair = pair;
     return this.#track(async () => {
       await this.#check(signal);
@@ -125,28 +131,20 @@ export class TelegramRemote implements Remote {
       const author = message.fromKind === 'human' ? message.via === 'discord' ? 'you (Discord)' : 'you' : message.from;
       const header = `${author} · ${message.kind ?? 'message'}`;
       const options = { link_preview_options: { is_disabled: true }, disable_notification: message.kind === 'progress' || message.fromKind === 'hub' };
-      const record = (sent: { message_id: number }) => {
-        this.#lastOutbound = this.#clock.now().toISOString();
-        this.#polling!.store.putMessage({ chatId: pairing.chatId, messageId: String(sent.message_id), topic: 'general',
-          message: message.id, ask: null, approval: null });
-      };
-      if (this.#format === 'rich') {
-        let sent;
-        try {
-          sent = await this.#api.sendRichMessage({ chat_id: pairing.chatId,
-            rich_message: { markdown: `${header}\n${message.text}`, skip_entity_detection: true }, ...options }, { signal: this.#abort.signal });
-        } catch (error) {
-          if (this.#abort.signal.aborted) return;
-          if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
-        }
-        if (sent) { record(sent); return; }
+      const facts = { kind: 'general' as const, source: message.id, topic: 'general' };
+      const parts = plainParts(header, message.text).map(part => ({ chat_id: pairing.chatId, ...part, ...options }));
+      if (this.#format === 'rich') await this.#outbox.rich({ chat_id: pairing.chatId,
+        rich_message: { markdown: `${header}\n${message.text}`, skip_entity_detection: true }, ...options }, parts, facts);
+      else {
+        // Enqueue every part synchronously, so later General messages cannot interleave.
+        await Promise.all(parts.map(part => this.#outbox.send(part, facts)));
       }
-      for (const part of plainParts(header, message.text)) record(await this.#api.sendMessage({ chat_id: pairing.chatId, ...part, ...options }, { signal: this.#abort.signal }));
     });
   }
 
   run(): Promise<void> {
     return this.#running ??= this.#track(async () => {
+      await this.#outbox.resume();
       if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
       await this.#inbound?.recover();
       const handlers = [...this.#polling.handlers ?? [], {
@@ -183,7 +181,7 @@ export class TelegramRemote implements Remote {
             : this.#pair!(identity);
           if (reply !== null) {
             if (isPaired) await this.#commandReply(update, [plainCommandReply(reply)]);
-            else await this.#send(identity.chatId, reply);
+            else await this.#send(identity.chatId, reply, [], 'pairing');
           }
         },
       }] : []), {
@@ -217,20 +215,20 @@ export class TelegramRemote implements Remote {
     const key = `telegram.command:${update.message!.chat.id}:${update.message!.message_id}`;
     const store = this.#polling!.store;
     if (store.get(key) !== null) return;
-    // Direct replies have no resend proof. Fence the native command before its
-    // first platform effect; a lost reply is requested again with a new command.
+    // Fence the command identity before queueing any platform effect. Unknown
+    // deliveries stay fenced; the outbox retries only positive non-delivery.
     store.set(key, String(update.update_id));
-    for (const reply of replies) for (const part of commandParts(reply))
-      await this.#send(String(update.message!.chat.id), part.text, part.entities);
+    // Queue all numbered parts before later ordinary messages can interleave.
+    await Promise.all(replies.flatMap(commandParts).map(part =>
+      this.#send(String(update.message!.chat.id), part.text, part.entities)));
   }
 
-  async #send(chat: string, text: string, entities: import('./telegram-api.ts').TgEntity[] = []): Promise<void> {
-    await this.#api.sendMessage({ chat_id: chat, text, entities }, { signal: this.#abort.signal });
-    this.#lastOutbound = this.#clock.now().toISOString();
+  async #send(chat: string, text: string, entities: import('./telegram-api.ts').TgEntity[] = [], admission: 'paired' | 'pairing' | 'old-chat' = 'paired'): Promise<void> {
+    await this.#outbox.send({ chat_id: chat, text, entities }, { admission });
   }
 
   pairingReplaced(previous: Pairing, text: string): Promise<void> {
-    return this.#track(() => this.#send(previous.chatId, text));
+    return this.#track(() => this.#send(previous.chatId, text, [], 'old-chat'));
   }
 
   status(): RemoteConnection {
@@ -242,6 +240,6 @@ export class TelegramRemote implements Remote {
   stop(): Promise<void> {
     this.#stopped = true;
     this.#abort.abort();
-    return this.#stopping ??= Promise.allSettled([...this.#work]).then(() => {});
+    return this.#stopping ??= Promise.allSettled([this.#outbox.stop(), ...this.#work]).then(() => {});
   }
 }

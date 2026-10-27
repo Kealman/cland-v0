@@ -32,3 +32,13 @@ native close and hub stop before fixture removal; all fake-clock timers drain.
 Keep `telegram-polling.test.ts`'s explicit first-match handlers usable and
 `remote-cli.test.ts`'s previous-hub reply shapes unchanged. There are no new wire
 fields, permissions, browser calls or real platform calls.
+
+Telegram sends now share the paced outbox. Advance fake time 1,000 ms between
+completed private-start scenarios and before a second remote-test send; retain
+the exact next-poll offset as the durable handling boundary. The 403 control's
+second getMe happens at that later fake instant, so its last-inbound fact moves
+while its last successful outbound stays at the original instant.
+
+The consumed-kick restart advances 1,000 fake milliseconds while stopped before
+recreating the adapter: request spacing now persists across recreation. The
+exact next-poll offset and paired reply remain required after restart.

@@ -63,8 +63,10 @@ the same disposer. A missing setup deadline must hit the test's independent
 the async convenience wrapper; every caller supplies its TestContext.
 
 GET `/control/state` returns sanitized `messages`, method/parameter `requests`,
-`pendingPolls` and `redirectsFollowed`. It never records request URLs or headers.
-POST controls take JSON:
+`pendingPolls`, `heldRequests`, `redirectsFollowed`, and chat-request `sends`
+(request id, chat and injected-clock start time for sendMessage, sendRichMessage
+and setMessageReaction), plus `maxInFlight` per chat. Requests never retain URLs
+or headers. POST controls take JSON:
 
 | Path | Parameters | Receipt |
 | --- | --- | --- |
@@ -72,30 +74,39 @@ POST controls take JSON:
 | `/control/update` | Arbitrary update body without `update_id` | Assigns the next id and queues the redacted body, deliberately bypassing kind/identity filtering for negative controls. |
 | `/control/duplicate` | `update_id` | Adds the exact queued update again, retaining both ids. |
 | `/control/membership` | `user`, `status: "member"` or `"kicked"` | Queued `my_chat_member` update for the bot. |
-| `/control/commands` | `commands` array | Replaces the fake private-chat menu to exercise platform drift. |
-| `/control/fault` | `method`, HTTP `code`, optional `echoToken`, `description` (up to 4000 characters), `retry_after`, `response` | Arms one fault for that method; `hold-after-send` accepts a plain message before holding its response. |
+| `/control/commands` | `commands` array | Replaces and returns the fake private-chat menu to exercise platform drift. |
+| `/control/fault` | `method`, HTTP `code`, optional `echoToken`, `description` (at most 4000 characters), `retry_after`, `response` | Arms one fault for that method; response modes below distinguish refusal from committed effects. |
+| `/control/release-requests` | `ids: number[]` | Releases exactly the named `hold` requests to normal method handling. |
 | `/control/stall` | `enabled: boolean` | Subsequent polls hold even when the requested timeout expires. |
 | `/control/release-polls` | `{}` | Ends held polls, returning their exact ids. |
 
-Fault response modes are `redirect`, `invalid-json`, `malformed-error`,
-`disconnect`, `hold` and `hold-after-send`. The last commits a plain message
-then withholds its response, so its held receipt proves the effect precedes
-interruption. A held method publishes a token-free id/method through
-`waitForHeldRequest(method)` and keeps its connection open until cancellation;
-state includes `heldRequests`. Default faults return the Bot API error envelope and optional
-`Retry-After` header. `echoToken` deliberately echoes only the fabricated token
-in the provider response; captured receipts are redacted before storage. A 429
-is one response, not a scheduler; repeat controls to model further refusals.
+Without a response mode, a fault returns the Bot API error envelope and optional
+Retry-After header before accepting an effect. The supported response modes are:
 
-The fake implements scoped `getMyCommands`/`setMyCommands`, `getMe`,
-`sendMessage`, `sendRichMessage` (nested `rich_message.markdown`),
-`setMessageReaction` and `getUpdates`. Reaction request
-parameters are retained in `requests`; fault/hold/close controls apply to them
-as to sends. Updates stay queued until an offset
-confirms them; empty positive-timeout polls wait on the injected clock and wake
-when a control queues an update. Faults supply conflicts explicitly. This is a
-test boundary, not a full Telegram implementation or a claim about real clients'
-rendering, server retention or rate-limit enforcement.
+| Mode | Effect and receipt |
+| --- | --- |
+| `redirect` | Returns the configured code with a redirect to a deliberately successful target; production must refuse to follow it. |
+| `invalid-json` | Returns malformed JSON, deliberately echoing only the fabricated token. |
+| `malformed-error` | Returns deliberately invalid error-field shapes containing the fabricated token. |
+| `disconnect` | Closes the connection before accepting an effect. |
+| `accept-disconnect` | A send commits its fake message, then closes without a success response. |
+| `hold` | Publishes a bounded token-free held request id/method and waits before normal method handling; explicit id release or cancellation ends it. |
+| `hold-after-send` | For sendMessage, commits the message and publishes its held id before withholding the response until cancellation. |
+
+`waitForHeldRequest(method)` and `heldRequests` expose the held boundary.
+`echoToken` appends only the fabricated token to the optional provider description;
+all captured receipts are redacted. A 429 fault is one response, not a scheduler;
+repeat controls to model further refusals.
+
+The fake implements getMe; getUpdates; sendMessage; sendRichMessage with nested
+rich_message.markdown; setMessageReaction; and getMyCommands/setMyCommands.
+Menu methods require all_private_chats scope, and the setter requires a commands
+array. Reactions retain their exact parameters in requests and share the
+fault/hold/native-close controls with sends; they create no new message row.
+Updates remain queued until an offset confirms them. Empty positive-timeout
+polls use the injected clock and wake when a control queues input. Faults supply
+conflicts explicitly. This narrow boundary does not claim real-client rendering,
+server retention or rate-limit enforcement.
 
 `waitForRequest(method, accepts?)` observes a token-free request id, method and
 redacted parameters before the fake handles it. Arm it before the action, including
@@ -103,3 +114,9 @@ immediate zero-timeout polls. `Telegram fake injects unlisted update kinds with
 redacted request observations` retains the fabricated-secret positive control,
 the injected channel-post body, exact request parameters and matching TCP-close
 id. Production callers must still filter, even when allowed_updates is explicit.
+
+The pacing controls in [telegram-pacing](hub-test-telegram-pacing.test.ts.md)
+retain independent request times and per-chat maximum active responses. A held
+send is released by its exact id; a lost-receipt send is present in messages but
+has no success response. Neither observes a token-bearing URL. Fixture disposal
+destroys peers, releases held handlers and joins all handlers before root cleanup.

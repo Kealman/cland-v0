@@ -708,12 +708,17 @@ for the [component regression](../docs/agents/tests/hub-test-pairing-codes.test.
 `src/remote/outbox.ts` exports `Outbox` over one messenger's `RemoteStore`.
 Platform adapters own it under the gateway's poller lease. This is an internal
 API with a fake client seam, without a CLI command or platform configuration.
-`enqueue` persists `general`, `card` and `edit` intents; edits require an opaque
+`enqueue` persists `general`, `card`, ordinary `message` and `edit` intents; edits require an opaque
 chat/message `target`. Consecutive queued edits with the same target and source
 coalesce to their latest payload only before any attempt. Platform ids remain
 strings. The additive `target` column migrates existing hub.db rows; absent
 targets retain the previous row shape. Jobs and attempts keep insertion order,
-including at equal injected-clock timestamps.
+including at equal injected-clock timestamps. Optional `accepts`, `compare`, `admit` and
+`beforeNext` hooks let a platform own disjoint chat drains, prioritize cards and
+wait before selecting the next job and recording its attempt. Without them,
+existing clients keep FIFO ownership of the whole remote. Admission is checked
+after pacing and again after any asynchronous proof/source check, immediately
+before the attempt; refusal drops the queued intent without sending.
 
 `drain()` re-reads queued jobs and unresolved attempts before finishing, so jobs
 enqueued during a send, rate-limit wait or reconnection leave in that same drain
@@ -722,10 +727,13 @@ job is visited once per pass; an unknown proof does not spin. The completion
 owner checks enqueue revisions after the last read, then clears ownership and
 settles its promise synchronously; a microtask arrival at that read still joins
 the same owner and is drained before it completes. Before calling `client.send`,
-it atomically writes `sending` and an attempt with a null outcome. The client's
+it atomically writes `sending` and an attempt with a null outcome. An optional
+`client.settled(job, result)` callback observes the completed durable settlement,
+so an individual send can finish while later jobs continue in the active drain. The client's
 `send(job, attempt)` and `prove(job, attempt)` return one of:
 
-- `sent`, with the platform message map (`RemoteMessage`). The map, sent job and
+- `sent`, with the platform message map (`RemoteMessage`) when the operation
+  creates a message. Reactions have no new message map. The map, sent job and
   attempt outcome commit together before completion is reported.
 - `never-left`, the client's positive proof that resending that immutable job
   is safe. The stable job id is the idempotency identity (for example Discord's
@@ -736,6 +744,9 @@ it atomically writes `sending` and an attempt with a null outcome. The client's
   including General. Rate limiting is not an outage. The same hint on a
   reconciliation proof waits before a resend. Invalid hints use ordinary
   failure handling. The source is checked again after the wait.
+- `superseded`, when a definite rich-format refusal has already persisted its
+  replacement plain parts. The rejected intent becomes `dropped`, without
+  setting the remote offline or counting a missed General message.
 - `unknown`, which never permits another send. A thrown/rejected native error
   also means unknown; the outbox retains only that enum, never the native error.
 
@@ -2291,10 +2302,12 @@ belong to the cards feature; `/cancel` leaves the ask open. Paired `/start` name
 the project. `/decision <text>` and `/question <text>` are inbound mirror actions;
 `/mute` and `/unmute` control the General stream independently.
 
-Direct command replies use one send function, with no outbox or reply jobs.
-A native chat/message identity is durable before the first reply is attempted;
-replayed input is confirmed without repeating that effect. Unknown delivery is
-not proof of non-delivery. The [command regression](../docs/agents/tests/hub-test-telegram-commands.test.ts.md)
+Command replies use one send function routed through the shared per-chat
+outbox at ordinary priority. Text/entities stay intact, all numbered parts queue
+before later arrivals, and accepted ids get durable message maps. A native
+chat/message identity is durable before any reply is queued; replayed input is
+confirmed without repeating that logical effect. Only positive 429 non-delivery
+retries the immutable transport intent; an unknown receipt stays fenced. The [command regression](../docs/agents/tests/hub-test-telegram-commands.test.ts.md)
 interrupts after the fake commits a reply but before its HTTP receipt and retains
 the next start's durable offset and single-message receipt.
 
@@ -2334,10 +2347,10 @@ Agents are excluded too. Progress and hub notices set `disable_notification`.
 
 The loaded `remote.telegram.format` defaults to `rich`: `sendRichMessage` carries
 GitHub Flavored Markdown unchanged, with `skip_entity_detection: true` and link
-previews disabled. A rejected rich request falls back to `sendMessage` with
-gateway-computed entities, except that 401/403 stops the remote through its fatal
-cause/fix path without a fallback send. `format = "entities"` selects the plain
-path immediately.
+previews disabled. Only a 400 rich-formatting refusal falls back to `sendMessage`
+with gateway-computed entities. A 401 or 403 stops the remote; a 429 holds and
+retries the same rich request. Network errors, 5xx and missing receipts remain
+uncertain and fenced, with no plain resend that could duplicate delivery. `format = "entities"` selects that path immediately.
 Neither path uses MarkdownV2. Header and numbering count toward the 4096-code-point
 plain limit; entity offsets remain UTF-16 units. Each part repeats the header,
 with `n/m` when split. The converter prefers block and line boundaries, keeps
@@ -2355,6 +2368,47 @@ General frames, including their own terminal failure notice, preserving the
 original disabled cause. See the
 [rendering frame/fake guide](../docs/agents/tests/hub-test-telegram-rendering.test.ts.md)
 and [conversion guide](../docs/agents/tests/hub-test-telegram-render.test.ts.md).
+
+### Telegram send pacing
+
+Every native Telegram send uses `TelegramOutbox`, including General parts,
+command replies, pairing replies, remote tests, old-chat notices and delivery
+reactions (`setMessageReaction`). With the
+production factory, intents and attempts use the project's existing `hub.db`;
+legacy injected adapters without a store use a lifetime-local in-memory queue.
+There is one active outbox drain per chat, with one HTTP send in flight and at
+least 1,000 ms between request starts. Other chats can send independently. Cards
+rank first among queued jobs; ordinary replies, notices and reactions share General's FIFO
+priority. An active request finishes before a later card can send.
+
+A 429 is positive non-delivery: its `retry_after` holds every chat's sends for
+at most 300,000 ms, then the same immutable request retries. A missing hint uses
+the ordinary one-second interval. Rate limiting does not mark General missed.
+The bot's absolute hold deadline and each chat's last request start persist in
+remote_state before non-delivery is settled or HTTP begins. A recreated adapter
+honors their remaining time. New arrivals join the active drain.
+
+Queued project content rechecks the current pairing's chat and sender at the
+actual send and on recovery; unpaired or replaced destinations are dropped.
+Only an explicit stranger pairing reply or captured old-chat replacement notice
+bypasses that project-content admission. Paired /start replies remain paired
+content. Legacy injected adapters without a project pairing store retain their
+caller-owned admission.
+
+Rich-to-plain replacement parts retain the
+original message's order, ahead of later ordinary messages, and every accepted
+part gets its durable source map. All replacement jobs and the superseded proof
+commit in one synchronous transaction. A definite rich 400 is recorded first;
+if planning is interrupted, recovery rebuilds the entire group once without
+another rich send. Accepted exchanges update `lastOutbound`
+without waiting for the remaining queue to empty. Stop cancels pacing and flood
+waits, aborts active HTTP and joins all drains before storage closes. Reaction stored/delivered/seen bits stay
+in `telegram.inbound:<message>` under the inbound handler's existing recovery
+policy; the queue supplies only each transport operation's own durable result.
+A successful `getMe` makes the send transport available for recovery.
+
+See the [pacing frame/fake guide](../docs/agents/tests/hub-test-telegram-pacing.test.ts.md).
+This internal scheduler adds no command, setting, permission or role-clause line.
 
 ### Telegram polling and durable confirmation
 

@@ -97,7 +97,8 @@ For Telegram phone commands or menu registration, use the sealed production-fram
 and fake Bot API seam in `docs/agents/tests/hub-test-telegram-commands.test.ts.md`.
 Keep status/inbox reads within gateway authority, force text/entities for replies,
 compare the actual private-chat menu before writing, and fence native command
-identity before direct sends. Preserve the committed-effect/lost-receipt restart
+identity before queued sends. Keep replies at ordinary priority and preserve
+entities, contiguous numbered parts and durable accepted ids. Preserve the committed-effect/lost-receipt restart
 control; card actions and draft cancellation state belong to the card handler.
 
 For Telegram General rendering, use the production frame/fake receipts in
@@ -107,9 +108,22 @@ Markdown free of automatic entity detection and previews, preserve plain text
 on conversion failure, and budget numbering plus the header before splitting
 by code points or entity count. Never clip an entity; retain UTF-16 offsets.
 Wait for every accepted part's durable source mapping before shutdown.
-Rich sends that receive 401/403 must reach the fatal remote boundary before plain
-fallback; retain those controls in the liveness test guide as well as ordinary
-rendering-rejection fallback.
+For Telegram pacing, use `docs/agents/tests/hub-test-telegram-pacing.test.ts.md`:
+every send uses the shared per-chat outbox, cards first, with one-second pacing
+and a bot-wide 429 hold capped at five minutes. Delivery reactions share that
+queue and ordinary priority; keep their existing inbound feedback/recovery bits
+and complete each transport operation from its own durable settled receipt. Drive fake time after durable
+attempt/accepted-map receipts. Only a rich 400 falls back; 429 retries the same
+request, 401/403 stop the remote, and network/5xx/missing receipts stay fenced.
+Persist absolute bot-hold and chat-start facts across adapter recreation.
+Recheck current pairing at actual send/recovery, reserving bypass only for an
+explicit pairing reply or old-chat notice. Commit all fallback parts and their
+superseded proof together; retain definite-400 recovery if planning is interrupted.
+Pre-own fixture Stores, setup and every recreated adapter before awaiting them.
+Arm setup bounds before native acquisition; release held startup I/O before
+joining it and stop any late hub before closing storage.
+Preserve old Outbox clients without scheduling options and join every drain on stop.
+Retain the rich 401/403 fatal controls in the Telegram liveness guide.
 
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and

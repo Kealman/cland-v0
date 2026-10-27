@@ -20,6 +20,13 @@ test('an attempt is durable before each send and the platform message map preced
     const view = observer.remotes.forMessenger('discord');
     const messenger = outboxMessenger();
     const outbox = new Outbox(remote, messenger, { clock: new FakeClock() });
+    let settled = false;
+    messenger.settled = (job, result) => {
+      assert.equal(result.status, 'sent');
+      assert.equal(view.outbox().find(row => row.id === job.id)?.state, 'sent');
+      assert.equal(view.message('fixture-chat', '9007199254740993')?.ask, 'ask-1');
+      settled = true;
+    };
     const id = outbox.enqueue({ kind: 'card', source: 'ask-1', payload: { text: 'Choose' } });
     messenger.beforeSend = (job, attempt) => {
       assert.equal(view.outbox().find(row => row.id === id)?.state, 'sending');
@@ -27,6 +34,7 @@ test('an attempt is durable before each send and the platform message map preced
       assert.equal(attempt.outcome, null);
     };
     await outbox.drain();
+    assert.equal(settled, true, 'the client observes its own durable receipt before the whole drain ends');
     assert.equal(view.outbox()[0]?.state, 'sent');
     assert.equal(view.attempts(id)[0]?.outcome, 'sent');
     assert.equal(view.message('fixture-chat', '9007199254740993')?.ask, 'ask-1');
@@ -551,4 +559,22 @@ test('the final-read arrival recheck retains the original unknown-proof fence', 
     assert.equal(remote.attempts(id).length, 1);
     assert.deepEqual(read().map(job => job.state), ['uncertain', 'sent']);
   } finally { remote.outbox = read; await dispose(); }
+});
+
+test('chat-owned drains prioritize cards and preserve ordinary FIFO without consuming another chat', async t => {
+  const { remote, messenger, outbox, dispose } = await clockedOutbox(t);
+  try {
+    const first = outbox.enqueue({ kind: 'general', source: null, payload: { chat: '101', text: 'first' } });
+    const second = outbox.enqueue({ kind: 'general', source: null, payload: { chat: '101', text: 'second' } });
+    const other = outbox.enqueue({ kind: 'general', source: null, payload: { chat: '202', text: 'other chat' } });
+    const card = outbox.enqueue({ kind: 'card', source: 'ask', payload: { chat: '101', text: 'card' } });
+    const lane = new Outbox(remote, messenger, {
+      accepts: job => (job.payload as { chat: string }).chat === '101',
+      compare: (a, b) => Number(b.kind === 'card') - Number(a.kind === 'card'),
+    });
+    await lane.drain();
+    assert.deepEqual(messenger.delivered.map(job => job.id), [card, first, second]);
+    assert.equal(remote.outbox().find(job => job.id === other)?.state, 'queued');
+    await lane.stop();
+  } finally { await dispose(); }
 });
