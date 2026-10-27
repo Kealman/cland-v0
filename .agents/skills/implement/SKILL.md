@@ -83,6 +83,9 @@ consume the connect event before their result. No new keys or role permissions.
 For remote terminal commands, token rotation or messenger status/test callbacks,
 use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,
 legacy optional callbacks and previous-hub refusal coverage.
+For public remote documentation, use `docs/agents/tests/hub-test-remote-docs.test.ts.md`
+and `docs/agents/tests/hub-test-remote-docs-pairing.test.ts.md`: keep site-only
+dependency isolation, vocabulary checks and executable pairing blocks in step.
 For doctor's remote diagnostics, use
 `docs/agents/tests/hub-test-doctor-remotes.test.ts.md`: local secret resolution
 and Unix status frames only, with the shared General cause/fix table and optional

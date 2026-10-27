@@ -20,10 +20,10 @@ In a normally launched session's shell, CLI calls use the inherited cland sessio
 | `cland` | On a terminal: the same as `cland open`. Outside a project: says to run `cland init`. |
 | `cland init [dir]` | Prepare a folder or repository for cland: `.cland/`, skills, `AGENTS.md` block, hooks, the local territory, the first commit when needed. Idempotent. Ends with `next: cland setup`. |
 | `cland init --undo [--force]` | Undo the territory step: `github` becomes `origin` again. `--force` discards territory-only refs. |
-| `cland setup` | Ready the project: harnesses, logins, accounts, favourite harness, trust, the hub, then the Aide in the workbench. Flags: `--yes`, `--install <harness>`, `--harness <h>`, `--no-accounts`, `--no-aide`, `--attach`, `--json`. |
+| `cland setup` | Ready the project: harnesses, logins, accounts, favourite harness, trust, the hub, optional Telegram setup and pairing, then the Aide in the workbench. Flags: `--yes`, `--install <harness>`, `--harness <h>`, `--no-accounts`, `--no-aide`, `--attach`, `--json`. Remote offers and pairing confirmations default to No even with `--yes`. |
 | `cland open [dir]` | Start the hub if needed, then the Neovim workbench. |
 | `cland update [dir]` | Bring the project's skills and managed files to the installed version; keeps what you edited. |
-| `cland doctor [dir]` | Check harnesses, logins, `gh`, Neovim, the hub and the project. One line per check with its fix. `--fix` ends owned orphan servers, deleted-project hubs and fixtures. |
+| `cland doctor [dir]` | Check harnesses, logins, `gh`, Neovim, the hub and the project. Remote checks show local token presence/fingerprint, connection, pairing and stopped causes with fixes, without platform calls. One line per check with its fix. `--fix` ends owned orphan servers, deleted-project hubs and fixtures. |
 | `cland config set <section.key> <value>` | Validate and save one `config.toml` value; says whether it applies now or at the next hub start. |
 | `cland --version` | Print the version. |
 
@@ -35,6 +35,22 @@ In a normally launched session's shell, CLI calls use the inherited cland sessio
 | `cland web --qr` | Print a reachable link as a QR code, for a phone; requires a LAN bind or HTTPS origin. **human** |
 
 `cland web --sessions` lists browser sign-ins; `cland web --revoke <id>` revokes one and closes its sockets. Both are **human** commands.
+
+## Remotes and secrets
+
+See [Remote control](/docs/remote-control/) for BotFather, setup, pairing, rotation and recovery. For the built-in Telegram client, use `telegram` as the messenger. Remote commands take `--json`, require a running hub and are for your own terminal or local Neovim; agent sessions and the web cannot manage remotes.
+
+| Command | What it does |
+| --- | --- |
+| `cland remote status` | Token presence/fingerprint, pairing, connection, traffic times, outbox depth, mute and the public bot link. |
+| `cland remote approve <messenger> <code>` | Approve the waiting code's stored numeric identity; a new pairing replaces the old one. |
+| `cland remote unpair <messenger>` | Forget the pairing. |
+| `cland remote test <messenger>` | Check the token with the platform; send one line when paired. Requires an enabled messenger, resolved token, client test support and network access. |
+| `cland secret set <name>` | Store a value read from stdin or a hidden prompt, never a value argument. |
+| `cland secret list` | Print stored names and 12-character SHA-256 fingerprint prefixes only. |
+| `cland secret unset <name>` | Remove one stored value. |
+
+Secret commands edit only the project's git-ignored, mode-600 `.cland/secrets.toml` and need no running hub. Telegram's secret name is `telegram.token`; the hub's `CLAND_TELEGRAM_TOKEN` environment override wins over the file. After changing a file token, reload the hub; pairing and mute survive rotation. The secret value never belongs in argv.
 
 ## Hub
 

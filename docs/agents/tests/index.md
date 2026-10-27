@@ -4,6 +4,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/remote-docs.test.ts`](../../../hub/test/remote-docs.test.ts) | [Notes](hub-test-remote-docs.test.ts.md) |
+| [`hub/test/remote-docs-pairing.test.ts`](../../../hub/test/remote-docs-pairing.test.ts) | [Notes](hub-test-remote-docs-pairing.test.ts.md) |
 | [`hub/test/executor-safety.test.ts`](../../../hub/test/executor-safety.test.ts) | [Notes](hub-test-executor-safety.test.ts.md) |
 | [`hub/test/sqlite-contention.test.ts`](../../../hub/test/sqlite-contention.test.ts) | [Notes](hub-test-sqlite-contention.test.ts.md) |
 | [`hub/test/tracker.test.ts`](../../../hub/test/tracker.test.ts) | [Notes](hub-test-tracker.test.ts.md) |

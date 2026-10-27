@@ -35,6 +35,7 @@ const sidebar = [
     ['Accounts and limits', 'docs/accounts'],
     ['Verification and release', 'docs/verification-and-release'],
     ['Web and phone', 'docs/web-and-phone'],
+    ['Remote control', 'docs/remote-control'],
   ]),
   // How to drive and configure it.
   group('Using cland', [

@@ -106,6 +106,13 @@ for 409. The hub never stops another consumer itself. Configuration-disabled
 remotes stay stopped; an unchanged healthy gateway keeps its clients.
 See [remote command tests](tests/hub-test-remote-cli.test.ts.md).
 
+Public Telegram setup and maintenance are in the site's
+[Remote control guide](../../site/src/content/docs/docs/remote-control.md).
+Its command blocks have a sealed
+[fake-platform walkthrough](tests/hub-test-remote-docs-pairing.test.ts.md);
+[site vocabulary checks](tests/hub-test-remote-docs.test.ts.md) keep the documented
+commands, config keys and secret names aligned with the build.
+
 Transient Telegram poll/send failures retain a durable outage without disabling
 other hub edges. General gets one redacted offline line after three minutes
 and one recovery line if that threshold was crossed. Retained human text names

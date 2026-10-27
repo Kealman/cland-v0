@@ -322,6 +322,8 @@
     "hub/test/release-t3-component.test.ts": "T2",
     "hub/test/release.test.ts": "T3",
     "hub/test/remote-cli.test.ts": "T2",
+    "hub/test/remote-docs-pairing.test.ts": "T2",
+    "hub/test/remote-docs.test.ts": "T1",
     "hub/test/remote-fixture-lifecycle.test.ts": "T4",
     "hub/test/remote-scripted.test.ts": "T2",
     "hub/test/remote-state-migration.test.ts": "T2",

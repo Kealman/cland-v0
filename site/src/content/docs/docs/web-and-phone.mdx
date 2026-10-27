@@ -117,6 +117,14 @@ When the connection drops, a strip says since when and when the next retry runs.
 
 On a phone, notifications need HTTPS through your own tunnel. On iOS, install the app and tap the subscribe button in **More** once. These notifications depend on the page receiving live hub updates; closing or suspending it does not provide background push delivery.
 
+## Remotes
+
+A [Telegram remote](/docs/remote-control/) is a private chat with the project's bot: General goes both ways, with inbox cards and notices from every topic. It connects out from the hub without a web tunnel. Follow the Remote control guide to create the bot, store its token and pair it from your terminal or Neovim.
+
+The **Remotes** row in the web's **Sessions** area and Neovim's sessions panel shows connection state, who is paired, mute, outbox depth and the last error. A failed connection turns red immediately, before General's three-minute offline notice. `cland remote status` gives the terminal view; `cland doctor` checks local presence and stopped causes without contacting Telegram.
+
+A waiting pairing code appears in the inbox's **asks and approvals** section, naming the Telegram user and numeric id. Check that identity before approving in Neovim's pairing card or with `cland remote approve telegram <code>` in your terminal. The web row says **approve in the terminal or Neovim** and offers no approve action. Approval grants that identity access to the remote.
+
 ## What stays in the terminal
 
 The web workbench watches, plans and steers through messages. A few things stay in the terminal:

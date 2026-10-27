@@ -2255,6 +2255,12 @@ file only; loading a messenger and applying rotation belong to its reload path.
 
 ## Remote commands
 
+The public [Remote control guide](../site/src/content/docs/docs/remote-control.md)
+covers the shipped Telegram setup, pairing, chat and recovery flow. Its marked
+pairing blocks run unchanged against the fake Bot API in
+`hub/test/remote-docs-pairing.test.ts`; `hub/test/remote-docs.test.ts` runs the site's
+command/vocabulary, navigation and CLI-reference checks in the normal suite.
+
 The human's terminal uses the running project hub:
 
 ```sh
