@@ -62,9 +62,11 @@
       "A-12333",
       "A-12338",
       "A-12476",
-      "A-12480"
+      "A-12480",
+      "A-12649",
+      "A-12647"
     ],
-    "commit": "79d5885e019a1fccc378f2e24a4f1d66b046aed2"
+    "commit": "18a6f01be7230a0e4fa52176ab07bad6a47199b1"
   },
   "budget": {
     "testSeconds": 5,
@@ -2777,6 +2779,74 @@
     "hub/test/secrets.test.ts": {
       "seconds": 3.313361,
       "tests": 5
+    },
+    "hub/test/setup-pairing-component.test.ts": {
+      "seconds": 0.441357,
+      "tests": 3
+    },
+    "hub/test/setup-remote-component.test.ts": {
+      "seconds": 0.281661,
+      "tests": 1
+    },
+    "hub/test/setup-remotes.test.ts": {
+      "seconds": 0.06768,
+      "tests": 12
+    },
+    "hub/test/telegram-api.test.ts": {
+      "seconds": 0.174309,
+      "tests": 15
+    },
+    "hub/test/telegram-catchup.test.ts": {
+      "seconds": 1.528812,
+      "tests": 8
+    },
+    "hub/test/telegram-commands.test.ts": {
+      "seconds": 1.278694,
+      "tests": 7
+    },
+    "hub/test/telegram-gap.test.ts": {
+      "seconds": 0.086479,
+      "tests": 4
+    },
+    "hub/test/telegram-inbound.test.ts": {
+      "seconds": 1.467069,
+      "tests": 8
+    },
+    "hub/test/telegram-liveness.test.ts": {
+      "seconds": 1.949471,
+      "tests": 11
+    },
+    "hub/test/telegram-messenger.test.ts": {
+      "seconds": 0.570206,
+      "tests": 4
+    },
+    "hub/test/telegram-mute.test.ts": {
+      "seconds": 0.80856,
+      "tests": 6
+    },
+    "hub/test/telegram-pacing.test.ts": {
+      "seconds": 1.822322,
+      "tests": 33
+    },
+    "hub/test/telegram-pairing.test.ts": {
+      "seconds": 1.187742,
+      "tests": 3
+    },
+    "hub/test/telegram-polling-restart.test.ts": {
+      "seconds": 3.774485,
+      "tests": 2
+    },
+    "hub/test/telegram-polling.test.ts": {
+      "seconds": 0.686725,
+      "tests": 6
+    },
+    "hub/test/telegram-render.test.ts": {
+      "seconds": 0.007868,
+      "tests": 6
+    },
+    "hub/test/telegram-rendering.test.ts": {
+      "seconds": 0.738004,
+      "tests": 6
     }
   },
   "tests": {
@@ -7559,7 +7629,148 @@
     "hub/test/web-authority.test.ts::web refuses pairing.approve; Unix retains its normal handler": 0.092663,
     "hub/test/web-authority.test.ts::web refuses remote.status; Unix retains its normal handler": 0.115215,
     "hub/test/web-authority.test.ts::web refuses remote.test; Unix retains its normal handler": 0.079886,
-    "hub/test/web-authority.test.ts::web refuses remote.unpair; Unix retains its normal handler": 0.08907
+    "hub/test/web-authority.test.ts::web refuses remote.unpair; Unix retains its normal handler": 0.08907,
+    "hub/test/gateway.test.ts::gateway native input identity survives a lost result while previous wire frames cannot choose it": 0.070267,
+    "hub/test/outbox.test.ts::chat-owned drains prioritize cards and preserve ordinary FIFO without consuming another chat": 0.016157,
+    "hub/test/remote-state.test.ts::Telegram dedupe receipts and offset commit together and survive reopening": 0.021465,
+    "hub/test/setup-pairing-component.test.ts::declining a waiting Telegram identity leaves it unpaired with its exact approve command": 0.133818,
+    "hub/test/setup-pairing-component.test.ts::nonterminal unpaired setup prints the bot link and approval command without prompting or pairing": 0.078366,
+    "hub/test/setup-pairing-component.test.ts::setup confirms the fake Telegram Start identity and pairs only on yes": 0.229173,
+    "hub/test/setup-prompter.test.ts::a hidden question releases the terminal after cancel": 0.000455,
+    "hub/test/setup-prompter.test.ts::a hidden question releases the terminal after eof": 0.001286,
+    "hub/test/setup-prompter.test.ts::secret questions hide input and release raw mode before the next question": 0.001351,
+    "hub/test/setup-remote-component.test.ts::terminal setup stores a hidden Telegram token, reloads through frames and reports pairing before the Aide": 0.281661,
+    "hub/test/setup-remotes.test.ts::a stored pairing without a loaded connected remote remains open for reload": 0.002764,
+    "hub/test/setup-remotes.test.ts::a terminal Telegram offer stores a hidden token and enables it without starting a hub under no-aide": 0.013742,
+    "hub/test/setup-remotes.test.ts::declining Telegram writes nothing and the next terminal run offers it again": 0.006284,
+    "hub/test/setup-remotes.test.ts::malformed Telegram input names the expected format and retries only the hidden question": 0.008598,
+    "hub/test/setup-remotes.test.ts::no Telegram code offers exactly one extra wait (accepted=false)": 0.003164,
+    "hub/test/setup-remotes.test.ts::no Telegram code offers exactly one extra wait (accepted=true)": 0.002556,
+    "hub/test/setup-remotes.test.ts::nonterminal Telegram token=false enabled=true reports only missing work without asking": 0.004423,
+    "hub/test/setup-remotes.test.ts::nonterminal Telegram token=true enabled=false reports only missing work without asking": 0.002837,
+    "hub/test/setup-remotes.test.ts::nonterminal Telegram token=true enabled=true reports only missing work without asking": 0.002715,
+    "hub/test/setup-remotes.test.ts::secret destination preflight refuses unsafe ignore rules before requesting a token": 0.00309,
+    "hub/test/setup-remotes.test.ts::several waiting codes offer their row texts, filter the messenger and confirm the chosen identity": 0.002839,
+    "hub/test/setup-remotes.test.ts::untouched nonterminal Telegram is skip with exact setup commands and no writes": 0.014668,
+    "hub/test/telegram-api.test.ts::Telegram API override sends to the fake bot": 0.050898,
+    "hub/test/telegram-api.test.ts::Telegram API preserves retry_after on the fake bot-wide flood wait": 0.007059,
+    "hub/test/telegram-api.test.ts::Telegram fake delivers a blocked-bot membership update": 0.007104,
+    "hub/test/telegram-api.test.ts::Telegram fake delivers human and stranger messages until the offset confirms them": 0.015855,
+    "hub/test/telegram-api.test.ts::Telegram fake drains missed and aborted setup through its pre-registered owner": 0.002204,
+    "hub/test/telegram-api.test.ts::Telegram fake exposes an injected 409 as a conflict": 0.004945,
+    "hub/test/telegram-api.test.ts::Telegram fake injects unlisted update kinds with redacted request observations": 0.005881,
+    "hub/test/telegram-api.test.ts::Telegram fake observes a native bind error and closes through the same owner": 0.001547,
+    "hub/test/telegram-api.test.ts::Telegram fake rejects a rich message without accepting the send": 0.021285,
+    "hub/test/telegram-api.test.ts::Telegram fake replays the exact duplicate update id and message": 0.008428,
+    "hub/test/telegram-api.test.ts::Telegram HTTP deadline exceeds a 50 second stalled poll and drains its timer": 0.009052,
+    "hub/test/telegram-api.test.ts::Telegram provider errors retain safe facts without a token or fetch cause": 0.015367,
+    "hub/test/telegram-api.test.ts::Telegram refuses redirects and malformed provider errors without raw transport data": 0.017046,
+    "hub/test/telegram-api.test.ts::Telegram stalled poll retains its receipt until the caller aborts": 0.007031,
+    "hub/test/telegram-api.test.ts::Telegram validates credentials before parsing a root that could echo them": 0.000607,
+    "hub/test/telegram-catchup.test.ts::Telegram four-minute outage reports offline only after three minutes and recovery exactly once": 0.395778,
+    "hub/test/telegram-catchup.test.ts::Telegram gap 401 stops the remote without acknowledging missed sources": 0.21721,
+    "hub/test/telegram-catchup.test.ts::Telegram gap 403 stops the remote without acknowledging missed sources": 0.198608,
+    "hub/test/telegram-catchup.test.ts::Telegram General arriving during a held gap stays missed until its own successful gap": 0.118024,
+    "hub/test/telegram-catchup.test.ts::Telegram membership kick during catch-up retains fatal reload recovery": 0.106947,
+    "hub/test/telegram-catchup.test.ts::Telegram retries interrupted inbound feedback without duplicating its stored human message": 0.261306,
+    "hub/test/telegram-catchup.test.ts::Telegram ten-second outage marks retained input then sends one gap for three missed General posts": 0.122591,
+    "hub/test/telegram-catchup.test.ts::Telegram uncertain native gap stays fenced across successful recovery polls": 0.108348,
+    "hub/test/telegram-commands.test.ts::Telegram command replay does not repeat a reply committed before its lost HTTP receipt": 0.148927,
+    "hub/test/telegram-commands.test.ts::Telegram command replies obey the bot hold at ordinary priority and confirm their own durable result": 0.128361,
+    "hub/test/telegram-commands.test.ts::Telegram command replies split long literal card text without treating it as Markdown": 0.15238,
+    "hub/test/telegram-commands.test.ts::Telegram help is phone text with bold sections, command bullets and trust last": 0.100011,
+    "hub/test/telegram-commands.test.ts::Telegram inbox repeats open asks and cancel leaves them open while start names the project": 0.179697,
+    "hub/test/telegram-commands.test.ts::Telegram registers the private menu on first start and only repairs platform changes": 0.303886,
+    "hub/test/telegram-commands.test.ts::Telegram status reads gateway facts with six session bullets and transport numbers last": 0.265432,
+    "hub/test/telegram-gap.test.ts::Telegram gap counts sources once and acknowledges only captured jobs after its send receipt": 0.031394,
+    "hub/test/telegram-gap.test.ts::Telegram held gap aborted setup cancels and joins its writer before closing stores": 0.017788,
+    "hub/test/telegram-gap.test.ts::Telegram held gap missing setup receipt cancels and joins its writer before closing stores": 0.018514,
+    "hub/test/telegram-gap.test.ts::Telegram uncertain gap retains its captured ids and stable send key across reopening": 0.018783,
+    "hub/test/telegram-inbound.test.ts::Telegram delivery arriving as stored feedback settles acquires the next reaction owner": 0.136405,
+    "hub/test/telegram-inbound.test.ts::Telegram preserves workbench mention routing including named Aides and item leads": 0.264439,
+    "hub/test/telegram-inbound.test.ts::Telegram replays a stored input after interrupted feedback without a second human message": 0.173159,
+    "hub/test/telegram-inbound.test.ts::Telegram replies to the native outbound mirror without an echo or a seeded reply map": 0.158068,
+    "hub/test/telegram-inbound.test.ts::Telegram replies use the mirrored topic and react stored before delivered": 0.179538,
+    "hub/test/telegram-inbound.test.ts::Telegram restart reconciles a confirmed input whose durable session delivery frame was lost": 0.178028,
+    "hub/test/telegram-inbound.test.ts::Telegram stored feedback does not claim delivery until the queued addressee receives it": 0.129602,
+    "hub/test/telegram-inbound.test.ts::Telegram text decisions questions and formatting reach General as the human": 0.24783,
+    "hub/test/telegram-liveness.test.ts::Telegram 401 stops only the remote and reports its fix while hub and web serve": 0.319447,
+    "hub/test/telegram-liveness.test.ts::Telegram 403 stops only the remote and reports its fix while hub and web serve": 0.312978,
+    "hub/test/telegram-liveness.test.ts::Telegram liveness aborted held startup joins getMe and closes the late hub before disposal": 0.074481,
+    "hub/test/telegram-liveness.test.ts::Telegram liveness missing startup receipt disposes the owned hub and native connections": 0.155547,
+    "hub/test/telegram-liveness.test.ts::Telegram membership unblock and queued paired start survive unchanged reload without replaying the kick": 0.123578,
+    "hub/test/telegram-liveness.test.ts::Telegram recovers from a transient 409 inside the startup grace without a fatal notice": 0.084866,
+    "hub/test/telegram-liveness.test.ts::Telegram restarts stalled 40-second and offline zero-timeout polls exactly 15 seconds after their timeout": 0.149154,
+    "hub/test/telegram-liveness.test.ts::Telegram rich send 401 stops before plain fallback and retains its cause": 0.089567,
+    "hub/test/telegram-liveness.test.ts::Telegram rich send 403 stops before plain fallback and retains its cause": 0.085056,
+    "hub/test/telegram-liveness.test.ts::Telegram rides out 409 for 60 seconds then reports another consumer without replacing its lease": 0.437753,
+    "hub/test/telegram-liveness.test.ts::Telegram unblocked after 403 resumes on unchanged reload while configuration-disabled stays stopped": 0.117044,
+    "hub/test/telegram-messenger.test.ts::configured Telegram uses the production factory for token checks and a paired send": 0.218878,
+    "hub/test/telegram-messenger.test.ts::shutdown aborts held Telegram getMe during native factory reload": 0.095456,
+    "hub/test/telegram-messenger.test.ts::Telegram configuration reload starts the native client only when enabled": 0.133125,
+    "hub/test/telegram-messenger.test.ts::Telegram refusal reaches actual frame log journal and artifact sinks without its token": 0.122747,
+    "hub/test/telegram-mute.test.ts::mute fixture drains native writers and SQLite after aborted startup": 0.075876,
+    "hub/test/telegram-mute.test.ts::mute fixture drains native writers and SQLite after missed receipt": 0.070958,
+    "hub/test/telegram-mute.test.ts::mute fixture drains native writers and SQLite after rejected startup": 0.031361,
+    "hub/test/telegram-mute.test.ts::Telegram mute counts each eligible source once and a replacement pairing starts with a fresh count": 0.139221,
+    "hub/test/telegram-mute.test.ts::Telegram mute suppresses three General messages but keeps a hub notice and unmute reports the count": 0.325128,
+    "hub/test/telegram-mute.test.ts::Telegram unmute interruption after commit preserves the count reset without replaying its reply": 0.166016,
+    "hub/test/telegram-pacing.test.ts::a 429 holds new sends to every chat and caps retry_after at five minutes": 0.039524,
+    "hub/test/telegram-pacing.test.ts::a plain fallback 401 stops the remote with one cause and never falls back further": 0.041902,
+    "hub/test/telegram-pacing.test.ts::a plain fallback 403 stops the remote with one cause and never falls back further": 0.03595,
+    "hub/test/telegram-pacing.test.ts::a rich 401 stops the remote with one cause and never falls back further": 0.034644,
+    "hub/test/telegram-pacing.test.ts::a rich 403 stops the remote with one cause and never falls back further": 0.032655,
+    "hub/test/telegram-pacing.test.ts::a rich 429 retries the same rich request after the hold without falling back": 0.033508,
+    "hub/test/telegram-pacing.test.ts::a rich 5xx stays fenced without fallback or replay": 0.028793,
+    "hub/test/telegram-pacing.test.ts::a rich accepted without receipt stays fenced without fallback or replay": 0.027708,
+    "hub/test/telegram-pacing.test.ts::a rich disconnect stays fenced without fallback or replay": 0.026096,
+    "hub/test/telegram-pacing.test.ts::delivery reactions wait behind the bot-wide 429 hold and ordinary sends in per-chat order": 0.03768,
+    "hub/test/telegram-pacing.test.ts::interruption between fallback parts rolls back the plan and recovery delivers the complete group once": 0.041932,
+    "hub/test/telegram-pacing.test.ts::native remote tests and old-chat notices share General pacing and the bot-wide hold": 0.046529,
+    "hub/test/telegram-pacing.test.ts::one request owns each chat while other chats run and cards overtake only queued ordinary sends": 0.055055,
+    "hub/test/telegram-pacing.test.ts::pacing fixture drains writers and closes SQLite after aborted receipt": 0.097956,
+    "hub/test/telegram-pacing.test.ts::pacing fixture drains writers and closes SQLite after missed receipt": 0.104251,
+    "hub/test/telegram-pacing.test.ts::pacing fixture drains writers and closes SQLite after rejected startup": 0.026475,
+    "hub/test/telegram-pacing.test.ts::pre-serving held getMe abort releases acquisition before joining startup": 0.09439,
+    "hub/test/telegram-pacing.test.ts::pre-serving held getMe missing startup deadline releases acquisition before joining startup": 0.125188,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after replace during 429": 0.033993,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after replace during 429 across reopen": 0.035102,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after replace during pacing": 0.033635,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after replace during pacing across reopen": 0.030523,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after unpair during 429": 0.033392,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after unpair during 429 across reopen": 0.035569,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after unpair during pacing": 0.033036,
+    "hub/test/telegram-pacing.test.ts::queued project content is fenced after unpair during pacing across reopen": 0.032768,
+    "hub/test/telegram-pacing.test.ts::reopen retains the remaining bot-wide 429 deadline for every chat": 0.032672,
+    "hub/test/telegram-pacing.test.ts::reopen retains the remaining per-chat request spacing": 0.029716,
+    "hub/test/telegram-pacing.test.ts::rich rejection keeps every fallback part ahead of later General messages and maps each accepted part": 0.036219,
+    "hub/test/telegram-pacing.test.ts::stop joins Telegram sends during 429 delay and leaves no timer or active writer": 0.027312,
+    "hub/test/telegram-pacing.test.ts::stop joins Telegram sends during active request and leaves no timer or active writer": 0.026792,
+    "hub/test/telegram-pacing.test.ts::stop joins Telegram sends during pacing delay and leaves no timer or active writer": 0.024631,
+    "hub/test/telegram-pacing.test.ts::twenty General sends survive a 429 complete and ordered with durable attempts and one-second pacing": 0.446726,
+    "hub/test/telegram-pairing.test.ts::Telegram private starts respect stranger limits and CLI approval names the paired project": 0.475258,
+    "hub/test/telegram-pairing.test.ts::Telegram stops and reports a blocked bot from 403 while status keeps its bot link": 0.336484,
+    "hub/test/telegram-pairing.test.ts::Telegram stops and reports a blocked bot from membership while status keeps its bot link": 0.376,
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL after Telegram human commit before adapter receipt replays the durable message once": 1.700463,
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid-update leaves the Telegram offset unconfirmed and restart handles it once": 2.074022,
+    "hub/test/telegram-polling.test.ts::Telegram confirms only durable handling and deduplicates update and message ids": 0.190114,
+    "hub/test/telegram-polling.test.ts::Telegram filters foreign identities unlisted kinds and bots before the handler": 0.098866,
+    "hub/test/telegram-polling.test.ts::Telegram registry isolates private pairing starts and distinct callbacks on the same card": 0.078329,
+    "hub/test/telegram-polling.test.ts::Telegram retains unmatched input with paced retries and one content-free diagnostic": 0.104945,
+    "hub/test/telegram-polling.test.ts::Telegram retries offline with zero timeout and restarts a stalled poll using injected time": 0.13613,
+    "hub/test/telegram-polling.test.ts::Telegram waits for durable handler completion and joins its writer on stop": 0.078341,
+    "hub/test/telegram-render.test.ts::Telegram code fences preserve literal fence prefixes until a complete legal closing line": 0.000176,
+    "hub/test/telegram-render.test.ts::Telegram quoted code and links retain content without forbidden entity containment": 0.000278,
+    "hub/test/telegram-render.test.ts::Telegram tables retain flag data rows instead of treating them as delimiters": 0.000193,
+    "hub/test/telegram-render.test.ts::Telegram text converts headings tables code quotes lists and links with literal offsets": 0.000918,
+    "hub/test/telegram-render.test.ts::Telegram text preserves oversized code as plain text without cutting any entity": 0.002491,
+    "hub/test/telegram-render.test.ts::Telegram text splits before the hundredth body entity and retains every style": 0.003812,
+    "hub/test/telegram-rendering.test.ts::Telegram entities format sends numbered parts without clipping a styled span": 0.13466,
+    "hub/test/telegram-rendering.test.ts::Telegram excludes actual General ask and answer frames while mirroring a workbench message": 0.108073,
+    "hub/test/telegram-rendering.test.ts::Telegram falls back after a Rich Message rejection to text and UTF-16 entities": 0.105846,
+    "hub/test/telegram-rendering.test.ts::Telegram mirrors an agent report as Rich Markdown with its author and kind": 0.243939,
+    "hub/test/telegram-rendering.test.ts::Telegram quoted code passes provider nesting checks and leaves the remote serving": 0.106378,
+    "hub/test/telegram-rendering.test.ts::Telegram silently sends progress and hub notices and filters echoes answers asks and other topics": 0.039108
   },
   "allow": {
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {

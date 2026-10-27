@@ -3,7 +3,7 @@ id: T-1364
 kind: task
 title: Pairing rows show in both inboxes, and Neovim's card approves them
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1103
 branch: t/T-1364-pairing-rows-show-in-both-inboxes-and
 created: 2026-10-27T05:46:50.196Z
-updated: 2026-10-27T07:05:14.568Z
+updated: 2026-10-27T07:23:46.322Z
 ---
 
 ## Summary
@@ -37,12 +37,16 @@ An approved, replaced or expired code leaves both inboxes when the next inbox up
 
 - [x] C1. Headless Neovim shows a waiting Telegram code and a waiting Discord code from the test messenger as "Pair <Messenger> user <id> (<Name>)? code …" rows in the inbox (test).
   - done: impl-1364 · 2026-10-27T05:59:29.723Z
+  - verified: rev-32 [reviewer] · run rev-20261027-1364-final · 2026-10-27T07:23:45.517Z · commit e00ac9c03ceb650cf777c9d32b66fd647e22aaa3
 - [x] C2. Approving from Neovim's card pairs the test messenger, and the row leaves both Neovim's and the web's inbox (test).
   - done: impl-1364 · 2026-10-27T05:59:30.197Z
+  - verified: rev-32 [reviewer] · run rev-20261027-1364-final · 2026-10-27T07:23:45.517Z · commit e00ac9c03ceb650cf777c9d32b66fd647e22aaa3
 - [x] C3. Headless Chromium shows the row with "approve in the terminal or Neovim" and its `cland remote approve` command, at desktop and phone width, with no approve control and no key that approves (test).
   - done: impl-1364 · 2026-10-27T05:59:30.293Z
+  - verified: rev-32 [reviewer] · run rev-20261027-1364-final · 2026-10-27T07:23:45.517Z · commit e00ac9c03ceb650cf777c9d32b66fd647e22aaa3
 - [x] C4. A code that expires under an injected clock leaves both inboxes (test).
   - done: impl-1364 · 2026-10-27T05:59:30.714Z
+  - verified: rev-32 [reviewer] · run rev-20261027-1364-final · 2026-10-27T07:23:45.517Z · commit e00ac9c03ceb650cf777c9d32b66fd647e22aaa3
 
 ## Comments
 
@@ -130,3 +134,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source3 clear at replacement e00ac9c0: A-12634, carrying A-12608/A-12614 forward. Complete three-file delta only; no production or UI assertion changes/dev merge. Awaited child context disposes native Neovim before parent Web hub cleanup; pre-Web native PID/close receipts and post-Web root-owned hub census retain zero-before/zero-after emergency cleanup assertions. Coordinator-approved E-1313 9.2/8.2/4.7 s allowances use exact red-run passing samples, added 2026-10-27/expires 2026-11-03; final reasons correctly identify ordinary Web workers 4. The prior low worker-count discrepancy is resolved. Standards/Spec: no remaining findings. A-12631 is local macOS 5/5 (4 parents+1 native child), positive native close/zero-leak diagnostics and negative-control summary, not a fresh Linux pass. Prior A-12630 remains failed under evidence2. C1–C4 runtime marks remain pending. Follow latest Coordinator 90524ac6: one standard mode-free task verify at this exact head, remeasure allowed cases and retain native zero-leak/close receipts, then request final evidence review.
+
+### rev-32 · 2026-10-27T07:23:45.517Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1364-final
+commit: e00ac9c03ceb650cf777c9d32b66fd647e22aaa3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged e00ac9c0: A-12641 independently audits 8d664bbb/A-12639 against source3/A-12634. Raw ordinary 3624 tests/477 files pass, zero failures/skips; T0 host gate reused, Linux droplet c-8 lon1 T1/all-fallback T2/mapped T4 qa-shipped/Web complete, T3 unselected/deferred. Actual Web workers 4, pinned Headless Shell 156.0.8078.4/1248; separate report-only Web repetitions 10/10 with two workers. Four required generated parent identities and native child all pass; desktop 5.768986988/phone 5.097544436/cross-client 2.623654545 s fit approved E-1313 9.2/8.2/4.7 s caps expiring 2026-11-03. C1–C4 exact real key, numeric grant/snapshot, inert Web field, expiry/split removal and previous-shape assertions are established. Native close exit null/SIGKILL and PID reaped before hub close; autostart census 0/0; no runner cleanup PIDs. Former ARTIFACT-001 passes 0.755276974 s and all 32 selected T4 cases pass. Existing budgets/lint/ratchet remain report-only; original failed receipts stay failed. Standards/Spec: no findings. C1–C4 verified. Coordinator's E-1309 demo landing hold is separate and remains in force; no further run requested.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
