@@ -3,8 +3,9 @@ id: T-1348
 kind: task
 title: Telegram catch-up with late-message times, the gap line and the offline and recovery lines
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-1101
 branch: t/T-1348-telegram-catch-up-with-late-message
 created: 2026-10-26T19:09:07.793Z
-updated: 2026-10-27T03:47:52.129Z
+updated: 2026-10-27T05:04:16.837Z
 ---
 
 ## Summary
@@ -27,8 +28,10 @@ Catch-up from what Telegram kept, each late inbound message marked ("written on 
 
 ## Acceptance criteria
 
-- [ ] C1. A 10-second fake outage with three General posts ends in one gap line "3 General messages missed since …", and a late inbound message is marked with its written time (test).
-- [ ] C2. A four-minute outage under an injected clock also writes "Telegram remote offline since …: <reason>" to General and one recovery line (test).
+- [x] C1. A 10-second fake outage with three General posts ends in one gap line "3 General messages missed since …", and a late inbound message is marked with its written time (test).
+  - done: impl-1348 · 2026-10-27T04:55:32.376Z
+- [x] C2. A four-minute outage under an injected clock also writes "Telegram remote offline since …: <reason>" to General and one recovery line (test).
+  - done: impl-1348 · 2026-10-27T04:55:32.532Z
 
 ## Comments
 
@@ -39,3 +42,46 @@ Rule 20 consumer inventory before optional native-contract additions: production
 ### impl-1348 · 2026-10-27T03:47:52.129Z
 
 Added an independent native gap acknowledgement service and T1 regression while awaiting landed T-1347. It captures missed native General jobs for the current pairing, counts source ids (not split parts), persists an immutable gap key/captured ids before send, acknowledges only on successful delivery, and leaves arrivals during that send missed. Restart retains the same key for the native queue to reconcile rather than resend uncertain deliveries. New internal reported state is terminal and outside existing queued/sending/uncertain status-depth selectors; public wire remains unchanged.
+
+### impl-1348 · 2026-10-27T04:50:37.457Z
+
+Landed T-1347 merged at 5685bf469. Before optional native SendFacts.key/missed additions: TelegramOutbox consumers are TelegramRemote's General/send/reaction paths plus direct telegram-pacing.test.ts queue cases; persisted payload readers are its own resume/prove and the new captured-gap service. Existing payloads omit key/missed and remain valid. New key is optional native storage metadata, with source/mapping null for gap lines; no public frame change. General completion treats durably missed jobs as accounted-for without successful traffic; keyed gap completion still requires sent. Class status and depth readers retain unchanged selectors. Existing legacy frame clients and no-persistence native clients remain covered by prior gateway/messenger regressions.
+
+### rev-26 · 2026-10-27T05:00:29.228Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261027-1348-source-1
+commit: 419d405a7824e1e302d0ea3509ff839cd20d11cf
+scope: full
+findings: [{"severity":"medium","text":"M1: the two new Telegram catch-up/gap test guides are unindexed; unchanged test-docs membership fails. Add only the missing rows and preserve guard receipts.","file":"docs/agents/tests/index.md","line":1},{"severity":"medium","text":"M2: held flushTelegramGap writer has no unconditional barrier/producer cleanup or bounded setup. A pre-release assertion failure leaves the writer pending while finally closes SQLite. Pre-own/release or cancel/join before closing storage; add omitted/aborted setup controls through that disposer without weakening capture/ack assertions.","file":"hub/test/telegram-gap.test.ts","line":24}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Consolidated full audit complete: A-12586 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12586-t-1348-full-source-1-consolidated-findings-at-419d405a7.md. Standards M1/M2; no additional source-level Spec findings. C1/C2 not runtime-verified. A-12584 is local macOS targeted evidence only; A-12585 preserves M1 original red/working-tree green. Prepared corrections are outside this reviewed commit. Request fresh pushed-head review after corrections and preserve ordered T-1345 integration/final-head review; Coordinator owns all verification, enqueue and landing.
+
+### rev-26 · 2026-10-27T05:02:29.803Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261027-1348-source-2
+commit: 275446a9d2e44573a018c0f743f3f3d3e9837e05
+scope: full
+findings: [{"severity":"medium","text":"M2 remaining: ordinary start() waits on readiness using setupClock, but only the negative control advances that clock; lost ordinary readiness never reaches its deadline/disposer. Make setup bound progress independently of receipt, connect test cancellation, and use the same release/cancel+join-before-close disposer. Preserve existing capture/ack and negative-control assertions.","file":"hub/test/telegram-gap-fixture.ts","line":48}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Consolidated correction audit complete, A-12588 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12588-t-1348-source-2-remaining-setup-bound-finding-at-275446a9d.md. M1 resolved; M2 writer drain/storage ordering fixed, but ordinary setup deadline is inert without external fake-clock advancement. No production changes or new Spec finding. A-12587 local macOS targeted receipts do not verify C1/C2 at configured runtime. Fresh pushed-head review required; ordered T-1345 integration/final review and Coordinator all occasion remain separate.
+
+### rev-26 · 2026-10-27T05:04:16.837Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1348-source-3
+commit: 079fa32ba862baca2b11f4c772e015849dfaa0a1
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-12589 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12589-t-1348-source-3-clearance-at-079fa32ba.md. M1/M2 resolved: self-progressing separate setup clock, test abort propagation, same registered cancel/release+producer/observer/driver join before Store close, retained original and negative-control assertions. No production changes since initial full audit and no Spec findings. C1/C2 are not configured-runtime-verified. Keep head stable pending ordered T-1345 integration and fresh final-head source review; Coordinator owns all verification and landing, no item/mode-free run.
