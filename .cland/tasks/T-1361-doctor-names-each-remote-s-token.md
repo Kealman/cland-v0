@@ -3,17 +3,17 @@ id: T-1361
 kind: task
 title: Doctor names each remote's token, connection, pairing and stopped cause with its fix
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1313
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1102
+branch: t/T-1361-doctor-names-each-remote-s-token
 created: 2026-10-27T05:46:49.627Z
-updated: 2026-10-27T05:46:58.638Z
+updated: 2026-10-27T05:48:13.177Z
 ---
 
 ## Summary
@@ -42,3 +42,9 @@ The lines follow doctor's ok, warn and fail shape. A stopped remote is warn, wit
 - [ ] C3. A 401, a 403 and a lasting 409 produced on the fake Bot API each give doctor's cause line with the fix that General's notice for the same stop names (test).
 - [ ] C4. The test messenger's structured stops for 4004 and 4014 give doctor's "new token" and "Message Content toggle" lines with their fixes (test).
 - [ ] C5. During a doctor run with an active Telegram remote, the fake Bot API records no request and doctor opens no network connection (test).
+
+## Comments
+
+### impl-1361 · 2026-10-27T05:48:13.177Z
+
+Rule 20 consumer inventory before changes: RemoteStatusRow/Result in hub/src/protocol.ts and generated shared/wire/index.ts (wire-conformance.ts); daemon.ts builder, dispatch.ts local-management handler and web-authority.ts gate; cli/remote.ts renderer; new doctor reader; telegram-liveness-fixture and Telegram messenger/liveness/pairing/inbound/mute/rendering/pacing frame tests; remote-cli and web-authority tests. Durable RemoteStatus readers/writers: remote/state.ts and gateway.ts, telegram.ts terminal membership write, remote-state.test.ts, gateway-state tests plus their fixtures. Search covered hub/src, hub/test (all tiers), nvim, web, shared, shipped .agents skills, qa briefs and docs/startup guidance. nvim/web have no existing remote.status consumer; permissions and startup paths remain unchanged. Keep reason and every prior field; add optional stopCause, read older rows/replies without it, migrate SQLite additively. Existing legacy messenger/status fakes stay valid, with explicit previous-wire-shape doctor coverage. Shared cause/fix wording will live in notices.ts and structured terminal Error metadata, never parsed from native error text.

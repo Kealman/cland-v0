@@ -3,17 +3,17 @@ id: T-1364
 kind: task
 title: Pairing rows show in both inboxes, and Neovim's card approves them
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1313
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1103
+branch: t/T-1364-pairing-rows-show-in-both-inboxes-and
 created: 2026-10-27T05:46:50.196Z
-updated: 2026-10-27T05:46:59.738Z
+updated: 2026-10-27T05:49:23.632Z
 ---
 
 ## Summary
@@ -38,3 +38,9 @@ An approved, replaced or expired code leaves both inboxes when the next inbox up
 - [ ] C2. Approving from Neovim's card pairs the test messenger, and the row leaves both Neovim's and the web's inbox (test).
 - [ ] C3. Headless Chromium shows the row with "approve in the terminal or Neovim" and its `cland remote approve` command, at desktop and phone width, with no approve control and no key that approves (test).
 - [ ] C4. A code that expires under an injected clock leaves both inboxes (test).
+
+## Comments
+
+### impl-1364 · 2026-10-27T05:49:23.632Z
+
+Implementation seams: existing optional Inbox.pairings + pairing.approve; no wire/schema/authority changes. Consumer trace: shared/wire InboxPairing, hub inbox publication and remote filtering already own this contract; nvim state.set_inbox currently drops pairings and inbox rendering/actions omit them; web inbox-visit/InboxArea omit them. Web InboxArchive shares visit entries but reads only departures; Shell mounts visit provider. Existing stub/old-hub tests omit pairings and must remain valid. Planned evidence: headless Neovim real frame/fake-messenger grant and injected-clock expiry, and isolated Headless Shell desktop/phone inert controls and live removal. Preserve other ask/approval key regressions.

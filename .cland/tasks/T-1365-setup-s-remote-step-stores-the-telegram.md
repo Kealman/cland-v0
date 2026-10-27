@@ -3,17 +3,18 @@ id: T-1365
 kind: task
 title: Setup's remote step stores the Telegram token through a hidden prompt and enables the remote
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1313
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1104
+branch: t/T-1365-setup-s-remote-step-stores-the-telegram
 created: 2026-10-27T05:46:50.331Z
-updated: 2026-10-27T05:47:00.098Z
+updated: 2026-10-27T05:49:18.840Z
 ---
 
 ## Summary
@@ -39,8 +40,14 @@ The step is written so that Discord (11) and the speech key (09) can join it as 
 
 ## Acceptance criteria
 
-- [ ] C1. With a scripted prompter, a terminal run shows the remote step after the hub and before the Aide, gives the BotFather guidance, reads a made-up token through the hidden question, stores it, enables `remote.telegram` and reloads the hub, ending in `done` (test).
+- [ ] C1. With a scripted prompter, a terminal run shows the remote step after the hub and before the Aide, gives the BotFather guidance, reads a made-up token through the hidden question, stores it, enables `remote.telegram` and reloads the hub, ending in `open` with the pairing step named when nothing is paired and in `done` when an existing pairing is kept (test).
 - [ ] C2. A declined Telegram offer prints `skip` and writes nothing, and a run against a token-present, enabled, paired project asks nothing about Telegram and prints `ok` (test).
 - [ ] C3. Without a terminal the step asks nothing: an untouched Telegram remote prints `skip` with `cland secret set telegram.token`, `cland config set remote.telegram.enabled true` and `cland hub reload`, and a half-configured one (a token without enabling, or enabled without a token) prints `open` with the missing commands (test).
 - [ ] C4. The hidden question echoes nothing, and the token appears in no setup line, narration, `--json` report or hub log (test).
 - [ ] C5. A malformed token is refused at the prompt with the expected format named, and the next well-formed one is stored (test).
+
+## Comments
+
+### impl-1365 · 2026-10-27T05:48:44.635Z
+
+Rule 20 consumer inventory before edits: new setup report row (remote telegram) and Prompter.secret affect hub/src/cli/setup.ts, setup/{runner,types,prompter,handover,hub}.ts and setup steps. Production clients consume SetupReport only in cli/setup; wire remote.status/config.set/hub.reload shapes remain unchanged. Test consumers searched across hub/test, web/test, nvim/test, qa and docs: setup-flow.test.ts (ordered rows/counts and scripts), setup-cli.test.ts (JSON count/rows/relative indexing), setup-hub.test.ts (runner scripts and suffix expectations), setup-prompter{,.test}.ts (fourth question), scenarios/setup.test.ts (T3 terminal transcript/order), setup-handover, setup-accounts, setup-favourite, setup-trust and setup-trust-lock (scripted interface; individual steps do not offer remotes), setup-hub-component (frame client), executor-safety-component (typed SetupMachine unaffected). Existing SetupHub mocks remain source-compatible with optional added operations; previous remote.status reply shape is retained and covered via the real frame client. No Web/Neovim consumer, startup probe or persisted-record reader uses setup report rows. Shipped examples: hub/README.md setup and scratch scenario sections, cli/usage.ts, docs/agents/secrets.md, implement skill/CHANGES; onboarding skill only receives unchanged Aide brief and is unaffected. Brand launch audit is historical and unaffected. New tests use the agreed scripted prompter + sealed frame/projectHub + fake messenger seams; hidden input uses existing raw keypress stream seam.
