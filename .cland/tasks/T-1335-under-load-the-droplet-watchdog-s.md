@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-26T08:21:56.778Z
-updated: 2026-10-27T07:11:32.881Z
+updated: 2026-10-27T08:41:51.560Z
 ---
 
 ## Summary
@@ -48,3 +48,7 @@ When this item is triaged, include the accounts case: a name-reservation race ac
 ### coord · 2026-10-27T07:11:32.881Z
 
 Seen again, 2026-10-27 07:10Z: T-1361's rule 6 run 78578e27 (A-12635) at 994f534a went red on just this flake: cli-identity.test.ts "cland hub stop from a session's shell signals nothing when the hub does not answer…" failed with `database is locked` at new Store (store.ts:439) from session-credential-fixture.ts:13 actorCredential. Run alone at the same head, it passed 5 out of 5 on macOS. Web didn't run, because the run stopped after T3. Per the flaky-rerun rule, there's one resubmit.
+
+### coord · 2026-10-27T08:41:51.560Z
+
+2026-10-27 08:42Z: cli-identity "database is locked" failed twice in a row at T-1361's head 994f534a (78578e27/A-12635, then fb844ac9/A-12659) and passed 5/5 alone on macOS. The fixture part of this item (session-credential-fixture.ts opening a second Store on the live hub.db without a busy timeout) now rides with T-1361 as a Coordinator-posted shared fix: a busy timeout on that connection. The watchdog identity-probe and executor-safety parts stay here.

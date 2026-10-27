@@ -2,8 +2,8 @@
 id: T-1352
 kind: task
 title: The Telegram client and fake Bot API learn inline keyboards, presses, answerCallbackQuery and editMessageText under the server's rules
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1107
 branch: t/T-1352-the-telegram-client-and-fake-bot-api
 created: 2026-10-27T05:43:00.814Z
-updated: 2026-10-27T08:32:34.645Z
+updated: 2026-10-27T08:54:52.551Z
+closed: 2026-10-27T08:54:52.551Z
 ---
 
 ## Summary
@@ -37,10 +38,13 @@ Spec §3.5 and §3.7; Q-1287 (keyboard and callback limits, the 150-second press
 
 - [x] C1. A message sent with an eleven-row inline keyboard comes back from the fake with every button, and a press through the control endpoint arrives as a `callback_query` update naming the message, the presser and the data (test).
   - done: impl-1352 · 2026-10-27T08:30:27.970Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1352-evidence-1 · 2026-10-27T08:48:52.930Z · commit f53c0254c804464fe78ee1da8b0ae594814414b7
 - [x] C2. The fake answers 400 to `answerCallbackQuery` 151 seconds after the press under the injected clock, to `callback_data` of 65 bytes, to an identical edit with "message is not modified" and to any edit of a message that carried ForceReply, and drops a thirteenth button in a row (test).
   - done: impl-1352 · 2026-10-27T08:30:28.204Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1352-evidence-1 · 2026-10-27T08:48:52.930Z · commit f53c0254c804464fe78ee1da8b0ae594814414b7
 - [x] C3. No token appears in any error, log line or receipt from the new calls, including a fault that echoes the token (test).
   - done: impl-1352 · 2026-10-27T08:30:28.565Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1352-evidence-1 · 2026-10-27T08:48:52.930Z · commit f53c0254c804464fe78ee1da8b0ae594814414b7
 
 ## Comments
 
@@ -64,3 +68,43 @@ findings: [{"severity":"medium","text":"M1 Standards/fixture: callback-expiry ca
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Consolidated source audit A-12655: Standards M1 only; no additional Spec/fixture findings. Reviewed additive client methods/types, stored markup/press identity, UTF-8 and row/total caps, edits/ForceReply/expiry/faults, token-free captures/error controls, previous send shape and all listed consumers. Existing T2 manifest/docs index valid, README/skill provenance updated. A-12654 remains reported local macOS targeted summary (14 files/125 cases), not configured/Linux/browser proof. C1–C3 unverified. Corrected pushed-head source review required before mode-free verify; Coordinator owns any later dev merge and landing.
+
+### impl-1352 · 2026-10-27T08:33:06.924Z
+
+Source-1 M1 fixed at f53c0254c804464fe78ee1da8b0ae594814414b7: expiry fixture injects FakeClock only into the server, leaves client HTTP deadlines live, and adds an independent 5,000 ms native test bound. All 150/151-second success/refusal and final request assertions unchanged; guide updated. API file rerun locally on macOS: 21/21 passed; npm run typecheck, closed-item-wording and diff checks passed. Production/fake sources unchanged from f8edfcd3e; full 125-case Telegram serial receipt remains prior-head targeted evidence, with the changed API file rerun at this head. No Linux or queued verify evidence yet. No dev merge after the source review, per rule 11.
+
+### rev-26 · 2026-10-27T08:33:34.120Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1352-source-2
+commit: f53c0254c804464fe78ee1da8b0ae594814414b7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-12658. M1 resolved: fake server expiry alone uses FakeClock, client HTTP deadlines remain live and the case has an independent 5,000 ms native bound; guide matches. Exact 150/151-second and all final assertions preserved. Entire two-file correction inspected; production/fake implementation and A-12655 consumer/compatibility audit unchanged, no dev merge. Corrected API 21/21 is reported local macOS targeted evidence; original 14-file/125-case matrix remains prior-head. C1–C3 remain unverified pending exact-head original configured execution/timing/load receipts. Keep reviewed head stable for authorized mode-free verify; Coordinator owns landing.
+
+### impl-1352 · 2026-10-27T08:47:40.721Z
+
+Exact-head runtime receipt: e6fcfe32-73f8-4837-9ad3-a5078ac8daef / A-12661 at f53c0254c804464fe78ee1da8b0ae594814414b7. Linux x64 droplet c-8 lon1; T0,T1,all-T2 fallback,Web exit 0; 3624 pass, zero fail/cancelled/skipped/todo. T3 deferred (no changed T3/T4); budgets/test lint report-only; host typecheck receipt c0aec9fbb61bf3b9cd9532a6eaaf588344a0e9a6 reused, not repeated remotely. Web installed Chrome Headless Shell 156.0.8078.4 / playwright chromium-headless-shell v1248. New API cases' normal-run Linux durations: eleven rows/press 0.060180067 s; callback expiry 0.032685932 s; keyboard limits 0.027920617 s; outcome edit 0.022045788 s; ForceReply 0.013092522 s; secret/failure classes 0.085677228 s, all recorded pass. None reaches 3 s. These per-case durations exclude phase/setup/load-repetition overhead. Droplet lifetime 744 s, cost $0.0517. Final evidence review requested from reviewer on original run/log; head remains clean and unchanged.
+
+### rev-26 · 2026-10-27T08:48:52.930Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1352-evidence-1
+commit: f53c0254c804464fe78ee1da8b0ae594814414b7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, A-12663; C1–C3 verified at unchanged source-2 head. Original A-12661/e6fcfe32 independently yields 3,624 ordinary passes, no failures/cancelled/skips/TODO, plus 30 separate load passes: six named card/expiry/limits/edit/ForceReply/security identities each exact 5/5. Max new execution 0.208706655 s; no >=3 s allowance needed. T0/all T1/fallback all T2 hub+Neovim/Web completed on Linux droplet; T3/T4 unrun. Pinned Headless Shell 156.0.8078.4/v1248 recorded; reused host typecheck c0aec9fbb61bf3b9cd9532a6eaaf588344a0e9a6 was not remotely repeated. Budget/test-lint notices remain report-only. Coordinator f2206bd6 accepts this task gate; enqueue/landing remain separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-27T08:54:52.551Z
+
+Merged 072948054af236d1b334534d86e49ff0bafb4191 onto dev.

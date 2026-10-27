@@ -3,7 +3,7 @@ id: T-1361
 kind: task
 title: Doctor names each remote's token, connection, pairing and stopped cause with its fix
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1102
 branch: t/T-1361-doctor-names-each-remote-s-token
 created: 2026-10-27T05:46:49.627Z
-updated: 2026-10-27T07:12:19.888Z
+updated: 2026-10-27T08:52:53.525Z
 ---
 
 ## Summary
@@ -105,3 +105,45 @@ findings: [{"severity":"medium","text":"M1 Evidence: required full run 78578e27/
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Evidence not clear; A-12636 records the independently inspected original failure. 4,575 ordinary passes, one failure and five reasoned skips; no scoped load records. T0/T1/T2 exit 0; executed T3 exits 1, Web zero executed tests. Nine doctor cases passed, but C1–C5 remain unverified pending accepted final evidence. Source-2 A-12606 remains unchanged; no new source-design finding and no Reviewer runtime reproduction. Coordinator owns diagnosis, recovery occasion and landing.
+
+### impl-1361 · 2026-10-27T08:42:26.480Z
+
+Coordinator-posted shared fix under rule 11 (02c4999e) applied to session-credential-fixture.ts: its second Store connection now opens DatabaseSync with timeout 10_000, with a T-1335 comment; no product code changed. Exact repeated A-12659 error: `Error: database is locked` at Store:439 (pragma journal_mode = wal; foreign_keys = on), via actorCredential before CLI action. Startup-write audit: T-1361 adds one `ALTER TABLE remote_status ADD COLUMN stop_cause TEXT` in RemoteState when that column is absent. Because the base CREATE TABLE still omits stop_cause, this is an additional DDL/autocommit write on first open of fresh or older databases. Reopening an already migrated database adds only the PRAGMA table_info read and no new migration write. Store constructor's WAL pragma/schema/migrate/index/sequence work predates this item. No claim that the stack proves the lock owner or that this new migration caused the failure. Running requested cli-identity + serial matrix next, then delta source review.
+
+### impl-1361 · 2026-10-27T08:44:18.444Z
+
+Coordinator follow-up f5176be4 authorizes fresh-schema correction: stop_cause is now in CREATE TABLE remote_status; conditional ALTER remains for existing databases without it. Native SQLite exec-trace regression first failed with observed ['alter table remote_status add column stop_cause text'] on a fresh open (native exit1), then passed after the schema change (exit0). Old-schema control observes exactly one ALTER and unchanged legacy row; reopening observes zero ALTERs and retains structured cause. This removes the extra fresh-db migration write identified by the startup audit. Shared fixture timeout and this schema correction will receive delta source review at the final head.
+
+### impl-1361 · 2026-10-27T08:46:44.278Z
+
+Both Coordinator shared corrections committed/pushed at 045c0b31b9875e073e9ab03c36e3e3df606fe0f9 (tree0fd0ce25fd5d1a9ed25ac1df87136612e8412fde). Final-head cli-identity plus prior full serial matrix: 18 files/170 passing native cases on macOS/local, no failed/cancelled/skipped; typecheck/static guards passed. A-12660 preserves raw final-head outputs and fresh-schema red→green, native DDL fresh0/legacy1/reopen0 trace. Delta source review requested. No configured full runtime receipt yet at this head; Coordinator owns verify all after source clear. Prior Linux full failures at994f534a remain red, not reused as green evidence.
+
+### rev-26 · 2026-10-27T08:47:39.145Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1361-source-3
+commit: 045c0b31b9875e073e9ab03c36e3e3df606fe0f9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Shared-fix delta source clear, A-12662. Entire four-file delta matches Coordinator directions 02c4999e/f5176be4: fixture-only native SQLite timeout 10,000; fresh remote_status includes stop_cause, guarded legacy ALTER preserved; real exec trace fresh0/legacy1/reopen0 plus native status assertions and guide. A-12660 original fresh-schema red/green inspected; all 18 final-head local macOS logs independently sum to 170 passes with manifest-matching counters and zero fail/cancel/skip. No Linux/browser/full-suite result at this new head. Both old-head failed runs remain red; no proven contention recovery yet. C1–C5 remain unverified. Keep head stable for Coordinator-owned next verify all, followed by original-record final evidence review; no item verify or landing authorization.
+
+### impl-1361 · 2026-10-27T08:52:10.795Z
+
+Coordinator-authorized tier correction 85ec4944 committed at eddd05f311dc02bf790c62b04dc678012fd96045: native DDL trace tests moved unchanged to new T2 remote-state-migration.test.ts, five original persistence cases remain T1. Product/fixture behavior unchanged since source-3. Actual lint-tiers refusal retained native exit1 then corrected exit0; suggested --list argument form was unsupported and not counted as the defect receipt. Final-head cli-identity + serial matrix: 19 files/170 local macOS passes, zero fail/cancelled/skipped; typecheck/static guards green. Delta source review requested. Full verify admission at prior head was refused before execution, so no new full runtime evidence exists.
+
+### rev-26 · 2026-10-27T08:52:53.525Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1361-source-4
+commit: eddd05f311dc02bf790c62b04dc678012fd96045
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Tier-split delta source clear, A-12665. Coordinator-authorized two trace controls/helper moved unchanged to T2 remote-state-migration; original five persistence cases remain T1. Product/credential-fixture unchanged; sorted tier row, exact indexed guide and skill provenance reviewed. A-12664 original admission red and actual lint green inspected; unsupported --list separately labeled. Nineteen final-head local macOS logs independently total 170 passes, no fail/cancel/skip. Refused submission ran no tests; both old Linux failures stay red. C1–C5 remain unverified pending Coordinator-owned exact-head verify all and original-record evidence review.
