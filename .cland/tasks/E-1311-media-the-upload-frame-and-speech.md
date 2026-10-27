@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.753Z
-updated: 2026-10-25T14:12:33.956Z
+updated: 2026-10-27T23:37:48.528Z
 ---
 
 ## Goal
@@ -83,3 +83,50 @@ In a scratch project with the human paired on the fake, QA sends a photo with a 
 - Research: `docs/research/speech-to-text.md` on `research/speech-to-text` (ac744986), the interface, the nine kinds, timeouts and retries, the `command` contract and ElevenLabs's data use; `docs/research/telegram-remote.md` on `research/telegram-remote` (2a81ecc9), file sizes and the CRLF caption shift.
 - Code: `hub/src/hub/web-edge.ts`, `hub/src/hub/store.ts` (artifacts), `hub/src/init/config.ts` (`[artifacts]`), `web/src/Composer.tsx`, `web/src/artifacts/ArtifactViewer.tsx`, `web/src/artifacts/InlineArtifact.tsx`, `nvim/lua/cland/artifacts.lua`, `hub/src/executor/droplet/api.ts` (redirects refused, typed errors).
 - GLOSSARY: Transcript (added for v0.3); Artifact.
+
+## Plan
+
+```yaml
+stages:
+  - name: the upload frame, the files client and the speech seam
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1381
+      - - T-1382
+        - T-1393
+      - - T-1383
+        - T-1384
+      - - T-1392
+  - name: media on Telegram, the composer and doctor
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1385
+        - T-1386
+      - - T-1387
+      - - T-1391
+      - - T-1394
+  - name: voice end to end and the docs
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1388
+        - T-1389
+        - T-1390
+        - T-1395
+```
+
+## Comments
+
+### coord · 2026-10-27T23:37:48.528Z
+
+Plan and decisions (coord, 2026-10-28 00:0xZ). Tickets T-1381–T-1395 from the draft A-12923 (coord's sub-agent, against dev c675faa3). Three stages instead of the Order's seven save four Linux+macOS cover pairs; the epic's QA demo runs on dev after stage 3.
+- Messenger boundary: everything except Telegram transport and rendering is messenger-neutral (artifact.upload and its byte path, the durable media queue and album grouping, what is transcribed, the voice pipeline and its texts, the outbound image/file/line choice and the once-per-remote key, the speech seam and both providers), so E-1312's Discord media stage adds only Discord's fetch, upload and rendering.
+- Open, awaiting the human (ask 62b8d32f): once-per-remote artifacts (T-1387) and the audio of a voice note that answers a card (T-1390). Both tickets carry the Coordinator's recommendation and are held until the answer; they sit in stages 2 and 3.
+- T-1385 overlaps T-1378 (Bugs; the non-text update stall, ask 82ff046e): whichever lands first, the other builds on it.
+- Shared-contract tickets (rule 20): T-1382 (artifact.upload frame, authority tables, [artifacts] max_upload_mb) and T-1388 (messenger factory signature) list their consumers; coord runs a full verify all before enqueueing T-1382.
+- Stage 2 lanes [T-1385, T-1386] and [T-1387] share telegram.ts/state.ts/media.ts: landings serialised, T-1385 first.
