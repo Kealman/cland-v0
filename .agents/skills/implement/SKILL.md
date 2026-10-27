@@ -80,6 +80,14 @@ and `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`. Inbound te
 replies, feedback and lost-result replay use `docs/agents/tests/hub-test-telegram-inbound.test.ts.md`.
 Attach handlers to the registry; keep native identity/recovery outside frames,
 reconcile feedback with durable session stages, and join replay-safe handlers on stop. Keep unmatched input paced and unconfirmed.
+For Telegram liveness, use the production-factory/frame and fake-clock controls in
+`docs/agents/tests/hub-test-telegram-liveness.test.ts.md`. Observe native poll close
+at timeout plus 15 seconds, including zero-timeout offline polls. Preserve the
+60-second 409 grace without signalling another token consumer; fatal 401/403/409
+notices use `remoteNotice` and the project redactor, then the existing disable path.
+Retain authenticated web service and unchanged-reload recovery for failed enabled
+clients; configuration-disabled clients stay stopped. Existing role clauses cover
+the same remote isolation and secret boundaries without new permission lines.
 For native Telegram `/start`, blocked membership and disabled bot-link facts, use
 `docs/agents/tests/hub-test-telegram-pairing.test.ts.md`. Keep injected handlers
 first; fatal membership records its sanitized cause/General notice before
@@ -92,6 +100,9 @@ Markdown free of automatic entity detection and previews, preserve plain text
 on conversion failure, and budget numbering plus the header before splitting
 by code points or entity count. Never clip an entity; retain UTF-16 offsets.
 Wait for every accepted part's durable source mapping before shutdown.
+Rich sends that receive 401/403 must reach the fatal remote boundary before plain
+fallback; retain those controls in the liveness test guide as well as ordinary
+rendering-rejection fallback.
 
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and

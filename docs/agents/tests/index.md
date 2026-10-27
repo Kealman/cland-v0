@@ -5,6 +5,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | Test file | Guidance |
 | --- | --- |
 | [`hub/test/telegram-api.test.ts`](../../../hub/test/telegram-api.test.ts) | [Notes](hub-test-telegram-api.test.ts.md) |
+| [`hub/test/telegram-liveness.test.ts`](../../../hub/test/telegram-liveness.test.ts) | [Notes](hub-test-telegram-liveness.test.ts.md) |
 | [`hub/test/telegram-messenger.test.ts`](../../../hub/test/telegram-messenger.test.ts) | [Notes](hub-test-telegram-messenger.test.ts.md) |
 | [`hub/test/telegram-render.test.ts`](../../../hub/test/telegram-render.test.ts) | [Notes](hub-test-telegram-render.test.ts.md) |
 | [`hub/test/telegram-rendering.test.ts`](../../../hub/test/telegram-rendering.test.ts) | [Notes](hub-test-telegram-rendering.test.ts.md) |

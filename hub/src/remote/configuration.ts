@@ -26,7 +26,7 @@ export class ConfiguredGateway {
     const candidate = structuredClone({ settings: { remote: config.remote, speech: config.speech }, secrets });
     const work = this.#work.then(async () => {
       if (this.#closing) throw new Error('gateway is stopping');
-      if (isDeepStrictEqual(candidate, this.#loaded)) return;
+      if (isDeepStrictEqual(candidate, this.#loaded) && !this.#gateway?.needsRestart()) return;
       await this.#gateway?.stop();
       if (this.#closing) throw new Error('gateway is stopping');
       this.#gateway = undefined;

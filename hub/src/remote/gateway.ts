@@ -188,6 +188,9 @@ export class Gateway {
     catch (error) { this.#disable(remote, error); return { connected: false, lastInbound: null, lastOutbound: null, botLink: null }; }
   }
 
+  /** A local reload retries runtime/startup failures even with unchanged configuration. */
+  needsRestart(): boolean { return this.#disabled.size > 0; }
+
   pairingReplaced(messenger: RemoteVia, previous: Pairing): void {
     const remote = this.#started.find(remote => remote.via === messenger);
     if (!this.#open || !remote || this.#disabled.has(remote) || !remote.pairingReplaced) {

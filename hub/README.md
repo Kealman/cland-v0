@@ -545,6 +545,10 @@ remains a shutdown error. A directly constructed gateway defaults to a memory
 sink; the daemon supplies hub.db storage, overridable through `gatewayState`.
 Sinks expose `status()` and `setStatus()`. A new start resets that remote's
 status before setup.
+An unchanged `cland hub reload` retains healthy configured clients. If a
+configured gateway has disabled a client, reload first joins its stop and
+recreates the enabled, credentialed clients even when configuration and secrets
+are unchanged. A configuration-disabled messenger remains stopped.
 Native Telegram membership kicks and HTTP 403 failures stop that remote and
 post one redacted hub notice in General with the cause and recovery instruction.
 `src/remote/notices.ts` owns that diagnostic boundary; it does not grant remote
@@ -1375,7 +1379,9 @@ requires an injected factory and otherwise reports its client as unavailable.
 Tests use `testMessenger` or the loopback fake Bot API with fabricated credentials.
 A changed remote/speech
 snapshot or resolved secret drains the configured gateway and creates its enabled
-messengers again; an unchanged reload retains it. The reload result follows the
+messengers again. An unchanged reload retains a healthy gateway; a gateway with
+a disabled client is drained and recreated so the human can retry after fixing
+the cause. Only enabled messengers with a resolved token are started. The reload result follows the
 start/stop receipts and a second source-stamp check immediately before publication.
 A source edited during platform preparation refuses with retry guidance and keeps
 the previous config/roles snapshots. Secret or gateway application failures are
@@ -2298,7 +2304,9 @@ Agents are excluded too. Progress and hub notices set `disable_notification`.
 The loaded `remote.telegram.format` defaults to `rich`: `sendRichMessage` carries
 GitHub Flavored Markdown unchanged, with `skip_entity_detection: true` and link
 previews disabled. A rejected rich request falls back to `sendMessage` with
-gateway-computed entities. `format = "entities"` selects that path immediately.
+gateway-computed entities, except that 401/403 stops the remote through its fatal
+cause/fix path without a fallback send. `format = "entities"` selects the plain
+path immediately.
 Neither path uses MarkdownV2. Header and numbering count toward the 4096-code-point
 plain limit; entity offsets remain UTF-16 units. Each part repeats the header,
 with `n/m` when split. The converter prefers block and line boundaries, keeps
@@ -2322,12 +2330,30 @@ and [conversion guide](../docs/agents/tests/hub-test-telegram-render.test.ts.md)
 An enabled Telegram remote with a resolved token uses the daemon's existing
 `Store.remotes` handle and gateway poller lease. Its serial `getUpdates` loop
 requests exactly `message`, `edited_message`, `callback_query` and `my_chat_member`,
-with a 40-second online timeout and the client's 55-second HTTP deadline. Failed
+with a 40-second online timeout and the client's 55-second HTTP deadline. An
+independent injected-clock liveness bound aborts and joins a stalled request at
+its poll timeout plus 15 seconds: 55 seconds online and 15 seconds for a
+zero-timeout offline probe. Its diagnostic says the poll stalled and polling
+restarts. Failed
 polls wait one injected-clock second before retrying with timeout zero; a successful
 exchange restores the 40-second timeout. A provider `retry_after` replaces that
-wait, bounded to five minutes. A 401 or 403 rejects the remote's lifetime and the
-gateway disables only that messenger. Conflict escalation, outage notices and
-catch-up policy are separate from this polling boundary.
+wait, bounded to five minutes, except that a 409 retains the one-second retry
+within its conflict budget. Consecutive 409 responses get a 60-second grace
+starting at the first conflict; a successful exchange resets it. A lasting 409
+rejects the lifetime as "another consumer of the token". No process is signalled
+or stopped to resolve the conflict, and the existing poller lease stays owned
+until gateway shutdown drains its remotes.
+
+A 401 or 403 immediately rejects the remote's lifetime and the gateway disables
+only that messenger. Telegram posts one fixed cause/fix hub notice to General
+through `remoteNotice` and the project redactor; its disabled reason retains
+the fixed cause/fix first, followed by bounded sanitized provider detail. A 401 asks for a new token through
+`cland secret set telegram.token`, then `cland hub reload`; a 403 asks to unblock
+the bot, then reload. A lasting 409 asks the human to stop the other consumer,
+then reload. Reload retries a failed enabled client even with unchanged settings.
+The hub, web edge and other remote continue serving after the failure. Outage
+notices and catch-up policy are separate from this polling boundary. See the
+[liveness test guide](../docs/agents/tests/hub-test-telegram-liveness.test.ts.md).
 
 The loop filters before handlers, downloads or commands: only a private chat,
 a non-bot sender and the current pairing's chat and sender ids qualify. It

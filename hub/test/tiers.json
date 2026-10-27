@@ -538,6 +538,7 @@
     "hub/test/task-worktrees.test.ts": "T2",
     "hub/test/telegram-api.test.ts": "T2",
     "hub/test/telegram-inbound.test.ts": "T2",
+    "hub/test/telegram-liveness.test.ts": "T2",
     "hub/test/telegram-messenger.test.ts": "T2",
     "hub/test/telegram-pairing.test.ts": "T2",
     "hub/test/telegram-polling-restart.test.ts": "T3",

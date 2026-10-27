@@ -40,24 +40,33 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
   signal: AbortSignal, exchanged: () => void): Promise<void> {
   const store = options.store;
   let offline = false;
+  let conflictSince: number | undefined;
   let unhandled: number | undefined;
   while (!signal.aborted) {
     let updates: TgUpdate[];
     try {
       const offset = store.get('telegram.offset');
-      updates = await api.getUpdates({ ...(offset === null ? {} : { offset: Number(offset) }),
-        timeout: offline ? 0 : 40, allowed_updates: TELEGRAM_ALLOWED_UPDATES }, { signal });
+      updates = await boundedPoll(api, clock, offset, offline ? 0 : 40, signal);
       if (!Array.isArray(updates)) throw new Error('Telegram returned invalid updates');
       exchanged();
       offline = false;
+      conflictSince = undefined;
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
+      if (error instanceof TelegramError && error.code === 409) {
+        conflictSince ??= clock.now().getTime();
+        if (clock.now().getTime() - conflictSince >= 60_000)
+          throw new TelegramError('getUpdates', 409, 'another consumer of the token');
+      } else conflictSince = undefined;
       offline = true;
-      const delay = error instanceof TelegramError && error.retryAfter !== undefined
-        ? Math.max(1, Math.min(300_000, error.retryAfter * 1_000)) : 1_000;
+      const delay = conflictSince !== undefined
+        ? Math.min(1_000, 60_000 - (clock.now().getTime() - conflictSince))
+        : error instanceof TelegramError && error.retryAfter !== undefined
+          ? Math.max(1, Math.min(300_000, error.retryAfter * 1_000)) : 1_000;
       const waiting = pause(clock, signal, delay);
-      options.log?.({ event: 'telegram-poll-retry', delay, code: error instanceof TelegramError ? error.code : 0 });
+      options.log?.({ event: 'telegram-poll-retry', delay, code: error instanceof TelegramError ? error.code : 0,
+        reason: error instanceof TelegramError ? error.description : 'invalid updates' });
       await waiting;
       continue;
     }
@@ -91,6 +100,22 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
       store.confirmTelegramUpdate(update.update_id, accepted ? dedupe : undefined);
     }
   }
+}
+
+async function boundedPoll(api: TelegramApi, clock: Clock, offset: string | null, timeout: number, signal: AbortSignal): Promise<TgUpdate[]> {
+  // The transport keeps its >=30-second HTTP budget; liveness independently
+  // cancels even an offline zero-timeout request after its own 15-second grace.
+  const deadline = new AbortController();
+  const timer = clock.setTimeout(() => deadline.abort(), (timeout + 15) * 1_000);
+  timer.unref();
+  try {
+    return await api.getUpdates({ ...(offset === null ? {} : { offset: Number(offset) }),
+      timeout, allowed_updates: TELEGRAM_ALLOWED_UPDATES }, { signal: AbortSignal.any([signal, deadline.signal]) });
+  } catch (error) {
+    if (deadline.signal.aborted && !signal.aborted)
+      throw new TelegramError('getUpdates', 0, 'poll stalled after its timeout plus 15 seconds; restarting polling');
+    throw error;
+  } finally { clock.clearTimeout(timer); }
 }
 
 function pause(clock: Clock, signal: AbortSignal, ms: number): Promise<void> {

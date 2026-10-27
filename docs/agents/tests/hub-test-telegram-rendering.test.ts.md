@@ -12,6 +12,8 @@ entity detection/previews and the accepted fake message. The rejection case
 arms one rich refusal before the General send, then requires successful plain
 delivery with independently worked UTF-16 offsets beside an emoji. Neither uses
 MarkdownV2. Arm request/TCP-close observers before sends and retain exact ids.
+Fatal rich-send 401/403 responses stop the remote before fallback; those generated
+production-factory controls live in the [liveness guide](hub-test-telegram-liveness.test.ts.md).
 
 The configured entities case sends a long ASCII block and one emoji bold span.
 It requires two numbered plain sends, an intact entity and a repeated header.

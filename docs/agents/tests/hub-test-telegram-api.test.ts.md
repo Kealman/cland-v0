@@ -72,7 +72,7 @@ POST controls take JSON:
 | `/control/update` | Arbitrary update body without `update_id` | Assigns the next id and queues the redacted body, deliberately bypassing kind/identity filtering for negative controls. |
 | `/control/duplicate` | `update_id` | Adds the exact queued update again, retaining both ids. |
 | `/control/membership` | `user`, `status: "member"` or `"kicked"` | Queued `my_chat_member` update for the bot. |
-| `/control/fault` | `method`, HTTP `code`, optional `echoToken`, `retry_after`, `response` | Arms one refusal for that method; does not accept a send. |
+| `/control/fault` | `method`, HTTP `code`, optional `echoToken`, `description` (up to 4000 characters), `retry_after`, `response` | Arms one refusal for that method; does not accept a send. |
 | `/control/stall` | `enabled: boolean` | Subsequent polls hold even when the requested timeout expires. |
 | `/control/release-polls` | `{}` | Ends held polls, returning their exact ids. |
 

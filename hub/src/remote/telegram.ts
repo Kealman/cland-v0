@@ -41,16 +41,18 @@ export class TelegramRemote implements Remote {
       return operation();
     }).catch(error => {
       if (!this.#abort.signal.aborted && error instanceof TelegramError && [401, 403, 409].includes(error.code)) {
-        const cause = error.code === 401 ? 'wrong or revoked token (401)' : error.code === 403 ? 'bot blocked (403)' : 'another consumer of the token (409)';
+        const cause = error.code === 401 ? 'wrong or revoked token (401)'
+          : error.code === 403 ? 'bot blocked (403)' : 'another consumer of the token (409)';
         const fix = error.code === 401 ? 'set a new token with cland secret set telegram.token, then run cland hub reload'
-          : error.code === 403 ? 'unblock the bot in Telegram, then run cland hub reload' : 'stop the other token consumer, then run cland hub reload';
+          : error.code === 403 ? 'unblock the bot in Telegram, then run cland hub reload'
+            : 'stop the other token consumer, then run cland hub reload';
         if (!this.#fatal) {
           this.#fatal = true;
           this.#stopped = true;
           this.#abort.abort();
           this.#polling?.notice?.(cause, fix);
         }
-        throw new Error(`${error.message}; ${cause}; ${fix}`);
+        throw new Error(`${cause}; ${fix}; ${error.message}`);
       }
       throw error;
     });
@@ -99,8 +101,9 @@ export class TelegramRemote implements Remote {
         try {
           sent = await this.#api.sendRichMessage({ chat_id: pairing.chatId,
             rich_message: { markdown: `${header}\n${message.text}`, skip_entity_detection: true }, ...options }, { signal: this.#abort.signal });
-        } catch {
+        } catch (error) {
           if (this.#abort.signal.aborted) return;
+          if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
         }
         if (sent) { record(sent); return; }
       }

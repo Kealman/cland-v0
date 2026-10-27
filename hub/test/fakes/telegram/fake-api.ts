@@ -40,7 +40,7 @@ export type FakeRequestReceipt = { id: number; method: string; params: Record<st
 export type FakeConnectionReceipt = { id: number; method: string };
 type PendingPoll = FakePollReceipt & { res: ServerResponse; timer?: ClockTimer; ended: boolean };
 type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'hold';
-type Fault = { method: string; code: number; echoToken: boolean; retryAfter?: number; response?: FaultResponse };
+type Fault = { method: string; code: number; echoToken: boolean; description?: string; retryAfter?: number; response?: FaultResponse };
 
 function observe<T>(events: EventEmitter, event: string, accepts: (value: T) => boolean, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -158,9 +158,12 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         if (response !== undefined && !['redirect', 'invalid-json', 'malformed-error', 'disconnect', 'hold'].includes(String(response)))
           return reply(res, 400, { error: 'unsupported fault response' });
         const retryAfter = params.retry_after;
+        if (params.description !== undefined && (typeof params.description !== 'string' || params.description.length > 4_000))
+          return reply(res, 400, { error: 'description must be a string of at most 4000 characters' });
         if (retryAfter !== undefined && (typeof retryAfter !== 'number' || !Number.isInteger(retryAfter) || retryAfter < 0))
           return reply(res, 400, { error: 'retry_after must be nonnegative integer seconds' });
         faults.push({ method: params.method, code: params.code, echoToken: params.echoToken === true,
+          ...(typeof params.description === 'string' ? { description: params.description } : {}),
           ...(typeof retryAfter === 'number' ? { retryAfter } : {}),
           ...(typeof response === 'string' ? { response: response as FaultResponse } : {}),
         });
@@ -193,7 +196,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         if (fault.response === 'malformed-error') return reply(res, fault.code, { ok: false,
           error_code: { value: TELEGRAM_TEST_TOKEN }, description: { value: TELEGRAM_TEST_TOKEN }, parameters: { retry_after: TELEGRAM_TEST_TOKEN } });
         return reply(res, fault.code, { ok: false, error_code: fault.code,
-          description: fault.echoToken ? `Forced fake refusal ${TELEGRAM_TEST_TOKEN}` : 'Forced fake refusal',
+          description: `${fault.description ?? 'Forced fake refusal'}${fault.echoToken ? ` ${TELEGRAM_TEST_TOKEN}` : ''}`,
           ...(fault.retryAfter !== undefined ? { parameters: { retry_after: fault.retryAfter } } : {}),
         }, fault.retryAfter !== undefined ? { 'retry-after': String(fault.retryAfter) } : {});
       }

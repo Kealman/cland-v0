@@ -75,6 +75,11 @@ After storing a rotated token, run `cland hub reload`: it drains and replaces th
 configured client while retaining the numeric pairing and mute. An unchanged
 environment override still wins. `cland remote test <messenger>` uses the active
 client’s test callback; no installed client means an explicit unavailable refusal.
+An enabled Telegram remote stopped by 401, 403 or a lasting 409 also restarts
+on `cland hub reload` with unchanged settings and secrets. Replace a revoked
+token first for 401, unblock the bot for 403, or stop the other token consumer
+for 409. The hub never stops another consumer itself. Configuration-disabled
+remotes stay stopped; an unchanged healthy gateway keeps its clients.
 See [remote command tests](tests/hub-test-remote-cli.test.ts.md).
 
 For Telegram client errors and API-root overrides, use the
