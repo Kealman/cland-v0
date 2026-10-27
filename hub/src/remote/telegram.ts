@@ -127,6 +127,7 @@ export class TelegramRemote implements Remote {
     if (!pairing) return;
     const message = frame.message;
     if (message.answerTo || message.ask && !message.ask.to || message.fromKind === 'human' && message.via === 'telegram') return;
+    if (message.fromKind !== 'hub' && this.#polling!.store.suppressMutedMessage(message.id)) return;
     return this.#track(async () => {
       const author = message.fromKind === 'human' ? message.via === 'discord' ? 'you (Discord)' : 'you' : message.from;
       const header = `${author} · ${message.kind ?? 'message'}`;
@@ -148,6 +149,15 @@ export class TelegramRemote implements Remote {
       if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
       await this.#inbound?.recover();
       const handlers = [...this.#polling.handlers ?? [], {
+        accepts: (update: TgUpdate) => /^\/(?:mute|unmute)(?:@[A-Za-z0-9_]+)?\s*$/.test(update.message?.text ?? ''),
+        handle: async (update: TgUpdate) => {
+          const message = update.message!;
+          const muted = /^\/mute(?:@|\s|$)/.test(message.text!);
+          const reply = this.#polling!.store.applyTelegramMute(String(message.chat.id), message.message_id, muted);
+          // An interrupted or uncertain reply never re-applies an old command.
+          if (reply !== null) await this.#send(String(message.chat.id), reply);
+        },
+      }, {
         accepts: (update: TgUpdate) => telegramCommand(update.message?.text) !== null,
         handle: async (update: TgUpdate) => {
           const project = this.#polling!.projectName?.() ?? 'this project';

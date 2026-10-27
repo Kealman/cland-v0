@@ -41,6 +41,15 @@ Remote management status, test and rotation receipts use the [sealed CLI and
 fake-messenger seam](tests/hub-test-remote-cli.test.ts.md). New pairings store
 the loaded `remote.mute_default`; token reload keeps numeric identity and mute.
 
+Native Telegram `/mute` and `/unmute` affect only eligible General traffic for
+that pairing. Keep hub notices and card paths outside the gate. Persist one
+missed count per General source; `/unmute` resets it and reports the old count.
+New approval resets that count along with applying `mute_default`. Keep command
+effects atomic with chat/message-id receipts before reply I/O so replay after
+interruption cannot reapply them. An interrupted reply is uncertain and stays
+fenced. The [mute guide](tests/hub-test-telegram-mute.test.ts.md) covers the
+frame/fake receipt boundary; status retains its existing mute field.
+
 After pairing, [Telegram phone commands](../../hub/README.md#telegram-phone-commands)
 use the gateway's allowed reads. The native private-chat menu is compared with
 Telegram on every start and written only when its command/description list

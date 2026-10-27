@@ -125,6 +125,12 @@ joining it and stop any late hub before closing storage.
 Preserve old Outbox clients without scheduling options and join every drain on stop.
 Retain the rich 401/403 fatal controls in the Telegram liveness guide.
 
+For Telegram mute, use `docs/agents/tests/hub-test-telegram-mute.test.ts.md`.
+Count eligible General sources before rendering, keep hub notices and card paths
+outside the gate, and apply `mute_default` only at a new pairing. Commit command
+effects with chat/message-id receipts before external reply I/O; preserve the
+post-commit/pre-offset interruption regression and fence uncertain replies.
+
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and
 strip pairing rows and counts at the remote boundary. Trusted pairing callbacks

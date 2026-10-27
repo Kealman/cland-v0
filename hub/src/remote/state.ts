@@ -103,6 +103,39 @@ export class RemoteStore {
     this.#db.prepare(`insert into remote_state (messenger, key, value) values (?, ?, ?)
       on conflict (messenger, key) do update set value = excluded.value`).run(this.#id, key, value);
   }
+  /** Commit the command effect before any external reply or polling receipt. */
+  applyTelegramMute(chatId: string, messageId: number, muted: boolean): string | null {
+    const receipt = `telegram.mute:${chatId}:${messageId}`;
+    if (this.get(receipt) !== null) return null;
+    this.#db.exec('savepoint remote_mute');
+    try {
+      const reply = muted ? 'General stream muted' : `${Number(this.get('mute.missed') ?? 0)} messages arrived while muted`;
+      this.set('mute', String(muted));
+      if (!muted) this.set('mute.missed', '0');
+      this.set(receipt, '1');
+      this.#db.exec('release remote_mute');
+      return reply;
+    } catch (error) {
+      this.#db.exec('rollback to remote_mute; release remote_mute');
+      throw error;
+    }
+  }
+  /** Count General sources, not rendered parts; duplicate frames stay suppressed. */
+  suppressMutedMessage(messageId: string): boolean {
+    const receipt = `mute.message:${messageId}`;
+    if (this.get(receipt) !== null) return true;
+    if (this.get('mute') !== 'true') return false;
+    this.#db.exec('savepoint remote_missed');
+    try {
+      this.set('mute.missed', String(Number(this.get('mute.missed') ?? 0) + 1));
+      this.set(receipt, '1');
+      this.#db.exec('release remote_missed');
+      return true;
+    } catch (error) {
+      this.#db.exec('rollback to remote_missed; release remote_missed');
+      throw error;
+    }
+  }
   /** Synchronous replacement planning and its receipt commit as one unit. */
   transaction<T>(write: () => T): T {
     this.#db.exec('savepoint remote_state_write');

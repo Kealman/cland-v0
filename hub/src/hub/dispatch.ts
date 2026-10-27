@@ -1838,6 +1838,7 @@ export class Dispatcher {
             core.store.transaction(() => {
               remote.setPairing(pairing);
               remote.set('mute', String(this.#options.control?.remoteMuteDefault?.() ?? false));
+              remote.set('mute.missed', '0');
               core.inbox.pairingCodes.clear(frame.messenger);
             });
             if (previous) this.#options.control?.pairingReplaced?.(frame.messenger, previous);

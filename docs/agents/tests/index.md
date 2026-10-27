@@ -10,6 +10,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/telegram-messenger.test.ts`](../../../hub/test/telegram-messenger.test.ts) | [Notes](hub-test-telegram-messenger.test.ts.md) |
 | [`hub/test/telegram-render.test.ts`](../../../hub/test/telegram-render.test.ts) | [Notes](hub-test-telegram-render.test.ts.md) |
 | [`hub/test/telegram-rendering.test.ts`](../../../hub/test/telegram-rendering.test.ts) | [Notes](hub-test-telegram-rendering.test.ts.md) |
+| [`hub/test/telegram-mute.test.ts`](../../../hub/test/telegram-mute.test.ts) | [Notes](hub-test-telegram-mute.test.ts.md) |
 | [`hub/test/telegram-pairing.test.ts`](../../../hub/test/telegram-pairing.test.ts) | [Notes](hub-test-telegram-pairing.test.ts.md) |
 | [`hub/test/pairing-codes.test.ts`](../../../hub/test/pairing-codes.test.ts) | [Notes](hub-test-pairing-codes.test.ts.md) |
 | [`hub/test/pairing-approval.test.ts`](../../../hub/test/pairing-approval.test.ts) | [Notes](hub-test-pairing-approval.test.ts.md) |

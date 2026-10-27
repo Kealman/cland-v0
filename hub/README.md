@@ -2369,6 +2369,30 @@ original disabled cause. See the
 [rendering frame/fake guide](../docs/agents/tests/hub-test-telegram-rendering.test.ts.md)
 and [conversion guide](../docs/agents/tests/hub-test-telegram-render.test.ts.md).
 
+### Telegram mute
+
+With an active native Telegram client and a paired private chat, `/mute` silences
+eligible General messages, including progress. Hub notices still arrive silently;
+card and notice delivery sits outside this General mute gate. `/unmute` resumes
+the stream and sends exactly `N messages arrived while muted`, including zero.
+The count is per General source, before rendering or splitting, and excludes
+Telegram echoes, answers, human asks and other topics. Muted messages are counted,
+never replayed. Repeating `/mute` keeps the accumulated count.
+
+The existing `remote_state` mute flag and missed count survive restart and token
+reload. A new approved pairing applies the loaded `remote.mute_default` (false
+by default) and resets the count; changing that setting leaves an existing
+pairing's state intact. Telegram and Discord state are independent. Status keeps
+its existing mute boolean and management authority is unchanged.
+
+A paired command commits its effect and chat/message-id receipt atomically before
+reply I/O; the polling offset is confirmed only after the handler completes.
+Replay after interruption cannot apply that command again. An uncertain reply
+is not resent; a durable queued reply or positive non-delivery follows the
+outbox retry policy. An interruption before queueing can leave the reply absent;
+a later `/unmute` reports the current count. No extra frame or protocol field is required.
+See the [mute frame/fake guide](../docs/agents/tests/hub-test-telegram-mute.test.ts.md).
+
 ### Telegram send pacing
 
 Every native Telegram send uses `TelegramOutbox`, including General parts,
