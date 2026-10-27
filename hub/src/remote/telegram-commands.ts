@@ -46,7 +46,7 @@ export function commandParts(reply: CommandReply): Formatted[] {
 export function telegramHelp(project: string): CommandReply {
   return new PhoneReply(`${project} — Help`)
     .group('Follow', ['General messages arrive here.', 'Asks arrive as cards; tap an option to answer.', 'Other answer… and Decline… open a reply prompt. /cancel keeps the ask open.', 'Open asks and approvals appear in the inbox.'])
-    .group('Send', ['Write to the Coordinator, reply to a mirrored message, or answer an ask card.', 'Use /decision or /question before your text.'])
+    .group('Send', ['Write to the Coordinator, reply to a mirrored message, or answer an ask card.', '📥 request and item-message replies keep their topic; plan and terminal-approval replies go to General with a reference.', 'Plans are approved in the workbench; terminal approvals in their terminal.', 'Use /decision or /question before your text.'])
     .group('Commands', TELEGRAM_COMMANDS.map(({ command, description }) => `• /${command}${['decision', 'question'].includes(command) ? ' <text>' : ''}: ${description}`))
     .small(['Only the paired Telegram user in this private chat can act.', 'Pairing is approved locally. Session, release and configuration controls stay in the workbench.']);
 }

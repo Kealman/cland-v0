@@ -166,3 +166,12 @@ retain independent request times and per-chat maximum active responses. A held
 send is released by its exact id; a lost-receipt send is present in messages but
 has no success response. Neither observes a token-bearing URL. Fixture disposal
 destroys peers, releases held handlers and joins all handlers before root cleanup.
+
+`Telegram fake captures only its declared fictional public origin and still
+scrubs credential URLs` permits one explicit HTTPS `.invalid` `publicOrigin`
+in captures. It keeps that exact public URL and masks same-origin credential
+paths and bearer values, in both accepted messages and request receipts. It
+rejects credential/path origins and non-fictional domains. Existing captures
+without this option keep the original redaction. Production notice tests also
+inspect outbox payloads before fake capture, so fake redaction cannot hide a
+producer leak.

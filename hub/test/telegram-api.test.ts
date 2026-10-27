@@ -14,6 +14,20 @@ async function control<T>(root: string, operation: string, params?: object): Pro
   return response.body;
 }
 
+test('Telegram fake captures only its declared fictional public origin and still scrubs credential URLs', async t => {
+  const origin = 'https://workbench.example.invalid';
+  const fake = await fakeTelegram(t, { publicOrigin: origin });
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });
+  const sent = await api.sendMessage({ chat_id: 101, text: `${origin}\n${origin}/auth?token=synthetic-only\nBearer synthetic-only` });
+  assert.equal(sent.text, `${origin}\n[redacted]\n[redacted]`);
+  const state = await control<{ messages: TgMessage[]; requests: Array<{ method: string; params: { text?: string } }> }>(fake.url, 'state');
+  assert.equal(state.messages[0]!.text, sent.text);
+  assert.equal(state.requests.find(row => row.method === 'sendMessage')!.params.text, sent.text);
+  for (const publicOrigin of [`${origin}/auth?token=synthetic-only`, 'https://user:synthetic-only@workbench.example.invalid', 'https://example.com']) {
+    assert.throws(() => telegramFakes.fakeTelegramFixture(t, { publicOrigin }), /fake public origin must be/);
+  }
+});
+
 test('Telegram card keyboard preserves eleven rows and a press identifies its message and presser', async t => {
   const fake = await fakeTelegram(t);
   const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });

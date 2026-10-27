@@ -44,8 +44,10 @@ export class TelegramInbound {
       const late = this.#late?.(message.date);
       if (late) parsed.text += `\n\n(${late})`;
       const reply = message.reply_to_message && this.#store.message(String(message.chat.id), String(message.reply_to_message.message_id));
-      await this.#post({ type: 'topic.send', topic: reply?.topic ?? 'general',
-        ...(reply?.message ? { replyTo: reply.message } : {}), ...parsed },
+      const reference = reply?.message ? this.#store.get(`telegram.notice-reference:${reply.message}`) : null;
+      await this.#post({ type: 'topic.send', topic: reference ? 'general' : reply?.topic ?? 'general',
+        ...(reply?.message && !reference ? { replyTo: reply.message } : {}),
+        ...parsed, ...(reference ? { text: `${reference} ${parsed.text}` } : {}) },
       { chatId: String(message.chat.id), messageId: String(message.message_id) }, signal);
     },
   };

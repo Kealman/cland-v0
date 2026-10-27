@@ -1,7 +1,22 @@
-import type { AskCard, AskOutcome, InboxAsk } from '../protocol.ts';
+import type { AskCard, AskOutcome, Inbox, InboxAsk } from '../protocol.ts';
 
 export type CardAction = { option: number } | { kind: 'other' | 'decline' };
-export type RemoteCard = { title: string; question: string; buttons: Array<{ label: string; action: CardAction }> };
+export type RemoteCard = { title: string; question: string; link?: string; preview?: 'message' | 'command'; buttons: Array<{ label: string; action: CardAction }> };
+export type RemoteNotice = { id: string; kind: 'plan' | 'request' | 'message' | 'approval'; since: string; topic: string; reference?: string; card: RemoteCard };
+
+/** Notices share the card renderer, but offer no remote action. */
+export function noticeCards(inbox: Inbox, webOrigin?: string): RemoteNotice[] {
+  return [
+    ...inbox.plans.map(row => ({ id: row.id, kind: 'plan' as const, since: row.since, topic: 'general', reference: `re plan ${row.subject}:`,
+      card: { title: `📥 Plan ${row.subject} · ${row.title}`, question: 'Plans are approved in the workbench.', ...(webOrigin ? { link: webOrigin } : {}), buttons: [] } })),
+    ...inbox.requests.map(row => ({ id: row.id, kind: 'request' as const, since: row.since, topic: row.topic.id,
+      card: { title: `📥 ${row.request} · ${row.from} · ${row.subject}`, question: row.text, preview: 'message' as const, buttons: [] } })),
+    ...inbox.messages.filter(row => !!row.topic.item).map(row => ({ id: row.id, kind: 'message' as const, since: row.since, topic: row.topic.id,
+      card: { title: `📥 ${row.from} · ${row.topic.item}`, question: row.text, preview: 'message' as const, buttons: [] } })),
+    ...inbox.approvals.filter(row => row.answerIn === 'tui').map(row => ({ id: row.id, kind: 'approval' as const, since: row.since, topic: 'general', reference: `re approval ${row.session}:`,
+      card: { title: `📥 ${row.session} · ${row.harness ?? 'approval'}`, question: `Answer in its terminal.\n\n${row.subject.command ?? row.command ?? row.subject.files?.join('\n') ?? 'Waiting for approval'}`, preview: 'command' as const, buttons: [] } })),
+  ];
+}
 
 /** A remote card is a view of the hub's ask, independent of any messenger. */
 export function askCard(ask: InboxAsk): RemoteCard {

@@ -2406,7 +2406,7 @@ native client/fake capability; cards are built by the gateway's card handler.
 
 With Telegram enabled, a valid token and a paired chat, the native adapter sends
 new General messages under an `author · kind` header. Human workbench messages
-use `you`; Discord messages use `you (Discord)`. Human Telegram messages, answers
+use `you`; Discord messages use `you (Discord)`. Human Telegram messages, answers, requests
 and asks to the human are excluded from this message stream; item topics and
 Agents are excluded too. Progress and hub notices set `disable_notification`.
 
@@ -2467,8 +2467,9 @@ production factory, intents and attempts use the project's existing `hub.db`;
 legacy injected adapters without a store use a lifetime-local in-memory queue.
 There is one active outbox drain per chat, with one HTTP send in flight and at
 least 1,000 ms between request starts. Other chats can send independently. Cards
-rank first among queued jobs; ordinary replies, notices and reactions share General's FIFO
-priority. An active request finishes before a later card can send.
+and 📥 needs-you notices rank first among queued jobs; ordinary replies, old-chat
+notices and reactions share General's FIFO priority. An active request finishes
+before a later card can send.
 
 A 429 is positive non-delivery: its `retry_after` holds every chat's sends for
 at most 300,000 ms, then the same immutable request retries. A missing hint uses
@@ -2511,7 +2512,8 @@ is stored in messenger-scoped `remote_state`, bound to its ask and chat; the
 accepted message is mapped to the ask in `remote_messages`. Long questions are
 clipped at a word boundary with `full question in the workbench`, keeping one
 message id and reserving 1,024 code points for the outcome inside Telegram's
-4,096-code-point message budget. Names and option labels stay whole.
+4,096-code-point message budget. Option labels stay whole; exceptionally long
+headers use a bounded preview.
 
 The paired presser's key must match the mapped card's ask. Unissued or cross-ask
 keys answer the press without changing an ask. Option presses use the existing
@@ -2577,6 +2579,39 @@ Card sends use the per-chat queue at card priority:
 401/403 stop, and an uncertain send stays fenced. Replacement parts and proof
 commit together, including their own durable delivery receipt.
 See the [frame/fake card guide](../docs/agents/tests/hub-test-telegram-cards.test.ts.md).
+
+### Telegram needs-you notices
+
+With Telegram enabled, a resolved token and a paired private chat, inbox plans,
+human requests, item-topic messages in the needs-you inbox and TUI approvals
+arrive as 📥 notices. They use the shared card model and text/entities renderer,
+with no `reply_markup`, at card priority outside the General mute gate. A notice
+names its item/sender or session and previews its text or command within one
+message; the full source remains in the workbench. Headers use at most 1,024 code
+points, with an ellipsis when clipped. The full notice, separators and preview
+marker fit 4,096 code points, and entity spans come from the rendered text. A
+public origin longer than 1,024 code points appears as an **Open workbench** link
+with its full target retained. Stable per-chat row keys deduplicate repeated
+inbox publications across restart. Each publication queues notices oldest first
+by retained wait time, then source id and kind for ties. Pairing rows stay local.
+
+| Notice | Action and reply routing |
+| --- | --- |
+| Plan | Names the epic and title; plans are approved in the workbench. Includes only the configured `[web] origin` when nonempty, as a public link; never calls `web.link`. A reply goes to General with `re plan <item>:`. |
+| Review, QA or handover request | Names the request kind, sender and subject. A reply goes to its topic with the real source message as `replyTo`. |
+| Item-topic message | Names sender and item, with a clipped preview. A reply goes to its topic with the real source message as `replyTo`. |
+| Claude Code / TUI approval | Names the session, harness and command and says to answer in its terminal. A reply goes to General with `re approval <session>:`; it answers no approval. |
+
+Plans and TUI approvals have no source message. Their General reference is kept
+in adapter-local durable state, alongside the existing native message map; no
+hub metadata or gateway authority is added. All inbound messages retain
+`via: "telegram"` and the commit-before-feedback/replay guarantees. A reply does
+not subscribe the remote to an item topic: later ordinary agent messages stay
+there, while new needs-you rows can produce new notices. Other notice content
+passes through the gateway's existing secret redactor. The public origin comes
+from validated configuration, without credentials, path, query or fragment;
+web settings apply after a hub restart. See the
+[notice frame/fake guide](../docs/agents/tests/hub-test-telegram-notices.test.ts.md).
 
 ### Telegram polling and durable confirmation
 

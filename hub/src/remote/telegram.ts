@@ -13,7 +13,7 @@ import { TelegramPrompts } from './telegram-prompts.ts';
 import { plainParts } from './telegram-render.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 
-export type TelegramRemoteOptions = TelegramPollingOptions & { projectName?: () => string };
+export type TelegramRemoteOptions = TelegramPollingOptions & { projectName?: () => string; webOrigin?: () => string };
 
 /** The gateway owns this client's lifetime, including explicit tests and old-chat notices. */
 export class TelegramRemote implements Remote {
@@ -166,7 +166,7 @@ export class TelegramRemote implements Remote {
     if (this.#polling) {
       this.#prompts = new TelegramPrompts(this.#polling.store, this.#outbox, (type, fields, ingress) => this.#request(type, fields, ingress),
         (fields, ingress, stored) => this.#inbound!.answer(fields, ingress, stored));
-      this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal, this.#prompts);
+      this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal, this.#prompts, this.#polling.webOrigin);
     }
     this.#pair = pair;
     return this.#track(async () => {
@@ -212,7 +212,7 @@ export class TelegramRemote implements Remote {
     const pairing = this.#polling?.store.pairing();
     if (!pairing) return;
     const message = frame.message;
-    if (message.answerTo || message.ask && !message.ask.to || message.fromKind === 'human' && message.via === 'telegram') return;
+    if (message.kind === 'request' || message.answerTo || message.ask && !message.ask.to || message.fromKind === 'human' && message.via === 'telegram') return;
     if (message.fromKind !== 'hub' && this.#polling!.store.suppressMutedMessage(message.id)) return;
     return this.#track(async () => {
       const author = message.fromKind === 'human' ? message.via === 'discord' ? 'you (Discord)' : 'you' : message.from;

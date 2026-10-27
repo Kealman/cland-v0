@@ -4,7 +4,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { Socket } from 'node:net';
 import type { TestContext } from 'node:test';
 import type { TgMessage, TgUpdate, TgUser, TgInlineKeyboardMarkup, TgReplyMarkup, TgEntity, TgReplyParameters } from '../../../src/remote/telegram-api.ts';
-import { remoteRedactor } from '../../../src/remote/redact.ts';
+import { remoteRedactor, redactValue } from '../../../src/remote/redact.ts';
 import { realClock, type Clock, type ClockTimer } from '../../../src/hub/clock.ts';
 import { onCleanup } from '../../process-cleanup.ts';
 import { abortable, within } from '../../../src/executor/droplet/deadline.ts';
@@ -69,14 +69,25 @@ function observe<T>(events: EventEmitter, event: string, accepts: (value: T) => 
   });
 }
 
-type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; port?: number };
+type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; port?: number; publicOrigin?: string };
 
 /** Own every native resource before binding, including abandoned setup. */
 export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   const clock = options.clock ?? realClock;
   const events = new EventEmitter();
   const lifetime = new AbortController();
-  const redact = remoteRedactor([TELEGRAM_TEST_TOKEN]);
+  const secrets = remoteRedactor([TELEGRAM_TEST_TOKEN]);
+  // A declared fictional public origin is observable; credential URLs still
+  // scrub as one whole token, including ones beginning with this same origin.
+  if (options.publicOrigin) {
+    const origin = new URL(options.publicOrigin);
+    if (origin.protocol !== 'https:' || !origin.hostname.endsWith('.invalid') || origin.origin !== options.publicOrigin)
+      throw new Error('fake public origin must be an HTTPS .invalid origin without credentials, path, query or fragment');
+  }
+  const scrub = secrets.text;
+  const captureText = (text: string) => !options.publicOrigin ? scrub(text) : text.split(/(\b[a-z][a-z0-9+.-]*:\/\/\S+)/gi)
+    .map(part => part === options.publicOrigin ? part : scrub(part)).join('');
+  const redact = Object.assign(secrets, { text: captureText, value: <T>(value: T): T => redactValue(value, captureText) });
   const messages: TgMessage[] = [];
   const forceReplyMessages = new Set<number>();
   let commands: unknown[] = [];
