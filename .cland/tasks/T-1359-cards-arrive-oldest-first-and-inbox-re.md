@@ -3,7 +3,7 @@ id: T-1359
 kind: task
 title: Cards arrive oldest first, and `/inbox` re-sends every open card at the bottom or says "Nothing needs you"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:43:02.158Z
-updated: 2026-10-27T05:43:02.158Z
+updated: 2026-10-27T20:05:44.163Z
 ---
 
 ## Summary

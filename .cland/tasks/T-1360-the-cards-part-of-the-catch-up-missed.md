@@ -3,7 +3,7 @@ id: T-1360
 kind: task
 title: "The cards' part of the catch-up: missed cards, failed outcome edits, and every open card re-sent after 150 seconds"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:43:02.419Z
-updated: 2026-10-27T05:43:02.419Z
+updated: 2026-10-27T20:05:45.050Z
 ---
 
 ## Summary

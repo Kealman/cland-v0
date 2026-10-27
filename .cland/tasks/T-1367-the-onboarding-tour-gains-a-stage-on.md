@@ -3,7 +3,7 @@ id: T-1367
 kind: task
 title: The onboarding tour gains a stage on remote control
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:46:50.673Z
-updated: 2026-10-27T05:46:50.673Z
+updated: 2026-10-27T20:05:45.372Z
 ---
 
 ## Summary

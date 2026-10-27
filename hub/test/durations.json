@@ -66,9 +66,11 @@
       "A-12649",
       "A-12647",
       "A-12721",
-      "A-12719"
+      "A-12719",
+      "A-12873",
+      "A-12877"
     ],
-    "commit": "93dfd9115298e1d19edf00d3c2644ecd5a54c37d"
+    "commit": "605a65a001373835d04e4a6114850ea47a7b4c59"
   },
   "budget": {
     "testSeconds": 5,
@@ -2873,6 +2875,18 @@
     "web/test/pairing.test.ts": {
       "seconds": 11.805583,
       "tests": 4
+    },
+    "hub/test/telegram-approvals.test.ts": {
+      "seconds": 3.83829,
+      "tests": 17
+    },
+    "hub/test/telegram-notices.test.ts": {
+      "seconds": 2.899559,
+      "tests": 13
+    },
+    "web/test/remotes.test.ts": {
+      "seconds": 3.502562,
+      "tests": 2
     }
   },
   "tests": {
@@ -7855,7 +7869,73 @@
     "web/test/pairing.test.ts::Neovim pairing card grants the fake messenger and both inboxes remove approved and expired codes": 2.185243,
     "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (desktop)": 4.651514,
     "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (phone)": 3.91418,
-    "web/test/pairing.test.ts::previous hub inbox without the optional pairings field keeps existing message rows usable": 1.054646
+    "web/test/pairing.test.ts::previous hub inbox without the optional pairings field keeps existing message rows usable": 1.054646,
+    "hub/src/remote/redact.test.ts::only hub output can mask endpoint and attach metadata while identifiers stay strict": 0.00156,
+    "hub/test/executor-watchdog.test.ts::watchdog arm deadline cancels a held native probe without adopting or signalling its late reply": 0.001481,
+    "hub/test/executor-watchdog.test.ts::watchdog arm never adopts a different native birth after an unavailable start probe": 0.001042,
+    "hub/test/executor-watchdog.test.ts::watchdog arm owner drains held work after aborted setup": 0.00187,
+    "hub/test/executor-watchdog.test.ts::watchdog arm owner drains held work after missing receipt": 0.001025,
+    "hub/test/executor-watchdog.test.ts::watchdog arm retries one unavailable native birth before returning a verified identity": 0.007156,
+    "hub/test/gateway-secrets.test.ts::gateway masks hub-owned endpoint metadata but still refuses a credential in an inbound routing field": 0.065044,
+    "hub/test/gateway.test.ts::gateway native ask receipts recover current delivery stage only for their messenger": 0.081769,
+    "hub/test/opencode-adapter.test.ts::a natively launched OpenCode session keeps the gateway serving across its process endpoint frame": 2.343555,
+    "hub/test/sqlite-contention.test.ts::authorization fixture reads an existing credential while a stopped WAL writer holds the store": 0.028763,
+    "hub/test/telegram-api.test.ts::Telegram fake captures only its declared fictional public origin and still scrubs credential URLs": 0.045339,
+    "hub/test/telegram-approvals.test.ts::Telegram approval fixture aborted initial-poll setup drains before SQLite and root cleanup": 0.071115,
+    "hub/test/telegram-approvals.test.ts::Telegram approval fixture omitted initial-poll setup drains before SQLite and root cleanup": 0.078015,
+    "hub/test/telegram-approvals.test.ts::Telegram approval lost-result replay after component restart never runs the command twice": 0.32249,
+    "hub/test/telegram-approvals.test.ts::Telegram approval outcome keeps a long denial note bounded with actor, source and time": 0.413188,
+    "hub/test/telegram-approvals.test.ts::Telegram Approve once runs the scripted Codex command and commits before callback acknowledgement": 0.144872,
+    "hub/test/telegram-approvals.test.ts::Telegram Codex approval clips a 5000-character command and offers three coloured choice rows": 0.222469,
+    "hub/test/telegram-approvals.test.ts::Telegram Deny stops the scripted OpenCode command and a web answer edits its own card": 0.17745,
+    "hub/test/telegram-approvals.test.ts::Telegram drops a closed approval queued behind a flood hold before its card ever leaves": 0.199338,
+    "hub/test/telegram-approvals.test.ts::Telegram foreign approval press gets one private alert without hub frames or record changes across replay and restart": 0.157968,
+    "hub/test/telegram-approvals.test.ts::Telegram harness once closes every mapped approval copy": 0.569079,
+    "hub/test/telegram-approvals.test.ts::Telegram harness withdrawn closes every mapped approval copy": 0.405272,
+    "hub/test/telegram-approvals.test.ts::Telegram late text and reply to a closed approval never consume another ask prompt": 0.163677,
+    "hub/test/telegram-approvals.test.ts::Telegram late text and reply to an open approval never consume another ask prompt": 0.173886,
+    "hub/test/telegram-approvals.test.ts::Telegram refuses approval keys on ask cards and ask keys on approval cards without changing either record": 0.172528,
+    "hub/test/telegram-approvals.test.ts::Telegram stale approval press after restart returns Already answered without hub frames or changing the outcome": 0.220551,
+    "hub/test/telegram-approvals.test.ts::Telegram uncertain approval reply note confirms its input and never retransmits across restart": 0.15365,
+    "hub/test/telegram-approvals.test.ts::Telegram uncertain stale approval outcome stays fenced while callback and later input progress across restart": 0.192742,
+    "hub/test/telegram-cards.test.ts::Telegram cancel clears the decline wait but keeps the ask buttons and sends next text to General": 0.137462,
+    "hub/test/telegram-cards.test.ts::Telegram confirmed prompt answer recovers owed delivery feedback after component restart": 0.186959,
+    "hub/test/telegram-cards.test.ts::Telegram Decline reply to its ForceReply records the reason and folds only the card": 0.150966,
+    "hub/test/telegram-cards.test.ts::Telegram foreign card press gets one private alert without hub frames or card changes and duplicate ids stay inert": 0.117539,
+    "hub/test/telegram-cards.test.ts::Telegram foreign input outside a bot-authored mapped card remains silent": 0.127238,
+    "hub/test/telegram-cards.test.ts::Telegram late General routing survives feedback interruption and restart without consuming its prompt wait": 0.285928,
+    "hub/test/telegram-cards.test.ts::Telegram late reply to a closed card answers only its mapped open ask": 0.177548,
+    "hub/test/telegram-cards.test.ts::Telegram late reply to an open card answers only its mapped open ask": 0.177916,
+    "hub/test/telegram-cards.test.ts::Telegram late text goes to General marked late while its prompt wait and ask stay open": 0.176523,
+    "hub/test/telegram-cards.test.ts::Telegram Other answer sends a separate ForceReply and the next text answers only its ask": 0.175499,
+    "hub/test/telegram-cards.test.ts::Telegram prompt answer losing the inbox-read race notes the closed ask and consumes no General message": 0.16196,
+    "hub/test/telegram-cards.test.ts::Telegram prompt answer lost result replays its durable answer instead of posting to General": 0.187295,
+    "hub/test/telegram-cards.test.ts::Telegram prompt feedback interrupted after commit restarts without a stale note or duplicate answer": 0.206187,
+    "hub/test/telegram-cards.test.ts::Telegram prompt wait survives component restart and consumes the next text once": 0.18876,
+    "hub/test/telegram-cards.test.ts::Telegram reply to an older prompt targets its own ask after a different next-text answer": 0.186561,
+    "hub/test/telegram-cards.test.ts::Telegram stale press on a closed mapped card makes no hub request and preserves its outcome across restart": 0.227456,
+    "hub/test/telegram-cards.test.ts::Telegram typed reply to a free-answer card answers it": 0.125767,
+    "hub/test/telegram-cards.test.ts::Telegram typed reply to an options-only card requires an option number": 0.134788,
+    "hub/test/telegram-cards.test.ts::Telegram uncertain ForceReply send confirms the callback and safely consumes an unmapped reply after restart": 0.212861,
+    "hub/test/telegram-cards.test.ts::Telegram uncertain stale-card outcome fallback releases its callback and later input across restart without retransmission": 0.207035,
+    "hub/test/telegram-notices.test.ts::Telegram handover notice reply targets its real source in the item topic": 0.120801,
+    "hub/test/telegram-notices.test.ts::Telegram item notice reply keeps its topic and source via Telegram without following ordinary agent replies": 0.226157,
+    "hub/test/telegram-notices.test.ts::Telegram long item notice stays one clipped entities message with its full source retained": 0.154672,
+    "hub/test/telegram-notices.test.ts::Telegram notice reply replay after commit and lost result keeps one attributed item-topic message": 0.162325,
+    "hub/test/telegram-notices.test.ts::Telegram one backlog publication sends notices oldest first across sections with stable ties": 0.343018,
+    "hub/test/telegram-notices.test.ts::Telegram oversized plan title and origin keeps the complete notice and entity spans in bounds": 0.189524,
+    "hub/test/telegram-notices.test.ts::Telegram oversized plan title keeps the complete notice and entity spans in bounds": 0.235743,
+    "hub/test/telegram-notices.test.ts::Telegram plan notice has no link without a configured origin": 0.137566,
+    "hub/test/telegram-notices.test.ts::Telegram plan notice links only the configured origin": 0.369728,
+    "hub/test/telegram-notices.test.ts::Telegram plan notice reply goes to General with its reference and no epic-topic reply": 0.250355,
+    "hub/test/telegram-notices.test.ts::Telegram plan, review request, item message and Claude Code approval arrive once as button-free notices": 0.434073,
+    "hub/test/telegram-notices.test.ts::Telegram qa notice reply targets its real source in the item topic": 0.137142,
+    "hub/test/telegram-notices.test.ts::Telegram TUI approval notice reply goes to General with the session reference": 0.138455,
+    "hub/test/tracker-summary.test.ts::hand edits settle for 100 ms after the last watcher notification before re-indexing": 0.011711,
+    "hub/test/tracker.test.ts::a hand edit of an item file is re-indexed before its CLI projections are checked": 1.179956,
+    "hub/test/web-area-state.test.ts::remote state replaces all messenger facts and a previous-hub snapshot clears the optional rows": 0.000791,
+    "web/test/remotes.test.ts::Sessions Remotes renders native outage within one second and clears its error on recovery (desktop)": 2.090575,
+    "web/test/remotes.test.ts::Sessions Remotes renders native outage within one second and clears its error on recovery (phone)": 1.411987
   },
   "allow": {
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {

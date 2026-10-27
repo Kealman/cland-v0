@@ -3,7 +3,7 @@ id: T-1368
 kind: task
 title: The documentation describes the Telegram remote, `cland remote` and `cland secret`
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:46:50.947Z
-updated: 2026-10-27T05:46:50.947Z
+updated: 2026-10-27T20:05:45.783Z
 ---
 
 ## Summary
