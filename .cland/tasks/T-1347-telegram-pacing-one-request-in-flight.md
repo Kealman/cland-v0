@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1099
 branch: t/T-1347-telegram-pacing-one-request-in-flight
 created: 2026-10-26T19:09:07.525Z
-updated: 2026-10-27T02:18:39.492Z
+updated: 2026-10-27T03:01:09.139Z
 ---
 
 ## Summary
@@ -79,3 +79,7 @@ T-1344 landed-contract integration audit before reaction transport changes: pres
 ### impl-1347 · 2026-10-27T02:18:39.492Z
 
 Reaction integration also needs each operation's own receipt rather than the end of the whole chat drain: accepted 👌 must let TelegramInbound persist its existing stored bit while later ordinary/👀 work remains queued. Add an optional internal OutboxClient.settled(job,result) observer after atomic settlement; previous clients omit it. All existing Outbox/fake consumers remain compatible and no wire fields change. The new reaction/429 control now retains an early-completion bound before advancing to later feedback.
+
+### impl-1347 · 2026-10-27T03:01:09.139Z
+
+T-1349 dev f5ae21c8/tracker7c227fdf merged, pushed7728ca749, clean tree. Conflicts resolved retaining queue-only General send path and 400-only rich fallback; T-1349 cause/fix-first diagnostics, bounded poll/conflict behavior and fake long-description controls preserved. Existing four-class controls all green after merge. Complete serial local macOS/Node24: liveness11, outbox26, inbound8, pacing31, rendering6, pairing3 =85 runtime tests; full typecheck/wording lint pass. No Linux/suite/browser/QA claim. Added Coordinator-requested T-1351 source comment at rejected-startup fixture; its invalid-config rejected-startup cleanup assertions remain. T-1348 acknowledged ownership of poll availability/resume, nonfatal outage handling and source-deduplicated missed General after this queue lands. Awaiting T-1346 landing before fresh final-head review; no mode-free verify.
