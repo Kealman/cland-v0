@@ -218,9 +218,10 @@ for (const longOrigin of [false, true]) test(`Telegram oversized plan title${lon
   assert.equal((await f.messages()).filter(message => message.text?.startsWith('📥')).length, 1);
 });
 
-test('Telegram one backlog publication sends notices oldest first across sections with stable ties', async t => {
+test('Telegram one backlog publication sends asks approvals and notices oldest first across sections with stable ties', async t => {
   let publication: Extract<HubFrame, { type: 'inbox' }> | undefined;
   const f = await fixture(t, undefined, frame => {
+    if (frame.type === 'approval') return true;
     if (frame.type !== 'inbox') return false;
     publication = frame;
     return true;
@@ -232,6 +233,13 @@ test('Telegram one backlog publication sends notices oldest first across section
   await f.clock.advance(1000);
   assert.equal((await f.coord.call<{ ok: boolean }>('send', { topic, text: 'Second backlog message' })).ok, true);
   const message = await historyId();
+  await f.clock.advance(1000);
+  const asked = await f.coord.call<{ ok: boolean; ask: string }>('ask', { question: 'Ask between the notices', options: ['Keep'], topic: 'general' });
+  assert.equal(asked.ok, true);
+  await f.clock.advance(1000);
+  await f.request({ type: 'session.launch', name: 'codex-worker', harness: 'codex', role: 'implementer' });
+  f.hub.fakes.codex!.raiseApproval('codex-worker', { id: 'mixed-card', kind: 'command', subject: { command: 'echo mixed' }, choices: ['once', 'deny'] });
+  const hubApproval = (await f.request<Inbox>({ type: 'inbox.list' })).approvals.find(row => row.session === 'codex-worker')!.id;
   await f.clock.advance(1000);
   const second = await f.context();
   assert.ok(epic.localeCompare(second.epic) < 0, 'setup gives tied plans increasing ids');
@@ -254,8 +262,8 @@ test('Telegram one backlog publication sends notices oldest first across section
   const approval = inbox.approvals.find(row => row.session === 'claude-worker')!.id;
   assert.equal(inbox.plans.length, 2);
   assert.equal(inbox.plans[0]!.since, inbox.plans[1]!.since, 'both plans have the same retained wait timestamp');
-  const accepted = until(() => f.state.outbox().filter(job => job.kind === 'card' && job.state === 'sent').length === 5,
-    { timeoutMs: 1000, what: 'all five notices from one publication have durable send receipts' });
+  const accepted = until(() => f.state.outbox().filter(job => job.kind === 'card' && job.state === 'sent').length === 7,
+    { timeoutMs: 1000, what: 'all seven mixed cards/notices from one publication have durable send receipts' });
   void accepted.catch(() => {});
   // A previous hub can publish equal-time rows in either order. Reverse just
   // those two real rows at the public frame seam to prove deterministic ties.
@@ -266,12 +274,44 @@ test('Telegram one backlog publication sends notices oldest first across section
   await driveTelegram(f.clock, f.state, Promise.all([accepted, receiving]));
   await f.hub.stop();
   const notices = await f.messages();
-  assert.equal(notices.length, 5);
-  assert.deepEqual(notices.map(card => f.state.message('101', String(card.message_id))!.message), [request, message, epic, second.epic, approval]);
-  for (const card of notices) {
+  assert.equal(notices.length, 7);
+  assert.deepEqual(notices.map(card => f.state.message('101', String(card.message_id))!.message), [request, message, asked.ask, hubApproval, epic, second.epic, approval]);
+  for (const card of notices.filter(card => card.text!.startsWith('📥'))) {
     assert.match(card.text!, /^📥/);
     assert.equal(card.reply_markup, undefined);
   }
+});
+
+test('Telegram inbox resends all four notice kinds oldest first and a new notice reply retains its topic', async t => {
+  const f = await fixture(t);
+  const { epic, topic } = await f.context();
+  const plan = await f.plan(epic);
+  const { card: review } = await f.sentNotice(topic, 'Review the open plan', { kind: 'request', request: 'review', subject: epic });
+  const { card: message } = await f.sentNotice(topic, 'Open item report');
+  const approval = await f.approval();
+  const originals = [plan, review, message, approval];
+  const copied = until(async () => (await f.messages()).length === 8
+    && f.state.outbox().filter(job => job.state === 'sent').length === 8,
+  { timeoutMs: 1000, what: 'all notice copies durably sent' });
+  void copied.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const update = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/inbox' });
+  await driveTelegram(f.clock, f.state, copied);
+  assert.equal((await within(confirmed, 1000)).params.offset, update.update_id + 1);
+  const copies = (await f.messages()).slice(4);
+  assert.deepEqual(copies.map(row => row.text), originals.map(row => row.text));
+  for (let index = 0; index < copies.length; index++) {
+    const copy = copies[index]!;
+    assert.equal(copy.reply_markup, undefined);
+    assert.deepEqual(f.state.message('101', String(copy.message_id)), {
+      ...f.state.message('101', String(originals[index]!.message_id))!, messageId: String(copy.message_id),
+    });
+  }
+  await f.reply(copies[2]!, 'Reply to the new notice');
+  const history = await f.request<{ messages: TopicMessage[] }>({ type: 'topic.history', topic });
+  assert.equal(history.messages.at(-1)!.text, 'Reply to the new notice');
+  assert.equal(history.messages.at(-1)!.replyTo, f.state.message('101', String(message.message_id))!.message);
+  await f.hub.stop();
 });
 
 test('Telegram plan notice reply goes to General with its reference and no epic-topic reply', async t => {

@@ -74,6 +74,9 @@ After pairing, [Telegram phone commands](../../hub/README.md#telegram-phone-comm
 use the gateway's allowed reads. The native private-chat menu is compared with
 Telegram on every start and written only when its command/description list
 differs. Pairing grants remain local even when `/inbox` or `/status` is read remotely.
+`/inbox` re-sends all open cards and 📥 notices oldest first, with earlier cards
+still working and every mapped copy taking the later outcome edit. An empty
+remote inbox says only "Nothing needs you".
 
 A paired Telegram human can answer an ask by tapping its option card. The hub
 stores the answer with `via: "telegram"` before acknowledging the press and

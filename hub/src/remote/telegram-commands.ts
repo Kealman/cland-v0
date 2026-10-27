@@ -4,7 +4,7 @@ import type { TgBotCommand } from './telegram-api.ts';
 /** One private-chat menu, reconciled with Telegram rather than a local cache. */
 export const TELEGRAM_COMMANDS: readonly TgBotCommand[] = [
   { command: 'status', description: 'Hub, sessions and queues' },
-  { command: 'inbox', description: 'Show everything that needs you' },
+  { command: 'inbox', description: 'Re-send open cards and notices' },
   { command: 'mute', description: 'Mute the General stream' },
   { command: 'unmute', description: 'Resume the General stream' },
   { command: 'decision', description: 'Send a decision' },
@@ -45,7 +45,7 @@ export function commandParts(reply: CommandReply): Formatted[] {
 
 export function telegramHelp(project: string): CommandReply {
   return new PhoneReply(`${project} — Help`)
-    .group('Follow', ['General messages arrive here.', 'Asks arrive as cards; tap an option to answer.', 'Other answer… and Decline… open a reply prompt. /cancel keeps the ask open.', 'Open asks and approvals appear in the inbox.'])
+    .group('Follow', ['General messages arrive here.', 'Asks arrive as cards; tap an option to answer.', 'Other answer… and Decline… open a reply prompt. /cancel keeps the ask open.', '/inbox re-sends open cards and notices oldest first. Earlier cards keep working.'])
     .group('Send', ['Write to the Coordinator, reply to a mirrored message, or answer an ask card.', '📥 request and item-message replies keep their topic; plan and terminal-approval replies go to General with a reference.', 'Plans are approved in the workbench; terminal approvals in their terminal.', 'Late messages stay in General; reply to a card to answer its open ask.', 'Use /decision or /question before your text.'])
     .group('Commands', TELEGRAM_COMMANDS.map(({ command, description }) => `• /${command}${['decision', 'question'].includes(command) ? ' <text>' : ''}: ${description}`))
     .small(['Only the paired Telegram user in this private chat can act.', 'Pairing is approved locally. Session, release and configuration controls stay in the workbench.']);
@@ -73,19 +73,4 @@ export function telegramStatus(project: string, status: import('../protocol.ts')
     .group('Release', releases.length ? releases.map(release => `${release.id} ${release.title}`) : ['None open'])
     .group('This chat', [state.connected ? 'Connected' : 'Disconnected', state.muted ? 'General muted' : 'General on'])
     .small([`Outbox: ${state.outbox}`]);
-}
-
-/** Card bodies use the same literal text/entities path; native card actions attach at the card seam. */
-export function telegramInbox(project: string, inbox: import('../protocol.ts').Inbox): CommandReply[] {
-  const cards: CommandReply[] = [
-    ...inbox.asks.map(ask => new PhoneReply(`${project} — Ask`)
-      .group(ask.topic.title, [ask.question, ...ask.options.map(option => `• ${option}`)])),
-    ...inbox.approvals.map(approval => new PhoneReply(`${project} — Approval`)
-      .group(approval.label, [approval.subject.command ?? approval.subject.change ?? approval.kind,
-        approval.answerIn === 'tui' ? 'Answer in the workbench' : 'Full details in the workbench'])),
-    ...inbox.plans.map(plan => new PhoneReply(`${project} — Plan`).group(plan.subject, [plan.title])),
-    ...inbox.requests.map(request => new PhoneReply(`${project} — Request`).group(request.subject, [request.text])),
-    ...inbox.messages.map(message => new PhoneReply(`${project} — Notice`).group(message.subject, [message.text])),
-  ];
-  return cards.length ? cards : [plainCommandReply(`${project} — Inbox`, 'Nothing needs you')];
 }

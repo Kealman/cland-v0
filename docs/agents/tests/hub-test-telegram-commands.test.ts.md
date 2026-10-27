@@ -17,7 +17,7 @@ case creates seven real fixture spokes, a release and an ask through public tool
 it checks six session bullets, remaining count, Coordinator/needs-you, queues,
 release and transport numbers last. No extra remote authority is granted.
 
-The inbox case retains empty text, repeated open ask/options, local pairing grant
+The inbox case retains the single-line empty text, repeated live ask/buttons, local pairing grant
 exclusion and the unchanged open ask after `/cancel`; paired `/start` names the
 project. The cards file covers durable Other/Decline prompts and clearing their
 wait with `/cancel`; help describes the reply prompt rather than an unavailable
@@ -34,17 +34,20 @@ unknown reply. Keep identity before the first queue write and the final
 single-message assertion.
 
 The long-card case keeps General in rich format and sends an ask below the hub's
-8 KiB cap but above Telegram's 4096-code-point bound. It checks numbered plain
-parts, each entity/text budget, literal Markdown characters and non-BMP text
-reconstructed without loss. Command formatting escapes facts before calling the
-landed `markdownToEntities`/`plainParts` renderer, rather than parsing user text
-as reply markup.
+8 KiB cap but above Telegram's 4096-code-point bound. `/inbox` now reuses the
+one-card preview rather than splitting a text summary: literal Markdown stays
+literal, every option and auxiliary button remains, the word-boundary preview
+names the full question in the workbench, and entities/text stay within budget.
+The same case retains long ordinary-command splitting through `/status` with a
+long release title: every part has contiguous numbering and bounded entities,
+and the reconstructed text preserves all literal Markdown and non-BMP points.
+Ordinary replies still escape facts before `markdownToEntities`/`plainParts`.
 
 All completion waits are bounded independently of setup. Keep FakeClock timer
 counts empty after hub stop and retain native poll-close receipts before removal.
 
 T-1347 integration retains every menu, text/entity, native offset, ask, literal
-part, lost-receipt and TCP-close assertion. Multi-reply/split/reopen cases use a
+preview, lost-receipt and TCP-close assertion. Multi-reply/reopen cases use a
 pre-owned Store observer with the shared driveTelegram helper. Each native hub,
 including its restart, belongs to that owner before observer disposal. Only
 persisted pacing deadlines advance fake time; pending HTTP stays on native I/O.

@@ -1,5 +1,28 @@
 # hub/test/telegram-cards.test.ts
 
+T-1359 adds four sealed T2 frame/native controls:
+
+- `Telegram one inbox publication sends three newest-first asks oldest first ahead of queued General`
+  holds one native General send, queues another before releasing a real
+  newest-first inbox frame, and checks all durable maps and the final accepted
+  order. The in-flight message finishes first; the cards precede queued General.
+- `Telegram inbox resends only open asks oldest first and an answer from a new copy folds every copy`
+  closes one of three asks in Neovim, observes two new mapped copies in age
+  order, presses a new copy, and checks both native outcomes. Pressing the other
+  ask's original copy proves its retained buttons also work after resend.
+- `Telegram inbox resend lost HTTP receipt stays fenced across restart and a new command makes a fresh copy`
+  holds the fake's accepted resend response, joins its native close before
+  component restart, and checks confirmed input, an uncertain unmapped copy,
+  no retransmission and a fresh mapped copy from a new command.
+- `Telegram empty inbox replies with only Nothing needs you` retains the exact
+  single native message and confirmed command offset.
+
+All publication and command effects use the existing per-chat queue. Resends
+reuse opaque ask/approval keys with command-scoped job keys; earlier automatic
+keys, wire frames and persisted maps remain readable. There is no OS-crash,
+real-platform, browser or latency claim. Linux durations and gate mode come
+from queued verification.
+
 T2 uses sealed `tempProject`, `projectHub`, real frame clients, `TelegramRemote`
 and the loopback fake Bot API. No provider account, real token, browser or child
 process is used. Run this file alone with `node --test hub/test/telegram-cards.test.ts`.
@@ -47,11 +70,11 @@ Additional native controls retain 400 plain fallback and mapping; fatal
 and accepted-without-response sends fenced across adapter restart. The long-ask
 case checks one mapped card, all eleven buttons and full labels, a word-boundary
 preview plus `full question in the workbench`, and a bounded outcome edit.
-`telegram-commands.test.ts` separately retains contiguous numbered command
-parts; it identifies command replies apart from automatic card sends.
+`telegram-commands.test.ts` separately retains command replay and the shared
+long-card renderer for live `/inbox` sends.
 
-Before source review, run every `hub/test/telegram-*.test.ts` file serially,
-then outbox, outbox-gateway and gateway, plus `npm run typecheck`. The polling
+Before source review, run the touched test files serially plus `npm run typecheck`;
+the queued verifier owns broader selection. The polling
 restart file is existing T3; this new file creates no hub process and stays T2.
 No real Telegram rendering, network outage or client press expiry is claimed
 by these receipts. The fake/API file independently models the 150-second expiry.
@@ -109,8 +132,8 @@ Cross-client closure (T-1354) adds these T2 frame/fake receipts:
 
 All behavioural waits are bounded separately from setup. These are component
 receipts on the fake, not real-platform or browser evidence. Before source review
-run all Telegram, outbox, gateway, asks and inbox test files serially as directed
-by the item lead, plus typechecking; retain the file/phase results and platform.
+run touched files serially plus typechecking as directed by the item lead;
+retain the file/phase results and platform.
 
 The uncertain accepted-card restart control now closes that ask through Neovim
 before restarting. Its unknown send still remains uncertain and is never replayed

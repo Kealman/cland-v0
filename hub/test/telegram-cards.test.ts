@@ -61,6 +61,126 @@ async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
   return { web, stop, owner, root, clock, fake, store, state, remote, hub, ui, coord, messages, ask, newRemote, requests };
 }
 
+test('Telegram one inbox publication sends three newest-first asks oldest first ahead of queued General', async t => {
+  const f = await fixture(t, frame => frame.type === 'inbox');
+  const ids: string[] = [];
+  for (const question of ['Oldest ask', 'Middle ask', 'Newest ask']) {
+    const result = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question, options: ['Keep'] });
+    assert.equal(result.ok, true);
+    ids.push(result.ask);
+    await f.clock.advance(1000);
+  }
+  const inbox = (await f.ui.request({ type: 'inbox.list' })).value as import('../src/protocol.ts').Inbox;
+  assert.deepEqual(inbox.asks.map(row => row.id), [...ids].reverse());
+  await control(f.fake.url, 'fault', { method: 'sendRichMessage', code: 500, response: 'hold' });
+  const holding = f.fake.waitForHeldRequest('sendRichMessage');
+  await f.coord.call('send', { topic: 'general', text: 'Already in flight' });
+  const held = await within(holding, 1000);
+  const queued = until(() => f.state.outbox().filter(job => job.kind === 'general').length === 2,
+    { timeoutMs: 1000, what: 'General queued before the card publication' });
+  void queued.catch(() => {});
+  await f.coord.call('send', { topic: 'general', text: 'General queued with cards' });
+  await queued;
+  const accepted = until(async () => (await f.messages()).length === 5
+    && f.state.outbox().filter(job => job.state === 'sent').length === 5,
+  { timeoutMs: 1500, what: 'three mapped cards and queued General durably accepted' });
+  void accepted.catch(() => {});
+  const receiving = Promise.resolve(f.remote.receive({ type: 'inbox', inbox }));
+  await control(f.fake.url, 'release-requests', { ids: [held.id] });
+  await driveTelegram(f.clock, f.state, Promise.all([receiving, accepted]));
+  await f.stop();
+  const messages = await f.messages();
+  assert.deepEqual(messages.map(message => f.state.message('101', String(message.message_id))?.ask), [null, ...ids, null]);
+  assert.match(messages[4]!.text!, /General queued with cards/);
+});
+
+test('Telegram inbox resends only open asks oldest first and an answer from a new copy folds every copy', async t => {
+  const f = await fixture(t);
+  const first = await f.ask('Oldest open ask');
+  const middle = await f.ask('Answered before inbox');
+  const last = await f.ask('Newest open ask');
+  const closed = until(async () => (await f.messages()).find(row => row.message_id === middle.card.message_id)?.text?.includes('via Neovim') === true,
+    { timeoutMs: 1000, what: 'middle ask native outcome' });
+  void closed.catch(() => {});
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: middle.id, option: 1 })).ok, true);
+  await driveTelegram(f.clock, f.state, closed);
+  const copied = until(async () => (await f.messages()).length === 5
+    && f.state.messagesForAsk(first.id).length === 2 && f.state.messagesForAsk(last.id).length === 2,
+  { timeoutMs: 1000, what: 'two live inbox copies with durable maps' });
+  void copied.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const update = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/inbox' });
+  await driveTelegram(f.clock, f.state, copied);
+  assert.equal((await within(confirmed, 1000)).params.offset, update.update_id + 1);
+  const messages = await f.messages();
+  assert.deepEqual(messages.slice(3).map(row => f.state.message('101', String(row.message_id))?.ask), [first.id, last.id]);
+  for (const row of [messages[0]!, messages[2]!, messages[3]!, messages[4]!]) {
+    assert.ok((row.reply_markup as { inline_keyboard: unknown[] }).inline_keyboard.length > 0);
+  }
+  const outcomes = until(async () => (await f.messages()).filter(row => f.state.message('101', String(row.message_id))?.ask === first.id)
+    .every(row => row.text?.includes('Three · human via Telegram') && JSON.stringify(row.reply_markup) === '{"inline_keyboard":[]}'),
+  { timeoutMs: 1000, what: 'both first-ask copies edited to the same native outcome' });
+  void outcomes.catch(() => {});
+  const answered = f.fake.waitForPoll();
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: messages[3]!.message_id, row: 2, column: 0 });
+  assert.equal((await driveTelegram(f.clock, f.state, within(answered, 1000))).params.offset, press.update_id + 1);
+  await driveTelegram(f.clock, f.state, outcomes);
+  assert.equal(f.store.ask(first.id)!.outcome!.via, 'telegram');
+  assert.equal((await f.messages())[0]!.text, (await f.messages())[3]!.text);
+  // The original copy still acts after a resend too.
+  const oldOutcomes = until(async () => (await f.messages()).filter(row => f.state.message('101', String(row.message_id))?.ask === last.id)
+    .every(row => row.text?.includes('One · human via Telegram') && JSON.stringify(row.reply_markup) === '{"inline_keyboard":[]}'),
+  { timeoutMs: 1000, what: 'original-copy answer edits both last-ask copies' });
+  void oldOutcomes.catch(() => {});
+  await control(f.fake.url, 'press', { chat_id: 101, message_id: last.card.message_id, row: 0, column: 0 });
+  await driveTelegram(f.clock, f.state, oldOutcomes);
+  await f.stop();
+  assert.equal(f.state.messagesForAsk(middle.id).length, 1);
+  assert.equal((await f.messages()).length, 5);
+});
+
+test('Telegram inbox resend lost HTTP receipt stays fenced across restart and a new command makes a fresh copy', async t => {
+  const f = await fixture(t);
+  const { id } = await f.ask();
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 503, response: 'hold-after-send' });
+  const committing = f.fake.waitForHeldRequest('sendMessage');
+  const update = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/inbox' });
+  const committed = await driveTelegram(f.clock, f.state, within(committing, 1000));
+  assert.equal((await f.messages()).length, 2);
+  const closing = f.fake.waitForConnectionClose('sendMessage');
+  await f.stop();
+  assert.equal((await within(closing, 1000)).id, committed.id);
+  f.ui.close(); await f.coord.close();
+  const next = f.newRemote();
+  const replayed = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  assert.equal((await driveTelegram(f.clock, f.state, within(replayed, 1000))).params.offset, update.update_id + 1);
+  assert.equal((await f.messages()).length, 2, 'replayed command never repeats an uncertain resend');
+  assert.equal(f.state.messagesForAsk(id).length, 1, 'unknown native copy never acquired a fabricated map');
+  assert.equal(f.state.outbox().filter(job => job.state === 'uncertain').length, 1);
+  const copied = until(() => f.state.messagesForAsk(id).length === 2,
+    { timeoutMs: 1000, what: 'new command has a fresh durable card map' });
+  void copied.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const command = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/inbox' });
+  await driveTelegram(f.clock, f.state, copied);
+  assert.equal((await within(confirmed, 1000)).params.offset, command.update_id + 1);
+  await hub.stop();
+  assert.equal((await f.messages()).length, 3);
+  assert.equal(f.state.outbox().filter(job => job.state === 'uncertain').length, 1);
+});
+
+test('Telegram empty inbox replies with only Nothing needs you', async t => {
+  const f = await fixture(t);
+  const confirmed = f.fake.waitForPoll();
+  const update = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/inbox' });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, update.update_id + 1);
+  await f.stop();
+  const messages = await f.messages();
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0]!.text, 'Nothing needs you');
+});
+
 test('Telegram nine-option free ask arrives as one entities card with eleven opaque button rows', async t => {
   const f = await fixture(t);
   const { id, card } = await f.ask();

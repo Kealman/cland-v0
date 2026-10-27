@@ -1,5 +1,10 @@
 # hub/test/telegram-approvals.test.ts
 
+T-1359's `Telegram inbox resends a live approval with its styled choices and folds both copies from the new copy`
+uses the same T2 frame/fake seam. It requires the new native copy and durable
+approval map, unchanged styled choice rows, confirmed input/callback offsets,
+the saved Telegram outcome and identical button-free outcomes on both copies.
+
 T2 uses sealed `tempProject`, `projectHub`, real frames, production Telegram
 HTTP/polling/cards and the loopback fake Bot API. No real account, token, native
 harness process or browser runs. `pacingOwner` owns the hub, adapter, fake HTTP

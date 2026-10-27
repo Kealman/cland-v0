@@ -205,7 +205,12 @@ Keep status/inbox reads within gateway authority, force text/entities for replie
 compare the actual private-chat menu before writing, and fence native command
 identity before queued sends. Keep replies at ordinary priority and preserve
 entities, contiguous numbered parts and durable accepted ids. Preserve the committed-effect/lost-receipt restart
-control; card actions and draft cancellation state belong to the card handler.
+control. `/inbox` uses the card handler's shared renderer, maps live copies of
+every open card and notice, and orders the combined publication by since/id.
+Keep earlier buttons working, all-copy outcomes, pairing exclusion and the
+one-line empty reply. Resend jobs use command-scoped keys under the existing
+native command fence; preserve the unknown-resend restart control.
+Draft cancellation state belongs to the card handler.
 
 For Telegram General rendering, use the production frame/fake receipts in
 `docs/agents/tests/hub-test-telegram-rendering.test.ts.md` and the T1 conversion

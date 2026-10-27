@@ -2347,14 +2347,20 @@ text with explicit UTF-16 entities, independently of the General mirror format.
 Facts are escaped before the shared renderer; long replies split into numbered
 parts within Telegram's 4096-code-point and 100-entity bounds.
 
-`/inbox` reads `inbox.list`, repeats every open card body, or says "Nothing needs
-you". Local pairing grants and their counts stay outside the remote. Other
+`/inbox` reads `inbox.list` and re-sends every open ask, hub approval and 📥 notice
+as a new live copy at the bottom, ordered by waiting start (`since`), then id,
+across all sections. Each copy uses the same bounded card renderer and durable
+source/topic/ask/approval mapping as its first send. Earlier copies keep their
+buttons and keep working; an answer from any copy edits every mapped copy to the
+outcome. With no open rows it sends only "Nothing needs you". Local pairing grants
+and their counts stay outside the remote. Other
 answer and Decline open separate reply prompts; `/cancel` clears the waiting
 prompt and leaves the ask open. Paired `/start` names the project. `/decision <text>` and `/question <text>` are inbound mirror actions;
 `/mute` and `/unmute` control the General stream independently.
 
-Command replies use one send function routed through the shared per-chat
-outbox at ordinary priority. Text/entities stay intact, all numbered parts queue
+Ordinary command replies use one send function routed through the shared per-chat
+outbox at ordinary priority; `/inbox` copies use the card/notice priority.
+Text/entities stay intact, all numbered parts queue
 before later arrivals, and accepted ids get durable message maps. A native
 chat/message identity is durable before any reply is queued; replayed input is
 confirmed without repeating that logical effect. Only positive 429 non-delivery
@@ -2511,7 +2517,10 @@ This internal scheduler adds no command, setting, permission or role-clause line
 
 With Telegram enabled, a resolved token and a paired private chat, an inbox
 publication sends each human ask as one text/entities card, outside the General
-mute gate. The shared `remote/cards.ts` model has no messenger knowledge;
+mute gate. New asks, hub approvals and 📥 notices in that publication enter the
+outbox together, oldest `since` first, then id, ahead of queued General messages.
+`/inbox` uses the same ordering and renderer for its live copies.
+The shared `remote/cards.ts` model has no messenger knowledge;
 `telegram-cards.ts` owns the Telegram rendering. The card names the asker and
 topic and keeps every option label, with at most nine options, optional
 **Other answer…**, then **Decline…**, one button per row. Each opaque button key

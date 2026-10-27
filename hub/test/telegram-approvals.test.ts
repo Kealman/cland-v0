@@ -91,6 +91,34 @@ async function fixture(t: TestContext, scripted?: 'codex' | 'opencode', drop?: (
 
 type Keyboard = { inline_keyboard: Array<Array<{ text: string; callback_data: string; style?: string }>> };
 
+test('Telegram inbox resends a live approval with its styled choices and folds both copies from the new copy', async t => {
+  const f = await fixture(t);
+  const { card, record } = await f.approval('codex', 'echo approve copies');
+  const copied = until(async () => (await f.messages()).length === 2 && f.state.messagesForApproval(record.id).length === 2,
+    { timeoutMs: 1000, what: 'live approval resend has its durable approval map' });
+  void copied.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const update = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/inbox' });
+  await driveTelegram(f.clock, f.state, copied);
+  assert.equal((await within(confirmed, 1000)).params.offset, update.update_id + 1);
+  const copy = (await f.messages())[1]!;
+  assert.equal(copy.text, card.text);
+  assert.deepEqual(copy.reply_markup, card.reply_markup);
+  const outcomes = until(async () => (await f.messages()).every(message => message.text?.includes('Approved once · human via Telegram')
+    && JSON.stringify(message.reply_markup) === '{"inline_keyboard":[]}'),
+  { timeoutMs: 1000, what: 'both approval copies show the durable winning outcome' });
+  void outcomes.catch(() => {});
+  const answered = f.fake.waitForPoll();
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: copy.message_id, row: 0, column: 0 });
+  assert.equal((await driveTelegram(f.clock, f.state, within(answered, 1000))).params.offset, press.update_id + 1);
+  await driveTelegram(f.clock, f.state, outcomes);
+  await f.hub.stop();
+  const messages = await f.messages();
+  assert.equal(messages.length, 2);
+  assert.equal(messages[0]!.text, messages[1]!.text);
+  assert.equal(f.store.inboxOutcome('approval', record.id)!.via, 'telegram');
+});
+
 test('Telegram Codex approval clips a 5000-character command and offers three coloured choice rows', { timeout: 5000 }, async t => {
   const f = await fixture(t);
   const command = 'echo ' + 'x'.repeat(4995);

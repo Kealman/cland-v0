@@ -1,5 +1,13 @@
 # hub/test/telegram-notices.test.ts
 
+T-1359 expands the single-publication ordering receipt to real asks and hub
+approvals among notices, retaining the equal-time reversed plan rows to prove
+id tie-breaking across the combined batch. `/inbox` re-sends plan, request,
+item-message and TUI-approval notices as new button-free copies in age order;
+every source/topic mapping is retained, and replying to the new item notice
+reaches its original item topic and source. These are sealed T2 frame/fake
+receipts; automatic publication still deduplicates the original jobs.
+
 T2 exercises public hub frames, the production messenger factory and a sealed
 loopback fake Bot API. `tempProject` and `pacingOwner` register storage, startup
 and writer cleanup before acquisition; fake close owners drain native I/O before
@@ -18,7 +26,7 @@ The generated cases are:
 - `Telegram item notice reply keeps its topic and source via Telegram without following ordinary agent replies`: C2's actual native reply, durable offset and frame history retain the exact source, topic, human and via. A later accepted General marker drains the observation before shutdown and absence assertions.
 - `Telegram long item notice stays one clipped entities message with its full source retained`: Unicode/code-point budget, full-message marker, one accepted notice and unchanged source text.
 - `Telegram oversized plan title keeps the complete notice and entity spans in bounds` and the `title and origin` case: literal 5,000-code-point public epic titles, with and without an oversized configured origin. Complete text stays within 4,096 code points, bold spans match the actual rendered header, every entity stays in UTF-16 range, and the full title/link target and native source map survive. Ordinary origins retain the existing literal URL assertion; oversized origins use an Open workbench text link.
-- `Telegram one backlog publication sends notices oldest first across sections with stable ties`: hold automatic inbox frames while real public producers create a request, message, two equal-time plans and a TUI approval. Release one complete frame to the production adapter, reversing only the two equal-time plan rows at that public seam. Retain five exact source mappings in chronological/id order, 📥 prefixes, absent keyboards and durable sent receipts. This also covers an older hub's arbitrary equal-time row order.
+- `Telegram one backlog publication sends asks approvals and notices oldest first across sections with stable ties`: hold automatic inbox and approval frames while real public producers create a request, message, ask, hub approval, two equal-time plans and a TUI approval. Release one complete frame to the production adapter, reversing only the two equal-time plan rows at that public seam. Retain seven exact source mappings in chronological/id order, live buttons on the ask and hub approval, and 📥 prefixes/absent keyboards on notices, with durable sent receipts. This also covers an older hub's arbitrary equal-time row order.
 - `Telegram plan notice reply goes to General with its reference and no epic-topic reply`: the epic has a non-General topic, but no source message. Its reply has `re plan <item>:`, no `replyTo`, and leaves the plan pending.
 - `Telegram plan notice has no link without a configured origin` and `Telegram plan notice links only the configured origin`: C3's omitted/present URL and exact UTF-16 URL entity. A synthetic credential-shaped source URL is a positive control; native output **and the producer's durable outbox payload before fake capture redaction** exclude its credential/path. The plan never calls `web.link`.
 - `Telegram TUI approval notice reply goes to General with the session reference`: `re approval <session>:` leaves the native approval pending with no approval-answer call.

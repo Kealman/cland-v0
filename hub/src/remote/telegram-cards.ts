@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { AskCard, HubFrame, Inbox, InboxApproval, InboxAsk } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { TelegramOutbox } from './telegram-outbox.ts';
-import { approvalCard, approvalOutcomeLine, askCard, closedCardLine, noticeCards, type CardAction, type RemoteCard } from './cards.ts';
+import { approvalCard, approvalOutcomeLine, askCard, closedCardLine, noticeCards, type CardAction, type RemoteCard, type RemoteNotice } from './cards.ts';
 
 import type { TelegramPrompts } from './telegram-prompts.ts';
 
@@ -115,7 +115,7 @@ export class TelegramCards {
 
   async receive(frame: HubFrame): Promise<void> {
     if (frame.type === 'inbox') {
-      await Promise.all([this.publish(frame.inbox.asks), this.publishApprovals(frame.inbox.approvals), this.publishNotices(frame.inbox), ...(frame.inbox.departures ?? []).flatMap(row => {
+      await Promise.all([this.publishInbox(frame.inbox), ...(frame.inbox.departures ?? []).flatMap(row => {
         if (row.kind === 'approval' && row.outcome && 'choice' in row.outcome) return [this.approvalOutcome(row.id, row.outcome)];
 
         if (row.kind !== 'ask' || !['answered', 'declined', 'withdrawn', 'cancelled'].includes(row.reason)) return [];
@@ -126,6 +126,19 @@ export class TelegramCards {
     else if (frame.type === 'approval' && frame.approval.state === 'closed' && frame.approval.outcome)
       await this.approvalOutcome(frame.approval.id, frame.approval.outcome);
     else if (frame.type === 'approval') await this.publishApprovals([frame.approval]);
+  }
+
+  /** Queue the entire publication before waiting on its paced sends. */
+  async publishInbox(inbox: Inbox, resend?: string): Promise<number> {
+    const rows = [
+      ...inbox.asks.map(row => ({ ...row, publish: () => this.publish([row], resend) })),
+      ...inbox.approvals.filter(row => row.answerIn === 'hub' && row.state !== 'closed')
+        .map(row => ({ ...row, publish: () => this.publishApprovals([row], resend) })),
+      ...noticeCards(inbox, this.#webOrigin?.()).map(row => ({ ...row, publish: () => this.#publishNotice(row, resend) })),
+    ];
+    rows.sort((a, b) => a.since.localeCompare(b.since) || a.id.localeCompare(b.id));
+    await Promise.all(rows.map(row => row.publish()));
+    return rows.length;
   }
 
   async approvalOutcome(id: string, outcome: import('../protocol.ts').ApprovalOutcome, retry?: { chat: string; message: string; press: string }): Promise<void> {
@@ -139,7 +152,7 @@ export class TelegramCards {
       { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : ''}`, source: id, topic: copy.topic, approval: id })));
   }
 
-  async publishApprovals(approvals: InboxApproval[]): Promise<void> {
+  async publishApprovals(approvals: InboxApproval[], resend?: string): Promise<void> {
     const pairing = this.#store.pairing();
     if (!pairing) return;
     await Promise.all(approvals.filter(approval => approval.answerIn === 'hub' && approval.state !== 'closed').map(approval => {
@@ -158,24 +171,21 @@ export class TelegramCards {
       });
       return this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(card),
         reply_markup: { inline_keyboard: keyboard }, link_preview_options: { is_disabled: true } },
-      { key, kind: 'card', source: approval.id, topic: approval.topic ?? 'general', approval: approval.id }).then(async () => {
+      { key: resend ? `${resend}:${key}` : key, kind: 'card', source: approval.id, topic: approval.topic ?? 'general', approval: approval.id }).then(async () => {
         const closed = this.#store.get(`telegram.approval-closure:${approval.id}`);
         if (closed) await this.approvalOutcome(approval.id, JSON.parse(closed));
       });
     }));
   }
 
-  async publishNotices(inbox: Inbox): Promise<void> {
+  async #publishNotice(notice: RemoteNotice, resend?: string): Promise<void> {
     const pairing = this.#store.pairing();
     if (!pairing) return;
-    const notices = noticeCards(inbox, this.#webOrigin?.()).sort((a, b) => a.since.localeCompare(b.since)
-      || a.id.localeCompare(b.id) || a.kind.localeCompare(b.kind));
-    await Promise.all(notices.map(notice => {
-      if (notice.reference) this.#store.set(`telegram.notice-reference:${notice.id}`, notice.reference);
-      return this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(notice.card),
-        link_preview_options: { is_disabled: true } },
-      { key: `telegram.notice:${pairing.chatId}:${notice.kind}:${notice.id}:${notice.since}`, kind: 'card', source: notice.id, topic: notice.topic });
-    }));
+    if (notice.reference) this.#store.set(`telegram.notice-reference:${notice.id}`, notice.reference);
+    const key = `telegram.notice:${pairing.chatId}:${notice.kind}:${notice.id}:${notice.since}`;
+    await this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(notice.card),
+      link_preview_options: { is_disabled: true } },
+    { key: resend ? `${resend}:${key}` : key, kind: 'card', source: notice.id, topic: notice.topic });
   }
 
   async outcome(id: string, card: Pick<AskCard, 'state' | 'outcome'>, retry?: { chat: string; message: string; press: string }): Promise<void> {
@@ -197,7 +207,7 @@ export class TelegramCards {
       { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : ''}`, source: id, topic: copy.topic, ask: id })));
   }
 
-  async publish(asks: InboxAsk[]): Promise<void> {
+  async publish(asks: InboxAsk[], resend?: string): Promise<void> {
     const pairing = this.#store.pairing();
     if (!pairing) return;
     await Promise.all(asks.map(ask => {
@@ -216,7 +226,7 @@ export class TelegramCards {
       });
       return this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(card),
         reply_markup: { inline_keyboard: keyboard }, link_preview_options: { is_disabled: true } },
-      { key, kind: 'card', source: ask.id, topic: ask.topic.id, ask: ask.id }).then(async () => {
+      { key: resend ? `${resend}:${key}` : key, kind: 'card', source: ask.id, topic: ask.topic.id, ask: ask.id }).then(async () => {
         const closed = this.#store.get(`telegram.card-closure:${ask.id}`);
         if (closed) await this.outcome(ask.id, JSON.parse(closed));
       });

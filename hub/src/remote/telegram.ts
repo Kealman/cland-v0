@@ -3,7 +3,7 @@ import type { Pairing } from './state.ts';
 import type { RemoteConnection, HubFrame, HubStatus, Inbox } from '../protocol.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { TelegramApi, TelegramError, type TgUpdate } from './telegram-api.ts';
-import { TELEGRAM_COMMANDS, telegramHelp, telegramCommand, telegramStatus, telegramInbox, commandParts, plainCommandReply } from './telegram-commands.ts';
+import { TELEGRAM_COMMANDS, telegramHelp, telegramCommand, telegramStatus, commandParts, plainCommandReply } from './telegram-commands.ts';
 import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
 import { flushTelegramGap } from './telegram-gap.ts';
 import { TelegramOutbox } from './telegram-outbox.ts';
@@ -253,7 +253,10 @@ export class TelegramRemote implements Remote {
           const command = telegramCommand(update.message?.text);
           if (command === 'inbox') {
             const inbox = await this.#request<Inbox>('inbox.list');
-            await this.#commandReply(update, telegramInbox(project, inbox));
+            await this.#commandReply(update, [], async key => {
+              if (!await this.#cards!.publishInbox(inbox, key))
+                await this.#send(String(update.message!.chat.id), 'Nothing needs you');
+            });
             return;
           }
           let reply;
@@ -321,13 +324,14 @@ export class TelegramRemote implements Remote {
     });
   }
 
-  async #commandReply(update: TgUpdate, replies: import('./telegram-commands.ts').CommandReply[]): Promise<void> {
+  async #commandReply(update: TgUpdate, replies: import('./telegram-commands.ts').CommandReply[], publish?: (key: string) => Promise<void>): Promise<void> {
     const key = `telegram.command:${update.message!.chat.id}:${update.message!.message_id}`;
     const store = this.#polling!.store;
     if (store.get(key) !== null) return;
     // Fence the command identity before queueing any platform effect. Unknown
     // deliveries stay fenced; the outbox retries only positive non-delivery.
     store.set(key, String(update.update_id));
+    if (publish) return publish(key);
     // Queue all numbered parts before later ordinary messages can interleave.
     await Promise.all(replies.flatMap(commandParts).map(part =>
       this.#send(String(update.message!.chat.id), part.text, part.entities)));

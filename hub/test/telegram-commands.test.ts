@@ -23,7 +23,7 @@ function commandPacing(t: import('node:test').TestContext, root: string, clock: 
 
 const menu = [
   { command: 'status', description: 'Hub, sessions and queues' },
-  { command: 'inbox', description: 'Show everything that needs you' },
+  { command: 'inbox', description: 'Re-send open cards and notices' },
   { command: 'mute', description: 'Mute the General stream' },
   { command: 'unmute', description: 'Resume the General stream' },
   { command: 'decision', description: 'Send a decision' },
@@ -165,11 +165,11 @@ test('Telegram inbox repeats open asks and cancel leaves them open while start n
     const update = await control<{ update_id: number }>(fake.url, 'say', { text });
     poll = await drive(within(confirmed, 1_000, undefined, () => new Error(`${text} durable handling receipt missing`)));
     assert.equal(poll.params.offset, update.update_id + 1);
-    const state = await control<{ requests: Array<{ method: string; params: { text: string; entities?: unknown[]; parse_mode?: string } }> }>(fake.url, 'state');
+    const state = await control<{ requests: Array<{ method: string; params: { text: string; entities?: unknown[]; parse_mode?: string; reply_markup?: { inline_keyboard: Array<Array<{ text: string }>> } } }> }>(fake.url, 'state');
     return state.requests.filter(request => request.method === 'sendMessage').map(request => request.params);
   };
   let replies = await say('/inbox');
-  assert.equal(replies.at(-1)!.text, 'Phone fixture — Inbox\n\nNothing needs you');
+  assert.equal(replies.at(-1)!.text, 'Nothing needs you');
   const asked = await coord.call<{ ok: boolean; ask: string }>('ask', { question: 'Ship 📦 now?', options: ['Ship', 'Wait'], topic: 'general' });
   assert.equal(asked.ok, true);
   const strangerConfirmed = fake.waitForPoll();
@@ -179,7 +179,7 @@ test('Telegram inbox repeats open asks and cancel leaves them open while start n
   replies = await say('/inbox');
   const inboxReply = replies.at(-1)!;
   assert.match(inboxReply.text, /Ship 📦 now\?/);
-  assert.match(inboxReply.text, /• Ship\n• Wait/);
+  assert.deepEqual(inboxReply.reply_markup!.inline_keyboard.map(row => row[0]!.text), ['Ship', 'Wait', 'Other answer…', 'Decline…']);
   assert.ok(inboxReply.entities!.length > 0);
   assert.equal(inboxReply.parse_mode, undefined);
   assert.equal(inboxReply.text.includes('approve telegram'), false, 'remote inbox never exposes local pairing grants');
@@ -238,7 +238,7 @@ test('Telegram command replay does not repeat a reply committed before its lost 
   assert.equal(clock.pending, 0);
 });
 
-test('Telegram command replies split long literal card text without treating it as Markdown', async t => {
+test('Telegram inbox uses one long literal card while long status replies retain numbered literal parts', async t => {
   const root = await tempProject(t);
   const clock = new FakeClock();
   const fake = await fakeTelegram(t, { clock });
@@ -256,32 +256,57 @@ test('Telegram command replies split long literal card text without treating it 
   await drive(within(polling, 1_000));
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const question = '**literal** _text_ [link](target)\n' + '📦'.repeat(1000) + 'q'.repeat(3500);
-  const asked = await coord.call<{ ok: boolean }>('ask', { question, options: ['Keep'], topic: 'general' });
+  const options = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const asked = await coord.call<{ ok: boolean }>('ask', { question, options, free: true, topic: 'general' });
   assert.equal(asked.ok, true);
   const before = await control<{ requests: unknown[] }>(fake.url, 'state');
   const confirmed = fake.waitForPoll();
   const update = await control<{ update_id: number }>(fake.url, 'say', { text: '/inbox' });
-  const poll = await drive(within(confirmed, 1_000));
+  let poll = await drive(within(confirmed, 1_000));
   assert.equal(poll.params.offset, update.update_id + 1);
   const state = await control<{ requests: Array<{ method: string; params: { text: string; entities: Array<{ type: string; offset: number; length: number }> } }> }>(fake.url, 'state');
-  // Automatic ask cards share the send lane; only this command's numbered parts belong to the reply.
+  // Automatic cards may share this interval; both paths must use the same bounded renderer.
   const replies = state.requests.slice(before.requests.length).filter(request => request.method === 'sendMessage'
-    && request.params.text.startsWith('Literal **📱** fixture — Ask')).map(request => request.params);
-  assert.ok(replies.length > 1, 'long command replies must split despite rich mirror format');
-  let body = '';
-  for (let index = 0; index < replies.length; index++) {
-    const reply = replies[index]!;
+    && request.params.text.includes('**literal**')).map(request => request.params);
+  assert.ok(replies.length >= 1);
+  for (const reply of replies) {
     assert.ok([...reply.text].length <= 4096);
     assert.ok(reply.entities.length <= 100);
-    assert.match(reply.text.split('\n')[0]!, new RegExp(`${index + 1}/${replies.length}$`));
-    assert.ok(reply.text.startsWith('Literal **📱** fixture — Ask'));
+    assert.match(reply.text, /^coord · General\n\n\*\*literal\*\* _text_ \[link\]\(target\)/);
+    assert.match(reply.text, /…\nfull question in the workbench$/);
     for (const entity of reply.entities) {
       assert.ok(entity.offset >= 0 && entity.offset + entity.length <= reply.text.length);
       assert.ok(['bold', 'italic'].includes(entity.type), 'literal links and formatting must stay literal');
     }
-    body += reply.text.slice(reply.text.indexOf('\n') + 1);
   }
-  assert.ok(body.includes(question), JSON.stringify({ beginning: body.slice(0, 160), actualLength: body.length, questionLength: question.length }));
+  const native = await control<{ messages: import('../src/remote/telegram-api.ts').TgMessage[] }>(fake.url, 'state');
+  const cards = native.messages.filter(message => message.text?.includes('**literal**'));
+  for (const card of cards) assert.deepEqual((card.reply_markup as { inline_keyboard: Array<Array<{ text: string }>> }).inline_keyboard.map(row => row[0]!.text), [...options, 'Other answer…', 'Decline…']);
+  // Preserve the prior long-command splitting contract on an ordinary command.
+  const releaseTitle = '**release** _text_ [link](target) ' + '📦'.repeat(1000) + 'z'.repeat(3400);
+  const release = await coord.call<{ ok: boolean }>('task.create', { kind: 'release', version: '3.0.0', title: releaseTitle });
+  assert.equal(release.ok, true);
+  const statusConfirmed = fake.waitForPoll();
+  const statusUpdate = await control<{ update_id: number }>(fake.url, 'say', { text: '/status' });
+  poll = await drive(within(statusConfirmed, 1000));
+  assert.equal(poll.params.offset, statusUpdate.update_id + 1);
+  const statusState = await control<typeof state>(fake.url, 'state');
+  const parts = statusState.requests.filter(request => request.method === 'sendMessage'
+    && request.params.text.startsWith('Literal **📱** fixture — Status')).map(request => request.params);
+  assert.ok(parts.length > 1);
+  let body = '';
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index]!;
+    assert.ok([...part.text].length <= 4096);
+    assert.ok(part.entities.length <= 100);
+    assert.match(part.text.split('\n')[0]!, new RegExp(`${index + 1}/${parts.length}$`));
+    for (const entity of part.entities) {
+      assert.ok(entity.offset >= 0 && entity.offset + entity.length <= part.text.length);
+      assert.ok(['bold', 'italic'].includes(entity.type));
+    }
+    body += part.text.slice(part.text.indexOf('\n') + 1);
+  }
+  assert.ok(body.includes(releaseTitle), 'numbered status parts preserve every literal code point');
   const closed = fake.waitForPollClose(poll.id);
   await hub.stop();
   assert.equal(await drive(within(closed, 1_000)), poll.id);
