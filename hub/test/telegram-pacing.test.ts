@@ -11,7 +11,7 @@ import { TelegramRemote } from '../src/remote/telegram.ts';
 import { TelegramOutbox } from '../src/remote/telegram-outbox.ts';
 import { TelegramApi } from '../src/remote/telegram-api.ts';
 import { FakeClock } from './fake-clock.ts';
-import { pacingOwner } from './telegram-pacing-fixture.ts';
+import { driveTelegram, pacingOwner } from './telegram-pacing-fixture.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { onCleanup } from './process-cleanup.ts';
 
@@ -496,4 +496,38 @@ for (const interruption of ['abort', 'missing startup deadline'] as const) test(
     await fake.close();
     await owner.dispose();
   }
+});
+
+test('queued Telegram edits merge their latest text and ride ahead of older General work', async t => {
+  const { clock, fake, state, queue } = await queueFixture(t);
+  await queue.send({ chat_id: '101', text: 'Open card' }, { kind: 'card', source: 'ask-edits', ask: 'ask-edits' });
+  const original = (await fakeState(fake)).messages[0]!;
+  const general = queue.send({ chat_id: '101', text: 'Older General message' }, { kind: 'general' });
+  const facts = { key: 'outcome-edit', source: 'ask-edits', ask: 'ask-edits' };
+  const first = queue.edit({ chat_id: '101', message_id: original.message_id, text: 'First outcome' }, facts);
+  const last = queue.edit({ chat_id: '101', message_id: original.message_id, text: 'Latest outcome', reply_markup: { inline_keyboard: [] } }, facts);
+  const completed = Promise.all([general, first, last]);
+  void completed.catch(() => {});
+  await driveTelegram(clock, state, completed);
+  await queue.stop();
+  const actual = await telegramControl<{ requests: Array<{ method: string; params: { text?: string } }>; messages: Array<{ text: string }> }>(fake.url, 'state');
+  assert.deepEqual(actual.body.requests.map(request => [request.method, request.params.text]), [
+    ['sendMessage', 'Open card'], ['editMessageText', 'Latest outcome'], ['sendMessage', 'Older General message'],
+  ]);
+  assert.equal(state.outbox().filter(job => job.kind === 'edit').length, 1);
+  assert.ok(state.outbox().every(job => job.state === 'sent'));
+  assert.deepEqual(actual.body.messages.map(message => message.text), ['Latest outcome', 'Older General message']);
+});
+
+test('dropping a keyed Telegram card for lost pairing remains incomplete', async t => {
+  const { clock, state, queue } = await queueFixture(t);
+  await queue.send({ chat_id: '101', text: 'Start pacing' });
+  const sending = queue.send({ chat_id: '101', text: 'Must not leave' },
+    { key: 'lost-pair-card', kind: 'card', source: 'ask-lost-pair', ask: 'ask-lost-pair' });
+  const incomplete = assert.rejects(sending, /no delivery receipt/);
+  void incomplete.catch(() => {});
+  state.setPairing(null);
+  await driveTelegram(clock, state, incomplete);
+  await queue.stop();
+  assert.equal(state.outbox().find(job => job.source === 'ask-lost-pair')!.state, 'dropped');
 });

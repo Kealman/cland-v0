@@ -104,3 +104,17 @@ The existing post-serving missing/aborted receipt and rejected-config assertions
 remain unchanged. Fixture users register their native fake's startup-only close
 before triggering any hub acquisition; normal completed setups leave final fake
 census reads available until the fake's own disposer runs.
+
+
+`queued Telegram edits merge their latest text and ride ahead of older General
+work` accepts one initial card, then queues an older General send and two keyed
+edits behind its ordinary pacing wait. It drives only durable queue deadlines,
+awaits every completion waiter, and asserts the actual native request order:
+one latest edit before General. Attempted payloads remain immutable; this case
+covers only edits with no attempt. No additional test process or browser runs.
+
+`dropping a keyed Telegram card for lost pairing remains incomplete` distinguishes
+source closure from admission loss. A keyed card queued behind pacing is dropped
+after unpairing, but its completion retains the missing-delivery rejection.
+Only an explicit closed-source receipt permits a keyed card to complete without
+an accepted send.

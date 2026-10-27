@@ -78,3 +78,62 @@ unchanged diff checked before this corrected test failed; the corrected renderer
 was then restored. `Telegram transient callback refusal retries its saved answer
 without duplicating the human effect` separately proves that a 500 still retries
 and does not confirm early. Both cases have five-second native test bounds.
+
+
+Cross-client closure (T-1354) adds these T2 frame/fake receipts:
+
+- `Telegram ask answered via Neovim edits its mapped card from the hub outcome
+  without buttons` and the `via web` case use a real Unix client and a signed-in
+  web WebSocket respectively. No browser runs. They keep exact rendered outcome
+  text, source, actor, time and empty keyboard assertions.
+- `Telegram withdrawn ask edits its card without buttons` and the cancelled case
+  resolve or close a dedicated topic over the public protocol, then observe the
+  durable edit and native card. No new wire fields are needed.
+- `Telegram drops a closed ask card queued behind a 429 hold without sending it`
+  observes the durable never-left attempt, answers through Neovim, then observes
+  the dropped job. It retains exactly one non-delivery attempt, no accepted
+  message and an enabled adapter after shutdown.
+- The two `Telegram tap racing a Neovim answer keeps the … winner on every copy`
+  cases hold the actual inbox read result or committed answer result at the
+  adapter boundary. A second native accepted card plus durable map represents
+  a prior resend; resend admission itself belongs to `/inbox`. Both orders
+  assert one stored answer and identical winner text with no buttons on both
+  copies, plus the losing press toast or losing Neovim result.
+- `Telegram inbox departure with a web decline edits the card when its ask frame
+  is unavailable` drops ask frames and retains the native decline edit after
+  the inbox coalescing publication. The departure's existing `declined` reason
+  carries an answered ask state and the durable decline outcome.
+- `Telegram in-flight card mapped after an answer still turns into its outcome`
+  holds the fake's request before it sends, observes the committed ask frame,
+  then releases that exact request. The stored closure folds the late map.
+  `hold-after-send` deliberately has no releasable response; it is suitable for
+  missing-receipt tests, not this receipt-delay test.
+
+All behavioural waits are bounded separately from setup. These are component
+receipts on the fake, not real-platform or browser evidence. Before source review
+run all Telegram, outbox, gateway, asks and inbox test files serially as directed
+by the item lead, plus typechecking; retain the file/phase results and platform.
+
+The uncertain accepted-card restart control now closes that ask through Neovim
+before restarting. Its unknown send still remains uncertain and is never replayed
+or relabelled as a safe source-closed drop.
+
+
+The authenticated web client uses `telegram-card-web-fixture.ts`. Its owner is
+registered before `pacingOwner`, and explicit fixture stop drains it before the
+hub. HTTP request and response close events, WebSocket close, native acquisition
+and the independent readiness observer are owned before their operations can
+complete. Disposal aborts acquisition, destroys outstanding HTTP work, terminates
+the socket and waits at most two seconds for native close and setup observers.
+
+Three same-disposer controls preserve the actual web decline/card assertions:
+a deliberately omitted readiness receipt after a real authenticated handshake,
+and aborts immediately after HTTP request or WebSocket acquisition. The missing
+receipt case holds completion of its socket-close observer after the actual
+native close event, verifies disposal has not joined, then releases it. Removing
+the drain await fails that exact assertion (`true !== false`); restoring it
+passes. A terminate-only negative control without this held observer was green
+because native close happened before inspection, so it is not claimed as a red
+receipt. Final controls require matching native started/closed counts, joined
+setup, no active readiness observer and zero pending owned work. No browser or
+real platform is involved.

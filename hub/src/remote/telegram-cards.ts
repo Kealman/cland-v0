@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { AskCard, HubFrame, InboxAsk } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { TelegramOutbox } from './telegram-outbox.ts';
-import { askCard, outcomeLine, type CardAction, type RemoteCard } from './cards.ts';
+import { askCard, closedCardLine, type CardAction, type RemoteCard } from './cards.ts';
 
 /** Telegram renders the shared card model; opaque actions stay in hub.db. */
 type CardRequest = <T>(type: string, fields: Record<string, unknown>, ingress?: RemoteIngress) => Promise<T>;
@@ -39,9 +39,17 @@ export class TelegramCards {
           if (saved !== 'pending' && !inbox.asks.some(ask => ask.id === button.ask)) toast = 'Already answered';
           else if ('option' in button.action) {
             this.#store.set(receipt, 'pending');
-            await this.#request('topic.answer', { ask: button.ask, option: button.action.option },
-              { chatId: chat, messageId: `callback:${press.id}` });
-            toast = 'Answered';
+            try {
+              await this.#request('topic.answer', { ask: button.ask, option: button.action.option },
+                { chatId: chat, messageId: `callback:${press.id}` });
+              toast = 'Answered';
+            } catch (error) {
+              // A different client may win after the open-inbox read. Only a
+              // closed hub record is terminal; a failed write still retries.
+              const current = await this.#request<import('../protocol.ts').Inbox>('inbox.list', {});
+              if (current.asks.some(ask => ask.id === button.ask)) throw error;
+              toast = 'Already answered';
+            }
           } else toast = 'Not available yet';
         }
       }
@@ -57,18 +65,28 @@ export class TelegramCards {
   };
 
   async receive(frame: HubFrame): Promise<void> {
-    if (frame.type === 'inbox') await this.publish(frame.inbox.asks);
-    else if (frame.type === 'ask' && frame.card.outcome) await this.outcome(frame.ask, frame.card);
+    if (frame.type === 'inbox') {
+      await Promise.all([this.publish(frame.inbox.asks), ...(frame.inbox.departures ?? []).flatMap(row => {
+        if (row.kind !== 'ask' || !['answered', 'declined', 'withdrawn', 'cancelled'].includes(row.reason)) return [];
+        return [this.outcome(row.id, { state: row.reason === 'declined' ? 'answered' : row.reason as AskCard['state'],
+          ...(row.outcome && 'status' in row.outcome ? { outcome: row.outcome } : {}) })];
+      })]);
+    } else if (frame.type === 'ask' && frame.card.state !== 'open') await this.outcome(frame.ask, frame.card);
   }
 
-  async outcome(id: string, card: AskCard): Promise<void> {
-    if (!card.outcome) return;
+  async outcome(id: string, card: Pick<AskCard, 'state' | 'outcome'>): Promise<void> {
     const pairing = this.#store.pairing();
     if (!pairing) return;
     const model = this.#store.get(`telegram.card-model:${id}`);
     if (!model) return;
-    const view = askCard(JSON.parse(model));
-    const text = telegramCardText(view, outcomeLine(card.outcome));
+    // A send may already be accepted while its response/map is still in flight.
+    // Retain the hub's closure so that copy folds as soon as it is mapped.
+    this.#store.set(`telegram.card-closure:${id}`, JSON.stringify(card));
+    const ask = JSON.parse(model) as InboxAsk;
+    const line = closedCardLine(card, ask.from);
+    if (!line) return;
+    const view = askCard(ask);
+    const text = telegramCardText(view, line);
     await Promise.all(this.#store.messagesForAsk(id).filter(copy => copy.chatId === pairing.chatId).map(copy =>
       this.#outbox.edit({ chat_id: copy.chatId, message_id: Number(copy.messageId), text,
         entities: [{ type: 'bold', offset: 0, length: view.title.length }], reply_markup: { inline_keyboard: [] } },
@@ -95,7 +113,10 @@ export class TelegramCards {
       return this.#outbox.send({ chat_id: pairing.chatId, text: telegramCardText(card),
         entities: [{ type: 'bold', offset: 0, length: card.title.length }],
         reply_markup: { inline_keyboard: keyboard }, link_preview_options: { is_disabled: true } },
-      { key, kind: 'card', source: ask.id, topic: ask.topic.id, ask: ask.id });
+      { key, kind: 'card', source: ask.id, topic: ask.topic.id, ask: ask.id }).then(async () => {
+        const closed = this.#store.get(`telegram.card-closure:${ask.id}`);
+        if (closed) await this.outcome(ask.id, JSON.parse(closed));
+      });
     }));
   }
 }

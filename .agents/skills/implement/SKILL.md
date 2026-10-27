@@ -140,7 +140,13 @@ Commit native callback identity with the answer before direct callback I/O,
 defer publication/delivery until commit, and confirm the offset afterwards.
 Treat a definite expired-press acknowledgement as terminal after the saved
 result, while transient callback failures retry it. Keep the lost-result restart, cross-ask/unissued keys,
-not-modified/failed-edit controls, and all four send-failure classes. Existing
+not-modified/failed-edit controls, and all four send-failure classes. Prove
+Neovim/web outcomes, withdrawn/cancelled cards, departure-only declines, both
+orders of the answer race on every mapped copy, and closure during an in-flight
+send. Own authenticated web fixture HTTP/socket acquisition before the hub,
+and retain missed/aborted setup plus native close/drain controls. A queued never-left card whose ask closes is dropped; unknown sends keep
+their replay fence, while edits remain eligible. Test latest unattempted keyed
+edit merging and priority ahead of General through the fake API. Existing
 role clauses already cover the gateway authority and secret boundaries; add no
 clause lines. Other/Decline buttons currently return an unavailable toast.
 

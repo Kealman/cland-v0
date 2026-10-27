@@ -2499,11 +2499,26 @@ A definite 400 `query is too old` is terminal after the durable result and lets
 later input progress; transient callback errors retry the saved result, and
 401/403 retain their fatal-token behavior.
 
-The outcome is queued as an edit for every mapped copy in the paired chat:
-choice, actor, source and hub-local HH:MM, with an empty keyboard. `message is
+The card follows the hub's ask record, whichever client answers first. Neovim
+answers read `via Neovim`; web declines include the reason and `via web`.
+Ask frames and inbox departures both update every mapped copy in the paired
+chat: choice or decline reason, actor, source and hub-local HH:MM, with an empty
+keyboard. Withdrawn asks name their asking session; cancelled asks say their
+topic or item closed. A closure received during an in-flight card send is kept
+until its accepted message map can be folded too. If another client wins between
+a tap's inbox read and answer request, the press receives `Already answered`
+and changes no outcome. Failed writes on an open ask remain retryable. `message is
 not modified` settles successfully; another failed edit becomes one outcome
 reply to the original card. A 429 retains the edit and bot-wide hold, and
-401/403 stop the remote. Card sends use the per-chat queue at card priority:
+401/403 stop the remote. Unattempted edits sharing a card's edit key merge to
+the latest text, keeping their original order and completion waiters; an attempted
+edit keeps its immutable payload. Edits and cards both ride ahead of General.
+Before sending or retrying a card, `TelegramOutbox` checks the hub's current
+inbox through `sourceOpen`. If its ask has closed, a job that never left is
+marked dropped and completes with a closed-source receipt, without a delivery;
+outcome edits still run. A dropped keyed card from lost pairing remains incomplete.
+An unknown send keeps its replay fence even after source closure.
+Card sends use the per-chat queue at card priority:
 400 retries plain text with the same buttons, 429 holds the immutable request,
 401/403 stop, and an uncertain send stays fenced. Replacement parts and proof
 commit together, including their own durable delivery receipt.

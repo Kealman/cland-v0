@@ -49,6 +49,7 @@ export class TelegramRemote implements Remote {
     if (outage) this.#offline = JSON.parse(outage);
     this.#format = rendering.format ?? 'rich';
     this.#outbox = new TelegramOutbox(api, clock, { ...(polling ? { store: polling.store } : {}), signal: this.#abort.signal,
+      askOpen: async id => (await this.#request<Inbox>('inbox.list')).asks.some(ask => ask.id === id),
       onSent: () => { this.#lastOutbound = this.#clock.now().toISOString(); },
       onError: error => {
         if (fatal(error)) void this.#track(async () => { throw error; }).catch(() => {});

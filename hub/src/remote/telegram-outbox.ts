@@ -30,10 +30,12 @@ export class TelegramOutbox {
   readonly #errors = new Map<string, unknown>();
   readonly #onSent: () => void;
   readonly #onError: (error: unknown) => void;
+  readonly #askOpen: (id: string) => boolean | Promise<boolean>;
   #stopping: Promise<void> | undefined;
 
   constructor(api: TelegramApi, clock: Clock, options: {
     store?: RemoteStore; signal?: AbortSignal; onError?: (error: unknown) => void; onSent?: () => void;
+    askOpen?: (id: string) => boolean | Promise<boolean>;
   } = {}) {
     this.#api = api; this.#clock = clock;
     // Legacy injected remotes have no project store; their queue remains lifetime-local.
@@ -42,6 +44,7 @@ export class TelegramOutbox {
     this.#signal = options.signal ? AbortSignal.any([this.#abort.signal, options.signal]) : this.#abort.signal;
     this.#onSent = options.onSent ?? (() => {});
     this.#onError = options.onError ?? (() => {});
+    this.#askOpen = options.askOpen ?? (() => true);
   }
 
   send(params: SendMessage, facts: SendFacts = {}): Promise<void> {
@@ -68,6 +71,12 @@ export class TelegramOutbox {
     if (previous) {
       if (String(payload(previous)!.params.chat_id) !== chat) throw new Error('Telegram send key belongs to another chat');
       if (previous.state === 'sent') return Promise.resolve();
+      if (method === 'editMessageText' && payload(previous)!.method === method
+        && previous.state === 'queued' && !this.#store.attempts(previous.id).length) {
+        // Keep the original order/waiters; only an unattempted edit is mutable.
+        this.#store.putOutbox({ ...previous, updated: this.#clock.now().toISOString(),
+          payload: { ...payload(previous)!, params, fallback } });
+      }
       return this.#wait(payload(previous)!.order, this.#lane(chat));
     }
     const order = Number(this.#store.get('telegram.outbox.order') ?? 0) + 1;
@@ -107,6 +116,8 @@ export class TelegramOutbox {
     else if (!group.length || group.some(job => job.state !== 'sent' && job.state !== 'dropped'
       && !(job.kind === 'general' && job.state === 'missed'))
       || group.some(job => payload(job)?.key) && !group.some(job => job.state === 'sent')
+        && !(group.every(job => job.kind === 'card' && job.state === 'dropped')
+          && group.some(job => this.#store.get(`telegram.outbox.source-closed:${job.id}`) === '1'))
       || payload(group[0]!)!.method === 'setMessageReaction' && !group.some(job => job.state === 'sent'))
       completion.reject(new Error('Telegram send has no delivery receipt'));
     else completion.resolve();
@@ -126,7 +137,16 @@ export class TelegramOutbox {
         },
       }, { clock: this.#clock,
         accepts: job => String(payload(job)?.params.chat_id) === chat,
-        compare: (a, b) => Number(b.kind === 'card') - Number(a.kind === 'card')
+        sourceOpen: async job => {
+          const ask = payload(job)?.mapping.ask;
+          // Unknown sends keep their replay fence even after the ask closes.
+          const previous = this.#store.attempts(job.id).at(-1);
+          if (job.kind !== 'card' || !ask || previous && previous.outcome !== 'never-left') return true;
+          const open = await this.#askOpen(ask);
+          if (!open) this.#store.set(`telegram.outbox.source-closed:${job.id}`, '1');
+          return open;
+        },
+        compare: (a, b) => Number(b.kind === 'card' || b.kind === 'edit') - Number(a.kind === 'card' || a.kind === 'edit')
           || payload(a)!.order - payload(b)!.order || payload(a)!.part - payload(b)!.part,
         admit: job => {
           const intent = payload(job)!;

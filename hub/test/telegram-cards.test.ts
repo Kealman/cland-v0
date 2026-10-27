@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
+import { cardWebOwner } from './telegram-card-web-fixture.ts';
 import { connectUi, inProcessSpoke, tempProject, until } from './harness.ts';
 import { TelegramRemote } from '../src/remote/telegram.ts';
 import { TelegramApi, type TgMessage } from '../src/remote/telegram-api.ts';
@@ -15,6 +16,7 @@ import type { Remote } from '../src/remote/gateway.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 
 async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
+  const web = cardWebOwner(t);
   const owner = pacingOwner(t);
   const root = await tempProject(t);
   const clock = new FakeClock();
@@ -39,7 +41,7 @@ async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const messages = async () => (await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages;
-  const ask = async (question = 'Which release?', options = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'], free = true) => {
+  const ask = async (question = 'Which release?', options = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'], free = true, topic = 'general') => {
     let card: TgMessage | undefined;
     let id: string | undefined;
     const mapped = until(async () => {
@@ -47,14 +49,15 @@ async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
       return !!card && !!id && state.message('101', String(card.message_id))?.ask === id;
     }, { timeoutMs: 1000, what: 'accepted ask card with durable native mapping' });
     void mapped.catch(() => {});
-    const result = await coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question, options, free });
+    const result = await coord.call<{ ok: boolean; ask: string }>('ask', { topic, question, options, free });
     assert.equal(result.ok, true, JSON.stringify(result));
     id = result.ask;
     await clock.advance(250); // Publish the committed ask through the inbox coalescing window.
     await driveTelegram(clock, state, mapped);
     return { id, card: card! };
   };
-  return { owner, root, clock, fake, store, state, remote, hub, ui, coord, messages, ask, newRemote };
+  const stop = async () => { await web.dispose(); await hub.stop(); };
+  return { web, stop, owner, root, clock, fake, store, state, remote, hub, ui, coord, messages, ask, newRemote };
 }
 
 test('Telegram nine-option free ask arrives as one entities card with eleven opaque button rows', async t => {
@@ -70,7 +73,7 @@ test('Telegram nine-option free ask arrives as one entities card with eleven opa
   const keys = markup.inline_keyboard.flat().map(button => button.callback_data);
   assert.equal(new Set(keys).size, 11);
   for (const key of keys) { assert.ok(Buffer.byteLength(key) <= 64); assert.equal(key.includes(id), false); }
-  await f.hub.stop();
+  await f.stop();
   assert.equal((await f.messages()).length, 1);
 });
 
@@ -95,7 +98,7 @@ test('Telegram option three commits via Telegram before callback answer and offs
   const outcome = (await f.messages()).find(message => message.message_id === card.message_id)!;
   assert.equal(outcome.text, `coord · General\n\nWhich release?\n\nThree · human via Telegram · ${new Date(saved.outcome!.at).toTimeString().slice(0, 5)}`);
   assert.deepEqual(outcome.reply_markup, { inline_keyboard: [] });
-  await f.hub.stop();
+  await f.stop();
 });
 
 
@@ -114,7 +117,7 @@ test('Telegram callback replay after committed answer and lost result returns it
   assert.ok(answer);
   assert.equal(f.state.get(`telegram.update:${press.update_id}`), null);
   assert.equal(f.state.get(`telegram.press:${press.callback_query.id}`), 'pending');
-  await f.hub.stop();
+  await f.stop();
   f.ui.close(); await f.coord.close();
   const next = f.newRemote();
   const acknowledged = f.fake.waitForRequest('answerCallbackQuery');
@@ -153,7 +156,7 @@ test('Telegram refuses unissued and cross-ask button data and keeps auxiliary ac
     assert.equal(f.store.ask(first.id)!.state, 'open');
     assert.equal(f.store.ask(second.id)!.state, 'open');
   }
-  await f.hub.stop();
+  await f.stop();
 });
 
 for (const failure of ['not-modified', 'failed'] as const) test(`Telegram ${failure} outcome edit settles with ${failure === 'failed' ? 'one reply' : 'no reply'}`, async t => {
@@ -171,7 +174,7 @@ for (const failure of ['not-modified', 'failed'] as const) test(`Telegram ${fail
   const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 2, column: 0 });
   assert.equal((await within(confirmed, 1000)).params.offset, press.update_id + 1);
   await driveTelegram(f.clock, f.state, settled);
-  await f.hub.stop();
+  await f.stop();
   const messages = await f.messages();
   assert.equal(messages.length, failure === 'failed' ? 2 : 1);
   if (failure === 'failed') {
@@ -190,7 +193,7 @@ test('Telegram card definite 400 falls back to plain text with the same buttons 
   assert.equal(card.entities?.length ?? 0, 0);
   assert.equal(f.state.message('101', String(card.message_id))!.ask, id);
   assert.equal((card.reply_markup as { inline_keyboard: unknown[] }).inline_keyboard.length, 11);
-  await f.hub.stop();
+  await f.stop();
   assert.equal((await f.messages()).length, 1);
 });
 
@@ -215,7 +218,7 @@ test('Telegram long ask keeps one card and every label while reserving a word-bo
   void edited.catch(() => {});
   await control(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 2, column: 0 });
   await driveTelegram(f.clock, f.state, edited);
-  await f.hub.stop();
+  await f.stop();
   const messages = await f.messages();
   assert.equal(messages.length, 1);
   assert.ok([...messages[0]!.text!].length <= 4096);
@@ -233,7 +236,7 @@ for (const code of [401, 403]) test(`Telegram card ${code} stops only the remote
   await f.clock.advance(250);
   await disabled;
   assert.equal((await f.ui.request({ type: 'hub.status' })).ok, true);
-  await f.hub.stop();
+  await f.stop();
   const state = await control<{ messages: TgMessage[]; requests: Array<{ method: string }> }>(f.fake.url, 'state');
   assert.equal(state.messages.length, 0);
   assert.equal(state.requests.filter(request => request.method === 'sendMessage').length, 1);
@@ -255,7 +258,10 @@ test('Telegram card 429 holds its immutable request and an uncertain accepted ca
   assert.equal((await f.coord.call<{ ok: boolean }>('ask', { topic: 'general', question: 'Uncertain card', options: ['Keep'] })).ok, true);
   await f.clock.advance(250);
   await driveTelegram(f.clock, f.state, uncertain);
-  await f.hub.stop(); f.ui.close(); await f.coord.close();
+  const uncertainAsk = f.state.outbox().find(row => row.kind === 'card' && row.state === 'uncertain')!.source!;
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: uncertainAsk, option: 1 })).ok, true);
+  assert.equal(f.state.outbox().some(row => row.kind === 'edit' && row.source === uncertainAsk), false);
+  await f.stop(); f.ui.close(); await f.coord.close();
   const messages = await f.messages();
   const next = f.newRemote();
   const polling = f.fake.waitForPoll();
@@ -264,6 +270,7 @@ test('Telegram card 429 holds its immutable request and an uncertain accepted ca
   await hub.stop();
   assert.deepEqual(await f.messages(), messages);
   assert.equal(f.state.outbox().filter(row => row.state === 'uncertain').length, 1);
+  assert.equal(f.state.outbox().some(row => row.kind === 'edit' && row.source === uncertainAsk), false);
 });
 
 test('Telegram answer receipt failure rolls back without publishing or delivering a phantom answer, then retries once', { timeout: 5000 }, async t => {
@@ -302,7 +309,7 @@ test('Telegram answer receipt failure rolls back without publishing or deliverin
   assert.equal(f.coord.events.filter(event => event.params.meta?.answer_to === id).length, 1);
   const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ answerTo?: string }> };
   assert.equal(history.messages.filter(message => message.answerTo === id).length, 1);
-  await f.hub.stop();
+  await f.stop();
 });
 
 test('Telegram expired callback acknowledgement confirms the durable answer and lets later input progress', { timeout: 5000 }, async t => {
@@ -326,7 +333,7 @@ test('Telegram expired callback acknowledgement confirms the durable answer and 
   const nextPoll = f.fake.waitForPoll();
   const later = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/help' });
   assert.equal((await driveTelegram(f.clock, f.state, within(nextPoll, 1000))).params.offset, later.update_id + 1);
-  await f.hub.stop();
+  await f.stop();
   assert.equal(f.state.get(`telegram.update:${press.update_id}`), '1');
   const history = f.store.topicMessages('general', 100);
   assert.equal(history.filter(message => message.answerTo === id).length, 1);
@@ -347,8 +354,210 @@ test('Telegram transient callback refusal retries its saved answer without dupli
   const confirmed = f.fake.waitForPoll();
   await f.clock.advance(1000);
   assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, press.update_id + 1);
-  await f.hub.stop();
+  await f.stop();
   assert.equal(f.store.topicMessages('general', 100).filter(message => message.answerTo === id).length, 1);
   const state = await control<{ requests: Array<{ method: string; params: { text?: string } }> }>(f.fake.url, 'state');
   assert.deepEqual(state.requests.filter(request => request.method === 'answerCallbackQuery').map(request => request.params.text), ['Answered', 'Answered']);
+});
+
+for (const client of ['Neovim', 'web'] as const) test(`Telegram ask answered via ${client} edits its mapped card from the hub outcome without buttons`, async t => {
+  const f = await fixture(t);
+  const ui = client === 'web' ? await f.web.start(f.ui) : f.ui;
+  const { id, card } = await f.ask();
+  const edited = until(() => f.state.outbox().some(job => job.kind === 'edit' && job.source === id && job.state === 'sent'),
+    { timeoutMs: 1000, what: `${client} outcome edit durable receipt` });
+  void edited.catch(() => {});
+  const result = await ui.request({ type: 'topic.answer', ask: id,
+    ...(client === 'web' ? { declined: true, reason: 'Keep the current release' } : { option: 2 }) });
+  assert.equal(result.ok, true, result.error);
+  await driveTelegram(f.clock, f.state, edited);
+  await f.stop();
+  const saved = f.store.ask(id)!;
+  assert.equal(saved.outcome!.via, client === 'web' ? 'web' : 'neovim');
+  const current = (await f.messages()).find(message => message.message_id === card.message_id)!;
+  assert.equal(current.text, `coord · General\n\nWhich release?\n\n${client === 'web' ? 'Declined: Keep the current release' : 'Two'} · human via ${client} · ${new Date(saved.outcome!.at).toTimeString().slice(0, 5)}`);
+  assert.deepEqual(current.reply_markup, { inline_keyboard: [] });
+});
+
+for (const action of ['withdrawn', 'cancelled'] as const) test(`Telegram ${action} ask edits its card without buttons`, async t => {
+  const f = await fixture(t);
+  const created = await f.coord.call<{ ok: boolean; topic: { id: string } }>('topic.create', { title: 'Release decision' });
+  assert.equal(created.ok, true);
+  const topic = created.topic.id;
+  const { id, card } = await f.ask('Which release?', ['One', 'Two'], true, topic);
+  const edited = until(() => f.state.outbox().some(job => job.kind === 'edit' && job.source === id && job.state === 'sent'),
+    { timeoutMs: 1000, what: `${action} card edit durable receipt` });
+  void edited.catch(() => {});
+  const result = action === 'withdrawn' ? await f.coord.call<{ ok: boolean }>('resolve', { topic }) : await f.ui.request({ type: 'topic.close', topic });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  await driveTelegram(f.clock, f.state, edited);
+  await f.stop();
+  assert.equal(f.store.ask(id)!.state, action);
+  const current = (await f.messages()).find(message => message.message_id === card.message_id)!;
+  assert.ok(current.text!.endsWith(action === 'withdrawn' ? 'Withdrawn · asked by coord' : 'Cancelled: topic or item closed'));
+  assert.deepEqual(current.reply_markup, { inline_keyboard: [] });
+});
+
+test('Telegram drops a closed ask card queued behind a 429 hold without sending it', async t => {
+  const f = await fixture(t);
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 429, retry_after: 2 });
+  let id = '';
+  const held = until(() => f.state.outbox().some(job => job.source === id && job.state === 'queued'
+    && f.state.attempts(job.id).at(-1)?.outcome === 'never-left'),
+  { timeoutMs: 1000, what: 'card durable 429 non-delivery and queued hold' });
+  void held.catch(() => {});
+  const asked = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Held card?', options: ['Keep'] });
+  assert.equal(asked.ok, true);
+  id = asked.ask;
+  await f.clock.advance(250);
+  await held;
+  const dropped = until(() => f.state.outbox().some(job => job.source === id && job.kind === 'card' && job.state === 'dropped'),
+    { timeoutMs: 1000, what: 'closed source durable dropped card' });
+  void dropped.catch(() => {});
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: id, option: 1 })).ok, true);
+  await driveTelegram(f.clock, f.state, dropped);
+  await f.stop();
+  const job = f.state.outbox().find(job => job.source === id && job.kind === 'card')!;
+  assert.equal(job.state, 'dropped');
+  assert.deepEqual(f.state.attempts(job.id).map(attempt => attempt.outcome), ['never-left']);
+  assert.equal((await f.messages()).length, 0);
+  assert.equal(f.state.status().disabled, false);
+});
+
+for (const winner of ['Neovim', 'Telegram'] as const) test(`Telegram tap racing a Neovim answer keeps the ${winner} winner on every copy`, { timeout: 5000 }, async t => {
+  let racing = false;
+  const held = Promise.withResolvers<HubFrame>();
+  const f = await fixture(t, frame => {
+    if (!racing || frame.type !== 'result' || !frame.ok) return false;
+    const value = frame.value as { asks?: unknown[]; message?: { answerTo?: string } };
+    if (winner === 'Neovim' ? Array.isArray(value.asks) : !!value.message?.answerTo) {
+      racing = false; held.resolve(frame); return true;
+    }
+    return false;
+  });
+  const { id, card } = await f.ask();
+  // A previous resend is a native accepted message and durable map, just like
+  // the initial copy. /inbox resend admission belongs to the next item.
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: f.fake.url });
+  const copy = await api.sendMessage({ chat_id: '101', text: card.text!,
+    reply_markup: card.reply_markup as import('../src/remote/telegram-api.ts').TgInlineKeyboardMarkup }, { signal: AbortSignal.timeout(1000) });
+  f.state.putMessage({ ...f.state.message('101', String(card.message_id))!, messageId: String(copy.message_id) });
+  assert.equal(f.state.messagesForAsk(id).length, 2);
+  racing = true;
+  const acknowledged = f.fake.waitForRequest('answerCallbackQuery');
+  const confirmed = f.fake.waitForPoll();
+  const edits = until(() => f.state.outbox().filter(job => job.kind === 'edit' && job.source === id && job.state === 'sent').length === 2,
+    { timeoutMs: 1000, what: 'both winner outcome copies durably edited' });
+  void edits.catch(() => {});
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 2, column: 0 });
+  const blocked = await within(held.promise, 1000);
+  const nvim = await f.ui.request({ type: 'topic.answer', ask: id, option: 2 });
+  assert.equal(nvim.ok, winner === 'Neovim', nvim.error);
+  const saved = f.store.ask(id)!;
+  assert.equal(saved.outcome!.via, winner === 'Neovim' ? 'neovim' : 'telegram');
+  await f.remote.receive(blocked);
+  assert.equal((await within(acknowledged, 1000)).params.text, winner === 'Neovim' ? 'Already answered' : 'Answered');
+  assert.equal((await within(confirmed, 1000)).params.offset, press.update_id + 1);
+  await driveTelegram(f.clock, f.state, edits);
+  await f.stop();
+  assert.deepEqual(f.store.ask(id), saved);
+  assert.equal(f.store.topicMessages('general', 100).filter(message => message.answerTo === id).length, 1);
+  const messages = (await f.messages()).filter(message => [card.message_id, copy.message_id].includes(message.message_id));
+  assert.equal(messages.length, 2);
+  for (const message of messages) {
+    assert.equal(message.text, `coord · General\n\nWhich release?\n\n${winner === 'Neovim' ? 'Two' : 'Three'} · human via ${winner} · ${new Date(saved.outcome!.at).toTimeString().slice(0, 5)}`);
+    assert.deepEqual(message.reply_markup, { inline_keyboard: [] });
+  }
+  assert.equal(f.state.status().disabled, false);
+});
+
+test('Telegram inbox departure with a web decline edits the card when its ask frame is unavailable', async t => {
+  const f = await fixture(t, frame => frame.type === 'ask');
+  const web = await f.web.start(f.ui);
+  const { id, card } = await f.ask();
+  const edited = until(() => f.state.outbox().some(job => job.kind === 'edit' && job.source === id && job.state === 'sent'),
+    { timeoutMs: 1000, what: 'departure-only decline durable edit receipt' });
+  void edited.catch(() => {});
+  assert.equal((await web.request({ type: 'topic.answer', ask: id, declined: true, reason: 'Wait for QA' })).ok, true);
+  await f.clock.advance(250);
+  await driveTelegram(f.clock, f.state, edited);
+  await f.stop();
+  const current = (await f.messages()).find(message => message.message_id === card.message_id)!;
+  assert.match(current.text!, /Declined: Wait for QA · human via web · \d\d:\d\d$/);
+  assert.deepEqual(current.reply_markup, { inline_keyboard: [] });
+});
+
+test('Telegram in-flight card mapped after an answer still turns into its outcome', async t => {
+  const closed = Promise.withResolvers<void>();
+  const f = await fixture(t, frame => {
+    if (frame.type === 'ask' && frame.card.state === 'answered') closed.resolve();
+    return false;
+  });
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 500, response: 'hold' });
+  const accepted = f.fake.waitForHeldRequest('sendMessage');
+  const asked = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'In-flight card?', options: ['Keep'] });
+  assert.equal(asked.ok, true);
+  const id = asked.ask;
+  await f.clock.advance(250);
+  const held = await within(accepted, 1000);
+  assert.equal(f.state.messagesForAsk(id).length, 0);
+  const edited = until(() => f.state.outbox().some(job => job.kind === 'edit' && job.source === id && job.state === 'sent'),
+    { timeoutMs: 1000, what: 'late-mapped card outcome durable receipt' });
+  void edited.catch(() => {});
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: id, option: 1 })).ok, true);
+  // Observe the committed state-change frame at the adapter while the native
+  // send is held, independently of the UI socket's reply.
+  await within(closed.promise, 1000);
+  await control(f.fake.url, 'release-requests', { ids: [held.id] });
+  await driveTelegram(f.clock, f.state, edited);
+  await f.stop();
+  const messages = await f.messages();
+  assert.equal(messages.length, 1);
+  assert.match(messages[0]!.text!, /Keep · human via Neovim · \d\d:\d\d$/);
+  assert.deepEqual(messages[0]!.reply_markup, { inline_keyboard: [] });
+});
+
+test('Telegram card web fixture missing setup receipt closes native HTTP and WebSocket work before disposal', async t => {
+  const f = await fixture(t);
+  const setupClock = new FakeClock();
+  const closeReceipt = Promise.withResolvers<void>();
+  const starting = f.web.start(f.ui, { setupClock, publishReady: false, closeReceipt: closeReceipt.promise });
+  const failed = assert.rejects(starting, /setup receipt deadline reached/);
+  void failed.catch(() => {});
+  await f.web.actual();
+  await setupClock.advance(1000);
+  await within(f.web.socketClosed, 1000);
+  try {
+    assert.equal(f.web.receipts().joined, false, 'native close alone does not drain the held close observer');
+    assert.ok(f.web.receipts().pending > 0);
+  } finally { closeReceipt.resolve(); }
+  await failed;
+  await f.web.dispose();
+  const receipt = f.web.receipts();
+  assert.deepEqual(receipt.started, { requests: 1, responses: 1, sockets: 1 });
+  assert.deepEqual(receipt.closed, receipt.started);
+  assert.equal(receipt.joined, true);
+  assert.equal(receipt.observing, false);
+  assert.equal(receipt.pending, 0);
+  await f.stop();
+});
+
+for (const stage of ['HTTP', 'WebSocket'] as const) test(`Telegram card web fixture aborted during ${stage} acquisition drains its native close receipts`, async t => {
+  const f = await fixture(t);
+  const abort = new AbortController();
+  const starting = f.web.start(f.ui, { signal: abort.signal });
+  const failed = assert.rejects(starting, /fixture acquisition cancelled/);
+  void failed.catch(() => {});
+  await within(stage === 'HTTP' ? f.web.httpStarted : f.web.socketStarted, 1000);
+  abort.abort(new Error('fixture acquisition cancelled'));
+  await failed;
+  await f.web.dispose();
+  const receipt = f.web.receipts();
+  assert.equal(receipt.started.requests, 1);
+  assert.equal(receipt.started.sockets, stage === 'HTTP' ? 0 : 1);
+  assert.deepEqual(receipt.closed, receipt.started);
+  assert.equal(receipt.joined, true);
+  assert.equal(receipt.observing, false);
+  assert.equal(receipt.pending, 0);
+  await f.stop();
 });
