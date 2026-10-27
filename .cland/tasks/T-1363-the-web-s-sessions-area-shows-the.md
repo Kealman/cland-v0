@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:46:50.067Z
-updated: 2026-10-27T05:46:59.506Z
+updated: 2026-10-27T09:50:32.656Z
 ---
 
 ## Summary
@@ -34,3 +34,9 @@ Model a `RemotesLine` component on `VerifyLine` and place it in the Sessions are
 - [ ] C1. Headless Chromium's Sessions area shows the Remotes row with connection, paired name, mute, outbox depth and last error, styled as an error within one second of a fake outage and plain on recovery (test).
 - [ ] C2. The browser receives the frame while a `remote.status` request from the web edge is still refused (test).
 - [ ] C3. At phone width the row renders inside the Sessions screen with no horizontal page scroll (test).
+
+## Comments
+
+### coord · 2026-10-27T09:50:32.656Z
+
+Contract from T-1362 (coord, 2026-10-27 09:51Z): the web reads HubEvent {type:'remote.state', remotes: RemoteStateRow[]} and the optional SnapshotValues.sessions.remotes. A row has these fields: messenger, enabled, connection ('connected'|'offline'|'stopped'|'disabled'), offlineSince (string|null), pairedName (string|null), mute, outboxDepth, lastError (string|null, redacted), and an optional stopCause using doctor's cause enum. The shared wire type in shared/wire restates the shape. Build against the landed T-1362, and never against its unlanded branch.

@@ -3,8 +3,9 @@ id: T-1362
 kind: task
 title: The hub pushes remote state to the workbenches, and Neovim's sessions panel shows a Remotes row
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
@@ -12,10 +13,10 @@ parent: E-1313
 blocked_by:
   - T-1361
   - T-1348
-topic: null
-branch: null
+topic: topic-1109
+branch: t/T-1362-the-hub-pushes-remote-state-to-the
 created: 2026-10-27T05:46:49.834Z
-updated: 2026-10-27T05:46:59.137Z
+updated: 2026-10-27T09:55:21.568Z
 ---
 
 ## Summary
@@ -34,7 +35,22 @@ Neovim's sessions panel draws a Remotes row beside the verification line. It sho
 
 ## Acceptance criteria
 
-- [ ] C1. Through the frame harness, a client receives the remote-state frame on connect and after each change, with the fields named above and no token, fingerprint or chat id (test).
-- [ ] C2. A failed exchange on the fake Bot API pushes the Telegram remote as offline within one second under an injected clock, and the next successful poll pushes it as connected (test).
-- [ ] C3. Headless Neovim's sessions panel shows the Remotes row with connection, paired name, mute, outbox depth and last error, red within one second of a fake outage and plain again on recovery (test).
-- [ ] C4. A client speaking the previous wire shape connects and works unchanged while the frame is sent (test).
+- [x] C1. Through the frame harness, a client receives the remote-state frame on connect and after each change, with the fields named above and no token, fingerprint or chat id (test).
+  - done: impl-1362 · 2026-10-27T09:55:08.332Z
+- [x] C2. A failed exchange on the fake Bot API pushes the Telegram remote as offline within one second under an injected clock, and the next successful poll pushes it as connected (test).
+  - done: impl-1362 · 2026-10-27T09:55:08.430Z
+- [x] C3. Headless Neovim's sessions panel shows the Remotes row with connection, paired name, mute, outbox depth and last error, red within one second of a fake outage and plain again on recovery (test).
+  - done: impl-1362 · 2026-10-27T09:55:08.516Z
+- [x] C4. A client speaking the previous wire shape connects and works unchanged while the frame is sent (test).
+  - done: impl-1362 · 2026-10-27T09:55:08.734Z
+
+## Comments
+
+### impl-1362 · 2026-10-27T09:42:42.852Z
+
+Rule 20 consumer inventory before implementation: searches across hub/src, shared/wire, web/src, nvim/lua, all hub/nvim/web test tiers, qa and shipped .agents/skills for remote.status, RemoteStatusRow/Result, RemoteConnection, SnapshotValues, snapshot.end and verification.queue. Production: hub/src/protocol.ts, shared/wire/index.ts, hub/test/wire-conformance.ts; hub core/dispatch/snapshot/daemon; remote gateway/configuration/messenger/telegram; CLI remote, doctor remotes/project, setup hub; web connection.ts and sessions/state.ts; Neovim hub/init/state/explorer/panels. Migration: new remote.state event plus optional sessions.remotes snapshot field; restate in browser wire and add conformance. Neovim consumes event; previous snapshot without remotes remains valid. Web connection/reducer already ignores unknown events and extra snapshot fields; its Remotes UI is T-1363. Keep remote.status and its authority/IDs/fingerprint unchanged. Storage schema stays unchanged; internal optional RemoteConnection offlineSince/lastError fields preserve injected legacy clients. Persisted readers: remote/state.ts, doctor, CLI and setup continue unchanged.
+Test consumers audited: connection-{snapshot,resume,resync}, snapshot-framing, computed-sessions, startup-replies-scale, wire-conformance, human-marks, approval-records, item-summary[-lua], roles-snapshot[-cli], remote-{cli,scripted,state,state-migration}, fake legacy-remote-hub, doctor-remotes, setup-remotes, telegram-{messenger,inbound,mute,pacing,pairing,rendering,liveness} and their fixtures, suite-{protocol,runner-contract,admission-responsive}, executor-admission-lock, web-{area-state,authority,verification-model}; Neovim fixtures/protocol-frames.json, verification-{queue,view}, sessions; Web area-slots, pairing, phone-disconnected, topics, verification, fixtures/verification and record-verification. Existing consumers retain the previous wire shape; add a literal previous-feature hello and old snapshot regression. QA archived briefs E-412 stages 2/3, E-413 (and stages 1/2), E-414 (and stages 1/2/3), E-417 stage1, E-418 stages1/2, E-419 stage3, T-230 use old verification frames, unaffected. Shipped implement skill receives new flow guidance; old remote status examples remain valid. No key/action or permission change; role clause requires no extra lines.
+
+### impl-1362 · 2026-10-27T09:48:55.996Z
+
+Additional raw-socket consumer audit after the connect-frame red run: connectSocket.next consumers were searched across all tiers. assignRole in hub/test/harness.ts assumed that the next frame after welcome is its result; it must correlate the result and ignore additive events. Direct unfeatured human peers in tracker-component.test.ts, tracker.test.ts, request-guard-component.test.ts, daemon.test.ts and edges-component.test.ts need an explicit initial remote.state receipt before their positional result assertions. suite-admission-close.test.ts closes before consuming a result; session-async-processes-lifecycle and verify-all already correlate IDs; item-summary-lua/startup-replies-scale use feature snapshots; all session/progress/subscription/name-reservation/adapter/brief socket peers send spoke hellos and are unaffected. scenarios/hub-lifecycle closes without another read, unaffected. Production askHubFrame/CLI request clients correlate result IDs; Neovim ignores unknown frames and Web's switch ignores unknown event types. The standalone remote.state connect frame is limited to non-snapshot connects; featured clients get it atomically through sessions.remotes, retaining the seven existing domains and sequence transaction.

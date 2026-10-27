@@ -2,8 +2,8 @@
 id: T-1353
 kind: task
 title: An ask arrives as a Telegram card and one tap answers it and edits the card into its outcome
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1108
 branch: t/T-1353-an-ask-arrives-as-a-telegram-card-and
 created: 2026-10-27T05:43:00.974Z
-updated: 2026-10-27T09:36:14.536Z
+updated: 2026-10-27T09:56:16.707Z
+closed: 2026-10-27T09:56:16.707Z
 ---
 
 ## Summary
@@ -32,12 +33,16 @@ A press resolves its key, checks that the ask is open, and sends `topic.answer` 
 
 - [x] C1. A nine-option ask with free answers arrives as one entities card naming the asker and the topic, with eleven buttons one per row in order ending "Other answer…" and "Decline…", and every `callback_data` of at most 64 bytes (test).
   - done: impl-1353 · 2026-10-27T09:18:43.980Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1353-evidence-2 · 2026-10-27T09:50:25.678Z · commit d83f8e1a1a355b5e9493a80875d4474be2aba245
 - [x] C2. A tap on option 3 records the answer with `via = "telegram"` before the press is answered and before the offset is confirmed, and the card is edited to the outcome naming the option, who, "via Telegram" and the time, with no buttons (test).
   - done: impl-1353 · 2026-10-27T09:18:44.470Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1353-evidence-2 · 2026-10-27T09:50:25.678Z · commit d83f8e1a1a355b5e9493a80875d4474be2aba245
 - [x] C3. A press whose data is not a key the hub issued, or names another ask, changes nothing and answers the press (test).
   - done: impl-1353 · 2026-10-27T09:18:45.701Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1353-evidence-2 · 2026-10-27T09:50:25.678Z · commit d83f8e1a1a355b5e9493a80875d4474be2aba245
 - [x] C4. An outcome edit refused as "message is not modified" counts as done, and one the fake fails becomes one outcome reply to the card (test).
   - done: impl-1353 · 2026-10-27T09:18:46.089Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1353-evidence-2 · 2026-10-27T09:50:25.678Z · commit d83f8e1a1a355b5e9493a80875d4474be2aba245
 
 ## Comments
 
@@ -360,3 +365,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source-3 clear, A-12681. M3 resolved: both original artifact rollback tests use an actual pre-commit messages-write refusal with all original subscription/directory/id-reuse assertions preserved. Separate bounded log-failure control proves one committed post/publication/delivery, bytes, reopened Store and operator diagnostic. Comprehensive refusal consumer/disposition inventory plus CLI supplement reviewed; guide/index/README/skill consistent. Entire six-file correction inspected; no hub/src change or dev merge. A-12679 original local output 37/37 inspected; A-12680 copied red details/local scope retained. Old A-12673 remains failed and supplies no new-head runtime clearance. C1–C4 unverified; stable-head authorized mode-free verify then original-record evidence review.
+
+### rev-26 · 2026-10-27T09:50:25.678Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1353-evidence-2
+commit: d83f8e1a1a355b5e9493a80875d4474be2aba245
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear, A-12685; C1–C4 verified at unchanged source-3 head. Original af7673c2/A-12684 independently yields 3,645 ordinary passes and 75 separate load passes, no fail/cancel/skip/TODO. All14 card identities plus new artifact logger identity exact5/5; max individual0.684225938 s, no >=3 s allowance needed. Both prior artifact failures now pass with preserved rollback assertions; atomic receipt/expiry/retry controls pass. T0/all T1/fallback all T2/mapped T4 once/Web complete; broader T3/T4 soak unrun. Pinned Headless Shell156/v1248; host typecheck50e33a10 reused, budgets/lint report-only. Old A-12673 remains failed. Coordinator owns integrated cover/QA/enqueue/landing.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1353 · 2026-10-27T09:50:55.527Z
+
+Ready handoff: head d83f8e1a1a355b5e9493a80875d4474be2aba245, branch pushed to origin. Source-3 and final evidence-2 clear (A-12681/A-12685); C1–C4 freshly verified. Configured mode-free run af7673c2/A-12684 passed: 3,645 ordinary passes plus75 separate load passes; T0/T1/fallback all T2/mapped T4 once/Web complete, broader T3/soak deferred, budgets/lint report-only. Droplet Linux x64 c-8 lon1, Node24.21.0, Neovim0.12.5, isolated Chrome Headless Shell156.0.8078.4 build1248; lifetime727s, cost$0.0505. Original failure A-12673 retained. Fresh git fetch --no-auto-maintenance origin dev plus merge-tree --write-tree HEAD origin/dev exited0 with no conflicts: current origin/dev8719f18ed7b3f04708ed181729c8b68b817fd2af, synthetic merge tree9e895dc578dc67240855dcfc86c431698161d55b. Working tree clean; no source mutation or dev merge since source clearance. Coordinator owns enqueue/integrated cover/epic QA/landing.
+
+### coord · 2026-10-27T09:56:16.707Z
+
+Merged 599dd446c27ee5207ba601326b093f2db244c0b2 onto dev.
