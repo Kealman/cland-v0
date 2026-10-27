@@ -77,9 +77,17 @@ differs. Pairing grants remain local even when `/inbox` or `/status` is read rem
 
 A paired Telegram human can answer an ask by tapping its option card. The hub
 stores the answer with `via: "telegram"` before acknowledging the press and
-confirming the update. Keys must belong to that card's ask; Other answer and
-Decline currently show `Not available yet`. Outcomes remove the buttons and
-name the choice, actor, source and hub-local time. Long questions keep one card
+confirming the update. Keys must belong to that card's ask. Other answer and
+Decline acknowledge the press, then send a separate ForceReply prompt replying
+to the card. The next ordinary text, or a reply to that prompt, submits a free
+answer or decline reason; `/cancel` clears the wait and keeps the ask/buttons
+open. Prompt state survives restart. A typed card reply submits free text when
+allowed, otherwise an option number; invalid text gets a note, and closed asks
+consume no answer or General message. ForceReply never belongs to the card. An unknown prompt send records incomplete
+publication and releases the callback cursor while keeping the send fenced;
+unmapped replies get a note rather than an answer or General message. Confirmed
+answers recover owed feedback through their native answer receipt after restart.
+Outcomes remove the buttons and name the choice, actor, source and hub-local time. Long questions keep one card
 with a marked preview; full labels and the question remain in the workbench.
 See [Telegram ask cards](../../hub/README.md#telegram-ask-cards) and the
 [frame/fake regressions](tests/hub-test-telegram-cards.test.ts.md).

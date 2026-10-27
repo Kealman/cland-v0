@@ -30,13 +30,11 @@ offset, same durable answer id and exactly one human answer in frame history.
 This is a component restart control, not an OS-crash claim. The existing
 `gateway.test.ts` old-client cases retain the previous request/result shapes.
 
-`Telegram refuses unissued and cross-ask button data and keeps auxiliary actions
-unavailable` proves C3 with real presses. Edit a real fake message to carry an
+`Telegram refuses unissued and cross-ask button data` proves C3 with real presses. Edit a real fake message to carry an
 unissued key, then the issued key of another ask; preserve both open asks and
 each toast/offset. The extra direct API client uses real HTTP deadline time and
 a one-second abort signal, with an independent five-second native case bound;
-the server clock remains injected. Other answer and Decline remain unavailable
-toasts.
+the server clock remains injected. Other answer and Decline prompt flows are covered below.
 
 The `Telegram not-modified outcome edit settles with no reply` and `Telegram
 failed outcome edit settles with one reply` cases prove C4. Inject the exact
@@ -137,3 +135,72 @@ because native close happened before inspection, so it is not claimed as a red
 receipt. Final controls require matching native started/closed counts, joined
 setup, no active readiness observer and zero pending owned work. No browser or
 real platform is involved.
+
+
+T-1355 adds the same T2 frame/fake seam for prompt input:
+
+- `Telegram Other answer sends a separate ForceReply and the next text answers only its ask`
+  retains the separate reply target/placeholder, no ForceReply on the card,
+  one editable ask map, exact free-answer outcome via Telegram, stored/delivered
+  reactions and one answer rather than a General message.
+- `Telegram Decline reply to its ForceReply records the reason and folds only the card`
+  checks `declined` with the typed reason, outcome text, empty card keyboard and
+  the unchanged immutable prompt.
+- `Telegram cancel clears the decline wait but keeps the ask buttons and sends next text to General`
+  observes the accepted cancel reply and confirmed input before checking the
+  open ask, retained buttons and subsequent ordinary message.
+- `Telegram typed reply to a free-answer card answers it` and
+  `Telegram typed reply to an options-only card requires an option number`
+  retain the exact answer, non-number note/open ask, valid numbered choice and
+  absence of a stray General message.
+- `Telegram prompt wait survives component restart and consumes the next text once`
+  rebuilds the hub/adapter over the same SQLite state and retains one prompt,
+  the original immutable prompt and exactly one answer after restart.
+- `Telegram prompt answer lost result replays its durable answer instead of posting to General`
+  interrupts the actual committed answer result before feedback/offset, rebuilds
+  the component, and checks the same stored answer id and exactly one history row.
+- `Telegram reply to an older prompt targets its own ask after a different next-text answer`
+  proves explicit prompt mapping wins after another prompt consumed the chat wait.
+- `Telegram prompt answer losing the inbox-read race notes the closed ask and consumes no General message`
+  holds the actual inbox result, answers in the workbench, then releases it.
+  The losing input receives a closed-ask note, confirms its offset, and changes
+  neither the winning outcome nor General.
+
+- `Telegram prompt feedback interrupted after commit restarts without a stale note or duplicate answer`
+  holds the actual reaction request after the answer committed, observes its
+  native close before rebuilding, and retains the original answer, confirmed
+  input and no closed-ask note. Admission and feedback are separate boundaries.
+
+No new wire field, database column, authority grant, real browser or platform is
+required. `remote_state` gains additive intent/selection/receipt keys. The native
+input path reuses the existing gateway answer receipt and inbound feedback owner.
+These restarts are component restarts, not OS crash claims. File-level duration
+and enforce/report gate facts come from verification receipts.
+
+
+Source-review corrections (M1/M2) retain every original criterion assertion:
+
+- `Telegram uncertain ForceReply send confirms the callback and safely consumes an unmapped reply after restart`
+  injects native `accept-disconnect` on the prompt send, observes its uncertain
+  job, then requires the exact next callback offset. It restarts with the actual
+  accepted but unmapped prompt, replies to it, retains the incomplete/note outcome
+  with no answer or General post, cancels and confirms later ordinary input.
+  Final native request/message counts and the uncertain job prove no prompt
+  retransmission. Quoted prompt text never supplies routing authority. Before
+  the fix the cursor step hit its deadline with the unknown send fenced.
+- `Telegram confirmed prompt answer recovers owed delivery feedback after component restart`
+  drops the actual delivery frame after an answer result, requires the confirmed
+  input offset and the hub's current delivered stage, and verifies the adapter
+  still owes its delivery reaction. Rebuild only after stopping every writer.
+  Arm native reaction and TCP-close observers before restart; retain the exact
+  message id, close id, unchanged confirmed offset, exactly one answer/history
+  row and one stored/one delivered reaction. Before the fix it failed with
+  `confirmed ask answer is missing recovered delivery feedback`. This control
+  does not replay the input: it proves the native recovery reader follows the
+  answer receipt to the current stored message/stage.
+
+The internal Conversation recovery callback takes an optional trusted messenger
+argument; existing one-argument consumers keep direct-id lookup. The exported
+RemoteReceipt and all wire frames stay unchanged. `gateway.test.ts` retains the
+same-identity other-messenger refusal and previous-wire action controls for
+native answer receipts, alongside ordinary input recovery.

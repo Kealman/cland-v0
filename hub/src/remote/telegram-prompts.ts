@@ -1,0 +1,135 @@
+import type { Inbox, InboxAsk } from '../protocol.ts';
+import type { RemoteIngress } from './gateway.ts';
+import type { RemoteStore } from './state.ts';
+import type { TelegramOutbox } from './telegram-outbox.ts';
+import type { TelegramUpdateHandler } from './telegram-polling.ts';
+import { TelegramError } from './telegram-api.ts';
+
+type Request = <T>(type: string, fields: Record<string, unknown>, ingress?: RemoteIngress) => Promise<T>;
+type Prompt = { ask: string; chat: string; card: number; question: string; topic: string; mode: 'other' | 'decline' };
+type Target = { ask: string; mode: Prompt['mode'] | 'card' | 'unverified'; prompt?: string };
+type Answer = { fields?: { ask: string; text?: string; option?: number; declined?: true; reason?: string }; prompt?: string; note?: string; stored?: boolean };
+
+/** Separate, immutable ForceReply messages; only cards belong in the editable ask map. */
+export class TelegramPrompts {
+  readonly #store: RemoteStore;
+  readonly #outbox: TelegramOutbox;
+  readonly #request: Request;
+  readonly #answer: (fields: Record<string, unknown>, ingress: RemoteIngress, stored: () => void) => Promise<void>;
+  constructor(store: RemoteStore, outbox: TelegramOutbox, request: Request, answer: (fields: Record<string, unknown>, ingress: RemoteIngress, stored: () => void) => Promise<void>) {
+    this.#store = store; this.#outbox = outbox; this.#request = request; this.#answer = answer;
+  }
+
+  prepare(press: string, chat: string, card: number, ask: InboxAsk, mode: Prompt['mode']): void {
+    const key = `telegram.prompt:${press}`;
+    if (this.#store.get(key)) return;
+    this.#store.transaction(() => {
+      this.#store.set(key, JSON.stringify({ ask: ask.id, chat, card, question: ask.question, topic: ask.topic.id, mode } satisfies Prompt));
+      this.#store.set(`telegram.prompt-wait:${chat}`, key);
+    });
+  }
+
+  async publish(press: string): Promise<void> {
+    const key = `telegram.prompt:${press}`;
+    const raw = this.#store.get(key);
+    if (!raw) return;
+    const incomplete = `telegram.prompt-incomplete:${press}`;
+    if (this.#store.get(incomplete)) return;
+    const prompt = JSON.parse(raw) as Prompt;
+    const declining = prompt.mode === 'decline';
+    try {
+      await this.#outbox.send({ chat_id: prompt.chat,
+        text: `${declining ? 'Why decline' : 'Your answer to'}: ${[...prompt.question].slice(0, 3900).join('')}\n\n/cancel keeps the ask open`,
+        reply_parameters: { message_id: prompt.card },
+        reply_markup: { force_reply: true, input_field_placeholder: declining ? 'Reason for declining' : 'Your answer' } },
+      { key, source: key, topic: prompt.topic });
+    } catch (error) {
+      if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
+      if (!this.#store.outbox().some(job => job.source === key && job.state === 'uncertain')) throw error;
+      // The outbox owns this unknown send permanently. Record an incomplete
+      // publication, not a success, so the callback cursor can release later input.
+      this.#store.set(incomplete, JSON.stringify({ chat: prompt.chat, ask: prompt.ask }));
+    }
+  }
+
+  cancel(chat: string): void {
+    this.#store.set(`telegram.prompt-wait:${chat}`, null);
+  }
+
+  readonly handler: TelegramUpdateHandler = {
+    accepts: update => {
+      const message = update.message;
+      if (!message?.text?.trim() || message.text.startsWith('/')) return false;
+      const chat = String(message.chat.id);
+      return !!this.#store.get(`telegram.answer-input:${chat}:${message.message_id}`) || !!this.#target(chat, message.reply_to_message?.message_id);
+    },
+    handle: async update => {
+      const message = update.message!;
+      const chat = String(message.chat.id);
+      const key = `telegram.answer-input:${chat}:${message.message_id}`;
+      const saved = this.#store.get(key);
+      const target = !saved ? this.#target(chat, message.reply_to_message?.message_id)! : undefined;
+      let answer: Answer;
+      if (saved) answer = JSON.parse(saved) as Answer;
+      else if (target!.mode === 'unverified') {
+        answer = { note: 'Prompt delivery is unconfirmed. Reply to the ask card or use /cancel.' };
+        this.#store.set(key, JSON.stringify(answer));
+      } else {
+        const inbox = await this.#request<Inbox>('inbox.list', {});
+        const ask = inbox.asks.find(ask => ask.id === target!.ask);
+        const option = /^\s*[1-9]\s*$/.test(message.text!) ? Number(message.text!.trim()) : 0;
+        answer = target!.prompt ? { prompt: target!.prompt } : {};
+        if (!ask) answer.note = 'This ask is already closed.';
+        else if (target!.mode === 'decline') answer.fields = { ask: ask.id, declined: true, reason: message.text! };
+        else if (target!.mode === 'card' && !ask.free) {
+          if (option && option <= ask.options.length) answer.fields = { ask: ask.id, option };
+          else answer.note = `Reply with an option number from 1 to ${ask.options.length}.`;
+        } else answer.fields = { ask: ask.id, text: message.text! };
+        // Freeze routing and the exact fields before dispatch; a lost result
+        // retries the same gateway receipt even after the prompt wait clears.
+        this.#store.set(key, JSON.stringify(answer));
+      }
+      if (answer.fields) {
+        try {
+          await this.#answer(answer.fields, { chatId: chat, messageId: String(message.message_id) }, () => {
+            answer.stored = true;
+            this.#store.set(key, JSON.stringify(answer));
+          });
+        } catch (error) {
+          if (answer.stored) throw error;
+          // Only a hub-owned closure is terminal. Transient write/feedback
+          // failures must retry the exact saved ingress, never become General.
+          const current = await this.#request<Inbox>('inbox.list', {});
+          if (current.asks.some(ask => ask.id === answer.fields!.ask)) throw error;
+          answer = { ...(answer.prompt ? { prompt: answer.prompt } : {}), note: 'This ask is already closed.' };
+          this.#store.set(key, JSON.stringify(answer));
+        }
+      }
+      if (answer.prompt && this.#store.get(`telegram.prompt-wait:${chat}`) === answer.prompt) this.#store.set(`telegram.prompt-wait:${chat}`, null);
+      if (answer.note) {
+        await this.#outbox.send({ chat_id: chat, text: answer.note }, { key: `${key}:note` });
+        return;
+      }
+    },
+  };
+
+  #target(chat: string, reply?: number): Target | null {
+    if (reply !== undefined) {
+      const mapped = this.#store.message(chat, String(reply));
+      if (mapped?.ask) return { ask: mapped.ask, mode: 'card' };
+      if (!mapped && (this.#store.get(`telegram.prompt-wait:${chat}`)
+        || this.#store.entries('telegram.prompt-incomplete:').some(row => (JSON.parse(row.value) as { chat: string }).chat === chat)))
+        return { ask: '', mode: 'unverified' };
+      // Explicit replies never borrow another prompt's current wait.
+      const key = mapped?.message;
+      if (!key?.startsWith('telegram.prompt:')) return null;
+      const raw = this.#store.get(key);
+      const prompt = raw ? JSON.parse(raw) as Prompt : null;
+      return prompt?.chat === chat ? { ask: prompt.ask, mode: prompt.mode, prompt: key } : null;
+    }
+    const key = this.#store.get(`telegram.prompt-wait:${chat}`);
+    const raw = key && this.#store.get(key);
+    const prompt = raw ? JSON.parse(raw) as Prompt : null;
+    return prompt?.chat === chat ? { ask: prompt.ask, mode: prompt.mode, prompt: key! } : null;
+  }
+}

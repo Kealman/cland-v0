@@ -6,6 +6,7 @@ import type { AskCard, HubFrame, InboxAsk } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { TelegramOutbox } from './telegram-outbox.ts';
 import { askCard, closedCardLine, type CardAction, type RemoteCard } from './cards.ts';
+import type { TelegramPrompts } from './telegram-prompts.ts';
 
 /** Telegram renders the shared card model; opaque actions stay in hub.db. */
 type CardRequest = <T>(type: string, fields: Record<string, unknown>, ingress?: RemoteIngress) => Promise<T>;
@@ -16,9 +17,11 @@ export class TelegramCards {
   readonly #api: TelegramApi;
   readonly #request: CardRequest;
   readonly #signal: AbortSignal;
+  readonly #prompts: TelegramPrompts;
   constructor(store: RemoteStore, outbox: TelegramOutbox, api: TelegramApi,
-    request: CardRequest, signal: AbortSignal) {
+    request: CardRequest, signal: AbortSignal, prompts: TelegramPrompts) {
     this.#store = store; this.#outbox = outbox; this.#api = api; this.#request = request; this.#signal = signal;
+    this.#prompts = prompts;
   }
 
   readonly handler: TelegramUpdateHandler = {
@@ -50,7 +53,11 @@ export class TelegramCards {
               if (current.asks.some(ask => ask.id === button.ask)) throw error;
               toast = 'Already answered';
             }
-          } else toast = 'Not available yet';
+          } else {
+            const ask = inbox.asks.find(ask => ask.id === button.ask)!;
+            this.#prompts.prepare(press.id, chat, press.message!.message_id, ask, button.action.kind);
+            toast = button.action.kind === 'decline' ? 'Why decline' : 'Your answer';
+          }
         }
       }
       this.#store.set(receipt, toast);
@@ -61,6 +68,7 @@ export class TelegramCards {
         // already saved; terminal expiry must not block every later update.
         if (!(error instanceof TelegramError && error.code === 400 && error.description.toLowerCase().includes('query is too old'))) throw error;
       }
+      await this.#prompts.publish(press.id);
     },
   };
 

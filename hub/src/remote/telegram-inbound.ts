@@ -2,7 +2,7 @@ import type { HubFrame, HumanMessageKind, TopicMessage } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { TelegramUpdateHandler } from './telegram-polling.ts';
 import type { TelegramApi } from './telegram-api.ts';
-import type { RemoteSend, RemoteReceipt } from './gateway.ts';
+import type { RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 
 type Receipt = { chat: string; message: number; stored: boolean; delivered: boolean; seen: boolean };
 
@@ -43,26 +43,36 @@ export class TelegramInbound {
       const parsed = input(message.text!)!;
       const late = this.#late?.(message.date);
       if (late) parsed.text += `\n\n(${late})`;
-      const id = `telegram-in-${++this.#next}`;
-      const result = Promise.withResolvers<TopicMessage>();
-      this.#pending.set(id, { ...result, receipt: { chat: String(message.chat.id), message: message.message_id,
-        stored: false, delivered: false, seen: false } });
-      const abort = () => result.reject(new Error('Telegram input cancelled'));
-      signal.addEventListener('abort', abort, { once: true });
-      try {
-        signal.throwIfAborted();
-        const reply = message.reply_to_message && this.#store.message(String(message.chat.id), String(message.reply_to_message.message_id));
-        this.#send({ type: 'topic.send', id, topic: reply?.topic ?? 'general',
-          ...(reply?.message ? { replyTo: reply.message } : {}), ...parsed },
-        { chatId: String(message.chat.id), messageId: String(message.message_id) });
-        const saved = await result.promise;
-        await this.#flush(saved.id);
-      } finally {
-        signal.removeEventListener('abort', abort);
-        this.#pending.delete(id);
-      }
+      const reply = message.reply_to_message && this.#store.message(String(message.chat.id), String(message.reply_to_message.message_id));
+      await this.#post({ type: 'topic.send', topic: reply?.topic ?? 'general',
+        ...(reply?.message ? { replyTo: reply.message } : {}), ...parsed },
+      { chatId: String(message.chat.id), messageId: String(message.message_id) }, signal);
     },
   };
+
+  answer(fields: Record<string, unknown>, ingress: RemoteIngress, stored: () => void): Promise<void> {
+    return this.#post({ ...fields, type: 'topic.answer' }, ingress, this.#signal, stored);
+  }
+
+  async #post(frame: Record<string, unknown>, ingress: RemoteIngress, signal: AbortSignal, stored?: () => void): Promise<void> {
+    const id = `telegram-in-${++this.#next}`;
+    const result = Promise.withResolvers<TopicMessage>();
+    this.#pending.set(id, { ...result, receipt: { chat: ingress.chatId, message: Number(ingress.messageId),
+      stored: false, delivered: false, seen: false } });
+    const abort = () => result.reject(new Error('Telegram input cancelled'));
+    signal.addEventListener('abort', abort, { once: true });
+    try {
+      signal.throwIfAborted();
+      this.#send({ ...frame, id }, ingress);
+      const saved = await result.promise;
+      stored?.();
+      await this.#flush(saved.id);
+    } finally {
+      signal.removeEventListener('abort', abort);
+      this.#pending.delete(id);
+    }
+  }
+
   receive(frame: HubFrame): void | Promise<void> {
     if (frame.type === 'delivery' && (frame.stage === 'delivered' || frame.stage === 'injected')) {
       const key = `telegram.inbound:${frame.message}`;

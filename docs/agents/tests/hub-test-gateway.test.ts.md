@@ -15,6 +15,14 @@ distinct messages. The optional native identity and provenance are independent
 of frame validation; gateway authority continues to run before replay lookup.
 The optional native receipt callback returns the original durable row/stage;
 the other messenger's lookup stays empty and a `messageReceipt` frame is refused.
+`gateway native ask receipts recover current delivery stage only for their messenger`
+adds a native `topic.answer`: retain its committed answer id, actual session
+receipt, current delivered-stage lookup, empty same-ingress Discord lookup and
+refused previous-shape `messageReceipt` frame. Recovery follows the persisted
+messenger-scoped gateway.answer receipt rather than assuming an answer's message
+id equals its ingress id. The internal Conversation callback's optional trusted
+messenger argument leaves old one-argument direct-id reads unchanged. The native
+confirmed-input restart and actual owed reaction are in the Telegram cards file.
 
 Observe the exact message id in the remote's `message` frame before replying,
 and the Coordinator's channel receipt before asserting human attribution.

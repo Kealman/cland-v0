@@ -90,7 +90,7 @@ test('Telegram help is phone text with bold sections, command bullets and trust 
   assert.equal(trust.at(-1)!.offset + trust.at(-1)!.length, reply.text!.length);
   assert.match(reply.text!, /Only the paired Telegram user/);
   assert.match(reply.text!, /Asks arrive as cards; tap an option to answer/);
-  assert.match(reply.text!, /Other answer… and Decline… show Not available yet/);
+  assert.match(reply.text!, /Other answer… and Decline… open a reply prompt/);
   const closed = fake.waitForPollClose(poll.id);
   await hub.stop();
   assert.equal(await within(closed, 1_000), poll.id);

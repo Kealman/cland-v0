@@ -133,7 +133,7 @@ export type Conversation = {
   /** One frame; only the in-process gateway supplies trusted messenger provenance. */
   receive: (raw: string, via?: RemoteVia, messageId?: string) => void;
   /** Native gateway recovery only; not an action in the frame protocol. */
-  messageReceipt?: (messageId: string) => import('../protocol.ts').TopicMessage | null;
+  messageReceipt?: (messageId: string, via?: import('../protocol.ts').RemoteVia) => import('../protocol.ts').TopicMessage | null;
   /** The transport closed. */
   closed: () => void;
 };
@@ -2394,9 +2394,21 @@ export class Dispatcher {
     };
 
     return {
-      ...(transport.edge === 'gateway' ? { messageReceipt: (messageId: string) => {
+      ...(transport.edge === 'gateway' ? { messageReceipt: (messageId: string, via?: import('../protocol.ts').RemoteVia) => {
         if (done || !peer.isOpen()) return null;
-        const message = core.store.message(messageId);
+        let message = core.store.message(messageId);
+        if (!message && via) {
+          // Native answers have their own message id. Resolve only the receipt
+          // committed with this messenger's exact ingress, then read current stage.
+          const raw = core.store.remotes.forMessenger(via).get(`gateway.answer:${messageId}`);
+          if (raw) {
+            try {
+              const receipt = JSON.parse(raw) as { value?: { message?: { id?: unknown } } };
+              const id = receipt.value?.message?.id;
+              if (typeof id === 'string') { messageId = id; message = core.store.message(id); }
+            } catch { return null; } // Unreadable receipts supply no recovery authority.
+          }
+        }
         const stage = core.store.stage(messageId);
         return message?.topic ? { ...message, topic: message.topic, seq: core.store.messageSeq(messageId), ...(stage ? { stage } : {}) } : null;
       } } : {}),

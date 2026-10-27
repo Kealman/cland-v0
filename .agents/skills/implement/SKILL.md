@@ -157,7 +157,20 @@ and retain missed/aborted setup plus native close/drain controls. A queued never
 their replay fence, while edits remain eligible. Test latest unattempted keyed
 edit merging and priority ahead of General through the fake API. Existing
 role clauses already cover the gateway authority and secret boundaries; add no
-clause lines. Other/Decline buttons currently return an unavailable toast.
+clause lines. Other/Decline use separate immutable ForceReply prompts after the
+callback acknowledgement. Keep durable prompt/mode/next-text selection and exact
+input routing across restart and lost results; prompt maps have no editable ask
+id. `/cancel` clears only the wait and keeps the ask open. Explicit prompt/card
+replies target their own ask, options-only replies require a number, and closed
+asks consume no General message. Reuse inbound stored/delivered feedback;
+feedback failures retry the saved answer rather than becoming stale-input notes.
+An unknown prompt send records incomplete publication and releases the callback
+cursor without retransmission; consume unmapped explicit replies with a note,
+never quoted-text authority or a General post. Prove native accept-disconnect,
+restart, reply/cancel and later-input progression. Confirmed answer feedback
+recovery follows the messenger-scoped gateway.answer receipt to the current
+message/stage; keep ordinary-id lookup, other-messenger isolation and prior-wire
+refusal. A pre-offset replay alone does not prove confirmed-input recovery.
 
 For Telegram phone commands or menu registration, use the sealed production-frame
 and fake Bot API seam in `docs/agents/tests/hub-test-telegram-commands.test.ts.md`.

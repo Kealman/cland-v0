@@ -133,7 +133,7 @@ export class Gateway {
           } catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
         } : undefined, this.#leaseAbort.signal, identity => {
           if (!this.#open || this.#disabled.has(remote)) return null;
-          const message = this.#conversation?.messageReceipt?.(inputId(remote.via, identity));
+          const message = this.#conversation?.messageReceipt?.(inputId(remote.via, identity), remote.via);
           return message?.fromKind === 'human' && message.via === remote.via ? this.#output(message) : null;
         });
       } catch (error) {

@@ -530,3 +530,33 @@ test('gateway refuses every other request before dispatch, including pairing and
   assert.equal(status.ok, true, status.error);
   await hub.stop();
 });
+
+test('gateway native ask receipts recover current delivery stage only for their messenger', async t => {
+  const root = await tempProject(t);
+  const native = testMessenger('native-answer');
+  const other = testMessenger('other-answer', 'discord');
+  const identity = { chatId: '101', messageId: '905' };
+  let lookup: import('../src/remote/gateway.ts').RemoteReceipt | undefined;
+  let otherLookup: import('../src/remote/gateway.ts').RemoteReceipt | undefined;
+  const remote: import('../src/remote/gateway.ts').Remote = { ...native,
+    start: (send, pair, _signal, receipt) => { lookup = receipt; return native.start(frame => send(frame, identity), pair); } };
+  const otherRemote: import('../src/remote/gateway.ts').Remote = { ...other,
+    start: (send, pair, _signal, receipt) => { otherLookup = receipt; return other.start(send, pair); } };
+  const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote, otherRemote], clock: new FakeClock() });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  const ask = await coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Receipt recovery?', free: true });
+  assert.equal(ask.ok, true);
+  const delivered = coord.waitForEvent(event => event.params.content === 'Recover native answer');
+  const recovered = until(() => lookup?.(identity)?.stage === 'delivered', { timeoutMs: 1000, what: 'current native answer delivery receipt' });
+  void recovered.catch(() => {});
+  const result = await native.client.request({ type: 'topic.answer', ask: ask.ask, text: 'Recover native answer' });
+  assert.equal(result.ok, true, result.error);
+  const original = (result.value as { message: TopicMessage }).message;
+  assert.equal((await delivered).params.meta!.via, 'telegram');
+  await recovered;
+  assert.equal(lookup?.(identity)?.id, original.id);
+  assert.equal(lookup?.(identity)?.answerTo, ask.ask);
+  assert.equal(otherLookup?.(identity), null, 'the same ingress in Discord cannot read Telegram answer receipts');
+  assert.equal((await other.client.request({ type: 'messageReceipt', messageId: original.id })).ok, false, 'recovery remains a native callback, not a wire action');
+  await hub.stop();
+});

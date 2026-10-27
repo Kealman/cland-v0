@@ -7844,7 +7844,7 @@
     "hub/test/telegram-cards.test.ts::Telegram nine-option free ask arrives as one entities card with eleven opaque button rows": 0.316799,
     "hub/test/telegram-cards.test.ts::Telegram not-modified outcome edit settles with no reply": 0.163005,
     "hub/test/telegram-cards.test.ts::Telegram option three commits via Telegram before callback answer and offset, then edits the outcome": 0.213539,
-    "hub/test/telegram-cards.test.ts::Telegram refuses unissued and cross-ask button data and keeps auxiliary actions unavailable": 0.191438,
+    "hub/test/telegram-cards.test.ts::Telegram refuses unissued and cross-ask button data": 0.191438,
     "hub/test/telegram-cards.test.ts::Telegram tap racing a Neovim answer keeps the Neovim winner on every copy": 0.202487,
     "hub/test/telegram-cards.test.ts::Telegram tap racing a Neovim answer keeps the Telegram winner on every copy": 0.19118,
     "hub/test/telegram-cards.test.ts::Telegram transient callback refusal retries its saved answer without duplicating the human effect": 0.175833,

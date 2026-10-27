@@ -2341,9 +2341,9 @@ Facts are escaped before the shared renderer; long replies split into numbered
 parts within Telegram's 4096-code-point and 100-entity bounds.
 
 `/inbox` reads `inbox.list`, repeats every open card body, or says "Nothing needs
-you". Local pairing grants and their counts stay outside the remote. Card actions
-belong to the cards feature; `/cancel` leaves the ask open. Paired `/start` names
-the project. `/decision <text>` and `/question <text>` are inbound mirror actions;
+you". Local pairing grants and their counts stay outside the remote. Other
+answer and Decline open separate reply prompts; `/cancel` clears the waiting
+prompt and leaves the ask open. Paired `/start` names the project. `/decision <text>` and `/question <text>` are inbound mirror actions;
 `/mute` and `/unmute` control the General stream independently.
 
 Command replies use one send function routed through the shared per-chat
@@ -2514,9 +2514,8 @@ message id and reserving 1,024 code points for the outcome inside Telegram's
 4,096-code-point message budget. Names and option labels stay whole.
 
 The paired presser's key must match the mapped card's ask. Unissued or cross-ask
-keys answer the press without changing an ask. Other answer and Decline currently
-show `Not available yet`. Option presses use the existing `topic.answer` gate,
-with trusted native identity derived from the callback id and `via: "telegram"`.
+keys answer the press without changing an ask. Option presses use the existing
+`topic.answer` gate, with trusted native identity derived from the callback id and `via: "telegram"`.
 The dispatcher commits its replay receipt with the answer; replay returns that
 receipt, including when the adapter lost the result. Human-answer publication,
 delivery and hygiene effects wait for that commit, so a failed receipt write
@@ -2529,6 +2528,30 @@ outside the outbox and its pacing; only then does polling confirm the offset.
 A definite 400 `query is too old` is terminal after the durable result and lets
 later input progress; transient callback errors retry the saved result, and
 401/403 retain their fatal-token behavior.
+
+Other answer and Decline acknowledge the press before sending a separate
+ForceReply prompt replying to the card: “Your answer to: …” or “Why decline: …”,
+with a placeholder and `/cancel keeps the ask open`. The card itself never
+carries ForceReply, because a message that ever carried it cannot be edited.
+Prompt intent, ask/mode and the chat's next-text wait are stored in `remote_state`;
+the accepted prompt maps to its intent with `ask: null`, outside editable card
+copies. A restart retains the wait. The next ordinary text answers that ask;
+an explicit reply to a prompt targets its own ask even after other text.
+Decline submits `declined: true` with the typed reason. `/cancel` clears the
+next-text wait, replies “Cancelled. The ask stays open.” and preserves the card's
+buttons; following ordinary text reaches General. A typed reply to a card
+submits free text when allowed, otherwise only a valid option number; other
+text gets a one-line note and leaves the ask open. A closed ask gets a note and
+the input goes nowhere. Input routing and exact answer fields are durable before
+dispatch, so a lost result retries the same native receipt instead of becoming
+General. Stored and delivered reactions reuse the inbound feedback/recovery path.
+Prompt sends use the existing durable outbox, including its uncertain-send fence.
+If a send has an unknown outcome, its publication records an explicit incomplete
+receipt and polling confirms the callback so later input and `/cancel` can
+progress. The prompt is never retransmitted. An unmapped explicit reply while a
+prompt waits, or after an incomplete prompt send, gets an unconfirmed-prompt
+note without answering an ask or posting to General. Quoted text cannot establish
+which ask a reply belongs to; use the mapped ask card or `/cancel`.
 
 The card follows the hub's ask record, whichever client answers first. Neovim
 answers read `via Neovim`; web declines include the reason and `via web`.
@@ -2661,7 +2684,8 @@ never at retry launch. See the
 ### Telegram text from the human
 
 With Telegram enabled, a resolved token, an available API and a paired private
-chat, free text reaches General as the human's `message`, with `via: "telegram"`.
+chat, ordinary text reaches General as the human's `message`, with `via: "telegram"`,
+unless it answers a waiting prompt or replies to an ask card or prompt.
 `/decision <text>` and `/question <text>` select those kinds; the optional
 `@botname` command suffix is accepted. Telegram entities are discarded: the
 visible text is preserved without bold, link destinations or code formatting.
@@ -2670,8 +2694,9 @@ The Aide role is not an addressee; address an Aide by its session name.
 
 A reply uses the `remote_messages` entry for that chat and Telegram message id,
 then submits the stored topic and source message id through the gateway's
-ordinary reply authorization. An unknown reply stays in General; Telegram's
-supplied quoted text, author and topic are never routing authority. This input
+ordinary reply authorization. Ask cards and ForceReply prompts take the ask
+answer path instead, without a General message. An unknown reply stays in
+General; Telegram's supplied quoted text, author and topic are never routing authority. This input
 handler leaves cards, media, edits and other commands to their registry handlers.
 
 The native port can supply a chat/message identity separately from the frame.
@@ -2684,7 +2709,12 @@ An optional native recovery callback reads the durable message and its current
 session stage through the gateway conversation. It is scoped to that messenger
 and is never a frame action. Before polling, the native client reconciles
 pending feedback receipts for the current paired chat, so a delivery stored
-before a lost frame or shutdown still produces 👀 after restart. Older injected
+before a lost frame or shutdown still produces 👀 after restart. For native
+`topic.answer`, the gateway-only recovery reader follows the messenger-scoped
+`gateway.answer:<ingress-id>` receipt to the answer's actual stored message id
+and current delivery stage, including after the input offset is confirmed.
+Ordinary inputs keep direct lookup by their native id. This adds no wire action;
+the other messenger cannot read that receipt. Older injected
 ports may omit this callback and retain their previous startup behavior.
 
 `setMessageReaction` puts 👌 on the Telegram input only after the durable send

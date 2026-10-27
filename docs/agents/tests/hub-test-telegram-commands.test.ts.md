@@ -19,7 +19,9 @@ release and transport numbers last. No extra remote authority is granted.
 
 The inbox case retains empty text, repeated open ask/options, local pairing grant
 exclusion and the unchanged open ask after `/cancel`; paired `/start` names the
-project. Card actions and Other/Decline drafts belong to the cards feature.
+project. The cards file covers durable Other/Decline prompts and clearing their
+wait with `/cancel`; help describes the reply prompt rather than an unavailable
+action.
 
 The replay case arms `hold-after-send` before `/cancel`. The held native receipt
 and actual fake message prove the reply committed; shutdown closes that exact

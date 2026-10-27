@@ -134,7 +134,7 @@ test('Telegram callback replay after committed answer and lost result returns it
   await hub.stop();
 });
 
-test('Telegram refuses unissued and cross-ask button data and keeps auxiliary actions unavailable', { timeout: 5000 }, async t => {
+test('Telegram refuses unissued and cross-ask button data', { timeout: 5000 }, async t => {
   const f = await fixture(t);
   const first = await f.ask('First question');
   const second = await f.ask('Second question');
@@ -147,8 +147,6 @@ test('Telegram refuses unissued and cross-ask button data and keeps auxiliary ac
     assert.equal((await within(acknowledged, 1000)).params.text, expected);
     assert.equal((await within(confirmed, 1000)).params.offset, update.update_id + 1);
   };
-  await press(9, 'Not available yet');
-  await press(10, 'Not available yet');
   for (const data of ['not-issued-by-this-hub', firstMarkup.inline_keyboard[2]![0]!.callback_data]) {
     await api.editMessageText({ chat_id: '101', message_id: second.card.message_id, text: second.card.text!,
       reply_markup: { inline_keyboard: [[{ text: 'Untrusted choice', callback_data: data }]] } }, { signal: AbortSignal.timeout(1000) });
@@ -560,4 +558,377 @@ for (const stage of ['HTTP', 'WebSocket'] as const) test(`Telegram card web fixt
   assert.equal(receipt.observing, false);
   assert.equal(receipt.pending, 0);
   await f.stop();
+});
+
+test('Telegram Other answer sends a separate ForceReply and the next text answers only its ask', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const acknowledged = f.fake.waitForRequest('answerCallbackQuery');
+  const promptSent = until(async () => (await f.messages()).some(message => message.reply_to_message?.message_id === card.message_id && (message.reply_markup as { force_reply?: boolean })?.force_reply === true),
+    { timeoutMs: 1000, what: 'separate accepted ForceReply prompt' });
+  void promptSent.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 9, column: 0 });
+  assert.equal((await within(acknowledged, 1000)).params.text, 'Your answer');
+  await driveTelegram(f.clock, f.state, promptSent);
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, press.update_id + 1);
+  const prompt = (await f.messages()).find(message => (message.reply_markup as { force_reply?: boolean })?.force_reply)!;
+  assert.equal(prompt.text, 'Your answer to: Which release?\n\n/cancel keeps the ask open');
+  assert.deepEqual(prompt.reply_markup, { force_reply: true, input_field_placeholder: 'Your answer' });
+  assert.equal('force_reply' in card.reply_markup!, false);
+  assert.equal(f.state.messagesForAsk(id).length, 1, 'ForceReply is never an editable card copy');
+  const edited = until(async () => (await f.messages()).some(message => message.message_id === card.message_id && message.text?.includes('Custom release · human via Telegram')),
+    { timeoutMs: 1000, what: 'free-answer outcome edit' });
+  void edited.catch(() => {});
+  const nextPoll = f.fake.waitForPoll();
+  const eyes = f.fake.waitForRequest('setMessageReaction', receipt => JSON.stringify(receipt.params).includes('👀'));
+  void eyes.catch(() => {});
+  const input = await control<{ update_id: number; message: TgMessage }>(f.fake.url, 'say', { text: 'Custom release' });
+  assert.equal((await driveTelegram(f.clock, f.state, within(nextPoll, 1000))).params.offset, input.update_id + 1);
+  await driveTelegram(f.clock, f.state, edited);
+  assert.equal((await driveTelegram(f.clock, f.state, within(eyes, 1000))).params.message_id, input.message!.message_id);
+  const outcome = f.store.ask(id)!.outcome!;
+  assert.equal(outcome.status, 'answered');
+  assert.equal(outcome.text, 'Custom release');
+  assert.equal(f.store.ask(id)!.outcome!.via, 'telegram');
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(message => message.text === 'Custom release').map(message => message.answerTo), [id]);
+  await f.stop();
+});
+
+test('Telegram Decline reply to its ForceReply records the reason and folds only the card', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const promptSent = until(async () => (await f.messages()).some(message => message.text?.startsWith('Why decline:')),
+    { timeoutMs: 1000, what: 'accepted decline ForceReply prompt' });
+  void promptSent.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  await control(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 10, column: 0 });
+  await driveTelegram(f.clock, f.state, promptSent);
+  await driveTelegram(f.clock, f.state, within(confirmed, 1000));
+  const prompt = (await f.messages()).find(message => message.text?.startsWith('Why decline:'))!;
+  assert.equal(prompt.text, 'Why decline: Which release?\n\n/cancel keeps the ask open');
+  assert.equal(prompt.reply_to_message!.message_id, card.message_id);
+  assert.deepEqual(prompt.reply_markup, { force_reply: true, input_field_placeholder: 'Reason for declining' });
+  const edited = until(async () => (await f.messages()).some(message => message.message_id === card.message_id && message.text?.includes('Declined: Needs more time')),
+    { timeoutMs: 1000, what: 'decline reason in card outcome' });
+  void edited.catch(() => {});
+  const nextPoll = f.fake.waitForPoll();
+  const input = await control<{ update_id: number }>(f.fake.url, 'update', { message: {
+    message_id: 900, date: 1, chat: { id: 101, type: 'private' },
+    from: { id: 101, is_bot: false, first_name: 'Fixture human' }, text: 'Needs more time', reply_to_message: prompt,
+  } });
+  assert.equal((await driveTelegram(f.clock, f.state, within(nextPoll, 1000))).params.offset, input.update_id + 1);
+  await driveTelegram(f.clock, f.state, edited);
+  const outcome = f.store.ask(id)!.outcome!;
+  assert.equal(outcome.status, 'declined');
+  assert.equal(outcome.reason, 'Needs more time');
+  assert.equal(outcome.via, 'telegram');
+  const messages = await f.messages();
+  assert.deepEqual(messages.find(message => message.message_id === card.message_id)!.reply_markup, { inline_keyboard: [] });
+  assert.deepEqual(messages.find(message => message.message_id === prompt.message_id), prompt, 'ForceReply remains immutable');
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(message => message.answerTo === id).map(message => message.text), ['declined: Needs more time']);
+  await f.stop();
+});
+
+test('Telegram cancel clears the decline wait but keeps the ask buttons and sends next text to General', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const promptSent = until(async () => (await f.messages()).some(message => message.text?.startsWith('Why decline:')),
+    { timeoutMs: 1000, what: 'decline prompt before cancel' });
+  void promptSent.catch(() => {});
+  const promptPoll = f.fake.waitForPoll();
+  await control(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 10, column: 0 });
+  await driveTelegram(f.clock, f.state, promptSent);
+  await driveTelegram(f.clock, f.state, within(promptPoll, 1000));
+  const cancelled = until(async () => (await f.messages()).some(message => message.text?.includes('Cancelled. The ask stays open.')),
+    { timeoutMs: 1000, what: 'cancel reply accepted' });
+  void cancelled.catch(() => {});
+  const cancelPoll = f.fake.waitForPoll();
+  const cancel = await control<{ update_id: number }>(f.fake.url, 'say', { text: '/cancel' });
+  await driveTelegram(f.clock, f.state, cancelled);
+  assert.equal((await driveTelegram(f.clock, f.state, within(cancelPoll, 1000))).params.offset, cancel.update_id + 1);
+  assert.equal(f.store.ask(id)!.state, 'open');
+  assert.deepEqual((await f.messages()).find(message => message.message_id === card.message_id)!.reply_markup, card.reply_markup);
+  const nextPoll = f.fake.waitForPoll();
+  const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'Ordinary after cancel' });
+  assert.equal((await driveTelegram(f.clock, f.state, within(nextPoll, 1000))).params.offset, input.update_id + 1);
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string; kind: string }> };
+  assert.deepEqual(history.messages.filter(message => message.text === 'Ordinary after cancel').map(message => ({ kind: message.kind, answerTo: message.answerTo })), [{ kind: 'message', answerTo: undefined }]);
+  assert.equal(f.store.ask(id)!.state, 'open');
+  await f.stop();
+});
+
+for (const free of [true, false]) test(`Telegram typed reply to ${free ? 'a free-answer' : 'an options-only'} card ${free ? 'answers it' : 'requires an option number'}`, async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask('Typed question', ['One', 'Two'], free);
+  const confirmed = f.fake.waitForPoll();
+  const note = !free ? until(async () => (await f.messages()).some(message => message.text === 'Reply with an option number from 1 to 2.'),
+    { timeoutMs: 1000, what: 'options-only non-number note' }) : Promise.resolve();
+  void note.catch(() => {});
+  const input = await control<{ update_id: number }>(f.fake.url, 'update', { message: {
+    message_id: 901, date: 1, chat: { id: 101, type: 'private' },
+    from: { id: 101, is_bot: false, first_name: 'Fixture human' }, text: 'Typed custom answer', reply_to_message: card,
+  } });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  await driveTelegram(f.clock, f.state, note);
+  if (free) {
+    const outcome = f.store.ask(id)!.outcome!;
+    assert.equal(outcome.status, 'answered');
+    assert.equal(outcome.text, 'Typed custom answer');
+    assert.equal(f.store.ask(id)!.outcome!.via, 'telegram');
+  } else {
+    assert.equal(f.store.ask(id)!.state, 'open');
+    const next = f.fake.waitForPoll();
+    const valid = await control<{ update_id: number }>(f.fake.url, 'update', { message: {
+      message_id: 902, date: 1, chat: { id: 101, type: 'private' },
+      from: { id: 101, is_bot: false, first_name: 'Fixture human' }, text: '2', reply_to_message: card,
+    } });
+    assert.equal((await driveTelegram(f.clock, f.state, within(next, 1000))).params.offset, valid.update_id + 1);
+    const outcome = f.store.ask(id)!.outcome!;
+    assert.equal(outcome.status, 'answered');
+    assert.equal(outcome.text, 'Two');
+    assert.equal(outcome.option, 2);
+  }
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.equal(history.messages.some(message => message.text === 'Typed custom answer' && !message.answerTo), false);
+  await f.stop();
+});
+
+async function forcePrompt(f: Awaited<ReturnType<typeof fixture>>, card: TgMessage, row = 9) {
+  let prompt: TgMessage | undefined;
+  const mapped = until(async () => {
+    prompt = (await f.messages()).find(message => message.reply_to_message?.message_id === card.message_id && (message.reply_markup as { force_reply?: boolean })?.force_reply);
+    return !!prompt && !!f.state.message('101', String(prompt.message_id))?.message?.startsWith('telegram.prompt:');
+  }, { timeoutMs: 1000, what: 'accepted ForceReply with durable prompt mapping' });
+  void mapped.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  await control(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row, column: 0 });
+  await driveTelegram(f.clock, f.state, mapped);
+  await driveTelegram(f.clock, f.state, within(confirmed, 1000));
+  return prompt!;
+}
+
+test('Telegram prompt wait survives component restart and consumes the next text once', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  const prompt = await forcePrompt(f, card);
+  await f.stop(); f.ui.close(); await f.coord.close();
+  const next = f.newRemote();
+  const initial = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  const confirmed = f.fake.waitForPoll();
+  const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'After restart' });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  const outcome = f.store.ask(id)!.outcome!;
+  assert.equal(outcome.status, 'answered');
+  assert.equal(outcome.text, 'After restart');
+  const ui = await connectUi(t, hub.discovery);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(message => message.text === 'After restart').map(message => message.answerTo), [id]);
+  assert.equal((await f.messages()).filter(message => (message.reply_markup as { force_reply?: boolean })?.force_reply).length, 1);
+  assert.deepEqual((await f.messages()).find(message => message.message_id === prompt.message_id), prompt);
+  await hub.stop();
+});
+
+test('Telegram prompt answer lost result replays its durable answer instead of posting to General', async t => {
+  const lost = Promise.withResolvers<void>();
+  const f = await fixture(t, frame => {
+    if (frame.type === 'result' && frame.ok && (frame.value as { message?: { answerTo?: string } }).message?.answerTo) {
+      lost.resolve(); return true;
+    }
+    return false;
+  });
+  const { id, card } = await f.ask();
+  await forcePrompt(f, card);
+  const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'One durable answer' });
+  await within(lost.promise, 1000);
+  const answer = f.store.ask(id)!.answer;
+  assert.ok(answer);
+  assert.equal(f.state.get(`telegram.update:${input.update_id}`), null);
+  await f.stop(); f.ui.close(); await f.coord.close();
+  const next = f.newRemote();
+  const confirmed = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  assert.equal(f.store.ask(id)!.answer, answer);
+  const ui = await connectUi(t, hub.discovery);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(message => message.text === 'One durable answer').map(message => message.answerTo), [id]);
+  await hub.stop();
+});
+
+test('Telegram reply to an older prompt targets its own ask after a different next-text answer', async t => {
+  const f = await fixture(t);
+  const first = await f.ask('First prompt');
+  const prompt = await forcePrompt(f, first.card, 10);
+  const second = await f.ask('Second prompt');
+  await forcePrompt(f, second.card);
+  const answered = f.fake.waitForPoll();
+  await control(f.fake.url, 'say', { text: 'Answer second' });
+  await driveTelegram(f.clock, f.state, within(answered, 1000));
+  const secondOutcome = f.store.ask(second.id)!.outcome!;
+  assert.equal(secondOutcome.status, 'answered');
+  assert.equal(secondOutcome.text, 'Answer second');
+  assert.equal(f.store.ask(first.id)!.state, 'open');
+  const confirmed = f.fake.waitForPoll();
+  const input = await control<{ update_id: number }>(f.fake.url, 'update', { message: {
+    message_id: 903, date: 1, chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' },
+    text: 'Decline first', reply_to_message: prompt,
+  } });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  assert.equal(f.store.ask(first.id)!.outcome!.status, 'declined');
+  const outcome = f.store.ask(first.id)!.outcome!;
+  assert.equal(outcome.status, 'declined');
+  assert.equal(outcome.reason, 'Decline first');
+  await f.stop();
+});
+
+test('Telegram prompt answer losing the inbox-read race notes the closed ask and consumes no General message', async t => {
+  let hold = false;
+  const reading = Promise.withResolvers<HubFrame>();
+  const f = await fixture(t, frame => {
+    if (hold && frame.type === 'result' && frame.ok && Array.isArray((frame.value as { asks?: unknown[] }).asks)) {
+      hold = false; reading.resolve(frame); return true;
+    }
+    return false;
+  });
+  const { id, card } = await f.ask();
+  await forcePrompt(f, card);
+  hold = true;
+  const noted = until(async () => (await f.messages()).some(message => message.text === 'This ask is already closed.'),
+    { timeoutMs: 1000, what: 'closed prompt answer note' });
+  void noted.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'Losing prompt answer' });
+  const read = await within(reading.promise, 1000);
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: id, text: 'Workbench winner' })).ok, true);
+  await f.remote.receive(read);
+  await driveTelegram(f.clock, f.state, noted);
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  const outcome = f.store.ask(id)!.outcome!;
+  assert.equal(outcome.status, 'answered');
+  assert.equal(outcome.text, 'Workbench winner');
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> };
+  assert.equal(history.messages.some(message => message.text === 'Losing prompt answer'), false);
+  await f.stop();
+});
+
+test('Telegram prompt feedback interrupted after commit restarts without a stale note or duplicate answer', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  await forcePrompt(f, card);
+  await control(f.fake.url, 'fault', { method: 'setMessageReaction', code: 503, response: 'hold' });
+  const reacting = f.fake.waitForHeldRequest('setMessageReaction');
+  const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'Stored before interrupted feedback' });
+  const held = await driveTelegram(f.clock, f.state, within(reacting, 1000));
+  const original = f.store.ask(id)!.answer;
+  assert.ok(original);
+  assert.equal(f.state.get(`telegram.update:${input.update_id}`), null);
+  const closed = f.fake.waitForConnectionClose('setMessageReaction');
+  await f.stop(); f.ui.close(); await f.coord.close();
+  assert.equal((await within(closed, 1000)).id, held.id);
+  const next = f.newRemote();
+  const confirmed = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  assert.equal(f.store.ask(id)!.answer, original);
+  const ui = await connectUi(t, hub.discovery);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(message => message.text === 'Stored before interrupted feedback').map(message => message.answerTo), [id]);
+  await hub.stop();
+  assert.equal((await f.messages()).some(message => message.text === 'This ask is already closed.'), false);
+});
+
+test('Telegram uncertain ForceReply send confirms the callback and safely consumes an unmapped reply after restart', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 500, response: 'accept-disconnect' });
+  const uncertain = until(() => f.state.outbox().some(job => job.source?.startsWith('telegram.prompt:') && job.state === 'uncertain'),
+    { timeoutMs: 1000, what: 'unknown ForceReply delivery fenced durably' });
+  void uncertain.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 9, column: 0 });
+  await driveTelegram(f.clock, f.state, uncertain);
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, press.update_id + 1);
+  const prompt = (await f.messages()).find(message => (message.reply_markup as { force_reply?: boolean })?.force_reply)!;
+  assert.ok(prompt);
+  assert.equal(f.state.message('101', String(prompt.message_id)), null, 'accepted without a delivery receipt/map');
+  assert.equal(f.store.ask(id)!.state, 'open');
+  await f.stop(); f.ui.close(); await f.coord.close();
+  const next = f.newRemote();
+  const initial = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  const note = until(async () => (await f.messages()).some(message => message.text === 'Prompt delivery is unconfirmed. Reply to the ask card or use /cancel.'),
+    { timeoutMs: 1000, what: 'unverifiable prompt reply receives an explicit incomplete note' });
+  void note.catch(() => {});
+  const replied = f.fake.waitForPoll();
+  const input = await control<{ update_id: number }>(f.fake.url, 'update', { message: {
+    message_id: 904, date: 1, chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' },
+    text: 'Unverifiable answer', reply_to_message: prompt,
+  } });
+  await driveTelegram(f.clock, f.state, note);
+  assert.equal((await driveTelegram(f.clock, f.state, within(replied, 1000))).params.offset, input.update_id + 1);
+  assert.equal(f.store.ask(id)!.state, 'open', 'quoted text never grants answer authority');
+  const cancelled = f.fake.waitForPoll();
+  await control(f.fake.url, 'say', { text: '/cancel' });
+  await driveTelegram(f.clock, f.state, within(cancelled, 1000));
+  const ordinary = f.fake.waitForPoll();
+  const last = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'After unknown prompt and cancel' });
+  assert.equal((await driveTelegram(f.clock, f.state, within(ordinary, 1000))).params.offset, last.update_id + 1);
+  const ui = await connectUi(t, hub.discovery);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; answerTo?: string }> };
+  assert.equal(history.messages.some(message => message.text === 'Unverifiable answer'), false);
+  assert.deepEqual(history.messages.filter(message => message.text === 'After unknown prompt and cancel').map(message => message.answerTo), [undefined]);
+  await hub.stop();
+  assert.equal((await f.messages()).filter(message => (message.reply_markup as { force_reply?: boolean })?.force_reply).length, 1);
+  assert.equal(f.state.outbox().filter(job => job.source?.startsWith('telegram.prompt:') && job.state === 'uncertain').length, 1);
+  const requests = (await control<{ requests: Array<{ method: string; params: { reply_markup?: { force_reply?: boolean } } }> }>(f.fake.url, 'state')).requests;
+  assert.equal(requests.filter(request => request.method === 'sendMessage' && request.params.reply_markup?.force_reply).length, 1, 'the unknown prompt is never retransmitted');
+});
+
+test('Telegram confirmed prompt answer recovers owed delivery feedback after component restart', async t => {
+  let answerId: string | undefined;
+  const dropped = Promise.withResolvers<HubFrame>();
+  const f = await fixture(t, frame => {
+    if (frame.type === 'result' && frame.ok && (frame.value as { message?: { answerTo?: string; id: string } }).message?.answerTo)
+      answerId = (frame.value as { message: { id: string } }).message.id;
+    if (frame.type === 'delivery' && frame.message === answerId && frame.stage === 'delivered') {
+      dropped.resolve(frame); return true;
+    }
+    return false;
+  });
+  const { id, card } = await f.ask();
+  await forcePrompt(f, card);
+  const confirmed = f.fake.waitForPoll();
+  const input = await control<{ update_id: number; message: TgMessage }>(f.fake.url, 'say', { text: 'Confirmed before missed delivery frame' });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
+  assert.equal((await within(dropped.promise, 1000)).type, 'delivery');
+  assert.equal(f.store.ask(id)!.answer, answerId);
+  const beforeHistory = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage: string }> };
+  assert.equal(beforeHistory.messages.find(message => message.id === answerId)!.stage, 'delivered');
+  const before = JSON.parse(f.state.get(`telegram.inbound:${answerId}`)!) as { stored: boolean; delivered: boolean; seen: boolean };
+  assert.deepEqual(before, { chat: '101', message: input.message.message_id, stored: true, delivered: false, seen: false });
+  await f.stop(); f.ui.close(); await f.coord.close();
+  const next = f.newRemote();
+  const eyes = f.fake.waitForRequest('setMessageReaction', receipt => JSON.stringify(receipt.params).includes('👀'));
+  const closed = f.fake.waitForConnectionClose('setMessageReaction');
+  const polled = f.fake.waitForPoll();
+  for (const observation of [eyes, closed, polled]) void observation.catch(() => {});
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  const reaction = await driveTelegram(f.clock, f.state, within(eyes, 1000, undefined, () => new Error('confirmed ask answer is missing recovered delivery feedback')));
+  assert.equal((await driveTelegram(f.clock, f.state, within(closed, 1000))).id, reaction.id);
+  assert.equal(reaction.params.message_id, input.message.message_id);
+  assert.equal((await driveTelegram(f.clock, f.state, within(polled, 1000))).params.offset, input.update_id + 1, 'input was already confirmed, not replayed');
+  const ui = await connectUi(t, hub.discovery);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; text: string; answerTo?: string }> };
+  assert.deepEqual(history.messages.filter(message => message.text === 'Confirmed before missed delivery frame').map(message => ({ id: message.id, answerTo: message.answerTo })), [{ id: answerId, answerTo: id }]);
+  await hub.stop();
+  const requests = (await control<{ requests: Array<{ method: string; params: { reaction?: unknown } }> }>(f.fake.url, 'state')).requests;
+  assert.deepEqual(requests.filter(request => request.method === 'setMessageReaction').map(request => request.params.reaction), [
+    [{ type: 'emoji', emoji: '👌' }], [{ type: 'emoji', emoji: '👀' }],
+  ]);
 });

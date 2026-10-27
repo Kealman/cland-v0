@@ -9,6 +9,7 @@ import { flushTelegramGap } from './telegram-gap.ts';
 import { TelegramOutbox } from './telegram-outbox.ts';
 import { TelegramInbound } from './telegram-inbound.ts';
 import { TelegramCards } from './telegram-cards.ts';
+import { TelegramPrompts } from './telegram-prompts.ts';
 import { plainParts } from './telegram-render.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 
@@ -39,6 +40,7 @@ export class TelegramRemote implements Remote {
   #stopping: Promise<void> | undefined;
   #inbound: TelegramInbound | undefined;
   #cards: TelegramCards | undefined;
+  #prompts: TelegramPrompts | undefined;
   #offline: { since: string; reason: string; announced: boolean } | undefined;
   readonly #listeners = new Set<() => void>();
   subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
@@ -161,7 +163,11 @@ export class TelegramRemote implements Remote {
     this.#armOffline();
     if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, { setMessageReaction: async params => { await this.#outbox.react(params); return true; } }, this.#abort.signal,
       () => {}, receipt, written => this.#late(written));
-    if (this.#polling) this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal);
+    if (this.#polling) {
+      this.#prompts = new TelegramPrompts(this.#polling.store, this.#outbox, (type, fields, ingress) => this.#request(type, fields, ingress),
+        (fields, ingress, stored) => this.#inbound!.answer(fields, ingress, stored));
+      this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal, this.#prompts);
+    }
     this.#pair = pair;
     return this.#track(async () => {
       await this.#check(signal);
@@ -255,8 +261,10 @@ export class TelegramRemote implements Remote {
             const releases = await this.#request<{ items: Array<{ id: string; title: string }> }>('task.list', { kind: 'release', state: 'open', projection: 'summary' });
             reply = telegramStatus(project, status, releases.items, { connected: this.status().connected,
               muted: this.#polling!.store.get('mute') === 'true', outbox: this.#polling!.store.outbox().filter(job => ['queued', 'sending', 'uncertain'].includes(job.state)).length });
-          } else if (command === 'cancel') reply = plainCommandReply(`${project} — Cancel`, 'Cancelled. The ask stays open.');
-          else reply = telegramHelp(project);
+          } else if (command === 'cancel') {
+            this.#prompts?.cancel(String(update.message!.chat.id));
+            reply = plainCommandReply(`${project} — Cancel`, 'Cancelled. The ask stays open.');
+          } else reply = telegramHelp(project);
           await this.#commandReply(update, [reply]);
         },
       }, ...(this.#pair ? [{
@@ -291,7 +299,7 @@ export class TelegramRemote implements Remote {
             throw error;
           });
         },
-      }, ...(this.#inbound ? [this.#inbound.handler] : [])];
+      }, ...(this.#prompts ? [this.#prompts.handler] : []), ...(this.#inbound ? [this.#inbound.handler] : [])];
       await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers,
         initialOffline: !!this.#offline, offline: reason => this.#failed(reason), caughtUp: () => this.#caughtUp() }, this.#abort.signal,
         () => {
