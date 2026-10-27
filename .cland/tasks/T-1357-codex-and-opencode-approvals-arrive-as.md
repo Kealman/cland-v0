@@ -3,7 +3,7 @@ id: T-1357
 kind: task
 title: Codex and OpenCode approvals arrive as cards with coloured choices, answered with `via` and shown as approved via Telegram
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1113
 branch: t/T-1357-codex-and-opencode-approvals-arrive-as
 created: 2026-10-27T05:43:01.767Z
-updated: 2026-10-27T11:55:04.398Z
+updated: 2026-10-27T12:36:05.524Z
 ---
 
 ## Summary
@@ -32,12 +32,16 @@ A press goes through `approval.answer` with the choice, and the hub stores it be
 
 - [x] C1. A fake Codex approval for a 5000-character command arrives as a card naming the session and "codex", with the command truncated, "full command in the workbench" and three styled buttons one per row (test).
   - done: impl-1357 · 2026-10-27T11:46:40.940Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
 - [x] C2. "Approve once" on a fake Codex approval's card lets the fake command run, the outcome records `via = "telegram"`, and the card is edited to the outcome without buttons (test).
   - done: impl-1357 · 2026-10-27T11:46:41.127Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
 - [x] C3. "Deny" on a fake OpenCode approval's card stops its command, and an approval answered in the web edits its card to "via web" (test).
   - done: impl-1357 · 2026-10-27T11:46:41.377Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
 - [x] C4. Headless Neovim and headless Chromium show both answered approvals as answered "via Telegram" in their inboxes (test).
   - done: impl-1357 · 2026-10-27T11:46:41.585Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
 
 ## Comments
 
@@ -86,3 +90,22 @@ Corrected full source clear: Standards 0, Spec 0. A-12747 incorporates source-1 
 ### impl-1357 · 2026-10-27T11:55:04.398Z
 
 Reported ready for Coordinator-owned verify all after Reviewer source-2 clear (A-12747) at unchanged c56107d1a7c36e1eead4fa30ecddb88697c646fe, tree e6175b387323774cec04e87398d6ac2117e945b8. Fresh origin/dev fetch 1748b9c0 and merge-tree --write-tree conflict check exit 0, result equals reviewed tree; clean/pushed branch, no post-review merge. Runtime criterion marks await original full verification; no mode-free run submitted per Coordinator 25c9bfff. Claim retained through landing.
+
+### impl-1357 · 2026-10-27T12:34:30.611Z
+
+Original Coordinator-owned Linux full run 193644be-4225-4e3d-b5f3-c762baca6807 is green at c56107d1a: T0/host, T1, T2, T3, Web completed; 5091 tests, 5083 pass, 0 failures/cancellations, 8 exclusions (6 macOS-only, 2 real-OpenCode installation). All C1–C4 exact named receipts executed and passed, including native OpenCode 2.466390 s and both headless outcomes; no >=3 s new-case allowance needed per Coordinator. T4/live-phone not claimed; lint/duration/ratchet remain report-only. Final evidence review requested from Reviewer, assigned rev-34. Original log A-12769 and inspection note A-12770 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12770-t-1357-final-original-linux-evidence-at-c56107d1a.md). Head held; fresh origin/dev d861bedf conflict check exit 0, repeat after final verdict before ready.
+
+### rev-34 · 2026-10-27T12:36:05.069Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1357-final1
+commit: c56107d1a7c36e1eead4fa30ecddb88697c646fe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence CLEAR; C1–C4 verified. A-12771 audits original Coordinatorfull/all193644be/A-12769 against source2/A-12747: branch/hub/header c56107d1 match, original execution exit0. Independent generated finishes5083ordinarypass/8skip/0fail/cancel/todo across682files; no load repetitions. All11approval cases/native producer/headless source consumers pass; exact names/lines/timings in A-12771. Source assertions independently checked:5000-char safe styled card, scripted Codex command effect+commit before callback, scripted OpenCode denial+Web answer/edit, both approval outcomes rendered viaTelegram in headless Web/recorded-frame Neovim. Setup omission/abort and lost-result/closure/isolation controls pass. HostT0/LinuxT1/T2/T3/Web complete; T4 unrun and eight unrelated skips excluded. Linuxc-8lon1 kernel6.8.0-142-generic Node24.21/Neovim0.12.5 CHS156.0.8078.4/v1248, isolated browser; hostgate82cc511c reused, not remote typecheck. Newnative2.466389984s/Web2.541090363s<3s, no allowance per223fd314. Budget/lint/ratchet report-only warnings retained; no live-phone/installed-provider/QA claim. No Reviewer executions/edits. Lead fresh dev conflict check afterT-1355landing before ready perCoordinator; receipt applies only reviewed head, Coordinator enqueue/landing separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

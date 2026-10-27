@@ -2,8 +2,8 @@
 id: T-1355
 kind: task
 title: '"Other answer…" and "Decline…" open a ForceReply prompt; the next text answers, `/cancel` keeps the ask open, and a typed reply to the card answers it'
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1112
 branch: t/T-1355-other-answer-and-decline-open-a
 created: 2026-10-27T05:43:01.372Z
-updated: 2026-10-27T11:56:54.959Z
+updated: 2026-10-27T12:36:49.086Z
+closed: 2026-10-27T12:36:49.086Z
 ---
 
 ## Summary
@@ -33,13 +34,21 @@ A typed reply to the card answers it as a free answer when the ask takes one. Wh
 ## Acceptance criteria
 
 - [x] C1. "Other answer…" sends a ForceReply prompt as a reply to the card, the card's own markup never contains `force_reply`, and the next text answers the ask with that text "via Telegram" and is not posted to General (test).
-  - done: impl-1355 · 2026-10-27T11:52:31.158Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1355-evidence-1 · 2026-10-27T12:10:59.048Z · commit 15163682902961a3750a741a6306c1da1e410eae
+  - done: impl-1355 · 2026-10-27T12:29:58.481Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1355-final2 · 2026-10-27T12:30:43.579Z · commit 67cf3ee0f8bf4411993bcec2a4fe68437a5ed6b7
 - [x] C2. "Decline…" followed by a reply to its prompt records `declined` with that reason, and the card's outcome shows the reason (test).
-  - done: impl-1355 · 2026-10-27T11:40:50.142Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1355-evidence-1 · 2026-10-27T12:10:59.048Z · commit 15163682902961a3750a741a6306c1da1e410eae
+  - done: impl-1355 · 2026-10-27T12:29:58.662Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1355-final2 · 2026-10-27T12:30:43.579Z · commit 67cf3ee0f8bf4411993bcec2a4fe68437a5ed6b7
 - [x] C3. "Decline…" followed by `/cancel` leaves the ask open, its card keeps its buttons, and the next text goes to General as a message (test).
-  - done: impl-1355 · 2026-10-27T11:40:50.227Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1355-evidence-1 · 2026-10-27T12:10:59.048Z · commit 15163682902961a3750a741a6306c1da1e410eae
+  - done: impl-1355 · 2026-10-27T12:29:59.041Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1355-final2 · 2026-10-27T12:30:43.579Z · commit 67cf3ee0f8bf4411993bcec2a4fe68437a5ed6b7
 - [x] C4. A typed reply to a free-answer card answers it, and a non-number reply to an options-only card gets a note and leaves the ask open (test).
-  - done: impl-1355 · 2026-10-27T11:40:50.313Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1355-evidence-1 · 2026-10-27T12:10:59.048Z · commit 15163682902961a3750a741a6306c1da1e410eae
+  - done: impl-1355 · 2026-10-27T12:29:59.205Z
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1355-final2 · 2026-10-27T12:30:43.579Z · commit 67cf3ee0f8bf4411993bcec2a4fe68437a5ed6b7
 
 ## Comments
 
@@ -108,3 +117,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear, A-12753 incorporating A-12745 and admission M3. Exact one-key durations.json rename matches current test identity; 0.191438 measurement preserved, no other changes. M1/M2 source corrections remain resolved. A-12751 reports local sequential lint/tier guard exit 0 with report-only findings; no executed suite/Linux proof. Prior submission remains preflight refusal. C1–C4 runtime marks pending unchanged-head mode-free configured run and original evidence review. Coordinator integrated cover/landing separate.
+
+### rev-26 · 2026-10-27T12:10:59.048Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1355-evidence-1
+commit: 15163682902961a3750a741a6306c1da1e410eae
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; C1–C4 verified. Original run 908b0520/A-12759 exit 0 matches source-3 head. Independently deduplicated 3691 ordinary passes + 65 separate actual load passes (13 new generated identities ×5), none failed/skipped/cancelled. Named ForceReply/decline/cancel/free/options, unknown-send/cursor safety, confirmed-input owed-feedback and gateway isolation controls all base+5/5. Maximum new base .247910216 s/load .575466094 s; no Linux allowance needed. T0/all T1/fallback all T2/Web complete; T3/T4 unrun and Web new-file repetitions0. Linux c-8 lon1, pinned HS156.0.8078.4/v1248; host typecheck reused, not remote. Budget/lint/ratchet report-only warnings retained. A-12760 records exact original identities/timings, provenance, preflight-only refusal and coverage limits. QA none; Coordinator integrated cover/enqueue/landing separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-34 · 2026-10-27T12:15:28.272Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1355-source4
+commit: 67cf3ee0f8bf4411993bcec2a4fe68437a5ed6b7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-driven merge delta CLEAR at67cf3ee0/tree1bde7706. A-12762 records Standards0/Spec0 delta findings. Coordinatora72d07a9 authorization confirmed; sole rev-34 hold for this new direct request. Combined parent/source comparisons preserve both prompt/cancel guidance and incoming Neovim+web safe-state wording. Decoded REMOTE_USAGE equals golden; only that fixture key differs from either parent, and source usage differs from incoming dev only in that literal. T-1355 runtime/test bodies unchanged; incoming Web/harness/test/manifest files match landed dev; docs/skill CHANGES retain both behaviors. Prior rev-26 source3/A-12753 and evidence1/A-12760 are historical context. C1–C4 current runtime verification remains pending; prior151636829/A-12759 marks are stale at changed head. A-12761 reports 192 selected local macOS passes and static gates, no merged-head Linux/full/Web claim. No Reviewer executions/edits. Per Coordinator, submit one mode-free configured verify at unchanged67cf3ee0 then request original-record final evidence audit; integrated cover/enqueue separate.
+
+### rev-34 · 2026-10-27T12:30:43.579Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1355-final2
+commit: 67cf3ee0f8bf4411993bcec2a4fe68437a5ed6b7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-merged-head evidence CLEAR; C1–C4 verified. A-12768 audits original3cb6819e/A-12767 against source4/A-12762: branch tip, hub verify and log head67cf3ee0 agree. Independently deduplicated3694ordinary passes plus65 separate actual load passes (13new identities×5);0fail/cancel/skip/todo. Each exact criterion/restart/unknown-send/cursor/owed-feedback/gateway-isolation identity passes ordinary1+load5/5. Read source assertions for separate immutable ForceReply/card mapping, declined reason/outcome, cancel/open/buttons/ordinaryGeneral, free/options-only routing and M1/M2 durable boundaries. Maxnewbase0.235244792s/load0.572999464s, no >=3s allowance. T0/allT1/fallbackallT2hub+Neovim/Web complete; T3/T4 unrun, Web0newfiles/0reps. Linuxc-8lon1 x64 kernel6.8.0-142-generic Node24.21/Neovim0.12.5 CHS156.0.8078.4/v1248 isolated browser; workers2/Web4. Hostgate8c07095e reused, not repeated remote typecheck. Budget/lint/ratchet report-only and inherited missing Web baseline retained; lifetime733s/$0.0509 accounting, not test wall. Prior refusal/pre-merge run remain separately labelled. No Reviewer executions/edits/QA. Lead new-ready/conflict report and Coordinator integrated cover/enqueue/landing separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-27T12:36:49.086Z
+
+Merged 73f485ab5fb44745c933f19ccb53c53525630a0f onto dev.

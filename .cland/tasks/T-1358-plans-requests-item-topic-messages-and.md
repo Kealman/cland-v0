@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1114
 branch: t/T-1358-plans-requests-item-topic-messages-and
 created: 2026-10-27T05:43:02.026Z
-updated: 2026-10-27T12:02:18.418Z
+updated: 2026-10-27T12:36:31.469Z
 ---
 
 ## Summary
@@ -35,11 +35,14 @@ Each notice is mapped in `remote_messages` with its topic and source message. A 
 ## Acceptance criteria
 
 - [x] C1. A Claude Code approval, a waiting plan, a review request and an item-topic message to the human each arrive once as a notice starting with 📥 with no `reply_markup`, and the plan notice offers no approve action (test).
-  - done: impl-1358 · 2026-10-27T12:00:02.134Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1358-final1 · 2026-10-27T12:18:49.284Z · commit 6a012904619ce05082e186b22efb00c7cc80509c
+  - done: impl-1358 · 2026-10-27T12:21:38.462Z
 - [x] C2. A reply to the item-topic notice lands in that topic as a reply to its message "via Telegram", and the agent's ordinary answer in that topic is not sent to the chat (test).
-  - done: impl-1358 · 2026-10-27T11:45:03.147Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1358-final1 · 2026-10-27T12:18:49.284Z · commit 6a012904619ce05082e186b22efb00c7cc80509c
+  - done: impl-1358 · 2026-10-27T12:21:38.594Z
 - [x] C3. A plan notice carries the `[web] origin` link when one is set and no link without one, and no notice contains a web credential (test).
-  - done: impl-1358 · 2026-10-27T11:45:03.403Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1358-final1 · 2026-10-27T12:18:49.284Z · commit 6a012904619ce05082e186b22efb00c7cc80509c
+  - done: impl-1358 · 2026-10-27T12:21:38.826Z
 
 ## Comments
 
@@ -86,3 +89,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear, A-12756, tree4f861fdbb64f3f44146687c18b9e88a0c311fe12. M1/M3/M4 resolved: only frozen REMOTE_USAGE row migrated with guard sources/order unchanged; complete header/link/body bounds and actual UTF16 entities shared by ask/notice/outcome callers; notices sort retained wait time/id/kind before enqueue. Three public-frame size/backlog controls preserve full source/map and original assertions. Withdrawn M2 remains withdrawn; dedup unchanged. Coordinator cabbd851 source-backed versus General-reference routing exception preserved. A-12754 original native guard/size/order red→green read; A-12755 independently counted33files/304pass/0fail/cancel/skip, macOS selected source evidence only. No configured/Linux/full/load proof yet; C1–C3 runtime-unverified. Submit one ordinary configured mode-free verify at this unchanged head and request final original-log evidence review. Linux durations/allowances pending actual cases; no extra dev merge or QA requested. Reviewer read-only, no test execution.
+
+### rev-31 · 2026-10-27T12:18:49.284Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261027-1358-final1
+commit: 6a012904619ce05082e186b22efb00c7cc80509c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear; C1–C3 verified. A-12764 audits original mode-free0b19a534/A-12763 at source2 head/tree4f861fdbb64f3f44146687c18b9e88a0c311fe12; hub finished/passed and nativeexit0. Independent typed finishes3692ordinary pass/0fail/cancel/skip/todo plus70additional passing loads: all13notice identities and1fake-origin control each ordinary1+load5/5. Maxnewbase0.728797608s/maxload0.786963752s; no >=3s allowance required. C1 real producers/button-free/durable dedup/size/order, C2 source-backed/no-follow plus referenced-General/restart limits, C3 configured origin and pre-capture producer secret exclusion established by unchanged assertions and named receipts. T0/allT1/fallbackallT2hub+Neovim/Web complete; T3/T4 absent/deferred, Web0newfiles/0reps. Linuxc-8lon1 Node24.21.0/Neovim0.12.5; isolated HeadlessShell156.0.8078.4/v1248. Hostgatea10483b9 is reused tree provenance, not alternate candidate/repeated remote typecheck. Lifetime796s/$0.0553 is machine accounting. Report-only135lint findings/61files, seven timing warnings, one missing whole-file baseline and Webwall/ratchet limits retained; no enforce-budget claim. SourceA-12756 and cabbd851 routing exception stand. Coordinator owns ready/enqueue/separate integrated gate; no further task run or dev merge requested.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-34 · 2026-10-27T12:23:01.040Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1358-source3
+commit: c1ee1b34cfa177207fe469237288076d7b58d882
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta CLEAR atc1ee1b34/treeb44bc568. A-12766: Standards0/Spec0 delta findings. Coordinator45f1f96f authorization and sole rev-34 hold confirmed. Independent decode shows REMOTE_USAGE source/golden equal, only owning fixture key differs from either parent; notice/source-topic versus referenced-General/public-origin lines and incoming Neovim+web wording retained. Strict help guards unchanged. Telegram code/test bodies unchanged; incoming Web files match landed dev; docs/skill CHANGES, sorted Web tier and exact guide/index preserve both flows. Prior source2/A-12756/final1A-12764 context retained without carrying runtime marks. A-12765 independently parsed19serialfiles/191pass/0fail/skip/everyexit0, macOS arm64 Node24.21 only; static gates separate/report-only135diagnostics. C1–C3 current runtime verification pending; old0b19a534/A-12763 covers6a0129046 only. No Reviewer executions/edits. Submit one unchanged-head mode-free configured verify then original-record final evidence review. Coordinator integrated gate and further T-1355 landed-dev integration per45f1f96f remain separate; a changed head needs source review first.
