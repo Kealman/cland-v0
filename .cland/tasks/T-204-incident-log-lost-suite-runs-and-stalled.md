@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-26T00:27:51.402Z
+updated: 2026-10-27T18:55:11.213Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -402,3 +402,7 @@ Incident 2026-10-24 17:28–18:36Z: the coord Claude Code session restarted (its
 ### coord · 2026-10-26T00:27:51.402Z
 
 Incident 2026-10-26 00:26Z: the macOS stage cover eb2ca0d8 at dev 998612a6 (A-12206) exited 1 with 0 failing tests. Its T3 hub phase passed (1256 passed, 1 skipped), but the load gate failed all 5 macOS repetitions of T-543's new Linux-only test. The test uses `{ skip: process.platform !== 'linux' }`, a skip with no reason, and the load gate counts a skip only when it carries a reason string. The macOS T3 Neovim, T4 and Web phases didn't run. The Linux cover 20f137a5 at the same tree was green. Fix item T-1318 (regression of T-543); both covers rerun after it lands. Cost: one cover pair, about 40 minutes.
+
+### coord · 2026-10-27T18:55:11.213Z
+
+2026-10-27 18:36:55–18:37:45Z: live hub (pid 80459, restart #57) did not answer `suite.slot` check for ~50 s. Effects: the macOS stage cover 38ecf883 at dev 44b8310d (A-12863) took 24 `AdmissionTimeout: admission timed out after 15 s: project hub busy; not a test result` failures across executor-health, executor-prepare, executor-run, executor-safety and related remote-fixture files (plus one cascaded executor-safety case), so the cover is red without a test result; coord's spoke dropped (`bye` 18:37:13, `coordinator-vacant`) and reconnected at 18:37:41 with the role clause acked and injected. Hub RSS afterwards 362 MB, same pid. Cause not identified; the stall began right after the 18:36:42 heartbeat and overlapped the Linux stage cover 111bc5a3's shard-1 ending. Both stage covers rerun after T-1376 lands.

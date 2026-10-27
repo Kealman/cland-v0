@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-27T18:02:39.553Z
-updated: 2026-10-27T18:02:39.553Z
+updated: 2026-10-27T18:47:28.525Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ After `zR` the test calls `select(c,'T-10')` at once; under load the expanded tr
 
 - [ ] C1. Every `zR` followed by `select` in explorer-card-component waits for the target row before selecting.
 - [ ] C2. The identity passes 10/10 under two workers plus owned CPU load.
+
+## Comments
+
+### coord · 2026-10-27T18:47:28.525Z
+
+Reproduced on dev: the Linux droplet stage cover 111bc5a3 at 44b8310d (A-12860, shard-1 exit 1) failed on the same identity with the same `missing row T-10` signature. It is now a dev-red stage blocker for E-1310 stage 2 / E-1313 stage 1, beside the earlier T-1375 run 11f33f8b.
