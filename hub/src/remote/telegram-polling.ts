@@ -13,7 +13,10 @@ export type TelegramUpdateHandler = {
 };
 export type TelegramPollingOptions = {
   store: RemoteStore; handlers?: readonly TelegramUpdateHandler[]; log?: LogFn;
-  notice?: (cause: string, fix: string) => void;
+  notice?: (cause: string, fix: string, transition?: boolean) => void;
+  initialOffline?: boolean;
+  offline?: (reason: string) => void;
+  caughtUp?: () => Promise<boolean | void>;
 };
 
 function identity(update: TgUpdate, botId: number): { userId: string; chatId: string; dedupe?: string } | null {
@@ -39,7 +42,7 @@ function identity(update: TgUpdate, botId: number): { userId: string; chatId: st
 export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number, options: TelegramPollingOptions,
   signal: AbortSignal, exchanged: () => void): Promise<void> {
   const store = options.store;
-  let offline = false;
+  let offline = options.initialOffline ?? false;
   let conflictSince: number | undefined;
   let unhandled: number | undefined;
   while (!signal.aborted) {
@@ -49,7 +52,6 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
       updates = await boundedPoll(api, clock, offset, offline ? 0 : 40, signal);
       if (!Array.isArray(updates)) throw new Error('Telegram returned invalid updates');
       exchanged();
-      offline = false;
       conflictSince = undefined;
     } catch (error) {
       if (signal.aborted) return;
@@ -60,6 +62,7 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
           throw new TelegramError('getUpdates', 409, 'another consumer of the token');
       } else conflictSince = undefined;
       offline = true;
+      options.offline?.(error instanceof TelegramError ? error.description : 'invalid updates');
       const delay = conflictSince !== undefined
         ? Math.min(1_000, 60_000 - (clock.now().getTime() - conflictSince))
         : error instanceof TelegramError && error.retryAfter !== undefined
@@ -70,6 +73,7 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
       await waiting;
       continue;
     }
+    let complete = true;
     for (const update of updates) {
       if (signal.aborted) return;
       // An unusable provider envelope cannot safely move the acknowledgement cursor.
@@ -90,14 +94,40 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
             options.log?.({ event: 'telegram-update-unhandled', update: update.update_id });
           }
           // Preserve input until a handler is installed; never spin on immediate replay.
+          complete = false;
           await pause(clock, signal, 1_000);
           break;
         }
-        await handler.handle(update, signal);
+        try { await handler.handle(update, signal); }
+        catch (error) {
+          if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
+          if (signal.aborted) { if (store.status().disabled) throw error; return; }
+          offline = true;
+          complete = false;
+          options.offline?.(error instanceof TelegramError ? error.description : 'update handling failed');
+          const waiting = pause(clock, signal, 1_000);
+          options.log?.({ event: 'telegram-poll-retry', delay: 1_000,
+            code: error instanceof TelegramError ? error.code : 0, reason: 'update handling failed' });
+          await waiting;
+          break;
+        }
         unhandled = undefined;
         if (signal.aborted) return;
       }
       store.confirmTelegramUpdate(update.update_id, accepted ? dedupe : undefined);
+    }
+    if (complete && updates.length < 100 && !signal.aborted) {
+      try { offline = await options.caughtUp?.() === false; }
+      catch (error) {
+        if (error instanceof TelegramError && [401, 403, 409].includes(error.code)) throw error;
+        if (signal.aborted) return;
+        offline = true;
+        options.offline?.(error instanceof TelegramError ? error.description : 'catch-up has no delivery receipt');
+        const waiting = pause(clock, signal, 1_000);
+        options.log?.({ event: 'telegram-poll-retry', delay: 1_000,
+          code: error instanceof TelegramError ? error.code : 0, reason: 'catch-up incomplete' });
+        await waiting;
+      }
     }
   }
 }

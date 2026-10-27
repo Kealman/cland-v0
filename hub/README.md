@@ -2445,7 +2445,9 @@ its poll timeout plus 15 seconds: 55 seconds online and 15 seconds for a
 zero-timeout offline probe. Its diagnostic says the poll stalled and polling
 restarts. Failed
 polls wait one injected-clock second before retrying with timeout zero; a successful
-exchange restores the 40-second timeout. A provider `retry_after` replaces that
+exchange records recent inbound traffic. After all retained updates have been handled,
+the loop restores the 40-second timeout. A full 100-update batch keeps the
+zero-timeout catch-up probe until the retained input is drained. A provider `retry_after` replaces that
 wait, bounded to five minutes, except that a 409 retains the one-second retry
 within its conflict budget. Consecutive 409 responses get a 60-second grace
 starting at the first conflict; a successful exchange resets it. A lasting 409
@@ -2460,9 +2462,9 @@ the fixed cause/fix first, followed by bounded sanitized provider detail. A 401 
 `cland secret set telegram.token`, then `cland hub reload`; a 403 asks to unblock
 the bot, then reload. A lasting 409 asks the human to stop the other consumer,
 then reload. Reload retries a failed enabled client even with unchanged settings.
-The hub, web edge and other remote continue serving after the failure. Outage
-notices and catch-up policy are separate from this polling boundary. See the
-[liveness test guide](../docs/agents/tests/hub-test-telegram-liveness.test.ts.md).
+The hub, web edge and other remote continue serving after the failure. The
+[liveness test guide](../docs/agents/tests/hub-test-telegram-liveness.test.ts.md)
+covers these fatal and stalled-poll boundaries.
 
 The loop filters before handlers, downloads or commands: only a private chat,
 a non-bot sender and the current pairing's chat and sender ids qualify. It
@@ -2495,6 +2497,45 @@ handler before the gateway releases its lease or storage. Legacy injected
 The [component guide](../docs/agents/tests/hub-test-telegram-polling.test.ts.md)
 and [crash/restart guide](../docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md)
 name the frame/fake and native-process receipts.
+
+### Telegram catch-up and outage notices
+
+With Telegram enabled, a resolved token and network access, the first failed
+poll starts a durable outage interval. Status is disconnected during that
+interval; starting a retry never establishes a connection. Only a recent
+successful exchange does. Poll retries retain their zero timeout while the
+remote catches up with what Telegram kept.
+
+After three injected-clock minutes offline, General receives one redacted hub
+line, `Telegram remote offline since 13:20: <reason>`. Recovery writes
+`Telegram remote recovered; offline since 13:20` only if the offline line was
+posted. Shorter outages produce neither line. The gap and the mirrored recovery line
+use the same per-chat queue as ordinary sends, with silent notifications. Both
+General lines use the same `remoteNotice`
+boundary as fatal diagnostics. Stop drains the timer and pending native work.
+
+Retained text reaches the normal human frame path with
+`(written on Telegram at 13:20; the hub was down until 13:24)` appended, using
+the provider's written timestamp and the first recovered poll's timestamp in
+the hub's local time. Telegram's formatting is still discarded, and stable
+native input identity preserves replay-safe delivery and reactions.
+The gap captures missed native General job ids, deduplicating split parts by
+source message. Its immutable send key and captured ids survive restart. Only
+the matching successful native send acknowledges those ids; a General source
+arriving during the send remains missed for the next gap. An uncertain native
+delivery stays fenced, never retried as a new gap. Zero missed sources send no
+line. A recovered transport admits feedback and gaps while General arrivals
+still count as missed until catch-up completes. If another source arrives
+during a held gap, another zero-timeout exchange settles its separate captured
+gap before returning to normal polling. The [captured-gap unit guide](../docs/agents/tests/hub-test-telegram-gap.test.ts.md)
+names these persistence receipts.
+
+Queue and feedback recovery joins apply to an active outage. An ordinary
+successful poll confirms a command's own durable send without waiting for later
+queued General work; the per-chat drain continues independently.
+Catch-up completes after retained updates are durably handled and confirmed,
+never at retry launch. See the
+[catch-up test guide](../docs/agents/tests/hub-test-telegram-catchup.test.ts.md).
 
 ### Telegram text from the human
 

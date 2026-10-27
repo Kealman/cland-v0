@@ -4,6 +4,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/telegram-catchup.test.ts`](../../../hub/test/telegram-catchup.test.ts) | [Notes](hub-test-telegram-catchup.test.ts.md) |
+| [`hub/test/telegram-gap.test.ts`](../../../hub/test/telegram-gap.test.ts) | [Notes](hub-test-telegram-gap.test.ts.md) |
 | [`hub/test/telegram-commands.test.ts`](../../../hub/test/telegram-commands.test.ts) | [Notes](hub-test-telegram-commands.test.ts.md) |
 | [`hub/test/telegram-api.test.ts`](../../../hub/test/telegram-api.test.ts) | [Notes](hub-test-telegram-api.test.ts.md) |
 | [`hub/test/telegram-liveness.test.ts`](../../../hub/test/telegram-liveness.test.ts) | [Notes](hub-test-telegram-liveness.test.ts.md) |

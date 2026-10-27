@@ -54,3 +54,8 @@ accepted order must be General/General/help/General. Retain help entities, its
 durable Telegram id/map and maximum one in flight. The command's next-poll
 confirmation must arrive while the later General is still queued, proving its
 own receipt does not wait for the whole chat drain.
+
+Catch-up must not insert a queue-wide recovery join on every successful poll.
+Restrict queue/feedback recovery joins to an active outage; the healthy command
+path confirms its own settled job even while later ordinary work remains queued.
+Keep this existing regression unchanged when modifying catch-up hooks.

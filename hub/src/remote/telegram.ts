@@ -1,10 +1,11 @@
 import type { Remote, RemoteSend, RemoteReceipt } from './gateway.ts';
 import type { Pairing } from './state.ts';
 import type { RemoteConnection, HubFrame, HubStatus, Inbox } from '../protocol.ts';
-import { realClock, type Clock } from '../hub/clock.ts';
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { TelegramApi, TelegramError, type TgUpdate } from './telegram-api.ts';
 import { TELEGRAM_COMMANDS, telegramHelp, telegramCommand, telegramStatus, telegramInbox, commandParts, plainCommandReply } from './telegram-commands.ts';
 import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
+import { flushTelegramGap } from './telegram-gap.ts';
 import { TelegramOutbox } from './telegram-outbox.ts';
 import { TelegramInbound } from './telegram-inbound.ts';
 import { plainParts } from './telegram-render.ts';
@@ -35,14 +36,82 @@ export class TelegramRemote implements Remote {
   #botLink: string | null = null;
   #stopping: Promise<void> | undefined;
   #inbound: TelegramInbound | undefined;
+  #offline: { since: string; reason: string; announced: boolean } | undefined;
+  #offlineTimer: ClockTimer | undefined;
+  #recoveredAt: string | undefined;
 
   constructor(api: TelegramApi, clock: Clock = realClock, polling?: TelegramRemoteOptions, rendering: { format?: 'rich' | 'entities' } = {}) {
     this.#api = api; this.#clock = clock; this.#polling = polling;
+    const outage = polling?.store.get('telegram.outage');
+    if (outage) this.#offline = JSON.parse(outage);
     this.#format = rendering.format ?? 'rich';
     this.#outbox = new TelegramOutbox(api, clock, { ...(polling ? { store: polling.store } : {}), signal: this.#abort.signal,
       onSent: () => { this.#lastOutbound = this.#clock.now().toISOString(); },
-      onError: error => { void this.#track(async () => { throw error; }).catch(() => {}); },
+      onError: error => {
+        if (fatal(error)) void this.#track(async () => { throw error; }).catch(() => {});
+        else if (!this.#abort.signal.aborted) this.#failed(error instanceof TelegramError ? error.description : 'send failed');
+      },
     });
+  }
+
+  #failed(reason: string): void {
+    this.#outbox.setAvailable(false);
+    this.#recoveredAt = undefined;
+    this.#clock.clearTimeout(this.#offlineTimer);
+    if (this.#offline) { this.#armOffline(); return; }
+    this.#offline = { since: this.#clock.now().toISOString(), reason, announced: false };
+    this.#saveOutage();
+    this.#armOffline();
+  }
+
+  #saveOutage(): void {
+    this.#polling?.store.set('telegram.outage', this.#offline ? JSON.stringify(this.#offline) : null);
+  }
+
+  #armOffline(): void {
+    if (!this.#offline || this.#offline.announced) return;
+    this.#offlineTimer = this.#clock.setTimeout(() => {
+      if (this.#stopped || !this.#offline) return;
+      this.#offline.announced = true;
+      this.#saveOutage();
+      this.#polling?.notice?.(`offline since ${time(this.#offline.since)}: ${this.#offline.reason}`, '', true);
+    }, Math.max(1, Date.parse(this.#offline.since) + 180_000 - this.#clock.now().getTime()));
+    this.#offlineTimer.unref();
+  }
+
+  async #caughtUp(): Promise<boolean> {
+    // Ordinary commands confirm their own settled job; later queue arrivals
+    // must not turn each successful poll into a remote-wide drain barrier.
+    if (this.#offline) {
+      await this.#outbox.resume();
+      await this.#inbound?.recover();
+    }
+    if (this.#polling && !await flushTelegramGap(this.#polling.store, this.#clock, (chat, text, key) =>
+      this.#outbox.send({ chat_id: chat, text, disable_notification: true, link_preview_options: { is_disabled: true } }, { key }))) return false;
+    const outage = this.#offline;
+    if (outage) {
+      this.#clock.clearTimeout(this.#offlineTimer);
+      this.#offline = undefined;
+      this.#saveOutage();
+      if (outage.announced) this.#polling?.notice?.(`recovered; offline since ${time(outage.since)}`, '', true);
+    }
+    return true;
+  }
+
+  async #transient(operation: () => void | Promise<void>): Promise<void> {
+    try { await operation(); }
+    catch (error) {
+      if (fatal(error)) throw error;
+      if (this.#abort.signal.aborted) return;
+      if (!(error instanceof TelegramError) && !this.#offline) throw error;
+      this.#failed(error instanceof TelegramError ? error.description : 'send failed');
+    }
+  }
+
+  #late(written: number): string | undefined {
+    if (!this.#offline || !this.#recoveredAt || !Number.isFinite(written) || written <= 0
+      || written * 1_000 > Date.parse(this.#recoveredAt)) return;
+    return `written on Telegram at ${time(new Date(written * 1_000).toISOString())}; the hub was down until ${time(this.#recoveredAt)}`;
   }
 
   #track<T>(operation: () => Promise<T>): Promise<T> {
@@ -60,6 +129,7 @@ export class TelegramRemote implements Remote {
           this.#stopped = true;
           this.#abort.abort();
           this.#polling?.notice?.(cause, fix);
+          this.#clock.clearTimeout(this.#offlineTimer);
         }
         throw new Error(`${cause}; ${fix}; ${error.message}`);
       }
@@ -81,8 +151,9 @@ export class TelegramRemote implements Remote {
 
   start(send: RemoteSend, pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt): Promise<void> {
     this.#sendFrame = send;
+    this.#armOffline();
     if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, { setMessageReaction: async params => { await this.#outbox.react(params); return true; } }, this.#abort.signal,
-      () => {}, receipt);
+      () => {}, receipt, written => this.#late(written));
     this.#pair = pair;
     return this.#track(async () => {
       await this.#check(signal);
@@ -120,7 +191,7 @@ export class TelegramRemote implements Remote {
       return;
     }
     if (frame.type !== 'message' || frame.topic.id !== 'general') {
-      if (this.#inbound) return this.#track(async () => { await this.#inbound!.receive(frame); });
+      if (this.#inbound) return this.#track(async () => { await this.#transient(() => this.#inbound!.receive(frame)); });
       return;
     }
     const pairing = this.#polling?.store.pairing();
@@ -132,14 +203,16 @@ export class TelegramRemote implements Remote {
       const author = message.fromKind === 'human' ? message.via === 'discord' ? 'you (Discord)' : 'you' : message.from;
       const header = `${author} · ${message.kind ?? 'message'}`;
       const options = { link_preview_options: { is_disabled: true }, disable_notification: message.kind === 'progress' || message.fromKind === 'hub' };
-      const facts = { kind: 'general' as const, source: message.id, topic: 'general' };
+      const facts = { kind: 'general' as const, source: message.id, topic: 'general', missed: !!this.#offline };
       const parts = plainParts(header, message.text).map(part => ({ chat_id: pairing.chatId, ...part, ...options }));
-      if (this.#format === 'rich') await this.#outbox.rich({ chat_id: pairing.chatId,
-        rich_message: { markdown: `${header}\n${message.text}`, skip_entity_detection: true }, ...options }, parts, facts);
-      else {
-        // Enqueue every part synchronously, so later General messages cannot interleave.
-        await Promise.all(parts.map(part => this.#outbox.send(part, facts)));
-      }
+      await this.#transient(async () => {
+        if (this.#format === 'rich') await this.#outbox.rich({ chat_id: pairing.chatId,
+          rich_message: { markdown: `${header}\n${message.text}`, skip_entity_detection: true }, ...options }, parts, facts);
+        else {
+          // Enqueue every part synchronously, so later General messages cannot interleave.
+          await Promise.all(parts.map(part => this.#outbox.send(part, facts)));
+        }
+      });
     });
   }
 
@@ -147,7 +220,7 @@ export class TelegramRemote implements Remote {
     return this.#running ??= this.#track(async () => {
       await this.#outbox.resume();
       if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
-      await this.#inbound?.recover();
+      await this.#transient(async () => { await this.#inbound?.recover(); });
       const handlers = [...this.#polling.handlers ?? [], {
         accepts: (update: TgUpdate) => /^\/(?:mute|unmute)(?:@[A-Za-z0-9_]+)?\s*$/.test(update.message?.text ?? ''),
         handle: async (update: TgUpdate) => {
@@ -209,8 +282,16 @@ export class TelegramRemote implements Remote {
           });
         },
       }, ...(this.#inbound ? [this.#inbound.handler] : [])];
-      await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers }, this.#abort.signal,
-        () => { this.#lastInbound = this.#clock.now().toISOString(); });
+      await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers,
+        initialOffline: !!this.#offline, offline: reason => this.#failed(reason), caughtUp: () => this.#caughtUp() }, this.#abort.signal,
+        () => {
+          this.#lastInbound = this.#clock.now().toISOString();
+          this.#outbox.setAvailable(true);
+          if (this.#offline) {
+            this.#recoveredAt ??= this.#lastInbound;
+            this.#clock.clearTimeout(this.#offlineTimer);
+          }
+        });
     });
   }
 
@@ -243,13 +324,18 @@ export class TelegramRemote implements Remote {
 
   status(): RemoteConnection {
     const last = Math.max(Date.parse(this.#lastInbound ?? ''), Date.parse(this.#lastOutbound ?? '') || 0);
-    return { connected: !this.#stopped && Number.isFinite(last) && this.#clock.now().getTime() - last <= 65_000,
+    return { connected: !this.#stopped && !this.#offline && Number.isFinite(last) && this.#clock.now().getTime() - last <= 65_000,
       lastInbound: this.#lastInbound, lastOutbound: this.#lastOutbound, botLink: this.#botLink };
   }
 
   stop(): Promise<void> {
     this.#stopped = true;
+    this.#clock.clearTimeout(this.#offlineTimer);
     this.#abort.abort();
     return this.#stopping ??= Promise.allSettled([this.#outbox.stop(), ...this.#work]).then(() => {});
   }
 }
+
+function time(at: string): string { return new Date(at).toTimeString().slice(0, 5); }
+
+function fatal(error: unknown): boolean { return error instanceof TelegramError && [401, 403, 409].includes(error.code); }

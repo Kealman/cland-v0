@@ -14,11 +14,12 @@ export class TelegramInbound {
   readonly #signal: AbortSignal;
   readonly #sent: () => void;
   readonly #receipt: RemoteReceipt | undefined;
+  readonly #late: ((written: number) => string | undefined) | undefined;
   readonly #pending = new Map<string, { resolve: (message: TopicMessage) => void; reject: (error: Error) => void; receipt: Receipt }>();
   readonly #reactions = new Map<string, Promise<void>>();
   #next = 0;
-  constructor(store: RemoteStore, send: RemoteSend, api: Pick<TelegramApi, 'setMessageReaction'>, signal: AbortSignal, sent: () => void, receipt?: RemoteReceipt) {
-    this.#store = store; this.#send = send; this.#api = api; this.#signal = signal; this.#sent = sent; this.#receipt = receipt;
+  constructor(store: RemoteStore, send: RemoteSend, api: Pick<TelegramApi, 'setMessageReaction'>, signal: AbortSignal, sent: () => void, receipt?: RemoteReceipt, late?: (written: number) => string | undefined) {
+    this.#store = store; this.#send = send; this.#api = api; this.#signal = signal; this.#sent = sent; this.#receipt = receipt; this.#late = late;
   }
   async recover(): Promise<void> {
     if (!this.#receipt) return; // Previous injected ports retain their original lifetime.
@@ -40,6 +41,8 @@ export class TelegramInbound {
     handle: async (update, signal) => {
       const message = update.message!;
       const parsed = input(message.text!)!;
+      const late = this.#late?.(message.date);
+      if (late) parsed.text += `\n\n(${late})`;
       const id = `telegram-in-${++this.#next}`;
       const result = Promise.withResolvers<TopicMessage>();
       this.#pending.set(id, { ...result, receipt: { chat: String(message.chat.id), message: message.message_id,

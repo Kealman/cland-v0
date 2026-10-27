@@ -95,6 +95,19 @@ notices use `remoteNotice` and the project redactor, then the existing disable p
 Retain authenticated web service and unchanged-reload recovery for failed enabled
 clients; configuration-disabled clients stay stopped. Existing role clauses cover
 the same remote isolation and secret boundaries without new permission lines.
+For Telegram catch-up, use the production frame/fake-clock receipts in
+`docs/agents/tests/hub-test-telegram-catchup.test.ts.md`. Start an outage while
+the scratch hub serves, keep the exact three-minute notice boundary and one
+recovery, annotate retained input before store/confirmation, and send a gap
+only above zero after input catch-up. Use
+`docs/agents/tests/hub-test-telegram-gap.test.ts.md` for source deduplication,
+held-send arrivals and stable-key recovery; acknowledge only the captured ids
+on the matching send receipt and preserve the unknown-delivery fence.
+Keep recovery joins scoped to an active outage: a healthy command's next-poll
+confirmation must not await later ordinary queue work. Retain the existing
+command-priority/own-receipt regression when changing these hooks.
+Keep optional native callbacks compatible;
+no frame or role authority expansion is needed.
 For native Telegram `/start`, blocked membership and disabled bot-link facts, use
 `docs/agents/tests/hub-test-telegram-pairing.test.ts.md`. Keep injected handlers
 first; fatal membership records its sanitized cause/General notice before

@@ -5,13 +5,13 @@ import { TelegramApi, TelegramError, type SendMessage, type SendRichMessage, typ
 import type { Clock } from '../hub/clock.ts';
 
 type Payload = {
-  admission?: 'paired' | 'pairing' | 'old-chat'; userId?: string | null;
+  key?: string; admission?: 'paired' | 'pairing' | 'old-chat'; userId?: string | null;
   telegram: true; order: number; part: number; method: 'sendMessage' | 'sendRichMessage' | 'setMessageReaction';
   params: SendMessage | SendRichMessage | SetMessageReaction; fallback?: SendMessage[];
   mapping: Omit<RemoteMessage, 'messageId'>;
 };
 type Receipt = DeliveryResult | { status: 'format-refused' };
-type SendFacts = { admission?: 'paired' | 'pairing' | 'old-chat'; kind?: OutboxInput['kind']; source?: string | null; topic?: string; ask?: string | null; approval?: string | null };
+type SendFacts = { key?: string; missed?: boolean; admission?: 'paired' | 'pairing' | 'old-chat'; kind?: OutboxInput['kind']; source?: string | null; topic?: string; ask?: string | null; approval?: string | null };
 const payload = (job: OutboxJob): Payload | undefined => {
   const value = job.payload as Partial<Payload> | null;
   return value?.telegram === true ? value as Payload : undefined;
@@ -58,13 +58,29 @@ export class TelegramOutbox {
   #enqueue(method: Payload['method'], params: Payload['params'], facts: SendFacts, fallback?: SendMessage[]): Promise<void> {
     this.#signal.throwIfAborted();
     const chat = String(params.chat_id);
+    const previous = facts.key ? this.#store.outbox().find(job => payload(job)?.key === facts.key) : undefined;
+    if (previous) {
+      if (String(payload(previous)!.params.chat_id) !== chat) throw new Error('Telegram send key belongs to another chat');
+      if (previous.state === 'sent') return Promise.resolve();
+      return this.#wait(payload(previous)!.order, this.#lane(chat));
+    }
     const order = Number(this.#store.get('telegram.outbox.order') ?? 0) + 1;
     this.#store.set('telegram.outbox.order', String(order));
-    const intent: Payload = { admission: facts.admission ?? 'paired', userId: this.#store.pairing()?.userId ?? null, telegram: true, order, part: 0, method, params, ...(fallback ? { fallback } : {}),
+    const intent: Payload = { ...(facts.key ? { key: facts.key } : {}), admission: facts.admission ?? 'paired', userId: this.#store.pairing()?.userId ?? null, telegram: true, order, part: 0, method, params, ...(fallback ? { fallback } : {}),
       mapping: { chatId: chat, topic: facts.topic ?? 'general', message: facts.source ?? null,
         ask: facts.ask ?? null, approval: facts.approval ?? null } };
     const lane = this.#lane(chat);
-    lane.enqueue({ kind: facts.kind ?? 'message', source: facts.source ?? null, payload: intent });
+    const id = lane.enqueue({ kind: facts.kind ?? 'message', source: facts.source ?? null, payload: intent });
+    if (facts.kind === 'general' && facts.missed) {
+      const job = this.#store.outbox().find(row => row.id === id)!;
+      this.#store.putOutbox({ ...job, state: 'missed' });
+    }
+    return this.#wait(order, lane);
+  }
+
+  #wait(order: number, lane: Outbox): Promise<void> {
+    const active = this.#waiting.get(order);
+    if (active) return active.promise;
     const completion = Promise.withResolvers<void>();
     this.#waiting.set(order, completion);
     void lane.drain().then(() => this.#complete(order, true), error => {
@@ -82,7 +98,9 @@ export class TelegramOutbox {
     this.#waiting.delete(order);
     for (const job of group) this.#errors.delete(job.id);
     if (failure) completion.reject(failure);
-    else if (!group.length || group.some(job => job.state !== 'sent' && job.state !== 'dropped')
+    else if (!group.length || group.some(job => job.state !== 'sent' && job.state !== 'dropped'
+      && !(job.kind === 'general' && job.state === 'missed'))
+      || group.some(job => payload(job)?.key && job.state !== 'sent')
       || payload(group[0]!)!.method === 'setMessageReaction' && !group.some(job => job.state === 'sent'))
       completion.reject(new Error('Telegram send has no delivery receipt'));
     else completion.resolve();

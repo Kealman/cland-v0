@@ -498,7 +498,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
       const { remoteNotice } = await import('../remote/notices.ts');
       gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock, {
         state: store.remotes, log, projectName: () => remoteOutput.text(roles.config().name),
-        notice: (cause, fix) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'telegram', cause, fix),
+        notice: (cause, fix, transition) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'telegram', cause, fix, transition),
       }), create);
       await gateway.update(roles.config(), remoteSecrets);
     }

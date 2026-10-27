@@ -93,6 +93,14 @@ for 409. The hub never stops another consumer itself. Configuration-disabled
 remotes stay stopped; an unchanged healthy gateway keeps its clients.
 See [remote command tests](tests/hub-test-remote-cli.test.ts.md).
 
+Transient Telegram poll/send failures retain a durable outage without disabling
+other hub edges. General gets one redacted offline line after three minutes
+and one recovery line if that threshold was crossed. Retained human text names
+its written/recovery times; after it is handled, the paced native queue sends
+one silent gap above zero missed General sources. Only the matching successful
+gap send acknowledges its captured ids; uncertainty never permits a new send.
+See [catch-up receipts](tests/hub-test-telegram-catchup.test.ts.md).
+
 For Telegram client errors and API-root overrides, use the
 [Bot API boundary](tests/hub-test-telegram-api.test.ts.md) and
 [native messenger frame receipts](tests/hub-test-telegram-messenger.test.ts.md).
