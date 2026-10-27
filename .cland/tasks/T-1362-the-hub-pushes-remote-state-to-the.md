@@ -2,8 +2,8 @@
 id: T-1362
 kind: task
 title: The hub pushes remote state to the workbenches, and Neovim's sessions panel shows a Remotes row
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1109
 branch: t/T-1362-the-hub-pushes-remote-state-to-the
 created: 2026-10-27T05:46:49.834Z
-updated: 2026-10-27T10:11:56.242Z
+updated: 2026-10-27T10:55:34.151Z
+closed: 2026-10-27T10:55:34.151Z
 ---
 
 ## Summary
@@ -36,13 +37,17 @@ Neovim's sessions panel draws a Remotes row beside the verification line. It sho
 ## Acceptance criteria
 
 - [x] C1. Through the frame harness, a client receives the remote-state frame on connect and after each change, with the fields named above and no token, fingerprint or chat id (test).
-  - done: impl-1362 · 2026-10-27T09:55:08.332Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1362-evidence-1 · 2026-10-27T10:49:41.231Z · commit 9ed32303577485dd8860b3c9d5316da9513b76fa
+  - done: impl-1362 · 2026-10-27T10:50:18.492Z
 - [x] C2. A failed exchange on the fake Bot API pushes the Telegram remote as offline within one second under an injected clock, and the next successful poll pushes it as connected (test).
-  - done: impl-1362 · 2026-10-27T09:55:08.430Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1362-evidence-1 · 2026-10-27T10:49:41.231Z · commit 9ed32303577485dd8860b3c9d5316da9513b76fa
+  - done: impl-1362 · 2026-10-27T10:50:18.583Z
 - [x] C3. Headless Neovim's sessions panel shows the Remotes row with connection, paired name, mute, outbox depth and last error, red within one second of a fake outage and plain again on recovery (test).
-  - done: impl-1362 · 2026-10-27T09:55:08.516Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1362-evidence-1 · 2026-10-27T10:49:41.231Z · commit 9ed32303577485dd8860b3c9d5316da9513b76fa
+  - done: impl-1362 · 2026-10-27T10:50:18.681Z
 - [x] C4. A client speaking the previous wire shape connects and works unchanged while the frame is sent (test).
-  - done: impl-1362 · 2026-10-27T09:55:08.734Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1362-evidence-1 · 2026-10-27T10:49:41.231Z · commit 9ed32303577485dd8860b3c9d5316da9513b76fa
+  - done: impl-1362 · 2026-10-27T10:50:18.907Z
 
 ## Comments
 
@@ -106,3 +111,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Index-only delta source clear, A-12705. Three authored Guide rows now use the unchanged guard's established Notes/linked-test format. Original A-12702 failure inspected; this requirement was missed in earlier source review, not lost by merge. A-12704 local red/green and serial summary retained with limits. Both earlier runs remain failed; C1-C4 runtime verification pending Coordinator replacement verify all under c8d46650/9bdcff4a.
+
+### rev-26 · 2026-10-27T10:49:41.231Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1362-evidence-1
+commit: 9ed32303577485dd8860b3c9d5316da9513b76fa
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, C1-C4 verified, A-12715. Original Coordinator all c832d5e1/A-12714 independently parsed: 5055 ordinary passes, 8 reasoned unrelated skips, no failures/cancellations; no load executions. Exact safe-state/old-wire, change/coalescing, failure/recovery, recorded and actual native Neovim rendering receipts pass; max new identity 0.572 s, no allowance needed. Corrected index guard passes. T0/T1/T2/T3/Web complete on Linux c-8 nyc1 with isolated Headless Shell156/v1248; T4 unrun. Report-only budgets/T3 growth and reused host gate preserved. Earlier failed runs remain failed; Coordinator owns enqueue/landing.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-27T10:55:34.151Z
+
+Merged 77d113376b7c33d6518e55cf6430baae6c81492a onto dev.
