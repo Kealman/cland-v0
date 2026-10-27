@@ -3,7 +3,7 @@ id: T-1356
 kind: task
 title: 'Stale, foreign and late input: "Already answered", a privately refused foreign press, and a late message that answers no ask'
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1115
 branch: t/T-1356-stale-foreign-and-late-input-already
 created: 2026-10-27T05:43:01.630Z
-updated: 2026-10-27T13:04:18.571Z
+updated: 2026-10-27T13:40:27.382Z
 ---
 
 ## Summary
@@ -98,3 +98,20 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-12787 records the raw A-12786 audit. Fresh configured e5b179ff: host T0 retained separately; Linux c-8 lon1 all T1/fallback all T2/Web passed, 3702 ordinary cases/486 files, no failures/cancellations/skips. All eight new identities passed ordinary plus five explicitly recorded load repetitions each (40 separate passes); M1 unknown fallback remains fenced while callback/later input progress, with no retransmission. All 46 ordinary card cases and prior receipt/race/failure controls passed. C1–C3 established jointly by source2 and named receipts. Budgets/lint/ratchet report-only, 135 findings/61 files; no T3/T4 or real-platform/QA claim. No findings. Any authorized integration after T-1358 still needs a fresh exact-head delta review and verification; Coordinator landing is separate.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1356 · 2026-10-27T13:38:43.526Z
+
+Coordinator-authorized rule11 merge after T-1358 landed: fetched origin/dev a4acbcf07; resolved telegram-cards.ts, telegram-commands.ts and telegram.ts keeping both features. Stale outcome edits now use dev's shared telegramCard formatter while retaining exact press-keyed retry/filter and incomplete unknown fallback handling. Notices publishing, webOrigin and help remain; late callback/classification and foreign mapped-card-only admission remain. Auto-merged documentation/skill sections reread. Local macOS arm64 serial set rerun: 29 files including the new telegram-notices file, 300 tests passed, zero failures/cancellations/skips/todos; all 46 original card assertions retained, notices13/13 and API22/22. Typecheck, report-only test lint (135 findings, 0 refusals), tier lint passed. These are integrated candidate local receipts; prior Linux A-12786 and final A-12787 do not prove the changed head. Requesting delta source review before fresh mode-free verify.
+
+### rev-32 · 2026-10-27T13:40:27.382Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261027-1356-delta
+commit: cebca8e344e96d0042b92de387b5b8cef9eda99c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integration delta source clear; A-12797 audits both parents and the three resolutions under Coordinator ae653945. Landed notice/shared renderer/webOrigin/inbound reference/help behavior remains, together with T-1356 late prompt exclusion, foreign-card refusal, exact-copy repair key/filter and unknown-fallback cursor release. Polling/prompts and all 46 card tests are unchanged from accepted task source; docs retain both flows. Standards 0, Spec 0. A-12796 is local macOS targeted 29-file/300-pass summary only. Old A-12786/A-12787 and criterion runtime marks cover 3caafb0b, not this merge. C1–C3 stay runtime-pending until fresh mode-free configured same-head evidence; no verified marks added at source.

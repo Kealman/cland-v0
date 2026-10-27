@@ -2,8 +2,8 @@
 id: T-1357
 kind: task
 title: Codex and OpenCode approvals arrive as cards with coloured choices, answered with `via` and shown as approved via Telegram
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1113
 branch: t/T-1357-codex-and-opencode-approvals-arrive-as
 created: 2026-10-27T05:43:01.767Z
-updated: 2026-10-27T12:43:13.598Z
+updated: 2026-10-27T13:47:06.305Z
+closed: 2026-10-27T13:47:06.305Z
 ---
 
 ## Summary
@@ -33,15 +34,19 @@ A press goes through `approval.answer` with the choice, and the hub stores it be
 - [x] C1. A fake Codex approval for a 5000-character command arrives as a card naming the session and "codex", with the command truncated, "full command in the workbench" and three styled buttons one per row (test).
   - done: impl-1357 · 2026-10-27T11:46:40.940Z
   - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-source4-waiver · 2026-10-27T13:37:41.013Z · commit 12d65628ef2602db3679a66e7cb838cce01261fe
 - [x] C2. "Approve once" on a fake Codex approval's card lets the fake command run, the outcome records `via = "telegram"`, and the card is edited to the outcome without buttons (test).
   - done: impl-1357 · 2026-10-27T11:46:41.127Z
   - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-source4-waiver · 2026-10-27T13:37:41.013Z · commit 12d65628ef2602db3679a66e7cb838cce01261fe
 - [x] C3. "Deny" on a fake OpenCode approval's card stops its command, and an approval answered in the web edits its card to "via web" (test).
   - done: impl-1357 · 2026-10-27T11:46:41.377Z
   - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-source4-waiver · 2026-10-27T13:37:41.013Z · commit 12d65628ef2602db3679a66e7cb838cce01261fe
 - [x] C4. Headless Neovim and headless Chromium show both answered approvals as answered "via Telegram" in their inboxes (test).
   - done: impl-1357 · 2026-10-27T11:46:41.585Z
   - verified: rev-34 [reviewer] · run rev-34-20261027-1357-final1 · 2026-10-27T12:36:05.069Z · commit c56107d1a7c36e1eead4fa30ecddb88697c646fe
+  - verified: rev-34 [reviewer] · run rev-34-20261027-1357-source4-waiver · 2026-10-27T13:37:41.013Z · commit 12d65628ef2602db3679a66e7cb838cce01261fe
 
 ## Comments
 
@@ -130,3 +135,42 @@ Post-T-1355 merge delta CLEAR at3bf8db78/tree8c98d36a. A-12778: Standards0/Spec0
 ### impl-1357 · 2026-10-27T12:43:13.598Z
 
 Delta source3 clear at 3bf8db785f0806a048457b28f10647ca0226aaf2 / tree 8c98d36ac7a05e832e035bc4568ff89161fdf6d2, A-12778. Fresh origin/dev fetch c07b4bd0d835c3cd6f8dc6f9d9d616d4c1bd4d08; merge-tree --write-tree exit 0/result equals reviewed tree, no head change, clean/pushed. Reported ready for Coordinator's new rule-6 verify all. All current-head local 35-file/339-test and lint evidence in A-12776. Prior-parent runtime verdicts are not current-head coverage; C1–C4 await original full result at this merge head.
+
+### impl-1357 · 2026-10-27T13:24:13.986Z
+
+Waiver-path merge pushed at 12d65628ef2602db3679a66e7cb838cce01261fe / tree 34721be355261aeb1a5f7d3725e0491945b8d1ec, parents 3bf8db785 + a4acbcf0 (T-1358 landed b14ede7a), authorized 906067d7/92fffadc. Full base c35b5656/A-12790 green at parent only. README keeps both sections; RemoteCard retains approval action/style/truncated plus notice link/preview; inbox receive publishes both; approval sends/edits use shared composed renderer. Approval truncation marker precedence and clipping semantics preserved. A-12791 records exact domain identifier/text search, all 79 direct executable matches and six helper matches; five helper-owner tests plus two Web consumers added, 86 files running serially. Initial 11 approval/13 notice cases, typecheck/build/full test:lint (0 refusals)/tier lint pass. No change beyond composition intended; no current-head full suite claim.
+
+### impl-1357 · 2026-10-27T13:30:25.530Z
+
+Requested delta + authorized waiver-evidence review at 12d65628ef2602db3679a66e7cb838cce01261fe (tree 34721be355261aeb1a5f7d3725e0491945b8d1ec), assigned rev-34. All 87 selected files / 983 tests passed serially, 0 failure/skip/cancel. A-12791 exact search inventory plus helper mappings; A-12792 per-file recorded counters at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12792-t-1357-87-file-waiver-receipts-at-12d65628e.md. Non-TS matches inspected: duration/CLI fixture manifests and named Neovim recordings, with owner checks included. Full test:lint (0 refusals, findings report-only), tier lint, typecheck/build/diff checks pass. Original parent full c35b5656/A-12790 green is prior-head evidence only; waiver authorized by Coordinator 906067d7/92fffadc. No behaviour beyond composing approval/notices intended; no assertion changed.
+
+### impl-1357 · 2026-10-27T13:32:53.237Z
+
+Reviewer requested original current-head named-case receipts for waiver audit. Published A-12793 (captured approval/notices/native OpenCode/Web+Neovim case outputs/timings) and A-12794 (original 87-file node exit/signal/counter JSON), no rerun or reconstruction. A-12793 explicitly labels missing separate success exports for native decision objects/scratch effects/SQLite offsets/nested process exits; those were asserted in cases and fixtures disposed. Head remains 12d65628e.
+
+### rev-34 · 2026-10-27T13:37:41.013Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261027-1357-source4-waiver
+commit: 12d65628ef2602db3679a66e7cb838cce01261fe
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Clear Standards and Spec delta review; no findings. C1–C4 verified at 12d65628e through source composition and current-head original targeted outcomes under Coordinator waiver 906067d7/92fffadc. A-12795 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12795-t-1357-merged-head-delta-and-authorized-waiver-audit-at-12d65628e.md) records the audit. Independent search reproduced all 79 direct executable consumer matches; original A-12794 confirms all 87 selected files code 0/signal null and 983 passes, zero failures/cancellations/skips. A-12793 confirms named C1–C4/native/notice outcomes on local darwin arm64 Node24.21, headless Neovim and isolated Chrome Headless Shell156.0.8078.4/build1248. Success objects/SQLite/effect/nested PID receipts were asserted in unchanged tests but not separately exported; disposed fixtures were not reconstructed. Current-head evidence is targeted, without new load repetitions or a new full run. Parent Linux full c35b5656/A-12790 remains at 3bf8db785: 5099 ordinary passes/eight skips, hostT0/LinuxT1/T2/T3/Web complete, noT4; remote host-gate tree reuse explicitly not repeated typecheck. Parent proof is the waived baseline, not a merged-head full pass. Budgets/lint/ratchet report-only. Merge preserves approval authority, outcome persistence/ack order, bounded shared renderer and owning strict help fixture; no change beyond authorized approvals/notices composition. Mixed-kind ordering remains T-1359. Coordinator owns enqueue under the explicit no-second-full waiver.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-27T13:37:50.162Z
+
+Rule 6 waiver (coord, 2026-10-27 13:38Z). The landed head 12d65628 is a conflict merge of 3bf8db78 with T-1358 (b14ede7a). Its full-suite base is c35b5656 / A-12790: green at 3bf8db78, 5107 tests, T1, T2, T3 and Web complete. The merge resolution only combines approval cards with notices, and its waiver evidence is complete: A-12791 holds the search inventory, and A-12792 shows 87 matched files run serially with 983 passes and 0 failures, plus test:lint, the tier lint, typecheck and build. The delta and evidence review is clear. No second `verify all` was run at 12d65628. The next integrated cover (the E-1310 stage 2 and E-1313 stage 1 pair) covers the merged tree.
+
+### impl-1357 · 2026-10-27T13:38:19.873Z
+
+Ready report sent for enqueue at unchanged 12d65628ef2602db3679a66e7cb838cce01261fe / tree 34721be355261aeb1a5f7d3725e0491945b8d1ec. Delta/waiver review rev-34-20261027-1357-source4-waiver clear, C1–C4 verified, A-12795. Fresh origin/dev a4acbcf076d67b11d5a92e3f50464beba567eccc; merge-tree exit 0/result equals reviewed tree; clean/pushed. Coordinator waiver 906067d7/92fffadc/6a8ccde8 accepts parent Linux full A-12790 plus current-head 87 files/983 targeted passes and lint/original receipt audit; no current-head full pass claimed. Coordinator owns enqueue, waiver record and landing. Claim retained.
+
+### coord · 2026-10-27T13:47:06.305Z
+
+Merged 9fd28437fb2b60a06ea206a8bbf8d958badc9002 onto dev.
