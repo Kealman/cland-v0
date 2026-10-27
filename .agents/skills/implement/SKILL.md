@@ -159,6 +159,13 @@ For pairing codes or local approval lookup, read `docs/agents/pairing.md` and it
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and
 strip pairing rows and counts at the remote boundary. Trusted pairing callbacks
 invalidate read replay at persistence, before coalesced inbox publication.
+Workbench pairing rows use `docs/agents/tests/web-test-pairing.test.ts.md`:
+the sealed Web fixture and real headless Neovim share one hub with fake messengers.
+Keep pairing entries in Asks and approvals; Neovim's card alone binds its approval
+key, while the web offers selectable local command text. Remove departed codes
+from retained visits and split detail pages on the authoritative snapshot, and
+keep inboxes without the optional `pairings` field readable. Existing role clauses
+already reserve pairing approval to Neovim and the terminal; add no clause lines.
 
 For remote persistence and poller ownership, use `Store.remotes` on the existing
 hub.db handle, with platform ids kept as strings/TEXT. The T1 storage/lease seams

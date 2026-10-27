@@ -525,6 +525,15 @@ the shared unread count. Failed writes are never replayed automatically.
 
 ## Inbox
 
+Waiting Telegram and Discord pairing codes appear in **Asks and approvals** and
+its count at desktop and phone widths. The row says **approve in the terminal
+or Neovim**. Select it to read the complete identity, code and expiry, and select
+or copy the read-only `cland remote approve <messenger> <code>` command. Web
+buttons and keys never approve a pairing. Approval from Neovim or the terminal,
+replacement and expiry remove the rows on the next inbox update, even during
+the same visit or in a split detail. Hubs without the optional `pairings` field
+retain the existing sections.
+
 Below 640 px, Inbox is the phone's home. Its title shows **N need you**, or a
 green check with **Nothing needs you** when every section is at zero. The four
 sections keep their order; **Requests** is labelled **Requests to you**. Each

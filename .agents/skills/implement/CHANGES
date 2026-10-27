@@ -197,3 +197,4 @@ T-1365: Route setup remote/hidden prompt work to the sealed scripted and frame/f
 2026-10-27 · T-1348 verification fix: scope recovery joins to active outages and preserve healthy command confirmation before later queued General work.
 
 T-1366: Add setup pairing's local CLI/fake Bot API guide, durable Start receipt, identity confirmation and bounded wait/decline guidance.
+T-1364: Document cross-client pairing Inbox evidence, card-scoped approval, read-only web command and live-membership retirement.

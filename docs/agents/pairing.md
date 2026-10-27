@@ -36,6 +36,16 @@ or remote cannot grant access. `cland remote approve <messenger> <code>` prints 
 rows nor their needs-you count; the web cannot grant access. Existing one-argument
 `Remote.start(send)` adapters and inbox replies without `pairings` remain valid.
 
+Both Inbox views place waiting rows in **Asks and approvals**, counted there.
+Enter on Neovim's row opens its pairing card; `1` approves, `q` or Escape closes.
+The card shows messenger, numeric user id, name, code and expiry, then the paired
+name or the hub's refusal. The web says "approve in the terminal or Neovim" and
+offers the command as selectable read-only text at desktop and phone widths,
+with no approval key or control. The next inbox update removes codes after
+approval, replacement or expiry, including from retained visits and split detail.
+Use the [cross-client regression](tests/web-test-pairing.test.ts.md) for the
+real Neovim key and isolated Headless Shell boundary with test messengers.
+
 Implement `Remote.pairingReplaced(previous, text)` in platform adapters to send
 the fixed replacement line to the captured old chat. The gateway owns and drains
 that callback, applies the shared redactor and isolates failures; the new grant

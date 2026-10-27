@@ -144,6 +144,7 @@ end
 add('thread', 'A', 'Show or hide archived messages')
 group('help', {{'q','Close keys'}, {'<Esc>','Close keys'}})
 group('capabilities', {{'q','Close capabilities'}, {'<Esc>','Close capabilities'}, {'c','Close capabilities'}})
+group('pairing_card', {{'1','Approve pairing'}, {'q','Close pairing card'}, {'<Esc>','Close pairing card'}})
 group('palette', {{'<CR>','Run or open palette selection'}, {'<C-v>','Open palette selection in split'},
   {'<Esc>','Close palette'}, {'<C-c>','Close palette'}, {'<C-n>','Next palette match'},
   {'<Down>','Next palette match'}, {'<C-p>','Previous palette match'}, {'<Up>','Previous palette match'},

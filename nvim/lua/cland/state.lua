@@ -31,7 +31,7 @@ function M.reset(opts)
     tracker = { levels = {} }, -- hub.status's loaded container ladder; unknown until the hub answers
     sibling_orders = {}, -- final task rank events, keyed by parent (empty string for roots)
     items_note = nil, -- why the items panel is empty
-    inbox = { asks = {}, approvals = {}, plans = {}, requests = {}, messages = {}, waiting = {} },
+    inbox = { asks = {}, approvals = {}, pairings = {}, plans = {}, requests = {}, messages = {}, waiting = {} },
     needs_you = nil, -- the hub's "needs you" count (hub.status, `inbox` events); nil until it said
     ui = {
       view = { kind = 'thread', id = 'general' },
@@ -319,7 +319,7 @@ function M.set_inbox(inbox)
     return type(x) == 'table' and x or {}
   end
   local archive = type(inbox.archive) == 'table' and inbox.archive or M.S.inbox.archive
-  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), plans = list(inbox.plans), requests = list(inbox.requests), messages = list(inbox.messages), waiting = list(inbox.waiting), archive = archive, archiveToday = inbox.archiveToday or 0 }
+  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), pairings = list(inbox.pairings), plans = list(inbox.plans), requests = list(inbox.requests), messages = list(inbox.messages), waiting = list(inbox.waiting), archive = archive, archiveToday = inbox.archiveToday or 0 }
   if type(inbox.needsYou) == 'number' then
     M.S.needs_you = inbox.needsYou
   end

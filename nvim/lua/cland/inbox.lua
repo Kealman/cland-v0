@@ -118,6 +118,9 @@ local function render_row(c, entry, selected)
     end
     local subject = type(r.subject) == 'table' and r.subject or {}
     left = { { ' ▲ ', 'ClandAmber' }, { r.session .. ' ', 'ClandBold' }, { first_line(r.command or subject.change or 'waiting for approval') } }
+  elseif kind == 'pairing' then
+    info.pairing = r
+    left = { { ' ◇ ', 'ClandAmber' }, { first_line(r.text), 'ClandBold' } }
   elseif kind == 'plan' then
     info.plan, info.item = true, r.id
     left = { { ' ▲ ', 'ClandAmber' }, { r.id .. ' ', 'ClandBlue' }, { r.title .. ' · ' .. (r.stages or '?') .. ' stages · ' .. (r.lanes or '?') .. ' lanes · ' .. (r.items or '?') .. ' items' } }
@@ -172,6 +175,9 @@ local function render_row(c, entry, selected)
     else
       detail({ { '   answer in the session TUI: ↵ attaches', 'ClandFaint' } })
     end
+  elseif kind == 'pairing' then
+    for _, line in ipairs(wrapped(r.text, c.width - 4)) do detail({ { '   ' .. line, 'ClandBold' } }) end
+    detail({ { '   ↵ pairing card', 'ClandFaint' } })
   end
 end
 
@@ -179,6 +185,7 @@ function M.render_sections(c, buf)
   local ib = state.S.inbox
   local asks = now_rows(ib.asks, 'ask')
   vim.list_extend(asks, now_rows(M.approvals(ib.approvals), 'approval'))
+  vim.list_extend(asks, now_rows(ib.pairings, 'pairing'))
   local sections = {
     { 'asks and approvals', asks }, { 'plan approvals', now_rows(ib.plans, 'plan') },
     { 'requests to you', now_rows(ib.requests, 'request') }, { 'messages to you', now_rows(ib.messages, 'message') },
@@ -250,7 +257,7 @@ function M.follow_row(c, info)
   end
   -- A selected row pushed past the five-row cap lands on its section's inert fold line.
   local kind = info.inbox_key and info.inbox_key:match('^([^:]+):')
-  local group = ({ ask = 'asks and approvals', approval = 'asks and approvals', plan = 'plan approvals', request = 'requests to you', message = 'messages to you' })[kind]
+  local group = ({ ask = 'asks and approvals', approval = 'asks and approvals', pairing = 'asks and approvals', plan = 'plan approvals', request = 'requests to you', message = 'messages to you' })[kind]
   for r = 1, #c.lines do
     if c.info[r] and group and c.info[r].inbox_fold == group then return r end
   end
@@ -296,8 +303,8 @@ function M.start_clock(clock)
     end
     if not visible then return end
     local signature = {}
-    for _, kind in ipairs({ 'asks', 'approvals', 'plans', 'requests', 'messages' }) do
-      for _, r in ipairs(state.S.inbox[kind]) do signature[#signature + 1] = M.age(since(r)) end
+    for _, kind in ipairs({ 'asks', 'approvals', 'pairings', 'plans', 'requests', 'messages' }) do
+      for _, r in ipairs(state.S.inbox[kind] or {}) do signature[#signature + 1] = M.age(since(r)) end
     end
     local current = table.concat(signature, '|')
     if current ~= previous then previous = current; state.changed() end
@@ -394,6 +401,8 @@ function M.open(buf)
   local layout = require('cland.layout')
   if info.events then
     layout.show({ kind = 'events' }, { insert = false })
+  elseif info.pairing then
+    require('cland.pairing_card').open(info.pairing)
   elseif info.plan then
     layout.show({ kind = 'plan', id = info.item }, { insert = false })
   elseif info.approval and info.session then

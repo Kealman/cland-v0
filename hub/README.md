@@ -679,6 +679,16 @@ gateway's ordinary answer handlers before dispatch, as are all pairing-approval
 frame names. Existing inbox sections and departure kinds stay unchanged; pairing
 expiry removes the waiting record rather than making a remote-visible archive row.
 
+Both workbenches list waiting pairing rows in **Asks and approvals**, included
+in that section's count. In Neovim, Enter opens the pairing card with messenger,
+numeric user id, name, code and expiry; `1` approves through `pairing.approve`,
+while `q` or Escape closes it. The card reports the paired name or the hub's
+refusal. Desktop and phone web rows say "approve in the terminal or Neovim";
+their detail offers the approval command as selectable, read-only text, with no
+approval control or key. Approval, replacement and expiry remove the rows on
+the next inbox snapshot, including during an active visit. Older hubs omitting
+`pairings` continue to render the existing inbox sections.
+
 `InboxBoard.pairingCodes.get(id)` resolves only a live request for the local
 approval handler; `clear(messenger)` clears that messenger's waiting requests
 without changing its stranger counts. `pairing.approve {messenger, code}` returns

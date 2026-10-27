@@ -10,6 +10,7 @@ import { AskCard } from './AskCard.tsx';
 import { Fold, revealFold } from './Fold.tsx';
 import { useEventSummary } from './use-event-summary.ts';
 import { usePhone } from './phone.ts';
+import type { InboxPairing } from '../../shared/wire/index.ts';
 import s from './InboxArea.module.css';
 
 export const inboxActions = ['inbox-archive', 'inbox-reply', 'thread-next', 'thread-previous', 'thread-back', 'thread-toggle', 'inbox-next', 'inbox-previous', 'inbox-open', 'inbox-remove', 'inbox-free', 'inbox-1', 'inbox-2', 'inbox-3', 'inbox-4', 'inbox-5', 'inbox-6', 'inbox-7', 'inbox-8', 'inbox-9'] as const;
@@ -23,6 +24,7 @@ function facts(entry: Entry) {
   switch (entry.kind) {
     case 'ask': return { glyph: '?', subject: entry.row.topic.item ?? entry.row.topic.title, text: entry.row.question, sender: entry.row.from, role: entry.row.fromRole };
     case 'approval': return { glyph: '▲', subject: entry.row.session, text: entry.row.command ?? entry.row.subject.change ?? 'Waiting for approval', sender: entry.row.session, role: entry.row.role };
+    case 'pairing': return { glyph: '◇', subject: entry.row.messenger === 'telegram' ? 'Telegram' : 'Discord', text: entry.row.text, sender: '', role: undefined };
     case 'plan': return { glyph: '▲', subject: entry.row.id, text: entry.row.title, sender: '', role: undefined };
     case 'request': return { glyph: '◇', subject: entry.row.subject, text: entry.row.text, sender: entry.row.from, role: entry.row.fromRole };
     case 'message': return { glyph: '•', subject: entry.row.subject, text: entry.row.text, sender: entry.row.from, role: entry.row.fromRole };
@@ -51,6 +53,7 @@ function InboxArea(props: AreaContentProps) {
     finally { setPending(undefined); }
   };
   const openEntry = (entry: Entry) => {
+    if (entry.kind === 'pairing') return;
     if (entry.kind === 'plan') { if (!phone) props.openPlan?.(entry.row.id); }
     else if (entry.kind === 'approval') { if (entry.row.topic) props.openTopic?.(entry.row.topic); }
     else props.openTopic?.(entry.row.topic.id, entry.row.id);
@@ -58,7 +61,7 @@ function InboxArea(props: AreaContentProps) {
   const entries = [...visit.entries.values()];
   const liveIds = new Set(liveInboxEntries(props.connection).map(entry => entry.row.id));
   const sections: Array<{ id: string; name: string; rows: Entry[] }> = [
-    { id: 'asks', name: 'Asks and approvals', rows: entries.filter(entry => entry.kind === 'ask' || entry.kind === 'approval') },
+    { id: 'asks', name: 'Asks and approvals', rows: entries.filter(entry => entry.kind === 'ask' || entry.kind === 'approval' || entry.kind === 'pairing') },
     { id: 'plans', name: 'Plan approvals', rows: entries.filter(entry => entry.kind === 'plan') },
     { id: 'requests', name: phone ? 'Requests to you' : 'Requests', rows: entries.filter(entry => entry.kind === 'request') },
     { id: 'messages', name: 'Messages to you', rows: entries.filter(entry => entry.kind === 'message') },
@@ -141,11 +144,12 @@ function InboxArea(props: AreaContentProps) {
             return <div key={row.id} role="listitem" className={s.entry} data-inbox-kind={kind} data-key-context={kind === 'ask' || kind === 'approval' ? 'inbox-answer' : 'inbox'} data-ask-id={kind === 'ask' && !showCard ? row.id : undefined} data-ask-state={kind === 'ask' && !showCard ? card?.state : undefined} onFocus={() => { if (props.selected !== row.id) setClosed(undefined); props.select(row.id); }}>
               <button hidden={folded || (card ? card.state !== 'open' : kind === 'approval' && entry.row.state === 'closed')} className={s.row} data-object-id={row.id} aria-pressed={selected === row.id} onClick={() => { setClosed(undefined); props.select(row.id); if (phone && kind === 'ask') setSheetAsk(row.id); if (phone && kind === 'approval' && entry.row.answerIn === 'hub') setSheetApproval(row.id); }} title={phone && kind === 'plan' ? `${info.text} · Plan approval needs the desktop Plan view` : info.text}>
                 <span className={s.glyph}>{info.glyph}</span><span className={s.subject}>{phone && kind === 'plan' ? `${info.subject} · ${info.text}` : info.subject}</span><span className={s.preview}>{phone && entry.kind === 'approval' && entry.row.answerIn === 'tui' && <><span className={s.tui}>answer in Neovim</span> · </>}{phone && kind === 'plan' ? `${entry.row.stages ?? '—'} stages · ${entry.row.lanes ?? '—'} lanes · ${entry.row.items ?? '—'} items` : info.text.split(/\r?\n/)[0]}</span>
-                <span className={s.sender} data-role={info.role}>{info.sender}</span><time dateTime={row.since} title={row.since}>{age(row.since, now)}</time>
+                {kind === 'pairing' && <span className={s.pairingHint}>approve in the terminal or Neovim</span>}<span className={s.sender} data-role={info.role}>{info.sender}</span><time dateTime={row.since} title={row.since}>{age(row.since, now)}</time>
               </button>
               {folded && <div tabIndex={0} className={s.outcome} data-inbox-outcome title={info.text}>✓ {info.subject} · {departure?.reason ?? 'left Inbox'}{departure && <time dateTime={departure.ts}> · {new Date(departure.ts).toLocaleString()}</time>}</div>}
               {entry.kind === 'ask' && showCard && <AskCard id={row.id} topic={entry.row.topic.id} card={card} context="inbox-answer" connection={props.connection} phoneOpen={sheetAsk === row.id} closePhone={() => setSheetAsk(undefined)} sender={entry.row.from} since={entry.row.ts} openThread={() => openEntry(entry)} />}
               {kind === 'approval' && (selected === row.id || entry.row.state === 'closed') && <ApprovalCard record={entry.row} connection={props.connection} phoneOpen={sheetApproval === row.id} closePhone={() => setSheetApproval(undefined)} />}
+              {entry.kind === 'pairing' && <PairingDetail row={entry.row} compact={selected !== row.id} />}
               {!folded && selected === row.id && (kind === 'request' || kind === 'message') && <div className={s.detail} ref={phone ? detail : undefined}><div>{info.text}</div><div className={s.actions}>
                 <button data-inbox-open onClick={() => openEntry(entry)}>Enter · Open topic</button>
                 <button disabled={!props.connection.live || !!pending} onClick={() => void remove(entry)}>{kind === 'request' ? 'd · Decline' : 'd · Mark read'}</button>
@@ -169,6 +173,7 @@ function InboxArea(props: AreaContentProps) {
 }
 
 function InboxThread({ entry, thread, ...props }: AreaContentProps & { entry: Entry; thread?: Ref<ThreadControls> }) {
+  if (entry.kind === 'pairing') return <PairingDetail row={entry.row} />;
   const approval = entry.kind === 'approval' ? props.connection.approvalCards?.get(entry.row.id) ?? entry.row : undefined;
   if (approval) return <><ApprovalCard key={approval.id} record={approval} connection={props.connection} /><SessionRecentThread key={approval.id} session={approval.session} connection={props.connection} controls={thread} /></>;
   const topic = entry.kind === 'plan' || entry.kind === 'approval' ? undefined : entry.row.topic.id;
@@ -176,12 +181,19 @@ function InboxThread({ entry, thread, ...props }: AreaContentProps & { entry: En
   return <Thread key={topic} connection={props.connection} topic={topic} focusTarget={false} targetMessage={entry.kind === 'approval' ? undefined : entry.row.id}
     controls={thread} reply={entry.kind === 'message' || entry.kind === 'request' ? { id: entry.row.id, sender: entry.row.from } : undefined} />;
 }
+function PairingDetail({ row, compact = false }: { row: InboxPairing; compact?: boolean }) {
+  return <div className={s.detail} data-pairing-detail>
+    {!compact && <><div>{row.text}</div><div>approve in the terminal or Neovim</div></>}
+    <input className={s.pairingCommand} aria-label="Approval command" readOnly value={row.command} />
+    {!compact && <div>Expires <time dateTime={row.expires}>{new Date(row.expires).toLocaleString()}</time></div>}
+  </div>;
+}
 function InboxDetail(props: AreaContentProps) {
   const node = useRef<HTMLElement>(null);
   const current = useInboxVisit().entries.get(props.selected ?? '');
   const viewed = useRef<Entry | undefined>(undefined);
   if (current) viewed.current = current;
-  const entry = viewed.current?.row.id === props.selected ? viewed.current : undefined;
+  const entry = viewed.current && viewed.current.row.id === props.selected && (viewed.current.kind !== 'pairing' || current) ? viewed.current : undefined;
   const thread = useRef<ThreadControls>(null);
   useImperativeHandle(props.controls, () => ({ run: action => {
     if (action === 'inbox-reply') { node.current?.querySelector<HTMLTextAreaElement>('[data-composer] textarea')?.focus(); return true; }

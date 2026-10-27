@@ -16,6 +16,9 @@
 .sender[data-role="aide"] { color: var(--role-aide); }
 .row time { font-family: var(--mono); white-space: nowrap; }
 .detail { margin: 4px 12px 12px 38px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pairingHint { color: var(--muted); }
+.pairingCommand { box-sizing: border-box; width: 100%; margin-top: 8px; padding: 6px; color: var(--text); background: var(--control); border: 1px solid var(--control-border); font-family: var(--mono); }
+.pairingCommand:focus-visible { outline: 2px solid var(--link); }
 .more { padding: 8px 12px 8px 38px; border: 0; background: none; }
 [data-empty="true"] [data-fold-toggle] { color: var(--muted); }
 .actions { display: flex; gap: 8px; margin-top: 8px; }
@@ -53,6 +56,7 @@
 .area[data-phone] .sender { grid-column: 3; grid-row: 1; overflow: hidden; text-overflow: ellipsis; }
 .area[data-phone] .row time { grid-column: 4; grid-row: 1; }
 .area[data-phone] .preview { grid-column: 1 / -1; grid-row: 2; }
+.area[data-phone] .pairingHint { grid-column: 1 / -1; grid-row: 3; }
 .area[data-phone] .detail { margin: 4px 10px 12px; }
 .area[data-phone] .actions { flex-wrap: wrap; }
 .area[data-phone] .detail button, .area[data-phone] .more { min-height: 44px; }

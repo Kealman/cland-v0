@@ -1,12 +1,12 @@
 import { createContext, useContext, useRef, type ReactNode } from 'react';
-import type { InboxAsk, InboxApproval, InboxPlan, InboxRequest, InboxMessage, InboxDeparture } from '../../shared/wire/index.ts';
+import type { InboxAsk, InboxApproval, InboxPlan, InboxRequest, InboxMessage, InboxDeparture, InboxPairing } from '../../shared/wire/index.ts';
 import type { ConnectionState } from './connection.ts';
 
-export type InboxEntry = { kind: 'ask'; row: InboxAsk } | { kind: 'approval'; row: InboxApproval } | { kind: 'plan'; row: InboxPlan } | { kind: 'request'; row: InboxRequest } | { kind: 'message'; row: InboxMessage };
+export type InboxEntry = { kind: 'ask'; row: InboxAsk } | { kind: 'approval'; row: InboxApproval } | { kind: 'pairing'; row: InboxPairing } | { kind: 'plan'; row: InboxPlan } | { kind: 'request'; row: InboxRequest } | { kind: 'message'; row: InboxMessage };
 export function liveInboxEntries(connection: ConnectionState): InboxEntry[] {
   const inbox = connection.inbox;
   return [...(inbox?.asks ?? []).map(row => ({ kind: 'ask' as const, row })), ...(inbox?.approvals ?? []).map(row => ({ kind: 'approval' as const, row })),
-    ...(inbox?.plans ?? []).map(row => ({ kind: 'plan' as const, row })), ...(inbox?.requests ?? []).map(row => ({ kind: 'request' as const, row })), ...(inbox?.messages ?? []).map(row => ({ kind: 'message' as const, row }))];
+    ...(inbox?.pairings ?? []).map(row => ({ kind: 'pairing' as const, row })), ...(inbox?.plans ?? []).map(row => ({ kind: 'plan' as const, row })), ...(inbox?.requests ?? []).map(row => ({ kind: 'request' as const, row })), ...(inbox?.messages ?? []).map(row => ({ kind: 'message' as const, row }))];
 }
 
 type Visit = { entries: Map<string, InboxEntry>; departures: Map<string, InboxDeparture> };
@@ -25,6 +25,8 @@ export function InboxVisitProvider({ connection, active, children }: { connectio
   }
   if (active) for (const departure of connection.inbox?.departures ?? []) visit.current.departures.set(departure.id, departure);
   for (const [id, entry] of visit.current.entries) {
+    // Codes grant access only while the hub lists them; never retain a departed code for this visit.
+    if (entry.kind === 'pairing' && !connection.inbox?.pairings?.some(row => row.id === id)) visit.current.entries.delete(id);
     if (entry.kind === 'approval') {
       const latest = connection.approvalCards?.get(id);
       if (latest) visit.current.entries.set(id, { kind: 'approval', row: latest });

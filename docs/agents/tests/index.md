@@ -15,6 +15,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/telegram-mute.test.ts`](../../../hub/test/telegram-mute.test.ts) | [Notes](hub-test-telegram-mute.test.ts.md) |
 | [`hub/test/telegram-pairing.test.ts`](../../../hub/test/telegram-pairing.test.ts) | [Notes](hub-test-telegram-pairing.test.ts.md) |
 | [`hub/test/pairing-codes.test.ts`](../../../hub/test/pairing-codes.test.ts) | [Notes](hub-test-pairing-codes.test.ts.md) |
+| [`web/test/pairing.test.ts`](../../../web/test/pairing.test.ts) | [Notes](web-test-pairing.test.ts.md) |
 | [`hub/test/pairing-approval.test.ts`](../../../hub/test/pairing-approval.test.ts) | [Notes](hub-test-pairing-approval.test.ts.md) |
 | [`hub/test/pairing-service.test.ts`](../../../hub/test/pairing-service.test.ts) | [Notes](hub-test-pairing-service.test.ts.md) |
 | [`hub/test/cli-imports.test.ts`](../../../hub/test/cli-imports.test.ts) | [Notes](hub-test-cli-imports.test.ts.md) |

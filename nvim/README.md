@@ -101,6 +101,16 @@ Shell changes use the central panel-home/placement helpers, keeping semantic hom
 
 ### Keys
 
+Waiting Telegram and Discord codes appear in the Inbox panel and full-width
+Inbox under **Asks and approvals**, included in the section's count. Enter on
+a pairing row opens its card: messenger, numeric user id, name, code and expiry.
+`1` in that card approves over Neovim's own hub connection and reports the paired
+name or the hub's refusal; `q` or Escape closes it. On the row itself, `1` retains
+the existing ask/approval behaviour and never grants a pairing. The next inbox
+update removes approved, replaced and expired codes. Older hubs without
+`pairings` render an empty pairing list. The web shows the same waiting rows
+with a local approval command and no approval action.
+
 Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 
 | Key | Where | What it does |
