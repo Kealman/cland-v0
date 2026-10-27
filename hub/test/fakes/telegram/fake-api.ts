@@ -1,8 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { EventEmitter } from 'node:events';
+import { isDeepStrictEqual } from 'node:util';
 import type { Socket } from 'node:net';
 import type { TestContext } from 'node:test';
-import type { TgMessage, TgUpdate, TgUser } from '../../../src/remote/telegram-api.ts';
+import type { TgMessage, TgUpdate, TgUser, TgInlineKeyboardMarkup, TgReplyMarkup, TgEntity, TgReplyParameters } from '../../../src/remote/telegram-api.ts';
 import { remoteRedactor } from '../../../src/remote/redact.ts';
 import { realClock, type Clock, type ClockTimer } from '../../../src/hub/clock.ts';
 import { onCleanup } from '../../process-cleanup.ts';
@@ -35,6 +36,21 @@ function legalEntities(entities: Array<{ type: string; offset: number; length: n
   return true;
 }
 
+function keyboardMarkup(value: TgInlineKeyboardMarkup): TgInlineKeyboardMarkup {
+  let remaining = 300;
+  const rows = [];
+  for (const row of value.inline_keyboard) {
+    for (const button of row) {
+      const bytes = Buffer.byteLength(button.callback_data, 'utf8');
+      if (bytes < 1 || bytes > 64) throw new Error('Invalid callback data');
+    }
+    const kept = row.slice(0, Math.min(12, remaining));
+    remaining -= kept.length;
+    if (kept.length) rows.push(kept);
+  }
+  return { inline_keyboard: rows };
+}
+
 export type FakePollReceipt = { id: number; params: Record<string, unknown>; stalled: boolean };
 export type FakeRequestReceipt = { id: number; method: string; params: Record<string, unknown> };
 export type FakeConnectionReceipt = { id: number; method: string };
@@ -62,6 +78,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   const lifetime = new AbortController();
   const redact = remoteRedactor([TELEGRAM_TEST_TOKEN]);
   const messages: TgMessage[] = [];
+  const forceReplyMessages = new Set<number>();
   let commands: unknown[] = [];
   let updates: TgUpdate[] = [];
   const requests: Array<{ method: string; params: Record<string, unknown> }> = [];
@@ -77,6 +94,8 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   let nextPoll = 1;
   let nextMessage = 1;
   let nextUpdate = 1;
+  let nextPress = 1;
+  const presses = new Map<string, number>();
   let redirectsFollowed = 0;
   const nativeListening = Promise.withResolvers<void>();
   const listening = Promise.withResolvers<void>();
@@ -117,6 +136,21 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
           chat: { id: user.id, type: 'private' }, from: user, text: String(params.text ?? '') };
         const update: TgUpdate = { update_id: nextUpdate++, message };
         updates.push(redact.value(update));
+        wake();
+        return reply(res, 200, update);
+      }
+      if (req.method === 'POST' && req.url === '/control/press') {
+        const message = messages.find(message => message.message_id === params.message_id && message.chat.id === params.chat_id);
+        const markup = message?.reply_markup;
+        const button = markup && 'inline_keyboard' in markup ? markup.inline_keyboard[Number(params.row)]?.[Number(params.column)] : undefined;
+        if (!message || !button) return reply(res, 400, { error: 'no button at that message, row and column' });
+        const id = `press-${nextPress++}`;
+        presses.set(id, clock.now().getTime());
+        const update: TgUpdate = { update_id: nextUpdate++, callback_query: {
+          id, from: params.user === 'stranger' ? STRANGER : HUMAN,
+          message: structuredClone(message), data: button.callback_data,
+        } };
+        updates.push(update);
         wake();
         return reply(res, 200, update);
       }
@@ -244,6 +278,32 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
       }
       if (method === 'getMe') return reply(res, 200, { ok: true, result: BOT });
       if (method === 'setMessageReaction') return reply(res, 200, { ok: true, result: true });
+      if (method === 'answerCallbackQuery') {
+        const pressedAt = presses.get(String(params.callback_query_id));
+        if (pressedAt === undefined || clock.now().getTime() - pressedAt > 150_000)
+          return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: query is too old' });
+        return reply(res, 200, { ok: true, result: true });
+      }
+      if (method === 'editMessageText') {
+        const message = messages.find(message => message.message_id === params.message_id && String(message.chat.id) === String(params.chat_id));
+        if (!message) return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message to edit not found' });
+        if (forceReplyMessages.has(message.message_id))
+          return reply(res, 400, { ok: false, error_code: 400, description: "Bad Request: message can't be edited" });
+        if (typeof params.text !== 'string' || params.entities !== undefined
+          && (!Array.isArray(params.entities) || !legalEntities(params.entities)))
+          return reply(res, 400, { ok: false, error_code: 400, description: 'Invalid text or entities' });
+        const markup = params.reply_markup ? keyboardMarkup(params.reply_markup as TgInlineKeyboardMarkup) : message.reply_markup;
+        const entities = params.entities as TgEntity[] | undefined;
+        if (message.text === params.text && isDeepStrictEqual(message.entities ?? [], entities ?? [])
+          && isDeepStrictEqual(message.reply_markup, markup))
+          return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message is not modified' });
+        message.text = redact.text(params.text);
+        if (entities) message.entities = redact.value(entities);
+        else delete message.entities;
+        if (markup) message.reply_markup = redact.value(markup);
+        if (loseReceipt) { res.destroy(); return; }
+        return reply(res, 200, { ok: true, result: message });
+      }
       if (method === 'getUpdates') {
         if (typeof params.offset === 'number') updates = updates.filter(update => update.update_id >= Number(params.offset));
         if (!stall && (available().length || !Number(params.timeout))) return reply(res, 200, { ok: true, result: available() });
@@ -266,9 +326,19 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         if (method === 'sendMessage' && params.entities !== undefined
           && (!Array.isArray(params.entities) || !legalEntities(params.entities)))
           return reply(res, 400, { ok: false, error_code: 400, description: 'Invalid Telegram entity nesting' });
-        const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
-          chat: { id: Number(params.chat_id), type: 'private' }, from: BOT, text };
-        messages.push(redact.value(message));
+        const markup = params.reply_markup as TgReplyMarkup | undefined;
+        const replyParameters = params.reply_parameters as TgReplyParameters | undefined;
+        const repliedTo = replyParameters && messages.find(message => message.message_id === replyParameters.message_id
+          && String(message.chat.id) === String(params.chat_id));
+        if (replyParameters && !repliedTo) return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message to reply not found' });
+        const message: TgMessage = redact.value({ message_id: nextMessage++, date: 1_793_044_800,
+          chat: { id: Number(params.chat_id), type: 'private' }, from: BOT, text,
+          ...(params.entities ? { entities: params.entities as TgEntity[] } : {}),
+          ...(markup ? { reply_markup: 'inline_keyboard' in markup ? keyboardMarkup(markup) : markup } : {}),
+          ...(repliedTo ? { reply_to_message: structuredClone(repliedTo) } : {}),
+        });
+        if (markup && 'force_reply' in markup && markup.force_reply) forceReplyMessages.add(message.message_id);
+        messages.push(message);
         if (loseReceipt) { res.destroy(); return; }
         if (holdAfterSend) {
           heldRequests.set(connection.id, connection);

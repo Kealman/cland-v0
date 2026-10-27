@@ -20,6 +20,42 @@ duplicate updates, the bot's `my_chat_member` update, Rich Message rejection
 with a successful plain send, numeric `retry_after`, and an injected 409.
 These are platform receipts; dedupe, rich-to-entities conversion, global pacing,
 conflict recovery and pairing policy belong to their gateway callers.
+
+## Card API regressions
+
+`Telegram card keyboard preserves eleven rows and a press identifies its message
+and presser` keeps the returned markup, stored message and exact callback update:
+eleven one-button rows, style, opaque data and a stranger pressing in the human's
+chat. The direct client is not an identity gate; card handlers enforce pairing.
+The unchanged `Telegram API override sends to the fake bot` covers the previous
+send shape with no markup, reply target or entities.
+
+`Telegram callback answers expire after 150 seconds on the fake clock` observes
+two queued presses, advances only after the control responses, accepts an answer
+at exactly 150 seconds and refuses the other at 151 seconds with `query is too old`.
+Only the fake server uses that clock: client HTTP deadlines use real time, and
+an independent five-second native test bound covers the complete case. It
+retains the answer text and alert parameters. `Telegram keyboard limits count
+UTF-8 bytes and silently cap rows and total buttons` accepts 64 bytes of non-ASCII
+data, refuses 65 without storing a message, and independently expects 25 rows of
+12 buttons from a 26-by-13 keyboard (300 total).
+
+`Telegram outcome edits retain entities, remove buttons and distinguish an
+identical edit` checks edited content, entities, empty keyboard and stored message,
+refuses an identical edit with the exact sanitized description and cannot press
+a removed button. Its long multiline edit guards against diagnostic truncation.
+`Telegram ForceReply prompts retain their reply target and can never be edited`
+keeps the separate prompt, placeholder and reply target, then refuses repeated
+edits even when they try to replace ForceReply with an empty keyboard.
+
+`Telegram card calls redact successful receipts and echoed faults while preserving
+failure classes` is a positive secret control: a fabricated token is submitted
+in button data, and successful send/press/poll, stored captures and console
+log/warn/error calls must contain none of it. For both answerCallbackQuery and
+editMessageText, 400/401/403/429/500 echoed faults preserve numeric classes and
+retry facts while every error field/stack stays token-free; a disconnect retains
+code 0 with no raw fetch cause. These assert client facts, not gateway retries,
+stop, fallback or hub-store-before-ack ordering.
 The fake also rejects overlapping entities unless one contains the other and
 one is emphasis, excluding all code/pre nesting. It implements this narrow
 Bot API formatting restriction independently of the converter, not a full
@@ -71,6 +107,7 @@ or headers. POST controls take JSON:
 | Path | Parameters | Receipt |
 | --- | --- | --- |
 | `/control/say` | `user: "human"` (default) or `"stranger"`, `text` | Queued message update. Human id/chat 101, stranger id/chat 202. |
+| `/control/press` | `chat_id`, `message_id`, zero-based `row`, `column`, `user: "human"` (default) or `"stranger"` | Queued `callback_query` update with a unique press id, the presser, a snapshot of the stored message and the selected data. A missing message/button returns 400. |
 | `/control/update` | Arbitrary update body without `update_id` | Assigns the next id and queues the redacted body, deliberately bypassing kind/identity filtering for negative controls. |
 | `/control/duplicate` | `update_id` | Adds the exact queued update again, retaining both ids. |
 | `/control/membership` | `user`, `status: "member"` or `"kicked"` | Queued `my_chat_member` update for the bot. |
@@ -99,7 +136,16 @@ all captured receipts are redacted. A 429 fault is one response, not a scheduler
 repeat controls to model further refusals.
 
 The fake implements getMe; getUpdates; sendMessage; sendRichMessage with nested
-rich_message.markdown; setMessageReaction; and getMyCommands/setMyCommands.
+rich_message.markdown; setMessageReaction; getMyCommands/setMyCommands;
+answerCallbackQuery; and editMessageText. Sends store entities and markup and
+resolve `reply_parameters.message_id` in the same chat. Inline callback data must
+have 1–64 UTF-8 bytes; keyboards silently drop buttons after 12 in a row or 300
+total. ForceReply prompts retain their placeholder and can never be edited.
+An identical edit returns 400 `Bad Request: message is not modified`; an outcome
+edit with `inline_keyboard: []` removes buttons. Callback answers older than
+150 seconds on the fake clock return 400 `Bad Request: query is too old`.
+Both new methods use the existing method-specific fault/hold controls and the
+client's normal redacted TelegramError boundary.
 Menu methods require all_private_chats scope, and the setter requires a commands
 array. Reactions retain their exact parameters in requests and share the
 fault/hold/native-close controls with sends; they create no new message row.

@@ -2350,6 +2350,27 @@ or 409 conflict to its caller; it does not retry or kill another consumer.
 The fake Bot API and its token-free human/stranger controls are described in
 the [client test guide](../docs/agents/tests/hub-test-telegram-api.test.ts.md).
 
+The client accepts inline keyboards (button text, opaque `callback_data` and
+optional primary/success/danger style), separate ForceReply prompts with an
+optional input placeholder, and `reply_parameters.message_id` on `sendMessage`.
+`answerCallbackQuery` takes the press id, optional text and `show_alert`;
+`editMessageText` takes chat/message ids, text, optional entities and an inline
+keyboard, including an empty keyboard to remove buttons. These calls use the
+same redaction, cancellation and deadlines. Their errors retain the sanitized
+description, including `message is not modified`, and numeric status/retry facts;
+the client does not classify an edit as success or schedule a retry. Callers
+retain the existing 400 fallback, 401/403 stop, 429 hold and uncertain-delivery
+fence policies. Card handlers must send a callback acknowledgement directly
+after the hub stores the answer, outside the chat outbox.
+
+The fake stores sent markup and entities, queues human/stranger presses through
+`/control/press`, and uses its injected clock to refuse callback answers older
+than 150 seconds. It rejects callback data outside 1–64 UTF-8 bytes, keeps at most
+12 buttons per row and 300 total, refuses identical edits with
+`message is not modified`, and permanently refuses edits of ForceReply messages.
+Edit failures use the same method-specific fault controls as sends. This is a
+native client/fake capability; cards are built by the gateway's card handler.
+
 ### Telegram General rendering
 
 With Telegram enabled, a valid token and a paired chat, the native adapter sends

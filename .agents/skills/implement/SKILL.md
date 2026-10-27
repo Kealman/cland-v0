@@ -84,6 +84,15 @@ errors inside the client. Arm held-request observers before triggering and join
 native close receipts. The fake registers cleanup before bind; use its bounded
 control helper and setup/close receipts. Forward the gateway's optional start
 lifetime signal to startup I/O. Preserve explicit factory and legacy remote injection.
+For card API calls, use the same client/fake seam and `/control/press` with explicit
+chat/message ids, zero-based row/column and human/stranger identity. Observe the
+queued callback before advancing the injected clock past 150 seconds. Keep
+callback data within 64 UTF-8 bytes and use one button per row. Send ForceReply
+as a separate prompt with `reply_parameters`; it can never be edited. Outcome
+edits remove buttons with an empty inline keyboard and preserve the sanitized
+`message is not modified` description. Callback acknowledgements go directly
+after the hub stores the answer, outside the outbox. Preserve existing send
+failure classes and test token-free receipts and echoed faults for both new calls.
 For Telegram polling or update handlers, follow the filtered registry and durable
 confirmation contract in `hub/README.md#telegram-polling-and-durable-confirmation`
 and the component/crash guides in `docs/agents/tests/hub-test-telegram-polling.test.ts.md`

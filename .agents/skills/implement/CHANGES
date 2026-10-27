@@ -198,3 +198,5 @@ T-1365: Route setup remote/hidden prompt work to the sealed scripted and frame/f
 
 T-1366: Add setup pairing's local CLI/fake Bot API guide, durable Start receipt, identity confirmation and bounded wait/decline guidance.
 T-1364: Document cross-client pairing Inbox evidence, card-scoped approval, read-only web command and live-membership retirement.
+
+T-1352: Document the additive Telegram card API and fake press, expiry, edit and secret-regression seams.

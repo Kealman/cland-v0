@@ -4,12 +4,19 @@ import { realClock, type Clock } from '../hub/clock.ts';
 
 export type TgUser = { id: number; is_bot: boolean; first_name: string; username?: string };
 export type TgChat = { id: number; type: 'private' | 'group' | 'supergroup' | 'channel' };
+export type TgInlineKeyboardButton = { text: string; callback_data: string; style?: 'primary' | 'success' | 'danger' };
+export type TgInlineKeyboardMarkup = { inline_keyboard: TgInlineKeyboardButton[][] };
+export type TgForceReply = { force_reply: true; input_field_placeholder?: string };
+export type TgReplyMarkup = TgInlineKeyboardMarkup | TgForceReply;
+export type TgReplyParameters = { message_id: number };
 export type TgMessage = {
   message_id: number;
   date: number;
   chat: TgChat;
   from?: TgUser;
   text?: string;
+  entities?: TgEntity[];
+  reply_markup?: TgReplyMarkup;
   reply_to_message?: TgMessage;
 };
 export type TgBotCommand = { command: string; description: string };
@@ -17,8 +24,10 @@ export type TgCommandScope = { type: 'all_private_chats' };
 export type SetMessageReaction = { chat_id: number | string; message_id: number; reaction: Array<{ type: 'emoji'; emoji: '👌' | '👀' }> };
 export type TgEntity = { type: string; offset: number; length: number; url?: string; language?: string };
 type SendOptions = { disable_notification?: boolean; link_preview_options?: { is_disabled: boolean } };
-export type SendMessage = SendOptions & { chat_id: number | string; text: string; entities?: TgEntity[] };
+export type SendMessage = SendOptions & { chat_id: number | string; text: string; entities?: TgEntity[]; reply_markup?: TgReplyMarkup; reply_parameters?: TgReplyParameters };
 export type SendRichMessage = SendOptions & { chat_id: number | string; rich_message: { markdown: string; skip_entity_detection: boolean } };
+export type AnswerCallbackQuery = { callback_query_id: string; text?: string; show_alert?: boolean };
+export type EditMessageText = { chat_id: number | string; message_id: number; text: string; entities?: TgEntity[]; reply_markup?: TgInlineKeyboardMarkup };
 export type TgChatMember = { user: TgUser; status: string; until_date?: number };
 export type TgChatMemberUpdated = { chat: TgChat; from: TgUser; date: number; old_chat_member: TgChatMember; new_chat_member: TgChatMember };
 export type TgCallbackQuery = { id: string; from: TgUser; message?: TgMessage; data?: string };
@@ -74,13 +83,15 @@ export class TelegramApi {
   setMessageReaction(params: SetMessageReaction, options?: TelegramRequestOptions): Promise<true> { return this.#call('setMessageReaction', params, options); }
   sendMessage(params: SendMessage, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#call('sendMessage', params, options); }
   sendRichMessage(params: SendRichMessage, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#call('sendRichMessage', params, options); }
+  answerCallbackQuery(params: AnswerCallbackQuery, options?: TelegramRequestOptions): Promise<true> { return this.#call('answerCallbackQuery', params, options); }
+  editMessageText(params: EditMessageText, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#call('editMessageText', params, options); }
   getUpdates(params: GetUpdates, options?: TelegramRequestOptions): Promise<TgUpdate[]> {
     if (!Number.isInteger(params.timeout) || params.timeout < 0 || params.timeout > 50)
       return Promise.reject(new TelegramError('getUpdates', 0, 'poll timeout must be an integer from 0 to 50 seconds'));
     return this.#call('getUpdates', params, options, Math.max(35_000, (params.timeout + 15) * 1_000));
   }
 
-  async #call<T>(method: 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'getMyCommands' | 'setMyCommands' | 'setMessageReaction', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
+  async #call<T>(method: 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'getMyCommands' | 'setMyCommands' | 'setMessageReaction' | 'answerCallbackQuery' | 'editMessageText', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
     const deadline = new AbortController();
     const timer = this.#clock.setTimeout(() => deadline.abort(), timeoutMs);
     timer.unref();
