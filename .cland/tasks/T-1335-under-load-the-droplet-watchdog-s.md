@@ -2,8 +2,8 @@
 id: T-1335
 kind: task
 title: Under load the droplet watchdog's identity probe fails its arm, and two T3 fixtures time out (macOS stage cover 18934ad8)
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1116
 branch: t/T-1335-under-load-the-droplet-watchdog-s
 created: 2026-10-26T08:21:56.778Z
-updated: 2026-10-27T16:15:02.690Z
+updated: 2026-10-27T17:46:03.899Z
+closed: 2026-10-27T17:46:03.899Z
 ---
 
 ## Summary
@@ -36,8 +37,10 @@ Failing cases:
 
 - [x] C1. A transient identity-probe failure during watchdog arm is retried within a stated bound and never leads to a signal of an unverified pid, shown by a test that injects one failed probe (test).
   - done: impl-1335 · 2026-10-27T16:06:27.148Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1335-evidence-1 · 2026-10-27T17:38:34.837Z · commit cf9529489d8d82f8add1dc164ab69f5c9d125e6b
 - [x] C2. The named cases (executor-droplet watchdog rearm, cli-identity hub stop, executor-safety sentinel, and accounts.test.ts "opencode relaunch and hub restart retain the saved account after role and registry edits") pass 10/10 under the load gate's CPU load at two workers (test).
   - done: impl-1335 · 2026-10-27T16:06:27.231Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1335-evidence-1 · 2026-10-27T17:38:34.837Z · commit cf9529489d8d82f8add1dc164ab69f5c9d125e6b
 
 ## Comments
 
@@ -84,3 +87,35 @@ findings: [{"severity":"medium","text":"M1 Standards: new arm controls await set
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Full consolidated source audit A-12833: Standards M1 medium, Spec 0. Retry deadline/birth coherence/late proof exclusion, receipt-driven sentinel expiry, saved-account disconnect, minimal credential SQLite and all shared consumers reviewed. New test setup ownership correction needs fresh pushed-head source review. Local A-12827/A-12831 working-tree/load facts remain distinct from exact-head configured/Linux proof; C1/C2 runtime marks pending. No additional findings, no Reviewer execution; QA none.
+
+### rev-26 · 2026-10-27T17:22:57.810Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1335-source-2
+commit: cf9529489d8d82f8add1dc164ab69f5c9d125e6b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source-2 clear: M1 correction plus authorized dev integration; Standards 0, Spec 0. A-12843 incorporates full source-1 A-12833. Independently driven setup bound/combined cancellation and pre-owned unconditional drainage now cover all arm controls, with missing/aborted setup completion/close/map controls; every original behavioural/signal assertion retained. Product/credential/sentinel/accounts/SQLite sources unchanged. Integrated tracker implementation/tests/guides identical to reviewed T-1374; shared index/baseline edits preserved. A-12842 local 26/26 and timeout-negative control are not configured/Linux proof; earlier load/importer artifacts retain prior provenance. C1/C2 runtime marks pending one unchanged-head mode-free configured run and original-record review. QA none.
+
+### rev-26 · 2026-10-27T17:38:34.837Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1335-evidence-1
+commit: cf9529489d8d82f8add1dc164ab69f5c9d125e6b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear, C1/C2 verified. A-12844 exact reviewed head exit0: independent 3762 ordinary passes +30 separate actual load passes (six new identities ×5), no fail/skip/cancel. C1 retry/deadline/changed-birth/M1 ownership + WAL controls all base+5/5; new base max .022499306 s/load .041831114 s. C2 native four-case 10/10 CPU proof remains local macOS A-12827 at its working-tree provenance; current Linux sentinel/account pass once, unchanged executor-droplet/cli-identity T3 unselected. T0/allT1/fallback allT2/changedT3 18/18/Web complete; broaderT3/T4 absent. Printed R-1278 allowance suggestions are not committed; actual E-880 23.6/21 s through Nov19 cover samples. Coordinator09f73c4a accepts unchanged head; report-only budget/lint/ratchet limits retained. A-12845 records exact identities, platforms/browser, host-gate reuse and all coverage limits. QA none; Coordinator cover/enqueue/landing separate.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-27T17:46:03.899Z
+
+Merged 4e4a61d41e94db6435fcda4583ab4934b36cb3bd onto dev.
