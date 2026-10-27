@@ -167,6 +167,10 @@ T-1340: Route Telegram fetch/client and native factory work to the T2 fake Bot A
 T-1340 source-1: Require pre-bind fake ownership, bounded control requests and startup lifetime cancellation receipts.
 
 2026-10-26 · T-1341: document the filtered Telegram handler registry, durable confirmation, paced unhandled input and component/native-crash seams.
+2026-10-26 · T-1344: route native inbound text, reply/reaction and lost-result replay work to production-frame/fake receipts and trusted input identity guidance.
+2026-10-26 · T-1344 source-2: include native postcommit SIGKILL proof and durable-stage feedback recovery at startup and drain settlement.
 
 2026-10-26 · T-1343: route Telegram General rendering to frame/fake and pure conversion receipts, preserving entity boundaries and durable part mappings.
 2026-10-26 · T-1342: route native Telegram pairing, blocked diagnostics and consumed-kick replay to the production frame/CLI and fake Bot API regression.
+2026-10-27 · T-1344 merge: preserve pairing and inbound feedback guidance together after integrating landed T-1342.
+2026-10-27 · T-1344 mirror merge: retain mirror-out guidance with inbound receipt/recovery guidance and add the native mirror/reply integration receipt.

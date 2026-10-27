@@ -1,18 +1,28 @@
 import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
-import { PROTOCOL_VERSION, type HubFrame, type RemoteVia, type RemoteConnection } from '../protocol.ts';
+import { PROTOCOL_VERSION, type HubFrame, type RemoteVia, type RemoteConnection, type TopicMessage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { remoteRedactor, redactFrame, redactValue, type RemoteRedactor } from './redact.ts';
 import type { GatewayLease } from './poller-lease.ts';
 import type { PairingCodes } from './pairing.ts';
 import type { Pairing } from './state.ts';
 import { gatewayInbox } from './authority.ts';
+import { createHash } from 'node:crypto';
+
+/** Trusted native identity, carried separately from the frame and scoped by messenger. */
+export type RemoteIngress = { chatId: string; messageId: string };
+export type RemoteSend = (frame: Record<string, unknown>, ingress?: RemoteIngress) => void;
+export type RemoteReceipt = (ingress: RemoteIngress) => TopicMessage | null;
+
+function inputId(via: RemoteVia, ingress: RemoteIngress): string {
+  return `remote-${createHash('sha256').update(JSON.stringify([via, ingress.chatId, ingress.messageId])).digest('hex')}`;
+}
 
 /** One active remote per messenger. The gateway owns its lifetime and frame port. */
 export type Remote = {
   id: string;
   via: RemoteVia;
   /** Optional lifetime signal is aborted before the gateway joins an in-flight start. */
-  start: (send: (frame: Record<string, unknown>) => void, pair?: (identity: Pairing) => string | null, signal?: AbortSignal) => void | Promise<void>;
+  start: (send: RemoteSend, pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
   /** Successful platform exchanges, never inferred from starting a loop. */
   status?: () => RemoteConnection;
@@ -98,11 +108,12 @@ export class Gateway {
       this.#started.push(remote);
       this.#state.forMessenger(remote.id).setStatus({ disabled: false, reason: null });
       try {
-        await remote.start(frame => {
+        await remote.start((frame, ingress) => {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
           const id = `gateway-${++this.#nextId}`;
           this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
-          try { this.#conversation!.receive(JSON.stringify(this.#output({ ...frame, id })), remote.via); }
+          const messageId = ingress ? inputId(remote.via, ingress) : undefined;
+          try { this.#conversation!.receive(JSON.stringify(this.#output({ ...frame, id })), remote.via, messageId); }
           catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
         }, this.#pairing ? identity => {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
@@ -112,7 +123,11 @@ export class Gateway {
             const reply = this.#pairing!.issue(remote.via, { userId: safe.userId, chatId: safe.chatId, guildId: safe.guildId, name: safe.text });
             return reply === null ? null : this.#output({ text: reply }).text;
           } catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
-        } : undefined, this.#leaseAbort.signal);
+        } : undefined, this.#leaseAbort.signal, identity => {
+          if (!this.#open || this.#disabled.has(remote)) return null;
+          const message = this.#conversation?.messageReceipt?.(inputId(remote.via, identity));
+          return message?.fromKind === 'human' && message.via === remote.via ? this.#output(message) : null;
+        });
       } catch (error) {
         this.#disable(remote, error);
       }

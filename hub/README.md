@@ -2350,16 +2350,58 @@ remains independent. These keys persist across restarts without a new database.
 
 When accepted input has no matching handler, it stays unconfirmed. The loop
 waits one injected-clock second per retry and logs `telegram-update-unhandled`
-once for that blocked update, carrying only its numeric id. The native registry
-handles private `/start` and paired bot membership; other input requires its
-registered mirror or command handler. Enabling a token alone does not forward
-chat text. Shutdown aborts the current poll and delay and joins the
+once for that blocked update, carrying only its numeric id. After explicitly
+injected handlers, the native registry handles private `/start`, paired bot
+membership and paired text. Other input requires its registered handler.
+Shutdown aborts the current poll and delay and joins the
 handler before the gateway releases its lease or storage. Legacy injected
 `TelegramRemote(api, clock)` clients retain their check/send-only lifetime.
 
 The [component guide](../docs/agents/tests/hub-test-telegram-polling.test.ts.md)
 and [crash/restart guide](../docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md)
 name the frame/fake and native-process receipts.
+
+### Telegram text from the human
+
+With Telegram enabled, a resolved token, an available API and a paired private
+chat, free text reaches General as the human's `message`, with `via: "telegram"`.
+`/decision <text>` and `/question <text>` select those kinds; the optional
+`@botname` command suffix is accepted. Telegram entities are discarded: the
+visible text is preserved without bold, link destinations or code formatting.
+The existing workbench resolver handles session names, roles and `@lead T-n`.
+The Aide role is not an addressee; address an Aide by its session name.
+
+A reply uses the `remote_messages` entry for that chat and Telegram message id,
+then submits the stored topic and source message id through the gateway's
+ordinary reply authorization. An unknown reply stays in General; Telegram's
+supplied quoted text, author and topic are never routing authority. This input
+handler leaves cards, media, edits and other commands to their registry handlers.
+
+The native port can supply a chat/message identity separately from the frame.
+The gateway namespaces its digest by messenger and passes it to the dispatcher
+as the human message's durable primary key. Replaying that identity returns the
+original message and current delivery stage without recording or delivering it
+again, including after a restart or a lost result. Wire fields cannot supply
+this identity; previous clients keep their existing request/result shapes.
+An optional native recovery callback reads the durable message and its current
+session stage through the gateway conversation. It is scoped to that messenger
+and is never a frame action. Before polling, the native client reconciles
+pending feedback receipts for the current paired chat, so a delivery stored
+before a lost frame or shutdown still produces 👀 after restart. Older injected
+ports may omit this callback and retain their previous startup behavior.
+
+`setMessageReaction` puts 👌 on the Telegram input only after the durable send
+result. It replaces that reaction with 👀 after a `delivered` or `injected`
+session receipt, including a queued message delivered later. Per-message
+reaction writes are serial, their completion bits live in `remote_state`, and
+the worker releases ownership in the same turn as its final work check. A
+delivery arriving at settlement either joins an active drain or starts a new one.
+Shutdown aborts and joins their HTTP exchanges before storage closes. A
+cancelled input remains unconfirmed and safely replays; an interrupted reaction
+can repeat the same idempotent set operation. No text echo is sent.
+
+The [inbound test guide](../docs/agents/tests/hub-test-telegram-inbound.test.ts.md)
+names the production-factory, fake-platform and lost-result receipts.
 
 ## cland setup
 

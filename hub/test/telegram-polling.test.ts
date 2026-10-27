@@ -210,7 +210,9 @@ test('Telegram retains unmatched input with paced retries and one content-free d
   const remote = new TelegramRemote(new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock }), clock,
     { store: state, handlers: [], log: entry => { logs.push(entry); } });
   onCleanup(t, async () => { await remote.stop(); store.close(); });
-  await control(fake.url, 'say', { text: 'payload must stay out of diagnostic' });
+  await control(fake.url, 'update', { edited_message: { message_id: 1, date: 1,
+    chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' },
+    text: 'payload must stay out of diagnostic' } });
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote], clock });
   await until(() => logs.some(entry => entry.event === 'telegram-update-unhandled'), { what: 'unmatched handler receipt', timeoutMs: 1_000 });
   const retry = fake.waitForRequest('getUpdates');

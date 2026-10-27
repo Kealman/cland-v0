@@ -93,6 +93,11 @@ export class RemoteStore {
     const row = this.#db.prepare('select value from remote_state where messenger = ? and key = ?').get(this.#id, key);
     return row ? String(row.value) : null;
   }
+  /** Literal prefix, scoped to this messenger; '%' and '_' are ordinary bytes. */
+  entries(prefix: string): Array<{ key: string; value: string }> {
+    return this.#db.prepare('select key, value from remote_state where messenger = ? and substr(key, 1, length(?)) = ? order by key')
+      .all(this.#id, prefix, prefix).map(row => ({ key: String(row.key), value: String(row.value) }));
+  }
   set(key: string, value: string | null): void {
     if (value === null) { this.#db.prepare('delete from remote_state where messenger = ? and key = ?').run(this.#id, key); return; }
     this.#db.prepare(`insert into remote_state (messenger, key, value) values (?, ?, ?)

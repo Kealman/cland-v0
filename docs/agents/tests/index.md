@@ -268,4 +268,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/remote-cli.test.ts`](../../../hub/test/remote-cli.test.ts) | [Notes](hub-test-remote-cli.test.ts.md) |
 
 | [`hub/test/telegram-polling.test.ts`](../../../hub/test/telegram-polling.test.ts) | [Notes](hub-test-telegram-polling.test.ts.md) |
+| [`hub/test/telegram-inbound.test.ts`](../../../hub/test/telegram-inbound.test.ts) | [Notes](hub-test-telegram-inbound.test.ts.md) |
 | [`hub/test/telegram-polling-restart.test.ts`](../../../hub/test/telegram-polling-restart.test.ts) | [Notes](hub-test-telegram-polling-restart.test.ts.md) |

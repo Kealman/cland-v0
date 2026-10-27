@@ -13,7 +13,8 @@ export async function control<T>(url: string, op: string, params?: object): Prom
   return response.body;
 }
 
-// The next item owns the mirror handler. This fixture uses the real frame port
+// This fixture isolates registry handling from the shipped native text mirror.
+// It uses the real frame port
 // and resolves only on topic.send's durable result, never on submission.
 export function nativeRemote(store: Store, url: string, clock: FakeClock) {
   const state = store.remotes.forMessenger('telegram');
@@ -26,7 +27,7 @@ export function nativeRemote(store: Store, url: string, clock: FakeClock) {
     handlers: [{ accepts: () => true, handle: async (update: TgUpdate, signal) => {
       const id = `poll-test-${++next}`;
       const stored = new Promise<void>((resolve, reject) => pending.set(id, { resolve, reject }));
-      send({ type: 'topic.send', id, topic: 'general', text: update.message?.text ?? 'accepted update' });
+      send({ type: 'topic.send', id, topic: 'general', text: update.message?.text ?? update.edited_message?.text ?? 'accepted update' });
       const abort = () => { pending.get(id)?.reject(new Error('fixture handler cancelled')); pending.delete(id); };
       signal.addEventListener('abort', abort, { once: true });
       if (signal.aborted) abort();

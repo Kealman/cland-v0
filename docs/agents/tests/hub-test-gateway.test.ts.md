@@ -6,6 +6,16 @@ existing `frameClient` interface; its platform port carries no hub credential.
 The fixture retains the ordinary Unix, spoke and web edges and sealed account
 and Git environment. No real messenger, browser or native harness is involved.
 
+`gateway native input identity survives a lost result while previous wire frames
+cannot choose it` supplies chat/message metadata only on the native frame port.
+Capture the first result before the adapter can receive or store it, retry the
+same native identity and retain the original message id and one history row.
+Previous-shape frames with forged `messageId`/`ingress` fields still create
+distinct messages. The optional native identity and provenance are independent
+of frame validation; gateway authority continues to run before replay lookup.
+The optional native receipt callback returns the original durable row/stage;
+the other messenger's lookup stays empty and a `messageReceipt` frame is refused.
+
 Observe the exact message id in the remote's `message` frame before replying,
 and the Coordinator's channel receipt before asserting human attribution.
 Observe `delivery`, ask and inbox/approval frames at the same seam. Approval

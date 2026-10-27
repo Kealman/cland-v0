@@ -10,6 +10,9 @@ Run this file alone with `node --test hub/test/telegram-messenger.test.ts`.
 send` omits `gatewayMessenger`/`gatewayRemotes` injection. It seeds a numeric
 pairing through the storage API, then retains the successful `remote.test`
 reply, exact fake chat/message and `remote.status` traffic/bot-link facts.
+This isolates factory construction and the existing callback contract; the case
+does not exercise pairing or mirroring. The inbound mirror has its own
+[guide](hub-test-telegram-inbound.test.ts.md). Polling
 This isolates factory construction and the existing callback contract; it does
 not exercise chat pairing or mirroring. Native `/start` pairing and blocked-bot
 reporting are covered in [telegram-pairing.test.ts](hub-test-telegram-pairing.test.ts.md). Polling

@@ -278,6 +278,58 @@ test('gateway mirrors General and delivers a reply as the human, then stops with
   assert.throws(() => messenger.client.send({ type: 'topic.send', topic: 'general', text: 'after stop' }), /not running/);
 });
 
+test('gateway native input identity survives a lost result while previous wire frames cannot choose it', async t => {
+  const root = await tempProject(t);
+  const native = testMessenger('native');
+  const previous = testMessenger('previous', 'discord');
+  const results: import('../src/protocol.ts').HubFrame[] = [];
+  const identity = { chatId: '101', messageId: '99' };
+  let lookup: import('../src/remote/gateway.ts').RemoteReceipt | undefined;
+  let otherLookup: import('../src/remote/gateway.ts').RemoteReceipt | undefined;
+  const remote: import('../src/remote/gateway.ts').Remote = {
+    ...native,
+    start: (send, pair, _signal, receipt) => { lookup = receipt; return native.start(frame => send(frame, identity), pair); },
+    receive: frame => {
+      if (frame.type === 'result') { results.push(frame); return; }
+      return native.receive(frame);
+    },
+  };
+  const previousRemote: import('../src/remote/gateway.ts').Remote = { ...previous,
+    start: (send, pair, _signal, receipt) => { otherLookup = receipt; return previous.start(send, pair); } };
+  const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote, previousRemote], clock: new FakeClock() });
+  // A native client can lose the result after General commits, before storing any receipt.
+  native.client.send({ type: 'topic.send', id: 'lost', topic: 'general', text: 'One native input' });
+  await until(() => results.length === 1, { what: 'lost native result captured', timeoutMs: 1_000 });
+  const first = results[0]!;
+  assert.equal(first.type, 'result');
+  assert.ok(first.type === 'result' && first.ok);
+  const original = (first.value as { message: TopicMessage }).message;
+  assert.equal(lookup?.(identity)?.id, original.id, 'native recovery reads the durable committed message');
+  assert.equal(otherLookup?.(identity), null, 'the other messenger cannot recover this source identity');
+  native.client.send({ type: 'topic.send', id: 'retry', topic: 'general', text: 'One native input' });
+  await until(() => results.length === 2, { what: 'replayed native result captured', timeoutMs: 1_000 });
+  const retry = results[1]!;
+  assert.ok(retry.type === 'result' && retry.ok);
+  assert.equal((retry.value as { message: TopicMessage }).message.id, original.id);
+  for (let index = 0; index < 2; index++) {
+    const legacy = await previous.client.request({ type: 'topic.send', topic: 'general', text: 'Previous wire input',
+      messageId: original.id, ingress: identity });
+    assert.equal(legacy.ok, true, legacy.error);
+    assert.notEqual((legacy.value as { message: TopicMessage }).message.id, original.id);
+  }
+  const refusedLookup = await previous.client.request({ type: 'messageReceipt', messageId: original.id });
+  assert.equal(refusedLookup.ok, false, 'the native recovery callback adds no remote wire authority');
+  const local = await connectUi(t, hub.discovery);
+  const history = await local.request({ type: 'topic.history', topic: 'general' });
+  assert.equal(history.ok, true, history.error);
+  const messages = (history.value as { messages: TopicMessage[] }).messages;
+  assert.equal(messages.filter(message => message.text === 'One native input').length, 1);
+  const legacy = messages.filter(message => message.text === 'Previous wire input');
+  assert.equal(legacy.length, 2);
+  assert.notEqual(legacy[0]!.id, legacy[1]!.id);
+  await hub.stop();
+});
+
 for (const via of ['telegram', 'discord'] as const) test(`gateway ${via} records messages, ask outcomes and approvals through the old client frames`, async t => {
   const root = await tempProject(t);
   const messenger = testMessenger(via, { via });

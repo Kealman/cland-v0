@@ -85,7 +85,9 @@ in the provider response; captured receipts are redacted before storage. A 429
 is one response, not a scheduler; repeat controls to model further refusals.
 
 The fake implements `getMe`, `sendMessage`, `sendRichMessage` (nested
-`rich_message.markdown`) and `getUpdates`. Updates stay queued until an offset
+`rich_message.markdown`), `setMessageReaction` and `getUpdates`. Reaction request
+parameters are retained in `requests`; fault/hold/close controls apply to them
+as to sends. Updates stay queued until an offset
 confirms them; empty positive-timeout polls wait on the injected clock and wake
 when a control queues an update. Faults supply conflicts explicitly. This is a
 test boundary, not a full Telegram implementation or a claim about real clients'

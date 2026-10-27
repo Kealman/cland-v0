@@ -16,8 +16,11 @@ test('remote pairing and cursors survive reopening hub.db without rounding Disco
     remote.set('lastMessageId', '1234567890123456791');
     remote.set('resume', JSON.stringify({ session: 'fixture-session', sequence: 42 }));
     remote.set('identifyCount', '3');
+    remote.set('receipt_%:one', 'owned receipt');
+    remote.set('receiptXX:two', 'unrelated receipt');
     remote.setStatus({ disabled: true, reason: 'fixture remote unavailable' });
     first.remotes.forMessenger('telegram').set('offset', '37');
+    first.remotes.forMessenger('telegram').set('receipt_%:one', 'other messenger');
   } finally { first.close(); }
   const reopened = new Store(path);
   try {
@@ -29,6 +32,8 @@ test('remote pairing and cursors survive reopening hub.db without rounding Disco
     assert.deepEqual(remote.status(), { disabled: true, reason: 'fixture remote unavailable' });
     assert.equal(reopened.remotes.forMessenger('telegram').get('offset'), '37');
     assert.equal(remote.get('offset'), null, 'one messenger cannot read the other cursor');
+    assert.deepEqual(remote.entries('receipt_%:'), [{ key: 'receipt_%:one', value: 'owned receipt' }],
+      'recovery enumerates only this messenger and the literal prefix');
   } finally { reopened.close(); }
 });
 

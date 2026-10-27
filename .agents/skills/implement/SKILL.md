@@ -76,9 +76,10 @@ lifetime signal to startup I/O. Preserve explicit factory and legacy remote inje
 For Telegram polling or update handlers, follow the filtered registry and durable
 confirmation contract in `hub/README.md#telegram-polling-and-durable-confirmation`
 and the component/crash guides in `docs/agents/tests/hub-test-telegram-polling.test.ts.md`
-and `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`. Attach pairing
-and mirror handlers to the registry; resolve only after durable, replay-safe
-handling. Keep unhandled input unconfirmed and paced, and join handler writers on stop.
+and `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`. Inbound text,
+replies, feedback and lost-result replay use `docs/agents/tests/hub-test-telegram-inbound.test.ts.md`.
+Attach handlers to the registry; keep native identity/recovery outside frames,
+reconcile feedback with durable session stages, and join replay-safe handlers on stop. Keep unmatched input paced and unconfirmed.
 For native Telegram `/start`, blocked membership and disabled bot-link facts, use
 `docs/agents/tests/hub-test-telegram-pairing.test.ts.md`. Keep injected handlers
 first; fatal membership records its sanitized cause/General notice before

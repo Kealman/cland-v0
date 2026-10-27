@@ -37,9 +37,12 @@ and distinct presses of one bot-authored card both reach their handler. Retain
 an edited-message handler receipt, the bot's membership receipt and next offset 9.
 
 `Telegram retains unmatched input with paced retries and one content-free
-diagnostic` leaves the registry empty. Observe the first blocked-update log,
+diagnostic` injects an edit without a matching handler; the native text mirror
+does not consume edits. Observe the first blocked-update log,
 advance one second, retain the actual repeat request and TCP close, then stop.
 The final offset remains absent, exactly two requests occurred, the sole log has
+only event/update id, and no timers remain. Input is preserved for its eventual
+handler; native text behavior has its own [guide](hub-test-telegram-inbound.test.ts.md).
 only event/update id, and no timers remain. Input is preserved for an installed
 handler; this does not exercise the native pairing/mirror features.
 

@@ -131,7 +131,9 @@ export type Control = {
 
 export type Conversation = {
   /** One frame; only the in-process gateway supplies trusted messenger provenance. */
-  receive: (raw: string, via?: RemoteVia) => void;
+  receive: (raw: string, via?: RemoteVia, messageId?: string) => void;
+  /** Native gateway recovery only; not an action in the frame protocol. */
+  messageReceipt?: (messageId: string) => import('../protocol.ts').TopicMessage | null;
   /** The transport closed. */
   closed: () => void;
 };
@@ -1668,7 +1670,7 @@ export class Dispatcher {
       }
     };
 
-    const clientRequest = (frame: Record<string, unknown>, via?: RemoteVia) => {
+    const clientRequest = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string) => {
       // Retired frames are outside the protocol, but old clients need a useful refusal.
       if (frame.type === 'inbox.dismiss' || frame.type === 'inbox.dismiss_all') {
         return peer.send({ type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
@@ -1715,7 +1717,17 @@ export class Dispatcher {
             return answer(core.withdrawHumanMessage(frame.topic, frame.message));
           }
           case 'topic.send': {
-            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, undefined, undefined, frame.kind, via);
+            // The message's durable primary key closes the crash window before
+            // the native adapter can store its receipt or confirm a poll offset.
+            const original = messageId && core.store.message(messageId);
+            if (original) {
+              if (original.fromKind !== 'human' || original.via !== via) throw new Error('remote input identity conflict');
+              return answer({ message: { ...original, topic: original.topic!, seq: core.store.messageSeq(original.id), stage: core.store.stage(original.id) }, outcomes: [] });
+            }
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, messageId, undefined, frame.kind, via);
+            // Native crash fixture: the durable human effect exists, but the
+            // adapter has not received a result or stored its feedback receipt.
+            if (messageId && via === 'telegram' && this.#options.env?.CLAND_TEST_CRASH_AT === 'telegram-input-committed') process.kill(process.pid, 'SIGKILL');
             return answer({ message, outcomes });
           }
           case 'topic.rename':
@@ -2031,7 +2043,7 @@ export class Dispatcher {
       return again !== null;
     };
 
-    const handle = (frame: Record<string, unknown>, via?: RemoteVia): void => {
+    const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string): void => {
         if (kind === 'spoke') {
           // A replaced or closing socket's buffered frames would act under a name it no longer holds.
           if (!peer.isOpen() || connection === null || !core.isCurrent(connection)) {
@@ -2354,11 +2366,17 @@ export class Dispatcher {
           return;
         }
         if (frame.type === 'merge' && isClientRequest(frame)) return merge(frame as import('../protocol.ts').MergeRequest, caller);
-        clientRequest(frame, via);
+        clientRequest(frame, via, messageId);
     };
 
     return {
-      receive: (raw, via) => {
+      ...(transport.edge === 'gateway' ? { messageReceipt: (messageId: string) => {
+        if (done || !peer.isOpen()) return null;
+        const message = core.store.message(messageId);
+        const stage = core.store.stage(messageId);
+        return message?.topic ? { ...message, topic: message.topic, seq: core.store.messageSeq(messageId), ...(stage ? { stage } : {}) } : null;
+      } } : {}),
+      receive: (raw, via, messageId) => {
         if (done) return;
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
@@ -2371,7 +2389,8 @@ export class Dispatcher {
           return hello(frame);
         }
         // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
-        this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame, transport.edge === 'gateway' ? via : undefined));
+        this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame,
+          transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined));
       },
       closed: () => {
         done = true;

@@ -5,6 +5,8 @@ handle. Use a disposable database and close every handle before directory
 cleanup. Reopen it and compare literal Discord ids above 2^53, pairings,
 waiting codes, stranger counts, cursor/resume/identify scalars, message maps,
 outbox jobs and attempts. The other messenger must see none of those records.
+`entries(prefix)` retains messenger isolation and treats `%` and `_` as literal
+prefix bytes; this is the startup feedback scan, not SQL wildcard matching.
 No native process, socket or real token is needed. Queue semantics belong to
 the outbox tests; these tests prove only durable round trips and isolation.
 

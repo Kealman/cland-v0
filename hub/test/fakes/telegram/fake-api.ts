@@ -198,6 +198,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         }, fault.retryAfter !== undefined ? { 'retry-after': String(fault.retryAfter) } : {});
       }
       if (method === 'getMe') return reply(res, 200, { ok: true, result: BOT });
+      if (method === 'setMessageReaction') return reply(res, 200, { ok: true, result: true });
       if (method === 'getUpdates') {
         if (typeof params.offset === 'number') updates = updates.filter(update => update.update_id >= Number(params.offset));
         if (!stall && (available().length || !Number(params.timeout))) return reply(res, 200, { ok: true, result: available() });

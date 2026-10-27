@@ -1,9 +1,10 @@
-import type { Remote } from './gateway.ts';
+import type { Remote, RemoteSend, RemoteReceipt } from './gateway.ts';
 import type { Pairing } from './state.ts';
-import type { HubFrame, RemoteConnection } from '../protocol.ts';
+import type { RemoteConnection, HubFrame } from '../protocol.ts';
 import { realClock, type Clock } from '../hub/clock.ts';
 import { TelegramApi, TelegramError, type TgUpdate } from './telegram-api.ts';
 import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
+import { TelegramInbound } from './telegram-inbound.ts';
 import { plainParts } from './telegram-render.ts';
 
 export type TelegramRemoteOptions = TelegramPollingOptions & { projectName?: () => string };
@@ -27,6 +28,7 @@ export class TelegramRemote implements Remote {
   #lastOutbound: string | null = null;
   #botLink: string | null = null;
   #stopping: Promise<void> | undefined;
+  #inbound: TelegramInbound | undefined;
 
   constructor(api: TelegramApi, clock: Clock = realClock, polling?: TelegramRemoteOptions, rendering: { format?: 'rich' | 'entities' } = {}) {
     this.#api = api; this.#clock = clock; this.#polling = polling;
@@ -65,15 +67,20 @@ export class TelegramRemote implements Remote {
     this.#botLink = typeof bot.username === 'string' && /^[A-Za-z0-9_]{5,32}$/.test(bot.username) ? `https://t.me/${bot.username}` : null;
   }
 
-  start(_send: (frame: Record<string, unknown>) => void, pair?: (identity: Pairing) => string | null, signal?: AbortSignal): Promise<void> {
+  start(send: RemoteSend, pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt): Promise<void> {
     this.#pair = pair;
+    if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, this.#api, this.#abort.signal,
+      () => { this.#lastOutbound = this.#clock.now().toISOString(); }, receipt);
     return this.#track(() => this.#check(signal));
   }
   receive(frame: HubFrame): void | Promise<void> {
     // Fatal reporting itself publishes a General notice. A stopped adapter
     // must not turn that notice into another send and replace the saved cause.
     if (this.#stopped || this.#fatal) return;
-    if (frame.type !== 'message' || frame.topic.id !== 'general') return;
+    if (frame.type !== 'message' || frame.topic.id !== 'general') {
+      if (this.#inbound) return this.#track(async () => { await this.#inbound!.receive(frame); });
+      return;
+    }
     const pairing = this.#polling?.store.pairing();
     if (!pairing) return;
     const message = frame.message;
@@ -104,6 +111,7 @@ export class TelegramRemote implements Remote {
   run(): Promise<void> {
     return this.#running ??= this.#track(async () => {
       if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
+      await this.#inbound?.recover();
       const handlers = [...this.#polling.handlers ?? [], ...(this.#pair ? [{
         kind: 'pairing' as const,
         accepts: () => true, // The poller admits only a private, numeric-identity /start here.
@@ -131,7 +139,7 @@ export class TelegramRemote implements Remote {
             throw error;
           });
         },
-      }];
+      }, ...(this.#inbound ? [this.#inbound.handler] : [])];
       await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers }, this.#abort.signal,
         () => { this.#lastInbound = this.#clock.now().toISOString(); });
     });
