@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.635Z
-updated: 2026-10-27T05:43:09.213Z
+updated: 2026-10-27T05:43:24.997Z
 ---
 
 ## Goal
@@ -107,3 +107,18 @@ stages:
       - - T-1359
         - T-1360
 ```
+
+## Comments
+
+### coord · 2026-10-27T05:43:24.997Z
+
+Plan and decisions (coord, 2026-10-27 05:5xZ). Tickets T-1352–T-1360. The plan has three stages instead of the five in the Order section, saving two Linux and macOS cover pairs; the demo order is kept within each stage. Every ticket touches telegram.ts, so landings go one at a time.
+Decisions on the open questions in the draft:
+1. A press on the bot's own card by someone other than the paired human gets one private answerCallbackQuery toast, with no hub request and no state change. §3.5 wins over §3.2's silence, as one narrow exception.
+2. The plan notice carries the `[web] origin` link when one is set and none otherwise. It never carries a web credential link.
+3. `/inbox` re-sends open notices too, oldest first, and "Nothing needs you" covers the whole inbox except pairing rows.
+4. An old copy marked "↓ Re-sent below" loses its buttons, and later outcomes still edit every copy.
+5. On an options-only ask, a typed reply counts only when it is an option number. Any other text gets a one-line note and the ask stays open.
+6. Outcome times use hub-local HH:MM, the same format as the gap line.
+The cards model lives in a module that knows nothing about a particular messenger, so E-1312 adds only Discord rendering and interaction.
+Launch: stage 1 starts once E-1309 closes.
