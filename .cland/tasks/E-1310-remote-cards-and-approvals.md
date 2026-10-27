@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.635Z
-updated: 2026-10-25T14:12:33.711Z
+updated: 2026-10-27T05:43:09.213Z
 ---
 
 ## Goal
@@ -77,3 +77,33 @@ In a scratch project with the human paired on the fake, QA has a session ask a n
 - Research: `docs/research/telegram-remote.md` on `research/telegram-remote` (2a81ecc9); `docs/research/messenger-bridges.md` on `research/messenger-bridges` (ffee79d8), where asks break on meaning.
 - Code: `hub/src/hub/asks.ts`, `hub/src/hub/inbox.ts` (the approvals relay and its outcome's `via`), `shared/wire/index.ts`.
 - GLOSSARY: Remote card (added for v0.3); Ask, Approval, Request.
+
+## Plan
+
+```yaml
+stages:
+  - name: an ask card and one gate
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1352
+        - T-1353
+        - T-1354
+  - name: free answers, stale input, approvals and notices
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1355
+        - T-1356
+      - - T-1357
+      - - T-1358
+  - name: order, inbox and the catch-up
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1359
+        - T-1360
+```
