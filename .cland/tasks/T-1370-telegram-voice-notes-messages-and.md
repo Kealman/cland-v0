@@ -3,7 +3,7 @@ id: T-1370
 kind: task
 title: Telegram voice notes, messages and approvals read with their marks in both workbenches
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:46:51.211Z
-updated: 2026-10-27T05:46:51.211Z
+updated: 2026-10-27T22:46:20.916Z
 ---
 
 ## Summary

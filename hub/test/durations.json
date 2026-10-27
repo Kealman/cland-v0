@@ -68,9 +68,11 @@
       "A-12721",
       "A-12719",
       "A-12873",
-      "A-12877"
+      "A-12877",
+      "A-12925",
+      "A-12929"
     ],
-    "commit": "605a65a001373835d04e4a6114850ea47a7b4c59"
+    "commit": "c675faa34d7c1874d1aee14f2874814b11c276b5"
   },
   "budget": {
     "testSeconds": 5,
@@ -2887,6 +2889,18 @@
     "web/test/remotes.test.ts": {
       "seconds": 3.502562,
       "tests": 2
+    },
+    "hub/test/remote-docs-pairing.test.ts": {
+      "seconds": 1.163352,
+      "tests": 1
+    },
+    "hub/test/remote-docs.test.ts": {
+      "seconds": 0.000839,
+      "tests": 1
+    },
+    "site/test/remote-docs.test.ts": {
+      "seconds": 0.004766,
+      "tests": 5
     }
   },
   "tests": {
@@ -7935,7 +7949,32 @@
     "hub/test/tracker.test.ts::a hand edit of an item file is re-indexed before its CLI projections are checked": 1.179956,
     "hub/test/web-area-state.test.ts::remote state replaces all messenger facts and a previous-hub snapshot clears the optional rows": 0.000791,
     "web/test/remotes.test.ts::Sessions Remotes renders native outage within one second and clears its error on recovery (desktop)": 2.090575,
-    "web/test/remotes.test.ts::Sessions Remotes renders native outage within one second and clears its error on recovery (phone)": 1.411987
+    "web/test/remotes.test.ts::Sessions Remotes renders native outage within one second and clears its error on recovery (phone)": 1.411987,
+    "hub/test/remote-docs-pairing.test.ts::published Telegram command blocks run in order with stdin token and end paired": 1.163352,
+    "hub/test/remote-docs.test.ts::site vocabulary extraction matches the runtime config and secret names": 0.000839,
+    "hub/test/telegram-approvals.test.ts::Telegram inbox resends a live approval with its styled choices and folds both copies from the new copy": 0.164785,
+    "hub/test/telegram-approvals.test.ts::Telegram long outage replaces an approval with styled buttons and its later answer folds both copies": 0.615669,
+    "hub/test/telegram-cards.test.ts::Telegram catch-up at 150 seconds uses the first recovery exchange for the press lifetime boundary": 0.355935,
+    "hub/test/telegram-cards.test.ts::Telegram catch-up at 151 seconds uses the first recovery exchange for the press lifetime boundary": 0.296783,
+    "hub/test/telegram-cards.test.ts::Telegram catch-up drops a pre-outage queued closed card and retries its failed outcome edit after the gap": 0.32009,
+    "hub/test/telegram-cards.test.ts::Telegram definite old-copy edit refusal retains the actual buttons and incomplete retirement after its fallback succeeds": 0.59183,
+    "hub/test/telegram-cards.test.ts::Telegram empty inbox replies with only Nothing needs you": 0.168325,
+    "hub/test/telegram-cards.test.ts::Telegram four-minute catch-up folds the web answer then replaces every open card and retires old buttons": 0.627496,
+    "hub/test/telegram-cards.test.ts::Telegram held publication settles its closed-source drop during recovery while the remote stays live": 0.249678,
+    "hub/test/telegram-cards.test.ts::Telegram inbox resend lost HTTP receipt stays fenced across restart and a new command makes a fresh copy": 0.254981,
+    "hub/test/telegram-cards.test.ts::Telegram inbox resends only open asks oldest first and an answer from a new copy folds every copy": 0.340102,
+    "hub/test/telegram-cards.test.ts::Telegram one inbox publication sends three newest-first asks oldest first ahead of queued General": 0.235133,
+    "hub/test/telegram-cards.test.ts::Telegram outcome edit timing out during an outage publishes its fallback only after the recovery gap": 0.299462,
+    "hub/test/telegram-cards.test.ts::Telegram plain component restart under 150 seconds sends no extra card or chat message": 0.23904,
+    "hub/test/telegram-cards.test.ts::Telegram sixty-second catch-up sends the gap before missed cards without resending open cards": 0.503757,
+    "hub/test/telegram-cards.test.ts::Telegram uncertain old-copy marker fallback stays incomplete while recovery and later polls progress": 0.852901,
+    "hub/test/telegram-cards.test.ts::Telegram uncertain outage replacement survives restart without retiring its old copy or blocking other cards": 0.531749,
+    "hub/test/telegram-notices.test.ts::Telegram inbox resends all four notice kinds oldest first and a new notice reply retains its topic": 0.352455,
+    "site/test/remote-docs.test.ts::CLI reference lists exactly the remote and secret subcommands in usage": 0.001078,
+    "site/test/remote-docs.test.ts::Remote control is under Features and linked from the overview and web Remotes section": 0.000699,
+    "site/test/remote-docs.test.ts::remote documentation guard rejects unknown commands, config keys and secret names": 0.001998,
+    "site/test/remote-docs.test.ts::remote guide and web Remotes section use shipped commands, config keys and secret names": 0.000779,
+    "site/test/remote-docs.test.ts::remote guide distinguishes missed cards from outage replacements after 150 seconds": 0.000212
   },
   "allow": {
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {
