@@ -131,6 +131,19 @@ For native Telegram `/start`, blocked membership and disabled bot-link facts, us
 first; fatal membership records its sanitized cause/General notice before
 consuming the update, so restart does not replay a kick.
 
+For Telegram ask cards, use the frame/fake seam in
+`docs/agents/tests/hub-test-telegram-cards.test.ts.md`. Keep the card model
+messenger-neutral and the Telegram renderer shared by sends and outcome edits.
+Bind opaque keys to the mapped ask and chat, preserve every label, and clip only
+the question at a word boundary with the full-question marker and outcome space.
+Commit native callback identity with the answer before direct callback I/O,
+defer publication/delivery until commit, and confirm the offset afterwards.
+Treat a definite expired-press acknowledgement as terminal after the saved
+result, while transient callback failures retry it. Keep the lost-result restart, cross-ask/unissued keys,
+not-modified/failed-edit controls, and all four send-failure classes. Existing
+role clauses already cover the gateway authority and secret boundaries; add no
+clause lines. Other/Decline buttons currently return an unavailable toast.
+
 For Telegram phone commands or menu registration, use the sealed production-frame
 and fake Bot API seam in `docs/agents/tests/hub-test-telegram-commands.test.ts.md`.
 Keep status/inbox reads within gateway authority, force text/entities for replies,
@@ -345,7 +358,12 @@ For install metadata, Inbox start URLs, app badges or phone QR sign-in, use the 
 
 For artifact creation races and rollback, use the T1 concurrent-create seam in
 `docs/agents/tests/hub-test-artifact-create-unit.test.ts.md`, including automatic
-suite-log callers that bypass the dispatcher's tool queue.
+suite-log callers that bypass the dispatcher's tool queue. For nested artifact/post
+rollback, use `docs/agents/tests/hub-test-artifact-lifecycle.test.ts.md`: refuse
+a pre-commit record/admission write, preserving subscription/directory/id assertions.
+Human-send diagnostic failures are post-commit operator `publication-failed`
+records; separately prove the message and bytes remain stored with one publication
+and delivery. A logger throw is not a pre-commit refusal seam.
 
 For item clients, consume hub-computed summaries and roll-ups from snapshots and deltas. The first payload contains open rows and their ancestors. Fully closed containers and tasks load in bounded per-parent `task.list` summary pages; follow newly loaded containers and deduplicate retained ancestors by identity. Card-only dates/branch/relations/compact verification travel in snapshots and by-id pages; ordinary summary lists and parent pages omit these extras to protect the native first-payload budget. Closed card facts and a complete compact tree row are fetched in bounded by-id `task.list` summary pages; item links use the canonical id and parent to load and unfold missing ancestors without reading the body; fetch the body through `task.view` only when agents’ text or the criterion editor is opened; preserve the 1 MiB snapshot cap and Lua differential guard. See `hub/README.md` (summary projection) and `docs/agents/tests.md#connection-snapshots`.
 

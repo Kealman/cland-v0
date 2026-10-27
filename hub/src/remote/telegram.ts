@@ -1,4 +1,4 @@
-import type { Remote, RemoteSend, RemoteReceipt } from './gateway.ts';
+import type { Remote, RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 import type { Pairing } from './state.ts';
 import type { RemoteConnection, HubFrame, HubStatus, Inbox } from '../protocol.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
@@ -8,6 +8,7 @@ import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts
 import { flushTelegramGap } from './telegram-gap.ts';
 import { TelegramOutbox } from './telegram-outbox.ts';
 import { TelegramInbound } from './telegram-inbound.ts';
+import { TelegramCards } from './telegram-cards.ts';
 import { plainParts } from './telegram-render.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 
@@ -37,6 +38,7 @@ export class TelegramRemote implements Remote {
   #botLink: string | null = null;
   #stopping: Promise<void> | undefined;
   #inbound: TelegramInbound | undefined;
+  #cards: TelegramCards | undefined;
   #offline: { since: string; reason: string; announced: boolean } | undefined;
   #offlineTimer: ClockTimer | undefined;
   #recoveredAt: string | undefined;
@@ -153,6 +155,7 @@ export class TelegramRemote implements Remote {
     this.#armOffline();
     if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, { setMessageReaction: async params => { await this.#outbox.react(params); return true; } }, this.#abort.signal,
       () => {}, receipt, written => this.#late(written));
+    if (this.#polling) this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal);
     this.#pair = pair;
     return this.#track(async () => {
       await this.#check(signal);
@@ -165,7 +168,7 @@ export class TelegramRemote implements Remote {
         await this.#api.setMyCommands({ scope, commands: TELEGRAM_COMMANDS }, options);
     });
   }
-  async #request<T>(type: string, fields: Record<string, unknown> = {}): Promise<T> {
+  async #request<T>(type: string, fields: Record<string, unknown> = {}, ingress?: RemoteIngress): Promise<T> {
     const id = `telegram-command-${++this.#nextRequest}`;
     const reply = Promise.withResolvers<unknown>();
     this.#pending.set(id, reply);
@@ -173,7 +176,7 @@ export class TelegramRemote implements Remote {
     this.#abort.signal.addEventListener('abort', abort, { once: true });
     try {
       this.#abort.signal.throwIfAborted();
-      this.#sendFrame!({ ...fields, type, id });
+      this.#sendFrame!({ ...fields, type, id }, ingress);
       return await reply.promise as T;
     } finally {
       this.#pending.delete(id);
@@ -189,6 +192,7 @@ export class TelegramRemote implements Remote {
       if (frame.ok) pending.resolve(frame.value); else pending.reject(new Error(frame.error));
       return;
     }
+    if ((frame.type === 'inbox' || frame.type === 'ask') && this.#cards) return this.#track(() => this.#transient(() => this.#cards!.receive(frame)));
     if (frame.type !== 'message' || frame.topic.id !== 'general') {
       if (this.#inbound) return this.#track(async () => { await this.#transient(() => this.#inbound!.receive(frame)); });
       return;
@@ -220,7 +224,7 @@ export class TelegramRemote implements Remote {
       await this.#outbox.resume();
       if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
       await this.#transient(async () => { await this.#inbound?.recover(); });
-      const handlers = [...this.#polling.handlers ?? [], {
+      const handlers = [...this.#polling.handlers ?? [], ...(this.#cards ? [this.#cards.handler] : []), {
         accepts: (update: TgUpdate) => /^\/(?:mute|unmute)(?:@[A-Za-z0-9_]+)?\s*$/.test(update.message?.text ?? ''),
         handle: async (update: TgUpdate) => {
           const message = update.message!;

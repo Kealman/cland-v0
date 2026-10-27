@@ -12,7 +12,7 @@ import { Store } from '../src/hub/store.ts';
 import { ArtifactLifecycle, type ArtifactFiles } from '../src/hub/artifact-lifecycle.ts';
 import { PROTOCOL_VERSION, type Message, type Artifact } from '../src/protocol.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
-import { connectSocket, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { connectSocket, eventually, inProcessSpoke, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 function deferred() {
   let resolve!: () => void;
@@ -27,10 +27,10 @@ async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays 
   let postLogFails = false;
   let eventLogFails = false;
   const failEventLog = () => { eventLogFails = true; };
-  const failPost = (fail: boolean) => { postLogFails = fail; };
+  const failPostLog = (fail: boolean) => { postLogFails = fail; };
   const failPublicationLog = () => { publicationLogFails = true; };
   const hub = await startHub({ store: new Store(dbPath), roles: fixedRoles(), artifactFiles: files, artifactRetentionDays: retentionDays, eventLimit: { max: eventLimitMax, windowMs: 600_000 },
-    log: r => { records.push(r); if (eventLogFails && r.event === 'event-delivery') throw new Error('event journal failed'); if (postLogFails && r.event === 'human-send') throw new Error('post failed inside artifact transaction'); if (publicationLogFails && r.event === 'listener-failed') throw new Error('publication error logger failed'); },
+    log: r => { records.push(r); if (eventLogFails && r.event === 'event-delivery') throw new Error('event journal failed'); if (postLogFails && r.event === 'human-send') throw new Error('human-send diagnostic failed after commit'); if (publicationLogFails && r.event === 'listener-failed') throw new Error('publication error logger failed'); },
     control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
   });
   t.after(() => hub.close());
@@ -44,7 +44,13 @@ async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays 
   const entries = async () => ((await ui.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;
   const db = new DatabaseSync(dbPath);
   t.after(() => db.close());
-  return { root, hub, ui, topic, a, entries, db, records, failPublicationLog, failPost, failEventLog };
+  const failPostWrite = (fail: boolean) => {
+    if (fail) db.exec(`create trigger refuse_human_artifact_post before insert on messages
+      when new.from_kind = 'human'
+      begin select raise(abort, 'fixture human post write refused'); end`);
+    else db.exec('drop trigger refuse_human_artifact_post');
+  };
+  return { root, hub, ui, topic, a, entries, db, records, failPublicationLog, failPostWrite, failPostLog, failEventLog };
 }
 
 test('a promotion copying while its topic closes preserves the promotion and excludes it from cleanup', async t => {
@@ -293,14 +299,14 @@ test('artifact subscriptions publish only after the existing artifact/post trans
   socket.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: TEST_SECRET, sessionId: 'observer-id', name: 'observer', cwd: f.root });
   assert.equal((await socket.next()).type, 'welcome');
   assert.equal((await f.ui.request({ type: 'event.subscribe', as: { name: 'observer' }, subject: { topic: f.topic }, events: ['artifact'] })).ok, true);
-  f.failPost(true);
+  f.failPostWrite(true);
   const failed = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Rolled back', content: 'bytes', topic: f.topic });
   assert.equal(failed.ok, false);
   assert.equal((await f.entries()).length, 1);
   const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
   assert.equal((history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event').length, 0);
   assert.equal(f.records.filter(r => r.event === 'event-delivery').length, 0);
-  f.failPost(false);
+  f.failPostWrite(false);
   const accepted = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Committed', content: 'bytes', topic: f.topic });
   assert.equal(accepted.ok, true, accepted.error);
   const after = await f.ui.request({ type: 'topic.history', topic: 'agents' });
@@ -427,12 +433,12 @@ test('move index failures retain the original; a committed redirect survives an 
 
 test('a refused folder publication rolls back its directory and id reservation', async t => {
   const f = await fixture(t);
-  f.failPost(true);
+  f.failPostWrite(true);
   const create = () => f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Folder', topic: f.topic, folder: true, entry: 'notes/start.md', content: 'new bytes' });
   assert.equal((await create()).ok, false);
   assert.deepEqual(await fs.readdir(join(f.root, '.cland/artifacts')), ['A-1-design.md']);
   assert.equal((await f.entries()).length, 1);
-  f.failPost(false);
+  f.failPostWrite(false);
   const accepted = await create();
   assert.equal(accepted.ok, true);
   const a = (accepted.value as { artifact: Artifact }).artifact;
@@ -654,4 +660,30 @@ test('manual-delete rollback retries failed backup housekeeping after exclusive 
   await assert.rejects(fs.readFile(backup), {code:'ENOENT'});
   assert.equal(await fs.readFile(f.a.path, 'utf8'), 'original bytes');
   assert.equal(f.hub.core.store.artifact(f.a.id)?.deletion, undefined);
+});
+
+
+test('a post-commit human-send log failure keeps one stored artifact post and reports the operator diagnostic', { timeout: 5000 }, async t => {
+  const f = await fixture(t);
+  assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
+  const coord = await inProcessSpoke(t, { hub: f.hub, cwd: f.root, name: 'coord', sessionId: 'post-commit-log-coord' });
+  const delivered = coord.waitForEvent(event => event.params.content.includes('Postcommit once'));
+  f.failPostLog(true);
+  const accepted = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Postcommit once', content: 'committed bytes', topic: f.topic });
+  assert.equal(accepted.ok, true, accepted.error);
+  const artifact = (accepted.value as { artifact: Artifact }).artifact;
+  assert.equal((await delivered).params.content, `▣ ${artifact.id} note · Postcommit once`);
+  const history = await f.ui.request({ type: 'topic.history', topic: f.topic });
+  await coord.call('who', {}); // Ordered spoke barrier before exact delivery-count assertions.
+  const posts = (history.value as { messages: Message[] }).messages.filter(message => message.artifact?.id === artifact.id || message.artifacts?.some(a => a.id === artifact.id));
+  assert.equal(posts.length, 1);
+  assert.equal(f.ui.frames.filter(frame => frame.type === 'message' && (frame.message as Message).id === posts[0]!.id).length, 1);
+  assert.equal(coord.events.filter(event => event.params.content === `▣ ${artifact.id} note · Postcommit once`).length, 1);
+  assert.equal(f.records.filter(record => record.event === 'publication-failed' && record.error === 'human-send diagnostic failed after commit').length, 1);
+  assert.equal(await fs.readFile(artifact.path, 'utf8'), 'committed bytes');
+  const reopened = new Store(join(f.root, 'hub.db'));
+  try {
+    assert.equal(reopened.artifact(artifact.id)?.title, 'Postcommit once');
+    assert.equal(reopened.topicMessages(f.topic, 100).filter(message => message.id === posts[0]!.id).length, 1);
+  } finally { reopened.close(); }
 });

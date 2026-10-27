@@ -542,6 +542,7 @@
     "hub/test/task-worktrees-lifecycle.test.ts": "T3",
     "hub/test/task-worktrees.test.ts": "T2",
     "hub/test/telegram-api.test.ts": "T2",
+    "hub/test/telegram-cards.test.ts": "T2",
     "hub/test/telegram-catchup.test.ts": "T2",
     "hub/test/telegram-commands.test.ts": "T2",
     "hub/test/telegram-gap.test.ts": "T1",

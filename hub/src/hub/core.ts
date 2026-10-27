@@ -525,10 +525,10 @@ export class HubCore {
     this.asks = new Asks({
       store: this.#store,
       now: this.#now,
-      log: this.#log,
-      emit: (e) => this.#emit(e),
-      emitMessage: (m) => this.#emitMessage(m),
-      publishTopics: () => this.#publishTopics(),
+      log: entry => this.#afterCommit(() => this.#log(entry)),
+      emit: (e) => this.#afterCommit(() => this.#emit(e)),
+      emitMessage: (m) => this.#afterCommit(() => this.#emitMessage(m)),
+      publishTopics: () => this.#afterCommit(() => this.#publishTopics()),
       move: (t, m, why) => void this.#move(t, m, why),
       topic: (id) => this.#topicOrThrow(id),
       sizeRefusal: (text) => this.#hygiene.sizeRefusal(text),
@@ -3170,21 +3170,25 @@ export class HubCore {
     );
     this.#store.touchTopic(topic.id, message.ts);
     this.#store.markTopicRead(topic.id, message.id);
-    // a person wrote to these sessions: their pairs count afresh (the loop breaker mutes a pair with no human between)
-    for (const n of sessions) this.#hygiene.humanTouched(this.#identity(n));
-    for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
-    this.#emitMessage(message);
-    this.#move(topic, kind === 'question' ? 'human' : 'human-message', `a human ${kind}`);
-    this.#publishTopics();
-    const states = new Map<string, boolean>();
-    for (const n of sessions) states.set(n, this.#send(message, n));
-    for (const [tag, names] of tagOf) {
-      const offline = names.filter((n) => !states.get(n));
-      const waiting = offline.every(n => this.#live.has(n)) ? 'busy' : offline.some(n => this.#live.has(n)) ? 'offline or busy' : 'offline';
-      outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} ${waiting} — queued` } : { to: tag, outcome: 'delivered' });
-    }
-    for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
-    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    // An outer native-answer transaction owns both the effect and replay receipt.
+    // Publish and deliver only after it commits; rollback must remain invisible.
+    this.#afterCommit(() => {
+      // a person wrote to these sessions: their pairs count afresh (the loop breaker mutes a pair with no human between)
+      for (const n of sessions) this.#hygiene.humanTouched(this.#identity(n));
+      for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
+      this.#emitMessage(message);
+      this.#move(topic, kind === 'question' ? 'human' : 'human-message', `a human ${kind}`);
+      this.#publishTopics();
+      const states = new Map<string, boolean>();
+      for (const n of sessions) states.set(n, this.#send(message, n));
+      for (const [tag, names] of tagOf) {
+        const offline = names.filter((n) => !states.get(n));
+        const waiting = offline.every(n => this.#live.has(n)) ? 'busy' : offline.some(n => this.#live.has(n)) ? 'offline or busy' : 'offline';
+        outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} ${waiting} — queued` } : { to: tag, outcome: 'delivered' });
+      }
+      for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
+      this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    });
     const stage = this.#store.stage(message.id);
     return { message: { ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, withdrawable: this.#withdrawalReason(message) === null, ...(stage ? { stage } : {}) }, outcomes };
   }

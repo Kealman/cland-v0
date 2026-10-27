@@ -89,6 +89,8 @@ test('Telegram help is phone text with bold sections, command bullets and trust 
   assert.ok(trust.length > 0);
   assert.equal(trust.at(-1)!.offset + trust.at(-1)!.length, reply.text!.length);
   assert.match(reply.text!, /Only the paired Telegram user/);
+  assert.match(reply.text!, /Asks arrive as cards; tap an option to answer/);
+  assert.match(reply.text!, /Other answer… and Decline… show Not available yet/);
   const closed = fake.waitForPollClose(poll.id);
   await hub.stop();
   assert.equal(await within(closed, 1_000), poll.id);
@@ -262,7 +264,9 @@ test('Telegram command replies split long literal card text without treating it 
   const poll = await drive(within(confirmed, 1_000));
   assert.equal(poll.params.offset, update.update_id + 1);
   const state = await control<{ requests: Array<{ method: string; params: { text: string; entities: Array<{ type: string; offset: number; length: number }> } }> }>(fake.url, 'state');
-  const replies = state.requests.slice(before.requests.length).filter(request => request.method === 'sendMessage').map(request => request.params);
+  // Automatic ask cards share the send lane; only this command's numbered parts belong to the reply.
+  const replies = state.requests.slice(before.requests.length).filter(request => request.method === 'sendMessage'
+    && request.params.text.startsWith('Literal **📱** fixture — Ask')).map(request => request.params);
   assert.ok(replies.length > 1, 'long command replies must split despite rich mirror format');
   let body = '';
   for (let index = 0; index < replies.length; index++) {

@@ -7,6 +7,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/telegram-catchup.test.ts`](../../../hub/test/telegram-catchup.test.ts) | [Notes](hub-test-telegram-catchup.test.ts.md) |
 | [`hub/test/telegram-gap.test.ts`](../../../hub/test/telegram-gap.test.ts) | [Notes](hub-test-telegram-gap.test.ts.md) |
 | [`hub/test/telegram-commands.test.ts`](../../../hub/test/telegram-commands.test.ts) | [Notes](hub-test-telegram-commands.test.ts.md) |
+| [`hub/test/telegram-cards.test.ts`](../../../hub/test/telegram-cards.test.ts) | [Notes](hub-test-telegram-cards.test.ts.md) |
 | [`hub/test/telegram-api.test.ts`](../../../hub/test/telegram-api.test.ts) | [Notes](hub-test-telegram-api.test.ts.md) |
 | [`hub/test/telegram-liveness.test.ts`](../../../hub/test/telegram-liveness.test.ts) | [Notes](hub-test-telegram-liveness.test.ts.md) |
 | [`hub/test/telegram-messenger.test.ts`](../../../hub/test/telegram-messenger.test.ts) | [Notes](hub-test-telegram-messenger.test.ts.md) |
@@ -73,6 +74,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-scheduling.test.ts`](../../../hub/test/suite-scheduling.test.ts) | [Notes](hub-test-suite-scheduling.test.ts.md) |
 | [`hub/test/account-fixture-env.test.ts`](../../../hub/test/account-fixture-env.test.ts) | [Notes](hub-test-account-fixture-env.test.ts.md) |
 | [`hub/src/hub/store.test.ts`](../../../hub/src/hub/store.test.ts) | [Notes](hub-src-hub-store.test.ts.md) |
+| [`hub/test/artifact-lifecycle.test.ts`](../../../hub/test/artifact-lifecycle.test.ts) | [Notes](hub-test-artifact-lifecycle.test.ts.md) |
 | [`hub/test/artifact-cleanup-unit.test.ts`](../../../hub/test/artifact-cleanup-unit.test.ts) | [Notes](hub-test-artifact-cleanup-unit.test.ts.md) |
 | [`hub/test/artifact-create-unit.test.ts`](../../../hub/test/artifact-create-unit.test.ts) | [Notes](hub-test-artifact-create-unit.test.ts.md) |
 | [`hub/test/approval-records.test.ts`](../../../hub/test/approval-records.test.ts) | [Notes](hub-test-approval-records.test.ts.md) |

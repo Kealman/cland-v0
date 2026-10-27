@@ -74,3 +74,13 @@ After pairing, [Telegram phone commands](../../hub/README.md#telegram-phone-comm
 use the gateway's allowed reads. The native private-chat menu is compared with
 Telegram on every start and written only when its command/description list
 differs. Pairing grants remain local even when `/inbox` or `/status` is read remotely.
+
+
+A paired Telegram human can answer an ask by tapping its option card. The hub
+stores the answer with `via: "telegram"` before acknowledging the press and
+confirming the update. Keys must belong to that card's ask; Other answer and
+Decline currently show `Not available yet`. Outcomes remove the buttons and
+name the choice, actor, source and hub-local time. Long questions keep one card
+with a marked preview; full labels and the question remain in the workbench.
+See [Telegram ask cards](../../hub/README.md#telegram-ask-cards) and the
+[frame/fake regressions](tests/hub-test-telegram-cards.test.ts.md).

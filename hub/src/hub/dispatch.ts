@@ -1844,8 +1844,30 @@ export class Dispatcher {
             if (previous) this.#options.control?.pairingReplaced?.(frame.messenger, previous);
             return answer({ pairing });
           }
-          case 'topic.answer':
-            return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim')));
+          case 'topic.answer': {
+            const apply = () => core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'));
+            if (!messageId || !via) return answer(apply()); // Previous clients keep the ordinary first-answer gate.
+            const state = core.store.remotes.forMessenger(via);
+            const key = `gateway.answer:${messageId}`;
+            const original = state.get(key);
+            if (original) {
+              const receipt = JSON.parse(original);
+              if (receipt.ask !== frame.ask || receipt.option !== frame.option || receipt.text !== frame.text
+                || receipt.declined !== frame.declined || receipt.reason !== frame.reason) throw new Error('remote answer identity conflict');
+              return answer(receipt.value);
+            }
+            // Commit the native replay receipt with the hub effect, before the adapter
+            // can acknowledge a press or confirm its polling offset.
+            const value = core.store.transaction(() => {
+              const applied = apply();
+              // Freeze the admission snapshot before post-commit delivery mutates
+              // its outcomes; the first response and every replay must agree.
+              const value = JSON.parse(JSON.stringify(applied));
+              state.set(key, JSON.stringify({ ask: frame.ask, option: frame.option, text: frame.text, declined: frame.declined, reason: frame.reason, value }));
+              return value;
+            });
+            return answer(value);
+          }
           case 'events.list': {
             const resumed = this.#guard.resumer(frame.type);
             return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter ?? eventsFilter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));

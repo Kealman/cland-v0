@@ -218,6 +218,10 @@ export class RemoteStore {
     const row = this.#db.prepare('select * from remote_messages where messenger = ? and chat_id = ? and message_id = ?').get(this.#id, chatId, messageId);
     return row ? { chatId: String(row.chat_id), messageId: String(row.message_id), topic: String(row.topic), message: nullable(row.message), ask: nullable(row.ask), approval: nullable(row.approval) } : null;
   }
+  messagesForAsk(ask: string): RemoteMessage[] {
+    return this.#db.prepare('select chat_id, message_id from remote_messages where messenger = ? and ask = ?')
+      .all(this.#id, ask).map(row => this.message(String(row.chat_id), String(row.message_id))!);
+  }
   putOutbox(job: OutboxJob): void {
     this.#db.prepare(`insert into remote_outbox (messenger, id, kind, source, state, payload, created, updated, target) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
       on conflict (messenger, id) do update set kind = excluded.kind, source = excluded.source,

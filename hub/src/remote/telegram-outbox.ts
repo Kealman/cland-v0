@@ -1,17 +1,17 @@
 import { DatabaseSync } from 'node:sqlite';
 import { Outbox, type DeliveryResult, type OutboxInput } from './outbox.ts';
 import { RemoteState, type OutboxJob, type RemoteMessage, type RemoteStore } from './state.ts';
-import { TelegramApi, TelegramError, type SendMessage, type SendRichMessage, type SetMessageReaction } from './telegram-api.ts';
+import { TelegramApi, TelegramError, type SendMessage, type SendRichMessage, type SetMessageReaction, type EditMessageText } from './telegram-api.ts';
 import type { Clock } from '../hub/clock.ts';
 
 type Payload = {
   key?: string; admission?: 'paired' | 'pairing' | 'old-chat'; userId?: string | null;
-  telegram: true; order: number; part: number; method: 'sendMessage' | 'sendRichMessage' | 'setMessageReaction';
-  params: SendMessage | SendRichMessage | SetMessageReaction; fallback?: SendMessage[];
+  telegram: true; order: number; part: number; method: 'sendMessage' | 'sendRichMessage' | 'setMessageReaction' | 'editMessageText';
+  params: SendMessage | SendRichMessage | SetMessageReaction | EditMessageText; fallback?: SendMessage[];
   mapping: Omit<RemoteMessage, 'messageId'>;
 };
 type Receipt = DeliveryResult | { status: 'format-refused' };
-type SendFacts = { key?: string; missed?: boolean; admission?: 'paired' | 'pairing' | 'old-chat'; kind?: OutboxInput['kind']; source?: string | null; topic?: string; ask?: string | null; approval?: string | null };
+type SendFacts = { target?: string; key?: string; missed?: boolean; admission?: 'paired' | 'pairing' | 'old-chat'; kind?: OutboxInput['kind']; source?: string | null; topic?: string; ask?: string | null; approval?: string | null };
 const payload = (job: OutboxJob): Payload | undefined => {
   const value = job.payload as Partial<Payload> | null;
   return value?.telegram === true ? value as Payload : undefined;
@@ -45,7 +45,13 @@ export class TelegramOutbox {
   }
 
   send(params: SendMessage, facts: SendFacts = {}): Promise<void> {
-    return this.#enqueue('sendMessage', params, facts);
+    const fallback = facts.kind === 'card' && params.entities?.length ? [{ ...params, entities: [] }] : undefined;
+    return this.#enqueue('sendMessage', params, facts, fallback);
+  }
+  edit(params: EditMessageText, facts: SendFacts): Promise<void> {
+    const { message_id, ...reply } = params;
+    return this.#enqueue('editMessageText', params, { ...facts, kind: 'edit', target: `${params.chat_id}:${message_id}` },
+      [{ ...reply, reply_parameters: { message_id } }]);
   }
   react(params: SetMessageReaction): Promise<void> {
     return this.#enqueue('setMessageReaction', params, {});
@@ -70,7 +76,7 @@ export class TelegramOutbox {
       mapping: { chatId: chat, topic: facts.topic ?? 'general', message: facts.source ?? null,
         ask: facts.ask ?? null, approval: facts.approval ?? null } };
     const lane = this.#lane(chat);
-    const id = lane.enqueue({ kind: facts.kind ?? 'message', source: facts.source ?? null, payload: intent });
+    const id = lane.enqueue({ kind: facts.kind ?? 'message', source: facts.source ?? null, payload: intent, ...(facts.target ? { target: facts.target } : {}) });
     if (facts.kind === 'general' && facts.missed) {
       const job = this.#store.outbox().find(row => row.id === id)!;
       this.#store.putOutbox({ ...job, state: 'missed' });
@@ -100,7 +106,7 @@ export class TelegramOutbox {
     if (failure) completion.reject(failure);
     else if (!group.length || group.some(job => job.state !== 'sent' && job.state !== 'dropped'
       && !(job.kind === 'general' && job.state === 'missed'))
-      || group.some(job => payload(job)?.key && job.state !== 'sent')
+      || group.some(job => payload(job)?.key) && !group.some(job => job.state === 'sent')
       || payload(group[0]!)!.method === 'setMessageReaction' && !group.some(job => job.state === 'sent'))
       completion.reject(new Error('Telegram send has no delivery receipt'));
     else completion.resolve();
@@ -163,6 +169,9 @@ export class TelegramOutbox {
       if (intent.method === 'setMessageReaction') {
         await this.#api.setMessageReaction(intent.params as SetMessageReaction, { signal: this.#signal });
         result = { status: 'sent' }; // Feedback has no new platform message or reply map.
+      } else if (intent.method === 'editMessageText') {
+        await this.#api.editMessageText(intent.params as EditMessageText, { signal: this.#signal });
+        result = { status: 'sent' };
       } else {
         const sent = intent.method === 'sendMessage'
           ? await this.#api.sendMessage(intent.params as SendMessage, { signal: this.#signal })
@@ -179,8 +188,15 @@ export class TelegramOutbox {
         this.#store.set('telegram.outbox.holdUntil', String(Math.max(Number(this.#store.get('telegram.outbox.holdUntil') ?? 0), this.#clock.now().getTime() + ms)));
         return { status: 'never-left', retryAfterMs: ms };
       }
-      if (error instanceof TelegramError && error.code === 400 && intent.method === 'sendRichMessage' && intent.fallback) {
-        // Retain definite non-delivery even if planning's transaction is interrupted.
+      if (error instanceof TelegramError && error.code === 400 && intent.method === 'editMessageText' && error.description.toLowerCase().includes('message is not modified')) {
+        const result = { status: 'sent' } as const;
+        this.#store.set(`telegram.outbox.receipt:${job.id}`, JSON.stringify(result));
+        return result;
+      }
+      const failedEdit = intent.method === 'editMessageText' && !(error instanceof TelegramError && [401, 403].includes(error.code)) && !this.#signal.aborted;
+      if (failedEdit || error instanceof TelegramError && error.code === 400 && !!intent.fallback) {
+        // A failed idempotent edit becomes one reply. Sends fall back only after
+        // definite 400 non-delivery; all uncertain sends retain their fence.
         this.#store.set(`telegram.outbox.receipt:${job.id}`, JSON.stringify({ status: 'format-refused' }));
         return this.#replace(job);
       }
@@ -195,8 +211,9 @@ export class TelegramOutbox {
     try {
       return this.#store.transaction(() => {
         for (const [part, params] of intent.fallback!.entries()) this.#lane(String(params.chat_id)).enqueue({
-          kind: job.kind as OutboxInput['kind'], source: job.source,
-          payload: { ...intent, method: 'sendMessage', params, fallback: undefined, part: part + 1 },
+          kind: job.kind === 'edit' ? 'message' : job.kind as OutboxInput['kind'], source: job.source,
+          payload: { ...intent, method: 'sendMessage', params, fallback: undefined, part: part + 1,
+            mapping: job.kind === 'edit' ? { ...intent.mapping, ask: null, approval: null } : intent.mapping },
         });
         const result = { status: 'superseded' } as const;
         this.#store.set(`telegram.outbox.receipt:${job.id}`, JSON.stringify(result));

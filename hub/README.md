@@ -2468,6 +2468,47 @@ A successful `getMe` makes the send transport available for recovery.
 See the [pacing frame/fake guide](../docs/agents/tests/hub-test-telegram-pacing.test.ts.md).
 This internal scheduler adds no command, setting, permission or role-clause line.
 
+### Telegram ask cards
+
+With Telegram enabled, a resolved token and a paired private chat, an inbox
+publication sends each human ask as one text/entities card, outside the General
+mute gate. The shared `remote/cards.ts` model has no messenger knowledge;
+`telegram-cards.ts` owns the Telegram rendering. The card names the asker and
+topic and keeps every option label, with at most nine options, optional
+**Other answer…**, then **Decline…**, one button per row. Each opaque button key
+is stored in messenger-scoped `remote_state`, bound to its ask and chat; the
+accepted message is mapped to the ask in `remote_messages`. Long questions are
+clipped at a word boundary with `full question in the workbench`, keeping one
+message id and reserving 1,024 code points for the outcome inside Telegram's
+4,096-code-point message budget. Names and option labels stay whole.
+
+The paired presser's key must match the mapped card's ask. Unissued or cross-ask
+keys answer the press without changing an ask. Other answer and Decline currently
+show `Not available yet`. Option presses use the existing `topic.answer` gate,
+with trusted native identity derived from the callback id and `via: "telegram"`.
+The dispatcher commits its replay receipt with the answer; replay returns that
+receipt, including when the adapter lost the result. Human-answer publication,
+delivery and hygiene effects wait for that commit, so a failed receipt write
+leaves the open ask and observers unchanged. The native receipt freezes the
+admission snapshot before post-commit delivery; ordinary client replies retain
+their existing delivery facts. Wire callers cannot select
+this identity, and callers without native identity keep the existing gate.
+After the durable result, `answerCallbackQuery` goes directly to Telegram,
+outside the outbox and its pacing; only then does polling confirm the offset.
+A definite 400 `query is too old` is terminal after the durable result and lets
+later input progress; transient callback errors retry the saved result, and
+401/403 retain their fatal-token behavior.
+
+The outcome is queued as an edit for every mapped copy in the paired chat:
+choice, actor, source and hub-local HH:MM, with an empty keyboard. `message is
+not modified` settles successfully; another failed edit becomes one outcome
+reply to the original card. A 429 retains the edit and bot-wide hold, and
+401/403 stop the remote. Card sends use the per-chat queue at card priority:
+400 retries plain text with the same buttons, 429 holds the immutable request,
+401/403 stop, and an uncertain send stays fenced. Replacement parts and proof
+commit together, including their own durable delivery receipt.
+See the [frame/fake card guide](../docs/agents/tests/hub-test-telegram-cards.test.ts.md).
+
 ### Telegram polling and durable confirmation
 
 An enabled Telegram remote with a resolved token uses the daemon's existing
@@ -2523,7 +2564,7 @@ When accepted input has no matching handler, it stays unconfirmed. The loop
 waits one injected-clock second per retry and logs `telegram-update-unhandled`
 once for that blocked update, carrying only its numeric id. After explicitly
 injected handlers, the native registry handles private `/start`, paired bot
-membership and paired text. Other input requires its registered handler.
+membership, paired text and paired card presses. Other input requires its registered handler.
 Shutdown aborts the current poll and delay and joins the
 handler before the gateway releases its lease or storage. Legacy injected
 `TelegramRemote(api, clock)` clients retain their check/send-only lifetime.
@@ -5739,6 +5780,16 @@ Show a file with the spoke tool `artifact.create`:
 ```
 
 Kinds are `prompt`, `note`, `page`, `diagram`, and `file`. Give exactly one of `content` or `path` (relative to the session's working directory). A path is copied, so deleting its source or worktree leaves the artifact readable. Text content defaults to `.md` for prompts/notes, `.html` for pages, `.mmd` for diagrams and `.txt` for files; copied files retain their extension. Files live under `.cland/artifacts/A-<n>-<slug>.<ext>`, with a durable hub index containing the id, title, kind, creator, time, topic, status and absolute path. Every create is a new id, initially `shared`; prompt creation can request `status: "draft"` to save without publishing a message.
+
+Artifact creation keeps its index and human topic post in one transaction.
+Admission or record-write refusal rolls back the artifact, post and id reservation.
+Human-message publication, delivery and the `human-send` diagnostic run after
+commit: a diagnostic logger failure leaves the successful response and committed
+message intact and records `publication-failed` in the hub's operator log sink.
+It does not request a resend or publish a duplicate. CLI, web, Neovim and native
+remote send callers retain their existing result shapes and pre-commit refusals.
+The [lifecycle fixture guide](../docs/agents/tests/hub-test-artifact-lifecycle.test.ts.md)
+separates write-refusal rollback from post-commit logging failure.
 
 The result includes `artifact`, `id`, and `path`. The topic message carries a structured `artifact` field, and session deliveries name `artifact_id` and `artifact_path` in their envelope. Publication obeys the message size cap and the session's send rate limit; refusal leaves no file or index entry. The file content itself is not subject to the message text cap (wire frames retain their existing maximum size).
 
