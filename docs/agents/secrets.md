@@ -37,6 +37,13 @@ adds no frame, role permission or role-clause line.
 For remote configuration, use `cland config set remote.telegram.enabled true`
 and `cland hub reload`; activation requires a resolved token. The daemon has a
 built-in Telegram fetch client; Discord requires an injected platform factory.
+For a paired Telegram chat, `remote.telegram.format` defaults to `rich`, with
+plain text and computed entities after a rejection. Set it to `entities` for
+that path directly; both paths disable link previews. General uses the
+`author · kind` header and silent progress/hub notices, excluding the human's
+Telegram messages, answers and asks to the human. See the
+[rendering guide](tests/hub-test-telegram-rendering.test.ts.md). This adds no
+role permission or clause line.
 Every remote/speech key reloads; init renders defaults and update fills older
 managed configs. Explicit factory and legacy remote injection retain their test
 seams. Telegram checks and sends are exercised on a loopback fake, with no real

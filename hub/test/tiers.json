@@ -541,6 +541,8 @@
     "hub/test/telegram-pairing.test.ts": "T2",
     "hub/test/telegram-polling-restart.test.ts": "T3",
     "hub/test/telegram-polling.test.ts": "T2",
+    "hub/test/telegram-render.test.ts": "T1",
+    "hub/test/telegram-rendering.test.ts": "T2",
     "hub/test/termination-ownership.test.ts": "T3",
     "hub/test/territory-cli.test.ts": "T3",
     "hub/test/territory-lock.test.ts": "T3",

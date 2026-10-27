@@ -11,8 +11,10 @@ export type TgMessage = {
   from?: TgUser;
   text?: string;
 };
-export type SendMessage = { chat_id: number | string; text: string };
-export type SendRichMessage = { chat_id: number | string; rich_message: { markdown: string; skip_entity_detection: boolean } };
+export type TgEntity = { type: string; offset: number; length: number; url?: string; language?: string };
+type SendOptions = { disable_notification?: boolean; link_preview_options?: { is_disabled: boolean } };
+export type SendMessage = SendOptions & { chat_id: number | string; text: string; entities?: TgEntity[] };
+export type SendRichMessage = SendOptions & { chat_id: number | string; rich_message: { markdown: string; skip_entity_detection: boolean } };
 export type TgChatMember = { user: TgUser; status: string; until_date?: number };
 export type TgChatMemberUpdated = { chat: TgChat; from: TgUser; date: number; old_chat_member: TgChatMember; new_chat_member: TgChatMember };
 export type TgCallbackQuery = { id: string; from: TgUser; message?: TgMessage; data?: string };

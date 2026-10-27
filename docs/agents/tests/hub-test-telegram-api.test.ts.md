@@ -20,6 +20,11 @@ duplicate updates, the bot's `my_chat_member` update, Rich Message rejection
 with a successful plain send, numeric `retry_after`, and an injected 409.
 These are platform receipts; dedupe, rich-to-entities conversion, global pacing,
 conflict recovery and pairing policy belong to their gateway callers.
+The fake also rejects overlapping entities unless one contains the other and
+one is emphasis, excluding all code/pre nesting. It implements this narrow
+Bot API formatting restriction independently of the converter, not a full
+formatting parser. The positive refusal and continued-delivery controls live in
+[telegram-rendering](hub-test-telegram-rendering.test.ts.md).
 
 Arm `fake.waitForPoll()` before starting a poll. The held receipt names its id,
 parameters and stall state. Arm `waitForPollClose(id)` before cancelling or

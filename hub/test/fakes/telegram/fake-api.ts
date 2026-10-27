@@ -20,6 +20,21 @@ function reply(res: ServerResponse, status: number, body: unknown, headers: Reco
   res.end(JSON.stringify(body));
 }
 
+// Independent Bot API formatting restriction: only emphasis may share characters
+// with another entity, and code/pre cannot participate in any nesting.
+function legalEntities(entities: Array<{ type: string; offset: number; length: number }>): boolean {
+  const emphasis = new Set(['bold', 'italic', 'underline', 'strikethrough', 'spoiler']);
+  for (let i = 0; i < entities.length; i++) for (let j = i + 1; j < entities.length; j++) {
+    const a = entities[i]!, b = entities[j]!;
+    const endA = a.offset + a.length, endB = b.offset + b.length;
+    if (endA <= b.offset || endB <= a.offset) continue;
+    const contained = a.offset <= b.offset && endA >= endB || b.offset <= a.offset && endB >= endA;
+    if (!contained || [a.type, b.type].some(type => type === 'pre' || type === 'code')
+      || !emphasis.has(a.type) && !emphasis.has(b.type)) return false;
+  }
+  return true;
+}
+
 export type FakePollReceipt = { id: number; params: Record<string, unknown>; stalled: boolean };
 export type FakeRequestReceipt = { id: number; method: string; params: Record<string, unknown> };
 export type FakeConnectionReceipt = { id: number; method: string };
@@ -202,6 +217,9 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         const rich = params.rich_message as { markdown?: unknown } | undefined;
         const text = method === 'sendMessage' ? params.text : rich?.markdown;
         if (typeof text !== 'string') return reply(res, 400, { ok: false, error_code: 400, description: 'Missing text or rich_message.markdown' });
+        if (method === 'sendMessage' && params.entities !== undefined
+          && (!Array.isArray(params.entities) || !legalEntities(params.entities)))
+          return reply(res, 400, { ok: false, error_code: 400, description: 'Invalid Telegram entity nesting' });
         const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
           chat: { id: Number(params.chat_id), type: 'private' }, from: BOT, text };
         messages.push(redact.value(message));

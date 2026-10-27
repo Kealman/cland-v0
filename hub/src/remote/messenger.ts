@@ -10,13 +10,13 @@ import { TelegramRemote } from './telegram.ts';
 export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedactor, clock: Clock, persistence?: {
   state: RemoteState; log?: LogFn; projectName?: () => string; notice?: (cause: string, fix: string) => void;
 }): MessengerFactory {
-  return (via, token) => {
+  return (via, token, settings) => {
     if (via !== 'telegram') throw new Error('Discord platform client is unavailable; an injected messenger factory is required');
     return new TelegramRemote(new TelegramApi(token, { redactor, clock,
       ...(env.CLAND_TELEGRAM_API_ROOT !== undefined ? { apiRoot: env.CLAND_TELEGRAM_API_ROOT } : {}),
     }), clock, persistence ? { store: persistence.state.forMessenger('telegram'), ...(persistence.log ? { log: persistence.log } : {}),
       ...(persistence.projectName ? { projectName: persistence.projectName } : {}),
       ...(persistence.notice ? { notice: persistence.notice } : {}),
-    } : undefined);
+    } : undefined, { format: settings.remote.telegram.format });
   };
 }

@@ -2287,6 +2287,36 @@ or 409 conflict to its caller; it does not retry or kill another consumer.
 The fake Bot API and its token-free human/stranger controls are described in
 the [client test guide](../docs/agents/tests/hub-test-telegram-api.test.ts.md).
 
+### Telegram General rendering
+
+With Telegram enabled, a valid token and a paired chat, the native adapter sends
+new General messages under an `author · kind` header. Human workbench messages
+use `you`; Discord messages use `you (Discord)`. Human Telegram messages, answers
+and asks to the human are excluded from this message stream; item topics and
+Agents are excluded too. Progress and hub notices set `disable_notification`.
+
+The loaded `remote.telegram.format` defaults to `rich`: `sendRichMessage` carries
+GitHub Flavored Markdown unchanged, with `skip_entity_detection: true` and link
+previews disabled. A rejected rich request falls back to `sendMessage` with
+gateway-computed entities. `format = "entities"` selects that path immediately.
+Neither path uses MarkdownV2. Header and numbering count toward the 4096-code-point
+plain limit; entity offsets remain UTF-16 units. Each part repeats the header,
+with `n/m` when split. The converter prefers block and line boundaries, keeps
+every character across parts, and never clips an entity. The header consumes
+one of the 100 styled entities. A style too large for one part becomes plain
+text; conversion failures preserve the original text without body entities.
+Quoted code and links retain their own entities without an enclosing quote
+entity, respecting Telegram's nesting restrictions. Table delimiter recognition
+keeps flag/data rows, and code blocks retain fence-prefixed content until a
+complete legal closing fence.
+Accepted part ids are stored against the original General message in `hub.db`,
+so a reply to any part can resolve its source. Stop aborts network work and
+joins receive writers before storage closes. Stopped remotes ignore later
+General frames, including their own terminal failure notice, preserving the
+original disabled cause. See the
+[rendering frame/fake guide](../docs/agents/tests/hub-test-telegram-rendering.test.ts.md)
+and [conversion guide](../docs/agents/tests/hub-test-telegram-render.test.ts.md).
+
 ### Telegram polling and durable confirmation
 
 An enabled Telegram remote with a resolved token uses the daemon's existing

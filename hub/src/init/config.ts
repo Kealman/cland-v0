@@ -206,6 +206,7 @@ mute_default = ${c.remote.muteDefault}
 [remote.telegram]
 # Active only when enabled with a resolved token. Tokens belong in cland secret, never here.
 enabled = ${c.remote.telegram.enabled}
+# General: rich Markdown by default; entities selects numbered plain text. Rich rejection falls back.
 format = ${JSON.stringify(c.remote.telegram.format)}
 
 [remote.discord]

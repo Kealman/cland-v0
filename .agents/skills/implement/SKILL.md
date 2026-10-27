@@ -84,6 +84,14 @@ For native Telegram `/start`, blocked membership and disabled bot-link facts, us
 first; fatal membership records its sanitized cause/General notice before
 consuming the update, so restart does not replay a kick.
 
+For Telegram General rendering, use the production frame/fake receipts in
+`docs/agents/tests/hub-test-telegram-rendering.test.ts.md` and the T1 conversion
+boundary in `docs/agents/tests/hub-test-telegram-render.test.ts.md`. Keep rich
+Markdown free of automatic entity detection and previews, preserve plain text
+on conversion failure, and budget numbering plus the header before splitting
+by code points or entity count. Never clip an entity; retain UTF-16 offsets.
+Wait for every accepted part's durable source mapping before shutdown.
+
 For pairing codes or local approval lookup, read `docs/agents/pairing.md` and its
 T1 service/T2 frame seams, including approval authority and replacement drainage. Keep `Inbox.pairings` optional for older hubs, and
 strip pairing rows and counts at the remote boundary. Trusted pairing callbacks

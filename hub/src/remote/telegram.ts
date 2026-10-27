@@ -1,9 +1,10 @@
 import type { Remote } from './gateway.ts';
 import type { Pairing } from './state.ts';
-import type { RemoteConnection } from '../protocol.ts';
+import type { HubFrame, RemoteConnection } from '../protocol.ts';
 import { realClock, type Clock } from '../hub/clock.ts';
 import { TelegramApi, TelegramError, type TgUpdate } from './telegram-api.ts';
 import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
+import { plainParts } from './telegram-render.ts';
 
 export type TelegramRemoteOptions = TelegramPollingOptions & { projectName?: () => string };
 
@@ -16,6 +17,7 @@ export class TelegramRemote implements Remote {
   readonly #abort = new AbortController();
   readonly #work = new Set<Promise<unknown>>();
   readonly #polling: TelegramRemoteOptions | undefined;
+  readonly #format: 'rich' | 'entities';
   #pair: ((identity: Pairing) => string | null) | undefined;
   #botId = 0;
   #running: Promise<void> | undefined;
@@ -26,8 +28,9 @@ export class TelegramRemote implements Remote {
   #botLink: string | null = null;
   #stopping: Promise<void> | undefined;
 
-  constructor(api: TelegramApi, clock: Clock = realClock, polling?: TelegramRemoteOptions) {
+  constructor(api: TelegramApi, clock: Clock = realClock, polling?: TelegramRemoteOptions, rendering: { format?: 'rich' | 'entities' } = {}) {
     this.#api = api; this.#clock = clock; this.#polling = polling;
+    this.#format = rendering.format ?? 'rich';
   }
 
   #track<T>(operation: () => Promise<T>): Promise<T> {
@@ -66,7 +69,37 @@ export class TelegramRemote implements Remote {
     this.#pair = pair;
     return this.#track(() => this.#check(signal));
   }
-  receive(): void {}
+  receive(frame: HubFrame): void | Promise<void> {
+    // Fatal reporting itself publishes a General notice. A stopped adapter
+    // must not turn that notice into another send and replace the saved cause.
+    if (this.#stopped || this.#fatal) return;
+    if (frame.type !== 'message' || frame.topic.id !== 'general') return;
+    const pairing = this.#polling?.store.pairing();
+    if (!pairing) return;
+    const message = frame.message;
+    if (message.answerTo || message.ask && !message.ask.to || message.fromKind === 'human' && message.via === 'telegram') return;
+    return this.#track(async () => {
+      const author = message.fromKind === 'human' ? message.via === 'discord' ? 'you (Discord)' : 'you' : message.from;
+      const header = `${author} · ${message.kind ?? 'message'}`;
+      const options = { link_preview_options: { is_disabled: true }, disable_notification: message.kind === 'progress' || message.fromKind === 'hub' };
+      const record = (sent: { message_id: number }) => {
+        this.#lastOutbound = this.#clock.now().toISOString();
+        this.#polling!.store.putMessage({ chatId: pairing.chatId, messageId: String(sent.message_id), topic: 'general',
+          message: message.id, ask: null, approval: null });
+      };
+      if (this.#format === 'rich') {
+        let sent;
+        try {
+          sent = await this.#api.sendRichMessage({ chat_id: pairing.chatId,
+            rich_message: { markdown: `${header}\n${message.text}`, skip_entity_detection: true }, ...options }, { signal: this.#abort.signal });
+        } catch {
+          if (this.#abort.signal.aborted) return;
+        }
+        if (sent) { record(sent); return; }
+      }
+      for (const part of plainParts(header, message.text)) record(await this.#api.sendMessage({ chat_id: pairing.chatId, ...part, ...options }, { signal: this.#abort.signal }));
+    });
+  }
 
   run(): Promise<void> {
     return this.#running ??= this.#track(async () => {
