@@ -40,3 +40,8 @@ read replay at persistence; the 250 ms inbox publication is a separate boundary.
 Remote management status, test and rotation receipts use the [sealed CLI and
 fake-messenger seam](tests/hub-test-remote-cli.test.ts.md). New pairings store
 the loaded `remote.mute_default`; token reload keeps numeric identity and mute.
+
+After pairing, [Telegram phone commands](../../hub/README.md#telegram-phone-commands)
+use the gateway's allowed reads. The native private-chat menu is compared with
+Telegram on every start and written only when its command/description list
+differs. Pairing grants remain local even when `/inbox` or `/status` is read remotely.

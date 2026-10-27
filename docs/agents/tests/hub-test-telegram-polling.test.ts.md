@@ -52,3 +52,8 @@ and replay-safe handling. Messages/edits dedupe by chat/message, callbacks by
 callback id, all updates by update id; offsets and dedupe commit together through
 `RemoteStore.confirmTelegramUpdate`. Keep the storage rollback proof in
 `hub/test/remote-state.test.ts` and the actual SIGKILL proof in the restart guide.
+
+Native startup includes `getMe` and scoped menu reconciliation (`getMyCommands`,
+with `setMyCommands` on a changed menu). The rejected-input case retains that
+exact startup prefix, then permits only polling: downloads and replies remain
+forbidden for the rejected payloads.

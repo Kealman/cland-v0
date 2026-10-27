@@ -2267,6 +2267,37 @@ replacement. Pairing ids and mute remain in `hub.db`; each new pairing starts
 with the loaded `remote.mute_default`. Environment overrides still take precedence.
 The speech provider's data-use line is supplied by the media/speech feature.
 
+### Telegram phone commands
+
+With Telegram enabled, a resolved token and the native factory, every start reads
+`getMyCommands` for `all_private_chats`. It calls `setMyCommands` only when the
+ordered command/description pairs differ; it compares Telegram's current state,
+so an unchanged restart writes nothing and an externally changed menu is repaired.
+The menu is a discovery aid; numeric paired-user/private-chat checks still gate
+all commands. Legacy check/send-only injected clients do not register a menu.
+
+Paired `/status` reads `hub.status` and open releases through `task.list` on the
+gateway's existing frame port. Its title and bold groups show version/uptime,
+Coordinator/needs-you, up to six session bullets, queues, open releases and this
+chat's connection/mute state; gateway numbers are italic at the end. `/help` has
+short headed sections, command bullets and trust lines last. Replies always use
+text with explicit UTF-16 entities, independently of the General mirror format.
+Facts are escaped before the shared renderer; long replies split into numbered
+parts within Telegram's 4096-code-point and 100-entity bounds.
+
+`/inbox` reads `inbox.list`, repeats every open card body, or says "Nothing needs
+you". Local pairing grants and their counts stay outside the remote. Card actions
+belong to the cards feature; `/cancel` leaves the ask open. Paired `/start` names
+the project. `/decision <text>` and `/question <text>` are inbound mirror actions;
+`/mute` and `/unmute` control the General stream independently.
+
+Direct command replies use one send function, with no outbox or reply jobs.
+A native chat/message identity is durable before the first reply is attempted;
+replayed input is confirmed without repeating that effect. Unknown delivery is
+not proof of non-delivery. The [command regression](../docs/agents/tests/hub-test-telegram-commands.test.ts.md)
+interrupts after the fake commits a reply but before its HTTP receipt and retains
+the next start's durable offset and single-message receipt.
+
 ### Telegram Bot API client
 
 `src/remote/telegram-api.ts` uses Node 24 `fetch` and handwritten types, with no

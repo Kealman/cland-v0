@@ -79,7 +79,8 @@ test('Telegram filters foreign identities unlisted kinds and bots before the han
   assert.equal(JSON.stringify(history.value).includes('filtered payload'), false);
   assert.equal(JSON.stringify(history.value).includes('approved human'), true);
   const traffic = await control<{ requests: Array<{ method: string }> }>(fake.url, 'state');
-  assert.ok(traffic.requests.every(request => ['getMe', 'getUpdates'].includes(request.method)), 'no download or reply work for rejected input');
+  assert.deepEqual(traffic.requests.slice(0, 3).map(request => request.method), ['getMe', 'getMyCommands', 'setMyCommands']);
+  assert.ok(traffic.requests.slice(3).every(request => request.method === 'getUpdates'), 'no download or reply work for rejected input');
   const closed = fake.waitForPollClose(receipt.id);
   await hub.stop();
   assert.equal(await within(closed, 1_000), receipt.id);

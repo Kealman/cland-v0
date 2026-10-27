@@ -12,6 +12,8 @@ export type TgMessage = {
   text?: string;
   reply_to_message?: TgMessage;
 };
+export type TgBotCommand = { command: string; description: string };
+export type TgCommandScope = { type: 'all_private_chats' };
 export type SetMessageReaction = { chat_id: number | string; message_id: number; reaction: Array<{ type: 'emoji'; emoji: '👌' | '👀' }> };
 export type TgEntity = { type: string; offset: number; length: number; url?: string; language?: string };
 type SendOptions = { disable_notification?: boolean; link_preview_options?: { is_disabled: boolean } };
@@ -66,6 +68,8 @@ export class TelegramApi {
     this.#root = root.href.replace(/\/+$/, '');
   }
 
+  getMyCommands(params: { scope: TgCommandScope }, options?: TelegramRequestOptions): Promise<TgBotCommand[]> { return this.#call('getMyCommands', params, options); }
+  setMyCommands(params: { scope: TgCommandScope; commands: readonly TgBotCommand[] }, options?: TelegramRequestOptions): Promise<boolean> { return this.#call('setMyCommands', params, options); }
   getMe(options?: TelegramRequestOptions): Promise<TgUser> { return this.#call('getMe', {}, options); }
   setMessageReaction(params: SetMessageReaction, options?: TelegramRequestOptions): Promise<true> { return this.#call('setMessageReaction', params, options); }
   sendMessage(params: SendMessage, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#call('sendMessage', params, options); }
@@ -76,7 +80,7 @@ export class TelegramApi {
     return this.#call('getUpdates', params, options, Math.max(35_000, (params.timeout + 15) * 1_000));
   }
 
-  async #call<T>(method: 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'setMessageReaction', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
+  async #call<T>(method: 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'getMyCommands' | 'setMyCommands' | 'setMessageReaction', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
     const deadline = new AbortController();
     const timer = this.#clock.setTimeout(() => deadline.abort(), timeoutMs);
     timer.unref();

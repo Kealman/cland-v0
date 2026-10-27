@@ -114,10 +114,10 @@ test('Telegram configuration reload starts the native client only when enabled',
   const enabled = await ui.request({ type: 'hub.reload' });
   assert.equal(enabled.ok, true, enabled.error);
   const poll = await within(polled, 1_000);
-  assert.deepEqual(await methods(), ['getMe', 'getUpdates']);
+  assert.deepEqual(await methods(), ['getMe', 'getMyCommands', 'setMyCommands', 'getUpdates']);
   const unchanged = await ui.request({ type: 'hub.reload' });
   assert.equal(unchanged.ok, true, unchanged.error);
-  assert.deepEqual(await methods(), ['getMe', 'getUpdates'], 'an unchanged reload retains the existing client');
+  assert.deepEqual(await methods(), ['getMe', 'getMyCommands', 'setMyCommands', 'getUpdates'], 'an unchanged reload retains the existing client');
   config.remote.telegram.enabled = false;
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   const closed = fake.waitForPollClose(poll.id);
@@ -125,7 +125,7 @@ test('Telegram configuration reload starts the native client only when enabled',
   assert.equal(disabled.ok, true, disabled.error);
   assert.equal(await within(closed, 1_000), poll.id);
   assert.equal((await ui.request({ type: 'remote.test', messenger: 'telegram' })).ok, false);
-  assert.deepEqual(await methods(), ['getMe', 'getUpdates'], 'disabled remotes make no platform calls');
+  assert.deepEqual(await methods(), ['getMe', 'getMyCommands', 'setMyCommands', 'getUpdates'], 'disabled remotes make no platform calls');
   await hub.stop();
 });
 

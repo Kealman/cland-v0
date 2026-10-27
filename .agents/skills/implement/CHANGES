@@ -177,5 +177,7 @@ T-1340 source-1: Require pre-bind fake ownership, bounded control requests and s
 
 2026-10-26 · T-1343: route Telegram General rendering to frame/fake and pure conversion receipts, preserving entity boundaries and durable part mappings.
 2026-10-26 · T-1342: route native Telegram pairing, blocked diagnostics and consumed-kick replay to the production frame/CLI and fake Bot API regression.
+
+2026-10-27 · T-1346: route phone commands/menu reconciliation to sealed frame/fake receipts, including direct-reply replay fencing and card scope.
 2026-10-27 · T-1344 merge: preserve pairing and inbound feedback guidance together after integrating landed T-1342.
 2026-10-27 · T-1344 mirror merge: retain mirror-out guidance with inbound receipt/recovery guidance and add the native mirror/reply integration receipt.

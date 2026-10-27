@@ -39,7 +39,7 @@ reply proves failure stays within the remote. Stop the hub before reading
 durable log/journal bytes; the successful artifact creation reply owns that file.
 
 `Telegram configuration reload starts the native client only when enabled`
-retains zero requests while disabled, `getMe` and the first held `getUpdates`
+retains zero requests while disabled, `getMe`, private-menu read/write and the first held `getUpdates`
 after the exact reload result (arm the poll observer before reload),
 unchanged-client retention, then disable completion and an unavailable test.
 The daemon's explicit environment selects the fake root on startup and reload.

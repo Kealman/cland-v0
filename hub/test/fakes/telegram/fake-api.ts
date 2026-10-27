@@ -39,7 +39,7 @@ export type FakePollReceipt = { id: number; params: Record<string, unknown>; sta
 export type FakeRequestReceipt = { id: number; method: string; params: Record<string, unknown> };
 export type FakeConnectionReceipt = { id: number; method: string };
 type PendingPoll = FakePollReceipt & { res: ServerResponse; timer?: ClockTimer; ended: boolean };
-type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'hold';
+type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'hold' | 'hold-after-send';
 type Fault = { method: string; code: number; echoToken: boolean; description?: string; retryAfter?: number; response?: FaultResponse };
 
 function observe<T>(events: EventEmitter, event: string, accepts: (value: T) => boolean, signal: AbortSignal): Promise<T> {
@@ -62,6 +62,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   const lifetime = new AbortController();
   const redact = remoteRedactor([TELEGRAM_TEST_TOKEN]);
   const messages: TgMessage[] = [];
+  let commands: unknown[] = [];
   let updates: TgUpdate[] = [];
   const requests: Array<{ method: string; params: Record<string, unknown> }> = [];
   const faults: Fault[] = [];
@@ -115,6 +116,11 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         wake();
         return reply(res, 200, update);
       }
+      if (req.method === 'POST' && req.url === '/control/commands') {
+        if (!Array.isArray(params.commands)) return reply(res, 400, { error: 'commands must be an array' });
+        commands = structuredClone(params.commands);
+        return reply(res, 200, { commands });
+      }
       // Fault-injection boundary: deliberately permits unlisted/malformed update bodies.
       if (req.method === 'POST' && req.url === '/control/update') {
         const update = redact.value({ ...params, update_id: nextUpdate++ }) as TgUpdate;
@@ -155,7 +161,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         if (typeof params.method !== 'string' || typeof params.code !== 'number' || !Number.isInteger(params.code) || params.code < 300 || params.code > 599)
           return reply(res, 400, { error: 'fault needs a method and HTTP error code' });
         const response = params.response;
-        if (response !== undefined && !['redirect', 'invalid-json', 'malformed-error', 'disconnect', 'hold'].includes(String(response)))
+        if (response !== undefined && !['redirect', 'invalid-json', 'malformed-error', 'disconnect', 'hold', 'hold-after-send'].includes(String(response)))
           return reply(res, 400, { error: 'unsupported fault response' });
         const retryAfter = params.retry_after;
         if (params.description !== undefined && (typeof params.description !== 'string' || params.description.length > 4_000))
@@ -177,28 +183,40 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
       req.socket.once('close', () => { heldRequests.delete(connection.id); events.emit('connection-closed', connection); });
       requests.push({ method, params: redact.value(params) });
       events.emit('request', { ...connection, params: redact.value(params) });
+      let holdAfterSend = false;
       const faultIndex = faults.findIndex(fault => fault.method === method);
       if (faultIndex >= 0) {
         const fault = faults.splice(faultIndex, 1)[0]!;
         // A deliberate echo exercises the client's error boundary; never capture it.
-        if (fault.response === 'hold') {
-          heldRequests.set(connection.id, connection);
-          events.emit('request-held', connection);
-          return;
+        if (fault.response === 'hold-after-send' && method === 'sendMessage') holdAfterSend = true;
+        else {
+          if (fault.response === 'hold') {
+            heldRequests.set(connection.id, connection);
+            events.emit('request-held', connection);
+            return;
+          }
+          if (fault.response === 'disconnect') { res.destroy(); return; }
+          if (fault.response === 'redirect') return reply(res, fault.code, {}, { location: '/redirect-target' });
+          if (fault.response === 'invalid-json') {
+            res.writeHead(fault.code, { 'content-type': 'application/json' });
+            res.end(`invalid JSON ${TELEGRAM_TEST_TOKEN}`);
+            return;
+          }
+          if (fault.response === 'malformed-error') return reply(res, fault.code, { ok: false,
+            error_code: { value: TELEGRAM_TEST_TOKEN }, description: { value: TELEGRAM_TEST_TOKEN }, parameters: { retry_after: TELEGRAM_TEST_TOKEN } });
+          return reply(res, fault.code, { ok: false, error_code: fault.code,
+            description: `${fault.description ?? 'Forced fake refusal'}${fault.echoToken ? ` ${TELEGRAM_TEST_TOKEN}` : ''}`,
+            ...(fault.retryAfter !== undefined ? { parameters: { retry_after: fault.retryAfter } } : {}),
+          }, fault.retryAfter !== undefined ? { 'retry-after': String(fault.retryAfter) } : {});
         }
-        if (fault.response === 'disconnect') { res.destroy(); return; }
-        if (fault.response === 'redirect') return reply(res, fault.code, {}, { location: '/redirect-target' });
-        if (fault.response === 'invalid-json') {
-          res.writeHead(fault.code, { 'content-type': 'application/json' });
-          res.end(`invalid JSON ${TELEGRAM_TEST_TOKEN}`);
-          return;
+      }
+      if (method === 'getMyCommands' || method === 'setMyCommands') {
+        if ((params.scope as { type?: string })?.type !== 'all_private_chats') return reply(res, 400, { ok: false, error_code: 400, description: 'Private scope required' });
+        if (method === 'setMyCommands') {
+          if (!Array.isArray(params.commands)) return reply(res, 400, { ok: false, error_code: 400, description: 'Missing commands' });
+          commands = structuredClone(params.commands);
         }
-        if (fault.response === 'malformed-error') return reply(res, fault.code, { ok: false,
-          error_code: { value: TELEGRAM_TEST_TOKEN }, description: { value: TELEGRAM_TEST_TOKEN }, parameters: { retry_after: TELEGRAM_TEST_TOKEN } });
-        return reply(res, fault.code, { ok: false, error_code: fault.code,
-          description: `${fault.description ?? 'Forced fake refusal'}${fault.echoToken ? ` ${TELEGRAM_TEST_TOKEN}` : ''}`,
-          ...(fault.retryAfter !== undefined ? { parameters: { retry_after: fault.retryAfter } } : {}),
-        }, fault.retryAfter !== undefined ? { 'retry-after': String(fault.retryAfter) } : {});
+        return reply(res, 200, { ok: true, result: method === 'getMyCommands' ? commands : true });
       }
       if (method === 'getMe') return reply(res, 200, { ok: true, result: BOT });
       if (method === 'setMessageReaction') return reply(res, 200, { ok: true, result: true });
@@ -227,6 +245,11 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
           chat: { id: Number(params.chat_id), type: 'private' }, from: BOT, text };
         messages.push(redact.value(message));
+        if (holdAfterSend) {
+          heldRequests.set(connection.id, connection);
+          events.emit('request-held', connection); // The platform effect is committed; the response is deliberately absent.
+          return;
+        }
         return reply(res, 200, { ok: true, result: message });
       }
       return reply(res, 404, { ok: false, error_code: 404, description: 'Unknown method' });

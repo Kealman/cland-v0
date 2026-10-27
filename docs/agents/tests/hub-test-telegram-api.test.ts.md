@@ -72,20 +72,24 @@ POST controls take JSON:
 | `/control/update` | Arbitrary update body without `update_id` | Assigns the next id and queues the redacted body, deliberately bypassing kind/identity filtering for negative controls. |
 | `/control/duplicate` | `update_id` | Adds the exact queued update again, retaining both ids. |
 | `/control/membership` | `user`, `status: "member"` or `"kicked"` | Queued `my_chat_member` update for the bot. |
-| `/control/fault` | `method`, HTTP `code`, optional `echoToken`, `description` (up to 4000 characters), `retry_after`, `response` | Arms one refusal for that method; does not accept a send. |
+| `/control/commands` | `commands` array | Replaces the fake private-chat menu to exercise platform drift. |
+| `/control/fault` | `method`, HTTP `code`, optional `echoToken`, `description` (up to 4000 characters), `retry_after`, `response` | Arms one fault for that method; `hold-after-send` accepts a plain message before holding its response. |
 | `/control/stall` | `enabled: boolean` | Subsequent polls hold even when the requested timeout expires. |
 | `/control/release-polls` | `{}` | Ends held polls, returning their exact ids. |
 
 Fault response modes are `redirect`, `invalid-json`, `malformed-error`,
-`disconnect` and `hold`. A held method publishes a token-free id/method through
+`disconnect`, `hold` and `hold-after-send`. The last commits a plain message
+then withholds its response, so its held receipt proves the effect precedes
+interruption. A held method publishes a token-free id/method through
 `waitForHeldRequest(method)` and keeps its connection open until cancellation;
 state includes `heldRequests`. Default faults return the Bot API error envelope and optional
 `Retry-After` header. `echoToken` deliberately echoes only the fabricated token
 in the provider response; captured receipts are redacted before storage. A 429
 is one response, not a scheduler; repeat controls to model further refusals.
 
-The fake implements `getMe`, `sendMessage`, `sendRichMessage` (nested
-`rich_message.markdown`), `setMessageReaction` and `getUpdates`. Reaction request
+The fake implements scoped `getMyCommands`/`setMyCommands`, `getMe`,
+`sendMessage`, `sendRichMessage` (nested `rich_message.markdown`),
+`setMessageReaction` and `getUpdates`. Reaction request
 parameters are retained in `requests`; fault/hold/close controls apply to them
 as to sends. Updates stay queued until an offset
 confirms them; empty positive-timeout polls wait on the injected clock and wake

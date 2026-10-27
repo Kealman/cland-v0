@@ -93,6 +93,13 @@ For native Telegram `/start`, blocked membership and disabled bot-link facts, us
 first; fatal membership records its sanitized cause/General notice before
 consuming the update, so restart does not replay a kick.
 
+For Telegram phone commands or menu registration, use the sealed production-frame
+and fake Bot API seam in `docs/agents/tests/hub-test-telegram-commands.test.ts.md`.
+Keep status/inbox reads within gateway authority, force text/entities for replies,
+compare the actual private-chat menu before writing, and fence native command
+identity before direct sends. Preserve the committed-effect/lost-receipt restart
+control; card actions and draft cancellation state belong to the card handler.
+
 For Telegram General rendering, use the production frame/fake receipts in
 `docs/agents/tests/hub-test-telegram-rendering.test.ts.md` and the T1 conversion
 boundary in `docs/agents/tests/hub-test-telegram-render.test.ts.md`. Keep rich
