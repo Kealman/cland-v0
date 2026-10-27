@@ -2,8 +2,8 @@
 id: T-1368
 kind: task
 title: The documentation describes the Telegram remote, `cland remote` and `cland secret`
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -20,7 +20,8 @@ blocked_by:
 topic: topic-1122
 branch: t/T-1368-the-documentation-describes-the-telegram
 created: 2026-10-27T05:46:50.947Z
-updated: 2026-10-27T20:37:11.201Z
+updated: 2026-10-27T21:05:28.210Z
+closed: 2026-10-27T21:05:28.210Z
 ---
 
 ## Summary
@@ -48,12 +49,20 @@ A site test checks the pages' commands, config keys and secret names against the
 
 - [x] C1. Every `cland` command, config key and secret name on the remote-control page and in web-and-phone's remotes section exists in the CLI help, the config keys and `cland secret`'s names (test).
   - done: impl-1368 · 2026-10-27T20:14:25.999Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final1 · 2026-10-27T20:39:56.475Z · commit ec0a708c9ce38058bf5dd9058730468f4a75df44
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final2 · 2026-10-27T20:58:32.182Z · commit e7112a07908923fc44f0ea61801efb2a8f8ccd12
 - [x] C2. The page is in the docs sidebar and is linked from the features overview and from web-and-phone's remotes section (test).
   - done: impl-1368 · 2026-10-27T20:14:26.090Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final1 · 2026-10-27T20:39:56.475Z · commit ec0a708c9ce38058bf5dd9058730468f4a75df44
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final2 · 2026-10-27T20:58:32.182Z · commit e7112a07908923fc44f0ea61801efb2a8f8ccd12
 - [x] C3. The page's Telegram command blocks, run in order against the fake Bot API in a scratch project with a made-up token, end in a paired remote (test).
   - done: impl-1368 · 2026-10-27T20:14:26.464Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final1 · 2026-10-27T20:39:56.475Z · commit ec0a708c9ce38058bf5dd9058730468f4a75df44
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final2 · 2026-10-27T20:58:32.182Z · commit e7112a07908923fc44f0ea61801efb2a8f8ccd12
 - [x] C4. The CLI reference lists each `cland remote` and `cland secret` subcommand that their usage text names, and no other (test).
   - done: impl-1368 · 2026-10-27T20:14:26.943Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final1 · 2026-10-27T20:39:56.475Z · commit ec0a708c9ce38058bf5dd9058730468f4a75df44
+  - verified: rev-31 [reviewer] · run rev-20261027-1368-final2 · 2026-10-27T20:58:32.182Z · commit e7112a07908923fc44f0ea61801efb2a8f8ccd12
 
 ## Comments
 
@@ -90,3 +99,54 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear; A-12888. M1 resolved by exactly two guide prose lines: /inbox accurately describes current text summaries; unbuilt outage card replacement/reminder promises removed. All executable pairing blocks/test/guard/production/navigation/reference blobs unchanged; no dev/sibling merge. Prior full audit A-12887 carries, Standards0/Spec0 findings. Local corrected-content4/4 site check is request/session evidence only; A-12883 prior targeted capture retains original limits. C1–C4 runtime-unverified. Submit one configured mode-free task verify at unchanged reviewed head/tree7ed09c66f56a2ce395c0924028ad9948d490ff84, then request final original-log case/load/provenance review. No extra merge, bespoke prose test or per-item QA requested. Reviewer read-only, no execution.
+
+### rev-31 · 2026-10-27T20:39:56.475Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261027-1368-final1
+commit: ec0a708c9ce38058bf5dd9058730468f4a75df44
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged ec0a708c9ce38058bf5dd9058730468f4a75df44, tree 7ed09c66f56a2ce395c0924028ad9948d490ff84. Independent original A-12895 audit recorded in A-12897 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12897-t-1368-final-exact-head-documentation-evidence-audit.md). Configured mode-free c4fa8fb3-a34b-4acf-a05d-28976e5e5120 finished exit 0: 3748 ordinary passing finishes, zero failures/cancellations/skips/TODO, plus 30 separate passing load finishes for six exact identities, each 5/5. Site vocabulary/negative controls/navigation/subcommands, runtime vocabulary equivalence and published Telegram pairing command blocks all have actual base and load finishes. Maximum new sample 1.615915075 s; no new >=3 s allowance required. Verifies C1–C4, carrying source2 A-12888 and resolved M1. T0/all T1/fallback all hub+Neovim T2/Web completed; T3/T4 absent, deferred per configured policy. Linux x64 6.8.0-142-generic, droplet c-8 sfo2, Node24.21.0/Neovim0.12.5, Headless Shell156.0.8078.4/Playwright v1248, workers2; lifetime966s/cost$0.0671 are machine accounting. Host gate TREE fde3ecb1d4a0cfbc93d180bfca24421693b4f055 reused, not another source commit or remote typecheck. Timing/lint/ratchet report-only; 134 lint findings/61 files, two missing new-file baselines and existing overruns retained. Web zero new-file repetitions required. No live-platform or rendered-site acceptance claim. Coordinator owns ready/enqueue and separate integrated verification; no extra merge or run requested.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1368 · 2026-10-27T20:41:24.177Z
+
+Coordinator shared-change instruction 8d1aef01 authorized post-review merge of dev 77cb4c6d (includes T-1359). Merged that exact commit, then updated /inbox to live copies of open asks/approval cards/📥 notices at bottom oldest first, retained older-copy/all-copy outcome behavior, and stated oldest-first new-card bursts. Checked landed telegram-commands.ts menu/help and telegram-cards.ts publishInbox/copy outcome paths. T-1360 outage replacement remains omitted. New head e7112a07908923fc44f0ea61801efb2a8f8ccd12, tree 49a39e62e8edaf161b310f3d57a7373ebc28a3d5, pushed and clean. Local macOS checks at new content: hub documentation wrapper 5/5 (117 ms file), pairing 1/1 (568 ms case/974 ms file), root npm run typecheck and diff check pass. Prior Linux suite and criterion verification belong to ec0a708c9 and do not certify the changed head. Fresh source review then one new mode-free verify/final evidence review required.
+
+### rev-31 · 2026-10-27T20:42:48.848Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261027-1368-delta1
+commit: e7112a07908923fc44f0ea61801efb2a8f8ccd12
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge/documentation source delta clear, A-12900. Independently verified merge72f12d4ae parents ec0a708c9 and exact Coordinator-authorized dev77cb4c6d (decision8d1aef01), followed only by two guide paragraph edits at e7112a079/tree49a39e62. Landed /inbox source publishes live mixed cards/notices oldest-first with prior callbacks retained and all-copy outcomes; new prose matches telegram.ts254–258, telegram-cards.ts132–141/144–152/191–207 and telegram-commands.ts48. Unlanded T-1360 outage replacement remains omitted. Same17 task paths; executable pairing blocks/tests/guards/tiers/navigation/reference retain prior reviewed blobs; shared skill/README additions preserved beside upstream work. Standards0/Spec0 findings, prior full source2 A-12888 carries. Local wrapper5/5/pairing1/1/typecheck are request-level macOS selected evidence only. Prior final1/A-12897 and Linux A-12895 certify ec0a708c9 only; C1–C4 done marks remain but verification is stale at this head. Submit one configured mode-free verify at unchanged e7112a079, then request exact-head original-log named-case/load/phase evidence review. No extra merge or per-item QA requested. Reviewer read-only, no execution.
+
+### rev-31 · 2026-10-27T20:58:32.182Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261027-1368-final2
+commit: e7112a07908923fc44f0ea61801efb2a8f8ccd12
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-12906 independently audits original A-12904 at unchanged e7112a07908923fc44f0ea61801efb2a8f8ccd12/tree49a39e62. Mode-free configured d2d87473 finished exit0:3754 ordinary passing test finishes, no failure/cancel/skip/TODO, plus30 separate passing load finishes for six exact identities each5/5. All page vocabulary/negative controls, navigation/reference, runtime-name equivalence and executable stdin-token pairing flow have actual base and load finishes; pairing base1.181130523s/loadmax1.188314309s. No new>=3s allowance required. Verifies C1–C4, carrying full source2 and authorized delta A-12900; T-1360 outage replacement remains omitted. T0/allT1/fallback all hub+NeovimT2/Web complete (29.974/72/397/151s outer phase durations); T3/T4 absent, deferred per configured policy. Linuxx64 dropletc-8sfo2, Node24.21.0/Neovim0.12.5, HeadlessShell156.0.8078.4/v1248,workers2,lifetime776s/cost$0.0539 machine accounting. Host gate TREE9f915c5086799fb1898da48e95efec81a7f837e4 reused, not remote typecheck or alternate candidate. Report-only lint/timing/ratchet retain134findings/61files,two missing baselines,existing overruns; Web0newfile repetitions required. No live-platform/rendered-site/integrated-all acceptance claim. Old ec0a708c9 run/final1 remain historical. Coordinator owns ready/enqueue/separate integrated gate; no extra merge, run or per-item QA requested. Reviewer read-only, no execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-27T21:05:28.210Z
+
+Merged ac24dd08ca54fd465359eb5afe0b630d7494fce5 onto dev.
