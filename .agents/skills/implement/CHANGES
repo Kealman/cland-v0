@@ -228,3 +228,9 @@ T-1356: Document stale-card local closure, private foreign-card refusal, late pr
 - T-1335: Document bounded watchdog arm retries, late/conflicting proof controls, receipt-driven sentinel expiry, stopped-spoke synchronization and minimal read-only-existing-credential fixtures.
 
 - T-1335 source review M1: Require independently driven arm setup bounds and pre-registered disposal with missing/aborted setup controls.
+
+- T-1360: Document ordered outage card recovery, strict 150-second replacement boundary, durable old-copy retirement, incomplete unknown deliveries and interrupted recovery preservation.
+
+- T-1360 source review M1/M2: Require live publication settlement after recovery source drops and a native edit receipt rather than fallback notification for old-copy retirement.
+
+- T-1360 M3: Scope resumed-drain reconciliation to captured waiters; preserve later/new-lane delivery receipts and all unchanged 429/reopen controls.

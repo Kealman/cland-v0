@@ -12,3 +12,11 @@ secret names. Keep the unknown-command/key/name positive control. Check the
 Features sidebar group, both inbound links and the exact CLI-reference remote
 and secret subcommand lists against usage, including extras. Run this file or
 `node --test site/test/remote-docs.test.ts` alone; no browser or hub is needed.
+
+T-1360's public catch-up paragraph is checked by
+`remote guide distinguishes missed cards from outage replacements after 150 seconds`.
+Keep missed cards/outcome edits after the gap distinct from replacement copies:
+strictly over 150 seconds, every open card at the bottom with the press-again
+note and old-copy marker without buttons; at most 150 seconds, no re-send of
+already delivered cards. The wrapper imports this same case automatically;
+no hub-only dependency is needed by the site's test.

@@ -33,6 +33,7 @@ export class TelegramOutbox {
   readonly #askOpen: (id: string) => boolean | Promise<boolean>;
   readonly #approvalOpen: (id: string) => boolean | Promise<boolean>;
   #stopping: Promise<void> | undefined;
+  #cardsHeld = false;
 
   constructor(api: TelegramApi, clock: Clock, options: {
     store?: RemoteStore; signal?: AbortSignal; onError?: (error: unknown) => void; onSent?: () => void;
@@ -59,10 +60,17 @@ export class TelegramOutbox {
     return this.#enqueue('editMessageText', params, { ...facts, kind: 'edit', target: `${params.chat_id}:${message_id}` },
       [{ ...reply, reply_parameters: { message_id } }]);
   }
+  /** A delivered fallback reply does not establish that the original message changed. */
+  editApplied(key: string): boolean {
+    return this.#store.outbox().some(job => payload(job)?.key === key
+      && payload(job)?.method === 'editMessageText' && job.state === 'sent');
+  }
   react(params: SetMessageReaction): Promise<void> {
     return this.#enqueue('setMessageReaction', params, {});
   }
   setAvailable(available: boolean): void { this.#store.set('outbox.unavailable', available ? null : '1'); }
+  /** Automatic publications wait for retained input and the gap, including edit fallbacks. */
+  holdCards(held: boolean): void { this.#cardsHeld = held; }
   rich(params: SendRichMessage, fallback: SendMessage[], facts: SendFacts): Promise<void> {
     return this.#enqueue('sendRichMessage', params, facts, fallback);
   }
@@ -112,6 +120,7 @@ export class TelegramOutbox {
     if (!completion) return;
     const group = this.#store.outbox().filter(job => payload(job)?.order === order);
     const failure = group.map(job => this.#errors.get(job.id)).find(error => error !== undefined);
+    if (!failure && group.some(job => job.state === 'queued' && this.#held(job))) return;
     if (!failure && !drained && group.some(job => job.state === 'queued' || job.state === 'sending')) return;
     this.#waiting.delete(order);
     for (const job of group) this.#errors.delete(job.id);
@@ -124,6 +133,14 @@ export class TelegramOutbox {
       || payload(group[0]!)!.method === 'setMessageReaction' && !group.some(job => job.state === 'sent'))
       completion.reject(new Error('Telegram send has no delivery receipt'));
     else completion.resolve();
+  }
+
+  #held(job: OutboxJob): boolean {
+    const intent = payload(job);
+    const explicit = intent?.key?.startsWith('telegram.command:') || intent?.key?.includes(':press:');
+    const card = job.kind === 'card' || job.kind === 'edit' || intent?.key?.startsWith('telegram.outcome:')
+      || intent?.key?.startsWith('telegram.catchup:');
+    return this.#cardsHeld && !!card && !explicit;
   }
 
   #lane(chat: string): Outbox {
@@ -139,7 +156,7 @@ export class TelegramOutbox {
           return result.status === 'format-refused' ? this.#replace(job) : result;
         },
       }, { clock: this.#clock,
-        accepts: job => String(payload(job)?.params.chat_id) === chat,
+        accepts: job => String(payload(job)?.params.chat_id) === chat && !this.#held(job),
         sourceOpen: async job => {
           const ask = payload(job)?.mapping.ask;
           const approval = payload(job)?.mapping.approval;
@@ -255,14 +272,24 @@ export class TelegramOutbox {
       const intent = payload(job);
       if (intent && ['queued', 'sending', 'uncertain'].includes(job.state)) this.#lane(String(intent.params.chat_id));
     }
-    return Promise.all([...this.#lanes.values()].map(lane => lane.drain())).then(() => {});
+    const orders = [...this.#waiting.keys()];
+    return Promise.all([...this.#lanes.values()].map(lane => lane.drain())).then(() => {
+      // Source/admission drops do not call settled; revisit publishers retained
+      // across an earlier held drain. Later waiters may own a new lane outside
+      // this drain snapshot and must settle through their own delivery receipts.
+      for (const order of orders) this.#complete(order, true);
+    });
   }
 
   stop(): Promise<void> {
     return this.#stopping ??= (async () => {
       this.#abort.abort();
       try { await Promise.all([...this.#lanes.values()].map(lane => lane.stop())); }
-      finally { this.#memory?.close(); }
+      finally {
+        for (const waiting of this.#waiting.values()) waiting.reject(new Error('Telegram outbox stopped before delivery'));
+        this.#waiting.clear();
+        this.#memory?.close();
+      }
     })();
   }
 }

@@ -71,6 +71,16 @@ test('Remote control is under Features and linked from the overview and web Remo
   assert.match(remotes, /approve in the terminal or Neovim/);
 });
 
+test('remote guide distinguishes missed cards from outage replacements after 150 seconds', () => {
+  const guide = source(guidePath);
+  const catchup = guide.split('## Mute, outages and catch-up')[1]!.split('## Status and maintenance')[0]!;
+  assert.match(catchup, /After the gap line, missed open cards and pending outcome edits are delivered/);
+  assert.match(catchup, /outage lasts longer than 150 seconds, every open card is re-sent at the bottom/);
+  assert.match(catchup, /a button pressed then may have been lost; press again/);
+  assert.match(catchup, /old copy shows \*\*↓ Re-sent below\*\* without buttons/);
+  assert.match(catchup, /Outages of 150 seconds or less do not re-send cards already delivered/);
+});
+
 test('CLI reference lists exactly the remote and secret subcommands in usage', () => {
   const reference = commands(source('site/src/content/docs/docs/cli.md'));
   for (const [group, usage] of [['remote', REMOTE_USAGE], ['secret', SECRET_USAGE]] as const) {

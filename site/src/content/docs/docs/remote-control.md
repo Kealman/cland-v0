@@ -77,6 +77,8 @@ On recovery, the hub handles the input Telegram kept first, marking late text wi
 
 If General messages were missed during an outage, the chat receives one gap line, **N General messages missed since …**, instead of replaying those messages. There is no line when the count is zero. Unknown send outcomes are kept as uncertain rather than blindly retransmitted.
 
+After the gap line, missed open cards and pending outcome edits are delivered. If the outage lasts longer than 150 seconds, every open card is re-sent at the bottom with **a button pressed then may have been lost; press again**, and each old copy shows **↓ Re-sent below** without buttons. Outages of 150 seconds or less do not re-send cards already delivered.
+
 ## Status and maintenance
 
 | Command | What it does |

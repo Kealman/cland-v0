@@ -61,6 +61,349 @@ async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
   return { web, stop, owner, root, clock, fake, store, state, remote, hub, ui, coord, messages, ask, newRemote, requests };
 }
 
+test('Telegram sixty-second catch-up sends the gap before missed cards without resending open cards', async t => {
+  const f = await fixture(t);
+  const old = await f.ask('Existing open card');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'recorded sixty-second outage' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 60 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  const posted = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Missed open card', options: ['Keep'] });
+  assert.equal(posted.ok, true);
+  assert.equal((await f.ui.request({ type: 'topic.send', topic: 'general', text: 'Missed General' })).ok, true);
+  await f.clock.advance(250);
+  await until(() => f.state.outbox().some(job => job.source === posted.ask && job.state === 'queued'),
+    { timeoutMs: 1000, what: 'missed card durably queued' });
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(59_750);
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  await f.stop();
+  const native = await f.messages();
+  assert.equal(native.length, 3);
+  assert.equal(native[0]!.message_id, old.card.message_id);
+  assert.match(native[1]!.text!, /^1 General messages missed since /);
+  assert.match(native[2]!.text!, /Missed open card/);
+  assert.equal(f.state.messagesForAsk(old.id).length, 1);
+  assert.equal(f.state.messagesForAsk(posted.ask).length, 1);
+  assert.deepEqual(native[0]!.reply_markup, old.card.reply_markup);
+  assert.equal(f.state.outbox().filter(job => job.kind === 'card' && job.state === 'sent').length, 2);
+});
+
+test('Telegram four-minute catch-up folds the web answer then replaces every open card and retires old buttons', async t => {
+  const f = await fixture(t);
+  const web = await f.web.start(f.ui);
+  const closed = await f.ask('Answered during outage');
+  const open = await f.ask('Still open after outage');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'recorded four-minute outage' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 240 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  assert.equal((await web.request({ type: 'topic.answer', ask: closed.id, option: 2 })).ok, true);
+  const posted = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'New during outage', options: ['Keep'] });
+  assert.equal(posted.ok, true);
+  assert.equal((await f.ui.request({ type: 'topic.send', topic: 'general', text: 'Missed during long outage' })).ok, true);
+  await f.clock.advance(250);
+  await until(() => f.state.outbox().some(job => job.source === posted.ask && job.state === 'queued'),
+    { timeoutMs: 1000, what: 'new card durably queued during long outage' });
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(239_750);
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  const native = await f.messages();
+  assert.equal(f.state.messagesForAsk(closed.id).length, 1);
+  const outcome = native.find(row => row.message_id === closed.card.message_id)!;
+  assert.match(outcome.text!, /Two · human via web · \d\d:\d\d/);
+  assert.deepEqual(outcome.reply_markup, { inline_keyboard: [] });
+  assert.equal(f.state.messagesForAsk(open.id).length, 2, 'existing open card gets a replacement');
+  assert.equal(f.state.messagesForAsk(posted.ask).length, 2, 'missed card arrives before its replacement');
+  const cards = native.filter(row => !!f.state.message('101', String(row.message_id))?.ask && row.message_id !== closed.card.message_id);
+  assert.deepEqual(cards.map(row => /Still open/.test(row.text!) ? 'existing' : 'new'), ['existing', 'new', 'existing', 'new']);
+  for (const row of cards.slice(0, 2)) {
+    assert.match(row.text!, /↓ Re-sent below/);
+    assert.deepEqual(row.reply_markup, { inline_keyboard: [] });
+  }
+  for (const row of cards.slice(2)) {
+    assert.match(row.text!, /a button pressed then may have been lost; press again/);
+    assert.ok(row.reply_markup && 'inline_keyboard' in row.reply_markup && row.reply_markup.inline_keyboard.length > 0);
+  }
+  const requests = (await control<{ requests: Array<{ method: string; params: Record<string, unknown> }> }>(f.fake.url, 'state')).requests;
+  const gap = requests.findIndex(row => row.method === 'sendMessage' && String(row.params.text).includes('General messages missed since'));
+  const edit = requests.findIndex(row => row.method === 'editMessageText' && row.params.message_id === closed.card.message_id);
+  const newCard = requests.findIndex(row => row.method === 'sendMessage' && String(row.params.text).includes('New during outage'));
+  const replacement = requests.findIndex(row => row.method === 'sendMessage' && String(row.params.text).includes('a button pressed then'));
+  assert.ok(gap >= 0 && edit > gap && newCard > gap && replacement > edit && replacement > newCard);
+  const next = f.fake.waitForPoll();
+  await control(f.fake.url, 'release-polls', {});
+  await driveTelegram(f.clock, f.state, within(next, 1000));
+  const folded = until(async () => (await f.messages()).filter(row => f.state.message('101', String(row.message_id))?.ask === open.id)
+    .every(row => row.text?.includes('One · human via Telegram') && JSON.stringify(row.reply_markup) === '{"inline_keyboard":[]}'),
+  { timeoutMs: 1000, what: 'replacement answer folds retired and current ask copies' });
+  void folded.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: cards[2]!.message_id, row: 0, column: 0 });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, press.update_id + 1);
+  await driveTelegram(f.clock, f.state, folded);
+  await f.stop();
+  assert.equal(f.state.messagesForAsk(open.id).length, 2, 'healthy later polls never repeat replacement');
+});
+
+test('Telegram catch-up drops a pre-outage queued closed card and retries its failed outcome edit after the gap', async t => {
+  const f = await fixture(t);
+  const web = await f.web.start(f.ui);
+  const delivered = await f.ask('Failed outcome edit');
+  await control(f.fake.url, 'fault', { method: 'editMessageText', code: 429, retry_after: 2 });
+  const failed = until(() => f.state.outbox().some(job => job.kind === 'edit' && f.state.attempts(job.id).some(attempt => attempt.outcome === 'never-left')),
+    { timeoutMs: 1000, what: 'failed edit has durable positive non-delivery' });
+  void failed.catch(() => {});
+  assert.equal((await web.request({ type: 'topic.answer', ask: delivered.id, option: 1 })).ok, true);
+  await driveTelegram(f.clock, f.state, failed);
+  const queued = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Closed before delivery', options: ['Keep'] });
+  assert.equal(queued.ok, true);
+  await f.clock.advance(250);
+  await until(() => f.state.outbox().some(job => job.source === queued.ask && job.state === 'queued'),
+    { timeoutMs: 1000, what: 'card queued before poll outage' });
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'outage while failed edit and card wait' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 60 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  assert.equal((await web.request({ type: 'topic.answer', ask: queued.ask, option: 1 })).ok, true);
+  assert.equal((await f.ui.request({ type: 'topic.send', topic: 'general', text: 'Missed while edit waits' })).ok, true);
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(60_000);
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  await f.stop();
+  const native = await f.messages();
+  assert.match(native[0]!.text!, /One · human via web · \d\d:\d\d/);
+  assert.deepEqual(native[0]!.reply_markup, { inline_keyboard: [] });
+  const job = f.state.outbox().find(row => row.source === queued.ask && row.kind === 'card')!;
+  assert.equal(job.state, 'dropped');
+  assert.deepEqual(f.state.attempts(job.id), []);
+  assert.equal(f.state.messagesForAsk(queued.ask).length, 0);
+  assert.equal(native.length, 2);
+  const edit = f.state.outbox().find(row => row.kind === 'edit' && row.source === delivered.id)!;
+  assert.equal(edit.state, 'sent');
+  assert.deepEqual(f.state.attempts(edit.id).map(attempt => attempt.outcome), ['never-left', 'sent']);
+  const requests = (await control<{ requests: Array<{ method: string; params: Record<string, unknown> }> }>(f.fake.url, 'state')).requests;
+  const gap = requests.findIndex(row => row.method === 'sendMessage' && String(row.params.text).includes('General messages missed since'));
+  const edits = requests.flatMap((row, i) => row.method === 'editMessageText' ? [i] : []);
+  assert.equal(edits.length, 2);
+  assert.ok(edits[0]! < gap && edits[1]! > gap, 'failed outcome retry follows gap');
+});
+
+test('Telegram held publication settles its closed-source drop during recovery while the remote stays live', async t => {
+  const f = await fixture(t);
+  const captured = Promise.withResolvers<{ completion: Promise<void> }>();
+  const receive = f.remote.receive.bind(f.remote);
+  let id: string | undefined;
+  f.remote.receive = frame => {
+    const work = receive(frame);
+    if (frame.type === 'inbox' && frame.inbox.asks.some(ask => ask.id === id))
+      captured.resolve({ completion: Promise.resolve(work) });
+    return work;
+  };
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'held-publication outage persisted' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 60 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  const posted = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Held publication closes', options: ['Keep'] });
+  assert.equal(posted.ok, true);
+  id = posted.ask;
+  await f.clock.advance(250);
+  const { completion } = await within(captured.promise, 1000);
+  await until(() => f.state.outbox().some(job => job.source === id && job.state === 'queued'),
+    { timeoutMs: 1000, what: 'held publication has a durable queued card' });
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: id, option: 1 })).ok, true);
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(59_750);
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  const job = f.state.outbox().find(row => row.source === id && row.kind === 'card')!;
+  assert.equal(job.state, 'dropped');
+  assert.equal(f.state.get(`telegram.outbox.source-closed:${job.id}`), '1');
+  await within(completion, 1000, undefined, () => new Error('held publication did not settle its durable closed-source drop'));
+  assert.equal((await f.ui.request({ type: 'hub.status' })).ok, true);
+  assert.equal(f.remote.status().connected, true);
+  assert.deepEqual(f.state.attempts(job.id), []);
+  assert.equal(f.state.messagesForAsk(id).length, 0);
+  await f.stop();
+});
+
+test('Telegram outcome edit timing out during an outage publishes its fallback only after the recovery gap', async t => {
+  const f = await fixture(t);
+  const old = await f.ask('Outcome edit interrupted by outage');
+  await control(f.fake.url, 'fault', { method: 'editMessageText', code: 500, response: 'hold' });
+  const held = f.fake.waitForHeldRequest('editMessageText');
+  assert.equal((await f.ui.request({ type: 'topic.answer', ask: old.id, option: 1 })).ok, true);
+  const edit = await driveTelegram(f.clock, f.state, within(held, 1000));
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'poll outage with native edit in flight' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 60 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  assert.equal((await f.ui.request({ type: 'topic.send', topic: 'general', text: 'Missed while edit in flight' })).ok, true);
+  const closed = f.fake.waitForConnectionClose('editMessageText');
+  await f.clock.advance(35_000);
+  assert.equal((await within(closed, 1000)).id, edit.id);
+  await until(() => f.state.outbox().some(job => job.kind === 'message' && job.source === old.id && job.state === 'queued'),
+    { timeoutMs: 1000, what: 'timed-out edit has durable fallback while offline' });
+  assert.equal((await f.messages()).length, 1);
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(25_000);
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  await f.stop();
+  const native = await f.messages();
+  assert.equal(native.length, 3);
+  assert.match(native[1]!.text!, /^1 General messages missed since /);
+  assert.match(native[2]!.text!, /One · human via Neovim · \d\d:\d\d/);
+  assert.equal(native[2]!.reply_to_message!.message_id, old.card.message_id);
+  assert.deepEqual(native[2]!.reply_markup, { inline_keyboard: [] });
+  assert.equal(f.state.outbox().some(job => job.kind === 'message' && job.source === old.id && job.state === 'sent'), true);
+});
+
+for (const seconds of [150, 151]) test(`Telegram catch-up at ${seconds} seconds uses the first recovery exchange for the press lifetime boundary`, async t => {
+  const f = await fixture(t);
+  const old = await f.ask('Boundary card');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'boundary outage persisted' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: seconds });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  assert.equal((await f.ui.request({ type: 'topic.send', topic: 'general', text: 'Boundary gap' })).ok, true);
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(seconds * 1000);
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  await f.stop();
+  const native = await f.messages();
+  assert.equal(f.state.messagesForAsk(old.id).length, seconds === 150 ? 1 : 2);
+  if (seconds === 150) assert.deepEqual(native[0]!.reply_markup, old.card.reply_markup);
+  else {
+    assert.match(native[0]!.text!, /↓ Re-sent below/);
+    assert.deepEqual(native[0]!.reply_markup, { inline_keyboard: [] });
+    assert.match(native.at(-1)!.text!, /a button pressed then may have been lost; press again/);
+  }
+});
+
+test('Telegram plain component restart under 150 seconds sends no extra card or chat message', async t => {
+  const f = await fixture(t);
+  const old = await f.ask('Restart card');
+  await f.stop(); f.ui.close(); await f.coord.close();
+  assert.equal(f.state.get('telegram.outage'), null);
+  await f.clock.advance(60_000);
+  const next = f.newRemote();
+  const polling = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  const active = await driveTelegram(f.clock, f.state, within(polling, 1000));
+  const close = f.fake.waitForPollClose(active.id);
+  await hub.stop();
+  await within(close, 1000);
+  assert.deepEqual(await f.messages(), [old.card]);
+  assert.equal(f.state.messagesForAsk(old.id).length, 1);
+});
+
+test('Telegram uncertain outage replacement survives restart without retiring its old copy or blocking other cards', async t => {
+  const f = await fixture(t);
+  const first = await f.ask('Uncertain replacement');
+  const second = await f.ask('Later replacement');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'long outage before unknown replacement' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 240 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 503, response: 'hold-after-send' });
+  const held = f.fake.waitForHeldRequest('sendMessage');
+  await f.clock.advance(240_000);
+  const accepted = await within(held, 1000);
+  assert.equal((await f.messages()).length, 3);
+  const closing = f.fake.waitForConnectionClose('sendMessage');
+  await f.stop();
+  assert.equal((await within(closing, 1000)).id, accepted.id);
+  f.ui.close(); await f.coord.close();
+  assert.notEqual(f.state.get('telegram.outage'), null, 'interrupted recovery retains its durable outage');
+  assert.equal(f.state.outbox().filter(job => job.state === 'uncertain').length, 1);
+  const next = f.newRemote();
+  const polling = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
+  await driveTelegram(f.clock, f.state, within(polling, 1000));
+  await hub.stop();
+  const native = await f.messages();
+  assert.equal(native.length, 4, 'unknown replacement never retransmits, later open card still replaces');
+  assert.equal(f.state.messagesForAsk(first.id).length, 1);
+  assert.equal(f.state.messagesForAsk(second.id).length, 2);
+  assert.deepEqual(native[0]!.reply_markup, first.card.reply_markup);
+  assert.match(native[1]!.text!, /↓ Re-sent below/);
+  assert.deepEqual(native[1]!.reply_markup, { inline_keyboard: [] });
+  assert.equal(f.state.outbox().filter(job => job.state === 'uncertain').length, 1);
+  assert.equal(f.state.entries('telegram.catchup:').filter(row => row.key.includes(':incomplete:')).length, 1);
+});
+
+test('Telegram definite old-copy edit refusal retains the actual buttons and incomplete retirement after its fallback succeeds', async t => {
+  const f = await fixture(t);
+  const old = await f.ask('Old-copy edit refused');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'retirement-refusal outage persisted' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 240 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  const replaced = until(() => f.state.messagesForAsk(old.id).length === 2,
+    { timeoutMs: 1000, what: 'replacement mapped before definite old-copy edit refusal' });
+  void replaced.catch(() => {});
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(240_000);
+  await replaced;
+  await control(f.fake.url, 'fault', { method: 'editMessageText', code: 400 });
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  const native = await f.messages();
+  assert.equal(native.length, 3);
+  assert.deepEqual(native[0]!.reply_markup, old.card.reply_markup, 'a reply cannot remove the original buttons');
+  assert.match(native[1]!.text!, /a button pressed then may have been lost; press again/);
+  assert.match(native[2]!.text!, /↓ Re-sent below/);
+  assert.equal(native[2]!.reply_to_message!.message_id, old.card.message_id);
+  assert.equal(f.state.outbox().some(job => job.kind === 'message' && job.source === old.id && job.state === 'sent'), true);
+  assert.deepEqual(f.state.entries('telegram.catchup:').filter(row => row.key.includes(':incomplete:')).map(row => row.value),
+    ['old-copy edit refused; fallback delivered']);
+  const next = f.fake.waitForPoll();
+  await control(f.fake.url, 'release-polls', {});
+  await driveTelegram(f.clock, f.state, within(next, 1000));
+  await f.stop();
+  assert.equal((await f.messages()).length, 3);
+});
+
+test('Telegram uncertain old-copy marker fallback stays incomplete while recovery and later polls progress', async t => {
+  const f = await fixture(t);
+  const old = await f.ask('Uncertain old-copy marker');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'marker outage persisted' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 240 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  const replaced = until(() => f.state.messagesForAsk(old.id).length === 2,
+    { timeoutMs: 1000, what: 'replacement mapped before old-copy marker attempt' });
+  void replaced.catch(() => {});
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(240_000);
+  await replaced;
+  await control(f.fake.url, 'fault', { method: 'editMessageText', code: 400 });
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 503, response: 'accept-disconnect' });
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  assert.equal(f.state.get('telegram.outage'), null);
+  const incomplete = f.state.entries('telegram.catchup:').filter(row => row.key.includes(':incomplete:'));
+  assert.deepEqual(incomplete.map(row => row.value), ['unknown old-copy edit delivery']);
+  const next = f.fake.waitForPoll();
+  await control(f.fake.url, 'release-polls', {});
+  await driveTelegram(f.clock, f.state, within(next, 1000));
+  await f.stop(); f.ui.close(); await f.coord.close();
+  const remade = f.newRemote();
+  const polled = f.fake.waitForPoll();
+  const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [remade.gateway] } });
+  await driveTelegram(f.clock, f.state, within(polled, 1000));
+  await hub.stop();
+  assert.equal((await f.messages()).length, 3, 'unknown marker reply never retransmits');
+  assert.equal(f.state.outbox().filter(job => job.state === 'uncertain').length, 1);
+  assert.equal(f.state.messagesForAsk(old.id).length, 2);
+});
+
 test('Telegram one inbox publication sends three newest-first asks oldest first ahead of queued General', async t => {
   const f = await fixture(t, frame => frame.type === 'inbox');
   const ids: string[] = [];

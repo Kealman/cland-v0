@@ -141,6 +141,58 @@ export class TelegramCards {
     return rows.length;
   }
 
+  /** One durable replacement identity per outage, separate from live /inbox copies. */
+  async catchUp(inbox: Inbox, outage: string): Promise<void> {
+    const pairing = this.#store.pairing();
+    if (!pairing) return;
+    const key = `telegram.catchup:${pairing.chatId}:${outage}`;
+    if (this.#store.get(`${key}:done`)) return;
+    type Row = { ask?: InboxAsk; approval?: InboxApproval; copies: string[]; since: string; id: string };
+    const saved = this.#store.get(key);
+    const rows: Row[] = saved ? JSON.parse(saved) : [
+      ...inbox.asks.map(ask => ({ ask, id: ask.id, since: ask.since,
+        copies: this.#store.messagesForAsk(ask.id).filter(copy => copy.chatId === pairing.chatId).map(copy => copy.messageId) })),
+      ...inbox.approvals.filter(row => row.answerIn === 'hub' && row.state !== 'closed').map(approval => ({ approval, id: approval.id, since: approval.since,
+        copies: this.#store.messagesForApproval(approval.id).filter(copy => copy.chatId === pairing.chatId).map(copy => copy.messageId) })),
+    ];
+    rows.sort((a, b) => a.since.localeCompare(b.since) || a.id.localeCompare(b.id));
+    if (!saved) this.#store.set(key, JSON.stringify(rows));
+    for (const row of rows) {
+      const incomplete = `${key}:incomplete:${row.id}`;
+      if (this.#store.get(incomplete)) continue;
+      const closure = () => this.#store.get(`telegram.${row.ask ? 'card' : 'approval'}-closure:${row.id}`);
+      if (closure() || !(row.ask ? inbox.asks : inbox.approvals).some(current => current.id === row.id)) continue;
+      try {
+        const note = 'a button pressed then may have been lost; press again';
+        if (row.ask) await this.publish([row.ask], key, note);
+        else await this.publishApprovals([row.approval!], key, note);
+      } catch (error) {
+        if (error instanceof TelegramError && [401, 403, 409].includes(error.code)) throw error;
+        if (!this.#store.outbox().some(job => job.state === 'uncertain'
+          && (job.payload as { key?: string }).key === `${key}:telegram.${row.ask ? 'card' : 'approval'}:${pairing.chatId}:${row.id}`)) throw error;
+        // Unknown sends stay fenced and cannot justify retiring the usable copy.
+        this.#store.set(incomplete, 'unknown replacement delivery');
+        return; // Let a fresh successful poll reopen the transport before later cards.
+      }
+      if (closure()) continue;
+      const card = row.ask ? askCard(row.ask) : approvalCard(row.approval!);
+      try {
+        await Promise.all(row.copies.map(message => this.#outbox.edit({ chat_id: pairing.chatId, message_id: Number(message),
+          ...telegramCard(card, '↓ Re-sent below'), reply_markup: { inline_keyboard: [] } },
+        { key: `${key}:old:${message}`, source: row.id, topic: row.ask?.topic.id ?? row.approval?.topic ?? 'general' })));
+        if (row.copies.some(message => !this.#outbox.editApplied(`${key}:old:${message}`)))
+          this.#store.set(incomplete, 'old-copy edit refused; fallback delivered');
+      } catch (error) {
+        if (error instanceof TelegramError && [401, 403, 409].includes(error.code)) throw error;
+        if (!this.#store.outbox().some(job => job.state === 'uncertain'
+          && row.copies.some(message => (job.payload as { key?: string }).key === `${key}:old:${message}`))) throw error;
+        this.#store.set(incomplete, 'unknown old-copy edit delivery');
+        return;
+      }
+    }
+    this.#store.set(`${key}:done`, '1');
+  }
+
   async approvalOutcome(id: string, outcome: import('../protocol.ts').ApprovalOutcome, retry?: { chat: string; message: string; press: string }): Promise<void> {
     const pairing = this.#store.pairing();
     const model = this.#store.get(`telegram.approval-model:${id}`);
@@ -152,7 +204,7 @@ export class TelegramCards {
       { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : ''}`, source: id, topic: copy.topic, approval: id })));
   }
 
-  async publishApprovals(approvals: InboxApproval[], resend?: string): Promise<void> {
+  async publishApprovals(approvals: InboxApproval[], resend?: string, note?: string): Promise<void> {
     const pairing = this.#store.pairing();
     if (!pairing) return;
     await Promise.all(approvals.filter(approval => approval.answerIn === 'hub' && approval.state !== 'closed').map(approval => {
@@ -169,7 +221,7 @@ export class TelegramCards {
         this.#store.set(key, JSON.stringify(rows));
         return rows;
       });
-      return this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(card),
+      return this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(card, note),
         reply_markup: { inline_keyboard: keyboard }, link_preview_options: { is_disabled: true } },
       { key: resend ? `${resend}:${key}` : key, kind: 'card', source: approval.id, topic: approval.topic ?? 'general', approval: approval.id }).then(async () => {
         const closed = this.#store.get(`telegram.approval-closure:${approval.id}`);
@@ -207,7 +259,7 @@ export class TelegramCards {
       { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : ''}`, source: id, topic: copy.topic, ask: id })));
   }
 
-  async publish(asks: InboxAsk[], resend?: string): Promise<void> {
+  async publish(asks: InboxAsk[], resend?: string, note?: string): Promise<void> {
     const pairing = this.#store.pairing();
     if (!pairing) return;
     await Promise.all(asks.map(ask => {
@@ -224,7 +276,7 @@ export class TelegramCards {
         this.#store.set(key, JSON.stringify(rows));
         return rows;
       });
-      return this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(card),
+      return this.#outbox.send({ chat_id: pairing.chatId, ...telegramCard(card, note),
         reply_markup: { inline_keyboard: keyboard }, link_preview_options: { is_disabled: true } },
       { key: resend ? `${resend}:${key}` : key, kind: 'card', source: ask.id, topic: ask.topic.id, ask: ask.id }).then(async () => {
         const closed = this.#store.get(`telegram.card-closure:${ask.id}`);

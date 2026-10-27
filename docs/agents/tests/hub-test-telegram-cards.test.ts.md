@@ -1,5 +1,72 @@
 # hub/test/telegram-cards.test.ts
 
+T-1360 adds sealed T2 catch-up controls on the same production-frame/fake seam:
+
+- `Telegram sixty-second catch-up sends the gap before missed cards without resending open cards`
+  retains the queued card, native gap/card order, durable maps and unchanged
+  original buttons. Before the gate, the second native message was the card.
+- `Telegram four-minute catch-up folds the web answer then replaces every open card and retires old buttons`
+  answers through the authenticated web socket during an actual fake poll outage,
+  posts another ask, then checks the gap before the outcome/new card and both
+  replacements after them. Keep each note, retired keyboard, age order and
+  native map. A press on the replacement must fold both old and current copies.
+  Its original red receipt was one existing map instead of two.
+- `Telegram catch-up drops a pre-outage queued closed card and retries its failed outcome edit after the gap`
+  retains the edit's failed 429 attempt before the poll outage, a separate
+  unattempted queued card answered in the web during it, the drop/no-map receipt,
+  and the edit's successful retry after the gap. Disabling the gate fails that
+  final ordering assertion. The edit failure is a positive non-delivery receipt;
+  it is not an uncertain send retried as if it never left.
+- `Telegram outcome edit timing out during an outage publishes its fallback only after the recovery gap`
+  holds the real native edit, starts a poll outage, advances its independent
+  35-second HTTP deadline and observes that exact connection close. Its queued
+  fallback waits through the outage; retain the gap before the outcome reply,
+  original reply target, empty keyboard and durable fallback send. This proves
+  an edit failing during the outage, separately from the earlier 429 retry.
+- Both generated `Telegram catch-up at … seconds uses the first recovery exchange for the press lifetime boundary`
+  cases prove no replacement at exactly 150 seconds and replacement at 151,
+  excluding subsequent queue pacing from the outage measurement.
+- `Telegram plain component restart under 150 seconds sends no extra card or chat message`
+  retains one original card/map and its native poll-close receipt after restart.
+- `Telegram uncertain outage replacement survives restart without retiring its old copy or blocking other cards`
+  holds the actual accepted replacement response, joins its native connection
+  close, restarts, then checks one uncertain send, one explicit incomplete row,
+  original usable buttons and the later card's completed replacement. Before
+  the shutdown fix, the interrupted recovery cleared its outage record.
+- `Telegram uncertain old-copy marker fallback stays incomplete while recovery and later polls progress`
+  maps a replacement, refuses the old-copy edit, then accepts/disconnects its
+  fallback. Recovery and later polls complete with the explicit incomplete
+  marker and one uncertain job. Restart sends nothing again. Removing that
+  incomplete handling reaches the bounded native recovery deadline.
+
+Automatic card/edit waiters remain pending during retained-input handling,
+including outcome fallback jobs; stop rejects them after joining their drains.
+Retain the existing late explicit reply regression: a successful answer's
+deferred outcome must not disable feedback or block input confirmation.
+Approval replacements and all-copy closure are covered in the approval guide.
+These controls use injected time, no load probe, real platform, browser or OS
+crash. Local receipts name the dirty tree and macOS; Linux duration, tier and
+gate evidence comes from queued verification.
+
+Source-1 M1/M2 corrections keep the original criterion assertions:
+
+- `Telegram held publication settles its closed-source drop during recovery while the remote stays live`
+  captures the actual `Remote.receive` completion before publishing a held ask.
+  Answer it during the outage, observe its durable drop/closed-source flag,
+  then bound that original completion separately while the hub stays serving
+  and the remote connected. Retain no attempts and no native map. Its red
+  receipt was `held publication did not settle its durable closed-source drop`;
+  shutdown rejection is not its completion boundary.
+- `Telegram definite old-copy edit refusal retains the actual buttons and incomplete retirement after its fallback succeeds`
+  maps the replacement first, refuses the native old-copy edit with a definite
+  400 and lets its fallback reply succeed. Inspect the original native keyboard,
+  the replacement note, successful marker reply/target and durable fallback
+  settlement before requiring `old-copy edit refused; fallback delivered`.
+  Previously that incomplete list was empty. The additive `editApplied(key)`
+  accessor distinguishes a native edit receipt from fallback completion while
+  preserving the existing `edit(): Promise<void>` callers. Unknown fallback and
+  restart controls retain their fences and final assertions.
+
 T-1359 adds four sealed T2 frame/native controls:
 
 - `Telegram one inbox publication sends three newest-first asks oldest first ahead of queued General`

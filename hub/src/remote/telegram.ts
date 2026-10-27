@@ -62,10 +62,12 @@ export class TelegramRemote implements Remote {
         else if (!this.#abort.signal.aborted) this.#failed(error instanceof TelegramError ? error.description : 'send failed');
       },
     });
+    this.#outbox.holdCards(!!this.#offline);
   }
 
   #failed(reason: string): void {
     this.#outbox.setAvailable(false);
+    this.#outbox.holdCards(true);
     this.#recoveredAt = undefined;
     this.#clock.clearTimeout(this.#offlineTimer);
     if (this.#offline) { this.#armOffline(); return; }
@@ -101,6 +103,12 @@ export class TelegramRemote implements Remote {
       this.#outbox.send({ chat_id: chat, text, disable_notification: true, link_preview_options: { is_disabled: true } }, { key }))) return false;
     const outage = this.#offline;
     if (outage) {
+      this.#outbox.holdCards(false);
+      await this.#outbox.resume();
+      if (!this.#recoveredAt || this.#abort.signal.aborted) return false; // Recovery was interrupted.
+      if (Date.parse(this.#recoveredAt) - Date.parse(outage.since) > 150_000)
+        await this.#cards?.catchUp(await this.#request<Inbox>('inbox.list'), outage.since);
+      if (!this.#recoveredAt || this.#abort.signal.aborted) return false;
       this.#clock.clearTimeout(this.#offlineTimer);
       this.#offline = undefined;
       this.#saveOutage();

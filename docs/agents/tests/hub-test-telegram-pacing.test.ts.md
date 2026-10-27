@@ -118,3 +118,15 @@ source closure from admission loss. A keyed card queued behind pacing is dropped
 after unpairing, but its completion retains the missing-delivery rejection.
 Only an explicit closed-source receipt permits a keyed card to complete without
 an accepted send.
+
+T-1360 M3 retains all five original 429/reopen assertions. A resume call captures
+its current lane drains and publication waiters together. A later send can own
+a new chat lane outside that snapshot and must complete from its own receipt,
+including after the bot-wide hold. Reconciliation must not judge that new work
+terminal when only the older lanes have drained. The four generated
+`queued project content is fenced after … during 429 …` cases and
+`reopen retains the remaining bot-wide 429 deadline for every chat` reproduced
+`Telegram send has no delivery receipt` through resume's continuation before
+capturing the original waiter orders. Keep the card guide's live held-publication
+drop control as well: limiting reconciliation must still settle that old waiter
+without waiting for stop.

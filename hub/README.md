@@ -2782,6 +2782,34 @@ names these persistence receipts.
 Queue and feedback recovery joins apply to an active outage. An ordinary
 successful poll confirms a command's own durable send without waiting for later
 queued General work; the per-chat drain continues independently.
+With a paired chat, automatic cards and outcome edits wait until retained input
+and the gap have settled; explicit phone commands and callback replies can
+complete during that input phase. The queue then delivers missed open cards
+and pending outcome edits, dropping never-left cards whose sources closed.
+If the first recovered exchange is more than 150 seconds after the durable
+outage start, every still-open ask and hub approval gets a new copy, oldest
+first, with `a button pressed then may have been lost; press again`. After that
+copy has a durable native map, each earlier mapped copy is edited to
+`↓ Re-sent below` without buttons. Only the native edit's receipt establishes
+retirement: a refused edit followed by a delivered fallback reply leaves the
+original buttons intact and records incomplete retirement. Later answers still
+fold every mapped copy. This is separate from `/inbox`, whose earlier copies retain their buttons; notices do
+not acquire outage replacement copies.
+
+Replacement plans, captured old-copy ids and send keys persist per chat and
+outage. An interrupted recovery keeps its outage record. Unknown replacement
+sends stay fenced and are recorded incomplete, keeping the old usable copy;
+an unknown old-copy edit/fallback is also recorded incomplete. Neither is
+retransmitted under a fresh key, and a successful poll lets other cards and
+input progress. A plain restart under 150 seconds sends no replacement card.
+The [card guide](../docs/agents/tests/hub-test-telegram-cards.test.ts.md) names
+the frame/fake outage, boundary and restart controls. These internal recovery
+steps add no command, setting, frame field or role permission.
+Resuming a held drain also reconciles its earlier publication waiters: a
+durable closed-source drop completes the original publication while the remote
+stays live; an unknown send remains incomplete. The waiters and lane drains are
+captured together. Later sends on new chat lanes keep their own completion
+receipts and cannot be judged by that earlier drain snapshot.
 Catch-up completes after retained updates are durably handled and confirmed,
 never at retry launch. See the
 [catch-up test guide](../docs/agents/tests/hub-test-telegram-catchup.test.ts.md).

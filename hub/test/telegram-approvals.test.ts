@@ -91,6 +91,36 @@ async function fixture(t: TestContext, scripted?: 'codex' | 'opencode', drop?: (
 
 type Keyboard = { inline_keyboard: Array<Array<{ text: string; callback_data: string; style?: string }>> };
 
+test('Telegram long outage replaces an approval with styled buttons and its later answer folds both copies', async t => {
+  const f = await fixture(t);
+  const { card, record } = await f.approval('codex', 'echo outage approval');
+  const offline = until(() => !!f.state.get('telegram.outage'), { timeoutMs: 1000, what: 'approval outage persisted' });
+  void offline.catch(() => {});
+  await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 240 });
+  await control(f.fake.url, 'release-polls', {});
+  await offline;
+  const caught = f.fake.waitForPoll();
+  await f.clock.advance(240_000);
+  await driveTelegram(f.clock, f.state, within(caught, 1000));
+  const native = await f.messages();
+  assert.equal(native.length, 2);
+  assert.equal(f.state.messagesForApproval(record.id).length, 2);
+  assert.match(native[0]!.text!, /↓ Re-sent below/);
+  assert.deepEqual(native[0]!.reply_markup, { inline_keyboard: [] });
+  assert.match(native[1]!.text!, /a button pressed then may have been lost; press again/);
+  assert.deepEqual(native[1]!.reply_markup, card.reply_markup);
+  const folded = until(async () => (await f.messages()).every(row => row.text?.includes('Approved once · human via Telegram')
+    && JSON.stringify(row.reply_markup) === '{"inline_keyboard":[]}'),
+  { timeoutMs: 1000, what: 'outage replacement and old approval share the durable answer outcome' });
+  void folded.catch(() => {});
+  const confirmed = f.fake.waitForPoll();
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: native[1]!.message_id, row: 0, column: 0 });
+  assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, press.update_id + 1);
+  await driveTelegram(f.clock, f.state, folded);
+  await f.hub.stop();
+  assert.equal(f.store.inboxOutcome('approval', record.id)!.via, 'telegram');
+});
+
 test('Telegram inbox resends a live approval with its styled choices and folds both copies from the new copy', async t => {
   const f = await fixture(t);
   const { card, record } = await f.approval('codex', 'echo approve copies');

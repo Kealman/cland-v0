@@ -145,6 +145,23 @@ For native Telegram `/start`, blocked membership and disabled bot-link facts, us
 first; fatal membership records its sanitized cause/General notice before
 consuming the update, so restart does not replay a kick.
 
+For outage card replacement, use the frame/fake controls in
+`docs/agents/tests/hub-test-telegram-cards.test.ts.md` and its approval counterpart.
+Hold automatic cards, edits and their fallbacks until retained input and the gap
+settle; keep explicit commands, callbacks and feedback progressing. Measure the
+strictly-over-150-second boundary from the durable outage start to the first
+recovered exchange, excluding queue pacing. Persist replacement identities and
+old-copy ids before sends; retire old buttons only after the new native map.
+Require the native edit receipt as well: a delivered fallback reply leaves the
+original buttons intact and records incomplete retirement. Reconcile held
+publication waiters on recovery's durable closed-source drops while still live.
+Capture those waiters with the resumed lane snapshot; later sends on new lanes
+must settle from their own receipts. Retain the pacing/reopen consumer controls.
+Keep later all-copy outcomes and `/inbox`'s original live buttons. Unknown sends
+and old-copy repairs stay fenced/incomplete while later recovery progresses;
+an interrupted stop must retain the outage. Existing role clauses cover this
+flow; add no command, frame field or permission line.
+
 For Telegram ask cards, use the frame/fake seam in
 `docs/agents/tests/hub-test-telegram-cards.test.ts.md`. Keep the card model
 messenger-neutral and the Telegram renderer shared by sends and outcome edits.

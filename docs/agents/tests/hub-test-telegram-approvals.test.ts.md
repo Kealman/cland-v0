@@ -103,8 +103,16 @@ Original red receipts: the known closed approval emitted inbox.list; the foreign
 approval received zero callbacks; the late approval reply sent an invalid
 approval id as topic.send replyTo and failed `late approval input confirmation missing`;
 the unknown note failed `approval reply note blocked input confirmation`.
-The existing eleven approval cases and all 46 ask-card cases remain unchanged.
+The existing approval and ask-card criterion assertions remain unchanged.
 Component restarts are not OS-crash claims. No new wire field, database column,
 role permission, browser or real platform is involved; the native incomplete
 note key is additive and the keyed outbox fence is unchanged. Linux durations
 and per-case load repetition receipts come from configured verification.
+
+T-1360 adds `Telegram long outage replaces an approval with styled buttons and its later answer folds both copies`
+at this same sealed T2 frame/fake seam. An actual 503 poll outage lasts four
+injected-clock minutes. Retain the old copy's re-sent marker and empty keyboard,
+the replacement's press-again note, original styled choices and durable approval
+map. Press the new copy, observe its confirmed offset, and require the same
+Telegram outcome without buttons on both copies. No real harness, messenger,
+browser or native process restart is claimed by this control.
