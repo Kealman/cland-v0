@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:12:00.125Z
-updated: 2026-10-25T14:12:34.202Z
+updated: 2026-10-27T05:47:05.526Z
 ---
 
 ## Goal
@@ -78,3 +78,59 @@ In an initialised scratch project with made-up tokens, QA runs `cland setup`, de
 - Research: `docs/research/discord-remote.md` on `research/discord-remote` (1f59ae25), the application, the invite and the toggles; `docs/research/telegram-remote.md` on `research/telegram-remote` (2a81ecc9), BotFather.
 - Code: `hub/src/setup/runner.ts`, `hub/src/setup/prompter.ts`, `hub/src/cli/setup.ts`, `hub/src/cli/doctor.ts`, `hub/src/doctor/web.ts`, `web/src/sessions/`, `web/src/InboxArea.tsx`, `nvim/lua/cland/sessions.lua`, `nvim/lua/cland/inbox.lua`, `.agents/skills/onboarding/TOUR.md`, `hub/test/skills-onboarding.test.ts`, `site/src/content/docs/docs/web-and-phone.mdx`.
 - GLOSSARY: Setup (amended for v0.3), Remote, Pairing, Tour.
+
+## Plan
+
+```yaml
+stages:
+  - name: doctor, Remotes row, pairing rows and Telegram setup
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1361
+        - T-1362
+        - T-1363
+      - - T-1364
+      - - T-1365
+        - T-1366
+  - name: tour and documentation
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1367
+      - - T-1368
+  - name: speech key and Telegram marks
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1369
+      - - T-1370
+  - name: Discord
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1371
+      - - T-1372
+```
+
+## Comments
+
+### coord · 2026-10-27T05:47:05.526Z
+
+Plan and decisions (coord, 2026-10-27 06:0xZ). Tickets T-1361–T-1372 in four stages:
+1. Doctor, the Remotes row, pairing rows and Telegram setup. Runs now; T-1362 and T-1368 also wait on T-1348.
+2. Tour and documentation.
+3. Speech key and the Telegram marks. Waits on E-1311.
+4. Discord. Waits on E-1312.
+Decisions on the open questions in the draft:
+1. Without a terminal, a remote nobody has touched prints `skip` with its setup commands, so setup without a terminal doesn't fail for people who don't want remotes. A half-configured remote prints `open` with the commands still missing. T-1365 C3 and T-1371 C4 are worded this way.
+2. A decline isn't remembered: every terminal run offers the remote again, as the DoD demo expects.
+3. Doctor reports a stopped remote as `warn`, not `fail`.
+4. Pairing rows go in the inbox's "asks and approvals" section.
+5. The tour stage may tell the human to type a token at the hidden prompt in their own terminal. This is a narrow exception to the onboarding rule that the human runs no commands.
+6. Doctor's speech lines stay in E-1311, and setup reuses E-1311's data-use text.
+Crew note: E-1313 items edit setup, doctor, the workbench panels and the inbox, so they overlap little with E-1310's telegram.ts. No E-1313 item enqueues while the E-1309 stage covers run.
