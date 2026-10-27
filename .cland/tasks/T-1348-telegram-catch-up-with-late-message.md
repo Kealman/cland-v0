@@ -2,8 +2,8 @@
 id: T-1348
 kind: task
 title: Telegram catch-up with late-message times, the gap line and the offline and recovery lines
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1101
 branch: t/T-1348-telegram-catch-up-with-late-message
 created: 2026-10-26T19:09:07.793Z
-updated: 2026-10-27T06:01:30.662Z
+updated: 2026-10-27T06:46:22.713Z
+closed: 2026-10-27T06:46:22.713Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Catch-up from what Telegram kept, each late inbound message marked ("written on 
 
 - [x] C1. A 10-second fake outage with three General posts ends in one gap line "3 General messages missed since …", and a late inbound message is marked with its written time (test).
   - done: impl-1348 · 2026-10-27T04:55:32.376Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1348-evidence-1 · 2026-10-27T06:40:34.335Z · commit 071e1be6dfc813b9cbbb3bf2a68ae7c719904966
 - [x] C2. A four-minute outage under an injected clock also writes "Telegram remote offline since …: <reason>" to General and one recovery line (test).
   - done: impl-1348 · 2026-10-27T04:55:32.532Z
+  - verified: rev-26 [reviewer] · run rev-20261027-1348-evidence-1 · 2026-10-27T06:40:34.335Z · commit 071e1be6dfc813b9cbbb3bf2a68ae7c719904966
 
 ## Comments
 
@@ -119,3 +122,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Regression correction source clear, A-12605 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12605-t-1348-source-5-regression-correction-clearance-at-071e1be6d.md. Active-outage guard removes healthy per-batch drain barrier, preserving normal gap reconciliation and actual-outage queue/feedback joins. Command and catch-up tests unchanged; original deadline failure and isolated red/green checked. A-12601 plus A-12603 retain all requested serial local macOS checks, 68 targeted passes including inbound8 and native polling-restart2; not Linux/configured proof. Prior46d04031/A-12598 remains failed partial evidence, C1/C2 unverified. Keep corrected head stable for Coordinator's next exact-head all and later evidence review; no item verification.
+
+### rev-26 · 2026-10-27T06:40:34.335Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261027-1348-evidence-1
+commit: 071e1be6dfc813b9cbbb3bf2a68ae7c719904966
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1/C2 verified at unchanged source-5 head. A-12622 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-12622-t-1348-final-full-run-evidence-clearance-at-071e1be6d.md. Original Coordinator full31522e30/A-12618 checked:4988 ordinary passes+8 explained prerequisite skips, no failures/cancellations; no load-gate repetitions. C1 .124074702s, C2 .410157422s, prior command regression .105427213s pass; all12 new gap/catch-up identities and native restart controls pass. T0/T1/T2/T3/Web complete, T4 outside occasion. Linux droplet/pinned Headless Shell1248; host typecheck not remotely repeated; budgets/lint report-only and timing limits retained. Old46d04031/A-12598 remains failed partial evidence. No findings; Coordinator owns enqueue/landing.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-27T06:46:22.713Z
+
+Merged 3b26f29374c393030f47362310f2d15a366ef0e5 onto dev.
