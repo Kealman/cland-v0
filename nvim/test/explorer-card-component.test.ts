@@ -99,7 +99,7 @@ test('compact latest verdicts retain historical criterion review rounds through 
     ...i,verdicts,criteria:[{id:'C1',text:'Keep the original review evidence.',marks:[{kind:'verified',by:'rev',run:'round-1',at}]}],
   }:i)});
   await c.input('<Esc><Space>e'); await c.input('zR');
-  await c.waitScreen(s=>s.includes('Written summary task'),'task row with compact verdict');
+  await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'task row with compact verdict');
   await select(c,'T-10'); await shown(c,'T-10','Keep the original review evidence.');
   assert.deepEqual(await c.lua("local v=require('cland.state').item('T-10').verdicts; return {#v,v[1].round}"),[1,3]);
   const text=await card(c);
@@ -131,7 +131,33 @@ test('epic cards show stage progress, approval, subtree verdict and latest activ
   assert.ok(!text.includes('More details.'));
   const views=(await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-'));
   assert.deepEqual(views,[],'a container never fetches detail for an unselected task');
-  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','The card passes.');
+  // Hold the actual zR action until a screen observation sees the folded tree.
+  // This makes selecting on the input acknowledgement fail deterministically.
+  const screen=c.screen;
+  let heldExpansionObserved=false;
+  await c.lua(`
+    local e=require('cland.explorer')
+    local fold_all=e.fold_all
+    e.fold_all=function(open)
+      e.fold_all=fold_all
+      _G.cland_test_release_expansion=function()
+        _G.cland_test_release_expansion=nil
+        fold_all(open)
+      end
+    end
+  `);
+  c.screen=async()=> {
+    const rows=await screen();
+    if(await c.lua<boolean>('return _G.cland_test_release_expansion~=nil')) {
+      assert.ok(!rows.some(row=>/^\s*[◉○◐●] T-10 Written summary task/.test(row)),'target row is still folded while expansion is held');
+      heldExpansionObserved=true;
+      await c.lua('_G.cland_test_release_expansion()');
+      c.screen=screen;
+    }
+    return rows;
+  };
+  await c.input('zR'); await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'expanded task row'); await select(c,'T-10'); await shown(c,'T-10','The card passes.');
+  assert.ok(heldExpansionObserved,'the row wait observed the held expansion before selecting');
   await select(c,'E-2'); await shown(c,'E-2','The card passes.');
   assert.deepEqual((await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-')).map(r=>r.item),['T-10'],'the selected task supplies the cached descendant reason');
   const closed={...scenario.items.find(i=>i.id==='E-2'),state:'closed',updated:newer,
