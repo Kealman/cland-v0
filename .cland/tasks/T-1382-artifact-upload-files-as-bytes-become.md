@@ -3,17 +3,17 @@ id: T-1382
 kind: task
 title: "artifact.upload: files as bytes become the human's artifacts on one new message, without a ▣ post, under the [artifacts] limit"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1311
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1126
+branch: t/T-1382-artifact-upload-files-as-bytes-become
 created: 2026-10-27T23:37:26.682Z
-updated: 2026-10-27T23:37:38.368Z
+updated: 2026-10-27T23:39:04.803Z
 ---
 
 ## Summary
@@ -56,3 +56,9 @@ Neovim, the web client, skills and QA briefs gain no call in this ticket. Sessio
 ## Notes
 
 Shared files: hub/src/protocol.ts, shared/wire/index.ts, hub/src/hub/dispatch.ts, hub/src/hub/artifacts.ts, hub/src/hub/store.ts, hub/src/remote/authority.ts, hub/src/hub/web-authority.ts, hub/src/init/config.ts
+
+## Comments
+
+### impl-1382 · 2026-10-27T23:39:04.803Z
+
+Rule 20 consumer inventory: searched hub/, shared/, web/, nvim/, .agents/, qa/, docs/ for artifact.create, authority tables and artifacts configuration (146 files). Changed consumers: protocol ClientRequest/guard, shared/wire ClientRequest, dispatcher Conversation/remote native send, gateway authority, exhaustive web authority, audit summary, init config type/default/template/parser (config set derives keys and update renders parsed config), gateway/web authority tests and init template assertion. Existing artifact readers/store records and workbench/nvim/skills/QA clients retain the same Artifact and TopicMessage shapes and do not call the new frame; old frames remain accepted. Existing RemoteSend callbacks retain optional-argument compatibility. No persisted schema migration. New frame/fake tests retain previous topic.send and forged-ingress controls. Native bytes travel as an optional Buffer array alongside the frame.

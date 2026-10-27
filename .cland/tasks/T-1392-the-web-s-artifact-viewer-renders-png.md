@@ -3,17 +3,17 @@ id: T-1392
 kind: task
 title: The web's artifact viewer renders PNG, JPEG, GIF and WebP inline under a size cap
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1311
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1128
+branch: t/T-1392-the-web-s-artifact-viewer-renders-png
 created: 2026-10-27T23:37:28.882Z
-updated: 2026-10-27T23:37:39.792Z
+updated: 2026-10-27T23:38:24.987Z
 ---
 
 ## Summary

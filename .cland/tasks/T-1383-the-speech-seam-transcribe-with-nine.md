@@ -3,17 +3,17 @@ id: T-1383
 kind: task
 title: "The speech seam: transcribe with nine failure kinds, retries within one 90-second deadline, and the ElevenLabs provider against a fake"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1311
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1127
+branch: t/T-1383-the-speech-seam-transcribe-with-nine
 created: 2026-10-27T23:37:27.091Z
-updated: 2026-10-27T23:37:39.043Z
+updated: 2026-10-27T23:38:33.680Z
 ---
 
 ## Summary
@@ -59,3 +59,9 @@ Spec §3.6 (the speech seam, providers, bytes untouched); research Q-1289 §7 an
 ## Notes
 
 Shared files: hub/src/speech/ (new), hub/src/remote/redact.ts, hub/test/fakes/speech/ (new)
+
+## Comments
+
+### impl-1383 · 2026-10-27T23:38:33.680Z
+
+Consumer inventory (rule 20), before implementation: rg speech/Speech/ELEVENLABS/XAI_API_KEY across hub/src, shared, shipped .agents/skills, qa, hub/test, nvim/test and web/test finds no existing speech provider/transcribe contract or wire consumer. New seam only: hub/src/speech and hub/test/speech.test.ts; T-1384 and T-1388 will consume it later. Existing shared redactor RemoteRedactor/register callable contract stays unchanged; existing consumers remote gateway, Telegram, secrets validation and tests remain unaffected. Existing config/secrets/CLI readers continue to expose settings only; this item does not activate a provider or change any frame/list/schema/permissions. Test seam: production provider + loopback fake, fake clock for deadline/retry receipts. No real credentials or platforms.

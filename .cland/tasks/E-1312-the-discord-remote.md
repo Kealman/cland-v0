@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.875Z
-updated: 2026-10-25T14:12:34.081Z
+updated: 2026-10-27T23:39:09.819Z
 ---
 
 ## Goal
@@ -82,3 +82,65 @@ In a scratch project with made-up tokens and Telegram already paired, QA enables
 - Prototype, on `prototype/telegram-remote` at 33bf2b2e: `hub/src/remote/discord/README.md` (what it settled against real Discord), `discord-remote.ts`, `discord-socket.ts`, `discord-rest.ts`, `discord-markdown.ts`, `discord-types.ts`, `fake-discord.ts` (a fake with a control API that plays the human) and `probe.ts`, all under `hub/src/remote/discord/`; `hub/src/remote/replies.ts`.
 - Research: `docs/research/discord-remote.md` on `research/discord-remote` (1f59ae25), 36 rules.
 - GLOSSARY: Remote, Remote card and Gap line (added for v0.3).
+
+## Plan
+
+```yaml
+stages:
+  - name: socket, pairing and one message
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1396
+        - T-1398
+        - T-1399
+        - T-1400
+      - - T-1397
+  - name: the budget, close codes, REST pacing, the mirror and the commands
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1401
+        - T-1402
+        - T-1403
+      - - T-1404
+      - - T-1405
+      - - T-1406
+      - - T-1407
+  - name: cards and modals
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1408
+        - T-1409
+        - T-1410
+        - T-1411
+  - name: resume and history catch-up
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1412
+        - T-1413
+  - name: attachments and voice
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1414
+      - - T-1415
+```
+
+## Comments
+
+### coord · 2026-10-27T23:39:09.819Z
+
+Plan and decisions (coord, 2026-10-28 00:1xZ). Tickets T-1396–T-1415 from the draft A-12924 (coord's sub-agent, against dev c675faa3). Five stages: the draft's stages 2 and 3 are merged (independent lanes), saving one Linux+macOS cover pair; the epic's QA demo runs on dev after the last stage.
+- Transport: hand-written on the pinned `ws` 8.21.3 (already a hub runtime dependency, named in spec §3.8) and fetch; no new dependency.
+- T-1397 is a behaviour-preserving prefactor that moves the gap line, the General mirror filter, phone replies, the mute receipt and the card order out of telegram*.ts into neutral modules. It lands before E-1311's stage-2 Telegram lanes (T-1385, T-1387) start.
+- Shared contracts (rule 20): T-1398 (messenger factory, cland remote help and status), T-1399 (Remote gains an optional pairingApproved hook), T-1401 (RemoteStopCause gains interactions-endpoint, gateway-refused, identify-budget; T-1372 reads them).
+- Open, awaiting the human (ask 62b8d32f): Discord attachments and voice (T-1414, T-1415) stay here as the last stage, blocked by E-1311, or move to 0.3.x. Both tickets are held until the answer.
+- Downstream: T-1371 (setup) needs T-1396 and T-1398; T-1372 (doctor, Remotes row) needs T-1401 and T-1402; both stay blocked by E-1312 as filed.

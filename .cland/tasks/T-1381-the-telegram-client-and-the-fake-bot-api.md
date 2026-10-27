@@ -3,17 +3,17 @@ id: T-1381
 kind: task
 title: "The Telegram client and the fake Bot API learn files: getFile, a capped download that keeps the token URL inside, sendPhoto and sendDocument"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1311
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1125
+branch: t/T-1381-the-telegram-client-and-the-fake-bot-api
 created: 2026-10-27T23:37:26.429Z
-updated: 2026-10-27T23:37:38.030Z
+updated: 2026-10-27T23:38:30.224Z
 ---
 
 ## Summary
@@ -49,3 +49,9 @@ Spec §3.7 (sizes, the token URL) and §3.12; builds on the T-1340 client seam.
 ## Notes
 
 Shared files: hub/src/remote/telegram-api.ts, hub/test/fakes/telegram/fake-api.ts
+
+## Comments
+
+### impl-1381 · 2026-10-27T23:38:30.224Z
+
+Rule 20 consumer inventory before edits: telegram-api.ts types/API are consumed by remote/{telegram,telegram-inbound,telegram-outbox,telegram-polling,telegram-render,telegram-commands,telegram-prompts,telegram-cards,messenger}.ts and test/fakes/telegram/{fake-api,held-reaction}.ts. Tests importing these directly: telegram-{api,rendering,cards,pairing,pacing,mute,notices,commands,polling,approvals,inbound,liveness}.test.ts, telegram-polling-fixture.ts, setup-pairing-component.test.ts, remote-docs-pairing.test.ts. Search included all tiers, web/nvim/shared, skills, QA and docs: qa/briefs/E-1309.md and docs/agents/tests/*telegram* plus hub/README.md reference the existing seam. No persisted-record reader, wire client, startup probe or shipped skill calls the new methods. Existing methods/replies remain unchanged; new message fields optional and new fake controls additive, so these consumers are unaffected. Prior message shape retained by existing API tests. Tests use the pre-authorized T2 client/fake seam; no frame change.
