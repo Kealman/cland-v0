@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectHub, type ConnectionState } from '../../web/src/connection.ts';
-import type { AccountView, Artifact, Capabilities, HubFrame, SessionRow, SnapshotValues, Topic, VerificationQueue, WorkbenchRequest } from '../../shared/wire/index.ts';
+import type { AccountView, Artifact, Capabilities, HubFrame, RemoteStateRow, SessionRow, SnapshotValues, Topic, VerificationQueue, WorkbenchRequest } from '../../shared/wire/index.ts';
 
 const account = (name: string): AccountView => ({ name, harness: 'codex', path: `/scratch/${name}`, variable: 'CODEX_HOME', windows: [], at: null, source: null });
 const artifact = (title: string): Artifact => ({ id: 'A-1', title, kind: 'note', path: '/scratch/note.md', creator: 'human', time: '2026-10-22T10:00:00Z', topic: 'general', status: 'shared' });
@@ -48,6 +48,25 @@ test('area snapshots retain merged sessions, launch defaults, queue arrival and 
   assert.deepEqual(client.state.verification, { queue, receivedAt: Date.now() });
   assert.deepEqual(client.state.accounts?.accounts.map(row => row.name), ['zeta', 'alpha']);
   assert.equal(client.state.accounts?.error, 'registry warning');
+});
+
+test('remote state replaces all messenger facts and a previous-hub snapshot clears the optional rows', t => {
+  const client = scripted(t);
+  const healthy: RemoteStateRow = { messenger: 'telegram', enabled: true, connection: 'connected', offlineSince: null,
+    pairedName: 'Phone human', mute: true, outboxDepth: 3, lastError: null };
+  client.socket.receive({ type: 'snapshot', epoch: 'one', seq: 0, domain: 'sessions', value: { ...sessions('first'), remotes: [healthy] } });
+  assert.deepEqual(client.state.remotes, [healthy]);
+  const stopped: RemoteStateRow = { ...healthy, connection: 'stopped', pairedName: null, mute: false,
+    outboxDepth: 7, lastError: 'bot blocked (403)', stopCause: 'blocked' };
+  const discord: RemoteStateRow = { messenger: 'discord', enabled: false, connection: 'disabled', offlineSince: null,
+    pairedName: null, mute: false, outboxDepth: 0, lastError: null };
+  client.socket.receive({ type: 'remote.state', remotes: [stopped, discord] });
+  assert.deepEqual(client.state.remotes, [stopped, discord]);
+  assert.deepEqual(client.socket.sent, [], 'safe pushes need no remote.status or other reread');
+  // Literal previous-hub shape: the field is absent, not null or an empty array.
+  client.socket.receive({ type: 'snapshot', epoch: 'older', seq: 0, domain: 'sessions', value: sessions('older-hub') });
+  assert.equal(client.state.remotes, undefined, 'replacement snapshots cannot retain stale remote facts');
+  assert.equal(client.state.sessions?.[0]?.name, 'older-hub');
 });
 
 test('area deltas replace complete views without inventory requests and retain registry order', t => {

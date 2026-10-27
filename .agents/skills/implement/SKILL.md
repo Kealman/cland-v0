@@ -71,9 +71,10 @@ pairing uses the local CLI/fake Bot API seam in
 during the pause and observe its durable offset before reading the waiting row;
 confirm its identity before approval, keeping no-code waits bounded and declines open.
 
-For workbench remote state, use `docs/agents/tests/hub-test-remote-workbench.test.ts.md`
-and `docs/agents/tests/nvim-test-remotes.test.ts.md`: production Telegram, fake
-Bot API, safe frame projection and the actual rendered headless row. Keep
+For workbench remote state, use `docs/agents/tests/hub-test-remote-workbench.test.ts.md`,
+`docs/agents/tests/nvim-test-remotes.test.ts.md` and
+`docs/agents/tests/web-test-remotes.test.ts.md`: production Telegram, fake
+Bot API, safe frame projection and the actual rendered headless rows. Keep
 `sessions.remotes` optional, the prior hello/snapshot regression and local status
 credentials/routing out of `remote.state`. Connection/pairing/mute changes are
 immediate; only depth changes coalesce. Raw positional socket consumers explicitly

@@ -90,6 +90,10 @@ See [Telegram ask cards](../../hub/README.md#telegram-ask-cards) and the
 outbox depth and failure facts. Snapshot clients read optional `sessions.remotes`;
 older hubs can omit it. Never reuse the local `remote.status` row for a workbench
 push: that row contains token fingerprints and numeric routing identities.
-Neovim renders enabled messengers beside verification, with offline/stopped rows
-in the error highlight. Connection and pairing changes bypass the one-second
-depth-only coalescing window. Remote management authority is unchanged.
+Neovim and web Sessions render enabled messengers beside verification, with
+offline/stopped rows in the error highlight. Web facts wrap at phone width and
+field meanings live in `title` tooltips. Its connection model replaces the rows
+from snapshots and pushes, clearing stale facts if a snapshot omits the optional
+field. Connection and pairing changes bypass the one-second depth-only
+coalescing window. The web receives the safe push while `remote.status` remains
+refused; remote management authority is unchanged.

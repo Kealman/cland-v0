@@ -288,4 +288,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | [`hub/test/remote-workbench.test.ts`](../../../hub/test/remote-workbench.test.ts) | [Notes](hub-test-remote-workbench.test.ts.md) |
 | [`nvim/test/remotes.test.ts`](../../../nvim/test/remotes.test.ts) | [Notes](nvim-test-remotes.test.ts.md) |
+| [`web/test/remotes.test.ts`](../../../web/test/remotes.test.ts) | [Notes](web-test-remotes.test.ts.md) |
 | [`nvim/test/sessions.test.ts`](../../../nvim/test/sessions.test.ts) | [Notes](nvim-test-sessions.test.ts.md) |

@@ -40,6 +40,7 @@ export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   sessionThreads?: TopicThreads;
   marks?: SnapshotValues['topics']['marks'];
   crew?: SnapshotValues['sessions']['crew']['config'];
+  remotes?: SnapshotValues['sessions']['remotes'];
   inbox?: Inbox;
   events?: EventsPage;
   eventsView?: EventsPage;
@@ -493,7 +494,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
           for (const parent of closedWanted) loadClosed(parent);
         }
         else if (frame.domain === 'sessions') {
-          state = { ...state, coordinator: frame.value.coordinator, ...sessionSnapshot(frame.value, Date.now()), crew: frame.value.crew.config, idleFrom: frame.value.crew.config.idle_from ?? [] };
+          state = { ...state, coordinator: frame.value.coordinator, ...sessionSnapshot(frame.value, Date.now()), crew: frame.value.crew.config, idleFrom: frame.value.crew.config.idle_from ?? [], remotes: frame.value.remotes };
           rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
         } else if (frame.domain === 'inbox') {
           const open = new Set(frame.value.asks.map(row => row.id));
@@ -619,6 +620,9 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
         rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
       } else if (frame.type === 'verification.queue') {
         state = { ...state, verification: { queue: frame.queue, receivedAt: Date.now() } };
+        changed(state);
+      } else if (frame.type === 'remote.state') {
+        state = { ...state, remotes: frame.remotes };
         changed(state);
       } else if (frame.type === 'account') {
         state = { ...state, accounts: replaceAccount(state.accounts, frame.account) };

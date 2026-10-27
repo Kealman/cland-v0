@@ -2312,10 +2312,15 @@ Telegram supplies its first failed exchange and recovery through native transiti
 notifications; optional adapter callbacks and connection fields keep older injected
 clients usable. The daemon owns deferred reads and cancels depth timers before storage closes.
 
-Neovim's Sessions panel shows the enabled messengers under Remotes beside the
-verification line. Facts wrap to the panel width; offline and stopped rows use
-`ClandRed`. No enabled messenger, or an older hub with no remote state, hides the
-section. Reconnecting clears prior remote facts before the next connect frame.
+Neovim's Sessions panel and the web's Sessions area show enabled messengers
+under Remotes beside the verification line: connection, paired name, mute,
+outbox depth and last error. Facts wrap to the panel or phone width; offline and
+stopped rows use `ClandRed` in Neovim and the `--failed` token in the web. Web
+field meanings live in tooltips. No enabled messenger, or an older hub with no
+remote state, hides the section. Neovim clears prior facts on reconnect; the web
+retains the last snapshot while disconnected and replaces the facts on the next
+snapshot, including when an older hub omits `sessions.remotes`. The web receives
+the safe push without calling `remote.status`; that request remains local-only.
 
 ### Telegram phone commands
 

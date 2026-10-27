@@ -742,6 +742,7 @@
     "web/test/plan.test.ts": "Web",
     "web/test/readme.test.ts": "Web",
     "web/test/remote-via.test.ts": "Web",
+    "web/test/remotes.test.ts": "Web",
     "web/test/session-actions.test.ts": "Web",
     "web/test/session-drawer.test.ts": "Web",
     "web/test/session-launch.test.ts": "Web",
