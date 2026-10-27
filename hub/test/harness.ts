@@ -284,7 +284,8 @@ export async function assignRole(cwd: string, name: string, role: string): Promi
     const welcome = await socket.next();
     if (welcome.type !== 'welcome') throw new Error(`the hub refused the harness: ${JSON.stringify(welcome)}`);
     socket.send({ type: 'role.set', id: 'assign', session: name, role });
-    const result = await socket.next();
+    let result = await socket.next();
+    if (result.type === 'remote.state') result = await socket.next(); // additive event; previous hubs omit it
     if (result.ok !== true) throw new Error(`role.set ${name} ${role}: ${String(result.error)}`);
   } finally {
     socket.close();

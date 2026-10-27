@@ -287,6 +287,7 @@ test('the task frames work over the Unix socket as the CLI sends them', async (t
   t.after(() => s.close());
   s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
   assert.equal((await s.next()).type, 'welcome');
+  assert.equal((await s.next()).type, 'remote.state');
   s.send({ size: 'M', type: 'task.create', id: 'c1', title: 'Over the socket', labels: ['wire'], as: { name: 'ui', role: null } });
   const created = (await s.next()) as { id: string; ok: boolean; value: { item: View } };
   assert.equal(created.ok, true, JSON.stringify(created));
@@ -304,6 +305,7 @@ test('a subscribed UI hears a `task` event on every index change; task.list carr
   t.after(() => s.close());
   s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
   assert.equal((await s.next()).type, 'welcome');
+  assert.equal((await s.next()).type, 'remote.state');
   s.send({ type: 'subscribe', id: 's1' });
   assert.deepEqual(await s.next(), { type: 'result', id: 's1', ok: true, value: { subscribed: true } });
   type TaskEvent = { type: 'task'; id: string; item: (Summary & { verdicts: Array<{ verdict: string; result: string; run: string }> }) | null };

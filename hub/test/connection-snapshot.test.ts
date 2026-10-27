@@ -46,6 +46,8 @@ test('session.list adds snapshot-shaped archived rows without changing compatibi
   const before = (await ui.request({ type: 'session.list' })).value as List;
   const { rows, ...legacy } = before;
   assert.deepEqual(rows, snapshot.rows);
+  assert.deepEqual(snapshot.remotes?.map(row => [row.messenger, row.enabled, row.connection]),
+    [['telegram', false, 'disabled'], ['discord', false, 'disabled']]);
   assert.equal(JSON.stringify(legacy), JSON.stringify({ processes: snapshot.processes, archived: 0, pendingStops: [], adapters: before.adapters, coordinator: null }));
   const empty = (await ui.request({ type: 'session.list', archived: true })).value as List;
   assert.deepEqual(empty.rows, [], 'unmanaged presence does not leak into archived rows');
@@ -65,7 +67,9 @@ test('hello negotiates model features and legacy clients keep their existing wel
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const legacy = await client(t, discovery);
-  assert.deepEqual(legacy.frames, [{ type: 'welcome', name: 'ui', presence: [] }]);
+  await legacy.waitFor(frame => frame.type === 'remote.state');
+  assert.deepEqual(legacy.frames[0], { type: 'welcome', name: 'ui', presence: [] });
+  assert.deepEqual(legacy.frames.map(frame => frame.type), ['welcome', 'remote.state']);
   const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames', 'unknown', 'snapshot']);
   assert.deepEqual(ui.frames[0]!.features, ['snapshot', 'numbered-deltas', 'slim-frames']);
   const end = await ui.waitFor(f => f.type === 'snapshot.end');
@@ -75,10 +79,10 @@ test('hello negotiates model features and legacy clients keep their existing wel
   assert.ok(Number.isSafeInteger(end.seq));
   assert.ok(snapshots.every(f => f.type === 'snapshot' && f.epoch === end.epoch && f.seq === end.seq));
   assert.equal((await legacy.request({ type: 'topic.list' })).ok, true);
-  assert.equal(legacy.frames.length, 1);
+  assert.equal(legacy.frames.length, 2);
   const unknown = await client(t, discovery, ['future-extension']);
   assert.equal((await unknown.request({ type: 'topic.list' })).ok, true);
-  assert.deepEqual(unknown.frames.map(f => [f.type, f.features]), [['welcome', []]]);
+  assert.deepEqual(unknown.frames.map(f => [f.type, f.features]), [['welcome', []], ['remote.state', undefined]]);
   const again = await client(t, discovery, ['snapshot']);
   const next = await again.waitFor(f => f.type === 'snapshot.end');
   assert.equal(next.epoch, end.epoch);

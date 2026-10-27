@@ -75,7 +75,6 @@ use the gateway's allowed reads. The native private-chat menu is compared with
 Telegram on every start and written only when its command/description list
 differs. Pairing grants remain local even when `/inbox` or `/status` is read remotely.
 
-
 A paired Telegram human can answer an ask by tapping its option card. The hub
 stores the answer with `via: "telegram"` before acknowledging the press and
 confirming the update. Keys must belong to that card's ask; Other answer and
@@ -84,3 +83,13 @@ name the choice, actor, source and hub-local time. Long questions keep one card
 with a marked preview; full labels and the question remain in the workbench.
 See [Telegram ask cards](../../hub/README.md#telegram-ask-cards) and the
 [frame/fake regressions](tests/hub-test-telegram-cards.test.ts.md).
+
+## Workbench remote state
+
+`remote.state` is the safe, pushed replacement for connection, pairing name, mute,
+outbox depth and failure facts. Snapshot clients read optional `sessions.remotes`;
+older hubs can omit it. Never reuse the local `remote.status` row for a workbench
+push: that row contains token fingerprints and numeric routing identities.
+Neovim renders enabled messengers beside verification, with offline/stopped rows
+in the error highlight. Connection and pairing changes bypass the one-second
+depth-only coalescing window. Remote management authority is unchanged.

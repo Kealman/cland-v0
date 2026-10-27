@@ -202,6 +202,8 @@ T-1366: Add setup pairing's local CLI/fake Bot API guide, durable Start receipt,
 T-1364: Document cross-client pairing Inbox evidence, card-scoped approval, read-only web command and live-membership retirement.
 
 T-1352: Document the additive Telegram card API and fake press, expiry, edit and secret-regression seams.
+
+T-1362: Document safe remote-state push, optional snapshot compatibility and native/frame/headless seams.
 Telegram ask-card model, callback commit/replay, bounded renderer and outcome receipts (T-1353)
 Post-commit native answer publication, terminal callback expiry and live fixture deadline controls (T-1353 source review)
 Artifact/post refusal consumer migration and separate post-commit diagnostic proof (T-1353 evidence-1)

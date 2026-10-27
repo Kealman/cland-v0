@@ -338,6 +338,7 @@ test('a wrong secret is refused on the WebSocket and on the Unix socket; the rig
   t.after(() => right.close());
   right.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
   assert.deepEqual(await right.next(), { type: 'welcome', name: 'test', presence: [] });
+  assert.equal((await right.next()).type, 'remote.state');
   right.send({ type: 'hub.status', id: 'q1' });
   const result = (await right.next()) as { type: string; id: string; ok: boolean; value: { pid: number; port: number; sessions: unknown[] } };
   assert.equal(result.ok, true);
@@ -502,6 +503,7 @@ test('both edges speak one protocol: a spoke hello over the Unix socket; a clien
   t.after(() => client.close());
   client.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'sock-test' });
   assert.equal((await client.next()).type, 'welcome');
+  assert.equal((await client.next()).type, 'remote.state');
   client.send({ type: 'hub.status', id: 's1' });
   const status = (await client.next()) as { ok: boolean; value: { pid: number; sessions: Array<{ name: string }> } };
   assert.equal(status.ok, true);

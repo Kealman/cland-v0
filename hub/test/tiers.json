@@ -326,6 +326,7 @@
     "hub/test/remote-scripted.test.ts": "T2",
     "hub/test/remote-state-migration.test.ts": "T2",
     "hub/test/remote-state.test.ts": "T1",
+    "hub/test/remote-workbench.test.ts": "T2",
     "hub/test/request-guard-component.test.ts": "T2",
     "hub/test/request-guard.test.ts": "T3",
     "hub/test/resilience-component.test.ts": "T2",
@@ -684,6 +685,7 @@
     "nvim/test/qa-shipped.test.ts": "T4",
     "nvim/test/qa.test.ts": "T3",
     "nvim/test/remote-via.test.ts": "T2",
+    "nvim/test/remotes.test.ts": "T3",
     "nvim/test/rulebook-component.test.ts": "T2",
     "nvim/test/rulebook.test.ts": "T3",
     "nvim/test/scenarios/workbench.test.ts": {

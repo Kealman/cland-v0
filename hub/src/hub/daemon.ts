@@ -1,5 +1,7 @@
 import { remoteRedactor } from '../remote/redact.ts';
 import type { DatabaseSync } from 'node:sqlite';
+import { RemoteWorkbench } from '../remote/workbench.ts';
+import { remoteStopDetails } from '../remote/notices.ts';
 import { ConfiguredGateway, type MessengerFactory } from '../remote/configuration.ts';
 import type { Secrets } from '../remote/secrets.ts';
 import { Gateway, type Remote, type RemoteStates } from '../remote/gateway.ts';
@@ -136,6 +138,8 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
   const agents = agentsRecord();
   let hub!: HubBase;
   let gateway: Gateway | ConfiguredGateway | undefined;
+  let remoteWorkbench: RemoteWorkbench | undefined;
+  let unsubscribeRemotes: (() => void) | undefined;
   const tapped = agents.tap(journal.tap(processLog));
   log = entry => {
     // Keep the existing start receipts for failed-start diagnostics. A separate
@@ -212,7 +216,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
     }
   }, planHistory: startupHistory, ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
-  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined, async next => {
+  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; remoteWorkbench?.changed(); }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined, async next => {
     const secrets = resolveRemoteSecrets();
     if (gateway instanceof ConfiguredGateway) await gateway.update(next, secrets);
     remoteSecrets = secrets;
@@ -363,6 +367,23 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
         stop: () => { markHubStop(root); deliberateStop = true; void stop().catch(err => processLog({ event: 'stop-failed', error: err instanceof Error ? err.message : String(err) })); },
       },
     });
+    hub.core.useRemoteState(() => (['telegram', 'discord'] as const).map(messenger => {
+      const remote = store.remotes.forMessenger(messenger);
+      const status = remote.status();
+      const traffic = gateway?.status(messenger);
+      const enabled = roles.config().remote[messenger].enabled;
+      return remoteOutput.value({ messenger, enabled,
+        connection: !enabled ? 'disabled' as const : status.disabled ? 'stopped' as const
+          : traffic?.connected ? 'connected' as const : 'offline' as const,
+        offlineSince: traffic?.offlineSince ?? null, pairedName: remote.pairing()?.name ?? null,
+        mute: remote.get('mute') === 'true',
+        outboxDepth: remote.outbox().filter(job => ['queued', 'sending', 'uncertain'].includes(job.state)).length,
+        lastError: status.stopCause ? remoteStopDetails(messenger, status.stopCause)?.cause ?? status.reason : status.reason ?? traffic?.lastError ?? null,
+        ...(status.stopCause ? { stopCause: status.stopCause } : {}),
+      });
+    }));
+    remoteWorkbench = new RemoteWorkbench(clock, () => hub.core.remoteState(), rows => hub.core.publishRemoteState(rows));
+    unsubscribeRemotes = store.remotes.subscribe(remoteWorkbench.changed);
     hub.core.restoreJournalRows(recent);
   } catch (err) {
     await crew.stop();
@@ -427,6 +448,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
         await attempt(() => maintenance);
         await attempt(() => maintenanceRecovery);
         unreportMaintenance();
+        remoteWorkbench?.close(); unsubscribeRemotes?.();
         await attempt(() => gateway?.stop());
         // Stop the config/role owner once, joining reload before edges and storage close.
         await attempt(() => roles.stop());
@@ -487,6 +509,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
 
   const startGateway = async () => {
     const create = (remotes: readonly Remote[]) => new Gateway(hub.dispatcher, remotes, {
+      changed: () => remoteWorkbench?.changed(),
       state: options.gatewayState ?? store.remotes, log, redact: remoteOutput, pairing: hub.core.inbox.pairingCodes,
       lease: new PollerLease(store.remotes, { clock, processes: options.gatewayProcesses ?? nativePollerProcesses(env) }),
     });

@@ -14,6 +14,7 @@ export type WebAuthorityConformance = Assert<Equal<
 
 // Both required and optional fields, literal unions and nested payloads must agree.
 export type WireConformance = [
+  Assert<Equal<import('../src/protocol.ts').RemoteStateRow, Wire.RemoteStateRow>>,
   Assert<Equal<import('../src/protocol.ts').RemoteConnection, Wire.RemoteConnection>>,
   Assert<Equal<import('../src/protocol.ts').RemoteStopCause, Wire.RemoteStopCause>>,
   Assert<Equal<import('../src/protocol.ts').RemoteStatusResult, Wire.RemoteStatusResult>>,

@@ -308,6 +308,25 @@ local function render_sessions(c)
     c:add({ { require('cland.verification').summary(), 'ClandDim' } }, nil, { verification = true })
     c:add({})
   end
+  local enabled = false
+  for _, remote in ipairs(state.S.remotes or {}) do if remote.enabled then enabled = true end end
+  if enabled then
+    c:add({ { ' Remotes', 'ClandDim' } })
+    for _, remote in ipairs(state.S.remotes or {}) do
+      if remote.enabled then
+        local connection = remote.connection
+        if connection == 'offline' and type(remote.offlineSince) == 'string' then
+          connection = connection .. ' since ' .. remote.offlineSince:sub(12, 19)
+        end
+        local text = remote.messenger .. ' · ' .. connection
+          .. ' · ' .. (type(remote.pairedName) == 'string' and ('paired ' .. remote.pairedName) or 'unpaired')
+          .. ' · ' .. (remote.mute and 'muted' or 'unmuted') .. ' · outbox ' .. tostring(remote.outboxDepth)
+        if type(remote.lastError) == 'string' then text = text .. ' · ' .. remote.lastError end
+        wrapped(c, text, (remote.connection == 'offline' or remote.connection == 'stopped') and 'ClandRed' or 'ClandDim')
+      end
+    end
+    c:add({})
+  end
   local confirm = state.S.ui.confirm
   if confirm then
     if confirm.kind == 'resume' then

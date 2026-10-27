@@ -40,6 +40,9 @@ export class TelegramRemote implements Remote {
   #inbound: TelegramInbound | undefined;
   #cards: TelegramCards | undefined;
   #offline: { since: string; reason: string; announced: boolean } | undefined;
+  readonly #listeners = new Set<() => void>();
+  subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
+  #changed(): void { for (const listener of this.#listeners) listener(); }
   #offlineTimer: ClockTimer | undefined;
   #recoveredAt: string | undefined;
 
@@ -65,6 +68,7 @@ export class TelegramRemote implements Remote {
     if (this.#offline) { this.#armOffline(); return; }
     this.#offline = { since: this.#clock.now().toISOString(), reason, announced: false };
     this.#saveOutage();
+    this.#changed();
     this.#armOffline();
   }
 
@@ -97,6 +101,7 @@ export class TelegramRemote implements Remote {
       this.#clock.clearTimeout(this.#offlineTimer);
       this.#offline = undefined;
       this.#saveOutage();
+      this.#changed();
       if (outage.announced) this.#polling?.notice?.(`recovered; offline since ${time(outage.since)}`, '', true);
     }
     return true;
@@ -330,7 +335,8 @@ export class TelegramRemote implements Remote {
   status(): RemoteConnection {
     const last = Math.max(Date.parse(this.#lastInbound ?? ''), Date.parse(this.#lastOutbound ?? '') || 0);
     return { connected: !this.#stopped && !this.#offline && Number.isFinite(last) && this.#clock.now().getTime() - last <= 65_000,
-      lastInbound: this.#lastInbound, lastOutbound: this.#lastOutbound, botLink: this.#botLink };
+      lastInbound: this.#lastInbound, lastOutbound: this.#lastOutbound, botLink: this.#botLink,
+      offlineSince: this.#offline?.since ?? null, lastError: this.#offline?.reason ?? null };
   }
 
   stop(): Promise<void> {

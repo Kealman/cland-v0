@@ -190,3 +190,29 @@ test('recorded hard-limit pushes show and clear account marks', { skip }, async 
     assert.ok(!cleared.some(m => m.text.includes(name) && m.group === 'ClandRed'));
   }
 });
+
+test('remote state pushes render facts and failure highlights while old hubs keep the row hidden', { skip }, async t => {
+  const c = await startSessions(t);
+  await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.right, 110)");
+  assert.doesNotMatch((await c.screen()).join('\n'), /Remotes/);
+  const healthy = { messenger: 'telegram', enabled: true, connection: 'connected', offlineSince: null,
+    pairedName: 'Fixture human', mute: true, outboxDepth: 3, lastError: null };
+  await c.control({ emit: { type: 'remote.state', remotes: [healthy] } });
+  await c.waitScreen(s => s.includes('telegram · connected · paired Fixture human · muted · outbox 3'), 'remote facts');
+  assert.ok((await highlights(c)).some(m => m.text.includes('telegram') && m.group === 'ClandDim'));
+  await c.control({ emit: { type: 'remote.state', remotes: [{ ...healthy, connection: 'offline', offlineSince: '2026-10-16T12:00:00Z', lastError: 'fake outage' }] } });
+  await c.waitScreen(s => s.includes('offline since') && s.includes('fake outage'), 'offline cause');
+  assert.ok((await highlights(c)).some(m => m.text.includes('fake outage') && m.group === 'ClandRed'));
+  await c.control({ emit: { type: 'remote.state', remotes: [healthy] } });
+  await c.waitScreen(s => s.includes('telegram · connected · paired Fixture human · muted · outbox 3'), 'recovery facts');
+  assert.ok((await highlights(c)).some(m => m.text.includes('telegram') && m.group === 'ClandDim'));
+  for (const cause of ['wrong or revoked token (401)', 'bot blocked (403)', 'another consumer of the token (409)']) {
+    await c.control({ emit: { type: 'remote.state', remotes: [{ ...healthy, connection: 'stopped', lastError: cause }] } });
+    await c.waitScreen(s => s.includes(cause), 'stopped cause');
+    assert.ok((await highlights(c)).some(m => m.text.includes(cause) && m.group === 'ClandRed'));
+  }
+  await c.control({ emit: { type: 'remote.state', remotes: [{ ...healthy, enabled: false, connection: 'disabled' }] } });
+  // Positive replacement receipt, then absence: the new disabled state reached the renderer.
+  await c.lua("assert(vim.wait(1000,function() local r=require('cland.state').S.remotes;return r and r[1] and r[1].enabled==false end))");
+  assert.doesNotMatch((await c.screen()).join('\n'), /Remotes|telegram/);
+});

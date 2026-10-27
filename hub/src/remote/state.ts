@@ -69,7 +69,11 @@ export class RemoteState {
     if (!db.prepare('pragma table_info(remote_status)').all().some(column => column.name === 'stop_cause'))
       db.exec('alter table remote_status add column stop_cause text');
   }
-  forMessenger(id: string): RemoteStore { return new RemoteStore(this.#db, id); }
+  readonly #listeners = new Set<() => void>();
+  subscribe(listener: () => void): () => void {
+    this.#listeners.add(listener); return () => { this.#listeners.delete(listener); };
+  }
+  forMessenger(id: string): RemoteStore { return new RemoteStore(this.#db, id, () => { for (const listener of this.#listeners) listener(); }); }
   pollerLease(): PollerOwner | null {
     const row = this.#db.prepare('select * from remote_poller_lease where singleton = 1').get();
     return row ? { owner: String(row.owner), pid: Number(row.pid), started: String(row.started), identity: String(row.identity) } : null;
@@ -90,7 +94,8 @@ export class RemoteState {
 export class RemoteStore {
   readonly #db: DatabaseSync;
   readonly #id: string;
-  constructor(db: DatabaseSync, id: string) { this.#db = db; this.#id = id; }
+  readonly #changed: () => void;
+  constructor(db: DatabaseSync, id: string, changed: () => void = () => {}) { this.#db = db; this.#id = id; this.#changed = changed; }
 
   get(key: string): string | null {
     const row = this.#db.prepare('select value from remote_state where messenger = ? and key = ?').get(this.#id, key);
@@ -102,9 +107,10 @@ export class RemoteStore {
       .all(this.#id, prefix, prefix).map(row => ({ key: String(row.key), value: String(row.value) }));
   }
   set(key: string, value: string | null): void {
-    if (value === null) { this.#db.prepare('delete from remote_state where messenger = ? and key = ?').run(this.#id, key); return; }
-    this.#db.prepare(`insert into remote_state (messenger, key, value) values (?, ?, ?)
+    if (value === null) this.#db.prepare('delete from remote_state where messenger = ? and key = ?').run(this.#id, key);
+    else this.#db.prepare(`insert into remote_state (messenger, key, value) values (?, ?, ?)
       on conflict (messenger, key) do update set value = excluded.value`).run(this.#id, key, value);
+    if (key === 'mute') this.#changed();
   }
   /** Commit the command effect before any external reply or polling receipt. */
   applyTelegramMute(chatId: string, messageId: number, muted: boolean): string | null {
@@ -175,16 +181,18 @@ export class RemoteStore {
     this.#db.prepare(`insert into remote_status (messenger, disabled, reason, stop_cause) values (?, ?, ?, ?)
       on conflict (messenger) do update set disabled = excluded.disabled, reason = excluded.reason, stop_cause = excluded.stop_cause`)
       .run(this.#id, status.disabled ? 1 : 0, status.reason, status.stopCause ?? null);
+    this.#changed();
   }
   pairing(): Pairing | null {
     const row = this.#db.prepare('select user_id, chat_id, guild_id, name from remote_pairings where messenger = ?').get(this.#id);
     return row ? { userId: String(row.user_id), chatId: String(row.chat_id), guildId: row.guild_id === null ? null : String(row.guild_id), name: String(row.name) } : null;
   }
   setPairing(pairing: Pairing | null): void {
-    if (!pairing) { this.#db.prepare('delete from remote_pairings where messenger = ?').run(this.#id); return; }
+    if (!pairing) { this.#db.prepare('delete from remote_pairings where messenger = ?').run(this.#id); this.#changed(); return; }
     this.#db.prepare(`insert into remote_pairings (messenger, user_id, chat_id, guild_id, name) values (?, ?, ?, ?, ?)
       on conflict (messenger) do update set user_id = excluded.user_id, chat_id = excluded.chat_id, guild_id = excluded.guild_id, name = excluded.name`)
       .run(this.#id, pairing.userId, pairing.chatId, pairing.guildId, pairing.name);
+    this.#changed();
   }
   putRequest(request: PairingRequest): void {
     this.#db.prepare(`insert into remote_requests (messenger, code, user_id, chat_id, guild_id, name, created, expires) values (?, ?, ?, ?, ?, ?, ?, ?)
@@ -227,6 +235,7 @@ export class RemoteStore {
       on conflict (messenger, id) do update set kind = excluded.kind, source = excluded.source,
       state = excluded.state, payload = excluded.payload, created = excluded.created, updated = excluded.updated, target = excluded.target`)
       .run(this.#id, job.id, job.kind, job.source, job.state, JSON.stringify(job.payload), job.created, job.updated, job.target ?? null);
+    this.#changed();
   }
   /** Persist the attempt fence or completion and message map as one SQLite unit. */
   writeOutbox(job: OutboxJob, attempt?: OutboxAttempt, message?: RemoteMessage): void {

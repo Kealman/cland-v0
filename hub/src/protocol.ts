@@ -276,6 +276,7 @@ export type EventsPage = { rows: EventRow[]; before: string | null; more: boolea
 export type HubEvent =
   | { type: 'event'; row: EventRow }
   | { type: 'verification.queue'; queue: VerificationQueue }
+  | { type: 'remote.state'; remotes: RemoteStateRow[] }
   | { type: 'visibility' }
   | { type: 'crew'; config: import('./crew.ts').CrewConfig; summary: string }
   | { type: 'artifact'; artifact: Artifact }
@@ -573,7 +574,7 @@ export type HumanMarks = { events: string | null; plans: Record<string, string>;
 export type SnapshotValues = {
   tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
   items: { items: import('./tracker/tracker.ts').ExplorerSummary[]; done_items?: number };
-  sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: import('./crew.ts').CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
+  sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: import('./crew.ts').CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null; remotes?: RemoteStateRow[] };
   topics: { topics: Topic[]; marks: HumanMarks };
   inbox: Inbox & { needsYou: number };
   events: EventsPage;
@@ -653,7 +654,20 @@ export type WebSession = { id: string; createdAt: string; lastUsedAt: string; so
 export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
-export type RemoteConnection = { connected: boolean; lastInbound: string | null; lastOutbound: string | null; botLink: string | null };
+/** Safe workbench projection. Local status retains credential and routing facts separately. */
+export type RemoteStateRow = {
+  messenger: RemoteVia;
+  enabled: boolean;
+  connection: 'connected' | 'offline' | 'stopped' | 'disabled';
+  offlineSince: string | null;
+  pairedName: string | null;
+  mute: boolean;
+  outboxDepth: number;
+  lastError: string | null;
+  stopCause?: RemoteStopCause;
+};
+
+export type RemoteConnection = { connected: boolean; lastInbound: string | null; lastOutbound: string | null; botLink: string | null; offlineSince?: string | null; lastError?: string | null };
 export type RemoteStopCause = 'token' | 'message-content' | 'blocked' | 'other-consumer';
 export type RemoteStatusRow = {
   messenger: RemoteVia;

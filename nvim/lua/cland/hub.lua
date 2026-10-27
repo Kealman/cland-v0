@@ -435,7 +435,7 @@ function Client:_frame(frame, line)
         self:_call('request ' .. tostring(frame.id), cb, frame.error or 'failed')
       end
     end
-  elseif t == 'marks' or t == 'rules.changed' or t == 'account' or t == 'event' or t == 'verification.queue' or t == 'visibility' or t == 'crew' or t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'approval' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'sessions.pruned' or t == 'session.cleanup' or t == 'session.usage' then
+  elseif t == 'remote.state' or t == 'marks' or t == 'rules.changed' or t == 'account' or t == 'event' or t == 'verification.queue' or t == 'visibility' or t == 'crew' or t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'approval' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'sessions.pruned' or t == 'session.cleanup' or t == 'session.usage' then
     for journal in pairs(self.snapshots) do
       if relevant(journal.request, frame) then
         local bytes = line and #line or #vim.json.encode(frame)

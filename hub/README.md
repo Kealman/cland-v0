@@ -835,7 +835,8 @@ A human client can add `features: ["snapshot", "numbered-deltas", "slim-frames"]
 to its existing protocol-2 hello. Unknown feature names are ignored. The welcome
 includes `features`, the accepted subset; `snapshot`, `numbered-deltas` and
 `slim-frames` are supported independently.
-A local hello without `features` keeps its existing welcome and receives no snapshot.
+A local hello without `features` keeps its existing welcome and receives no snapshot;
+its additive `remote.state` frame follows the welcome. Unknown events are ignored.
 An empty list receives `features: []`. Spoke hellos are unchanged.
 
 ### Liveness, version skew and terminal reservations
@@ -2290,6 +2291,31 @@ configured client and resolved token, reload drains the old client and starts it
 replacement. Pairing ids and mute remain in `hub.db`; each new pairing starts
 with the loaded `remote.mute_default`. Environment overrides still take precedence.
 The speech provider's data-use line is supplied by the media/speech feature.
+
+### Remote state in the workbenches
+
+Human clients receive a safe `remote.state {remotes}` replacement on connect;
+clients negotiating `snapshot` receive the same rows as optional
+`sessions.remotes` inside the existing snapshot transaction. Subscribed clients
+receive `remote.state` on connection, failure/recovery, pairing, mute and config
+changes. Depth-only changes coalesce to at most one push per second; an urgent
+change includes the current depth. This adds no snapshot domain or protocol version.
+Old clients ignore the new event/field, and new clients accept snapshots without it.
+
+Each row contains `messenger`, `enabled`, `connection` (`connected`, `offline`,
+`stopped`, `disabled`), `offlineSince`, `pairedName`, `mute`, `outboxDepth`,
+`lastError` and optional `stopCause` from the shared doctor/General cause table.
+Configuration-disabled rows use `disabled`; runtime failures use `stopped`.
+The projection includes no token, fingerprint, numeric pairing identity or bot link;
+`remote.status` retains its local-only management shape and authority.
+Telegram supplies its first failed exchange and recovery through native transition
+notifications; optional adapter callbacks and connection fields keep older injected
+clients usable. The daemon owns deferred reads and cancels depth timers before storage closes.
+
+Neovim's Sessions panel shows the enabled messengers under Remotes beside the
+verification line. Facts wrap to the panel width; offline and stopped rows use
+`ClandRed`. No enabled messenger, or an older hub with no remote state, hides the
+section. Reconnecting clears prior remote facts before the next connect frame.
 
 ### Telegram phone commands
 

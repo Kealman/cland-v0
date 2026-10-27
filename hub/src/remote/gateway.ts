@@ -27,6 +27,8 @@ export type Remote = {
   receive: (frame: HubFrame) => void | Promise<void>;
   /** Successful platform exchanges, never inferred from starting a loop. */
   status?: () => RemoteConnection;
+  /** Optional native connection transitions; older injected clients remain supported. */
+  subscribe?: (changed: () => void) => () => void;
   /** Validate the token, then send exactly one line when a destination is paired. */
   test?: (pairing: Pairing | null, text: string) => void | Promise<void>;
   /** Send one line to the captured old destination, never the newly paired chat. */
@@ -45,7 +47,7 @@ export type RemoteStates = {
   };
 };
 
-export type GatewayOptions = { pairing?: Pick<PairingCodes, 'issue'>; lease?: GatewayLease; state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
+export type GatewayOptions = { changed?: () => void; pairing?: Pick<PairingCodes, 'issue'>; lease?: GatewayLease; state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
 
 /** An in-process edge: all remotes share one human dispatcher conversation. */
 export class Gateway {
@@ -63,6 +65,8 @@ export class Gateway {
   readonly #log: LogFn;
   readonly #redact: (text: string) => string;
   readonly #output: RemoteRedactor['value'];
+  readonly #changed: () => void;
+  readonly #unsubscribers: Array<() => void> = [];
   #conversation: Conversation | undefined;
   #nextId = 0;
   #open = false;
@@ -72,6 +76,7 @@ export class Gateway {
 
   constructor(dispatcher: Pick<Dispatcher, 'open'>, remotes: readonly Remote[], options: GatewayOptions = {}) {
     this.#dispatcher = dispatcher;
+    this.#changed = options.changed ?? (() => {});
     this.#remotes = [...remotes];
     this.#lease = options.lease;
     this.#pairing = options.pairing;
@@ -108,6 +113,7 @@ export class Gateway {
       if (this.#closing) throw new Error('gateway stopped during startup');
       // A partially started remote still owns resources that stop must drain.
       this.#started.push(remote);
+      if (remote.subscribe) this.#unsubscribers.push(remote.subscribe(this.#changed));
       this.#state.forMessenger(remote.id).setStatus({ disabled: false, reason: null });
       try {
         await remote.start((frame, ingress) => {
@@ -153,6 +159,7 @@ export class Gateway {
       },
     }, { authenticated: true, edge: 'gateway' });
     this.#open = true;
+    this.#changed();
     this.#conversation.receive(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, client: 'human' }));
     for (const remote of this.#started) {
       if (this.#closing || this.#disabled.has(remote) || !remote.run) continue;
@@ -224,6 +231,7 @@ export class Gateway {
     const reason = this.#reason(error);
     const stopCause = remoteStopCause(error);
     this.#state.forMessenger(remote.id).setStatus({ disabled: true, reason, ...(stopCause ? { stopCause } : {}) });
+    this.#changed();
     this.#log({ event: 'remote-disabled', remote: remote.id, reason });
     if (!this.#started.includes(remote)) return;
     // Keep ownership of partial startup and runtime resources through their stop receipt.
@@ -265,6 +273,8 @@ export class Gateway {
     for (const remote of this.#started) await attempt(() => this.#stopRemote(remote));
     await Promise.all(this.#work);
     // Incomplete drainage may leave a token consumer; keep its durable owner.
+    for (const unsubscribe of this.#unsubscribers.splice(0)) unsubscribe();
+    this.#changed();
     if (!failures.length) await attempt(() => this.#lease?.release());
     if (failures.length) throw new AggregateError(failures, 'gateway shutdown failed');
   }

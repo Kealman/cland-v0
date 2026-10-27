@@ -20,6 +20,7 @@ test('the Unix socket reads a near-limit frame and the next one from a single wr
   t.after(() => ui.close());
   ui.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'ui' });
   assert.equal((await ui.next()).type, 'welcome');
+  assert.equal((await ui.next()).type, 'remote.state');
 
   // a small frame first, so the near-limit one does not start on a read boundary; all three in one write
   ui.write(`${JSON.stringify({ type: 'topic.list', id: 'first' })}\n${nearLimitFrame('big')}\n${JSON.stringify({ type: 'topic.list', id: 'small' })}\n`);
@@ -40,6 +41,7 @@ test('the Unix socket reads a near-limit frame and the next one from a single wr
   t.after(() => other.close());
   other.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'ui' });
   assert.equal((await other.next()).type, 'welcome');
+  assert.equal((await other.next()).type, 'remote.state');
   other.write('x'.repeat(MAX_FRAME_BYTES + 1));
   await other.closed;
 });

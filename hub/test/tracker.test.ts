@@ -102,6 +102,7 @@ test('a hub write and a hand edit at the same time: the last writer wins and the
   t.after(() => s.close());
   s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
   assert.equal((await s.next()).type, 'welcome');
+  assert.equal((await s.next()).type, 'remote.state');
   await writeFile(file, (await readFile(file, 'utf8')).replace('title: Hand wins', 'title: Hand again'));
   s.send({ type: 'task.edit', id: 'e1', item: 'T-1', add_labels: ['hub-was-last'] });
   assert.equal((await s.next()).ok, true);

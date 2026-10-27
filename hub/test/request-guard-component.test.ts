@@ -83,6 +83,7 @@ test('a cold task.list burst in one socket write shares its pending answer', asy
   t.after(() => flood.close());
   flood.send({ type: 'hello', protocol: 2, secret: discovery.secret, client: 'cold-flood' });
   assert.equal((await flood.next()).type, 'welcome');
+  assert.equal((await flood.next()).type, 'remote.state');
 
   // No answer has been cached. A single write reproduces Linux's batching of the
   // flood before the promise delivering the first task.list answer can resume.

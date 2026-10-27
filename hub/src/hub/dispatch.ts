@@ -1499,6 +1499,7 @@ export class Dispatcher {
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
         if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
         peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
+        if (!features.includes('snapshot') && !frame.resume) peer.send({ type: 'remote.state', remotes: core.remoteState() });
         if (frame.resume) resumeModel(frame.resume);
         else if (features.includes('snapshot')) startSnapshot();
         else if (features.includes('numbered-deltas') || transport.edge === 'gateway') subscribeModel();

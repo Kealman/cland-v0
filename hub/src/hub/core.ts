@@ -688,6 +688,11 @@ export class HubCore {
     this.#emit({ type: 'event', row });
   }
 
+  #readRemoteState: () => import('../protocol.ts').RemoteStateRow[] = () => [];
+  useRemoteState(read: () => import('../protocol.ts').RemoteStateRow[]): void { this.#readRemoteState = read; }
+  remoteState(): import('../protocol.ts').RemoteStateRow[] { return this.#readRemoteState(); }
+  publishRemoteState(remotes: import('../protocol.ts').RemoteStateRow[]): void { this.#emit({ type: 'remote.state', remotes }); }
+
   #verificationQueue: VerificationQueue | undefined;
   publishVerification(queue: VerificationQueue): void { this.#verificationQueue = queue; this.#emit({ type: 'verification.queue', queue }); }
 
