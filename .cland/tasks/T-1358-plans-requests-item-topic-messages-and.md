@@ -3,7 +3,7 @@ id: T-1358
 kind: task
 title: Plans, requests, item-topic messages and Claude Code approvals arrive as 📥 notices, and a reply goes to their topic
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:43:02.026Z
-updated: 2026-10-27T05:43:02.026Z
+updated: 2026-10-27T11:28:09.462Z
 ---
 
 ## Summary

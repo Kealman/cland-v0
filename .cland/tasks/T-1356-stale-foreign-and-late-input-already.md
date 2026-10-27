@@ -3,7 +3,7 @@ id: T-1356
 kind: task
 title: 'Stale, foreign and late input: "Already answered", a privately refused foreign press, and a late message that answers no ask'
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:43:01.630Z
-updated: 2026-10-27T05:43:01.630Z
+updated: 2026-10-27T11:28:09.059Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1355
 kind: task
 title: '"Other answer…" and "Decline…" open a ForceReply prompt; the next text answers, `/cancel` keeps the ask open, and a typed reply to the card answers it'
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:43:01.372Z
-updated: 2026-10-27T05:43:01.372Z
+updated: 2026-10-27T11:28:08.909Z
 ---
 
 ## Summary

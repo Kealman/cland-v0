@@ -64,9 +64,11 @@
       "A-12476",
       "A-12480",
       "A-12649",
-      "A-12647"
+      "A-12647",
+      "A-12721",
+      "A-12719"
     ],
-    "commit": "18a6f01be7230a0e4fa52176ab07bad6a47199b1"
+    "commit": "93dfd9115298e1d19edf00d3c2644ecd5a54c37d"
   },
   "budget": {
     "testSeconds": 5,
@@ -2847,6 +2849,30 @@
     "hub/test/telegram-rendering.test.ts": {
       "seconds": 0.738004,
       "tests": 6
+    },
+    "hub/test/doctor-remotes.test.ts": {
+      "seconds": 1.856138,
+      "tests": 9
+    },
+    "hub/test/remote-state-migration.test.ts": {
+      "seconds": 0.06469,
+      "tests": 2
+    },
+    "hub/test/remote-workbench.test.ts": {
+      "seconds": 0.935705,
+      "tests": 5
+    },
+    "hub/test/telegram-cards.test.ts": {
+      "seconds": 4.822698,
+      "tests": 26
+    },
+    "nvim/test/remotes.test.ts": {
+      "seconds": 0.744332,
+      "tests": 1
+    },
+    "web/test/pairing.test.ts": {
+      "seconds": 11.805583,
+      "tests": 4
     }
   },
   "tests": {
@@ -7770,7 +7796,67 @@
     "hub/test/telegram-rendering.test.ts::Telegram falls back after a Rich Message rejection to text and UTF-16 entities": 0.105846,
     "hub/test/telegram-rendering.test.ts::Telegram mirrors an agent report as Rich Markdown with its author and kind": 0.243939,
     "hub/test/telegram-rendering.test.ts::Telegram quoted code passes provider nesting checks and leaves the remote serving": 0.106378,
-    "hub/test/telegram-rendering.test.ts::Telegram silently sends progress and hub notices and filters echoes answers asks and other topics": 0.039108
+    "hub/test/telegram-rendering.test.ts::Telegram silently sends progress and hub notices and filters echoes answers asks and other topics": 0.039108,
+    "hub/test/artifact-lifecycle.test.ts::a post-commit human-send log failure keeps one stored artifact post and reports the operator diagnostic": 0.091538,
+    "hub/test/doctor-remotes.test.ts::doctor opens no network connection or platform request with an active Telegram remote": 0.282264,
+    "hub/test/doctor-remotes.test.ts::doctor reads the previous remote status wire shape without assuming a stop cause": 0.13253,
+    "hub/test/doctor-remotes.test.ts::doctor reports each messenger enabled state, live connection and exact paired name and id": 0.33647,
+    "hub/test/doctor-remotes.test.ts::doctor reports environment token fingerprint in text and JSON without its value": 0.134895,
+    "hub/test/doctor-remotes.test.ts::doctor reports file token fingerprint in text and JSON without its value": 0.215897,
+    "hub/test/doctor-remotes.test.ts::doctor reports hub not running for both remotes without contacting a platform": 0.132955,
+    "hub/test/doctor-remotes.test.ts::doctor reports structured Discord 4004 stop with its recovery instruction": 0.240809,
+    "hub/test/doctor-remotes.test.ts::doctor reports structured Discord 4014 stop with its recovery instruction": 0.26643,
+    "hub/test/doctor-remotes.test.ts::doctor reports unavailable local status when the old hub refuses remote status": 0.113888,
+    "hub/test/remote-cli.test.ts::remote status renders previous hub rows without a structured cause": 0.176798,
+    "hub/test/remote-cli.test.ts::remote status renders the shared discord structured cause and fix without parsing reason": 0.302321,
+    "hub/test/remote-cli.test.ts::remote status renders the shared telegram structured cause and fix without parsing reason": 0.278596,
+    "hub/test/remote-state-migration.test.ts::fresh remote status includes stop cause without an ALTER migration write": 0.035664,
+    "hub/test/remote-state-migration.test.ts::legacy remote status migrates additively and structured stop causes survive reopening and clear on recovery": 0.029026,
+    "hub/test/remote-workbench.test.ts::failed Telegram exchange pushes offline immediately and a successful poll pushes connected": 0.154678,
+    "hub/test/remote-workbench.test.ts::pairing, mute, outbox depth, unpair and configuration disable push safe replacements": 0.23272,
+    "hub/test/remote-workbench.test.ts::Telegram 401 pushes its shared stopped cause without credentials": 0.140131,
+    "hub/test/remote-workbench.test.ts::Telegram 403 pushes its shared stopped cause without credentials": 0.138933,
+    "hub/test/remote-workbench.test.ts::workbenches receive an allowlisted remote state on a previous-shape hello": 0.269243,
+    "hub/test/telegram-api.test.ts::Telegram callback answers expire after 150 seconds on the fake clock": 0.02498,
+    "hub/test/telegram-api.test.ts::Telegram card calls redact successful receipts and echoed faults while preserving failure classes": 0.062504,
+    "hub/test/telegram-api.test.ts::Telegram card keyboard preserves eleven rows and a press identifies its message and presser": 0.068084,
+    "hub/test/telegram-api.test.ts::Telegram ForceReply prompts retain their reply target and can never be edited": 0.015172,
+    "hub/test/telegram-api.test.ts::Telegram keyboard limits count UTF-8 bytes and silently cap rows and total buttons": 0.023374,
+    "hub/test/telegram-api.test.ts::Telegram outcome edits retain entities, remove buttons and distinguish an identical edit": 0.023653,
+    "hub/test/telegram-cards.test.ts::Telegram answer receipt failure rolls back without publishing or delivering a phantom answer, then retries once": 0.203376,
+    "hub/test/telegram-cards.test.ts::Telegram ask answered via Neovim edits its mapped card from the hub outcome without buttons": 0.158229,
+    "hub/test/telegram-cards.test.ts::Telegram ask answered via web edits its mapped card from the hub outcome without buttons": 0.155595,
+    "hub/test/telegram-cards.test.ts::Telegram callback replay after committed answer and lost result returns its durable receipt once": 0.232648,
+    "hub/test/telegram-cards.test.ts::Telegram cancelled ask edits its card without buttons": 0.138702,
+    "hub/test/telegram-cards.test.ts::Telegram card 401 stops only the remote without fallback": 0.153793,
+    "hub/test/telegram-cards.test.ts::Telegram card 403 stops only the remote without fallback": 0.14031,
+    "hub/test/telegram-cards.test.ts::Telegram card 429 holds its immutable request and an uncertain accepted card stays fenced across restart": 0.249241,
+    "hub/test/telegram-cards.test.ts::Telegram card definite 400 falls back to plain text with the same buttons and durable ask map": 0.15268,
+    "hub/test/telegram-cards.test.ts::Telegram card web fixture aborted during HTTP acquisition drains its native close receipts": 0.124177,
+    "hub/test/telegram-cards.test.ts::Telegram card web fixture aborted during WebSocket acquisition drains its native close receipts": 0.124039,
+    "hub/test/telegram-cards.test.ts::Telegram card web fixture missing setup receipt closes native HTTP and WebSocket work before disposal": 0.157288,
+    "hub/test/telegram-cards.test.ts::Telegram drops a closed ask card queued behind a 429 hold without sending it": 0.132731,
+    "hub/test/telegram-cards.test.ts::Telegram expired callback acknowledgement confirms the durable answer and lets later input progress": 0.31603,
+    "hub/test/telegram-cards.test.ts::Telegram failed outcome edit settles with one reply": 0.205188,
+    "hub/test/telegram-cards.test.ts::Telegram in-flight card mapped after an answer still turns into its outcome": 0.237541,
+    "hub/test/telegram-cards.test.ts::Telegram inbox departure with a web decline edits the card when its ask frame is unavailable": 0.164649,
+    "hub/test/telegram-cards.test.ts::Telegram long ask keeps one card and every label while reserving a word-boundary preview for the outcome": 0.190164,
+    "hub/test/telegram-cards.test.ts::Telegram nine-option free ask arrives as one entities card with eleven opaque button rows": 0.316799,
+    "hub/test/telegram-cards.test.ts::Telegram not-modified outcome edit settles with no reply": 0.163005,
+    "hub/test/telegram-cards.test.ts::Telegram option three commits via Telegram before callback answer and offset, then edits the outcome": 0.213539,
+    "hub/test/telegram-cards.test.ts::Telegram refuses unissued and cross-ask button data and keeps auxiliary actions unavailable": 0.191438,
+    "hub/test/telegram-cards.test.ts::Telegram tap racing a Neovim answer keeps the Neovim winner on every copy": 0.202487,
+    "hub/test/telegram-cards.test.ts::Telegram tap racing a Neovim answer keeps the Telegram winner on every copy": 0.19118,
+    "hub/test/telegram-cards.test.ts::Telegram transient callback refusal retries its saved answer without duplicating the human effect": 0.175833,
+    "hub/test/telegram-cards.test.ts::Telegram withdrawn ask edits its card without buttons": 0.132036,
+    "hub/test/telegram-pacing.test.ts::dropping a keyed Telegram card for lost pairing remains incomplete": 0.035105,
+    "hub/test/telegram-pacing.test.ts::queued Telegram edits merge their latest text and ride ahead of older General work": 0.04721,
+    "nvim/test/remotes.test.ts::native fake outage turns the sessions Remotes row red within one second and recovery clears it": 0.744332,
+    "nvim/test/sessions.test.ts::remote state pushes render facts and failure highlights while old hubs keep the row hidden": 0.30898,
+    "web/test/pairing.test.ts::Neovim pairing card grants the fake messenger and both inboxes remove approved and expired codes": 2.185243,
+    "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (desktop)": 4.651514,
+    "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (phone)": 3.91418,
+    "web/test/pairing.test.ts::previous hub inbox without the optional pairings field keeps existing message rows usable": 1.054646
   },
   "allow": {
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {

@@ -3,7 +3,7 @@ id: T-1357
 kind: task
 title: Codex and OpenCode approvals arrive as cards with coloured choices, answered with `via` and shown as approved via Telegram
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:43:01.767Z
-updated: 2026-10-27T05:43:01.767Z
+updated: 2026-10-27T11:28:09.351Z
 ---
 
 ## Summary

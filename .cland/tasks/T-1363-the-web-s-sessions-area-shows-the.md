@@ -3,7 +3,7 @@ id: T-1363
 kind: task
 title: The web's Sessions area shows the Remotes row
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1313
 blocked_by:
   - T-1362
-topic: null
-branch: null
+topic: topic-1111
+branch: t/T-1363-the-web-s-sessions-area-shows-the
 created: 2026-10-27T05:46:50.067Z
-updated: 2026-10-27T09:50:32.656Z
+updated: 2026-10-27T10:58:12.715Z
 ---
 
 ## Summary
@@ -40,3 +40,7 @@ Model a `RemotesLine` component on `VerifyLine` and place it in the Sessions are
 ### coord · 2026-10-27T09:50:32.656Z
 
 Contract from T-1362 (coord, 2026-10-27 09:51Z): the web reads HubEvent {type:'remote.state', remotes: RemoteStateRow[]} and the optional SnapshotValues.sessions.remotes. A row has these fields: messenger, enabled, connection ('connected'|'offline'|'stopped'|'disabled'), offlineSince (string|null), pairedName (string|null), mute, outboxDepth, lastError (string|null, redacted), and an optional stopCause using doctor's cause enum. The shared wire type in shared/wire restates the shape. Build against the landed T-1362, and never against its unlanded branch.
+
+### impl-1363 · 2026-10-27T10:58:12.715Z
+
+Pre-change consumer inventory (rule 20): this item consumes the existing additive RemoteStateRow; no wire shape or permission expansion is planned. Production: hub protocol/core publisher, snapshot.sessions.remotes, dispatcher/model ring/visibility, web-edge serializer, web-authority remote.status refusal, shared/wire mirror; Neovim init/state/sessions already consumes it and is unaffected. New consumer: web/src/connection.ts -> SessionsArea/RemotesLine. Existing tests: hub remote-workbench, connection-snapshot, tracker[-component], daemon, edges-component, request-guard-component (T2/T3 as declared), nvim sessions/remotes; web connection/sessions/phone-sessions/verification/pairing. Shipped guidance: implement skill, hub README, docs/agents/pairing.md and remote-workbench/nvim-remotes guides. QA briefs E-1307/E-420 have no RemoteStateRow consumer; no startup probe or persisted reader consumes the safe projection (native remote status/storage shapes remain unchanged). Search covered hub/src, shared, web, nvim, hub/test, .agents, qa and docs/agents, including T3/T4. Keep a browser regression removing sessions.remotes and suppressing remote.state to emulate the previous hub.
