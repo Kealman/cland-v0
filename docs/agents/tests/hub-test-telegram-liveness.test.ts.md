@@ -29,6 +29,8 @@ General notice, disabled frame and CLI reason, native connection close and
 unchanged durable lease owner. It never signals or stops a competing process.
 The first 409 deliberately carries `retry_after=300`; it cannot extend the
 60-second conflict budget.
+Doctor reads that stopped remote through local frames, retaining
+`stopCause: other-consumer` and the exact cause/fix also recorded in General.
 The transient-409 case proves a successful zero-timeout exchange resumes the
 40-second poll without a fatal notice.
 
@@ -40,6 +42,9 @@ notice, the disabled reason, no platform retries after fake time advances and
 no fabricated token in frame/log sinks. The fake sends a description longer
 than the diagnostic cap: fixed cause/fix
 must survive before optional provider detail in both status and actual CLI.
+The doctor JSON check retains a warn line and the same fixed cause/fix as
+General, from the persisted `token` or `blocked` cause. Successful reload clears
+both the old reason and the structured cause.
 Redeem a scratch web link and keep an
 authenticated WebSocket `hub.status` reply after failure. Close that native
 socket before stopping the hub or removing the root. This is web protocol

@@ -10,6 +10,8 @@ prefix bytes; this is the startup feedback scan, not SQL wildcard matching.
 No native process, socket or real token is needed. Queue semantics belong to
 the outbox tests; these tests prove only durable round trips and isolation.
 
+The native stop-cause schema trace controls live at the T2 seam in
+[remote-state-migration](hub-test-remote-state-migration.test.ts.md).
 
 The additive edit-target migration starts with a literal old-schema database,
 then checks the complete old job object before and after reopening through Store.

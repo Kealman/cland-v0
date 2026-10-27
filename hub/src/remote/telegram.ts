@@ -9,6 +9,7 @@ import { flushTelegramGap } from './telegram-gap.ts';
 import { TelegramOutbox } from './telegram-outbox.ts';
 import { TelegramInbound } from './telegram-inbound.ts';
 import { plainParts } from './telegram-render.ts';
+import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 
 export type TelegramRemoteOptions = TelegramPollingOptions & { projectName?: () => string };
 
@@ -120,10 +121,8 @@ export class TelegramRemote implements Remote {
       return operation();
     }).catch(error => {
       if ((!this.#abort.signal.aborted || this.#fatal) && error instanceof TelegramError && [401, 403, 409].includes(error.code)) {
-        const cause = error.code === 401 ? 'wrong or revoked token (401)' : error.code === 403 ? 'bot blocked (403)' : 'another consumer of the token (409)';
-        const fix = error.code === 401 ? 'set a new token with cland secret set telegram.token, then run cland hub reload'
-          : error.code === 403 ? 'unblock the bot in Telegram, then run cland hub reload'
-            : 'stop the other token consumer, then run cland hub reload';
+        const stopCause = error.code === 401 ? 'token' : error.code === 403 ? 'blocked' : 'other-consumer';
+        const { cause, fix } = remoteStopDetails('telegram', stopCause)!;
         if (!this.#fatal) {
           this.#fatal = true;
           this.#stopped = true;
@@ -131,7 +130,7 @@ export class TelegramRemote implements Remote {
           this.#polling?.notice?.(cause, fix);
           this.#clock.clearTimeout(this.#offlineTimer);
         }
-        throw new Error(`${cause}; ${fix}; ${error.message}`);
+        throw remoteStopError('telegram', stopCause, error.message);
       }
       throw error;
     });
@@ -275,7 +274,8 @@ export class TelegramRemote implements Remote {
           // this terminal event. Otherwise a reload replays the kick forever.
           await this.#track(async () => { throw new TelegramError('getUpdates', 403, 'bot blocked'); }).catch(error => {
             if (this.#fatal) {
-              this.#polling!.store.setStatus({ disabled: true, reason: (error as Error).message });
+              const stopCause = remoteStopCause(error);
+              this.#polling!.store.setStatus({ disabled: true, reason: (error as Error).message, ...(stopCause ? { stopCause } : {}) });
               this.#polling!.store.confirmTelegramUpdate(update.update_id);
             }
             throw error;

@@ -654,12 +654,15 @@ export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
 export type RemoteConnection = { connected: boolean; lastInbound: string | null; lastOutbound: string | null; botLink: string | null };
+export type RemoteStopCause = 'token' | 'message-content' | 'blocked' | 'other-consumer';
 export type RemoteStatusRow = {
   messenger: RemoteVia;
   token: { present: boolean; fingerprint: string | null };
   pairing: { userId: string; chatId: string; guildId: string | null; name: string } | null;
   connection: 'connected' | 'disconnected' | 'disabled';
   reason: string | null;
+  /** Additive: older hubs and generic failures have no structured cause. */
+  stopCause?: RemoteStopCause;
   lastInbound: string | null;
   lastOutbound: string | null;
   outboxDepth: number;

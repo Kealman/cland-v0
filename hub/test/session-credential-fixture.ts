@@ -2,6 +2,7 @@
 // covered through unmodified clients in cli-session-credential.test.ts.
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { Store } from '../src/hub/store.ts';
 import { cland, clandWithEnv, connectUi, connectWsUi, dispatcherUi, type FrameClient } from './harness.ts';
@@ -10,7 +11,9 @@ function actorCredential(source: string | Store, actor: Record<string, unknown>)
   if (actor.credential !== undefined) return actor;
   // Bare socket fixtures keep their owned database directly below the scratch root.
   const projectDb = typeof source === 'string' ? join(source, '.cland/hub.db') : '';
-  const store = typeof source === 'string' ? new Store(existsSync(projectDb) ? projectDb : join(source, 'hub.db')) : source;
+  // T-1335: this second connection can overlap the live hub's startup writes.
+  const store = typeof source === 'string' ? new Store(existsSync(projectDb) ? projectDb : join(source, 'hub.db'),
+    path => new DatabaseSync(path, { timeout: 10_000 })) : source;
   try {
     const name = typeof actor.name === 'string' ? actor.name : '';
     const id = typeof actor.sessionId === 'string' ? actor.sessionId : store.sessionIdOf(name);

@@ -82,6 +82,19 @@ See [registration and output receipts](tests/hub-test-gateway-secrets.test.ts.md
 
 `cland remote status` reports the hub’s loaded token presence and fingerprint,
 including environment overrides; `cland secret list` reports the file only.
+`cland doctor` resolves the current file and the same environment overrides for
+token presence/fingerprint, reads enabled settings from config, and asks only
+the local running hub for connection and pairing. It makes no platform or paid
+call; `cland remote test <messenger>` remains the explicit platform check.
+Stopped clients are warnings with the same cause/fix wording as General and
+the structured stopped line in `cland remote status`.
+The additive optional `remote.status` field `stopCause` preserves the old
+`reason`: `token` (401/4004), `message-content` (4014), `blocked` (403), or
+`other-consumer` (lasting 409). Older replies without it keep their redacted
+reason and a generic repair/reload fix. No hub gives `hub not running`.
+Doctor reads current inputs while status describes loaded clients; reload
+applies changed tokens/config to those clients. Its test seams are in
+[doctor remote diagnostics](tests/hub-test-doctor-remotes.test.ts.md).
 After storing a rotated token, run `cland hub reload`: it drains and replaces the
 configured client while retaining the numeric pairing and mute. An unchanged
 environment override still wins. `cland remote test <messenger>` uses the active

@@ -320,7 +320,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
           return { ...remoteOutput.value({
             messenger, token: { present: token !== undefined, fingerprint: token === undefined ? null : createHash('sha256').update(token).digest('hex').slice(0, 12) },
             pairing: remote.pairing(), connection: status.disabled ? 'disabled' as const : traffic?.connected ? 'connected' as const : 'disconnected' as const,
-            reason: status.reason, lastInbound: traffic?.lastInbound ?? null, lastOutbound: traffic?.lastOutbound ?? null,
+            reason: status.reason, ...(status.stopCause ? { stopCause: status.stopCause } : {}), lastInbound: traffic?.lastInbound ?? null, lastOutbound: traffic?.lastOutbound ?? null,
             outboxDepth: remote.outbox().filter(job => ['queued', 'sending', 'uncertain'].includes(job.state)).length,
             mute: remote.get('mute') === 'true',
           }), botLink: publicLink };

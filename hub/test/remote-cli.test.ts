@@ -59,6 +59,30 @@ test('remote status reports loaded fingerprints, pairing and messenger facts wit
   assert.equal((status.stdout + status.stderr + plain.stdout + plain.stderr).includes(token), false);
 });
 
+for (const [via, stopCause, cause, fix] of [
+  ['telegram', 'token', 'wrong or revoked token (401)', 'set a new token with cland secret set telegram.token, then run cland hub reload'],
+  ['discord', 'message-content', 'Message Content toggle disabled (4014)', 'enable Message Content in the Discord application, then run cland hub reload'],
+] as const) test(`remote status renders the shared ${via} structured cause and fix without parsing reason`, async t => {
+  const root = await tempProject(t);
+  await projectHub(t, root, {}, { gatewayRemotes: [testMessenger(via, { via,
+    startError: Object.assign(new Error('opaque sanitized legacy reason'), { stopCause }),
+  })] });
+  const result = await cland(root, 'remote', 'status');
+  assert.equal(result.code, 0, result.stderr);
+  assert.ok(result.stdout.includes(`stopped: ${cause}; ${fix}`), result.stdout);
+  assert.match(result.stdout, /connection: disabled \(opaque sanitized legacy reason\)/);
+});
+
+test('remote status renders previous hub rows without a structured cause', async t => {
+  const root = await tempProject(t);
+  await legacyRemoteHubFixture(t, root, { legacyStatus: true }).start();
+  const result = await cland(root, 'remote', 'status');
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /connection: disabled \(legacy sanitized stop reason\)/);
+  assert.match(result.stdout, /Old hub human \(12345\)/);
+  assert.equal(result.stdout.includes('stopped:'), false);
+});
+
 for (const via of ['telegram', 'discord'] as const) test(`remote unpair ${via} forgets only that binding`, async t => {
   const root = await tempProject(t);
   const remotes = [testMessenger('telegram'), testMessenger('discord', 'discord')];

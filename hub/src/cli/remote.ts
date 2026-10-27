@@ -4,6 +4,7 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 import type { Pairing } from '../remote/state.ts';
 import type { RemoteStatusResult } from '../protocol.ts';
+import { remoteStopDetails } from '../remote/notices.ts';
 
 export async function runRemote(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' } } });
@@ -21,14 +22,18 @@ export async function runRemote(args: string[], cwd = process.cwd()): Promise<nu
     : { type: `remote.${sub}`, messenger };
   const value = await askHubFrame(discovery, frame);
   let text: string;
-  if (sub === 'status') text = (value as RemoteStatusResult).remotes.map(row => [
+  if (sub === 'status') text = (value as RemoteStatusResult).remotes.map(row => {
+    const stopped = row.connection === 'disabled' && row.stopCause ? remoteStopDetails(row.messenger, row.stopCause) : undefined;
+    return [
     row.messenger,
     `token: ${row.token.present ? `present (${row.token.fingerprint})` : 'absent'}`,
     `paired: ${row.pairing ? `${row.pairing.name} (${row.pairing.userId}); chat ${row.pairing.chatId}` : 'none'}`,
     `connection: ${row.connection}${row.reason ? ` (${row.reason})` : ''}`,
+    ...(stopped ? [`stopped: ${stopped.cause}; ${stopped.fix}`] : []),
     `last inbound: ${row.lastInbound ?? 'none'}`, `last outbound: ${row.lastOutbound ?? 'none'}`,
     `outbox: ${row.outboxDepth}`, `mute: ${row.mute}`, `bot: ${row.botLink ?? 'unavailable'}`,
-  ].join('\n')).join('\n\n');
+    ].join('\n');
+  }).join('\n\n');
   else if (sub === 'test') text = `token checked; ${(value as { sent: boolean }).sent ? 'test line sent' : 'no paired chat'}`;
   else if (sub === 'unpair') text = `unpaired ${messenger}`;
   else {

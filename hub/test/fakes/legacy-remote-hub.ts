@@ -6,7 +6,19 @@ import { beforeDirectories } from '../process-cleanup.ts';
 import { abortable, within } from '../../src/executor/droplet/deadline.ts';
 import { realClock, type Clock } from '../../src/hub/clock.ts';
 
-type Options = { clock?: Clock; signal?: AbortSignal; publishListening?: boolean };
+type Options = { clock?: Clock; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean };
+
+// Literal previous wire shape: no stopCause field, including for a stopped remote.
+const LEGACY_STATUS = { remotes: [{
+  messenger: 'telegram', token: { present: false, fingerprint: null },
+  pairing: { userId: '12345', chatId: '23456', guildId: null, name: 'Old hub human' },
+  connection: 'disabled', reason: 'legacy sanitized stop reason', lastInbound: null, lastOutbound: null,
+  outboxDepth: 0, mute: false, botLink: null,
+}, {
+  messenger: 'discord', token: { present: false, fingerprint: null }, pairing: null,
+  connection: 'disconnected', reason: null, lastInbound: null, lastOutbound: null,
+  outboxDepth: 0, mute: false, botLink: null,
+}] };
 
 /** Own native receipts before listen, including failed or abandoned setup. */
 export function legacyRemoteHubFixture(t: TestContext, root: string, options: Options = {}) {
@@ -39,7 +51,9 @@ export function legacyRemoteHubFixture(t: TestContext, root: string, options: Op
         if (frame.type === 'hello') peer.write(JSON.stringify({ type: 'welcome', name: 'cli', presence: [] }) + '\n');
         else {
           requests.push(frame.type);
-          peer.write(JSON.stringify(frame.type === 'pairing.approve'
+          peer.write(JSON.stringify(frame.type === 'remote.status' && options.legacyStatus
+            ? { type: 'result', id: frame.id, ok: true, value: LEGACY_STATUS }
+            : frame.type === 'pairing.approve'
             ? { type: 'result', id: frame.id, ok: true, value: { pairing: { userId: '12345', chatId: '23456', guildId: null, name: 'Old hub human' } } }
             : { type: 'result', id: frame.id, ok: false, error: 'invalid request' }) + '\n');
         }

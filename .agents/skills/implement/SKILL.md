@@ -74,6 +74,11 @@ confirm its identity before approval, keeping no-code waits bounded and declines
 For remote terminal commands, token rotation or messenger status/test callbacks,
 use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,
 legacy optional callbacks and previous-hub refusal coverage.
+For doctor's remote diagnostics, use
+`docs/agents/tests/hub-test-doctor-remotes.test.ts.md`: local secret resolution
+and Unix status frames only, with the shared General cause/fix table and optional
+`stopCause` compatibility. Prove native Telegram stops at the liveness seam;
+Discord structured test stops do not claim native transport coverage.
 
 For Telegram Bot API or native messenger changes, use the T2 loopback/fake-control
 and production-factory frame seams in
@@ -180,6 +185,7 @@ For remote persistence and poller ownership, use `Store.remotes` on the existing
 hub.db handle, with platform ids kept as strings/TEXT. The T1 storage/lease seams
 and T2 frame/restart/stop receipts are documented in
 `docs/agents/tests/hub-test-remote-state.test.ts.md`,
+`docs/agents/tests/hub-test-remote-state-migration.test.ts.md` (T2 native DDL trace),
 `docs/agents/tests/hub-test-poller-lease.test.ts.md` and
 `docs/agents/tests/hub-test-gateway-state.test.ts.md`. Use fake native process
 facts and fake time; retain live or unreadable holders, and release a lease

@@ -30,6 +30,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/outbox.test.ts`](../../../hub/test/outbox.test.ts) | [Notes](hub-test-outbox.test.ts.md) |
 | [`hub/test/outbox-gateway.test.ts`](../../../hub/test/outbox-gateway.test.ts) | [Notes](hub-test-outbox-gateway.test.ts.md) |
 | [`hub/test/remote-state.test.ts`](../../../hub/test/remote-state.test.ts) | [Notes](hub-test-remote-state.test.ts.md) |
+| [`hub/test/remote-state-migration.test.ts`](../../../hub/test/remote-state-migration.test.ts) | [Notes](hub-test-remote-state-migration.test.ts.md) |
 | [`hub/src/remote/redact.test.ts`](../../../hub/src/remote/redact.test.ts) | [Notes](hub-src-remote-redact.test.ts.md) |
 | [`hub/test/executor-watchdog.test.ts`](../../../hub/test/executor-watchdog.test.ts) | [Notes](hub-test-executor-watchdog.test.ts.md) |
 | [`hub/test/executor-lock-liveness.test.ts`](../../../hub/test/executor-lock-liveness.test.ts) | [Notes](hub-test-executor-lock-liveness.test.ts.md) |
@@ -37,6 +38,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/git-maintenance-cli.test.ts`](../../../hub/test/git-maintenance-cli.test.ts) | [Notes](hub-test-git-maintenance-cli.test.ts.md) |
 | [`hub/test/git-maintenance-recovery.test.ts`](../../../hub/test/git-maintenance-recovery.test.ts) | [Notes](hub-test-git-maintenance-recovery.test.ts.md) |
 | [`hub/test/doctor-run.test.ts`](../../../hub/test/doctor-run.test.ts) | [Notes](hub-test-doctor-run.test.ts.md) |
+| [`hub/test/doctor-remotes.test.ts`](../../../hub/test/doctor-remotes.test.ts) | [Notes](hub-test-doctor-remotes.test.ts.md) |
 | [`hub/test/git-maintenance-startup.test.ts`](../../../hub/test/git-maintenance-startup.test.ts) | [Notes](hub-test-git-maintenance-startup.test.ts.md) |
 | [`hub/test/git-maintenance.test.ts`](../../../hub/test/git-maintenance.test.ts) | [Notes](hub-test-git-maintenance.test.ts.md) |
 | [`hub/test/test-admission.test.ts`](../../../hub/test/test-admission.test.ts) | [Notes](hub-test-test-admission.test.ts.md) |

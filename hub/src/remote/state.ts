@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { RemoteStopCause } from '../protocol.ts';
 
 // Additive tables on Store's existing hub.db handle. All platform ids are TEXT,
 // including Telegram ids, so no adapter can accidentally round a snowflake.
@@ -8,7 +9,7 @@ create table if not exists remote_state (
   primary key (messenger, key)
 );
 create table if not exists remote_status (
-  messenger text primary key, disabled integer not null, reason text
+  messenger text primary key, disabled integer not null, reason text, stop_cause text
 );
 create table if not exists remote_pairings (
   messenger text primary key, user_id text not null, chat_id text not null,
@@ -47,7 +48,7 @@ create table if not exists remote_poller_lease (
 );
 `;
 
-export type RemoteStatus = { disabled: boolean; reason: string | null };
+export type RemoteStatus = { disabled: boolean; reason: string | null; stopCause?: RemoteStopCause };
 export type Pairing = { userId: string; chatId: string; guildId: string | null; name: string };
 export type PairingRequest = Pairing & { code: string; created: string; expires: string };
 export type RemoteMessage = { chatId: string; messageId: string; topic: string; message: string | null; ask: string | null; approval: string | null };
@@ -65,6 +66,8 @@ export class RemoteState {
     // Existing hub.db files predate edit targets; keep their rows and wire fields intact.
     const columns = db.prepare('pragma table_info(remote_outbox)').all();
     if (!columns.some(column => column.name === 'target')) db.exec('alter table remote_outbox add column target text');
+    if (!db.prepare('pragma table_info(remote_status)').all().some(column => column.name === 'stop_cause'))
+      db.exec('alter table remote_status add column stop_cause text');
   }
   forMessenger(id: string): RemoteStore { return new RemoteStore(this.#db, id); }
   pollerLease(): PollerOwner | null {
@@ -163,14 +166,15 @@ export class RemoteStore {
     }
   }
   status(): RemoteStatus {
-    const row = this.#db.prepare('select disabled, reason from remote_status where messenger = ?').get(this.#id);
-    return { disabled: row?.disabled === 1, reason: row?.reason === null || !row ? null : String(row.reason) };
+    const row = this.#db.prepare('select disabled, reason, stop_cause from remote_status where messenger = ?').get(this.#id);
+    return { disabled: row?.disabled === 1, reason: row?.reason === null || !row ? null : String(row.reason),
+      ...(row?.stop_cause ? { stopCause: String(row.stop_cause) as RemoteStopCause } : {}) };
   }
   /** The gateway supplies an already-redacted reason; never persist a native error. */
   setStatus(status: RemoteStatus): void {
-    this.#db.prepare(`insert into remote_status (messenger, disabled, reason) values (?, ?, ?)
-      on conflict (messenger) do update set disabled = excluded.disabled, reason = excluded.reason`)
-      .run(this.#id, status.disabled ? 1 : 0, status.reason);
+    this.#db.prepare(`insert into remote_status (messenger, disabled, reason, stop_cause) values (?, ?, ?, ?)
+      on conflict (messenger) do update set disabled = excluded.disabled, reason = excluded.reason, stop_cause = excluded.stop_cause`)
+      .run(this.#id, status.disabled ? 1 : 0, status.reason, status.stopCause ?? null);
   }
   pairing(): Pairing | null {
     const row = this.#db.prepare('select user_id, chat_id, guild_id, name from remote_pairings where messenger = ?').get(this.#id);

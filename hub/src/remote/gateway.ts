@@ -5,6 +5,7 @@ import { remoteRedactor, redactFrame, redactValue, type RemoteRedactor } from '.
 import type { GatewayLease } from './poller-lease.ts';
 import type { PairingCodes } from './pairing.ts';
 import type { Pairing } from './state.ts';
+import { remoteStopCause } from './notices.ts';
 import { gatewayInbox } from './authority.ts';
 import { createHash } from 'node:crypto';
 
@@ -35,7 +36,8 @@ export type Remote = {
   stop: () => void | Promise<void>;
 };
 
-export type RemoteStatus = { disabled: boolean; reason: string | null };
+export type { RemoteStatus } from './state.ts';
+import type { RemoteStatus } from './state.ts';
 export type RemoteStates = {
   forMessenger: (id: string) => {
     status: () => RemoteStatus;
@@ -220,7 +222,8 @@ export class Gateway {
     this.#disabled.add(remote);
     for (const [id, pending] of this.#pending) if (pending.remote === remote) this.#pending.delete(id);
     const reason = this.#reason(error);
-    this.#state.forMessenger(remote.id).setStatus({ disabled: true, reason });
+    const stopCause = remoteStopCause(error);
+    this.#state.forMessenger(remote.id).setStatus({ disabled: true, reason, ...(stopCause ? { stopCause } : {}) });
     this.#log({ event: 'remote-disabled', remote: remote.id, reason });
     if (!this.#started.includes(remote)) return;
     // Keep ownership of partial startup and runtime resources through their stop receipt.

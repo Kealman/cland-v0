@@ -1,4 +1,6 @@
 model-invocable (Init)
+doctor remote diagnostics, optional stop causes and local-only proof (T-1361)
+remote schema exec trace controls isolated at T2 (T-1361)
 artifact creation concurrency and refusal cleanup T1 seam (T-521)
 merge-batch T0 receipts, bisection and full-plan confirmation guidance (T-1018)
 hub review request (T-226)

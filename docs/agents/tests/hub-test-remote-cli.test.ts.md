@@ -13,6 +13,11 @@ callback refuses without stopping the adapter. Remote, attributed and unrelated
 local clients cannot manage remotes. The authenticated web denial cases live in
 `hub/test/web-authority.test.ts`.
 
+Structured stops retain the opaque legacy reason while CLI status renders the
+cause/fix directly from the same table as doctor and General. The literal old
+status-wire control omits `stopCause` and retains its pairing/reason without
+inventing a cause or failing the current renderer.
+
 Test sends check the client even without a pairing and send exactly one fixed
 line to the current stored destination when paired. The error control injects a
 fabricated token, checks the exact sanitized frame error, disabled state and

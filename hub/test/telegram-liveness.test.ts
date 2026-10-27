@@ -17,6 +17,17 @@ import { once } from 'node:events';
 import { WebSocket } from 'ws';
 import { frameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
+import { doctor, toolchain } from './doctor-fixture.ts';
+import type { Check } from '../src/doctor/report.ts';
+
+async function doctorStop(t: import('node:test').TestContext, root: string) {
+  const tools = await toolchain(t);
+  const result = await doctor(root, tools.env, '--json');
+  const check = (JSON.parse(result.stdout) as { checks: Check[] }).checks.find(row => row.name === 'telegram stopped');
+  assert.ok(check, 'doctor names the stopped remote cause');
+  assert.equal(check.verdict, 'warn');
+  return check;
+}
 
 test('Telegram liveness missing startup receipt disposes the owned hub and native connections', async t => {
   const setupClock = new FakeClock();
@@ -102,6 +113,11 @@ test('Telegram rides out 409 for 60 seconds then reports another consumer withou
   await within(closed, 1_000);
   const row = await status();
   assert.equal(row.connection, 'disabled');
+  assert.equal(row.stopCause, 'other-consumer');
+  const stopped = await doctorStop(t, f.root);
+  assert.equal(stopped.detail, 'another consumer of the token (409)');
+  assert.equal(stopped.fix, 'stop the other token consumer, then run cland hub reload');
+  assert.ok((await history()).includes(`${stopped.detail}; ${stopped.fix}`));
   assert.match(row.reason!, /another consumer of the token/);
   const cli = await cland(f.root, 'remote', 'status');
   assert.equal(cli.code, 0, cli.stderr);
@@ -153,6 +169,12 @@ for (const code of [401, 403]) {
     await until(async () => (await status()).connection === 'disabled', { what: 'disabled Telegram status', timeoutMs: 1_000 });
     const row = await status();
     assert.equal(row.connection, 'disabled');
+    assert.equal(row.stopCause, code === 401 ? 'token' : 'blocked');
+    const stopped = await doctorStop(t, f.root);
+    assert.equal(stopped.detail, text);
+    assert.equal(stopped.fix, code === 401 ? 'set a new token with cland secret set telegram.token, then run cland hub reload'
+      : 'unblock the bot in Telegram, then run cland hub reload');
+    assert.ok((await history()).includes(`${stopped.detail}; ${stopped.fix}`));
     assert.ok(row.reason?.includes(text));
     assert.match(row.reason!, code === 401 ? /cland secret set telegram.token/ : /unblock the bot in Telegram/);
     assert.match(row.reason!, /cland hub reload/);
@@ -250,6 +272,7 @@ test('Telegram unblocked after 403 resumes on unchanged reload while configurati
   const active = await within(resumed, 1_000);
   assert.equal((await status()).connection, 'connected');
   assert.equal((await status()).reason, null);
+  assert.equal((await status()).stopCause, undefined, 'reload clears the terminal cause after recovery');
   const config = defaultConfig('Telegram liveness fixture');
   config.verification.lockPath = join(f.root, 'suite.lock');
   await writeFile(join(f.root, '.cland/config.toml'), renderConfig(config));

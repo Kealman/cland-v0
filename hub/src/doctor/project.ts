@@ -3,7 +3,7 @@ import { checkGitMaintenance } from './git.ts';
 // The project's side of `cland doctor`: the hub (running or startable, its discovery file, the secret), the
 // committed config (`roles.toml`, `config.toml`), and what `cland init` provisioned (the skills and their link
 // for Claude Code, the hooks, the mod cland ships, `docs/agents/*`, AGENTS.md's block). Read-only: the hub is
-// asked `hub.status` over its socket and nothing else.
+// asked `hub.status` here; remotes.ts also reads `remote.status` over the local socket.
 import { inspectConflictCaptures } from '../tracker/conflict-captures.ts';
 import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
