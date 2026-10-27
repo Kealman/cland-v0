@@ -81,6 +81,11 @@ test('finished remote runs free both budget slots despite failed spend settlemen
       const journal = completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));
       return pending.every(job => journal.some(entry => entry.event === 'verification-admitted' && entry.id === job.id)) ? true : undefined;
     }, 20000);
+    // Admission can leave native key generation in flight. Hold the ledger fault
+    // until every admitted waiter has published its own terminal receipt.
+    for (const [index, job] of pending.entries()) {
+      assert.match((await finished(f, waiters[index]!.topic, job.id)).text, /exit 1/);
+    }
     const q = await queue(f);
     assert.ok(q.remote!.every(r => r.id !== a.id && r.id !== b.id));
     assert.equal(q.waiters.length, 0);
