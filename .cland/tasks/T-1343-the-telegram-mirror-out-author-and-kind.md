@@ -2,8 +2,8 @@
 id: T-1343
 kind: task
 title: "The Telegram mirror out: author and kind header, Rich Messages, entities fallback, numbered splits, silent notes"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1096
 branch: t/T-1343-the-telegram-mirror-out-author-and-kind
 created: 2026-10-26T19:09:06.641Z
-updated: 2026-10-26T23:48:18.688Z
+updated: 2026-10-27T01:06:43.242Z
+closed: 2026-10-27T01:06:43.242Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Rendering of General messages. The header names "you" for the human's workbench 
 
 - [x] C1. An agent's report with a heading, a table and code arrives as a Rich Message with its header, a message the fake rejects arrives as plain text with entities, and a long message under `format = "entities"` arrives in numbered parts that never split an entity (test).
   - done: impl-1343 · 2026-10-26T23:45:32.510Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1343-final1 · 2026-10-27T01:00:34.815Z · commit 1810eb43d43a28549165823fe8db5bf2dda27fe5
 - [x] C2. A progress note and a hub notice arrive without notification, and nothing the human sent from the chat, no answer and no ask is mirrored back as a message (test).
   - done: impl-1343 · 2026-10-26T23:27:23.615Z
+  - verified: rev-31 [reviewer] · run rev-20261027-1343-final1 · 2026-10-27T01:00:34.815Z · commit 1810eb43d43a28549165823fe8db5bf2dda27fe5
 
 ## Comments
 
@@ -89,3 +92,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source3 clear at 8f5d022ec5c52b4554b7b10ba175c47de153b30a, tree 31d9252928e24eaa6b34922db3efa260e63c8bef. A-12525 records the Standards and Spec audit. M1–M5 are resolved. The narrow M5 correction pre-arms and joins each rejected request's matching native close before the next action; strict IDs and positive assertions remain intact. Source3 changes only the test and its guide; production and shared fake remain unchanged. No new findings. C1/C2 runtime verification remains pending the Coordinator's exact-head full verify all under decision 4a08247d-015b-4454-bc46-34c651caa869; no mode-free task run is requested.
+
+### rev-31 · 2026-10-27T00:22:31.986Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261027-1343-delta1
+commit: 1810eb43d43a28549165823fe8db5bf2dda27fe5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized pairing merge delta source clear; A-12533 records Standards0/Spec0 findings at tree dfde953bfa7bc1ca520ed83a63c2ac9f64bdec92. Parents independently confirmed as prior full-clear8f5d022ec and Coordinator-requested landed dev4446cecdd. Pairing callbacks/fatal handlers and render-format forwarding are both preserved; unchanged rendering source/tests/fake carry A-12525. Synchronous stopped/fatal receive fence prevents the terminal General notice from starting a second send and replacing the original blocked cause. Existing pairing assertions remain byte-identical to landed dev; guide/README updated. Both frozen help rows independently match. A-12532's selected local34 T2+1 T1 passes and typecheck remain local correction-tree evidence, no Linux/full/load result. C1/C2 runtime-unverified. Report ready at this exact head for Coordinator-owned sole full verify all under4a08247d/3d9b5436; no mode-free submission or further merge requested.
+
+### rev-31 · 2026-10-27T01:00:34.815Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261027-1343-final1
+commit: 1810eb43d43a28549165823fe8db5bf2dda27fe5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1/C2 verified at unchanged reviewed head/tree dfde953bfa7bc1ca520ed83a63c2ac9f64bdec92. A-12536 independently audits original Coordinator-owned all run b476e9d5/A-12535, nativeexit0 and hub exact-head finished/passed. Typed unique test finishes4908pass/8skip/0fail/cancel/todo; all12 required pure/rendering identities pass once,41Telegram identities pass, membership blocked-cause and native restart controls included. New rendering max0.242528652s, no >=3s allowance. C1 rich/fallback/UTF16/entity-safe numbered parts/durable mappings and C2 silence/filtering/actual ask-answer exclusions established by unchanged assertions plus named completions. HostT0 plus LinuxallT1/T2/T3/Web completed; T4 absent, no separate candidate5/5 load records. Eight explicit platform/prerequisite skips are unrelated, not passes. HeadlessShell156.0.8078.4/v1248; Linuxc-8lon1 Node24.21.0/Neovim0.12.5; lifetime2009s/$0.1395 is machine accounting. Hostgate549f4806 is tree provenance, not alternate candidate or remote repeated typecheck. Report-only135lint findings/61files, seven missing baselines, timing/Web/T3overruns and incomplete-base ratchet retained; no enforce-budget claim. SourceA-12525+A-12533 carries. Coordinator enqueues on ready; no further run or merge requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-27T01:06:43.242Z
+
+Merged 5e5bc6fde75029877078fa0ce308891f66e76a4f onto dev.

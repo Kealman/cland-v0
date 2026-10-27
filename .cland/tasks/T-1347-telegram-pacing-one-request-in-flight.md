@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-26T19:09:07.525Z
-updated: 2026-10-26T19:09:14.240Z
+updated: 2026-10-27T00:23:10.245Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Bind T-1324's and T-1325's outbox drain to the Telegram client: per-chat orderin
 ## Acceptance criteria
 
 - [ ] C1. A burst of 20 General messages against a fake that answers one 429 arrives complete and in order after the wait, with one request in flight per chat and the hold applied bot-wide under an injected clock (test).
+
+## Comments
+
+### coord · 2026-10-27T00:23:10.245Z
+
+Scope note (coord, 2026-10-27 00:24Z): T-1343 (General mirror parts) and T-1346 (command replies) send directly through the Telegram client with no outbox; neither claims lost-receipt replay. T-1347 moves every Telegram send — mirror parts, command replies, notices — behind the per-chat queue with one request in flight and the bot-wide 429 hold. Command replies rank with ordinary messages; cards first. Durable reply ids keep going through RemoteStore.putMessage.

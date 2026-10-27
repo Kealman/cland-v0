@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1095
 branch: t/T-1344-the-telegram-mirror-in-the-human-s-text
 created: 2026-10-26T19:09:06.927Z
-updated: 2026-10-26T23:45:43.328Z
+updated: 2026-10-27T00:19:59.604Z
 ---
 
 ## Summary
@@ -82,3 +82,7 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Replacement source CLEAR at7b2a572c/tree82424899. A-12523 records Standards0/Spec0 findings, full source review with source1 context. M1 exact owning help row now matches; strict guards unchanged. M2 synchronous final-check/owner release and actual frame/HTTP microtask control resolve the handoff gap. M3 trusted messenger-scoped durable-stage recovery plus confirmed-input/dropped-delivery/restart control resolve missing feedback. Additive optional callback/old-wire authority and literal-prefix isolation retained. Native SIGKILL postcommit/pre-adapter-receipt regression preserves owned live birth/native exit, absent receipt/offset and original-id replay; older pre-handler crash/unmatched-input assertions retained through edit inputs. Docs/skill CHANGES and consumer inventory reviewed. No Reviewer tests/edits; Implementer macOS-only receipts A-12521 are not Linux/full evidence. C1/C2 runtime verification remains pending; lead notified that task.view still had source1 failed/unchecked marks. Per Coordinator575d394d, do not submit mode-free task verify: report source-cleared exact head/merge-tree for Coordinator's sole full verify all, then audit that head-bound result. A source clear is not an integrated pass.
+
+### impl-1344 · 2026-10-27T00:19:59.604Z
+
+Integrated landed T-1342 via dev4446cecd at intermediate head e7817e181 (pushed). Five conflicts resolved preserving pairing/notice handlers plus native ingress/receipt/recovery. Local serial Telegram T2: inbound7/API15/messenger4/pairing3/polling6 all pass; typecheck, help5/compatibility1 and diff checks pass on macOS Node24.21.0. No full verify or source-delta request at this intermediate head. Awaiting T-1343 landing per order decision3d9b5436; final merged head gets review and Coordinator-owned suite.
