@@ -6838,7 +6838,23 @@ through the gateway with Discord provenance and interaction ingress before a
 single type-7 update removes its components and shows the shared outcome line.
 At two seconds pending hub work is acknowledged with type 6; completion then
 uses a durable outbox edit. Native callbacks bypass message pacing. Other answer…
-and Decline… currently reply privately “not available yet”. No new terminal
+and Decline… open a type-9 modal with the question, a required paragraph field
+(maximum 4000 characters), and the title Your answer or Why decline. Paired-user
+submissions use the same topic.answer gate, storing the text or decline reason
+before the type-7 outcome update (type 6 after two seconds).
+
+Ask state changes and inbox departures enqueue REST edits for every mapped
+Discord copy, removing all components. This includes Telegram, Neovim and web
+answers, withdrawal and topic/item cancellation. Identical edits coalesce per
+card and run ahead of General. Closure is durable: sourceOpen drops unsent
+closed cards. Already-attempted uncertain cards reconcile their receipt or the
+unchanged enforced nonce within the original two-minute window; settlement stores
+the mapping and queues its outcome edit ahead of General, including after restart.
+Startup also folds closed mapped cards before draining any General job, recovering
+a crash after mapping commit but before the owed edit was enqueued.
+A replacement POST used for reconciliation carries the closed outcome without
+buttons. Attempts past the window remain fenced. Historical
+outbox payloads remain readable; no additional wire field is required. No new terminal
 command, hub frame or role permission is required. See the
 [card test guide](../docs/agents/tests/hub-test-discord-cards.test.ts.md).
 

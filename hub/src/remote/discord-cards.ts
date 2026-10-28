@@ -1,4 +1,4 @@
-import type { HubFrame, InboxAsk, TopicMessage } from '../protocol.ts';
+import type { AskCard, HubFrame, InboxAsk, TopicMessage } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { DiscordOutbox } from './discord-outbox.ts';
 import type { DiscordActionRow } from './discord-api.ts';
@@ -61,18 +61,29 @@ export class DiscordCards {
     this.#work.add(work); void work.finally(() => this.#work.delete(work));
   }
   async #press(raw: unknown): Promise<void> {
-    const d = raw as { type?: number; id?: string; token?: string; guild_id?: string; channel_id?: string; member?: { user?: { id?: string } }; message?: { id?: string }; data?: { custom_id?: string } };
-    if (d.type !== 3 || typeof d.id !== 'string' || typeof d.token !== 'string') return;
+    const d = raw as { type?: number; id?: string; token?: string; guild_id?: string; channel_id?: string; member?: { user?: { id?: string } }; message?: { id?: string }; data?: { custom_id?: string; components?: Array<{ component?: { custom_id?: string; value?: string } }> } };
+    if (![3, 5].includes(d.type ?? 0) || typeof d.id !== 'string' || typeof d.token !== 'string') return;
     const reply = (text: string) => this.#api.callback(d.id!, d.token!, text, { signal: this.#signal });
     const pair = this.#store.pairing();
     if (!pair || pair.guildId !== d.guild_id || pair.chatId !== d.channel_id || pair.userId !== d.member?.user?.id) { await reply('This channel or user is not paired with this project.'); return; }
-    const match = /^ask:(.+):(other|decline|[1-9])$/.exec(d.data?.custom_id ?? '');
+    const match = /^(?:ask|modal):(.+):(other|decline|[1-9])$/.exec(d.data?.custom_id ?? '');
     const mapping = d.message?.id && this.#store.message(pair.chatId, d.message.id);
     if (!match || !mapping || mapping.ask !== match[1]) { await reply('This button is not available'); return; }
     const model = this.#store.get(`discord.card-model:${mapping.ask}`);
     const ask = model ? JSON.parse(model) as InboxAsk : null;
     if (!ask || (match[2] === 'other' && !ask.free) || (/^[1-9]$/.test(match[2]!) && Number(match[2]) > ask.options.length)) { await reply('This button is not available'); return; }
-    if (match[2] === 'other' || match[2] === 'decline') { await reply('not available yet'); return; }
+    const modal = d.type === 5;
+    if (modal !== d.data!.custom_id!.startsWith('modal:') || (modal && !['other', 'decline'].includes(match[2]!))) { await reply('This button is not available'); return; }
+    const text = d.data?.components?.find(row => row.component?.custom_id === 'answer')?.component?.value;
+    if (modal && (typeof text !== 'string' || !text.trim() || text.length > 4000)) { await reply('An answer of 1 to 4000 characters is required.'); return; }
+    if (!modal && (match[2] === 'other' || match[2] === 'decline')) {
+      const inbox = await this.#request<import('../protocol.ts').Inbox>('inbox.list', {});
+      if (!inbox.asks.some(row => row.id === mapping.ask)) { await reply('Already answered'); return; }
+      await this.#api.modal(d.id, d.token, { custom_id: `modal:${mapping.ask}:${match[2]}`, title: match[2] === 'other' ? 'Your answer' : 'Why decline', components: [
+        { type: 10, content: [...ask.question].slice(0, 4000).join('') },
+        { type: 18, label: match[2] === 'other' ? 'Answer' : 'Reason', component: { type: 4, custom_id: 'answer', style: 2, required: true, max_length: 4000 } },
+      ] }, { signal: this.#signal }); return;
+    }
     let deferred: Promise<unknown> | undefined;
     const timer = this.#clock.setTimeout(() => { if (!this.#signal.aborted) { deferred = this.#api.update(d.id!, d.token!, null, { signal: this.#signal }); void deferred.catch(() => {}); } }, 2000);
     timer.unref();
@@ -80,7 +91,7 @@ export class DiscordCards {
     this.#signal.addEventListener('abort', cancel, { once: true });
     try {
       let result: { message: TopicMessage };
-      try { result = await this.#request('topic.answer', { ask: mapping.ask, option: Number(match[2]) }, d.id); }
+      try { result = await this.#request('topic.answer', { ask: mapping.ask, ...(modal ? match[2] === 'decline' ? { declined: true, reason: text } : { text } : { option: Number(match[2]) }) }, d.id); }
       catch {
         this.#clock.clearTimeout(timer);
         if (!this.#signal.aborted && !deferred) {
@@ -90,7 +101,7 @@ export class DiscordCards {
         return;
       }
       this.#store.set(`discord.press:${d.id}`, 'answered');
-      const content = outcomeLine({ status: 'answered', text: result.message.text, by: 'human', via: 'discord', at: result.message.ts });
+      const content = [...outcomeLine(result.message.ask?.outcome ?? { ...(modal && match[2] === 'decline' ? { status: 'declined' as const, reason: text!.trim() } : { status: 'answered' as const, text: result.message.text }), by: 'human', via: 'discord', at: result.message.ts })].slice(0, 2000).join('');
       this.#clock.clearTimeout(timer);
       if (deferred) {
         // Persist the owed edit even when Discord accepted the defer but lost its response.
@@ -99,17 +110,30 @@ export class DiscordCards {
       else await this.#api.update(d.id, d.token, content, { signal: this.#signal });
     } finally { this.#clock.clearTimeout(timer); this.#signal.removeEventListener('abort', cancel); await deferred?.catch(() => {}); }
   }
+  async #outcome(id: string, card: Pick<AskCard, 'state' | 'outcome'>): Promise<void> {
+    await this.#outbox.closeCard(id, card);
+  }
+
   async stop(): Promise<void> { await Promise.allSettled([...this.#work]); }
   async receive(frame: HubFrame): Promise<void> {
     if (this.#signal.aborted) return;
     if (frame.type === 'result') { const p = this.#requests.get(frame.id); if (frame.ok) p?.resolve(frame.value); else p?.reject(new Error('Discord card refused')); }
+    if (frame.type === 'ask' && frame.card.state !== 'open') await this.#outcome(frame.ask, frame.card);
     if (frame.type !== 'inbox') return;
+    await Promise.all((frame.inbox.departures ?? []).flatMap(row => {
+      if (row.kind !== 'ask' || !['answered', 'declined', 'withdrawn', 'cancelled'].includes(row.reason)) return [];
+      return [this.#outcome(row.id, { state: row.reason === 'declined' ? 'answered' : row.reason as AskCard['state'],
+        ...(row.outcome && 'status' in row.outcome ? { outcome: row.outcome } : {}) })];
+    }));
     const pair = this.#store.pairing(); if (!pair) return;
     await Promise.all(inboxPublication(frame.inbox).flatMap(row => {
       if (row.kind !== 'ask') return [];
       this.#store.set(`discord.card-model:${row.id}`, JSON.stringify(row.ask));
       const rendered = discordAsk(row.ask);
-      return [this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.ask.topic.id)];
+      return [this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.ask.topic.id).then(async () => {
+        const closure = this.#store.get(`discord.card-closure:${row.id}`);
+        if (closure) await this.#outcome(row.id, JSON.parse(closure));
+      })];
     }));
   }
 }

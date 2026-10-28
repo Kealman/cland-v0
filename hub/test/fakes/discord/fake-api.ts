@@ -84,12 +84,12 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       state.interactions.push(record); interactionTokens.set(token, record);
       const user = body.user === 'member' ? DISCORD_IDS.member : body.user === 'administrator' ? DISCORD_IDS.administrator : DISCORD_IDS.human;
       gateway.dispatch({ op: 0, t: 'INTERACTION_CREATE', s: Number(nextId % 100000n), d: {
-        id, token, application_id: DISCORD_IDS.application, type: body.custom_id ? 3 : 2,
+        id, token, application_id: DISCORD_IDS.application, type: body.modal_text !== undefined ? 5 : body.custom_id ? 3 : 2,
         ...(body.custom_id ? { message: { id: body.message_id } } : {}),
         guild_id: body.guild_id === null ? undefined : DISCORD_IDS.guild,
         channel_id: body.channel_id ?? DISCORD_IDS.channel, channel: { type: body.channel_type ?? 0 },
         member: { user: { id: user, username: body.user === 'member' ? 'Fixture member' : 'Fixture human' } },
-        data: body.custom_id ? { custom_id: body.custom_id } : { name: 'cland', options: [{ name: body.command ?? 'pair', type: 1, ...(typeof body.text === 'string' ? { options: [{ name: 'text', type: 3, value: body.text }] } : {}) }] },
+        data: body.custom_id ? { custom_id: body.custom_id, ...(body.modal_text !== undefined ? { components: [{ type: 18, component: { type: 4, custom_id: 'answer', value: body.modal_text } }] } : {}) } : { name: 'cland', options: [{ name: body.command ?? 'pair', type: 1, ...(typeof body.text === 'string' ? { options: [{ name: 'text', type: 3, value: body.text }] } : {}) }] },
       } });
       return reply(res, 200, { id });
     }
