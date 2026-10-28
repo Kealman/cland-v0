@@ -52,6 +52,10 @@ Keys match by physical position, so they work in any keyboard layout.
 
 A thread shows each message with its sender, role colour and delivery state. Runs of agent-to-agent messages fold into one line built from facts: who, how many messages, the latest step, the age. Artifacts show inline; HTML artifacts render in a sandboxed frame.
 
+The composer accepts file attachments: choose **Attach a file** (the **＋** button on a phone), select up to 10 files, add optional message text and send. The files arrive as artifacts attached to your one message. Selected files show their names and sizes and can be removed before sending. A file over `artifacts.max_upload_mb` is marked **Refused** and blocks Send; the generated limit is 50 MiB per file. Changing that limit requires a hub restart. Uploads use the same browser sign-in and Origin checks as the workbench.
+
+The artifact viewer displays inline PNG, JPEG, GIF and WebP images up to 10 MiB. Larger images and other file types keep their normal download or viewer behaviour; an image that cannot load offers a download. See [Photos, files and voice](/docs/remote-control/#photos-files-and-voice) for sending attachments and voice through Telegram.
+
 An ask is a card with numbered options and a free answer. The same ask shows in the inbox and in its thread, with one state: answer it in either place, or in Neovim, and every client sees the outcome. The first answer from any client wins. Answered asks fold to one line with the option, who answered and when.
 
 **Declining** an ask is an answer too: you give a reason, the asker receives it, and it may ask again later.

@@ -12,7 +12,7 @@ for (const line of source('hub/src/init/config.ts').split('\n')) {
   const heading = /^\[([\w.]+)\]$/.exec(line);
   if (heading) section = heading[1]!;
   const key = /^(\w+) =/.exec(line);
-  if (key && section.startsWith('remote')) configNames.push(`${section}.${key[1]}`);
+  if (key && (section.startsWith('remote') || section === 'speech' || section === 'artifacts')) configNames.push(`${section}.${key[1]}`);
 }
 export const secretNames = [...source('hub/src/remote/secrets.ts')
   .match(/export const SECRET_NAMES = \[([^\]]+)\]/)![1]!.matchAll(/'([^']+)'/g)].map(match => match[1]!);
@@ -36,8 +36,8 @@ function vocabularyErrors(text: string): string[] {
       return !word.includes('|') || word.slice(1, -1).split('|').includes(words[i]!);
     }))) errors.push(`command: ${command}`);
   }
-  for (const match of text.matchAll(/\bremote\.[a-z][\w.]*/g)) {
-    if (!configNames.includes(match[0])) errors.push(`config: ${match[0]}`);
+  for (const match of text.matchAll(/\b(?:remote|speech|artifacts)\.[a-z][\w.]*/g)) {
+    if (!secretNames.includes(match[0]) && !configNames.includes(match[0])) errors.push(`config: ${match[0]}`);
   }
   for (const match of text.matchAll(/(?<![\w.])(?:telegram|discord)\.[a-z_]+|\bspeech\.(?:[a-z_]+_key)/g)) {
     if (!secretNames.includes(match[0])) errors.push(`secret: ${match[0]}`);
@@ -50,6 +50,8 @@ test('remote documentation guard rejects unknown commands, config keys and secre
   assert.deepEqual(secretNames, /names: ([^\n]+)/.exec(SECRET_USAGE)![1]!.split(', '));
   assert.deepEqual(vocabularyErrors('`cland remote pair telegram CODE` `remote.telegram.enable` `telegram.key`'),
     ['command: cland remote pair telegram CODE', 'config: remote.telegram.enable', 'secret: telegram.key']);
+  assert.deepEqual(vocabularyErrors('`speech.engine` `artifacts.max_upload_bytes`'),
+    ['config: speech.engine', 'config: artifacts.max_upload_bytes']);
   assert.deepEqual(vocabularyErrors('`cland secret set telegram.token` `cland config set remote.telegram.enabled true`'), []);
 });
 
@@ -88,4 +90,32 @@ test('CLI reference lists exactly the remote and secret subcommands in usage', (
     const actual = reference.filter(command => command.startsWith(`cland ${group} `)).map(command => command.split(' ')[2]!);
     assert.deepEqual(actual.sort(), expected.sort(), `${group} subcommands match help, without omissions or extras`);
   }
+});
+
+test('remote media guide documents shipped speech and upload settings and exact data-use lines', () => {
+  const guide = source(guidePath);
+  assert.match(guide, /^## Photos, files and voice$/m);
+  for (const name of ['artifacts.max_upload_mb', 'speech.provider', 'speech.model', 'speech.language', 'speech.max_seconds', 'speech.command']) {
+    assert.ok(configNames.includes(name), `${name} exists in generated config`);
+    assert.ok(guide.includes(name), `${name} is documented`);
+  }
+  for (const name of ['CLAND_SPEECH_MIME', 'CLAND_SPEECH_LANGUAGE']) {
+    assert.ok(source('hub/src/speech/command.ts').includes(`${name}:`), `${name} is supplied to the command`);
+    assert.ok(guide.includes(name), `${name} is documented`);
+  }
+  const dataUse = source('hub/src/speech/provider.ts').split('export const SPEECH_DATA_USE = {')[1]!.split('} as const;')[0]!;
+  const lines = [...dataUse.matchAll(/: '([^'\n]+)'/g)].map(match => match[1]!);
+  assert.equal(lines.length, 3);
+  for (const line of lines) assert.ok(guide.includes(line), `exact data-use line: ${line}`);
+  assert.match(guide, /provider = ""/);
+  assert.match(guide, /🎤 not transcribed/);
+});
+
+test('web guide names composer file attachments and inline image formats', () => {
+  const phone = source(phonePath);
+  assert.match(phone, /composer[\s\S]*?file attachments/);
+  assert.match(phone, /Attach a file/);
+  assert.match(phone, /inline[\s\S]*?PNG, JPEG, GIF and WebP/);
+  assert.ok(phone.includes('artifacts.max_upload_mb'));
+  assert.deepEqual(vocabularyErrors(phone.split('## Threads and asks')[1]!.split('## On your phone')[0]!), []);
 });

@@ -6,6 +6,7 @@ import { SECRET_NAMES } from '../src/remote/secrets.ts';
 import { configNames, secretNames } from '../../site/test/remote-docs.test.ts';
 
 test('site vocabulary extraction matches the runtime config and secret names', () => {
-  assert.deepEqual(configNames, configKeys().filter(key => key.startsWith('remote.')));
+  assert.deepEqual([...configNames].sort(), configKeys().filter(key =>
+    key.startsWith('remote.') || key.startsWith('speech.') || key.startsWith('artifacts.')).sort());
   assert.deepEqual(secretNames, SECRET_NAMES);
 });

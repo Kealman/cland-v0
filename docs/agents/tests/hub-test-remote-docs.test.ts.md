@@ -4,10 +4,12 @@ T1 imports `site/test/remote-docs.test.ts` into the existing hub suite. The site
 test also runs in site's prebuild with only its own dependencies installed:
 import only dependency-free CLI usage, and read the config template and
 `SECRET_NAMES` declaration as source. The wrapper compares those extracted names
-with runtime `configKeys()` and `SECRET_NAMES` so extraction cannot drift silently.
+with runtime `configKeys()` (remote, speech and artifacts namespaces) and
+`SECRET_NAMES` so extraction cannot drift silently. Keep the complete equality
+check when expanding the site vocabulary, and run this importing wrapper locally.
 
 The public source seam covers every backticked cland command and shell line in
-Remote control and web-and-phone's Remotes section, dotted remote settings and
+Remote control and web-and-phone's Remotes section, dotted remote, speech and artifacts settings and
 secret names. Keep the unknown-command/key/name positive control. Check the
 Features sidebar group, both inbound links and the exact CLI-reference remote
 and secret subcommand lists against usage, including extras. Run this file or
@@ -20,3 +22,9 @@ strictly over 150 seconds, every open card at the bottom with the press-again
 note and old-copy marker without buttons; at most 150 seconds, no re-send of
 already delivered cards. The wrapper imports this same case automatically;
 no hub-only dependency is needed by the site's test.
+
+
+The media guards check both pages for composer attachments and inline PNG, JPEG,
+GIF and WebP, validate speech command environment names against its launcher, and
+compare all three data-use lines byte-for-byte with `SPEECH_DATA_USE` read as
+source. No provider runtime dependency is imported into the site's prebuild.

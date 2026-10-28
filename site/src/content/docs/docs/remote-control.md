@@ -67,6 +67,58 @@ Other needs-you rows arrive as 📥 notices. Approve plans in the workbench and 
 
 General messages use Rich Messages by default, with plain text and entities as fallback. Set `remote.telegram.format` to `entities` if you prefer that rendering. Progress notes and hub notices arrive silently. 👌 confirms the hub stored your input; 👀 confirms the addressed session received it.
 
+## Photos, files and voice
+
+### Photos, documents and albums
+
+Send a photo or document to the paired Telegram chat. It becomes your artifact on your message in General, with the caption as the message text. An album becomes one message with every attachment and the first non-empty caption. An audio album also stays one message with every file; its members are not transcribed.
+
+Telegram downloads are limited to 20 MB per file. The hub also enforces `[artifacts] max_upload_mb` (`artifacts.max_upload_mb`), a per-file limit in MiB that defaults to 50. A file over either limit gets a reply saying so. Changing the hub's upload limit requires a hub restart. The hub downloads the original bytes itself; Telegram's token-bearing file URLs never reach sessions or a speech provider.
+
+Artifacts attached to mirrored General messages go to Telegram as photos for images up to 10 MB, or as documents for files up to 50 MB. HTML and diagrams go as documents. Larger files arrive as a line naming the artifact and its path. Each artifact goes once ever per remote; attaching it again replies to the earlier file with **▣ A-n … (sent above)**. File captions are plain text and include the message header; a single artifact with short message text includes that text in its caption too.
+
+### Voice and transcripts
+
+Individual voice notes are sent for transcription. A voice note whose reported duration exceeds `speech.max_seconds` is refused before download and is not stored; the generated default is 600 seconds (10 minutes). Audio files and Telegram video notes are transcribed only when their reported duration is present and within that cap. Longer audio files and video notes, or ones without a reported duration, follow ordinary artifact upload without transcription, subject to the file-size limits. Videos, documents and audio albums are not transcribed. Telegram's 20 MB download cap also applies. Download and transcription share one 90-second deadline. Cloud attempts retry only rate-limited, unavailable and timeout failures, at most twice with backoff and Retry-After; the local command is not retried.
+
+A successful note reaches General as your **🎤 transcript**, with the original audio attached as your artifact. The bot echoes the transcript into Telegram with the note's length, download and transcription times, and provider name. Correct a transcript by sending your next message; transcripts are never edited afterwards.
+
+With no key or transcription turned off, General receives **🎤 not transcribed** with the audio and the chat gets one line explaining how to enable it or that it is off. A provider failure still posts the audio with **🎤 not transcribed: &lt;reason&gt;** and one chat line. An empty transcript becomes **🎤 nothing recognised**, with the audio attached.
+
+A voice reply to an open ask card answers through its transcript and keeps no audio artifact on success. If the note cannot answer, the ask stays open and the note goes to General as an ordinary 🎤 message with its audio.
+
+### Choose transcription
+
+In `.cland/config.toml`, `[speech] provider` (`speech.provider`) selects `elevenlabs`, `command`, or `""` to turn transcription off. Generated projects use these defaults:
+
+```toml
+[speech]
+provider = "elevenlabs"
+model = "scribe_v2"
+language = ""
+max_seconds = 600
+command = []
+```
+
+`speech.model` chooses the cloud model. `speech.language` is a lower-case ISO 639-1 language hint; empty detects the language. Store the ElevenLabs key from your own terminal through the hidden prompt, then reload:
+
+```sh
+cland secret set speech.elevenlabs_key
+cland hub reload
+```
+
+`ELEVENLABS_API_KEY` in the hub's environment overrides the stored key. Never put a key in a command argument or a message to a session. Speech configuration changes made with `cland config set <section.key> <value>` apply live; after editing the file or changing secrets, run `cland hub reload`.
+
+For a local recogniser, set `provider = "command"` and `speech.command` to an argv array, for example `command = ["/absolute/path/to/transcribe", "--plain"]`. No shell is used. The executable receives the original audio bytes on stdin, `CLAND_SPEECH_MIME` with the MIME type, and `CLAND_SPEECH_LANGUAGE` with the hint (empty for detection). It prints the transcript on stdout, trimmed and limited to 1 MiB. Remote tokens and speech keys are removed from its environment; keep secrets out of the argv array. A non-zero exit or signal reports `command-failed` with a bounded, redacted stderr tail; the deadline kills the command. No transcoding is performed.
+
+Set `provider = ""` to keep audio without transcription. `cland doctor` makes no paid call: with an enabled remote it reports the ElevenLabs key's presence and fingerprint, or whether the command's argv[0] resolves. Missing keys and unresolved commands are `warn`; present keys and resolved commands are `ok`. With no remote enabled it reports `ok` with **speech unused until a remote is set up**; with an empty provider it reports `ok` with **transcription off**.
+
+Plain `cland remote status` ends with the locally configured provider's data-use line (JSON status is unchanged):
+
+- ElevenLabs may train on audio outside enterprise plans and stores transcripts; turn off "Improve the models for everyone" under Terms and privacy, Data use. Change provider in [speech].
+- The local speech command handles the audio; its own configuration controls data use. Change command or provider in [speech].
+- Transcription is off; no audio is sent to a speech provider. Change provider in [speech].
+
 ## Mute, outages and catch-up
 
 Mute belongs to this remote and survives token rotation. The generated `remote.mute_default` setting is `false` and sets only a new pairing's initial state.
