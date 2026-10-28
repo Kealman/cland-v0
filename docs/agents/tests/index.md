@@ -174,6 +174,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`nvim/test/explorer-outline-load.test.ts`](../../../nvim/test/explorer-outline-load.test.ts) | [Notes](nvim-test-explorer-outline-load.test.ts.md) |
 | [`nvim/test/explorer-card-component.test.ts`](../../../nvim/test/explorer-card-component.test.ts) | [Notes](nvim-test-explorer-card-component.test.ts.md) |
 | [`nvim/test/artifact-render.test.ts`](../../../nvim/test/artifact-render.test.ts) | [Notes](nvim-test-artifact-render.test.ts.md) |
+| [`nvim/test/artifact-upload.test.ts`](../../../nvim/test/artifact-upload.test.ts) | [Notes](nvim-test-artifact-upload.test.ts.md) |
 | [`nvim/test/hub-read-component.test.ts`](../../../nvim/test/hub-read-component.test.ts) | [Notes](nvim-test-hub-read-component.test.ts.md) |
 | [`nvim/test/panel-placement-component.test.ts`](../../../nvim/test/panel-placement-component.test.ts) | [Notes](nvim-test-panel-placement-component.test.ts.md) |
 | [`nvim/test/qa-shipped.test.ts`](../../../nvim/test/qa-shipped.test.ts) | [Notes](nvim-test-qa-shipped.test.ts.md) |

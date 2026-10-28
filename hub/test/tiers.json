@@ -650,6 +650,7 @@
     "nvim/test/artifact-browser-component.test.ts": "T2",
     "nvim/test/artifact-browser.test.ts": "T3",
     "nvim/test/artifact-render.test.ts": "T2",
+    "nvim/test/artifact-upload.test.ts": "T3",
     "nvim/test/artifacts.test.ts": "T2",
     "nvim/test/client-component.test.ts": "T2",
     "nvim/test/client.test.ts": "T3",
