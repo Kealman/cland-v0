@@ -74,9 +74,11 @@
       "A-13109",
       "A-13114",
       "A-13364",
-      "A-13372"
+      "A-13372",
+      "A-13471",
+      "A-13476"
     ],
-    "commit": "60ad6021f537a53dfa08e336c3154a5cce96da94"
+    "commit": "adf3140ca2398e9dc3dc22bf532ef00dadcde44d"
   },
   "budget": {
     "testSeconds": 5,
@@ -2953,6 +2955,22 @@
     "web/test/uploads.test.ts": {
       "seconds": 2.813511,
       "tests": 1
+    },
+    "hub/test/discord-commands.test.ts": {
+      "seconds": 1.728484,
+      "tests": 10
+    },
+    "hub/test/telegram-voice-answers.test.ts": {
+      "seconds": 2.462912,
+      "tests": 11
+    },
+    "hub/test/telegram-voice-command.test.ts": {
+      "seconds": 0.541316,
+      "tests": 3
+    },
+    "hub/test/telegram-voice.test.ts": {
+      "seconds": 2.589888,
+      "tests": 19
     }
   },
   "tests": {
@@ -8221,7 +8239,70 @@
     "hub/test/web-upload.test.ts::upload owner drains HTTP and writers after omitted setup receipt": 0.143188,
     "hub/test/web-upload.test.ts::upload revoke fences a held writer and joins rollback before returning": 0.113122,
     "hub/test/web-upload.test.ts::upload stop fences a held writer and joins rollback before returning": 0.165955,
-    "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": 2.813511
+    "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": 2.813511,
+    "hub/test/discord-commands.test.ts::Discord decision and question store one General message with kind, provenance and interaction ingress": 0.178676,
+    "hub/test/discord-commands.test.ts::Discord fake enforces the inclusive 2000-code-point private content budget": 0.017767,
+    "hub/test/discord-commands.test.ts::Discord help is ephemeral with short headed sections, command bullets and trust last": 0.169272,
+    "hub/test/discord-commands.test.ts::Discord long status preserves literal facts in bounded private replies after defer": 0.176361,
+    "hub/test/discord-commands.test.ts::Discord long status preserves literal facts in bounded private replies immediately": 0.134755,
+    "hub/test/discord-commands.test.ts::Discord mute counts General sources once, unmute reports them and replay cannot remute": 0.234529,
+    "hub/test/discord-commands.test.ts::Discord slow command defers privately at two seconds and completes by editing original": 0.177029,
+    "hub/test/discord-commands.test.ts::Discord status is ephemeral with phone groups, session bullets and gateway numbers last": 0.319679,
+    "hub/test/discord-commands.test.ts::Discord stop drains a held command after deferral": 0.150966,
+    "hub/test/discord-commands.test.ts::Discord stop drains a held command before deferral": 0.16945,
+    "hub/test/discord-messages.test.ts::Discord replays an interrupted reaction idempotently after an unavailable outbox restart": 0.03277,
+    "hub/test/discord-messages.test.ts::Discord routes mapped replies and leaves unknown references as plain General text": 0.914067,
+    "hub/test/discord-messages.test.ts::Discord stops old-input feedback after same-channel pairing replacement during held stored reaction": 0.102283,
+    "hub/test/discord-messages.test.ts::Discord stops old-input feedback after unpair during held stored reaction": 0.124914,
+    "hub/test/discord-messages.test.ts::Discord stored and delivered reactions survive a restart exactly once": 0.201133,
+    "hub/test/discord-messages.test.ts::Discord stored and delivered reactions survive a restart exactly once with a lost delivery frame": 0.210349,
+    "hub/test/discord-messenger.test.ts::Discord 500th Identify warns General once across the 501st and prunes rolling day": 0.1074,
+    "hub/test/discord-messenger.test.ts::Discord failed Identifies grow equal-jitter waits through the cap; READY clears backoff": 0.459521,
+    "hub/test/discord-messenger.test.ts::Discord Identify aborted admission setup drains observers and native writers": 0.070851,
+    "hub/test/discord-messenger.test.ts::Discord Identify floor stops below 100 with reset time and no Identify": 0.072073,
+    "hub/test/discord-messenger.test.ts::Discord Identify omitted admission setup drains observers and native writers": 0.074585,
+    "hub/test/discord-messenger.test.ts::Discord Identify spacing and rolling count survive hub restart": 0.115632,
+    "hub/test/discord-messenger.test.ts::Discord rereads the start budget before a fresh Identify after READY": 0.086346,
+    "hub/test/suite-close-component.test.ts::fallback submission setup drains an aborted retry observation": 0.405162,
+    "hub/test/suite-close-component.test.ts::fallback submission setup drains an omitted retry observation": 0.390478,
+    "hub/test/telegram-inbound.test.ts::Telegram held stored reaction withholds later feedback after pairing album-replace": 0.112364,
+    "hub/test/telegram-inbound.test.ts::Telegram held stored reaction withholds later feedback after pairing replace": 0.099546,
+    "hub/test/telegram-inbound.test.ts::Telegram held stored reaction withholds later feedback after pairing same-chat": 0.09902,
+    "hub/test/telegram-inbound.test.ts::Telegram held stored reaction withholds later feedback after pairing unpair": 0.101008,
+    "hub/test/telegram-inbound.test.ts::Telegram restart reconciles a confirmed input whose durable session delivery frame was lost with a legacy receipt": 0.145218,
+    "hub/test/telegram-voice-answers.test.ts::Telegram queued voice preserves absence of a prompt at admission": 0.213321,
+    "hub/test/telegram-voice-answers.test.ts::Telegram queued voice preserves its original prompt at admission": 0.240646,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice decline routes the transcript and preserves the audio policy": 0.230811,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice empty routes the transcript and preserves the audio policy": 0.185919,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice failed routes the transcript and preserves the audio policy": 0.212948,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice free routes the transcript and preserves the audio policy": 0.402647,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice late routes the transcript and preserves the audio policy": 0.193856,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice number routes the transcript and preserves the audio policy": 0.152499,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice option routes the transcript and preserves the audio policy": 0.216222,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice other routes the transcript and preserves the audio policy": 0.245779,
+    "hub/test/telegram-voice-answers.test.ts::Telegram voice unmatched routes the transcript and preserves the audio policy": 0.168264,
+    "hub/test/telegram-voice-command.test.ts::Telegram unconfigured command empty retains audio and names command setup": 0.119967,
+    "hub/test/telegram-voice-command.test.ts::Telegram unconfigured command missing retains audio and names command setup": 0.105861,
+    "hub/test/telegram-voice-command.test.ts::Telegram voice reload switches to the command provider": 0.315488,
+    "hub/test/telegram-voice.test.ts::Telegram audio over the live duration cap stays a plain attachment": 0.146884,
+    "hub/test/telegram-voice.test.ts::Telegram audio transcription admission preserves caption and bytes": 0.106867,
+    "hub/test/telegram-voice.test.ts::Telegram document transcription admission preserves caption and bytes": 0.096571,
+    "hub/test/telegram-voice.test.ts::Telegram long voice echo retains the whole transcript in bounded native parts": 0.130814,
+    "hub/test/telegram-voice.test.ts::Telegram two-audio album stays one message with both original files and no transcript": 0.106204,
+    "hub/test/telegram-voice.test.ts::Telegram unknown voice echo cannot hold later input across restart": 0.224124,
+    "hub/test/telegram-voice.test.ts::Telegram video transcription admission preserves caption and bytes": 0.112047,
+    "hub/test/telegram-voice.test.ts::Telegram video_note over the live duration cap stays a plain attachment": 0.106934,
+    "hub/test/telegram-voice.test.ts::Telegram video_note transcription admission preserves caption and bytes": 0.11814,
+    "hub/test/telegram-voice.test.ts::Telegram voice empty keeps audio with one chat line": 0.105989,
+    "hub/test/telegram-voice.test.ts::Telegram voice keeps exact audio and echoes its transcript once": 0.355984,
+    "hub/test/telegram-voice.test.ts::Telegram voice missing keeps audio with one chat line": 0.139964,
+    "hub/test/telegram-voice.test.ts::Telegram voice off keeps audio with one chat line": 0.127628,
+    "hub/test/telegram-voice.test.ts::Telegram voice quota keeps audio with one chat line": 0.124392,
+    "hub/test/telegram-voice.test.ts::Telegram voice refuses declared duration before getFile": 0.091335,
+    "hub/test/telegram-voice.test.ts::Telegram voice refuses declared size before getFile": 0.086407,
+    "hub/test/telegram-voice.test.ts::Telegram voice retry retains the whole-note speech bounds": 0.107902,
+    "hub/test/telegram-voice.test.ts::Telegram voice timeout retains the whole-note speech bounds": 0.178866,
+    "hub/test/telegram-voice.test.ts::Telegram voice unavailable retains the whole-note speech bounds": 0.122836
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {

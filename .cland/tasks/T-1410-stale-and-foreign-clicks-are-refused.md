@@ -3,7 +3,7 @@ id: T-1410
 kind: task
 title: Stale and foreign clicks are refused privately, and /cland inbox re-sends the open cards
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:47.898Z
-updated: 2026-10-27T23:38:47.898Z
+updated: 2026-10-28T22:06:38.413Z
 ---
 
 ## Summary

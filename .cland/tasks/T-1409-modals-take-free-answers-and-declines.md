@@ -3,7 +3,7 @@ id: T-1409
 kind: task
 title: Modals take free answers and declines, and one gate holds across Discord, Telegram and the workbenches
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:47.618Z
-updated: 2026-10-27T23:38:47.618Z
+updated: 2026-10-28T22:06:38.129Z
 ---
 
 ## Summary

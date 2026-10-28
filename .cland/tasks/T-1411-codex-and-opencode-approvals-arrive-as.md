@@ -3,7 +3,7 @@ id: T-1411
 kind: task
 title: Codex and OpenCode approvals arrive as Discord cards, and the other needs-you rows as 📥 notices
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:48.033Z
-updated: 2026-10-27T23:38:48.033Z
+updated: 2026-10-28T22:06:38.535Z
 ---
 
 ## Summary

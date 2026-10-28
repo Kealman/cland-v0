@@ -3,7 +3,7 @@ id: T-1408
 kind: task
 title: An ask arrives as a Discord card, and the paired human's click answers it with one update within 3 seconds
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:47.479Z
-updated: 2026-10-27T23:38:47.479Z
+updated: 2026-10-28T22:06:37.993Z
 ---
 
 ## Summary
