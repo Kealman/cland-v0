@@ -4,7 +4,7 @@ import { SpeechError, transcribeNote, type SpeechProvider } from '../speech/inde
 /** Messenger-neutral download and transcription; original bytes never become a URL. */
 export async function voiceNote(options: {
   fetch: (signal: AbortSignal) => Promise<Buffer>; provider: SpeechProvider | null;
-  clock: Clock; signal: AbortSignal; mime?: string; message: string; duration?: number | undefined; language?: string | undefined;
+  clock: Clock; signal: AbortSignal; mime?: string; filename?: string; message: string; duration?: number | undefined; language?: string | undefined;
 }) {
   const { clock } = options;
   const start = clock.now().getTime();
@@ -13,7 +13,7 @@ export async function voiceNote(options: {
   const signal = AbortSignal.any([options.signal, deadline.signal]);
   const mime = options.mime || 'audio/ogg';
   const suffix = mime === 'audio/mpeg' || mime === 'audio/mp3' ? 'mp3' : ['audio/mp4', 'audio/m4a', 'audio/x-m4a'].includes(mime) ? 'm4a' : 'ogg';
-  const name = `voice-${options.message}.${suffix}`;
+  const name = options.filename ?? `voice-${options.message}.${suffix}`;
   try {
     const bytes = await options.fetch(signal);
     const downloaded = clock.now().getTime();

@@ -34,3 +34,17 @@ then assert one provider request, one original voice upload, one accepted echo
 and both later messages. This is in-process restart evidence, not SIGKILL.
 Ready echo intents resume independently from the FIFO; unknown sends retain
 their outbox fence and never trigger another provider or General upload.
+
+T-1389 admission cases exercise audio/video-note duration at the inclusive 600 s
+boundary, literal filenames/MIME/bytes and captions, plus video/audio-document
+negative controls. Refusals wait for durable media completion before checking
+one native line, zero getFile/provider calls and empty General. Live reload lowers
+the cap to 30 s and 31 s audio/video notes stay plain attachments. Grouped files
+retain the existing attachment/album path.
+
+Whole-note controls observe native speech requests and the injected scheduler's
+Retry-After receipt before advancing retries. A 429 then success uses two attempts;
+persistent 503 uses three. A delayed loopback provider is advanced through the
+90-second whole-note deadline and keeps audio plus timeout in General and chat.
+These are synthetic time boundaries, not measured provider latency. The retry
+implementation predates this item; its new component controls pass unchanged.

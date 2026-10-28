@@ -4,6 +4,12 @@ import type { Clock } from '../hub/clock.ts';
 export type MediaFile = { kind: string; fileId: string; name: string; mime: string; size?: number; duration?: number };
 export type MediaInput = { chat: string; message: string; date: number; late?: string; pairing?: Pairing; caption: string; reply?: string; file?: MediaFile; text?: string; group?: string; items?: MediaInput[]; closed?: boolean; arrived?: number };
 
+/** Recording admission is independent of the messenger transport. */
+export function transcribes(file: MediaFile, maxSeconds: number): boolean {
+  return file.kind === 'voice' || (file.kind === 'audio' || file.kind === 'video_note')
+    && file.duration !== undefined && file.duration <= maxSeconds;
+}
+
 /** Messenger-scoped durable FIFO. Only native file identifiers, never URLs or bytes. */
 export class MediaQueue {
   readonly #store: RemoteStore;

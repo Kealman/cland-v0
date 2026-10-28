@@ -2290,6 +2290,16 @@ the release's dry run; `cland release` does not write the version.
 ## Telegram voice transcripts
 
 With Telegram enabled and paired, voice notes join its durable media FIFO.
+Standalone audio files and video notes also transcribe when their declared duration
+is within `[speech] max_seconds` (default 600, live on reload). Audio retains its
+sender MIME and filename; video notes use `video/mp4` and
+`video-note-<message id>.mp4`. Their caption follows the transcript on a second
+line. Longer audio/video notes, grouped attachments, videos and documents remain
+plain artifacts with captions and make no speech request.
+Voice notes exceeding the duration cap are refused before `getFile`, as are
+recordings with a declared size above Telegram's 20 MiB download cap (or the
+configured artifact limit if lower). The refusal is one chat line and posts
+nothing in General.
 The gateway downloads the original bytes and passes bytes, MIME type and a
 matching `voice-<message id>.ogg`, `.mp3` or `.m4a` name to the speech provider.
 The provider receives no Telegram URL. General receives one human message,

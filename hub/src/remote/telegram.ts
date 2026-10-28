@@ -1,3 +1,4 @@
+import { transcribes } from './media.ts';
 import { remoteRedactor, type RemoteRedactor } from './redact.ts';
 import { voiceNote } from './voice.ts';
 import type { SpeechProvider } from '../speech/index.ts';
@@ -445,23 +446,37 @@ export class TelegramRemote implements Remote {
       }
       return;
     }
-    if (input.file?.kind === 'voice') {
+    const maxSeconds = this.#polling!.speechSettings?.maxSeconds ?? 600;
+    const limit = Math.min(20, this.#polling!.maxUploadMb?.() ?? 50);
+    if (input.file && !input.items) {
+      const file = input.file;
+      const duration = file.duration ?? 0;
+      const refusal = file.kind === 'voice' && duration > maxSeconds
+        ? `🎤 a ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')} note is over the ${maxSeconds % 60 === 0 ? `${maxSeconds / 60}-minute` : `${maxSeconds}-second`} limit; it was not stored`
+        : file.size !== undefined && file.size > limit * 1024 * 1024
+          ? `${file.name} is ${Math.ceil(file.size / (1024 * 1024))} MB: a bot can download at most ${limit} MB, so it was not stored` : null;
+      if (refusal) {
+        await this.#commandReply({ update_id: 0, message: { message_id: Number(input.message), date: input.date,
+          chat: { id: Number(input.chat), type: 'private' } } }, [plainCommandReply(refusal)]);
+        return;
+      }
+    }
+    if (input.file && !input.items && transcribes(input.file, maxSeconds)) {
       const result = await voiceNote({ fetch: async signal => {
         const file = await this.#api.getFile({ file_id: input.file!.fileId }, { signal });
         if (!file.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
         return this.#api.download(file.file_path, Math.min(20, this.#polling!.maxUploadMb?.() ?? 50) * 1024 * 1024, signal);
       }, provider: this.#polling!.speech ?? null, clock: this.#clock, signal: this.#abort.signal,
-      message: input.message, mime: input.file.mime, duration: input.file.duration, language: this.#polling!.speechSettings?.language });
+      message: input.message, ...(input.file.kind === 'voice' ? {} : { filename: input.file.name }), mime: input.file.mime, duration: input.file.duration, language: this.#polling!.speechSettings?.language });
       if (!admitted()) return;
       store.set(voiceKey, JSON.stringify({ input: { chat: input.chat, message: input.message, pairing: captured }, line: (this.#polling!.redact ?? remoteRedactor()).text(result.line), ready: false }));
-      await this.#inbound!.upload({ topic: 'general', caption: result.text, files: [{ name: result.name, mime: result.mime }] }, ingress, [result.bytes]);
+      await this.#inbound!.upload({ topic: 'general', caption: result.text + (input.caption ? `\n${input.caption}` : ''), files: [{ name: result.name, mime: result.mime }] }, ingress, [result.bytes]);
       if (!admitted()) return;
       const intent = JSON.parse(store.get(voiceKey)!) as Record<string, unknown>;
       store.set(voiceKey, JSON.stringify({ ...intent, ready: true }));
       this.#voiceEcho(voiceKey);
       return;
     }
-    const limit = Math.min(20, this.#polling!.maxUploadMb?.() ?? 50);
     const files: Array<{ name: string; mime: string }> = [];
     const payload: Buffer[] = [];
     for (const item of input.items ?? [input]) {
@@ -549,7 +564,7 @@ function mediaFile(message: import('./telegram-api.ts').TgMessage): import('./me
   const file = message.voice ?? photo ?? message.document ?? message.audio ?? message.video_note ?? message.video;
   if (!kind || !file) return;
   const named = file as import('./telegram-api.ts').TgDocument;
-  return { kind, fileId: file.file_id, name: photo ? `photo-${message.message_id}.jpg` : named.file_name ?? `${kind}-${message.message_id}.bin`,
-    mime: photo ? 'image/jpeg' : named.mime_type ?? (message.voice ? 'audio/ogg' : 'application/octet-stream'), ...(file.file_size !== undefined ? { size: file.file_size } : {}),
+  return { kind, fileId: file.file_id, name: photo ? `photo-${message.message_id}.jpg` : named.file_name ?? (kind === 'video_note' ? `video-note-${message.message_id}.mp4` : `${kind}-${message.message_id}.bin`),
+    mime: photo ? 'image/jpeg' : named.mime_type ?? (message.voice ? 'audio/ogg' : message.video_note ? 'video/mp4' : 'application/octet-stream'), ...(file.file_size !== undefined ? { size: file.file_size } : {}),
     ...('duration' in file ? { duration: file.duration } : {}) };
 }
