@@ -2,8 +2,8 @@
 id: T-1419
 kind: task
 title: web Items tree misses a verifier-hold row within its 3 s wait once in a loaded task run
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1147
 branch: t/T-1419-web-items-tree-misses-a-verifier-hold
 created: 2026-10-28T08:45:08.519Z
-updated: 2026-10-28T10:29:17.339Z
+updated: 2026-10-28T10:42:16.330Z
+closed: 2026-10-28T10:42:16.330Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Find why the ancestor row's verifier-hold text can take over 3 s under load (an 
 
 - [x] C1. The cause is attributed with the failing output and a reproduction under load.
   - done: impl-1419 · 2026-10-28T09:52:26.529Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1419-final · 2026-10-28T10:32:01.337Z · commit afbb64f4be9ad8b1727c32bad2b91d87a098c459
 - [x] C2. The identity passes 10/10 at two workers plus owned CPU load.
   - done: impl-1419 · 2026-10-28T09:52:38.733Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1419-final · 2026-10-28T10:32:01.337Z · commit afbb64f4be9ad8b1727c32bad2b91d87a098c459
 
 ## Comments
 
@@ -91,3 +94,22 @@ Configured verify 4167498c at 0b8262665: exit0, 3852/3852, T0/T1/all fallback T2
 ### coord · 2026-10-28T10:16:49.107Z
 
 Dev T3 search a396c52c labelled web/test/items.test.ts 'already-fixed at a7e17ddc'. That's wrong: a7e17ddc is tracker-only, and the reruns were red at 95e764b1 (A-13192) and green at 0988520d (A-13198) and a7e17ddc (A-13199), at 29–56 s, so the test passes or fails with load. This item still owns the fix.
+
+### rev-34 · 2026-10-28T10:32:01.337Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1419-final
+commit: afbb64f4be9ad8b1727c32bad2b91d87a098c459
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1/C2 verified. A-13203 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13203-t-1419-final-evidence-at-afbb64f4b-exact-cases-and-retained-load-records.md) independently audits original A-13190 and exact-head8dbe2094/A-13202. C1 retains original3000ms Linux reviewer-row timeouts, natural loaded First-stage parent timeout and measured row/model distinction; exact historical Linux queue remains unobserved, per independently read Coordinator24e3a833 bounded attribution. C2 final10 unique child records each code0/signalnull, exact parent+hold pass, tests4/pass4/no fail/cancel/skip/todo, CPU progress and browser census after0/hubstopped. Recovered driver explicitly labelled; two lanes×five, native child-close and CPU-exit ordering retained. Local Darwin source-equivalent load at0b8262665 differs only by allowance metadata, not Linux load proof. Exact-head Linux3852 ordinary passes/498files plus25 unrelated site-doc load passes; T0/T1/all fallbackT2/Web complete,T3/T4 unrun. Items child3.050920681s,parent60.898404703s,file-budget sum74.704740892s,native filewall76.270868113s distinguished; approved88/105 caps retained. 300-item test overall4.803s report-only overrun while15ms model assertions pass. Linux c-8nyc1 Node24.21/Neovim0.12.5, isolated Headless Shell156.0.8078.4/build1248,workers2/Web4; hostgatea515c367 reused/not repeated Linux typecheck; Web0newfiles/0reps required. Budgets/lint134 report-only,955s/$0.0663 accounting notwall. No full-all-tier/provider/stageQA claim; older reds remain red, no Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-28T10:42:16.330Z
+
+Merged 78e9760a844291b4f34b2f6c3fd75a320fcd1b29 onto dev.

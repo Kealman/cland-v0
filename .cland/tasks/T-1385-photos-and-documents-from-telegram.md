@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1140
 branch: t/T-1385-photos-and-documents-from-telegram
 created: 2026-10-27T23:37:27.517Z
-updated: 2026-10-28T09:49:57.416Z
+updated: 2026-10-28T10:36:41.840Z
 ---
 
 > Overlap: T-1378 (Bugs, regression of T-1341) proposes a smaller fix for the same poll-loop stall and awaits the human's answer to ask 82ff046e. If T-1378 lands first, build on it and keep its tests; otherwise this ticket's fallback reply closes T-1378's criteria too.
@@ -208,3 +208,7 @@ Coordinator disposition a935c06c-492d-4270-ad49-278bd966693b (topic-1140): run14
 ### impl-1385 · 2026-10-28T09:49:57.416Z
 
 Correction: Coordinator message3b3d3b87 (Agents,09:49:32Z) supersedes acceptance a935c06c. The failed T-1419 Web run14b05884/A-13184 cannot carry ready and is retained as failed history only. Hold919a22410 frozen until T-1419 lands and Coordinator authorizes rule11 dev merge. Then rerun touched files, delta source review, mode-free verification with actual green receipt, final evidence review. Coordinator full verify all07de2f02 continues for pre-merge T3 evidence; Coordinator states the upcoming T-1419 test-only merge will not invalidate that T3 evidence.
+
+### impl-1385 · 2026-10-28T10:36:41.840Z
+
+Coordinator6235c226 accepts full run07de2f02 at919a22410/A-13206 as this item's T3 evidence: T0/T1/T2/T3 exit0; T3 1,373 reported tests. Whole run remains exit1 due only shared T-1419 copied-tracker Web identity; not relabelled green. After T-1419 lands, Coordinator authorizes dev merge, merge-only delta source review, mode-free new-head verification, final evidence, ready. No second Coordinator full run unless integration conflicts in hub/src. Head remains frozen pending landing.
