@@ -2289,6 +2289,14 @@ the release's dry run; `cland release` does not write the version.
 
 ## Telegram voice transcripts
 
+Both workbenches present the stored transcript prefix as a separate message-header
+mark beside `via Telegram`: `🎤`, `🎤 not transcribed` or `🎤 nothing recognised`.
+The transcript (or failure reason) stays in the body and the original recording
+stays attached. This presentation uses remote human messages with the voice
+prefix and a recording artifact (OGG/Opus, MP3, M4A, WAV, FLAC, AAC or WebM,
+or a generated Telegram audio/video-note filename). Typed captions on other
+attachments and ordinary text stay unchanged.
+
 With Telegram enabled and paired, voice notes join its durable media FIFO.
 Standalone audio files and video notes also transcribe when their declared duration
 is within `[speech] max_seconds` (default 600, live on reload). Audio retains its

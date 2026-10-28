@@ -321,3 +321,6 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/web-upload.test.ts`](../../../hub/test/web-upload.test.ts) | [Notes](hub-test-web-upload.test.ts.md) |
 | [`web/test/uploads.test.ts`](../../../web/test/uploads.test.ts) | [Notes](web-test-uploads.test.ts.md) |
 | [`hub/test/telegram-voice-answers.test.ts`](../../../hub/test/telegram-voice-answers.test.ts) | [Notes](hub-test-telegram-voice-answers.test.ts.md) |
+| [`web/test/telegram-marks.test.ts`](../../../web/test/telegram-marks.test.ts) | [Notes](web-test-telegram-marks.test.ts.md) |
+| [`nvim/test/telegram-marks.test.ts`](../../../nvim/test/telegram-marks.test.ts) | [Notes](nvim-test-telegram-marks.test.ts.md) |
+| [`hub/test/telegram-marks-setup.test.ts`](../../../hub/test/telegram-marks-setup.test.ts) | [Notes](hub-test-telegram-marks-setup.test.ts.md) |

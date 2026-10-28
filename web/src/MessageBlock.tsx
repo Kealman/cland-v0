@@ -6,7 +6,7 @@ import { AskCard } from './AskCard.tsx';
 import { InlineArtifact } from './artifacts/InlineArtifact.tsx';
 import { useMessageWithdrawal } from './message-withdrawal.ts';
 import s from './MessageBlock.module.css';
-import { remoteSource } from './provenance.ts';
+import { remoteSource, voicePresentation } from './provenance.ts';
 import { usePhone } from './phone.ts';
 
 const roles: Record<string, string> = { human: 'Human', aide: 'Aide', coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', hub: 'Hub', other: 'Other' };
@@ -21,6 +21,7 @@ function verdictOf(message: TopicMessage): { kind: string; result: 'clear' | 'no
 
 export function MessageBlock({ message, connection, showTopic = false }: { message: TopicMessage; connection: ConnectionState; showTopic?: boolean }) {
   const phone = usePhone();
+  const voice = voicePresentation(message);
   const withdrawal = useMessageWithdrawal(message.id);
   const canWithdraw = message.fromKind === 'human' && message.from === 'human' && !message.answerTo && (message.withdrawable ?? message.stage === 'queued') && !withdrawal.complete;
   const card = message.ask && message.ask.state !== 'open' ? message.ask : connection.askCards?.get(message.id) ?? message.ask;
@@ -48,6 +49,7 @@ export function MessageBlock({ message, connection, showTopic = false }: { messa
         <span>→ {message.to.length ? message.to.map(name => name === 'human' ? 'you' : name).join(', ') : 'you'}</span>
         <span>{shownKind}</span>
         {remoteSource(message.via) && <span>{remoteSource(message.via)}</span>}
+        {voice.mark && <span data-voice-mark>{voice.mark}</span>}
         {showTopic && <span data-message-topic={message.topic}>{connection.topics?.find(topic => topic.id === message.topic)?.title ?? message.topic}</span>}
         {verdict && <span data-verdict={verdict.result} className={verdict.result === 'clear' ? s.verified : s.failed}>
           {verdict.result === 'clear' && message.fromKind === 'agent' ? <ItemText text={message.text.split(/[\r\n]/)[0]!} /> : `${verdict.kind} ${verdict.result}`}
@@ -56,7 +58,7 @@ export function MessageBlock({ message, connection, showTopic = false }: { messa
         {!phone && delivery}
         <time dateTime={message.ts}>{new Date(message.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
       </header>}
-      {card ? <AskCard id={message.id} topic={message.topic} card={card} connection={connection} sender={message.from} since={message.ts} /> : verdict?.result !== 'clear' && <div className={s.body}><MarkdownBody text={message.text} /></div>}
+      {card ? <AskCard id={message.id} topic={message.topic} card={card} connection={connection} sender={message.from} since={message.ts} /> : verdict?.result !== 'clear' && <div data-message-body className={s.body}><MarkdownBody text={voice.body} /></div>}
       {verdict?.result === 'not clear' && <div className={s.criteria}>{criteria}</div>}
       {artifacts.length > 0 && <div className={s.artifacts}>{artifacts.map(artifact => <InlineArtifact key={artifact.id} artifact={connection.artifacts?.find(row => row.id === artifact.id) ?? artifact} connection={connection} />)}</div>}
       {phone && !folded && <div className={s.delivery}>{delivery}</div>}

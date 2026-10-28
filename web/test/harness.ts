@@ -64,8 +64,8 @@ export async function reconnectUntilLive(page: Page): Promise<void> {
   assert.equal(await page.evaluate(live), true, 'fake-clock hub reconnect is Live');
 }
 
-export async function webFixture(t: TestContext, options: { cliLink?: boolean | 'qr'; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void>; gatewayRemotes?: ProjectHubOptions['gatewayRemotes']; env?: Record<string, string>; log?: ProjectHubOptions['log'] } = {}) {
-  const root = await tempProject(t, 'w-');
+export async function webFixture(t: TestContext, options: { project?: () => Promise<{ root: string }>; startHub?: (root: string, env: Record<string, string>, options: ProjectHubOptions) => ReturnType<typeof projectHub>; cliLink?: boolean | 'qr'; clock?: ProjectHubOptions['clock']; accountReader?: ProjectHubOptions['accountReader']; timezoneId?: string; prepare?: (root: string) => Promise<void>; gatewayRemotes?: ProjectHubOptions['gatewayRemotes']; env?: Record<string, string>; log?: ProjectHubOptions['log'] } = {}) {
+  const root = options.project ? (await options.project()).root : await tempProject(t, 'w-');
   // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.
   // Keep it short and owned, including the browser's artifacts and crash paths.
   const previousTmp = process.env.TMPDIR;
@@ -75,7 +75,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean | 
   const env = await accountFixtureEnvironment({ TMPDIR: root, TMP: root, TEMP: root, PLAYWRIGHT_BROWSERS_PATH: browserCache });
   await options.prepare?.(root);
   const hubOptions = { ...(options.gatewayRemotes ? { gatewayRemotes: options.gatewayRemotes } : {}), ...(options.clock ? { clock: options.clock } : {}), ...(options.accountReader ? { accountReader: options.accountReader } : {}), ...(options.log ? { log: options.log } : {}) };
-  let hub = await projectHub(t, root, options.env ?? {}, hubOptions);
+  let hub = await (options.startHub ?? ((root, env, options) => projectHub(t, root, env, options)))(root, options.env ?? {}, hubOptions);
   const openers = join(root, 'openers');
   if (options.cliLink) {
     await mkdir(openers);
@@ -195,7 +195,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean | 
   const restartHub = async () => {
     await hub.stop();
     await hub.stopped;
-    hub = await projectHub(t, root, options.env ?? {}, hubOptions);
+    hub = await (options.startHub ?? ((root, env, options) => projectHub(t, root, env, options)))(root, options.env ?? {}, hubOptions);
   };
   return { root, get fakes() { return hub.fakes; }, get hub() { return hub; }, restartHub, browser, server, close, pageCase, tracePaths };
 }
