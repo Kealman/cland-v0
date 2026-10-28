@@ -2,8 +2,8 @@
 id: T-1377
 kind: task
 title: Two tracker-watcher tests time out together in a loaded macOS stage cover
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1136
 branch: t/T-1377-two-tracker-watcher-tests-time-out
 created: 2026-10-27T19:31:23.217Z
-updated: 2026-10-28T05:42:24.164Z
+updated: 2026-10-28T06:23:31.467Z
+closed: 2026-10-28T06:23:31.467Z
 ---
 
 ## Summary
@@ -100,3 +101,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final original-record audit clear, A-13077. Same-head e7ace0af/A-13076 exit0: 3834 ordinary passes plus 35 separate load passes (10 from the 2 new tracker identities, each5/5; 25 inherited site cases), no fail/cancel/skip/TODO. All required generated watcher/plan/removal/hand-save outcomes explicitly pass; owning files18/10/8/5 and docs3. C1 verified within Coordinator-accepted deterministic missed-event seam, without attributing exact historical kernel loss; C2 verified from same-head macOS A-13072 three identities10/10, two workers/CPU140ticks, native exits and matching committed hashes. HostT0/allT1/fallback allT2/Web completed on Linux droplet with pinned Headless Shell; T3/T4 absent. Host gate TREE reuse, phase/body/projection/lifetime distinctions and report-only timing/lint/ratchet warnings retained. No new>=3s case allowance required; source2 unchanged. No per-item QA. Coordinator separately owns required full verify all before enqueue.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-28T06:23:31.467Z
+
+Merged 5017e40dd601f702dc09e07cc8da87ee47545fb6 onto dev.
