@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1148
 branch: t/T-1405-the-mirror-renders-discord-s-markdown
 created: 2026-10-27T23:38:46.826Z
-updated: 2026-10-28T13:37:38.850Z
+updated: 2026-10-28T13:57:34.996Z
 ---
 
 ## Summary
@@ -45,18 +45,23 @@ Spec §3.4 (Discord rendering, splitting, silence); Q-1293 (the rewrites the hum
 - [x] C1. An agent's report with a table, a level-4 heading, a rule, task boxes and `||` arrives with the table in a code block, the heading as a bold line, and the rule, boxes and `||` rewritten (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
   - done: impl-1405 · 2026-10-28T13:37:38.063Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
 - [x] C2. A message containing `@everyone`, a role mention and a user mention pings nobody on the fake, on its create and on its edit (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
   - done: impl-1405 · 2026-10-28T13:37:38.204Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
 - [x] C3. A 4500-code-point message with a fenced block across a cut arrives as parts numbered "1/3" to "3/3", each within 2000 code points, with every fence closed and re-opened with its language (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
   - done: impl-1405 · 2026-10-28T13:37:38.309Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
 - [x] C4. Progress notes and hub notices arrive with `SUPPRESS_NOTIFICATIONS` while other messages notify, and a workbench message shows "you" and a Telegram one "you (Telegram)" (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
   - done: impl-1405 · 2026-10-28T13:37:38.639Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
 - [x] C5. A message the converter cannot handle arrives as plain text and is never dropped (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
   - done: impl-1405 · 2026-10-28T13:37:38.850Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
 
 ## Notes
 
@@ -165,3 +170,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source5 merge delta clear; Standards 0 / Spec 0. A-13304 records both parents and manual outbox resolution: recovery availability retained in send and applied transactionally before complete-group enqueue/drain; bytes, silence, mappings and old intents preserved. Incoming health/resume/stop hooks retained; renderer/test/exchange owner unchanged. Sorted T2 and complete help expressions checked. C1–C5 marks stale; no runtime criteria verified. A-13303 local reds remain unreproduced, not passing evidence. Independently read Coordinator 458a875b: one configured run allowed; if late-acquisition identity fails on droplet, stop/report for filing, no retry or bound change. Predecessor A-13235 remains historical only. No Reviewer execution.
+
+### rev-34 · 2026-10-28T13:56:51.936Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1405-final2
+commit: fb01c31d4c4b06ccecc9a714911c3b9a40152988
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final2 clear; C1–C5 verified. A-13324 independently audits original A-13321 / 210487c2 at source5 head: 3929 ordinary passes / 501 files, 80 separate load passes (55 task / 25 site). All 11 render/group/replay/cleanup cases pass base plus 5/5 loads; late acquisition .104125344s base / .343470566s load max, so Coordinator 458a875b's conditional stop/report was not triggered. Prior local drainage reds remain unreproduced, not retrospectively green or causally resolved. API 26 / messages 18 / messenger 31 / neutral 5 and help/docs guards pass, including merged REST recovery/notice controls. T0 host / T1 / all fallback T2 / Web complete; T3/T4 unrun. Linux c-8 sfo2, Node 24.21 / Neovim .12.5, isolated CHS 156.0.8078.4 / v1248; host tree 81d76eba reused, not Linux typecheck. Budgets/lint report-only; 1015s / $0.0705 accounting. Snapshot is component proof, not native SIGKILL. No Reviewer execution/provider/stage QA claim.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

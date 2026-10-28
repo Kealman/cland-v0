@@ -3,7 +3,7 @@ id: T-1424
 kind: task
 title: Telegram reaction receipts are not bound to the captured pairing, so a later 👀 can reach a replaced chat
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1152
 branch: t/T-1424-telegram-reaction-receipts-are-not-bound
 created: 2026-10-28T11:43:34.103Z
-updated: 2026-10-28T13:44:29.497Z
+updated: 2026-10-28T14:01:48.944Z
 ---
 
 ## Summary
@@ -25,6 +25,7 @@ TelegramInbound's flush stores reaction receipts without binding them to the pai
 
 - [x] C1. A stored reaction receipt carries the pairing identity captured on arrival; after any native reaction I/O, flush rechecks it, and a receipt whose pairing was unpaired or replaced sends no later reaction (test: hold 👌, unpair or replace, then show no 👀 to the old chat on the fake).
   - done: impl-1424 · 2026-10-28T11:47:20.812Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1424-evidence1 · 2026-10-28T14:01:48.778Z · commit 978e7bda07ecc675038a2ce34df30e62918b9edc
 
 ## Notes
 
@@ -86,3 +87,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13310 authorized album integration delta clear, Standards0/Spec0, carrying A-13266/A-13290. Receipt type retains optional identity plus album targets/progress. Pairing is checked after every awaited target reaction before progress/next target; recovered-upload new receipts capture numeric identity, existing/legacy receipts retain compatibility. New held-first-reaction album-replace arm preserves actual delivery, durable offset3/media completion, targets[1,2], original identity, unsettled bits and exact one-reaction/no-eyes census. Earlier three revocation cases, legacy recovery and cards exact receipt migration remain. Media queue/Telegram media path match incoming dev; skill/docs/provenance/consumer inventory retained. No Reviewer executions. A-13308 local macOS summary and initial40/41 observer timeout remain separate from successful unchanged reruns; none are configured/Linux evidence. C1 runtime-unverified. Mode-free verification may proceed at unchanged978e7bda; Coordinator aefaee6e separately requires full verify all for T3 receipt reader before readiness/enqueue. Any changed head needs new source review.
+
+### rev-32 · 2026-10-28T14:01:48.778Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1424-evidence1
+commit: 978e7bda07ecc675038a2ce34df30e62918b9edc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Configured evidence clear; C1 verified, Coordinator full-all still separate/pending. A-13329 audits original9e92ccca/A-13326 at unchanged delta1 head:3927ordinary passes/499files+50separate load,zero nonpassing/unfinished. Four held-native revocation arms unpair/replace/same-chat/album-replace each ordinary+5/5load; legacy recovery ordinary+5/5, max own0.51534829s. Original identity, actual session delivery, exact one👌/no👀, album targets[1,2]/unsettled bits/durable completion and non-album confirmed cursor assertions pass. Current-shape recovery and exact confirmed-prompt cards consumer pass, plus inbound41/cards62/notices14. Host T0fa283d25 separate; Linuxc-8lon1 T1/allT2fallback/Web complete, Shell156/1248,2general/4Web workers,lifetime870s/$0.0604 notwall. Budgets/lint report-only. No T3/T4 selected, polling-restart unexecuted; Coordinator aefaee6e/e339cedc separately requires same-head full-all before enqueue. No full-all/ready claim, Reviewer rerun or per-item QA.
+
+Criteria: C1 verified.

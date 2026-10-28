@@ -2,8 +2,8 @@
 id: T-1387
 kind: task
 title: "Outbound artifacts on Telegram: photos up to 10 MB, documents up to 50 MB, each artifact once per remote, and a line for anything larger"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1141
 branch: t/T-1387-outbound-artifacts-on-telegram-photos-up
 created: 2026-10-27T23:37:27.927Z
-updated: 2026-10-28T13:53:37.122Z
+updated: 2026-10-28T14:01:28.374Z
+closed: 2026-10-28T14:01:28.374Z
 ---
 
 > Pending: the once-per-remote behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.
@@ -54,18 +55,23 @@ The message's artifacts are `artifact` and `artifacts` deduplicated by id. Teleg
 - [x] C1. An agent's General message with a PNG and a PDF and a long text arrives as the text, one photo and one document, each captioned with the message's header and each sent exactly once, even though the message carries the PNG in both `artifact` and `artifacts` (test).
   - done: impl-1387 · 2026-10-28T11:50:27.648Z
   - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence2 · 2026-10-28T13:54:56.355Z · commit 629e84f75bf3ca6c763bf6df2a643f465bba2f66
 - [x] C2. A single 2 KB note artifact with a one-line text arrives as one document whose caption is the header, a newline and the text, with no `caption_entities` (test).
   - done: impl-1387 · 2026-10-28T08:21:14.096Z
   - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence2 · 2026-10-28T13:54:56.355Z · commit 629e84f75bf3ca6c763bf6df2a643f465bba2f66
 - [x] C3. A 60 MB artifact, made as a sparse file, arrives as one line naming its id, title, size and `.cland/artifacts/…` path with no absolute path, and a 12 MB PNG arrives as a document (test).
   - done: impl-1387 · 2026-10-28T08:21:14.438Z
   - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence2 · 2026-10-28T13:54:56.355Z · commit 629e84f75bf3ca6c763bf6df2a643f465bba2f66
 - [x] C4. Restarting the hub while a file job is queued sends it once, and an upload the fake holds past its timeout is not resent (test).
   - done: impl-1387 · 2026-10-28T08:21:14.578Z
   - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence2 · 2026-10-28T13:54:56.355Z · commit 629e84f75bf3ca6c763bf6df2a643f465bba2f66
 - [x] C5. An image uploaded through the web's `artifact.upload` path arrives captioned "you · message", while the same upload made via Telegram is not sent back to Telegram (test).
   - done: impl-1387 · 2026-10-28T08:21:14.709Z
   - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence2 · 2026-10-28T13:54:56.356Z · commit 629e84f75bf3ca6c763bf6df2a643f465bba2f66
 
 ## Notes
 
@@ -170,3 +176,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta clear, zero findings; A-13302 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13302-t-1387-authorized-integration-delta-at-629e84f75-clear.md). Checked both parents, Coordinator dfba9015/42271bcb authorization, combined conflict and seven overlapping paths. messenger persistence retains files? plus discordNotice transition; daemon preserves both. Outbound opener/planner/Telegram implementation/all14 task tests and guide byte-identical to source3 b89d3527; prior H1/M2–M4 remain resolved. Other incoming paths match landed dev, additive guidance/provenance/tier/doc composition retained. No Reviewer executions. C1–C5 old runtime marks remain b89d3527 only; same-head mode-free configured evidence required at629e84f75. Coordinator expressly carries old full-all af9b7f7e/A-13294 for this mechanical resolution; actual prior log T0–T3/Web with8skips and no separate T4 phase, not new-head coverage. Keep head unchanged; further source change needs new review before verification. No final readiness or new-head runtime marks in this source pass.
+
+### rev-32 · 2026-10-28T13:54:56.356Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1387-evidence2
+commit: 629e84f75bf3ca6c763bf6df2a643f465bba2f66
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged delta1 head; A-13320 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13320-t-1387-final-current-head-evidence-at-629e84f75-clear.md). Independently parsed original29b07844/A-13316:3932 ordinary passes/500file passes+95separate load passes,0nonpassing/unfinished. All14 artifact identities ordinary+5/5 load (84task finishes), max ownload1.39242735s; C1–C5 native file/text/caption/size/fallback/restart/uncertainty/echo assertions pass, plus confinement/pairing-independent once/ordering/setup-drain controls. Shared WebArtifacts unit2/API27/Web artifacts14 pass. Host T0 candidate2d4eba8e separate; Linux c-8sfo2 T1/allT2fallback/Web completed, Shell156/1248,2general/4Web workers,lifetime972s/$0.0675. Report-only budgets/lint retained; no current T3/T4. Coordinator dfba9015/42271bcb carries original old-head full-all af9b7f7e/A-13294 at b89d3527 for mechanical integration: independent5317pass/8skip/696files,0unfinished; actualT0–T3/Web, no separateT4, no repetitions. Skips remain skips; no new-head full-all claim. C1–C5 now verified current head. No Reviewer executions, no per-item QA; Coordinator owns enqueue/landing.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-28T14:01:28.374Z
+
+Merged b72a77e10885ad0b8938c4af94350ec63c723366 onto dev.

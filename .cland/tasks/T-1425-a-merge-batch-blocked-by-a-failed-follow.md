@@ -2,8 +2,8 @@
 id: T-1425
 kind: task
 title: A merge batch blocked by a failed follow-up after landing never clears, and the queue stops behind it
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1153
 branch: t/T-1425-a-merge-batch-blocked-by-a-failed-follow
 created: 2026-10-28T12:21:37.799Z
-updated: 2026-10-28T13:42:52.878Z
+updated: 2026-10-28T14:13:52.960Z
+closed: 2026-10-28T14:13:52.960Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Configured evidence clear; Coordinator full-all 3dc0d1bd remains a separate pre-enqueue gate. A-13309 independently audits original 99ea15b6/A-13307 at unchanged source2 head: 3915 ordinary test passes, 499 file passes, 65 separate load passes, zero nonpassing/unfinished records. All eight new task cases pass ordinary + 5/5 load (48 task receipts), peak individual 0.363330475 s. C1 real TaskMerges manual follow-up recovery retains commit/no repeated landing and admits next heads; C2 ps-timeout recording/reporting plus report-fault later-tick/reopen/exactly-once settlement controls pass; C3 persisted startup cleanup/public merge.queue proof passes. Worker barrier, unchanged help guard, five typed retries and non-landed untyped hold pass. T0 host check separate excluded-candidate 10df1b6a, not repeated Linux typecheck. Linux c-8 lon1 T1/all fallback T2/Web completed; Shell156/1248, general2/Web4 workers; lifetime769s/$0.0534 not suite wall. Budgets/test lint report-only; no selected T3/T4, no full-all/enqueue claim. No Reviewer reruns or source changes.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T14:13:52.960Z
+
+Merged 37cf86b14580d7a716eca4c4c72ad6794fffb65e onto dev.
