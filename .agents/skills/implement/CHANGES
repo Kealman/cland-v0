@@ -252,3 +252,5 @@ T-1400: Document Discord General mirror/outbox receipts and store-before-cursor 
 
 T-1378: Replace indefinite unmatched Telegram hold with terminal fallback and id/kind diagnostics; registry is installed before polling.
 T-1377: Document exact tracker save/removal receipts, retained 15 s bounds and healthy-watch safety reconciliation.
+
+T-1417: Bound native-close fixture drainage from disposal, with delayed-setup controls and independent acquisition receipts.

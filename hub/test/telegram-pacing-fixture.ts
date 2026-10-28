@@ -1,6 +1,6 @@
 import type { TestContext } from 'node:test';
 import { Store } from '../src/hub/store.ts';
-import { projectHub, until, type ProjectHubOptions } from './harness.ts';
+import { projectHub, until, testWaitMs, type ProjectHubOptions } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 import type { Clock } from '../src/hub/clock.ts';
@@ -14,29 +14,35 @@ export function pacingOwner(t: TestContext) {
   const observations = new Set<Promise<unknown>>();
   let disposing: Promise<void> | undefined;
   const abort = new AbortController();
+  const drainAbort = new AbortController();
   const serving = Promise.withResolvers<Awaited<ReturnType<typeof projectHub>>>();
   const closers: Array<{ close: () => void | Promise<void>; startupOnly: boolean; called: boolean }> = [];
   const dispose = () => disposing ??= (async () => {
-    const hadAcquisition = acquiring.size > 0;
-    abort.abort(new Error('Telegram pacing fixture setup cancelled'));
-    const failures: unknown[] = [];
-    const stopKnown = async (releaseStartup: boolean) => {
-      const pending = closers.filter(entry => !entry.called && (!entry.startupOnly || releaseStartup));
-      for (const entry of pending) entry.called = true;
-      const stopped = await Promise.allSettled([
-        ...[...hubs].map(hub => hub.stop()), ...pending.map(entry => Promise.resolve().then(entry.close)),
-      ]);
-      for (const result of stopped) if (result.status === 'rejected') failures.push(result.reason);
-    };
-    // Release held I/O and custom owners before joining acquisition, not behind it.
-    await stopKnown(hadAcquisition);
-    while (acquiring.size) await Promise.allSettled([...acquiring]);
-    // A cancelled acquisition may still return a late hub; retain and stop it.
-    await stopKnown(false);
-    while (observing.size) await Promise.allSettled([...observing]);
-    while (observations.size) await Promise.allSettled([...observations]);
-    if (failures.length) throw new AggregateError(failures, 'Telegram pacing fixture writers did not drain');
-    db?.close();
+    // Spend the shutdown budget on drainage, never on fixture acquisition.
+    const deadline = setTimeout(() => drainAbort.abort(new Error('Telegram fixture drainage deadline reached')), testWaitMs(5_000));
+    deadline.unref();
+    try {
+      const hadAcquisition = acquiring.size > 0;
+      abort.abort(new Error('Telegram pacing fixture setup cancelled'));
+      const failures: unknown[] = [];
+      const stopKnown = async (releaseStartup: boolean) => {
+        const pending = closers.filter(entry => !entry.called && (!entry.startupOnly || releaseStartup));
+        for (const entry of pending) entry.called = true;
+        const stopped = await Promise.allSettled([
+          ...[...hubs].map(hub => hub.stop()), ...pending.map(entry => Promise.resolve().then(entry.close)),
+        ]);
+        for (const result of stopped) if (result.status === 'rejected') failures.push(result.reason);
+      };
+      // Release held I/O and custom owners before joining acquisition, not behind it.
+      await stopKnown(hadAcquisition);
+      while (acquiring.size) await Promise.allSettled([...acquiring]);
+      // A cancelled acquisition may still return a late hub; retain and stop it.
+      await stopKnown(false);
+      while (observing.size) await Promise.allSettled([...observing]);
+      while (observations.size) await Promise.allSettled([...observations]);
+      if (failures.length) throw new AggregateError(failures, 'Telegram pacing fixture writers did not drain');
+      db?.close();
+    } finally { clearTimeout(deadline); }
   })();
   onCleanup(t, dispose);
   return {
@@ -44,7 +50,7 @@ export function pacingOwner(t: TestContext) {
     observations: () => observations.size,
     observe: <T>(start: (signal: AbortSignal) => Promise<T>, options: { drain?: boolean } = {}): Promise<T> => {
       // Native close receipts survive cancellation until writers have stopped.
-      const work = start(AbortSignal.any([t.signal, options.drain ? AbortSignal.timeout(1_000) : abort.signal]));
+      const work = start(AbortSignal.any([t.signal, options.drain ? drainAbort.signal : abort.signal]));
       observations.add(work);
       void work.then(() => observations.delete(work), () => observations.delete(work));
       return work;

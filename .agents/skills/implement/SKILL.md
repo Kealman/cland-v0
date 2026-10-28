@@ -147,6 +147,10 @@ and `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`. Inbound te
 replies, feedback and lost-result replay use `docs/agents/tests/hub-test-telegram-inbound.test.ts.md`.
 Attach handlers to the registry; keep native identity/recovery outside frames,
 reconcile feedback with durable session stages, and join replay-safe handlers on stop. Keep dedicated handlers before the terminal unsupported-input fallback; confirm unmatched input and retain its content-free id/kind diagnostic.
+For abandoned Telegram fixture setup, retain the early native-close observer
+but start its drain deadline at disposal; acquisition has a separate bound.
+Keep the inbound omitted/aborted delayed-setup controls and their exact native
+close, stopped writer, closed Store and zero observer/timer assertions.
 For 📥 notices and plan/TUI General-reference routing, use
 `docs/agents/tests/hub-test-telegram-notices.test.ts.md`; preserve the gateway's existing authority.
 For Telegram liveness, use the production-factory/frame and fake-clock controls in

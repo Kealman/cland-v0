@@ -99,9 +99,20 @@ fallback; the command fence prevents duplicate guidance after interrupted handli
 
 The new fallback/edit/restart observers use `pacingOwner.observe` before setup.
 The shared disposer cancels and joins observations before SQLite closes; native
-close receipts use its bounded `drain` option to survive producer cancellation.
+close receipts use its `drain` option to survive producer cancellation. Its
+`testWaitMs(5_000)` deadline starts when disposal begins, so acquisition cannot
+consume the native-close budget.
 `Telegram input fixture drains observers after omitted setup receipt` and its
 `aborted` counterpart hold an actual sticker reply, omit/abort the hub setup
 receipt, then retain native send close, stopped hub, cancelled unmatched poll
 observer, zero pending observations/timers and closed SQLite. These controls run
 through the same disposer as the fallback and held-card regressions.
+
+T-1417 keeps a controlled 1100 ms acquisition delay after arming the observers
+in both omitted/aborted setup controls. This deliberately exceeds the former
+one-second deadline; it models scheduler delay and is not a completion wait.
+The test then waits for `owner.serving` and the actual held-send receipt with
+separate five-second setup bounds before triggering setup failure. Keep the
+matching native close id, stopped hub, cancelled unmatched observer, closed
+SQLite and zero observer/timer assertions. A deadline rejection is still a
+failure, never a successful drain.

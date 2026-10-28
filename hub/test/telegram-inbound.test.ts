@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tempProject, connectUi, inProcessSpoke, until } from './harness.ts';
+import { tempProject, connectUi, inProcessSpoke, until, testWaitMs } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { setSecret } from '../src/remote/secrets.ts';
 import { Store } from '../src/hub/store.ts';
@@ -451,19 +451,21 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram input fixt
   } });
   const held = owner.observe(signal => fake.waitForHeldRequest('sendMessage', signal));
   const closed = owner.observe(signal => fake.waitForConnectionClose('sendMessage', signal), { drain: true });
+  // A loaded runner may spend over a second acquiring the hub.
+  await new Promise(resolve => setTimeout(resolve, 1_100)); // lint-allow-wall-clock: fault injection exceeds the former pre-disposal observer deadline (T-1417)
   const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, {
     receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal,
   });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
-  const hub = await within(owner.serving, 1_000);
-  const receipt = await within(held, 1_000);
+  const hub = await within(owner.serving, testWaitMs(5_000));
+  const receipt = await within(held, testWaitMs(5_000));
   if (failure === 'omitted') await setupClock.advance(1_000);
   else abort.abort(new Error('Telegram pacing fixture setup cancelled'));
   await rejected;
   await owner.dispose();
   await cancelled;
   await hub.stopped;
-  assert.equal((await within(closed, 1_000)).id, receipt.id);
+  assert.equal((await within(closed, testWaitMs(5_000))).id, receipt.id);
   assert.equal(owner.observations(), 0);
   assert.throws(() => store.remotes.forMessenger('telegram').outbox(), /not open|closed/i);
   assert.equal(clock.pending, 0);
