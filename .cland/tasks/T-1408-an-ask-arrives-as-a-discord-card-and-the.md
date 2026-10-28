@@ -2,8 +2,8 @@
 id: T-1408
 kind: task
 title: An ask arrives as a Discord card, and the paired human's click answers it with one update within 3 seconds
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1164
 branch: t/T-1408-an-ask-arrives-as-a-discord-card-and-the
 created: 2026-10-27T23:38:47.479Z
-updated: 2026-10-28T22:18:14.114Z
+updated: 2026-10-28T22:55:49.712Z
+closed: 2026-10-28T22:55:49.712Z
 ---
 
 ## Summary
@@ -45,14 +46,19 @@ Spec §3.5 (Discord cards, one gate, order); research rules 23 and 24; Q-1293 (0
 
 - [x] C1. A nine-option free-answer ask whose options fit 34 characters arrives as one card with the options five to a row labelled with their text, then "Other answer…" and "Decline…", in three rows, every label within 80 and every custom id within 100 (test).
   - done: impl-1408 · 2026-10-28T22:12:56.353Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1408-evidence-1 · 2026-10-28T22:49:50.984Z · commit 1c1c1d726138e2c083910d977051a39f4adac0bb
 - [x] C2. An ask with one option over 34 characters gets numbered buttons with the options listed in the card's content (test).
   - done: impl-1408 · 2026-10-28T22:12:56.443Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1408-evidence-1 · 2026-10-28T22:49:50.984Z · commit 1c1c1d726138e2c083910d977051a39f4adac0bb
 - [x] C3. The paired human's click records the answer with `via = "discord"` before the callback, and one `UPDATE_MESSAGE` turns the card into its outcome with no components within 3 seconds under the injected clock (test).
   - done: impl-1408 · 2026-10-28T22:12:56.537Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1408-evidence-1 · 2026-10-28T22:49:50.984Z · commit 1c1c1d726138e2c083910d977051a39f4adac0bb
 - [x] C4. A click whose hub result takes longer than 2 seconds is deferred before 3 seconds and the card is edited to its outcome afterwards (test).
   - done: impl-1408 · 2026-10-28T22:12:56.792Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1408-evidence-1 · 2026-10-28T22:49:50.984Z · commit 1c1c1d726138e2c083910d977051a39f4adac0bb
 - [x] C5. Two asks published together arrive oldest first, and a card still arrives while General is muted (test).
   - done: impl-1408 · 2026-10-28T22:12:56.938Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1408-evidence-1 · 2026-10-28T22:49:50.984Z · commit 1c1c1d726138e2c083910d977051a39f4adac0bb
 
 ## Notes
 
@@ -89,3 +95,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13481 source2 clear resolves M1–M3. Full11-file task scope covered by prior full audit+complete correction diff: sorted T2/index, durable edit invoked independently of caught/joined defer response, accepted-type6/lost-response control retaining one callback and final sent edit, update:3 shared proxy ownership. Original C1–C5 assertions unchanged; downstream scope remains separate. A-13480 local narrative10-case/guard/typecheck evidence only; runtime verification pending. No reviewer workloads or extra full run/QA requested. One unchanged-head mode-free run may proceed.
+
+### rev-26 · 2026-10-28T22:32:24.566Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1408-source-delta-1
+commit: 1c1c1d726138e2c083910d977051a39f4adac0bb
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13490 authorized shared-fix merge delta clear. Independently read Coordinator95b367c9. All11 source2 task blobs unchanged; diff exactly durations.json three owner strings (uploads→openR-1278, copied Items case/file→openC-326) plus4tracker records; caps/dates/reasons/numeric timings unchanged. Old96a38290/A-13488 cancelled143/partialWeb retained, no new-head runtime or criterion proof. Fresh unchanged-head mode-free run allowed, final original-record review required. No reviewer workload or extra full/QA run.
+
+### rev-26 · 2026-10-28T22:49:50.984Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1408-evidence-1
+commit: 1c1c1d726138e2c083910d977051a39f4adac0bb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13503 original-record final evidence clear, C1–C5 verified. A-13502:4027 ordinary+85 separate load passes (50card/35site), unfinished0; all10card identities base+5/5load, maxbase0.362695427s/maxload0.528767856s. Native exact2000ms defer, durable outcome/lost-response and callback-before-store/order assertions retained. T0/T1/allT2/Web green, T3/T4 unrun; independent Coordinatora5424954 confirms no extra full run. Provenance/host-gate reuse/report-only diagnostics and922s/$0.0640 in artifact. Cancelled A-13488 old-head excluded. No reviewer workload or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-28T22:50:15.327Z
+
+Coordinator record of rev-26's wording correction (reported 22:50Z, msg 71a3c1b4): the evidence1 verdict comment says 'callback-before-store/order' by mistake. C3 is STORE-BEFORE-CALLBACK, as A-13503 and the named test correctly state. The verdict, head, receipts and verified marks are unchanged.
+
+### coord · 2026-10-28T22:55:49.712Z
+
+Merged d25d15690514240de3bf3b0c854ebe9073488f18 onto dev.

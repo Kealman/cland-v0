@@ -3,7 +3,7 @@ id: T-1409
 kind: task
 title: Modals take free answers and declines, and one gate holds across Discord, Telegram and the workbenches
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-1312
 blocked_by:
   - T-1408
 topic: null
-branch: null
+branch: t/T-1409-modals-take-free-answers-and-declines
 created: 2026-10-27T23:38:47.618Z
-updated: 2026-10-28T22:06:38.129Z
+updated: 2026-10-28T22:55:59.832Z
 ---
 
 ## Summary
