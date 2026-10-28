@@ -8030,7 +8030,7 @@
     "hub/test/discord-messages.test.ts::Discord records attempt before REST and publishes mapping with sent settlement": 0.043532,
     "hub/test/discord-messages.test.ts::Discord recovery POST owns a distinct attempt and never renews the original nonce window": 0.054025,
     "hub/test/discord-messages.test.ts::Discord startup replay cancellation drains the held REST request before gateway shutdown": 0.073877,
-    "hub/test/discord-messenger.test.ts::Discord credential-echo REST refusal stays out of CLI frames logs errors and journal": 0.23559,
+    "hub/test/discord-messenger.test.ts::Discord credential-echo REST refusal 401/0 stays out of CLI frames logs errors and journal": 0.23559,
     "hub/test/discord-messenger.test.ts::Discord heartbeats use jitter then interval and op 1; stale acknowledgements disconnect status": 0.154467,
     "hub/test/discord-messenger.test.ts::Discord production factory identifies and reports acknowledged connection and invite": 0.45371,
     "hub/test/discord-messenger.test.ts::Discord production gateway allowlist refuses foreign hosts before external I/O": 0.000833,

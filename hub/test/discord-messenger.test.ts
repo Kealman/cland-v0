@@ -78,13 +78,13 @@ test('Discord heartbeats use jitter then interval and op 1; stale acknowledgemen
   await hub.stop(); assert.equal(clock.pending, 0);
 });
 
-for (const gatewayUrl of ['wss://discord.gg.attacker.invalid', 'ws://192.0.2.1:8080']) test(`Discord refuses gateway ${gatewayUrl} while Telegram keeps mirroring`, async t => {
+for (const gatewayUrl of ['wss://discord.gg.attacker.invalid', 'ws://192.0.2.1:8080', 'message-content', 'interactions-endpoint']) test(`Discord refuses gateway ${gatewayUrl} while Telegram keeps mirroring`, async t => {
   const { Store } = await import('../src/hub/store.ts');
   const { fakeTelegram, telegramControl, TELEGRAM_TEST_TOKEN } = await import('./fakes/telegram/fake-api.ts');
   const { inProcessSpoke } = await import('./harness.ts');
   const root = await tempProject(t); const fake = await fakeDiscordFixture(t); const telegram = await fakeTelegram(t);
   const clock = new FakeClock();
-  await fake.control('configure', { gatewayUrl });
+  await fake.control('configure', gatewayUrl === 'message-content' ? { application: { flags: 0 } } : gatewayUrl === 'interactions-endpoint' ? { application: { interactions_endpoint_url: 'https://example.invalid/interaction' } } : { gatewayUrl });
   const config = defaultConfig('Isolation fixture'); config.remote.discord.enabled = true; config.remote.telegram.enabled = true;
   await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   const store = new Store(join(root, '.cland/hub.db'));
@@ -94,11 +94,13 @@ for (const gatewayUrl of ['wss://discord.gg.attacker.invalid', 'ws://192.0.2.1:8
     { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'telegram.token': TELEGRAM_TEST_TOKEN }, log: entry => { logs.push(entry); } });
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const row = await receipt(async () => ((await ui.request({ type: 'remote.status' })).value as { remotes: RemoteStatusRow[] }).remotes[1]!, r => r.connection === 'disabled');
-  assert.match(row.reason!, /gateway URL refused/);
+  assert.match(row.reason!, gatewayUrl === 'message-content' ? /Message Content/ : gatewayUrl === 'interactions-endpoint' ? /clear the Interactions Endpoint URL/ : /gateway URL refused/);
+  if (gatewayUrl === 'message-content') assert.equal(row.stopCause, 'message-content');
   const history = await ui.request({ type: 'topic.history', topic: 'general' });
   const notices = (history.value as { messages: Array<{ text: string }> }).messages.filter(m => m.text.includes('Discord remote:'));
-  assert.equal(notices.length, 1); assert.match(notices[0]!.text, /gateway URL refused/);
-  await receipt(async () => (await telegramControl<{ messages: Array<{ text: string }> }>(telegram.url, 'state')).body.messages, messages => messages.some(m => m.text.includes('Discord remote:')));
+  assert.equal(notices.length, 1); assert.match(notices[0]!.text, gatewayUrl === 'message-content' ? /Message Content/ : gatewayUrl === 'interactions-endpoint' ? /clear the Interactions Endpoint URL/ : /gateway URL refused/);
+  // Application checks run before the gateway opens; the durable General notice
+  // above is the receipt. Prove ongoing Telegram delivery with a new report.
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'Still mirroring' })).ok, true);
   await clock.advance(1000);
@@ -109,9 +111,9 @@ for (const gatewayUrl of ['wss://discord.gg.attacker.invalid', 'ws://192.0.2.1:8
   await hub.stop();
 });
 
-test('Discord credential-echo REST refusal stays out of CLI frames logs errors and journal', async t => {
+for (const [status, code] of [[401, 0], [400, 40001], [400, 50014]]) test(`Discord credential-echo REST refusal ${status}/${code} stays out of CLI frames logs errors and journal`, async t => {
   const root = await tempProject(t); const fake = await fakeDiscordFixture(t);
-  await fake.control('fault', { status: 401, echoToken: true });
+  await fake.control('fault', { status, code, echoToken: true });
   const config = defaultConfig('Credential refusal'); config.remote.discord.enabled = true;
   await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   const logs: Record<string, unknown>[] = [];
@@ -120,10 +122,10 @@ test('Discord credential-echo REST refusal stays out of CLI frames logs errors a
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const reply = await ui.request({ type: 'remote.status' });
   const row = (reply.value as { remotes: RemoteStatusRow[] }).remotes[1]!;
-  assert.equal(row.connection, 'disabled'); assert.match(row.reason!, /application check failed/);
+  assert.equal(row.connection, 'disabled'); assert.equal(row.stopCause, 'token'); assert.match(row.reason!, /wrong or revoked token/);
   assert.ok(logs.some(entry => entry.event === 'remote-disabled' && entry.remote === 'discord'));
   const cli = await cland(root, 'remote', 'status'); assert.equal(cli.code, 0, cli.stderr);
-  assert.match(cli.stdout, /application check failed/);
+  assert.match(cli.stdout, /wrong or revoked token/);
   assert.equal((await fake.control('state')).requests[0]!.path, '/oauth2/applications/@me');
   await hub.stop();
   const sinks = await Promise.all(['log/hub.log', 'journal.jsonl'].map(file => readFile(join(root, '.cland', file), 'utf8')));
@@ -171,4 +173,98 @@ test('Discord production gateway allowlist refuses foreign hosts before external
   assert.equal(discordGatewayUrl('wss://gateway.discord.gg', false), 'wss://gateway.discord.gg/?v=10&encoding=json');
   assert.equal(discordGatewayUrl('ws://127.0.0.1:8080', true), 'ws://127.0.0.1:8080/?v=10&encoding=json');
   // Validation only: this control never constructs a socket or uses a platform token.
+});
+
+for (const [code, cause] of [[4004, 'token'], [4010, 'gateway-refused'], [4011, 'gateway-refused'], [4012, 'gateway-refused'], [4013, 'gateway-refused'], [4014, 'message-content'], [4003, 'gateway-refused']] as const) test(`Discord fatal close ${code} persists ${cause} without reconnect`, async t => {
+  const root = await tempProject(t); const fake = await fakeDiscordFixture(t); const clock = new FakeClock();
+  const { fakeTelegram, telegramControl, TELEGRAM_TEST_TOKEN } = await import('./fakes/telegram/fake-api.ts');
+  const { Store } = await import('../src/hub/store.ts');
+  const { inProcessSpoke } = await import('./harness.ts');
+  const telegram = await fakeTelegram(t);
+  const config = defaultConfig('Fatal close'); config.remote.discord.enabled = true; config.remote.telegram.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db'));
+  try { store.remotes.forMessenger('telegram').setPairing({ userId: '101', chatId: '101', guildId: null, name: 'Fixture human' }); } finally { store.close(); }
+  const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url, CLAND_TELEGRAM_API_ROOT: telegram.url }, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'telegram.token': TELEGRAM_TEST_TOKEN } });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  const status = async () => ((await ui.request({ type: 'remote.status' })).value as { remotes: RemoteStatusRow[] }).remotes[1]!;
+  await receipt(() => fake.control('state'), s => s.gateway.identifies === 1);
+  await fake.control('close', { code });
+  if (code === 4003) {
+    await receipt(() => fake.control('state'), s => s.gateway.identifies === 2);
+    await fake.control('close', { code });
+  }
+  const row = await receipt(status, r => r.connection === 'disabled');
+  assert.equal(row.stopCause, cause); assert.match(row.reason!, new RegExp(String(code)));
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  const notices = (history.value as { messages: Array<{ text: string }> }).messages.filter(m => m.text.includes('Discord remote:'));
+  assert.equal(notices.length, 1); assert.match(notices[0]!.text, /cland hub reload/);
+  assert.match(notices[0]!.text, new RegExp(String(code)));
+  const cli = await cland(root, 'remote', 'status'); assert.equal(cli.code, 0, cli.stderr); assert.match(cli.stdout, new RegExp(String(code)));
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'Telegram survives fatal close' })).ok, true);
+  await clock.advance(1000);
+  await receipt(async () => (await telegramControl<{ messages: Array<{ text: string }> }>(telegram.url, 'state')).body.messages, messages => messages.some(m => m.text.includes('Telegram survives fatal close')));
+  await clock.advance(60_000);
+  assert.equal((await fake.control('state')).gateway.identifies, code === 4003 ? 2 : 1);
+  assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
+  await hub.stop(); assert.equal(clock.pending, 0);
+});
+
+test('Discord remote test checks application and sends one paired line; REST 401 stops it', async t => {
+  const { Store } = await import('../src/hub/store.ts');
+  const root = await tempProject(t); const fake = await fakeDiscordFixture(t);
+  const config = defaultConfig('Remote test'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db'));
+  try { store.remotes.forMessenger('discord').setPairing({ userId: DISCORD_IDS.human, chatId: DISCORD_IDS.channel, guildId: DISCORD_IDS.guild, name: 'Fixture human' }); } finally { store.close(); }
+  const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await receipt(() => fake.control('state'), s => s.gateway.identifies === 1);
+  const before = (await fake.control('state')).requests.filter(r => r.path === '/oauth2/applications/@me').length;
+  const cli = await cland(root, 'remote', 'test', 'discord'); assert.equal(cli.code, 0, cli.stderr); assert.match(cli.stdout, /test line sent/);
+  const state = await fake.control('state');
+  assert.equal(state.requests.filter(r => r.path === '/oauth2/applications/@me').length, before + 1);
+  assert.equal(state.messages.length, 1); assert.equal(state.messages[0]!.content, 'cland remote test');
+  await fake.control('fault', { status: 401, echoToken: true });
+  const refused = await cland(root, 'remote', 'test', 'discord'); assert.notEqual(refused.code, 0);
+  const row = await receipt(async () => ((await ui.request({ type: 'remote.status' })).value as { remotes: RemoteStatusRow[] }).remotes[1]!, r => r.connection === 'disabled');
+  assert.equal(row.stopCause, 'token');
+  await receipt(() => fake.control('state'), s => s.gateway.closes.includes(1000));
+  assert.equal(JSON.stringify([ui.frames, cli, refused, row]).includes(DISCORD_TEST_TOKEN), false);
+  await hub.stop();
+});
+
+test('Discord replacement notification auth failure retains token cause and joins held terminal close', async t => {
+  const { Store } = await import('../src/hub/store.ts');
+  const root = await tempProject(t); const fake = await fakeDiscordFixture(t);
+  const config = defaultConfig('Replacement stop'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db'));
+  try { store.remotes.forMessenger('discord').setPairing({ userId: DISCORD_IDS.human, chatId: DISCORD_IDS.channel, guildId: DISCORD_IDS.guild, name: 'Fixture human' }); } finally { store.close(); }
+  const logs: Record<string, unknown>[] = [];
+  const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { log: entry => { logs.push(entry); }, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await receipt(() => fake.control('state'), s => s.gateway.identifies === 1);
+  const interaction = await fake.control('interact', { channel_id: DISCORD_IDS.secondChannel });
+  const issued = await receipt(() => fake.control('state'), s => !!s.interactions.find(r => r.id === interaction.id)?.callbacks.length);
+  const text = (issued.interactions.find(r => r.id === interaction.id)!.callbacks[0] as { data: { content: string } }).data.content;
+  const code = /code ([A-Z2-9]{8})/.exec(text)![1]!;
+  await fake.control('configure', { holdClose: true });
+  await fake.control('fault', { status: 401, echoToken: true });
+  try {
+    const approval = await cland(root, 'remote', 'approve', 'discord', code); assert.equal(approval.code, 0, approval.stderr);
+    await receipt(() => fake.control('state'), s => s.requests.some(r => r.path === `/channels/${DISCORD_IDS.channel}/messages`));
+    const cli = await cland(root, 'remote', 'status'); assert.equal(cli.code, 0, cli.stderr);
+    assert.match(cli.stdout, /wrong or revoked token/); assert.match(cli.stdout, /cland secret set discord.token/);
+  } finally { await fake.control('configure', { holdClose: false }); }
+  await receipt(async () => logs, entries => entries.some(e => e.event === 'remote-disabled' && e.remote === 'discord'));
+  const row = ((await ui.request({ type: 'remote.status' })).value as { remotes: RemoteStatusRow[] }).remotes[1]!;
+  assert.equal(row.stopCause, 'token'); assert.match(row.reason!, /cland secret set discord.token/);
+  await receipt(() => fake.control('state'), s => s.gateway.closes.includes(1000));
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal((history.value as { messages: Array<{ text: string }> }).messages.filter(m => m.text.includes('Discord remote:')).length, 1);
+  await hub.stop();
+  const persisted = new Store(join(root, '.cland/hub.db'));
+  try { assert.equal(persisted.remotes.forMessenger('discord').status().stopCause, 'token'); } finally { persisted.close(); }
 });

@@ -3376,7 +3376,7 @@ Doctor requires only the harnesses used by `.cland/roles.toml`: each role's laun
 | `cland mod` | `hub/mod/cland/hooks/hooks.json` ships with this cland. | `fail`, reinstall cland. |
 | `docs/agents`, `AGENTS.md` | The three files exist (a file without the mark is the project's own and fine); `AGENTS.md` has the managed block, at this version. | `fail` (another version: `warn`), `cland update`. |
 
-Remote checks make no platform or paid call; `cland remote test <messenger>` is the explicit token check. Doctor reads the current file/environment and config; status describes the running hub's loaded clients, so changed inputs take effect there after `cland hub reload`. `RemoteStatusRow.stopCause` is optional (`token`, `message-content`, `blocked`, `other-consumer`), alongside the unchanged `reason`. The cause persists additively in `remote_status.stop_cause` and clears when the gateway restarts the client. General and doctor share `src/remote/notices.ts` wording rather than parsing provider errors. Discord fatal causes can be supplied by an injected client; its built-in client is not required for these diagnostics.
+Remote checks make no platform or paid call; `cland remote test <messenger>` is the explicit token check. Doctor reads the current file/environment and config; status describes the running hub's loaded clients, so changed inputs take effect there after `cland hub reload`. `RemoteStatusRow.stopCause` is optional (`token`, `message-content`, `blocked`, `other-consumer`, `interactions-endpoint`, `gateway-refused`, `identify-budget`), alongside the unchanged `reason`. The cause persists additively in `remote_status.stop_cause` and clears when the gateway restarts the client. General and doctor share `src/remote/notices.ts` wording rather than parsing provider errors. The built-in Discord client supplies application, REST authentication and fatal gateway causes.
 
 `probeHarness` in `src/doctor/toolchain.ts` exports the binary, parsed version and login checks for both doctor and setup, with injectable executable lookup and command replies. T1 coverage is in `test/doctor-harness-probe.test.ts`. The fakes answer the same surfaces in the CLI tests (`test/doctor-cli.test.ts`): `claude --version` and `auth status` (`FAKE_CLAUDE_VERSION`, `FAKE_CLAUDE_LOGGED_OUT`), `codex login status` (`FAKE_CODEX_LOGGED_OUT`), `opencode auth list` (`FAKE_OPENCODE_NO_AUTH`), and the fake `gh`'s `--version` and `auth status` (`FAKE_GH_LOGGED_OUT`).
 
@@ -6704,7 +6704,16 @@ application's invite (`scope=bot&permissions=117824`). Session facts remain in
 memory. Discord pairing interactions use the native command router described below;
 message handlers use its optional native dispatch extension point.
 A connection failure disables only Discord and writes one General notice with
-its reason and reload guidance. Stop closes and joins the socket and clears
+its reason and reload guidance. Before connecting it requires either Message Content
+application flag (1<<18 or 1<<19) and an empty Interactions Endpoint URL.
+A wrong setting stops before Identify. Close 4004 means `token`, 4014 means
+`message-content`, and 4010–4013 mean `gateway-refused` with the numeric code.
+A 4003 gets one fresh Identify; a second stops with `gateway-refused`.
+REST 401, 40001 and 50014 mean `token` across all request paths.
+Each stop writes one General cause/fix and structured status; `cland hub reload`
+retries the stopped client. `cland remote test discord` reads the application
+and posts exactly one fixed line when paired (no message when unpaired).
+Terminal stop closes with 1000, joins and joins the socket and clears
 heartbeat timers. The existing role and frame authority remain unchanged.
 
 The token is private to the REST authorization header and gateway Identify;

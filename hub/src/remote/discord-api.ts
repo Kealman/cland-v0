@@ -29,6 +29,8 @@ export type DiscordGatewayBot = { url: string; session_start_limit: DiscordSessi
 export type DiscordChannel = { id: string; guild_id: string; last_message_id: string | null };
 export type DiscordRequestOptions = { signal?: AbortSignal };
 export class DiscordApi {
+  readonly #errors = new Set<(error: DiscordError, channel?: string) => void>();
+  onError(listener: (error: DiscordError, channel?: string) => void): () => void { this.#errors.add(listener); return () => { this.#errors.delete(listener); }; }
   readonly #token: string;
   readonly #root: string;
   readonly #redactor: RemoteRedactor;
@@ -108,6 +110,9 @@ export class DiscordApi {
       // Gateway and application URLs are protocol data. Keep them intact while
       // still passing any credential echo through the shared output redactor.
       return redactValue(value, text => text.includes(this.#token) ? this.#redactor.text(text) : text) as T;
+    } catch (error) {
+      if (error instanceof DiscordError) for (const listener of this.#errors) listener(error, /^\/channels\/(\d+)(?:\/|$)/.exec(path)?.[1]);
+      throw error;
     } finally { clearTimeout(timer); }
   }
 }

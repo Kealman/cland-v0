@@ -9,7 +9,8 @@ import type { HubFrame, RemoteConnection } from '../protocol.ts';
 import type { Clock } from '../hub/clock.ts';
 import type { LogFn } from '../log.ts';
 import { registerCommands, DiscordCommands } from './discord-commands.ts';
-import { DiscordApi } from './discord-api.ts';
+import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
+import { DiscordApi, DiscordError } from './discord-api.ts';
 import { DiscordSocket, discordGatewayUrl, type DiscordDispatch } from './discord-socket.ts';
 export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; log?: LogFn; notice?: (cause: string, fix: string) => void; fake?: boolean; random?: () => number; handlers?: Array<(frame: DiscordDispatch) => void> };
 
@@ -20,6 +21,9 @@ export class DiscordRemote implements Remote {
   readonly #commands: DiscordCommands;
   readonly #outbox: DiscordOutbox | undefined;
   #inbound: DiscordInbound | undefined; #bot: string | undefined;
+  #detachApi: (() => void) | undefined;
+  #fatal: Error | undefined;
+  #terminal: Promise<void> | undefined;
   #detachStartup: (() => void) | undefined;
   readonly #socket: DiscordSocket; readonly #abort = new AbortController();
   readonly #listeners = new Set<() => void>();
@@ -28,6 +32,12 @@ export class DiscordRemote implements Remote {
     this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal);
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
+    this.#detachApi = api.onError(error => {
+      if (error.status === 401 || error.code === 40001 || error.code === 50014) {
+        this.#fatal ??= remoteStopError('discord', 'token');
+        void this.#failed(this.#fatal, '').catch(() => {});
+      }
+    });
     this.#socket = new DiscordSocket(clock, () => { for (const listener of this.#listeners) listener(); }, options.random);
   }
   subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
@@ -45,17 +55,22 @@ export class DiscordRemote implements Remote {
     try {
       const application = await this.#api.getCurrentApplication({ signal: signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal });
       if (!/^\d+$/.test(application.id)) throw new Error('invalid application id');
+      if (!(application.flags & ((1 << 18) | (1 << 19)))) throw remoteStopError('discord', 'message-content');
+      if (application.interactions_endpoint_url) throw remoteStopError('discord', 'interactions-endpoint');
       this.#application = application.id;
       await registerCommands(this.#api, application.id, signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal);
       await this.#outbox?.resume();
-    } catch { if (!this.#abort.signal.aborted && !signal?.aborted) await this.stopWith('application check failed', 'check the token and run cland hub reload'); throw new Error('Discord application check failed'); }
+    } catch (error) {
+      if (!this.#abort.signal.aborted && !signal?.aborted) await this.#failed(error, 'application check failed');
+      await this.#outwardError(error);
+    }
   }
   receive(frame: HubFrame): void | Promise<void> {
     this.#inbound?.receive(frame);
     if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return;
     const pairing = this.#options.store?.pairing();
     const mirrored = mirrorOut(frame.message, 'discord');
-    if (pairing && mirrored) return this.#outbox?.send(pairing.chatId, `${mirrored.header}\n${mirrored.text}`, frame.message.id);
+    if (pairing && mirrored) return this.#outbox?.send(pairing.chatId, `${mirrored.header}\n${mirrored.text}`, frame.message.id).catch(error => this.#outwardError(error));
   }
   run(): Promise<void> {
     return this.#running ??= (async () => {
@@ -74,29 +89,56 @@ export class DiscordRemote implements Remote {
           if (frame.t === 'MESSAGE_CREATE' && this.#bot && (frame.d.author as { id?: string } | undefined)?.id === this.#bot) this.#outbox?.observe(frame.d as DiscordMessage);
           else this.#inbound?.dispatch(frame);
         });
+        if (this.#fatal) await this.#outwardError(this.#fatal);
       } catch (error) {
+        if (this.#fatal) await this.#outwardError(this.#fatal);
         if (this.#abort.signal.aborted) return;
         const reason = error instanceof Error && error.message.startsWith('Discord gateway URL refused:') ? error.message : 'Discord gateway connection failed';
-        await this.stopWith(reason, 'check Discord configuration and run cland hub reload');
+        await this.#failed(error, reason);
         throw new Error(this.#failure);
       }
     })();
   }
-  async stopWith(cause: string, detail: string): Promise<void> {
-    if (this.#failure) return;
-    this.#failure = `${cause}; ${detail}`;
-    this.#options.store?.setStatus({ disabled: true, reason: this.#failure });
-    this.#options.notice?.(cause, detail);
-    this.#abort.abort(); await this.#socket.stop();
+  async #failed(error: unknown, fallback: string): Promise<void> {
+    const cause = remoteStopCause(error) ?? (error instanceof DiscordError && (error.status === 401 || error.code === 40001 || error.code === 50014) ? 'token' : undefined);
+    if (cause) {
+      const details = remoteStopDetails('discord', cause)!;
+      const stopped = remoteStopCause(error) ? error as Error : remoteStopError('discord', cause);
+      const code = stopped.message.match(/; close code \d+$/)?.[0] ?? '';
+      await this.stopWith(details.cause + code, details.fix, stopped);
+      throw stopped;
+    }
+    await this.stopWith(fallback, 'check Discord configuration and run cland hub reload');
+  }
+  async #outwardError(error: unknown): Promise<never> {
+    if (this.#fatal) { await this.#terminal; throw this.#fatal; }
+    throw error;
+  }
+  stopWith(cause: string, detail: string, error?: Error): Promise<void> {
+    return this.#terminal ??= (async () => {
+      this.#failure = error?.message ?? `${cause}; ${detail}`;
+      const stopCause = remoteStopCause(error);
+      this.#options.store?.setStatus({ disabled: true, reason: this.#failure, ...(stopCause ? { stopCause } : {}) });
+      this.#options.notice?.(cause, detail);
+      this.#abort.abort(); await this.#socket.stop(1000);
+    })();
   }
   status(): RemoteConnection {
     return { connected: !this.#abort.signal.aborted && this.#socket.connected(), lastInbound: this.#socket.lastInbound,
       lastOutbound: this.#socket.lastOutbound, botLink: this.#application ? `https://discord.com/oauth2/authorize?client_id=${this.#application}&scope=bot&permissions=117824` : null,
       lastError: this.#failure ?? null };
   }
-  async pairingApproved(pairing: Pairing): Promise<void> { if (this.#application) await this.#commands.approved(pairing, this.#application); }
-  async pairingReplaced(previous: Pairing, text: string): Promise<void> {
-    await this.#api.createMessage(previous.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal });
+  async test(pairing: Pairing | null, text: string): Promise<void> {
+    try {
+      const app = await this.#api.getCurrentApplication({ signal: this.#abort.signal });
+      if (!(app.flags & ((1 << 18) | (1 << 19)))) throw remoteStopError('discord', 'message-content');
+      if (app.interactions_endpoint_url) throw remoteStopError('discord', 'interactions-endpoint');
+      if (pairing) await this.#api.createMessage(pairing.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal });
+    } catch (error) { await this.#failed(this.#fatal ?? error, 'application check failed'); throw error; }
   }
-  async stop(): Promise<void> { this.#abort.abort(); await this.#socket.stop(); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); }
+  async pairingApproved(pairing: Pairing): Promise<void> { if (this.#application) await this.#commands.approved(pairing, this.#application).catch(error => this.#outwardError(error)); }
+  async pairingReplaced(previous: Pairing, text: string): Promise<void> {
+    await this.#api.createMessage(previous.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal }).catch(error => this.#outwardError(error));
+  }
+  async stop(): Promise<void> { this.#abort.abort(); await this.#terminal; await this.#socket.stop(); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); }
 }

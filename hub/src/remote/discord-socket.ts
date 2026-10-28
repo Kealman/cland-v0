@@ -1,3 +1,4 @@
+import { remoteStopError } from './notices.ts';
 import { WebSocket } from 'ws';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
 import { within } from '../executor/droplet/deadline.ts';
@@ -26,6 +27,7 @@ export class DiscordSocket {
   #ack: number | undefined;
   #ready = false;
   #stopping = false;
+  #freshIdentifyUsed = false;
   #sequence: number | null = null;
   #closed = Promise.withResolvers<void>();
   #completion = Promise.withResolvers<void>();
@@ -79,13 +81,29 @@ export class DiscordSocket {
       this.#changed();
     });
     socket.on('error', fail);
-    socket.once('close', () => { this.#ready = false; this.#closed.resolve(); fail(); this.#changed(); });
+    socket.once('close', code => {
+      this.#ready = false; this.#closed.resolve(); this.#clock.clearTimeout(this.#timer);
+      if (!this.#stopping && code === 4003 && !this.#freshIdentifyUsed) {
+        this.#freshIdentifyUsed = true; this.session = undefined; this.#sequence = null;
+        this.#interval = 0; this.#ack = undefined; this.#closed = Promise.withResolvers<void>();
+        void this.run(url, token, dispatch); this.#changed(); return;
+      }
+      if (!this.#stopping && (code === 4003 || code === 4004 || (code >= 4010 && code <= 4014))) {
+        this.#completion.reject(remoteStopError('discord', code === 4004 ? 'token' : code === 4014 ? 'message-content' : 'gateway-refused', `close code ${code}`));
+      } else fail();
+      this.#changed();
+    });
     return this.#completion.promise;
   }
-  async stop(): Promise<void> {
+  async stop(code?: 1000): Promise<void> {
     this.#stopping = true; this.#clock.clearTimeout(this.#timer);
-    if (this.#socket && this.#socket.readyState !== WebSocket.CLOSED) this.#socket.terminate();
-    if (this.#socket) await within(this.#closed.promise, 2000);
+    if (this.#socket && this.#socket.readyState !== WebSocket.CLOSED) {
+      if (code) this.#socket.close(code); else this.#socket.terminate();
+    }
+    if (this.#socket) {
+      try { await within(this.#closed.promise, 2000); }
+      catch { this.#socket.terminate(); await within(this.#closed.promise, 2000); }
+    }
     this.#completion.resolve(); this.#changed();
   }
 }

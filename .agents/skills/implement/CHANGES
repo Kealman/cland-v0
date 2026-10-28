@@ -254,3 +254,5 @@ T-1378: Replace indefinite unmatched Telegram hold with terminal fallback and id
 T-1377: Document exact tracker save/removal receipts, retained 15 s bounds and healthy-watch safety reconciliation.
 
 T-1417: Bound native-close fixture drainage from disposal, with delayed-setup controls and independent acquisition receipts.
+
+T-1401: document Discord application checks, fatal stops and sealed test receipts.

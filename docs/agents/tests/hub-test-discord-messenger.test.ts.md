@@ -30,8 +30,15 @@ regression; the public status schema and safe workbench projections are unchange
 The fake's `configure` also accepts interval, acknowledge and gatewayUrl;
 `dispatch` sends an opcode frame, and state.gateway exposes only safe counts
 and validIdentify. Identify credentials and arbitrary payloads are never captured.
-Resume, identify budgets, close-code classification and Discord message handling
-are outside these connection tests.
+Resume, identify budgets and Discord message handling are outside these tests.
+Application controls set flags and endpoint URL. `close` takes a numeric code;
+state.gateway.closes records completed close handshakes without reasons.
+Application failures prove zero Identifies and continued Telegram mirroring.
+Fatal-code cases require persisted stopCause, one General cause/fix, real CLI
+status, continued Telegram delivery and no Identify after a clock advance.
+The 4003 case observes a second Identify before the second close. REST tests
+cover 401/40001/50014, secret echo redaction, and the test command reads one
+application and posts one paired line. A REST stop observes close 1000.
 
 The two distinct-callback factory regressions force Telegram getMe 401 and a
 Discord gateway refusal on the same sealed hub. With discordNotice present and
@@ -42,3 +49,11 @@ At the periodic 1250ms tick only ACK can supply the observed lastInbound; await
 that exact timestamp before advancing past expiry. With ACKs then withheld, an
 immediate opcode 1 must leave status disconnected until the explicitly injected
 opcode 11 is consumed. This removes the previous same-timestamp ambiguity.
+
+Replacement-notification authentication regression uses actual CLI approval into
+another channel. Fake `configure { holdClose: true }` pauses the native gateway
+transport before the old-channel POST 401; `holdClose: false` releases it in a
+finally block. Require token cause/fix in CLI while held, then the gateway's
+remote-disabled receipt, structured status, native close 1000, one General line
+and persisted stopCause after hub disposal. Terminal callers share one close
+promise; outward auth rejections preserve that structured error.

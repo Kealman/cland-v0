@@ -670,7 +670,7 @@ export type RemoteStateRow = {
 };
 
 export type RemoteConnection = { connected: boolean; lastInbound: string | null; lastOutbound: string | null; botLink: string | null; offlineSince?: string | null; lastError?: string | null };
-export type RemoteStopCause = 'token' | 'message-content' | 'blocked' | 'other-consumer';
+export type RemoteStopCause = 'token' | 'message-content' | 'blocked' | 'other-consumer' | 'interactions-endpoint' | 'gateway-refused' | 'identify-budget';
 export type RemoteStatusRow = {
   messenger: RemoteVia;
   token: { present: boolean; fingerprint: string | null };

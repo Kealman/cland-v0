@@ -687,3 +687,11 @@ For external tracker saves, use `reindexedAfter` (or `removedAfter` for deletion
 from `hub/test/tracker-reindex.ts` before checking projections. Healthy native
 watching has a 5 s safety stamp check; failed watching uses 500 ms. Receipt waits
 allow 15 s for loaded hosts and keep final semantic assertions.
+
+For Discord application checks and terminal stops, use the sealed frame/REST/ws
+cases in `docs/agents/tests/hub-test-discord-messenger.test.ts.md`. Keep both
+Message Content flags, empty endpoint validation before Identify, one fresh
+Identify for 4003, structured fatal causes and one General notice. API error
+observers retain only sanitized errors and numeric channel ids. All REST paths
+stop on 401/40001/50014; test reads the application and sends one paired line.
+Existing role authority and optional wire fields remain unchanged.

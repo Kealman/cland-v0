@@ -94,7 +94,11 @@ Stopped clients are warnings with the same cause/fix wording as General and
 the structured stopped line in `cland remote status`.
 The additive optional `remote.status` field `stopCause` preserves the old
 `reason`: `token` (401/4004), `message-content` (4014), `blocked` (403), or
-`other-consumer` (lasting 409). Older replies without it keep their redacted
+`other-consumer` (lasting 409), `interactions-endpoint` (clear the application URL),
+`gateway-refused` (gateway configuration/second 4003), or `identify-budget`
+(wait for session starts to reset). Discord startup checks Message Content flags
+and the empty Interactions Endpoint URL before Identify; fatal codes
+4004/4010–4014 and REST 401/40001/50014 stop only Discord. Reload retries it. Older replies without it keep their redacted
 reason and a generic repair/reload fix. No hub gives `hub not running`.
 Doctor reads current inputs while status describes loaded clients; reload
 applies changed tokens/config to those clients. Its test seams are in

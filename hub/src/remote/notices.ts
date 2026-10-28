@@ -10,6 +10,9 @@ const STOPS: Record<RemoteVia, Partial<Record<RemoteStopCause, { cause: string; 
   discord: {
     token: { cause: 'wrong or revoked token (4004)', fix: 'set a new token with cland secret set discord.token, then run cland hub reload' },
     'message-content': { cause: 'Message Content toggle disabled (4014)', fix: 'enable Message Content in the Discord application, then run cland hub reload' },
+    'interactions-endpoint': { cause: 'Interactions Endpoint URL is set', fix: 'clear the Interactions Endpoint URL in the application, then run cland hub reload' },
+    'gateway-refused': { cause: 'gateway refused the connection', fix: 'check the Discord gateway configuration, then run cland hub reload' },
+    'identify-budget': { cause: 'identify budget exhausted', fix: 'wait for the session start budget to reset, then run cland hub reload' },
     blocked: { cause: 'bot blocked (403)', fix: 'restore the bot access in Discord, then run cland hub reload' },
   },
 };
@@ -21,7 +24,7 @@ export const remoteStopDetails = (messenger: RemoteVia, cause: RemoteStopCause) 
 export function remoteStopCause(error: unknown): RemoteStopCause | undefined {
   if (!(error instanceof Error) || !Object.hasOwn(error, 'stopCause')) return undefined;
   const cause = (error as Error & { stopCause: unknown }).stopCause;
-  return cause === 'token' || cause === 'message-content' || cause === 'blocked' || cause === 'other-consumer' ? cause : undefined;
+  return cause === 'token' || cause === 'message-content' || cause === 'blocked' || cause === 'other-consumer' || cause === 'interactions-endpoint' || cause === 'gateway-refused' || cause === 'identify-budget' ? cause : undefined;
 }
 
 export function remoteStopError(messenger: RemoteVia, stopCause: RemoteStopCause, detail = ''): Error & { stopCause: RemoteStopCause } {
