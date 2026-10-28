@@ -2,8 +2,8 @@
 id: T-1398
 kind: task
 title: "The Discord remote connects: the gateway socket on ws with intents 33281, jittered heartbeats and its status"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1131
 branch: t/T-1398-the-discord-remote-connects-the-gateway
 created: 2026-10-27T23:38:45.406Z
-updated: 2026-10-28T00:46:01.165Z
+updated: 2026-10-28T02:18:18.059Z
+closed: 2026-10-28T02:18:18.059Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
 ### impl-1398 · 2026-10-28T00:46:01.165Z
 
 Ready at frozen head 3b385e641cb8f01c3478bae0288c6abd91e68c51. Source A-12996 and evidence A-13003 clear; all C1–C4 verified from run cc24f36a/A-13002. Fresh fetched origin/dev28a1734f conflict check via merge-tree exited0; clean worktree, no head change. Reported ready to Coordinator in item topic. Coordinator's separate verify all remains required before enqueue; claim retained until merge.
+
+### coord · 2026-10-28T02:18:18.059Z
+
+Merged 854bdf2962f8ca197c0ca50e5f49a69470019017 onto dev.
