@@ -14,12 +14,13 @@ Telegram receives the cross-remote author; Discord receives no echo.
 The controlled production frame port holds ingress before the hub stores it:
 lastMessageId must remain absent, then advance only after the saved result. A
 restart replays the same id before a second valid input, preserving deduplication.
-Its hub, production messenger and fake share FakeClock. Pre-arm the client
-`discord-identify-scheduled` observer before restart (new socket ordinal 1),
-observe the five-second timer installation, assert no Identify at 4999ms and
-observe the second native Identify at 5000ms. Keep both durable cursors and the
-final two-message assertion. Real-clock setup deadlines remain bounded at the
-original values; they do not absorb the intentional Identify spacing.
+Its hub, production messenger and fake share FakeClock. After joining the old
+hub, advance downtime by 5000ms before starting its replacement. This ages both
+the persisted Identify history and prior REST pacing before startup recovery;
+waiting for an admission observer after startup can deadlock on that recovery.
+Observe the second native Identify before replay. Keep both durable cursors and
+the final two-message assertion. The dedicated spacing boundary remains in
+`discord-messenger.test.ts`; setup deadlines stay bounded at their original values.
 Native outbox crash receipts prove a send by the bot's observed nonce, otherwise
 retry the same nonce strictly within two minutes of the attempt. At or beyond
 that bound, unknown delivery remains fenced. Discord documents only "the past
@@ -78,7 +79,7 @@ member replies to the same native target before the ordered accepted-input
 barrier; assert exactly three human messages, no foreign receipt and no reaction.
 Reaction cases use production frames and the loopback fake with a shared fake
 clock. First observe 👌 and its durable sent settlement while no Coordinator is
-present; restart, deliver to the Coordinator and observe 👀. A second variant
+present; join the hub, advance 5000ms of fake downtime, restart, deliver to the Coordinator and observe 👀. A second variant
 drops the delivery frame but retains the hub delivery, then restarts again to
 prove receipt reconciliation. Replay the original input before a later durable
 cursor and count exactly two PUTs for it, as well as bot-owned emoji state.
