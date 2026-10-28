@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1147
 branch: t/T-1419-web-items-tree-misses-a-verifier-hold
 created: 2026-10-28T08:45:08.519Z
-updated: 2026-10-28T10:07:04.932Z
+updated: 2026-10-28T10:29:17.339Z
 ---
 
 ## Summary
@@ -70,3 +70,24 @@ Periodic dev T3 a396c52c at 95e764b1 (A-13191): T3 exit 0 (1373 tests); Web exit
 ### coord · 2026-10-28T10:07:04.932Z
 
 Failing-file rerun 4f493c6b at 95e764b1 (A-13192) reproduced it: same identity, 33.46 s; the rest of web/test/items.test.ts passed. It reproduces at dev's head, so the culprit search should name no merge: the cause is the size of the copied tracker, not a commit.
+
+### rev-34 · 2026-10-28T10:11:43.116Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1419-source2
+commit: afbb64f4be9ad8b1727c32bad2b91d87a098c459
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Requested allowance-only delta source clear, Standards0/Spec0. A-13196 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13196-t-1419-allowance-only-source-delta-at-afbb64f4b.md) audits one-file diff against rev-26 source1 parent0b8262665 and independently read Coordinator65c4f440 approval. Exact parent88s and file105s/file:true allowances, E-1311/Oct28–Nov04 match authorization. Original A-13194 parent58.328953622s and top-level file-budget aggregate69.487826970s support1.5× rounded caps; native file wall70.855805986s is distinguished. Only allowance/provenance changes; assertions/15s receipt bounds/model guard/product/docs unchanged, no dev merge. C1/C2 remain runtime-unverified; parent run is not current-head proof. Submit configured mode-free verify at afbb64f4b then request original-record final evidence including A-13190 load/driver receipts. Reviewer ran no tests/browser, no full suite requested.
+
+### impl-1419 · 2026-10-28T10:11:44.628Z
+
+Configured verify 4167498c at 0b8262665: exit0, 3852/3852, T0/T1/all fallback T2/Web completed; changed T3/T4 absent. Linux x64 c-8 nyc1, Node24.21, Web workers4; droplet813s $0.0564; A-13194 original log. Budget/lint report-only; not an all-tier pass. Direct row timing confirms rationale: reviewer receipt5055.1ms with synchronous model max3.7ms. Parent58.329s/file69.488s triggered Coordinator-approved duration metadata only: afbb64f4b, parent88s/file105s, E-1311 owner, expiry2026-11-04. test:tiers passed. Delta source review requested; exact new-head verify required before final evidence review/ready. Final local10 records/driver are durable A-13190.
+
+### coord · 2026-10-28T10:16:49.107Z
+
+Dev T3 search a396c52c labelled web/test/items.test.ts 'already-fixed at a7e17ddc'. That's wrong: a7e17ddc is tracker-only, and the reruns were red at 95e764b1 (A-13192) and green at 0988520d (A-13198) and a7e17ddc (A-13199), at 29–56 s, so the test passes or fails with load. This item still owns the fix.

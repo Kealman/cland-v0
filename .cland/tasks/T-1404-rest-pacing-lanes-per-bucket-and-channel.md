@@ -2,8 +2,8 @@
 id: T-1404
 kind: task
 title: "REST pacing: lanes per bucket and channel from the rate-limit headers, no repeat of 401, 403 or 404, and a timed-out send posts once"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1145
 branch: t/T-1404-rest-pacing-lanes-per-bucket-and-channel
 created: 2026-10-27T23:38:46.684Z
-updated: 2026-10-28T10:09:41.992Z
+updated: 2026-10-28T10:19:55.439Z
+closed: 2026-10-28T10:19:55.439Z
 ---
 
 ## Summary
@@ -42,14 +43,19 @@ Spec §3.8 (REST), §3.9 (outbox); research rules 16 to 18 and 21.
 
 - [x] C1. A burst of twelve General messages on the fake's 5-per-5-seconds channel limit arrives in order with no 429, paced by the headers rather than a fixed rate (test).
   - done: impl-1404 · 2026-10-28T09:20:04.162Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1404-evidence-1 · 2026-10-28T10:12:33.999Z · commit ba383b91ddd0442a0e0b8ed4bbec6f646c4e0729
 - [x] C2. A 429 waits the body's `retry_after`, a `retry_after` over 5 minutes waits 5 minutes, and a global 429 pauses every lane (test).
   - done: impl-1404 · 2026-10-28T09:20:04.652Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1404-evidence-1 · 2026-10-28T10:12:34.000Z · commit ba383b91ddd0442a0e0b8ed4bbec6f646c4e0729
 - [x] C3. A send the fake stores and then holds past the client's timeout is proven by its nonce and posts exactly once (test).
   - done: impl-1404 · 2026-10-28T09:33:19.946Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1404-evidence-1 · 2026-10-28T10:12:34.000Z · commit ba383b91ddd0442a0e0b8ed4bbec6f646c4e0729
 - [x] C4. A 401, 403 or 404 is never sent twice, a 403 on the paired channel stops the remote with its cause, and a 404 on an edit drops only that job (test).
   - done: impl-1404 · 2026-10-28T09:20:05.492Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1404-evidence-1 · 2026-10-28T10:12:34.000Z · commit ba383b91ddd0442a0e0b8ed4bbec6f646c4e0729
 - [x] C5. An interaction callback goes out while the channel's lane waits on a rate limit (test).
   - done: impl-1404 · 2026-10-28T09:20:05.748Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1404-evidence-1 · 2026-10-28T10:12:34.000Z · commit ba383b91ddd0442a0e0b8ed4bbec6f646c4e0729
 
 ## Notes
 
@@ -118,3 +124,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13183 full source4 clear, both axes zero findings. M1–M5 corrected: original nonce deadlines at I/O; learned bucket ownership; bounded native exchange; root/Store retention on incomplete drainage; independent owned writer entry with pre-registered release and abort-before-entry control. Production unchanged since c31611d54. Local historical receipts attributed separately; C1–C5 runtime unverified. One mode-free configured verify at unchanged head, then original-record evidence review. Coordinator integrated cover/landing separate.
+
+### rev-26 · 2026-10-28T10:12:34.000Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1404-evidence-1
+commit: ba383b91ddd0442a0e0b8ed4bbec6f646c4e0729
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13197 final original-record evidence audit clear, both axes zero findings. A-13193 / run 16904808 at unchanged source4 head: 3,874 ordinary passes, zero failure/cancel/skip/unfinished; 135 separate scoped load passes, including all 22 new task identities base + 5/5 (110 task repeats). C1–C5 verified against named native execution records and retained assertions. Max new base 0.329303270 s/load 0.690894285 s, no >=3 s allowance. T0/all T1/fallback all T2/Web completed on Linux x64 c-8 nyc1; HS156/revision1248. Host typecheck reused, not repeated remotely. Budgets/lint report-only; T3/T4 unrun; no integrated/stage-cover claim. Coordinator cover/enqueue/landing separate; no new edit or rerun requested.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-28T10:19:55.439Z
+
+Merged ecfb60a2e37cc82876c4b9e31365c1cb96eb92f7 onto dev.
