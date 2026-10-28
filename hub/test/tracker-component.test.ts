@@ -1,13 +1,14 @@
 // T2 component: tracker rules at public APIs, sockets, CLI and in-process MCP.
 import { sessionCland as cland, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { componentTask, componentTaskJson } from './component-task.ts';
+import { reindexedAfter, removedAfter } from './tracker-reindex.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { flushProjectLogs, connectSocket, readDiscovery, eventually as observe, inProcessSpoke, projectHub, tempProject, type CliResult } from './harness.ts';
+import { flushProjectLogs, connectSocket, readDiscovery, inProcessSpoke, projectHub, tempProject, type CliResult } from './harness.ts';
 
 // Persistence proofs close and reopen the hub/store in this process.
 const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
@@ -50,10 +51,6 @@ async function project(t: TestContext): Promise<string> {
   return root;
 }
 
-async function eventually(ms: number, check: () => Promise<void>): Promise<void> {
-  await observe('tracker observation', async () => { await check(); return true; }, ms);
-}
-
 test('task create writes an item file with the frontmatter and sequential ids', async (t) => {
   const root = await project(t);
   const first = ok(await cland(root, 'task', 'create', '--size', 'M', 'Add the login page', '--label', 'ui', '--label', 'slice-1', '--body', 'The page the human logs in on.'));
@@ -82,8 +79,10 @@ test('task create writes an item file with the frontmatter and sequential ids', 
   assert.equal(fm2.assignee, 'alice');
 
   // a file added by hand takes its number; the hub continues above it
-  await writeFile(join(tasksDir(root), 'T-7-by-hand.md'), '---\nid: T-7\ntitle: By hand\n---\n');
-  await eventually(1000, async () => assert.deepEqual((await json<{ items: Summary[] }>(root, 'list')).items.map((i) => i.id), ['T-1', 'S-2', 'T-7']));
+  // Allow the 5 s safety scan plus scheduling margin; observe this file's receipt.
+  const handFile = join(tasksDir(root), 'T-7-by-hand.md');
+  await reindexedAfter(t, root, handFile, () => writeFile(handFile, '---\nid: T-7\ntitle: By hand\n---\n'));
+  assert.deepEqual((await json<{ items: Summary[] }>(root, 'list')).items.map((i) => i.id), ['T-1', 'S-2', 'T-7']);
   assert.equal((await json<{ item: View }>(root, 'create', '--size', 'M', 'Next')).item.id, 'T-8');
 });
 
@@ -233,8 +232,8 @@ test('a verdict comment is stored in the file with its header and is queryable t
 
   // a verdict written by hand is indexed like one the hub wrote
   const file3 = join(tasksDir(root), 'T-3-unreviewed.md');
-  await writeFile(file3, `${await readFile(file3, 'utf8')}\n### qa-1 · 2026-10-08T12:00:00.000Z\n\nverdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-9\n`);
-  await eventually(1000, async () => assert.deepEqual(await ids('--verdict', 'qa=clear'), ['T-3']));
+  await reindexedAfter(t, root, file3, async () => writeFile(file3, `${await readFile(file3, 'utf8')}\n### qa-1 · 2026-10-08T12:00:00.000Z\n\nverdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-9\n`));
+  assert.deepEqual(await ids('--verdict', 'qa=clear'), ['T-3']);
   const view = await componentTaskJson<{ item: View }>(root, 'view', 'T-3');
   assert.deepEqual(view.item.verdicts.map((v) => [v.verdict, v.result, v.by, v.run]), [['qa', 'clear', 'qa-1 [qa]', 'q-9']]);
   assert.deepEqual(view.item.comments.map((c) => c.author), ['alice', 'qa-1']);
@@ -334,11 +333,11 @@ test('a subscribed UI hears a `task` event on every index change; task.list carr
   assert.equal(ev.item?.claim?.session, 'impl-1');
   // a hand edit, read by the watcher
   const file = join(tasksDir(root), (await itemFiles(root))[0] ?? '');
-  await writeFile(file, (await readFile(file, 'utf8')).replace('title: Evented', 'title: Edited by hand'));
+  await reindexedAfter(t, root, file, async () => writeFile(file, (await readFile(file, 'utf8')).replace('title: Evented', 'title: Edited by hand')));
   ev = await nextTask();
   assert.equal(ev.item?.title, 'Edited by hand');
   // a file removed
-  await rm(file);
+  await removedAfter(t, root, file, () => rm(file));
   ev = await nextTask();
   assert.deepEqual(ev, { type: 'task', id: 'T-1', item: null, done_items: 0 });
 });
