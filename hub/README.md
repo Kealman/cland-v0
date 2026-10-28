@@ -6729,3 +6729,29 @@ remain strings and TEXT through restarts. Native callbacks are type 4/flag 64,
 bypass outbound message lanes, and suppress mentions on sends and edits.
 Interaction tokens never enter frames, logs, journals or the database. See the
 [Discord pairing test guide](../docs/agents/tests/hub-test-discord-pairing.test.ts.md).
+
+### Discord General delivery
+
+With Discord enabled, a loaded token, reachable REST/gateway and an approved
+pairing, General uses the shared mirror filter and an `author · kind` header.
+This path sends plain text; Discord Markdown conversion and splitting belong to
+the rendering layer. The durable Discord outbox owns one lane per channel over
+the neutral Outbox. Creates carry a job-derived nonce of at most 25 characters,
+`enforce_nonce`, `SUPPRESS_EMBEDS` and an empty `allowed_mentions`. The attempt
+precedes I/O; the returned message id and sent state commit together. Recovery
+uses an observed own-message nonce first, otherwise the same nonce strictly
+within two minutes of its original attempt. Each recovery POST records a new
+attempt without renewing that window; eligibility is checked again before I/O.
+Startup cancellation aborts and joins replay I/O before shutdown. Older unknown deliveries are fenced (General
+uses the neutral missed/gap classification). Discord promises only “the past few
+minutes”; this conservative local window is not a guaranteed platform TTL.
+
+Only the paired channel and user may send ordinary text or replies (types 0 and
+19). Bots, webhooks, other authors/channels and system events receive silence.
+Accepted input uses the gateway's existing chat/message ingress identity to
+store a human General message addressed to the Coordinator with `via: discord`.
+The cursor `discord.lastMessageId` advances after the successful hub result;
+message-id deduplication survives restart. Discord does not echo its input, and
+Telegram uses the shared `you (Discord)` author label. Injected handlers and old
+frame shapes retain their current interfaces; no role permission changes apply.
+See the [Discord message test guide](../docs/agents/tests/hub-test-discord-messages.test.ts.md).

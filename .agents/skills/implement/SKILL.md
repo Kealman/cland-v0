@@ -670,3 +670,11 @@ writable fields before writing; callbacks remain private and bypass message lane
 Keep interaction tokens only in adapter memory with a 15-minute expiry. The
 optional pairingApproved hook follows the committed local grant; Telegram and
 older adapters may omit it. Existing role authority and frames remain unchanged.
+
+For Discord General delivery, use the sealed frame/loopback and native receipt
+seams in `docs/agents/tests/hub-test-discord-messages.test.ts.md`. Reuse mirrorOut,
+record attempts before I/O and commit the native mapping with sent settlement.
+Keep nonce proofs within the documented conservative window; old unknown sends
+stay fenced. Serialize inbound text and advance its cursor after the hub result,
+with durable message-id deduplication and unchanged ingress frames. Existing role
+clauses already cover this boundary; add no permission lines.

@@ -18,6 +18,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/telegram-approvals.test.ts`](../../../hub/test/telegram-approvals.test.ts) | [Notes](hub-test-telegram-approvals.test.ts.md) |
 | [`hub/test/telegram-notices.test.ts`](../../../hub/test/telegram-notices.test.ts) | [Notes](hub-test-telegram-notices.test.ts.md) |
 | [`hub/test/discord-api.test.ts`](../../../hub/test/discord-api.test.ts) | [Notes](hub-test-discord-api.test.ts.md) |
+| [`hub/test/discord-messages.test.ts`](../../../hub/test/discord-messages.test.ts) | [Notes](hub-test-discord-messages.test.ts.md) |
 | [`hub/test/discord-messenger.test.ts`](../../../hub/test/discord-messenger.test.ts) | [Notes](hub-test-discord-messenger.test.ts.md) |
 | [`hub/test/telegram-api.test.ts`](../../../hub/test/telegram-api.test.ts) | [Notes](hub-test-telegram-api.test.ts.md) |
 | [`hub/test/telegram-liveness.test.ts`](../../../hub/test/telegram-liveness.test.ts) | [Notes](hub-test-telegram-liveness.test.ts.md) |
