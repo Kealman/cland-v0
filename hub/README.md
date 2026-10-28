@@ -2394,6 +2394,20 @@ redactor into the client, which keeps only sanitized provider facts in
 `TelegramError` (`method`, numeric `code`, `description`, optional `retryAfter`
 in seconds). Raw fetch exceptions, causes and URLs never leave the client.
 
+The media boundary adds `getFile({ file_id })`, `download(filePath, maxBytes,
+signal?)`, `sendPhoto` and `sendDocument`. Downloads return a Buffer, validate
+paths with `^[A-Za-z0-9_./-]+$` and reject every `..`, refuse redirects and abort
+as soon as streamed bytes exceed the caller's cap, including chunked bodies.
+The token-bearing file URL stays inside the client. Uploads take `chat_id`,
+`path`, `filename`, `mime`, optional plain `caption`, `disable_notification`
+and `reply_parameters`; Node's `openAsBlob` and `FormData` send the original
+bytes without parse mode or caption entities. Multipart line endings become
+CRLF. The Bot API limits are 10 MiB per photo, 50 MiB per document, 1024 caption
+code points and 20 MiB for `getFile`; callers choose the download cap. Optional
+message fields retain photo sizes, document, voice, audio, video note, video,
+caption and album id without changing earlier text messages. These client calls
+supply transport only; gateway media handling is a separate consumer.
+
 The default root is `https://api.telegram.org`. The daemon environment's
 `CLAND_TELEGRAM_API_ROOT` may override it with an explicit loopback HTTP root
 and port for fake-platform runs. Other hosts, credentials in the root, queries

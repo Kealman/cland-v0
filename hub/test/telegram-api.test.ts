@@ -1,12 +1,14 @@
 // T2: the plain-fetch client at a real loopback fake Bot API; no hub or child process.
 import './cover-quiet.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import { TelegramApi, TelegramError, type TgMessage, type TgUpdate } from '../src/remote/telegram-api.ts';
 import { fakeTelegram, telegramControl, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
 import * as telegramFakes from './fakes/telegram/fake-api.ts';
-import { within } from '../src/executor/droplet/deadline.ts';
+import { abortable, within } from '../src/executor/droplet/deadline.ts';
+import { realClock, type Clock } from '../src/hub/clock.ts';
+import { onCleanup } from './process-cleanup.ts';
 
 async function control<T>(root: string, operation: string, params?: object): Promise<T> {
   const response = await telegramControl<T>(root, operation, params);
@@ -443,4 +445,225 @@ test('Telegram fake injects unlisted update kinds with redacted request observat
   assert.equal((await closed).id, request.id);
   const state = await control(fake.url, 'state');
   assert.equal(JSON.stringify(state).includes(TELEGRAM_TEST_TOKEN), false);
+});
+
+/** Own readiness, transport and observers before acquiring any native resource. */
+function cappedDownloadFixture(t: TestContext, bytes: Buffer, options: { setupClock?: Clock; publishHeld?: boolean; signal?: AbortSignal; maxBytes?: number } = {}) {
+  const fixture = telegramFakes.fakeTelegramFixture(t);
+  const lifetime = new AbortController();
+  const observers = new AbortController();
+  const published = Promise.withResolvers<telegramFakes.FakeConnectionReceipt>();
+  const nativeHeld = Promise.withResolvers<telegramFakes.FakeConnectionReceipt>();
+  void nativeHeld.promise.catch(() => {});
+  void published.promise.catch(() => {});
+  let download: Promise<PromiseSettledResult<Buffer>> | undefined;
+  let observed: Promise<PromiseSettledResult<telegramFakes.FakeConnectionReceipt>[]> | undefined;
+  let closed: Promise<telegramFakes.FakeConnectionReceipt> | undefined;
+  let closedReceipt: telegramFakes.FakeConnectionReceipt | undefined;
+  let downloadSettled = false, observersSettled = false;
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    lifetime.abort();
+    const failures: unknown[] = [];
+    try {
+      if (download) await within(download, 1_000, realClock, () => new Error('capped download drain incomplete'));
+      if (closed) closedReceipt = await within(closed, 1_000, realClock, () => new Error('capped download native close incomplete'));
+    } catch (error) { failures.push(error); }
+    finally {
+      observers.abort();
+      if (observed) await observed;
+      try { await fixture.close(); } catch (error) { failures.push(error); }
+    }
+    if (failures.length) throw new AggregateError(failures, 'capped exchange disposal incomplete');
+  })();
+  onCleanup(t, close);
+  let starting: Promise<{ held: telegramFakes.FakeConnectionReceipt; closed: telegramFakes.FakeConnectionReceipt; error: unknown }> | undefined;
+  const start = () => starting ??= (async () => {
+    try {
+      const fake = await fixture.start();
+      lifetime.signal.throwIfAborted();
+      const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });
+      const queued = await control<TgUpdate[]>(fake.url, 'media', { items: [{ kind: 'document', content: bytes.toString('base64'), hold_open: true }] });
+      lifetime.signal.throwIfAborted();
+      const path = (await api.getFile({ file_id: queued[0]!.message!.document!.file_id }, { signal: lifetime.signal })).file_path!;
+      lifetime.signal.throwIfAborted();
+      const observationSignal = AbortSignal.any([observers.signal, AbortSignal.timeout(2_000)]);
+      const held = fake.waitForHeldRequest('download', observationSignal);
+      closed = fake.waitForConnectionClose('download', observationSignal);
+      observed = Promise.allSettled([held, closed]).then(results => { observersSettled = true; return results; });
+      void held.then(receipt => {
+        nativeHeld.resolve(receipt);
+        if (options.publishHeld !== false) published.resolve(receipt);
+      }, error => { nativeHeld.reject(error); published.reject(error); });
+      const setupSignal = AbortSignal.any([lifetime.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
+      // Arm this bound before the action; caller cancellation never replaces it.
+      const ready = within(abortable(published.promise, setupSignal), 1_000, options.setupClock ?? realClock,
+        () => new Error('capped download held receipt deadline reached'));
+      void ready.catch(() => {});
+      download = api.download(path, options.maxBytes ?? bytes.length - 1, lifetime.signal).then(
+        value => { downloadSettled = true; return { status: 'fulfilled' as const, value }; },
+        reason => { downloadSettled = true; return { status: 'rejected' as const, reason }; });
+      let receipt: telegramFakes.FakeConnectionReceipt;
+      try { receipt = await ready; }
+      catch (error) {
+        if (setupSignal.aborted) throw new Error('capped download setup aborted');
+        throw error;
+      }
+      const result = await within(download, 1_000, realClock, () => new Error('capped download result incomplete'));
+      assert.equal(result.status, 'rejected');
+      const error = result.status === 'rejected' ? result.reason : undefined;
+      assert.ok(error instanceof TelegramError);
+      assert.match(error.description, /cap/);
+      await close();
+      assert.equal(closedReceipt?.id, receipt.id);
+      return { held: receipt, closed: closedReceipt!, error };
+    } finally { await close(); }
+  })();
+  return { start, close,
+    held: () => within(nativeHeld.promise, 2_000, realClock, () => new Error('native held setup receipt missing')),
+    receipts: () => ({ closed: closedReceipt, downloadSettled, observersSettled, native: fixture.receipts() }),
+  };
+}
+
+test('Telegram files download exact bytes and abort a chunked body above the cap', { timeout: 5_000 }, async t => {
+  const fake = await fakeTelegram(t);
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });
+  const bytes = Buffer.from('document bytes\u0000\ufffd');
+  const queued = await control<TgUpdate[]>(fake.url, 'media', { items: [{ kind: 'document', content: bytes.toString('base64'), file_name: 'note.bin', mime_type: 'application/octet-stream' }] });
+  const file = await api.getFile({ file_id: queued[0]!.message!.document!.file_id });
+  assert.deepEqual(await api.download(file.file_path!, bytes.length, t.signal), bytes);
+  const exchange = cappedDownloadFixture(t, bytes);
+  const result = await exchange.start();
+  assert.equal(result.closed.id, result.held.id);
+  assert.ok(result.error instanceof TelegramError);
+  assert.match(result.error.description, /cap/);
+  assert.equal(exchange.receipts().downloadSettled, true);
+  assert.equal(exchange.receipts().observersSettled, true);
+});
+
+test('Telegram media calls refuse redirects and redact echoed credential paths on every diagnostic surface', async t => {
+  const fake = await fakeTelegram(t);
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });
+  const logs: unknown[][] = [];
+  for (const method of ['log', 'warn', 'error'] as const) t.mock.method(console, method, (...args: unknown[]) => { logs.push(args); });
+  const safe = (value: unknown) => {
+    const encoded = JSON.stringify(value);
+    assert.equal(encoded.includes(TELEGRAM_TEST_TOKEN), false);
+    assert.equal(encoded.includes('/file/bot'), false);
+  };
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const root = await mkdtemp(join(tmpdir(), 'telegram-upload-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, 'tiny.bin');
+  await writeFile(path, 'tiny');
+  const params = { chat_id: 101, path, filename: 'tiny.bin', mime: 'application/octet-stream' };
+  const calls = [
+    { method: 'getFile', invoke: () => api.getFile({ file_id: 'missing' }) },
+    { method: 'download', invoke: () => api.download('files/missing', 10, t.signal) },
+    { method: 'sendPhoto', invoke: () => api.sendPhoto(params) },
+    { method: 'sendDocument', invoke: () => api.sendDocument(params) },
+  ];
+  for (const call of calls) for (const response of ['redirect', 'echo', 'disconnect']) {
+    await control(fake.url, 'fault', { method: call.method, code: response === 'redirect' ? 302 : 500,
+      ...(response !== 'echo' ? { response } : { description: `/file/bot${TELEGRAM_TEST_TOKEN}/files/private`, echoToken: true }) });
+    await assert.rejects(call.invoke(), error => {
+      assert.ok(error instanceof TelegramError);
+      assert.equal(error.method, call.method);
+      safe([String(error), error.stack, error]);
+      assert.equal(Object.hasOwn(error, 'cause'), false);
+      return true;
+    });
+  }
+  for (const path of ['../escape', 'files/../escape', 'https://bad.invalid', 'files/query?token=x', 'files\\escape'])
+    await assert.rejects(api.download(path, 10), TelegramError);
+  assert.equal((await control<{ redirectsFollowed: number }>(fake.url, 'state')).redirectsFollowed, 0);
+  safe(await control(fake.url, 'state'));
+  safe(logs);
+});
+
+test('Telegram multipart files preserve metadata and plain captions and enforce upload limits', async t => {
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { createHash } = await import('node:crypto');
+  const root = await mkdtemp(join(tmpdir(), 'telegram-multipart-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const fake = await fakeTelegram(t);
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });
+  const bytes = Buffer.from([0, 255, 13, 10, 42]);
+  const path = join(root, 'file');
+  await writeFile(path, bytes);
+  const target = await api.sendMessage({ chat_id: 101, text: 'Reply here' });
+  for (const method of ['sendPhoto', 'sendDocument'] as const) {
+    const result = await api[method]({ chat_id: 101, path, filename: 'sample.bin', mime: 'application/octet-stream',
+      caption: 'Plain *caption*\nsecond line', disable_notification: true, reply_parameters: { message_id: target.message_id } });
+    assert.equal(result.reply_to_message?.message_id, target.message_id);
+    assert.equal(result.caption, 'Plain *caption*\r\nsecond line');
+  }
+  const state = await control<{ uploads: unknown[]; requests: Array<{ method: string; params: Record<string, unknown> }> }>(fake.url, 'state');
+  assert.deepEqual(state.uploads, ['sendPhoto', 'sendDocument'].map(method => ({ method, name: 'sample.bin', mime: 'application/octet-stream', size: 5,
+    digest: createHash('sha256').update(bytes).digest('hex'), caption: 'Plain *caption*\r\nsecond line' })));
+  for (const request of state.requests.filter(row => ['sendPhoto', 'sendDocument'].includes(row.method))) {
+    assert.equal(request.params.disable_notification, 'true');
+    assert.deepEqual(request.params.reply_parameters, { message_id: target.message_id });
+    assert.equal(Object.hasOwn(request.params, 'parse_mode'), false);
+    assert.equal(Object.hasOwn(request.params, 'caption_entities'), false);
+  }
+  for (const [method, size] of [['sendPhoto', 11], ['sendDocument', 51]] as const) {
+    await writeFile(path, Buffer.alloc(size * 1024 * 1024));
+    await assert.rejects(api[method]({ chat_id: 101, path, filename: 'large.bin', mime: 'application/octet-stream' }), error => error instanceof TelegramError && error.code === 400);
+  }
+  await writeFile(path, bytes);
+  for (const method of ['sendPhoto', 'sendDocument'] as const)
+    await assert.rejects(api[method]({ chat_id: 101, path, filename: 'small.bin', mime: 'application/octet-stream', caption: 'x'.repeat(1025) }), error => error instanceof TelegramError && error.code === 400);
+  assert.equal((await control<{ uploads: unknown[] }>(fake.url, 'state')).uploads.length, 2);
+});
+
+test('Telegram media control queues an album and all six native media kinds with resolvable files', async t => {
+  const fake = await fakeTelegram(t);
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url });
+  const queued = await control<TgUpdate[]>(fake.url, 'media', { items: ['photo', 'photo', 'document'].map((kind, i) => ({ kind,
+    content: Buffer.from(`album ${i}`).toString('base64'), file_name: `part-${i}.bin`, mime_type: 'application/octet-stream', caption: `Part ${i}` })) });
+  const polled = await api.getUpdates({ timeout: 0, allowed_updates: ['message'] });
+  assert.deepEqual(polled, queued);
+  assert.equal(polled.length, 3);
+  assert.equal(new Set(polled.map(update => update.message!.media_group_id)).size, 1);
+  assert.ok(polled[0]!.message!.media_group_id);
+  for (const [i, update] of polled.entries()) {
+    const media = update.message!.photo?.[0] ?? update.message!.document!;
+    const file = await api.getFile({ file_id: media.file_id });
+    assert.deepEqual(await api.download(file.file_path!, 100), Buffer.from(`album ${i}`));
+  }
+  for (const kind of ['voice', 'audio', 'video_note', 'video']) {
+    const rows = await control<TgUpdate[]>(fake.url, 'media', { items: [{ kind, file_size: 25 * 1024 * 1024, duration: 17, mime_type: 'audio/ogg', file_name: 'note.ogg' }] });
+    const message = rows[0]!.message!;
+    assert.equal(message.media_group_id, undefined);
+    const media = message.voice ?? message.audio ?? message.video_note ?? message.video!;
+    assert.equal(media.duration, 17);
+    await assert.rejects(api.getFile({ file_id: media.file_id }), error => error instanceof TelegramError && error.description === 'file is too big');
+  }
+});
+
+test('Telegram capped exchange drains its exact native request after missed or aborted setup', { timeout: 5_000 }, async t => {
+  for (const mode of ['missed', 'aborted'] as const) {
+    const setupClock = new FakeClock();
+    const abort = new AbortController();
+    const exchange = cappedDownloadFixture(t, Buffer.from('over cap'), { setupClock, publishHeld: false, signal: abort.signal, maxBytes: 100 });
+    const work = exchange.start();
+    const refused = assert.rejects(work, mode === 'missed' ? /held receipt deadline/ : /setup aborted/);
+    const held = await exchange.held();
+    assert.equal(exchange.receipts().downloadSettled, false, 'setup failure cancels a live transfer below the cap');
+    if (mode === 'missed') await setupClock.advance(1_000);
+    else abort.abort();
+    await refused;
+    await exchange.close();
+    const receipts = exchange.receipts();
+    assert.equal(receipts.closed?.id, held.id);
+    assert.equal(receipts.downloadSettled, true);
+    assert.equal(receipts.observersSettled, true);
+    assert.deepEqual(receipts.native, { listening: true, closed: true, connections: 0, handlers: 0, nativeError: null });
+    assert.equal(setupClock.pending, 0);
+  }
 });

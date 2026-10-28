@@ -2,7 +2,8 @@
 
 T2 exercises `TelegramApi` with actual Node fetch and the real loopback HTTP
 server in `hub/test/fakes/telegram/fake-api.ts`. T1 forbids these sockets. No hub,
-child process, filesystem fixture, inherited credential or real platform is used.
+child process, inherited credential or real platform is used. Upload cases own
+a disposable directory containing only synthetic files and remove it after I/O settles.
 Run this file alone with `node --test hub/test/telegram-api.test.ts`, subject to
 cover-quiet admission.
 
@@ -175,3 +176,45 @@ rejects credential/path origins and non-fictional domains. Existing captures
 without this option keep the original redaction. Production notice tests also
 inspect outbox payloads before fake capture, so fake redaction cannot hide a
 producer leak.
+
+## Media transport
+
+The four `Telegram files`, `Telegram media calls`, `Telegram multipart files`
+and `Telegram media control` cases cover capped downloads, credential-safe
+faults, multipart metadata/limits and album updates respectively. The download
+case first retains exact bytes, then uses `hold_open: true` so the fake sends
+bytes without Content-Length or EOF. Observe its held request and native TCP
+close to prove the cap terminates I/O instead of waiting for the full body.
+The independent five-second test bound is a failure bound, not timing evidence.
+
+POST `/control/media` takes `items`, each with `kind` (`photo`, `document`,
+`voice`, `audio`, `video_note`, `video`), base64 `content` or a declared
+`file_size` for oversized fixtures, and optional `file_name`, `mime_type`,
+`duration`, `width`, `height`, `length`, `caption`, `hold_open`. It returns one
+queued update per item. Multiple items share an assigned `media_group_id`;
+single items have none. `getFile` resolves their registered file ids and refuses
+sizes above 20 MiB. Declared-size-only files have no downloadable content.
+The file route deliberately omits Content-Length; method `download` shares
+fault, request, held and native-close controls without capturing its URL.
+Multipart calls are parsed with native FormData. `state.uploads` holds method,
+name, MIME, size, SHA-256 digest and caption; `requests` holds scalar parameters
+and file metadata, never uploaded bytes. Limits are 10 MiB photo/50 MiB document
+and 1024 caption code points. FormData normalizes caption newlines to CRLF.
+No automatic entity detection or caption parse mode is sent. Media messages
+retain optional fields, so the unchanged text-only cases cover older shapes.
+
+`cappedDownloadFixture` registers its disposer before starting its native fake,
+then owns the readiness promise, held/close observers and settled download.
+The one-second readiness deadline is armed before the download; it is separate
+from the observers' two-second native bound and one-second cancellation/drain
+bounds. Every exit cancels the transfer, joins its result and both observers,
+and closes the owned fake. The success test requires native closed.id to equal
+held.id and keeps both the original byte equality and TelegramError cap checks.
+`Telegram capped exchange drains its exact native request after missed or aborted
+setup` suppresses the published readiness receipt while keeping the native held
+receipt observable. Both controls use a cap above the sent bytes so the download
+is still live before failure: drive only the separate fake setup clock for a
+missed receipt, or abort setup after the held receipt. Both require the same
+native close id, joined download/observers, zero native peers/handlers and no
+remaining setup timer. No setup sleep or test-wide signal substitutes for a
+boundary receipt or its independent bound.

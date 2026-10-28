@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { EventEmitter } from 'node:events';
 import { isDeepStrictEqual } from 'node:util';
@@ -88,6 +89,9 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   const captureText = (text: string) => !options.publicOrigin ? scrub(text) : text.split(/(\b[a-z][a-z0-9+.-]*:\/\/\S+)/gi)
     .map(part => part === options.publicOrigin ? part : scrub(part)).join('');
   const redact = Object.assign(secrets, { text: captureText, value: <T>(value: T): T => redactValue(value, captureText) });
+  const files = new Map<string, { bytes: Buffer | undefined; size: number; path: string; holdOpen: boolean }>();
+  let nextFile = 1;
+  const uploads: Array<Record<string, unknown>> = [];
   const messages: TgMessage[] = [];
   const forceReplyMessages = new Set<number>();
   let commands: unknown[] = [];
@@ -131,7 +135,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
     try {
       if (lifetime.signal.aborted) { req.destroy(); res.destroy(); return; }
       if (req.method === 'GET' && req.url === '/control/state') return reply(res, 200, {
-        messages, requests, sends, maxInFlight, pendingPolls: [...pendingPolls.values()].map(receipt), heldRequests: [...heldRequests.values()], redirectsFollowed,
+        messages, uploads, requests, sends, maxInFlight, pendingPolls: [...pendingPolls.values()].map(receipt), heldRequests: [...heldRequests.values()], redirectsFollowed,
       });
       if (req.url === '/redirect-target') {
         redirectsFollowed++;
@@ -140,7 +144,44 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
       const chunks: Buffer[] = [];
       for await (const chunk of req) chunks.push(Buffer.from(chunk));
       if (lifetime.signal.aborted) return;
-      const params = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as Record<string, unknown>;
+      const raw = Buffer.concat(chunks);
+      const multipart = String(req.headers['content-type'] ?? '').startsWith('multipart/form-data');
+      const params: Record<string, unknown> = {};
+      let uploaded: { name: string; mime: string; size: number; digest: string } | undefined;
+      if (multipart) {
+        const form = await new Response(raw, { headers: { 'content-type': String(req.headers['content-type']) } }).formData();
+        for (const [key, value] of form) {
+          if (typeof value === 'string') params[key] = key === 'reply_parameters' ? JSON.parse(value) : value;
+          else {
+            uploaded = { name: value.name, mime: value.type, size: value.size, digest: createHash('sha256').update(Buffer.from(await value.arrayBuffer())).digest('hex') };
+            params[key] = uploaded;
+          }
+        }
+      } else Object.assign(params, JSON.parse(raw.toString('utf8') || '{}'));
+      if (req.method === 'POST' && req.url === '/control/media') {
+        const items = params.items;
+        if (!Array.isArray(items) || !items.length) return reply(res, 400, { error: 'items required' });
+        const album = items.length > 1 ? `album-${nextUpdate}` : undefined;
+        const queued: TgUpdate[] = [];
+        for (const item of items) {
+          if (!['photo', 'document', 'voice', 'audio', 'video_note', 'video'].includes(item.kind)) return reply(res, 400, { error: 'invalid media kind' });
+          const id = `file-${nextFile++}`;
+          const bytes = item.content === undefined ? undefined : Buffer.from(item.content, 'base64');
+          const size = bytes?.length ?? Number(item.file_size ?? 0);
+          files.set(id, { bytes, size, path: `files/${id}`, holdOpen: item.hold_open === true });
+          const media = { file_id: id, file_unique_id: id, file_size: size,
+            ...(item.kind === 'photo' || item.kind === 'video' ? { width: item.width ?? 10, height: item.height ?? 10 } : {}),
+            ...(['voice', 'audio', 'video_note', 'video'].includes(item.kind) ? { duration: item.duration ?? 1 } : {}),
+            ...(item.kind === 'video_note' ? { length: item.length ?? 10 } : {}),
+            ...(item.mime_type ? { mime_type: item.mime_type } : {}), ...(item.file_name ? { file_name: item.file_name } : {}) };
+          const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800, chat: { id: 101, type: 'private' }, from: HUMAN,
+            [item.kind]: item.kind === 'photo' ? [media] : media, ...(album ? { media_group_id: album } : {}), ...(item.caption !== undefined ? { caption: item.caption } : {}) };
+          const update = redact.value({ update_id: nextUpdate++, message });
+          queued.push(update); updates.push(update);
+        }
+        wake();
+        return reply(res, 200, queued);
+      }
       if (req.method === 'POST' && req.url === '/control/say') {
         const user = params.user === 'stranger' ? STRANGER : HUMAN;
         const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
@@ -230,10 +271,11 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         });
         return reply(res, 200, { armed: true });
       }
-      const route = /^\/bot([^/]+)\/([A-Za-z]+)$/.exec(req.url ?? '');
-      if (req.method !== 'POST' || !route || route[1] !== TELEGRAM_TEST_TOKEN)
+      const downloadRoute = /^\/file\/bot([^/]+)\/(.+)$/.exec(req.url ?? '');
+      const route = downloadRoute ?? /^\/bot([^/]+)\/([A-Za-z]+)$/.exec(req.url ?? '');
+      if (req.method !== (downloadRoute ? 'GET' : 'POST') || !route || route[1] !== TELEGRAM_TEST_TOKEN)
         return reply(res, 401, { ok: false, error_code: 401, description: 'Unauthorized' });
-      const method = route[2]!;
+      const method = downloadRoute ? 'download' : route[2]!;
       const connection = { id: requests.length + 1, method };
       req.socket.once('close', () => { heldRequests.delete(connection.id); events.emit('connection-closed', connection); });
       if (method === 'sendMessage' || method === 'sendRichMessage' || method === 'setMessageReaction') {
@@ -278,6 +320,38 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
             ...(fault.retryAfter !== undefined ? { parameters: { retry_after: fault.retryAfter } } : {}),
           }, fault.retryAfter !== undefined ? { 'retry-after': String(fault.retryAfter) } : {});
         }
+      }
+      if (method === 'download') {
+        const file = [...files.values()].find(file => file.path === downloadRoute![2]);
+        if (!file?.bytes) return reply(res, 404, { ok: false });
+        res.writeHead(200, { 'content-type': 'application/octet-stream' });
+        res.write(file.bytes); // Deliberately chunked: no Content-Length.
+        if (file.holdOpen) {
+          heldRequests.set(connection.id, connection);
+          events.emit('request-held', connection);
+        } else res.end();
+        return;
+      }
+      if (method === 'getFile') {
+        const file = files.get(String(params.file_id));
+        if (!file) return reply(res, 400, { ok: false, error_code: 400, description: 'file not found' });
+        if (file.size > 20 * 1024 * 1024) return reply(res, 400, { ok: false, error_code: 400, description: 'file is too big' });
+        return reply(res, 200, { ok: true, result: { file_id: params.file_id, file_unique_id: params.file_id, file_size: file.size, file_path: file.path } });
+      }
+      if (method === 'sendPhoto' || method === 'sendDocument') {
+        if (!uploaded || uploaded.size > (method === 'sendPhoto' ? 10 : 50) * 1024 * 1024 || [...String(params.caption ?? '')].length > 1024)
+          return reply(res, 400, { ok: false, error_code: 400, description: 'file or caption is too big' });
+        const replyParameters = params.reply_parameters as TgReplyParameters | undefined;
+        const target = replyParameters && messages.find(message => message.message_id === replyParameters.message_id && String(message.chat.id) === String(params.chat_id));
+        if (replyParameters && !target) return reply(res, 400, { ok: false, error_code: 400, description: 'reply not found' });
+        uploads.push(redact.value({ method, ...uploaded, caption: params.caption ?? '' }));
+        const media = { file_id: `sent-${nextMessage}`, file_unique_id: `sent-${nextMessage}`, file_size: uploaded.size, file_name: uploaded.name, mime_type: uploaded.mime };
+        const message: TgMessage = redact.value({ message_id: nextMessage++, date: 1_793_044_800, from: BOT, chat: { id: Number(params.chat_id), type: 'private' },
+          ...(method === 'sendPhoto' ? { photo: [{ ...media, width: 10, height: 10 }] } : { document: media }),
+          ...(target ? { reply_to_message: target } : {}), caption: String(params.caption ?? '') });
+        messages.push(message);
+        if (loseReceipt) { res.destroy(); return; }
+        return reply(res, 200, { ok: true, result: message });
       }
       if (method === 'getMyCommands' || method === 'setMyCommands') {
         if ((params.scope as { type?: string })?.type !== 'all_private_chats') return reply(res, 400, { ok: false, error_code: 400, description: 'Private scope required' });

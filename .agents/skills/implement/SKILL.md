@@ -105,6 +105,11 @@ errors inside the client. Arm held-request observers before triggering and join
 native close receipts. The fake registers cleanup before bind; use its bounded
 control helper and setup/close receipts. Forward the gateway's optional start
 lifetime signal to startup I/O. Preserve explicit factory and legacy remote injection.
+For Telegram media transport, the same client/fake seam covers `getFile`,
+capped streaming `download`, `sendPhoto` and `sendDocument`. Keep token URLs
+inside the client. Use `/control/media` with synthetic bytes or declared sizes;
+a held-open chunked download must close at the byte cap. Upload captions are
+plain FormData text (CRLF newlines), without entities or parse mode.
 For card API calls, use the same client/fake seam and `/control/press` with explicit
 chat/message ids, zero-based row/column and human/stranger identity. Observe the
 queued callback before advancing the injected clock past 150 seconds. Keep

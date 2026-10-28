@@ -1,3 +1,4 @@
+import { openAsBlob } from 'node:fs';
 import { validateAndRegisterSecrets } from './secrets.ts';
 import { remoteRedactor, type RemoteRedactor } from './redact.ts';
 import { realClock, type Clock } from '../hub/clock.ts';
@@ -9,12 +10,28 @@ export type TgInlineKeyboardMarkup = { inline_keyboard: TgInlineKeyboardButton[]
 export type TgForceReply = { force_reply: true; input_field_placeholder?: string };
 export type TgReplyMarkup = TgInlineKeyboardMarkup | TgForceReply;
 export type TgReplyParameters = { message_id: number };
+export type TgFile = { file_id: string; file_unique_id: string; file_size?: number; file_path?: string };
+export type TgPhotoSize = Omit<TgFile, 'file_path'> & { width: number; height: number };
+export type TgDocument = Omit<TgFile, 'file_path'> & { mime_type?: string; file_name?: string };
+export type TgVoice = Omit<TgDocument, 'file_name'> & { duration: number };
+export type TgAudio = TgDocument & { duration: number };
+export type TgVideo = TgAudio & { width: number; height: number };
+export type TgVideoNote = Omit<TgVoice, 'mime_type'> & { length: number };
+export type SendFile = { chat_id: number | string; path: string; filename: string; mime: string; caption?: string; disable_notification?: boolean; reply_parameters?: TgReplyParameters };
 export type TgMessage = {
   message_id: number;
   date: number;
   chat: TgChat;
   from?: TgUser;
   text?: string;
+  photo?: TgPhotoSize[];
+  document?: TgDocument;
+  voice?: TgVoice;
+  audio?: TgAudio;
+  video_note?: TgVideoNote;
+  video?: TgVideo;
+  caption?: string;
+  media_group_id?: string;
   entities?: TgEntity[];
   reply_markup?: TgReplyMarkup;
   reply_to_message?: TgMessage;
@@ -77,6 +94,50 @@ export class TelegramApi {
     this.#root = root.href.replace(/\/+$/, '');
   }
 
+  getFile(params: { file_id: string }, options?: TelegramRequestOptions): Promise<TgFile> { return this.#call('getFile', params, options); }
+  sendPhoto(params: SendFile, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#sendFile('sendPhoto', 'photo', params, options); }
+  sendDocument(params: SendFile, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#sendFile('sendDocument', 'document', params, options); }
+
+  async #sendFile(method: 'sendPhoto' | 'sendDocument', field: string, params: SendFile, options?: TelegramRequestOptions): Promise<TgMessage> {
+    try {
+      const form = new FormData();
+      form.set('chat_id', String(params.chat_id));
+      form.set(field, await openAsBlob(params.path, { type: params.mime }), params.filename);
+      if (params.caption !== undefined) form.set('caption', params.caption);
+      if (params.disable_notification !== undefined) form.set('disable_notification', String(params.disable_notification));
+      if (params.reply_parameters) form.set('reply_parameters', JSON.stringify(params.reply_parameters));
+      return await this.#call(method, form, options);
+    } catch (error) {
+      if (error instanceof TelegramError) throw error;
+      throw new TelegramError(method, 0, 'file request failed');
+    }
+  }
+
+  async download(filePath: string, maxBytes: number, callerSignal?: AbortSignal): Promise<Buffer> {
+    if (!/^[A-Za-z0-9_./-]+$/.test(filePath) || filePath.includes('..'))
+      throw new TelegramError('download', 0, 'invalid file path');
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new TelegramError('download', 0, 'invalid byte cap');
+    const controller = new AbortController();
+    const timer = this.#clock.setTimeout(() => controller.abort(), 35_000);
+    timer.unref();
+    const signal = callerSignal ? AbortSignal.any([controller.signal, callerSignal]) : controller.signal;
+    try {
+      const response = await fetch(`${this.#root}/file/bot${this.#token}/${filePath}`, { redirect: 'error', signal, headers: { connection: 'close' } });
+      if (!response.ok || !response.body) throw new TelegramError('download', response.status, 'file request refused');
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const chunk of response.body) {
+        size += chunk.byteLength;
+        if (size > maxBytes) { controller.abort(); throw new TelegramError('download', 0, 'download exceeds byte cap'); }
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks, size);
+    } catch (error) {
+      if (error instanceof TelegramError) throw error;
+      throw new TelegramError('download', 0, 'request failed or exceeded its time bound');
+    } finally { controller.abort(); this.#clock.clearTimeout(timer); }
+  }
+
   getMyCommands(params: { scope: TgCommandScope }, options?: TelegramRequestOptions): Promise<TgBotCommand[]> { return this.#call('getMyCommands', params, options); }
   setMyCommands(params: { scope: TgCommandScope; commands: readonly TgBotCommand[] }, options?: TelegramRequestOptions): Promise<boolean> { return this.#call('setMyCommands', params, options); }
   getMe(options?: TelegramRequestOptions): Promise<TgUser> { return this.#call('getMe', {}, options); }
@@ -91,7 +152,7 @@ export class TelegramApi {
     return this.#call('getUpdates', params, options, Math.max(35_000, (params.timeout + 15) * 1_000));
   }
 
-  async #call<T>(method: 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'getMyCommands' | 'setMyCommands' | 'setMessageReaction' | 'answerCallbackQuery' | 'editMessageText', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
+  async #call<T>(method: 'getFile' | 'sendPhoto' | 'sendDocument' | 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'getMyCommands' | 'setMyCommands' | 'setMessageReaction' | 'answerCallbackQuery' | 'editMessageText', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
     const deadline = new AbortController();
     const timer = this.#clock.setTimeout(() => deadline.abort(), timeoutMs);
     timer.unref();
@@ -106,7 +167,7 @@ export class TelegramApi {
       // Fetch's global keep-alive pool outlives this remote. Close each HTTP
       // connection so stop can drain the client's resources without a shared dispatcher.
       response = await fetch(`${this.#root}/bot${this.#token}/${method}`, {
-        method: 'POST', headers: { 'content-type': 'application/json', connection: 'close' }, body: JSON.stringify(params),
+        method: 'POST', headers: params instanceof FormData ? { connection: 'close' } : { 'content-type': 'application/json', connection: 'close' }, body: params instanceof FormData ? params : JSON.stringify(params),
         redirect: 'error', signal,
       });
     } catch {
@@ -121,7 +182,7 @@ export class TelegramApi {
     catch { throw new TelegramError(method, response.status, 'invalid JSON response'); }
     if (!response.ok || body.ok !== true) {
       const code = typeof body.error_code === 'number' && Number.isInteger(body.error_code) ? body.error_code : response.status;
-      const description = typeof body.description === 'string' ? this.#redactor(body.description) : 'no description';
+      const description = typeof body.description === 'string' ? this.#redactor(body.description.replace(/\/file\/bot[^\s]+/g, '[redacted]')) : 'no description';
       const parameters = body.parameters as { retry_after?: unknown } | undefined;
       const retryAfter = typeof parameters?.retry_after === 'number' && Number.isFinite(parameters.retry_after) && parameters.retry_after >= 0
         ? parameters.retry_after : undefined;
