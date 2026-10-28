@@ -3,7 +3,7 @@ id: T-1400
 kind: task
 title: "One General message each way: the durable Discord outbox posts with a header and an enforced nonce, and the human's text reaches General"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1312
 blocked_by:
   - T-1397
   - T-1399
-topic: null
-branch: null
+topic: topic-1135
+branch: t/T-1400-one-general-message-each-way-the-durable
 created: 2026-10-27T23:38:45.835Z
-updated: 2026-10-27T23:38:59.948Z
+updated: 2026-10-28T02:57:03.492Z
 ---
 
 ## Summary
