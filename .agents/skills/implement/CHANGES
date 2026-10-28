@@ -237,3 +237,5 @@ T-1356: Document stale-card local closure, private foreign-card refusal, late pr
 
 T-1392: Point web artifact image work to decoded-image, size-boundary and fallback Playwright receipts.
 T-1381: Document Telegram file transport and held-open chunked download seam.
+- T-1396: document the Discord fetch/fake REST seam and secret-safe receipts.
+- T-1396 source review: the Discord fixture owner fences late setup and drains native handles, operations and observers independently.

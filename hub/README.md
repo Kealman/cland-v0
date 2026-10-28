@@ -6585,3 +6585,27 @@ accept the same cursor. Neovim reads one page on startup; opening the artifact
 browser or palette reads the next page, and scrolling or selecting More artifacts
 reads another. Page snapshots replay concurrent artifact events over received
 rows, without automatically draining the archive at startup.
+
+
+### Discord REST boundary
+
+`remote/discord-api.ts` is the fetch-only API v10 client. The production root is
+`https://discord.com/api/v10`. For fake-server tests, the constructor's `apiRoot`
+or `CLAND_DISCORD_API_ROOT` may override it with an explicit numeric loopback HTTP
+URL and port (127.0.0.1 or [::1]); credentials, queries, fragments, hostnames and
+redirects are refused. Tokens travel only in the Bot Authorization header.
+The User-Agent uses the project URL and reported cland version.
+
+The client reads application, gateway, channel and history facts; snowflakes
+remain strings. Creates require a 1–25 character nonce and enforce it, and both
+creates and edits always suppress mention parsing. Each call has a 35-second
+deadline and accepts an AbortSignal. Errors retain only route templates, status,
+numeric JSON code, retry_after seconds and a redacted description; no native
+fetch cause escapes. This boundary makes one attempt per call; pacing and retry
+decisions belong to its caller. This module provides the REST boundary; remote
+lifecycle and gateway connections belong to their callers.
+
+The in-process fake at `hub/test/fakes/discord/fake-api.ts` uses fabricated
+credentials and IDs above 2^53. Its control API supports `configure`, `say`,
+`fault`, `release` and `state`. See the
+[Discord REST test notes](../docs/agents/tests/hub-test-discord-api.test.ts.md).

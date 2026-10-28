@@ -1,0 +1,260 @@
+import { EventEmitter } from 'node:events';
+import { abortable, within } from '../../../src/executor/droplet/deadline.ts';
+import { createServer, type ServerResponse, type IncomingMessage } from 'node:http';
+import type { Socket } from 'node:net';
+import { onCleanup } from '../../process-cleanup.ts';
+import type { TestContext } from 'node:test';
+import { realClock, type Clock } from '../../../src/hub/clock.ts';
+import { remoteRedactor } from '../../../src/remote/redact.ts';
+import { DISCORD_USER_AGENT } from '../../../src/remote/discord-api.ts';
+import type { DiscordActionRow, DiscordApplication, DiscordSessionStartLimit, DiscordMessage } from '../../../src/remote/discord-api.ts';
+
+export const DISCORD_TEST_TOKEN = 'fictional_discord_fixture_credential';
+export const DISCORD_IDS = {
+  application: '90071992547409931', guild: '90071992547409932', channel: '90071992547409933',
+  secondChannel: '90071992547409934', human: '90071992547409935', member: '90071992547409936',
+  bot: '90071992547409937', role: '90071992547409938', webhook: '90071992547409939',
+} as const;
+type Ping = { users: string[]; roles: string[]; everyone: boolean };
+type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
+export type DiscordState = { messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+function reply(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body));
+}
+
+/** In-process fake; no accounts, filesystem, inherited credentials or child launches. */
+type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean };
+export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
+  const lifetime = new AbortController();
+  const serving = Promise.withResolvers<void>();
+  const nativeListening = Promise.withResolvers<void>();
+  const nativeHeld = Promise.withResolvers<void>();
+  const nativeClosed = Promise.withResolvers<void>();
+  const observers = new Set<Promise<unknown>>();
+  let didListen = false, didClose = false, invoked = false;
+  void serving.promise.catch(() => {});
+  const events = new EventEmitter();
+  const clock = options.clock ?? realClock;
+  const redact = remoteRedactor([DISCORD_TEST_TOKEN]);
+  const state: DiscordState = { messages: [], requests: [], pings: [], redirectsFollowed: 0,
+    members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
+      { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
+  const faults: Array<Record<string, unknown>> = [];
+  const held = new Map<number, () => void>();
+  let nextHold = 1;
+  let application: DiscordApplication = { id: DISCORD_IDS.application, flags: 32768, bot_public: false, interactions_endpoint_url: null };
+  let sessionStartLimit: DiscordSessionStartLimit = { total: 1000, remaining: 1000, reset_after: 86400000, max_concurrency: 1 };
+  let nextId = 90071992547410000n;
+  const nonces = new Map<string, { at: number; message: DiscordMessage }>();
+  const sockets = new Map<Socket, Promise<void>>();
+  const handlers = new Set<Promise<void>>();
+  function pings(body: Record<string, unknown>): Ping {
+    const content = String(body.content ?? '');
+    const parse = (body.allowed_mentions as { parse?: string[] } | undefined)?.parse ?? ['users', 'roles', 'everyone'];
+    return { users: parse.includes('users') ? [...content.matchAll(/<@!?(\d+)>/g)].map(m => m[1]!) : [],
+      roles: parse.includes('roles') ? [...content.matchAll(/<@&(\d+)>/g)].map(m => m[1]!) : [],
+      everyone: parse.includes('everyone') && /@everyone|@here/.test(content) };
+  }
+  async function handle(req: IncomingMessage, res: ServerResponse) {
+    if (lifetime.signal.aborted) { req.destroy(); res.destroy(); return; }
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    if (lifetime.signal.aborted) return;
+    const body = JSON.parse(Buffer.concat(chunks).toString() || '{}') as Record<string, unknown>;
+    const path = new URL(req.url!, 'http://127.0.0.1');
+    if (path.pathname === '/control/state') return reply(res, 200, redact.value(state));
+    if (path.pathname === '/control/fault') { faults.push(body); return reply(res, 200, {}); }
+    if (path.pathname === '/control/release') {
+      for (const release of held.values()) release();
+      held.clear();
+      return reply(res, 200, {});
+    }
+    if (path.pathname === '/redirect-target') { state.redirectsFollowed++; return reply(res, 200, {}); }
+    if (path.pathname === '/control/configure') {
+      application = { ...application, ...body.application as Partial<DiscordApplication>, id: DISCORD_IDS.application };
+      if (body.session_start_limit) sessionStartLimit = body.session_start_limit as DiscordSessionStartLimit;
+      return reply(res, 200, {});
+    }
+    if (path.pathname === '/control/say') {
+      const user = String(body.user ?? 'human');
+      const author = user === 'human' ? { id: DISCORD_IDS.human, username: 'Fixture human' }
+        : user === 'member' ? { id: DISCORD_IDS.member, username: 'Fixture member' }
+        : { id: DISCORD_IDS.bot, username: 'Fixture bot', bot: true };
+      const message: DiscordMessage = { id: String(nextId++), channel_id: String(body.channel_id ?? DISCORD_IDS.channel),
+        author, content: String(body.content ?? ''), timestamp: clock.now().toISOString(), type: 0,
+        ...(user === 'webhook' ? { webhook_id: DISCORD_IDS.webhook } : {}) };
+      state.messages.push(redact.value(message));
+      return reply(res, 200, redact.value(message));
+    }
+    if (req.headers.authorization !== `Bot ${DISCORD_TEST_TOKEN}`) return reply(res, 401, { code: 0, message: 'Unauthorized' });
+    state.requests.push(redact.value({ method: req.method!, path: path.pathname + path.search, body, userAgentValid: req.headers['user-agent'] === DISCORD_USER_AGENT }));
+    const fault = faults.shift();
+    if (fault) {
+      if (fault.response === 'redirect') { res.writeHead(302, { location: '/redirect-target' }); res.end(); return; }
+      if (fault.response === 'disconnect') { req.socket.destroy(); return; }
+      if (fault.response === 'hold') {
+        await new Promise<void>(resolve => {
+          const id = nextHold++;
+          const release = () => { held.delete(id); resolve(); };
+          held.set(id, release);
+          nativeHeld.resolve();
+          if (options.publishHeld !== false) events.emit('held', id);
+          res.once('close', release);
+        });
+        if (res.destroyed) return;
+      } else {
+        return reply(res, Number(fault.status ?? 500), { code: fault.code ?? 0,
+          message: fault.echoToken ? DISCORD_TEST_TOKEN : 'Injected fault', retry_after: fault.retry_after });
+      }
+    }
+    if (path.pathname === '/oauth2/applications/@me') return reply(res, 200, application);
+    if (path.pathname === '/gateway/bot') return reply(res, 200, { url: 'wss://gateway.discord.invalid', session_start_limit: sessionStartLimit });
+    const channelMatch = /^\/channels\/(\d+)$/.exec(path.pathname);
+    if (channelMatch && [DISCORD_IDS.channel, DISCORD_IDS.secondChannel].some(id => id === channelMatch[1])) {
+      return reply(res, 200, { id: channelMatch[1], guild_id: DISCORD_IDS.guild,
+        last_message_id: state.messages.filter(m => m.channel_id === channelMatch[1]).at(-1)?.id ?? null });
+    }
+    const match = /^\/channels\/(\d+)\/messages(?:\/(\d+))?$/.exec(path.pathname);
+    if (!match) return reply(res, 404, { code: 10003, message: 'Unknown route' });
+    const channel = match[1]!;
+    if (![DISCORD_IDS.channel, DISCORD_IDS.secondChannel].some(id => id === channel)) return reply(res, 404, { code: 10003 });
+    if (req.method === 'GET') {
+      const before = path.searchParams.get('before');
+      const limit = Number(path.searchParams.get('limit') ?? 50);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) return reply(res, 400, { code: 50035 });
+      return reply(res, 200, state.messages.filter(m => m.channel_id === channel && (!before || BigInt(m.id) < BigInt(before))).reverse().slice(0, limit));
+    }
+    const components = body.components as DiscordActionRow[] | undefined;
+    if ((body.content !== undefined && [...String(body.content)].length > 2000)
+      || (components && (components.length > 5 || components.some(row => row.components.length > 5
+        || row.components.some(button => [...button.label].length > 80 || [...(button.custom_id ?? '')].length > 100)))))
+      return reply(res, 400, { code: 50035, message: 'Invalid Form Body' });
+    if (req.method === 'POST') {
+      const key = `${DISCORD_IDS.bot}:${String(body.nonce)}`;
+      const old = nonces.get(key);
+      if (body.enforce_nonce && old && clock.now().getTime() - old.at < 300_000) return reply(res, 200, old.message);
+      const message: DiscordMessage = { id: String(nextId++), channel_id: channel,
+        author: { id: DISCORD_IDS.bot, username: 'Fixture bot', bot: true }, content: String(body.content ?? ''),
+        timestamp: clock.now().toISOString(), type: 0, nonce: String(body.nonce), ...(components ? { components } : {}) };
+      state.messages.push(redact.value(message));
+      nonces.set(key, { at: clock.now().getTime(), message });
+      state.pings.push(pings(body));
+      return reply(res, 200, redact.value(message));
+    }
+    if (req.method === 'PATCH') {
+      const message = state.messages.find(m => m.id === match[2] && m.channel_id === channel);
+      if (!message) return reply(res, 404, { code: 10008 });
+      if (components !== undefined) message.components = redact.value(components);
+      if (body.content !== undefined) message.content = redact.text(String(body.content));
+      state.pings.push(pings(body));
+      return reply(res, 200, message);
+    }
+    return reply(res, 404, {});
+  }
+  const server = createServer((req, res) => {
+    const work = handle(req, res).catch(() => { if (!res.destroyed) reply(res, 400, { message: 'Invalid request' }); });
+    handlers.add(work); void work.finally(() => handlers.delete(work));
+  });
+  server.on('connection', socket => {
+    const closed = Promise.withResolvers<void>();
+    sockets.set(socket, closed.promise);
+    socket.once('close', () => { sockets.delete(socket); closed.resolve(); });
+    socket.on('error', () => socket.destroy());
+    if (lifetime.signal.aborted) socket.destroy();
+  });
+  server.on('listening', () => {
+    didListen = true;
+    nativeListening.resolve();
+    if (lifetime.signal.aborted) { server.close(); return; }
+    if (options.publishListening !== false) serving.resolve();
+  });
+  server.on('close', () => { didClose = true; nativeClosed.resolve(); });
+  server.on('error', () => serving.reject(new Error('Discord fake native listen failed')));
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    lifetime.abort();
+    for (const release of held.values()) release();
+    held.clear();
+    for (const socket of sockets.keys()) socket.destroy();
+    if (!invoked) { didClose = true; nativeClosed.resolve(); }
+    else if (!didClose) server.close(error => {
+      if (error && (error as NodeJS.ErrnoException).code === 'ERR_SERVER_NOT_RUNNING' && !didListen) {
+        didClose = true; nativeClosed.resolve();
+      }
+    });
+    const results = await Promise.allSettled([
+      within(nativeClosed.promise, 2000, realClock, () => new Error('Discord fake native close incomplete')),
+      within((async () => {
+        while (sockets.size || handlers.size) await Promise.allSettled([...sockets.values(), ...handlers]);
+      })(), 2000, realClock, () => new Error('Discord fake socket/handler drainage incomplete')),
+      within(Promise.allSettled([...observers]), 2000, realClock, () => new Error('Discord fake observer drainage incomplete')),
+    ]);
+    const failures = results.filter(r => r.status === 'rejected').map(r => r.reason);
+    if (failures.length) throw new AggregateError(failures, 'Discord fake disposal incomplete');
+  })();
+  onCleanup(t, close);
+  let url = '';
+  async function control(operation: 'state'): Promise<DiscordState>;
+  async function control(operation: 'say', body: object): Promise<DiscordMessage>;
+  async function control(operation: 'configure' | 'fault' | 'release', body: object): Promise<Record<string, never>>;
+  async function control(operation: string, body?: object): Promise<unknown> {
+    const response = await fetch(`${url}/control/${operation}`, {
+      method: body ? 'POST' : 'GET', ...(body ? { body: JSON.stringify(body) } : {}),
+      headers: { connection: 'close' }, signal: AbortSignal.any([lifetime.signal, AbortSignal.timeout(2000)]),
+    });
+    if (!response.ok) throw new Error('Discord fake control request refused');
+    return await response.json();
+  }
+  function observeNative<T>(work: Promise<T>): Promise<T> {
+    const observation = within(abortable(work, lifetime.signal), 2000)
+      .finally(() => observers.delete(observation));
+    observers.add(observation);
+    return observation;
+  }
+  const receipts = () => ({ listening: didListen, closed: didClose, connections: sockets.size,
+    handlers: handlers.size, observers: observers.size, held: held.size });
+  const client = () => ({ url, ids: DISCORD_IDS, control, close, receipts,
+    held: () => observeNative(nativeHeld.promise),
+    waitForHold(signal = AbortSignal.timeout(2000)): Promise<number> {
+      const pending = Promise.withResolvers<number>();
+      const receive = (id: number) => pending.resolve(id);
+      events.once('held', receive);
+      const combined = AbortSignal.any([signal, lifetime.signal]);
+      const observation = within(abortable(pending.promise, combined), 1000, options.setupClock ?? realClock,
+        () => new Error('Discord fake hold receipt deadline reached'))
+        .catch(error => { throw new Error(combined.aborted ? 'Discord fake observation aborted' : String(error)); })
+        .finally(() => { events.off('held', receive); observers.delete(observation); });
+      observers.add(observation);
+      return observation;
+    },
+  });
+  let starting: Promise<ReturnType<typeof client>> | undefined;
+  const start = () => starting ??= (async () => {
+    const signal = AbortSignal.any([lifetime.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
+    try {
+      const ready = within(abortable(serving.promise, signal), 1000, options.setupClock ?? realClock,
+        () => new Error('Discord fake listening receipt deadline reached'));
+      void ready.catch(() => {});
+      signal.throwIfAborted();
+      invoked = true;
+      server.listen({ port: 0, host: '127.0.0.1', signal: lifetime.signal });
+      await ready;
+      signal.throwIfAborted();
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('Discord fake did not bind loopback');
+      url = `http://127.0.0.1:${address.port}`;
+      return client();
+    } catch (error) {
+      const reason = signal.aborted ? 'Discord fake setup aborted' : redact(String(error));
+      await close();
+      throw new Error(reason);
+    }
+  })();
+  return { start, close, receipts,
+    listening: () => observeNative(nativeListening.promise),
+  };
+}
+
+export async function fakeDiscordFixture(t: TestContext, options: FakeOptions = {}) {
+  return discordFixtureOwner(t, options).start();
+}

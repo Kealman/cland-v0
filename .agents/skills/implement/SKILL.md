@@ -512,6 +512,11 @@ For the Codex approval relay, use the scripted native frame seam and explicit fa
 
 For OpenCode relay changes, follow `docs/agents/tests.md` (The OpenCode relay) for scripted native reply, child/reconnect/shape checks and the targeted fake-binary Deny-with-note receipt, separate from mode-free task coverage.
 
+For Discord REST changes, use the fetch/fake seam in
+`docs/agents/tests/hub-test-discord-api.test.ts.md`: string snowflakes, nonce
+deduplication, mention suppression with a raw default-mention positive control,
+provider faults and bounded hold/abort receipts. No real platform or token.
+
 For spoke stdio framing, use the owned-byte-stream seam in
 `docs/agents/tests/hub-test-spoke-stdio.test.ts.md`: cap each input line at
 1 MiB before JSON/schema decoding, emit a JSON-RPC cap error with unknown id,
