@@ -8307,7 +8307,7 @@
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
       "seconds": 4.98,
-      "owner": "E-1311",
+      "owner": "R-1278",
       "added": "2026-10-28",
       "expires": "2026-11-04",
       "reason": "T-1391: real isolated Headless Shell plus authenticated HTTP upload, mixed artifact/file send and failed-send recovery. Linux x64 c-8 lon1 run a8b9d85e-30c7-454c-af67-3e1882bb0612 at d4bd66a4e (A-13154) passed this case in 3.210781057 s; corrected-head run 507e5264-c874-49a0-b376-b01eca9e863b at 7402e9c6c (A-13166) passed it in 3.319656720 s. The first run failed the phone row; the second failed shared Items defect T-1419 while the phone row passed. 4.98 s rounds 1.5 times the worst Linux sample upward. Coordinator approved E-1311 ownership and a seven-day expiry; assertions and timeouts are unchanged."
@@ -10645,7 +10645,7 @@
     },
     "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": {
       "seconds": 88,
-      "owner": "E-1311",
+      "owner": "C-326",
       "added": "2026-10-28",
       "expires": "2026-11-04",
       "reason": "T-1419: the required copied live-tracker fixture now copies about 1,420 items (1,418 at diagnosis). Linux x64 c-8 nyc1 run 4167498c at 0b8262665 (A-13194), Web workers 4, passed all assertions and measured parent 58.329 s and file 69.488 s. Coordinator approved parent 88 s and file 105 s, about 1.5 times those worst Linux samples, owned by E-1311 through 2026-11-04. Explicit 15 s row receipts, final assertions and the separate 300-item/15 ms model guard stay intact; fixture growth is a separate follow-up."
@@ -10653,7 +10653,7 @@
     "web/test/items.test.ts": {
       "seconds": 105,
       "file": true,
-      "owner": "E-1311",
+      "owner": "C-326",
       "added": "2026-10-28",
       "expires": "2026-11-04",
       "reason": "T-1419: the required copied live-tracker fixture now copies about 1,420 items (1,418 at diagnosis). Linux x64 c-8 nyc1 run 4167498c at 0b8262665 (A-13194), Web workers 4, passed all assertions and measured parent 58.329 s and file 69.488 s. Coordinator approved parent 88 s and file 105 s, about 1.5 times those worst Linux samples, owned by E-1311 through 2026-11-04. Explicit 15 s row receipts, final assertions and the separate 300-item/15 ms model guard stay intact; fixture growth is a separate follow-up."

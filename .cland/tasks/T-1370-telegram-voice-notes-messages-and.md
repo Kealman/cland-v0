@@ -3,8 +3,9 @@ id: T-1370
 kind: task
 title: Telegram voice notes, messages and approvals read with their marks in both workbenches
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-1165
 branch: t/T-1370-telegram-voice-notes-messages-and
 created: 2026-10-27T05:46:51.211Z
-updated: 2026-10-28T22:23:13.175Z
+updated: 2026-10-28T22:27:59.583Z
 ---
 
 ## Summary
@@ -29,5 +30,13 @@ Spec §3.11 (source and voice marks), §3.1 (`via`) and §3.6 (the transcript me
 
 ## Acceptance criteria
 
-- [ ] C1. A voice note on the fake Bot API, transcribed by the fake speech provider, reads in headless Neovim and headless Chromium with its 🎤 mark, "via Telegram" and its audio artifact, and an untranscribed note reads "🎤 not transcribed" (test).
-- [ ] C2. A text message and a card approval made on the fake Bot API read "via Telegram" on the thread row and on the approval's inbox outcome in both workbenches (test).
+- [x] C1. A voice note on the fake Bot API, transcribed by the fake speech provider, reads in headless Neovim and headless Chromium with its 🎤 mark, "via Telegram" and its audio artifact, and an untranscribed note reads "🎤 not transcribed" (test).
+  - done: impl-1370 · 2026-10-28T22:27:37.871Z
+- [x] C2. A text message and a card approval made on the fake Bot API read "via Telegram" on the thread row and on the approval's inbox outcome in both workbenches (test).
+  - done: impl-1370 · 2026-10-28T22:27:38.002Z
+
+## Comments
+
+### impl-1370 · 2026-10-28T22:23:59.345Z
+
+Implementation plan: preserve the existing TopicMessage wire shape and persisted 🎤-prefixed text. Client-only provenance helpers will derive a distinct header mark/body from remote human messages with audio artifacts; ordinary text, non-audio attachments and previous-wire outcomes stay unchanged. Consumers inspected: voice.ts producer; Telegram media upload; shared/wire TopicMessage; web MessageBlock/provenance; Neovim thread/provenance; remote-via legacy tests; voice, approval and inbound native fixtures; web/nvim per-test guides. No shared contract is changed. Agreed seams: production frames + fake Bot API/speech, isolated headless web and native Neovim. Native approvals use fake harness adapters.
