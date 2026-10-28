@@ -961,7 +961,7 @@ export type ClientRequest =
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
-  | { type: 'artifact.upload'; id: string; topic: string; caption?: string; files: { name: string; mime: string; data?: string }[]; to?: string[]; replyTo?: string; kind?: HumanMessageKind }
+  | { type: 'artifact.upload'; id: string; topic: string; caption?: string; artifacts?: string[]; files: { name: string; mime: string; data?: string }[]; to?: string[]; replyTo?: string; kind?: HumanMessageKind }
   | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string; artifacts?: string[]; kind?: HumanMessageKind }
   /** Human-only recall before any adapter submission: `{text, message: TopicMessage}`. */
   | { type: 'topic.withdraw'; id: string; topic: string; message: string }

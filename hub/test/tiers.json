@@ -646,6 +646,7 @@
     "hub/test/web-release-publication.test.ts": "T3",
     "hub/test/web-release.test.ts": "T1",
     "hub/test/web-tunnel-guide.test.ts": "T2",
+    "hub/test/web-upload.test.ts": "T2",
     "hub/test/web-verification-model.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",
@@ -765,6 +766,7 @@
     "web/test/thread-artifacts.test.ts": "Web",
     "web/test/thread-runs.test.ts": "Web",
     "web/test/topics.test.ts": "Web",
+    "web/test/uploads.test.ts": "Web",
     "web/test/verification.test.ts": "Web",
     "web/test/withdraw.test.ts": "Web"
   }

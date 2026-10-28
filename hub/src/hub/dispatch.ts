@@ -136,11 +136,14 @@ export type Conversation = {
   receive: (raw: string, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]) => void;
   /** Native gateway recovery only; not an action in the frame protocol. */
   messageReceipt?: (messageId: string, via?: import('../protocol.ts').RemoteVia) => import('../protocol.ts').TopicMessage | null;
+  /** Join native upload writers and rollback after closing admission. */
+  drainUploads: () => Promise<void>;
   /** The transport closed. */
   closed: () => void;
 };
 
 export type DispatcherOptions = {
+  uploadOpen?: typeof import('node:fs/promises').open;
   uploadRedactor?: Pick<import('../remote/redact.ts').RemoteRedactor, 'containsSecret' | 'text'>;
   /** The project daemon admits provider recovery only after publishing serving. */
   deferExecutorRecovery?: boolean;
@@ -1049,7 +1052,8 @@ export class Dispatcher {
     });
   }
 
-  open(wire: Peer, transport: { authenticated: boolean; edge: string; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
+  open(wire: Peer, transport: { authenticated: boolean; edge: string; authorizeUpload?: () => void; ownsUploadBytes?: boolean; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
+    const uploads = new Set<Promise<unknown>>();
     const core = this.#options.core;
     const log = this.#log;
     /** The calls in flight, by request id, waiting for their result to be audited. */
@@ -1726,6 +1730,8 @@ export class Dispatcher {
             const root = this.#options.control?.status().root;
             if (!root) throw new Error('this hub serves no project for artifacts');
             const authorize = () => {
+              if (done) throw new ToolForbidden(null, frame.type, 'upload conversation closed');
+              transport.authorizeUpload?.();
               if (this.#asSession(frame)) throw new ToolForbidden(null, frame.type, 'only the human may upload artifacts');
               if (transport.edge === 'gateway') {
                 const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
@@ -1748,7 +1754,9 @@ export class Dispatcher {
               this.#options.projectConfig?.().artifacts.maxUploadMb ?? 50, artifacts => {
                 const { message } = core.sendFromHuman(frame.topic, frame.caption ?? '', frame.to, frame.replyTo, undefined, undefined, artifacts, messageId, undefined, frame.kind, via, true);
                 return { message, artifacts };
-              }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor));
+              }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor, this.#options.uploadOpen, transport.ownsUploadBytes === true));
+            uploads.add(operation);
+            void operation.then(() => uploads.delete(operation), () => uploads.delete(operation));
             this.#artifactQueue = operation.catch(() => {});
             later(frame.type, operation.then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
             return;
@@ -2467,6 +2475,7 @@ export class Dispatcher {
         this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame,
           transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined, bytes));
       },
+      drainUploads: async () => { await Promise.allSettled([...uploads]); },
       closed: () => {
         done = true;
         if (kind === 'spoke') this.#guard.changed();

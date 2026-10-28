@@ -1,4 +1,6 @@
 import { mkdir, open, rm } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
+import { artifactEntry } from './artifact-folder.ts';
 import { extname, join } from 'node:path';
 import type { Artifact, ArtifactUpload } from '../protocol.ts';
 import type { Store } from './store.ts';
@@ -9,7 +11,7 @@ import { ArtifactError, artifactCreation } from './artifacts.ts';
 const mimeExtensions: Record<string, string> = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'application/pdf': '.pdf', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3', 'text/plain': '.txt' };
 
 /** Prepare files under the shared creation queue, then register all rows and the message atomically. */
-export function uploadArtifacts<T>(store: Store, root: string, request: ArtifactUpload, bytes: readonly Buffer[] | undefined, maxMb: number, publish: (artifacts: Artifact[]) => T, authorize: () => void, replay: () => T | undefined, resumed: <R>(work: () => R) => R, now: () => Date, redactor?: Pick<RemoteRedactor, 'containsSecret' | 'text'>): Promise<T> {
+export function uploadArtifacts<T>(store: Store, root: string, request: ArtifactUpload, bytes: readonly Buffer[] | undefined, maxMb: number, publish: (artifacts: Artifact[]) => T, authorize: () => void, replay: () => T | undefined, resumed: <R>(work: () => R) => R, now: () => Date, redactor?: Pick<RemoteRedactor, 'containsSecret' | 'text'>, openFile: typeof open = open, ownedBytes = false): Promise<T> {
   return artifactCreation(store, () => resumed(async () => {
     authorize();
     const previous = replay();
@@ -20,6 +22,14 @@ export function uploadArtifacts<T>(store: Store, root: string, request: Artifact
     const checkSecret = (data: Buffer, name: string) => {
       if (redactor?.containsSecret(data)) throw new ArtifactError('secret-in-upload', `secret-in-upload: ${redactor.text(name)}`);
     };
+    const attached = () => (request.artifacts ?? []).map(id => {
+      const artifact = store.resolveArtifact(id);
+      if (!artifact || artifact.status === 'archived' || artifact.topic !== request.topic) throw new ArtifactError('artifact-unavailable', 'artifact unavailable in this topic');
+      return artifact;
+    });
+    const existing = attached();
+    const entries = await Promise.all(existing.map(artifact => resumed(() => stat(artifactEntry(artifact)))));
+    if (entries.some(entry => !entry.isFile())) throw new ArtifactError('artifact-unavailable', 'artifact file unavailable');
     const files = request.files.map((file, i) => {
       if (!file || typeof file.name !== 'string' || typeof file.mime !== 'string') return invalid('each file needs a name and MIME type');
       const name = file.name.replace(/\\/g, '/').split('/').pop()!.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200) || 'file';
@@ -30,9 +40,10 @@ export function uploadArtifacts<T>(store: Store, root: string, request: Artifact
         data = Buffer.from(file.data, 'base64');
       }
       if (!Buffer.isBuffer(data) || data.length > maxMb * 1024 * 1024) return invalid('file exceeds artifacts.max_upload_mb');
-      // Own the exact checked bytes across asynchronous preparation; native callers
-      // may reuse or mutate their input buffer after handing it to the conversation.
-      data = Buffer.from(data);
+      // Native callers retain mutable buffers, so protect asynchronous preparation.
+      // Only the HTTP reader transfers its private bounded allocation through trusted
+      // transport metadata; its views need no additional payload allocation.
+      if (!ownedBytes) data = Buffer.from(data);
       checkSecret(data, name);
       const ext = extname(name);
       const extension = /^\.[a-zA-Z0-9]{1,16}$/.test(ext) ? ext.toLowerCase() : mimeExtensions[mime] ?? '.bin';
@@ -48,7 +59,7 @@ export function uploadArtifacts<T>(store: Store, root: string, request: Artifact
         const id = `A-${first + i}`;
         const slug = file.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 80) || 'file';
         const path = join(root, '.cland/artifacts', `${id}-${slug}${file.extension}`);
-        const handle = await resumed(() => open(path, 'wx'));
+        const handle = await resumed(() => openFile(path, 'wx'));
         written.push(path);
         try { await resumed(() => handle.writeFile(file.data)); } finally { await resumed(() => handle.close()); }
         artifacts.push({ id, title: file.name, kind: 'file', path, creator: 'human', creatorKind: 'human', creatorRole: null, topic: request.topic, status: 'shared', time: now().toISOString() });
@@ -61,7 +72,9 @@ export function uploadArtifacts<T>(store: Store, root: string, request: Artifact
             if (id !== artifact.id) throw new Error('artifact reservation moved');
             return artifact;
           }, () => {});
-          return publish(artifacts);
+          const current = attached();
+          if (current.some((artifact, i) => artifactEntry(artifact) !== artifactEntry(existing[i]!))) throw new ArtifactError('artifact-unavailable', 'artifact path changed');
+          return publish([...artifacts, ...current]);
         });
       });
     } catch (error) {

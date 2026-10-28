@@ -115,6 +115,17 @@ credentials/routing out of `remote.state`. Connection/pairing/mute changes are
 immediate; only depth changes coalesce. Raw positional socket consumers explicitly
 consume the connect event before their result. No new keys or role permissions.
 
+For web composer file uploads, use the sealed HTTP/frame and isolated Headless
+Shell seams in `docs/agents/tests/hub-test-web-upload.test.ts.md` and
+`docs/agents/tests/web-test-uploads.test.ts.md`. Admit cookie/Host/Origin before
+bytes, bound multipart wire and per-file sizes, and pass byte views beside the
+web conversation’s artifact.upload frame. Transfer the private HTTP buffer through
+trusted transport metadata; native callers keep a protective copy. Revocation and
+edge close fence commit and join upload writers/rollback before returning. Register
+request/control ownership before POST, bound exceptional drainage separately from
+setup, and keep omitted/aborted setup controls. Keep existing artifacts optional for
+old clients and restore failed file drafts in memory. No new role clause or key.
+
 For web artifact image previews, use the sealed Playwright seam in
 `docs/agents/tests/web-test-artifacts.test.ts.md`: observe decoded natural width,
 the inclusive size boundary, folder children and download fallbacks.

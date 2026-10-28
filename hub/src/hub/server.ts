@@ -17,6 +17,7 @@ import { KEEPALIVE_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 
 /** What the hub is without any listener: the core, the dispatcher every edge opens conversations on, the prune. */
 export type HubBaseOptions = CoreOptions & {
+  uploadOpen?: DispatcherOptions['uploadOpen'];
   uploadRedactor?: DispatcherOptions['uploadRedactor'];
   secret: string;
   /** How long a fresh socket may stay silent before its hello, ms. */
@@ -130,6 +131,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.control ? { control: options.control } : {}),
     ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
+    ...(options.uploadOpen ? { uploadOpen: options.uploadOpen } : {}),
     ...(options.uploadRedactor ? { uploadRedactor: options.uploadRedactor } : {}),
     ...(options.readArtifact ? { readArtifact: options.readArtifact } : {}),
     ...(options.selectSuite ? { selectSuite: options.selectSuite } : {}),

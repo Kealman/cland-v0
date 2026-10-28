@@ -95,7 +95,7 @@ export type Artifact = {
   /** Owned manual-delete storage, recorded before any bytes move. */
   deletion?: { path: string; backup: string };
 };
-export type ArtifactUpload = { type: 'artifact.upload'; id: string; topic: string; caption?: string; files: { name: string; mime: string; data?: string }[]; to?: string[]; replyTo?: string; kind?: HumanMessageKind };
+export type ArtifactUpload = { type: 'artifact.upload'; id: string; topic: string; caption?: string; artifacts?: string[]; files: { name: string; mime: string; data?: string }[]; to?: string[]; replyTo?: string; kind?: HumanMessageKind };
 
 export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
@@ -1133,6 +1133,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'topic.withdraw':
       return typeof f.topic === 'string' && typeof f.message === 'string';
     case 'artifact.upload':
+      if (f.artifacts !== undefined && (!Array.isArray(f.artifacts) || !f.artifacts.every(id => typeof id === 'string'))) return false;
       return typeof f.topic === 'string' && (f.caption === undefined || typeof f.caption === 'string') && Array.isArray(f.files) && (f.kind === undefined || f.kind === 'message' || f.kind === 'decision' || f.kind === 'question') && (f.to === undefined || Array.isArray(f.to) && f.to.every(t => typeof t === 'string')) && (f.replyTo === undefined || typeof f.replyTo === 'string');
     case 'topic.send':
       return (

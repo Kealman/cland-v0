@@ -8090,6 +8090,13 @@
     "web/test/artifacts.test.ts::PNG, JPEG, GIF and WebP artifacts and a folder image load inline with a download": 2.050499
   },
   "allow": {
+    "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
+      "seconds": 4.98,
+      "owner": "E-1311",
+      "added": "2026-10-28",
+      "expires": "2026-11-04",
+      "reason": "T-1391: real isolated Headless Shell plus authenticated HTTP upload, mixed artifact/file send and failed-send recovery. Linux x64 c-8 lon1 run a8b9d85e-30c7-454c-af67-3e1882bb0612 at d4bd66a4e (A-13154) passed this case in 3.210781057 s; corrected-head run 507e5264-c874-49a0-b376-b01eca9e863b at 7402e9c6c (A-13166) passed it in 3.319656720 s. The first run failed the phone row; the second failed shared Items defect T-1419 while the phone row passed. 4.98 s rounds 1.5 times the worst Linux sample upward. Coordinator approved E-1311 ownership and a seven-day expiry; assertions and timeouts are unchanged."
+    },
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {
       "seconds": 4.626,
       "owner": "E-880",

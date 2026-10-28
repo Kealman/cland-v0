@@ -1,7 +1,8 @@
 // T2: binary upload through the human frame protocol; native gateway covered below.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { open, readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { until } from './until.ts';
 import { connectUi, projectHub, tempProject } from './harness.ts';
 import type { Artifact, TopicMessage } from '../src/protocol.ts';
 
@@ -115,4 +116,33 @@ test('artifact.upload rejects registered secrets in text and binary while preser
   const result = await ui.request({ type: 'artifact.upload', topic: 'general', files: [{ name: 'clean', mime: 'application/octet-stream', data: bytes.toString('base64') }] });
   assert.equal(result.ok, true, result.error);
   assert.deepEqual(await readFile((result.value as { artifacts: Artifact[] }).artifacts[0]!.path), bytes);
+});
+
+
+test('native upload owns caller bytes while a file writer is held', async t => {
+  const { testMessenger } = await import('./fakes/messenger.ts');
+  const root = await tempProject(t), remote = testMessenger();
+  const released = Promise.withResolvers<void>();
+  let writing = false;
+  const source = Buffer.from('original native bytes');
+  const uploadOpen: typeof open = async (...args) => {
+    const handle = await open(...args), write = handle.writeFile.bind(handle);
+    handle.writeFile = async (...args) => {
+      assert.ok(Buffer.isBuffer(args[0]));
+      assert.equal(args[0] === source, false, 'native producer owns a copy');
+      writing = true; await released.promise; return write(...args);
+    };
+    return handle;
+  };
+  await projectHub(t, root, {}, { gatewayRemotes: [remote], uploadOpen });
+  const receipt = remote.client.waitFor(frame => frame.type === 'result' && frame.id === 'owned-native');
+  remote.upload({ type: 'artifact.upload', id: 'owned-native', topic: 'general', files: [{ name: 'native.txt', mime: 'text/plain' }] }, { chatId: '1', messageId: 'owned' }, [source]);
+  try {
+    await until(() => writing, { what: 'native upload entered held writer' });
+    source.fill(42); released.resolve();
+    const result = await receipt;
+    assert.equal(result.ok, true, String(result.error));
+    const artifact = (result.value as { artifacts: Artifact[] }).artifacts[0]!;
+    assert.equal(await readFile(artifact.path, 'utf8'), 'original native bytes');
+  } finally { released.resolve(); await receipt; }
 });

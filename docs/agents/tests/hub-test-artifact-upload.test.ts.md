@@ -32,3 +32,7 @@ original empty prompt.send refusal and draft-status assertion in artifacts.test.
 ordinary topic.send/attachedSend callers retain the default empty-text refusal.
 When changing this boundary, run artifacts.test.ts, prompt-races.test.ts and the
 isolated desktop/phone composer files serially beside the upload cases.
+
+The native ownership control holds the file writer after preparation, mutates
+the caller's source buffer, and requires the committed file to retain its original
+bytes. Native uploads never opt into the HTTP reader's private-buffer handoff.

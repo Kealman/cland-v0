@@ -399,6 +399,8 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  uploadOpen?: typeof import('node:fs/promises').open;
+  uploadAllocate?: (size: number) => Buffer;
   /** Fabricated inputs for the subject hub only; inherited/child environments stay sealed. */
   syntheticRemoteSecrets?: import('../src/remote/secrets.ts').Secrets;
   gatewayMessenger?: import('../src/remote/configuration.ts').MessengerFactory;
@@ -506,7 +508,8 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     open: (peer, transport) => resources.run(() => {
       const conversation = daemon.hub.dispatcher.open(peer, transport);
       return {
-        receive: raw => resources.run(() => conversation.receive(raw)),
+        receive: (...args) => resources.run(() => conversation.receive(...args)),
+        drainUploads: () => resources.run(() => conversation.drainUploads()),
         closed: () => resources.run(() => conversation.closed()),
       };
     }),

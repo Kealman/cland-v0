@@ -258,6 +258,37 @@ and reports `{ port, bind, available: false, reason }` as `hub.status.web`.
 change the setting and restart the hub. A running edge reports
 `hub.status.web = { port, bind, available: true }`; stdio-only hubs omit it.
 
+The composer’s **Attach a file** opens the file picker. It keeps chosen files in
+memory per topic, shows their names and byte sizes, and sends them with the text
+as one human message. Existing artifact chips can accompany new files. Failed
+sends retain the files for retry; a page reload requires choosing files again.
+Oversized files show Refused with the configured limit in a tooltip. No file
+shortcut is added; existing Enter, newline and artifact-picker keys still apply.
+
+`POST /upload` on this listener accepts multipart `topic`, `text`, `kind`, optional
+JSON-array `to` or `replyTo`, optional JSON-array `artifacts` (existing ids in that
+topic), and 1–10 file parts. It requires an active web cookie, allowed Host and
+exact page Origin before reading bytes. It returns 401 without the cookie, 403
+for Host/Origin refusal, 405 for other methods, 400 for malformed multipart and
+413 on declared/streamed body overflow or per-file overflow. File bytes are capped
+by `[artifacts] max_upload_mb` (50 MiB by default); total wire bytes, including
+multipart framing, are capped at ten times that setting. The streaming reader
+uses one bounded wire buffer and transfers its private file views without copying
+payloads again; native callers retain their protective copy. This ownership bit
+is trusted transport metadata, never a frame field. It passes bytes beside
+`artifact.upload` through an authenticated web conversation, retaining its human
+authority, auditing and registered-secret refusal. Cookie admission and open
+conversation state are checked again before writes and commit. Revocation and
+edge shutdown close HTTP upload admission, stop streaming reads and join native
+writers plus rollback before returning; disconnected uploads cannot commit. The JSON response is the normal
+result frame, whose successful `value.message.id` identifies the committed message.
+`X-Upload-Max-Bytes` on bundle HEAD responses supplies the composer’s current
+per-file limit; older hubs without that header leave file selection unavailable.
+The optional `artifact.upload.artifacts` array adds existing topic artifacts;
+omitting it keeps the previous request shape and behaviour. Existing artifact
+availability is checked before preparation and again at commit. These routes
+require an available listener; stdio-only hubs have no HTTP uploads.
+
 ### [web] configuration
 
 All four keys are optional in `.cland/config.toml`:

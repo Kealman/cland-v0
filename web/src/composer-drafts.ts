@@ -3,7 +3,7 @@ import type { HumanMessageKind } from '../../shared/wire/index.ts';
 import type { ObjectRow } from './connection.ts';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
 
-type DraftContent = { text: string; kind: HumanMessageKind; to?: string | null | undefined; artifacts: ObjectRow[] };
+type DraftContent = { text: string; kind: HumanMessageKind; to?: string | null | undefined; artifacts: ObjectRow[]; files: File[]; fileMaxBytes?: number | undefined };
 type Draft = DraftContent & { pending?: DraftContent | undefined; pendingAt?: number | undefined; error?: string | undefined };
 const drafts = new Map<string, Draft>();
 const listeners = new Set<() => void>();
@@ -11,7 +11,7 @@ function get(topic: string): Draft {
   let draft = drafts.get(topic);
   if (!draft) {
     const saved = readInterfaceState(`draft.${topic}`) as Partial<Draft> | null;
-    draft = { text: typeof saved?.text === 'string' ? saved.text : '',
+    draft = { files: [], text: typeof saved?.text === 'string' ? saved.text : '',
       kind: saved?.kind === 'question' || saved?.kind === 'decision' ? saved.kind : 'message',
       to: saved?.to === null || typeof saved?.to === 'string' ? saved.to : undefined,
       artifacts: Array.isArray(saved?.artifacts) ? saved.artifacts.filter(row => row && typeof row.id === 'string' && typeof row.title === 'string') : [] };
@@ -47,13 +47,13 @@ function update(topic: string, patch: Partial<Draft>) {
 }
 export async function sendComposerDraft(topic: string, send: (draft: DraftContent) => Promise<unknown>): Promise<void> {
   const current = get(topic);
-  if (current.pending || !current.text.trim()) return;
-  const pending = { text: current.text, kind: current.kind, to: current.to, artifacts: current.artifacts };
-  update(topic, { text: '', artifacts: [], pending, pendingAt: 0, error: undefined });
+  if (current.pending || (!current.text.trim() && !current.files.length)) return;
+  const pending = { text: current.text, kind: current.kind, to: current.to, artifacts: current.artifacts, files: current.files, fileMaxBytes: current.fileMaxBytes };
+  update(topic, { text: '', artifacts: [], files: [], pending, pendingAt: 0, error: undefined });
   try { await send(pending); update(topic, { pending: undefined, pendingAt: undefined }); }
   catch (error) {
     const latest = get(topic);
-    update(topic, { ...pending, text: recoveredText(latest), artifacts: merged(pending.artifacts, latest.artifacts), pending: undefined, pendingAt: undefined,
+    update(topic, { ...pending, text: recoveredText(latest), artifacts: merged(pending.artifacts, latest.artifacts), files: [...pending.files, ...latest.files], pending: undefined, pendingAt: undefined,
       error: error instanceof Error ? error.message : 'Send failed' });
   }
 }
@@ -72,4 +72,9 @@ export function restoreComposerText(topic: string, text: string): void {
 }
 export function attachComposerArtifact(topic: string, artifact: ObjectRow): void {
   update(topic, { artifacts: merged(get(topic).artifacts, [artifact]) });
+}
+
+export function addComposerFiles(topic: string, files: File[], maxBytes: number): void {
+  const current = get(topic);
+  update(topic, { files: [...current.files, ...files], fileMaxBytes: maxBytes, error: undefined });
 }

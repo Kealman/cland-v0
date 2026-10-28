@@ -258,6 +258,9 @@ T-1417: Bound native-close fixture drainage from disposal, with delayed-setup co
 T-1385: Document durable Telegram inbound media, restart receipts and fallback edit replies.
 
 T-1385 review: Document pairing revalidation, fatal-media lifetime and owned queue/native-I/O controls.
+T-1391: Document sealed HTTP/composer upload seams, limits and compatibility.
+T-1391 review: Record upload revocation/drain and private-buffer handoff controls.
+T-1391 review M4: Document pre-POST upload fixture ownership and bounded exceptional drainage.
 T-1394: point speech diagnostics changes to sealed CLI and fake-provider regressions.
 
 T-1394: keep unused/off speech healthy and gate key/command warnings on an enabled remote.

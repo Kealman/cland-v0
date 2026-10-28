@@ -1,3 +1,4 @@
+import { readUpload, UploadFailure } from './web-upload.ts';
 import { networkInterfaces } from 'node:os';
 import { addressHost, phoneOrigin } from '../web-address.ts';
 // The browser's listener is independent of the authenticated spoke edge.
@@ -12,7 +13,7 @@ import type { AddressInfo } from 'node:net';
 import { basename, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
-import { FRAME_LIMITS_BYTES, BINARY_RESERVED_CLOSE_CODE } from '../protocol.ts';
+import { FRAME_LIMITS_BYTES, BINARY_RESERVED_CLOSE_CODE, PROTOCOL_VERSION } from '../protocol.ts';
 import type { WebEdgeStatus, WebLinkResult, WebSessionsResult, WebRevokeResult } from '../protocol.ts';
 import { WebArtifacts } from './web-artifacts.ts';
 import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
@@ -39,7 +40,7 @@ function allowedHost(req: IncomingMessage, hostsAllowed: string[], origin: strin
   return hosts.length === 1 && [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`, ...hostsAllowed.map(host => `${host}:${port}`), ...(origin ? [new URL(origin).host] : [])].includes(req.headers.host?.toLowerCase() ?? '');
 }
 
-async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts, hosts: string[], origin: string, projectName: () => string): Promise<void> {
+async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts, hosts: string[], origin: string, projectName: () => string, upload: (req: IncomingMessage, res: ServerResponse) => Promise<void>, maxUpload: () => number): Promise<void> {
   // Supply Date directly: Node's automatic Date cache creates a process-global timer.
   res.setHeader('Date', new Date().toUTCString());
   res.setHeader('Content-Security-Policy', CSP);
@@ -54,6 +55,8 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
     reply(403, 'Host must name an allowed web address');
     return;
   }
+  res.setHeader('X-Upload-Max-Bytes', maxUpload());
+  if ((req.url ?? '').split('?')[0] === '/upload') { await upload(req, res); return; }
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD');
     reply(405, 'Method not allowed');
@@ -155,7 +158,7 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
 }
 
 /** A selected origin never drifts when its port is occupied. The daemon holds the project lock. */
-export async function createWebEdge(options: { artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; bind?: string; origin?: string; dist?: string; projectName?: () => string }): Promise<WebEdge> {
+export async function createWebEdge(options: { uploadAllocate?: (size: number) => Buffer; maxUploadMb?: () => number; artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; bind?: string; origin?: string; dist?: string; projectName?: () => string }): Promise<WebEdge> {
   const clock = options.clock ?? realClock;
   const bind = options.bind ?? '127.0.0.1';
   const origin = options.origin ?? '';
@@ -182,7 +185,58 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
       return stamp?.version === 1 && typeof stamp.sources === 'string' && /^[a-f0-9]{64}$/.test(stamp.sources) ? stamp.sources : null;
     } catch { return null; }
   };
-  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin, options.projectName ?? (() => basename(options.root))); });
+  const maxUpload = () => (options.maxUploadMb?.() ?? 50) * 1024 * 1024;
+  let stopping = false;
+  const uploads = new Set<{ session: string; stop: () => void; settled: Promise<void> }>();
+  const upload = async (req: IncomingMessage, res: ServerResponse) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const reply = (status: number, value: unknown) => { if (!res.destroyed) res.writeHead(status, { 'Content-Type': 'application/json', 'Connection': 'close' }).end(JSON.stringify(value)); };
+    if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); reply(405, { error: 'Method not allowed' }); return; }
+    const session = auth.session(req.headers.cookie);
+    if (!session || stopping) { reply(401, { error: 'Sign in required' }); return; }
+    if (req.headers.origin !== pageOrigin(req)) { reply(403, { error: 'Foreign Origin' }); return; }
+    const max = maxUpload();
+    if (Number(req.headers['content-length']) > 10 * max) { reply(413, { error: 'Upload body exceeds limit' }); return; }
+    let cancelled = false;
+    let conversation: ReturnType<Dispatcher['open']> | undefined;
+    const completion = Promise.withResolvers<void>();
+    const state = { session, settled: completion.promise, stop: () => {
+      cancelled = true;
+      conversation?.closed();
+      req.destroy(); res.destroy();
+      options.log?.({ event: 'web-upload-cancelled', session });
+    } };
+    uploads.add(state);
+    const disconnected = () => { cancelled = true; conversation?.closed(); };
+    res.once('close', disconnected);
+    const authorizeUpload = () => {
+      if (cancelled || stopping || !auth.active(session)) throw new UploadFailure(401, 'Browser sign-in expired or upload closed');
+    };
+    try {
+      const { frame, bytes } = await readUpload(req, max, options.uploadAllocate);
+      authorizeUpload();
+      await new Promise<void>((resolve, reject) => {
+        conversation = options.dispatcher.open({
+          bufferedBytes: () => 0, isOpen: () => !res.destroyed,
+          close: () => { reject(new Error('Upload conversation closed')); },
+          send: result => {
+            if (result.type !== 'result' || result.id !== 'upload') return;
+            reply(200, result); resolve();
+          },
+        }, { authenticated: true, edge: 'web', authorizeUpload, ownsUploadBytes: true, webSession: () => auth.profile(session), artifactUrl: id => artifacts.mint(session, id, pageOrigin(req)) });
+        res.once('close', resolve);
+        conversation.receive(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, client: 'web' }));
+        conversation.receive(JSON.stringify(frame), undefined, undefined, bytes);
+      });
+    } catch (error) { reply(error instanceof UploadFailure ? error.status : 400, { error: error instanceof UploadFailure ? error.message : 'Upload failed' }); }
+    finally {
+      conversation?.closed();
+      await conversation?.drainUploads();
+      res.off('close', disconnected);
+      uploads.delete(state); completion.resolve();
+    }
+  };
+  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin, options.projectName ?? (() => basename(options.root)), upload, maxUpload); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: FRAME_LIMITS_BYTES.json });
   const sockets = new Map<WebSocket, { seen: number; session: string }>();
   http.on('upgrade', (req, socket, head) => {
@@ -237,7 +291,9 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
     // Delete admission first, then observe every server close before replying. A
     // hard close also covers peers that never complete a close handshake.
     if (!auth.revoke(id)) throw new Error(`unknown web session: ${id}`);
-    const closed: Promise<unknown>[] = [];
+    const activeUploads = [...uploads].filter(upload => upload.session === id);
+    for (const upload of activeUploads) upload.stop();
+    const closed: Promise<unknown>[] = activeUploads.map(upload => upload.settled);
     for (const [ws, state] of sockets) {
       if (state.session !== id) continue;
       closed.push(once(ws, 'close'));
@@ -248,7 +304,11 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
   };
   let closing: Promise<void> | undefined;
   const close = () => closing ??= (async () => {
+    stopping = true;
     clock.clearInterval(ping);
+    const activeUploads = [...uploads];
+    for (const upload of activeUploads) upload.stop();
+    await Promise.all(activeUploads.map(upload => upload.settled));
     for (const ws of sockets.keys()) ws.terminate();
     await Promise.all([
       new Promise<void>(resolve => wss.close(() => resolve())),
