@@ -2,8 +2,8 @@
 id: T-1382
 kind: task
 title: "artifact.upload: files as bytes become the human's artifacts on one new message, without a ▣ post, under the [artifacts] limit"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1126
 branch: t/T-1382-artifact-upload-files-as-bytes-become
 created: 2026-10-27T23:37:26.682Z
-updated: 2026-10-28T00:21:41.551Z
+updated: 2026-10-28T01:07:55.640Z
+closed: 2026-10-28T01:07:55.640Z
 ---
 
 ## Summary
@@ -148,3 +149,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final corrected-head evidence clear; A-12990 independently audits original A-12989/ebb9593e at8960afce/treeeb9a7835.3787ordinary pass,zero fail/cancel/skip/TODO plus30 separate loadpass for six exact identities×5. Four upload cases, startup-limit case and web-authority upload eachbase+5/5; maxnew0.620267939s,no new>=3s allowance. C1–C5 verified across exact message/files/rollback/nativevia/ingress/session+gateway refusals/secret-producer/init-update/config guards. Prior failing exact empty-prompt identity now passes0.101611063s with original assertion/draft check unchanged; artifacts15/gateway20/webauthority45/configset20/init13/help5/compat1 current ordinary passes. T0/allT1/fallback all hub+NeovimT2/changedT3init13once/mappedT4guard1once/Web complete; remainingT3/otherT4/fullsoak absent. Addedphasewall7.700s T3/2.304s T4 excludesmachinewait; no repetitions there,Web0newfiles/0requiredreps. Linuxx64c-8lon1 Node24.21/Neovim0.12.5 HeadlessShell156.0.8078.4/v1248 workers2,lifetime785s/$0.0545 machineaccounting. HostgateTREE5c681a0f reused,not secondremote typecheck. Budgets/lint/ratchet report-only;134findings/61files,one missing baseline and existing overruns retained. OldfailedA-12969 remains prior-head partial evidence. No integrated-all/liveplatform claim; Coordinator owns ready/enqueue/separate shared-contract verify all. No extra merge/run/per-item QA requested. Reviewer read-only.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-28T01:07:55.640Z
+
+Merged 2a1efeaca65252d483d6eb350add46f064253335 onto dev.

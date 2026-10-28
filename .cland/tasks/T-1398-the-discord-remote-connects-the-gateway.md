@@ -3,7 +3,7 @@ id: T-1398
 kind: task
 title: "The Discord remote connects: the gateway socket on ws with intents 33281, jittered heartbeats and its status"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1131
 branch: t/T-1398-the-discord-remote-connects-the-gateway
 created: 2026-10-27T23:38:45.406Z
-updated: 2026-10-28T00:28:58.076Z
+updated: 2026-10-28T00:46:01.165Z
 ---
 
 ## Summary
@@ -40,12 +40,16 @@ Spec §3.8 (the connection), §3.12 (known hosts, one redactor); research rules 
 
 - [x] C1. With Discord enabled and a made-up token from the environment, the hub identifies on the fake with intents 33281, API v10, JSON, no compression and no shard, and `cland remote status` shows Discord connected with an invite link carrying `scope=bot&permissions=117824` (test).
   - done: impl-1398 · 2026-10-28T00:24:25.783Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1398-evidence-1 · 2026-10-28T00:45:38.392Z · commit 3b385e641cb8f01c3478bae0288c6abd91e68c51
 - [x] C2. Under the injected clock the first heartbeat waits interval × jitter, later ones follow the interval, an op 1 gets an immediate heartbeat, and the remote shows connected only while acknowledgements arrive (test).
   - done: impl-1398 · 2026-10-28T00:24:26.001Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1398-evidence-1 · 2026-10-28T00:45:38.392Z · commit 3b385e641cb8f01c3478bae0288c6abd91e68c51
 - [x] C3. A gateway URL outside Discord's hosts, or a non-loopback one under the fake root, stops only the Discord remote with its reason in General, while the Telegram remote on the same hub keeps mirroring (test).
   - done: impl-1398 · 2026-10-28T00:24:26.316Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1398-evidence-1 · 2026-10-28T00:45:38.393Z · commit 3b385e641cb8f01c3478bae0288c6abd91e68c51
 - [x] C4. The token appears only in the identify payload and the REST authorization header, never in a frame, log line, error, status row or `cland remote status` output (test).
   - done: impl-1398 · 2026-10-28T00:24:26.500Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1398-evidence-1 · 2026-10-28T00:45:38.393Z · commit 3b385e641cb8f01c3478bae0288c6abd91e68c51
 
 ## Notes
 
@@ -69,3 +73,35 @@ findings: [{"severity":"medium","text":"M1 Spec: Telegram receives discordNotice
 finding_counts: {"high":0,"medium":4,"low":0}
 
 Full consolidated source audit A-12994: Standards3 medium, Spec1 medium. Reviewed factory/native ws/intents/URL/ACK/invite/redaction/session and consumer inventory; successor resume/application/identify-budget work remains separate. Reported macOS targeted5/11/5 passes/typecheck are not configured/Linux proof. C1–C4 runtime-unverified. Push all corrections and request fresh exact-head review before verification; no further dev merge unless Coordinator directs. QA none.
+
+### rev-26 · 2026-10-28T00:29:54.529Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1398-source-2
+commit: 3b385e641cb8f01c3478bae0288c6abd91e68c51
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source2 clear, A-12996: Standards0/Spec0. M1 Telegram callback restored with distinct/absent Discord callback regressions; M2 guide index/secrets docs migrated; M3 ws close independently bounded/idempotent within all-settled native/REST/socket/handler/observer owner with omitted/aborted controls; M4 shared until/exact ACK before expiry and no-I/O production-host validation retained. Native production socket otherwise unchanged from source1. A-12995 local macOS8/13/3 passes/typecheck is targeted summary, not configured/Linux proof; help5/5 prior unchanged. C1–C4 runtime-unverified. Verification only at unchanged head; Coordinator owns any reserved all occasion. No further dev merge unless Coordinator directs. QA none.
+
+### rev-26 · 2026-10-28T00:45:38.393Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1398-evidence-1
+commit: 3b385e641cb8f01c3478bae0288c6abd91e68c51
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Original-record final evidence clear, A-13003. Exact-head cc24f36a/A-13002: independent3800 ordinary passes+75 separate load passes, zero fail/skip/cancel. All8 messenger and13 API base identities pass;8 messenger+2 new ws controls each actual5/5 load (50 of75 scoped passes). Named C1 factory/CLI/intents/invite, C2 jitter/periodic/op1/exactACK, C3 isolated host refusals/native Telegram mirror/production validator, C4 secret sink controls inspected; callback and ws owner regressions pass. Max new base .502392316s/load .551424660s; no >=3s allowance. T0/allT1/fallback allT2/Web complete Linux droplet; T3/T4 unexecuted. Host typecheck reused, budgets/lint report-only. Source2 unchanged. Coordinator's required separate verify all before enqueue remains outstanding; this is task criterion clearance. QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1398 · 2026-10-28T00:46:01.165Z
+
+Ready at frozen head 3b385e641cb8f01c3478bae0288c6abd91e68c51. Source A-12996 and evidence A-13003 clear; all C1–C4 verified from run cc24f36a/A-13002. Fresh fetched origin/dev28a1734f conflict check via merge-tree exited0; clean worktree, no head change. Reported ready to Coordinator in item topic. Coordinator's separate verify all remains required before enqueue; claim retained until merge.
