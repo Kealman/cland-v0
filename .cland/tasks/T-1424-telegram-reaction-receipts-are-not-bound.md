@@ -2,8 +2,8 @@
 id: T-1424
 kind: task
 title: Telegram reaction receipts are not bound to the captured pairing, so a later 👀 can reach a replaced chat
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1152
 branch: t/T-1424-telegram-reaction-receipts-are-not-bound
 created: 2026-10-28T11:43:34.103Z
-updated: 2026-10-28T17:53:15.767Z
+updated: 2026-10-28T19:20:41.557Z
+closed: 2026-10-28T19:20:41.557Z
 ---
 
 ## Summary
@@ -27,6 +28,7 @@ TelegramInbound's flush stores reaction receipts without binding them to the pai
   - verified: rev-32 [reviewer] · run rev-20261028-1424-evidence1 · 2026-10-28T14:01:48.778Z · commit 978e7bda07ecc675038a2ce34df30e62918b9edc
   - done: impl-1424 · 2026-10-28T17:04:25.417Z
   - verified: rev-32 [reviewer] · run rev-20261028-1424-evidence2 · 2026-10-28T17:26:03.699Z · commit d172be37dd9c3da62864ff3a10e147ed29567e66
+  - verified: rev-32 [reviewer] · run rev-20261028-1424-evidence3 · 2026-10-28T19:14:20.640Z · commit 6b17027f4464afcd4a69a8e25f4549990696b8a7
 
 ## Notes
 
@@ -144,3 +146,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13391 combined authorized merge delta3 clear, Standards0/Spec0: covers5fbe8ed64+1455789d since cleared d172be37. All Telegram production/tests/guides byte unchanged. All reaction/Discord feedback/render/album/Identify skill blocks exactly once; both parents' nonblank CHANGES retained. Overall21-file delta includes landedT1406/T1403 source/tests, not globally docs-only;18paths exactly final incomingdev341a071e, only3skill/README paths preserve our reaction guidance. No manual production/test changes; neutral messenger/wire untouched. Coordinator830f1fea/48bb677d/3083efe0 authorize and name continuity. Source clearance only: C1 old runtime mark stale; prior greenA-13384/A-13385 belongs d172be37. Fresh mode-free verification and original-record evidence review required at unchanged1455789d. PriorA-13358 successful T3 carry remains separately authorized, whole run Web-red/2fail/8skip/no distinctT4phase. No Reviewer execution/edits/reruns or per-item QA; enqueue stays Coordinator action.
+
+### rev-32 · 2026-10-28T18:56:08.032Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1424-delta4
+commit: 6b17027f4464afcd4a69a8e25f4549990696b8a7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13412 shared-fix merge delta4 clear, Standards0/Spec0. Parents1455789d+dev8e90d26f;8 incoming paths exactly dev,empty combined diff/no manual changes. Runtime delta only T1432 Discord messages tests+guide; Telegram production/tests/guides and skill/CHANGES byte unchanged. Joined old hub then5000ms fake downtime before replacement ages Identify/REST pacing; dedicated discord-messenger 4999/5000 spacing and admission helper unchanged. Cursor ingress/durable result/replay/two-message assertions and both reaction arms' sent settlement/native Identify/lost-frame/exact emoji+2PUT census retained;1500ms setup bounds unchanged. Source-only; C1 runtime stale, fresh mode-free verify then original-record evidence review required at unchanged6b17027f. A-13395 remains failed partial124/2Discord failures/cursor timeout/Webunexecuted; prior d172green and A-13358 bounded T3 carry remain their original-head evidence,not new-head pass. No Reviewer executions/edits or per-item QA; Coordinator owns enqueue.
+
+### rev-32 · 2026-10-28T19:14:20.640Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1424-evidence3
+commit: 6b17027f4464afcd4a69a8e25f4549990696b8a7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13419 final evidence3 clear; C1 current verified at unchanged delta4 head. Original55e495bd/A-13417 independently parsed3973ordinary test passes/501file passes +50separate load tests,zero nonpassing/unfinished. Four held reaction revocation arms and legacy recovery each base+5/5 explicit passes,max own0.514241311s; captured numeric pairing,actual delivery,exact one👌/no👀,unsettled progress,album targets[1,2]/completion retained. Inbound41/cards62/notices14 pass; exact cards consumer/current recovery pass. Shared-fix Discord messages24/24 incl prior cursor and2reaction failures now actual passes(.182/.252/.213s); Web copied-tracker passes. HostT0 check/gate778935c2 separate; Linuxc8sfo2 T1/allT2fallback/Web complete,Node24.21/Nvim.12.5/Shell156v1248,2general/4Web workers,life957s/$0.0665 notsuitewall. Budgets/lint134findings report-only. No currentT3/T4. Coordinator-authorized prior978e7bda A-13358 successful T3/polling carry remains separately audited in A-13385,whole Web-red/2fail/8skip/no separateT4phase. PriorA-13395 stays partial red124,old d172green stays old-head. No Reviewer executions/edits/reruns/per-item QA. Ready report may follow Coordinator sequence; enqueue belongs Coordinator.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-28T19:20:41.557Z
+
+Merged 0e3291f7de7d98951d5d426057bd0c5366e7911c onto dev.

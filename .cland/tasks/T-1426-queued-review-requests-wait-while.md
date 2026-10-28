@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T12:40:05.299Z
-updated: 2026-10-28T14:25:12.590Z
+updated: 2026-10-28T19:25:26.964Z
 ---
 
 ## Summary
@@ -34,3 +34,7 @@ Evidence: `who` at 12:37Z (rev-26 pending T-1405, rev-31 pending T-1402, rev-32 
 ### coord · 2026-10-28T14:25:12.590Z
 
 Again 2026-10-28 13:57–14:25Z: T-1405's delta review request (5291b0c2) waited about 28 min unassigned; coord assigned it to rev-26 by name at 14:25Z.
+
+### coord · 2026-10-28T19:25:26.964Z
+
+Opposite race 2026-10-28 19:25Z: coord's by-name assignment of T-1390 to rev-34 raced the hub queue, which assigned rev-26 five seconds earlier, so both held T-1390. Resolved by coord (rev-34 keeps it). A by-name assignment should check for an existing queue hold first, or the queue should drop its pending request when a named verifier takes the hold.

@@ -3,7 +3,7 @@ id: T-1407
 kind: task
 title: The /cland subcommands status, help, mute, unmute, decision and question, answered ephemerally and laid out for a phone
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1156
 branch: t/T-1407-the-cland-subcommands-status-help-mute
 created: 2026-10-27T23:38:47.247Z
-updated: 2026-10-28T18:25:10.667Z
+updated: 2026-10-28T19:12:20.065Z
 ---
 
 ## Summary
@@ -40,14 +40,19 @@ Spec §3.10 (Discord, `/status`, `/help`, the phone layout), §3.4 (mute); Q-129
 
 - [x] C1. `/cland status` answers ephemerally with a title line, bold-labelled groups ending with "This channel", one fact per line, sessions as bullets and the gateway's numbers last as small text, and no line joins facts with middle dots (test).
   - done: impl-1407 · 2026-10-28T17:57:51.432Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1407-evidence-2 · 2026-10-28T19:12:19.895Z · commit f8c14a467533289ca1c918e7bbb2ac1ce9f725a8
 - [x] C2. `/cland help` answers ephemerally with short headed sections, the subcommands as a bullet list and the trust lines last (test).
   - done: impl-1407 · 2026-10-28T17:11:04.689Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1407-evidence-2 · 2026-10-28T19:12:19.895Z · commit f8c14a467533289ca1c918e7bbb2ac1ce9f725a8
 - [x] C3. `/cland mute` stops General in the channel, a replayed mute interaction applies once, and `/cland unmute` answers "N messages arrived while muted" with the count held back (test).
   - done: impl-1407 · 2026-10-28T17:11:05.093Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1407-evidence-2 · 2026-10-28T19:12:19.895Z · commit f8c14a467533289ca1c918e7bbb2ac1ce9f725a8
 - [x] C4. `/cland decision` and `/cland question` send their text to General with that kind and `via = "discord"` (test).
   - done: impl-1407 · 2026-10-28T17:11:05.504Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1407-evidence-2 · 2026-10-28T19:12:19.895Z · commit f8c14a467533289ca1c918e7bbb2ac1ce9f725a8
 - [x] C5. A subcommand whose answer takes longer than 2 seconds under the injected clock is deferred ephemerally before 3 seconds and completed by editing the original response (test).
   - done: impl-1407 · 2026-10-28T17:11:05.866Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1407-evidence-2 · 2026-10-28T19:12:19.895Z · commit f8c14a467533289ca1c918e7bbb2ac1ce9f725a8
 
 ## Notes
 
@@ -103,3 +108,31 @@ findings: [{"severity":"medium","text":"Configured 2b6968fd/A-13396 interrupted 
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-13398 records actual raw failure lines and separated partial counts: ordinary3311pass/2fail/1cancelled plus75loadpass(50commands/25site). Hub3388 completed includes repeats and excludes cancelled identity. No assertion diagnostic/root cause inferred; Coordinator shared-fix disposition pending. Source2/A-13394 remains clear, no criterion behavior failure assigned to passing commands and no fresh criterion marks. No reviewer workloads, no retry/source changes requested.
+
+### rev-26 · 2026-10-28T18:55:53.157Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1407-source-delta-1
+commit: f8c14a467533289ca1c918e7bbb2ac1ce9f725a8
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13411 delta clear: eight files comprise six tracker records plus byte-identical reviewed T-1432 messages test/guide; landed4d16ea13 ancestor, fetched parent8e90d26f. T-1407 command/API/native fake/proxy/tests/CLI fixture/skill bytes unchanged from source2, complete task retained against second parent. No source finding or reviewer workload. C1–C5 remain unverified pending merged-head original runtime; A-13396/A-13398 stay interrupted red. Coordinator separate full verify acknowledged and head frozen.
+
+### rev-26 · 2026-10-28T19:12:19.895Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1407-evidence-2
+commit: f8c14a467533289ca1c918e7bbb2ac1ce9f725a8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13415 final evidence2 verifies C1–C5 from original A-13414:3978 ordinary passes+75 separate loads(50commands/25site), no nonpass/unfinished. Ten exact command base cases each5/5; private layout/mute/replay/ingress/defer/stop/long/native-limit assertions retained. Messages24/24, messenger38/38, pairing4/4 including all three prior red restart boundaries pass at merged head. T0/T1/all fallbackT2/Web complete; T3/T4 absent. Pinned Linux/browser setup, host gate reuse and report-only budgets/lint explicit. Prior A-13396 red remains separate. Coordinator full20cd6379/CLI T3/enqueue remain separate gates; no reviewer workloads.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

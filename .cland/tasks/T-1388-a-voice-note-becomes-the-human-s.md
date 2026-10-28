@@ -2,8 +2,8 @@
 id: T-1388
 kind: task
 title: A voice note becomes the human's 🎤 transcript message with the audio attached, and the bot echoes it with its timings and provider
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1157
 branch: t/T-1388-a-voice-note-becomes-the-human-s
 created: 2026-10-27T23:37:28.063Z
-updated: 2026-10-28T17:39:28.554Z
+updated: 2026-10-28T19:20:22.531Z
+closed: 2026-10-28T19:20:22.531Z
 ---
 
 ## Summary
@@ -52,18 +53,23 @@ The note's message is never edited later. A replayed note posts one message (the
 - [x] C1. A voice note on the fake with the fake ElevenLabs answering "привет, это тест" arrives in General as "🎤 привет, это тест" from `human` "via Telegram" with one `.ogg` artifact holding the note's exact bytes, and the provider received `audio/ogg` bytes rather than any URL (test).
   - done: impl-1388 · 2026-10-28T17:11:39.851Z
   - verified: rev-26 [reviewer] · run rev-20261028-1388-evidence-2 · 2026-10-28T17:39:28.360Z · commit 6c406cbaaf6492d9de9dca5deef577cfdace2b25
+  - verified: rev-31 [reviewer] · run rev-20261028-1388-final3 · 2026-10-28T19:13:56.661Z · commit 177d1b33575aa83911845f01bb5a3fc08d91a150
 - [x] C2. The chat receives one echo replying to the note with the transcript, the note's length, a download time, a transcription time and "elevenlabs", and the General message is not mirrored back (test).
   - done: impl-1388 · 2026-10-28T17:18:45.781Z
   - verified: rev-26 [reviewer] · run rev-20261028-1388-evidence-2 · 2026-10-28T17:39:28.360Z · commit 6c406cbaaf6492d9de9dca5deef577cfdace2b25
+  - verified: rev-31 [reviewer] · run rev-20261028-1388-final3 · 2026-10-28T19:13:56.661Z · commit 177d1b33575aa83911845f01bb5a3fc08d91a150
 - [x] C3. With no key the note arrives as "🎤 not transcribed" with the audio and the chat gets the one line naming `cland secret set speech.elevenlabs_key`, and with `provider = ""` it arrives the same way with the "off" line and the fake provider receives no request (test).
   - done: impl-1388 · 2026-10-28T17:11:56.028Z
   - verified: rev-26 [reviewer] · run rev-20261028-1388-evidence-2 · 2026-10-28T17:39:28.360Z · commit 6c406cbaaf6492d9de9dca5deef577cfdace2b25
+  - verified: rev-31 [reviewer] · run rev-20261028-1388-final3 · 2026-10-28T19:13:56.662Z · commit 177d1b33575aa83911845f01bb5a3fc08d91a150
 - [x] C4. A fake failing with 402 posts "🎤 not transcribed: …" naming quota with the audio and one chat line, and an empty transcript posts "🎤 nothing recognised" with the audio (test).
   - done: impl-1388 · 2026-10-28T17:11:56.392Z
   - verified: rev-26 [reviewer] · run rev-20261028-1388-evidence-2 · 2026-10-28T17:39:28.360Z · commit 6c406cbaaf6492d9de9dca5deef577cfdace2b25
+  - verified: rev-31 [reviewer] · run rev-20261028-1388-final3 · 2026-10-28T19:13:56.662Z · commit 177d1b33575aa83911845f01bb5a3fc08d91a150
 - [x] C5. Switching `[speech]` to a fake `command` and running `cland hub reload` transcribes the next note through the command, and the echo names "command" (test).
   - done: impl-1388 · 2026-10-28T17:11:56.626Z
   - verified: rev-26 [reviewer] · run rev-20261028-1388-evidence-2 · 2026-10-28T17:39:28.360Z · commit 6c406cbaaf6492d9de9dca5deef577cfdace2b25
+  - verified: rev-31 [reviewer] · run rev-20261028-1388-final3 · 2026-10-28T19:13:56.662Z · commit 177d1b33575aa83911845f01bb5a3fc08d91a150
 
 ## Notes
 
@@ -134,3 +140,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13387 final evidence2 clear: original A-13386 independently parsed 3971 ordinary passes plus 60 separate load passes (35 voice,25 site), no nonpass/unfinished. All seven named voice T2 cases base+5/5; three native command T3 cases once, all pass. Source2 assertions and exact-byte/Russian/no-mirror/outcome/reload/long/unknown-receipt controls retained. C1–C5 verified. T0/all T1/fallback all T2/changed T3/Web passed on recorded Linux/CHS156-v1248; remaining T3/T4 absent. Host-gate reuse, timing/report-only lint/ratchet limits explicit. Earlier A-13382 remains failed SSH loss. Coordinator full cover/landing remain separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-28T18:56:52.738Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1388-delta1
+commit: 177d1b33575aa83911845f01bb5a3fc08d91a150
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13413 authorized merge delta clear, Standards0/Spec0. Coordinator88dab2d0 named reassignment; rev-26 source2/evidence2 A-13381/A-13387 carried. Combined parent diff retains every SKILL/CHANGES paragraph (independently checked both parent paragraph sets); README merges disjoint guidance. Task production/voice test/fixture blobs identical to reviewed6c406cba, no authored source algorithm or new identity/allowance. Incoming dev T-1403/T-1406/T-1432 inherited. Prior A-13386/A-13402 remain old-head receipts; Coordinator1991284f retained full T3 carry, including8 skips/report-only ratchet, not current-head runtime. C1–C5 pending merged-head original configured evidence. One stable-head mode-free verify then final audit; no extra full/stress/per-item QA requested.
+
+### rev-31 · 2026-10-28T19:13:56.662Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1388-final3
+commit: 177d1b33575aa83911845f01bb5a3fc08d91a150
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13418 final merged-head evidence clear. Independently parsed exact-head ed9a4447/A-13416:3978 ordinary passes+60 separate load passes, zero nonpass/duplicate ids. All7 voice T2 base cases each5/5 load,3 command T3 cases once, max voice load.540244504s. Current exact byte/MIME/Russian human transcript/native echo/no mirror, missing/off/quota/empty retention, native command reload, long split and unknown-echo restart assertions inspected; C1–C5 verified. T0/T1/all fallback T2/changed T3/Web complete; remaining T3/T4 absent. Linux c-8 sfo2, pinned CHS156/v1248, task2/Web4, host TREE reuse, case/phase/added-wall distinctions retained. Budgets/lint/ratchet report-only with current +.551s growth disclosed. Prior SSH-loss A-13382 and old-head greens retain attribution. Coordinator-retained full A-13402 independently confirms5375 pass/8skip at6c406cba,T0–T3/Web,no separate T4; explicit1991284f carry, not relabeled current-head. No extra run/per-item QA; fresh conflict check/ready then Coordinator enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-28T19:20:22.531Z
+
+Merged 74faa984bfb2da1eb3182ee8c739bc1c6b765bbf onto dev.
