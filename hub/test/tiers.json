@@ -554,6 +554,7 @@
     "hub/test/task-worktrees.test.ts": "T2",
     "hub/test/telegram-api.test.ts": "T2",
     "hub/test/telegram-approvals.test.ts": "T2",
+    "hub/test/telegram-artifacts.test.ts": "T2",
     "hub/test/telegram-cards.test.ts": "T2",
     "hub/test/telegram-catchup.test.ts": "T2",
     "hub/test/telegram-commands.test.ts": "T2",

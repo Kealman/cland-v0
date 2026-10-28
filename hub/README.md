@@ -6887,3 +6887,35 @@ message-id deduplication survives restart. Discord does not echo its input, and
 Telegram uses the shared `you (Discord)` author label. Injected handlers and old
 frame shapes retain their current interfaces; no role permission changes apply.
 See the [Discord message test guide](../docs/agents/tests/hub-test-discord-messages.test.ts.md).
+
+### Telegram outbound artifacts
+
+When Telegram is enabled, configured with a token and paired, General's eligible
+messages include their artifacts. PNG, JPEG, GIF and WebP files up to 10 MiB go
+as photos; other files, including larger images, HTML and diagrams, go as
+documents up to 50 MiB. Larger, missing or folder artifacts get a line with their
+id, title, available byte size and project-relative `.cland/artifacts/…` path.
+A single file and short text share a plain caption; otherwise the text precedes
+files captioned with the author/kind header. Captions carry no entities and fit
+1024 code points after multipart newline expansion.
+
+`remote/artifact-plan.ts` selects files without messenger transport knowledge.
+Telegram durably queues one complete publication before draining it; once its
+first send starts, a persisted batch marker keeps the remaining parts ahead of
+new cards/edits and General publications. Before a batch starts, urgent cards
+retain priority. File jobs
+contain an artifact id and caption and resolve the current artifact at delivery,
+opening through the shared descriptor-based no-follow reader and confining files
+to the project's artifact directory. The file type and byte cap are checked on
+the descriptor, bounded contents are read under cancellation, and the descriptor
+is closed before the API consumes that Blob; no checked pathname is reopened. No bytes or absolute
+file paths live in those queue payloads.
+Each file goes once ever per messenger remote, across pairing replacements:
+a later attachment replies to its earlier native message with “sent above” in
+the same chat, or names the previous delivery without an old-chat reply id in
+a new chat. A queued or unknown upload
+retains its fence after restart. An unattempted outage-missed job does not consume
+the artifact's delivery. File jobs use General's outage/gap policy and source id;
+a timeout records a missed job with an unknown attempt and never retries it.
+Mute and Telegram-origin echo exclusion apply to attachments with their message.
+Existing remote authority and frame shapes are unchanged.

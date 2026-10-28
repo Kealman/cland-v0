@@ -1,3 +1,5 @@
+import { artifactPlan, telegramArtifactLimits } from './artifact-plan.ts';
+import type { Artifact } from '../protocol.ts';
 import { MediaQueue, type MediaInput } from './media.ts';
 import { mirrorOut } from './mirror.ts';
 import type { Remote, RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
@@ -15,7 +17,7 @@ import { TelegramPrompts } from './telegram-prompts.ts';
 import { plainParts } from './telegram-render.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 
-export type TelegramRemoteOptions = TelegramPollingOptions & { maxUploadMb?: (() => number) | undefined; projectName?: () => string; webOrigin?: () => string };
+export type TelegramRemoteOptions = TelegramPollingOptions & { maxUploadMb?: (() => number) | undefined; files?: { root: string; artifact: (id: string) => Artifact | null } | undefined; projectName?: () => string; webOrigin?: () => string };
 
 /** The gateway owns this client's lifetime, including explicit tests and old-chat notices. */
 export class TelegramRemote implements Remote {
@@ -57,7 +59,7 @@ export class TelegramRemote implements Remote {
     const outage = polling?.store.get('telegram.outage');
     if (outage) this.#offline = JSON.parse(outage);
     this.#format = rendering.format ?? 'rich';
-    this.#outbox = new TelegramOutbox(api, clock, { ...(polling ? { store: polling.store } : {}), signal: this.#abort.signal,
+    this.#outbox = new TelegramOutbox(api, clock, { ...(polling ? { store: polling.store } : {}), signal: this.#abort.signal, files: polling?.files,
       askOpen: async id => (await this.#request<Inbox>('inbox.list')).asks.some(ask => ask.id === id),
       approvalOpen: async id => (await this.#request<Inbox>('inbox.list')).approvals.some(approval => approval.id === id),
       onSent: () => { this.#lastOutbound = this.#clock.now().toISOString(); },
@@ -235,14 +237,18 @@ export class TelegramRemote implements Remote {
       const { header } = mirrored;
       const options = { link_preview_options: { is_disabled: true }, disable_notification: mirrored.silent };
       const facts = { kind: 'general' as const, source: message.id, topic: 'general', missed: !!this.#offline };
-      const parts = plainParts(header, message.text).map(part => ({ chat_id: pairing.chatId, ...part, ...options }));
+      const plan = this.#polling?.files ? artifactPlan(this.#polling.files.root, message, header, telegramArtifactLimits) : [{ type: 'text' as const, text: message.text }];
       await this.#transient(async () => {
-        if (this.#format === 'rich') await this.#outbox.rich({ chat_id: pairing.chatId,
-          rich_message: { markdown: `${header}\n${message.text}`, skip_entity_detection: true }, ...options }, parts, facts);
-        else {
-          // Enqueue every part synchronously, so later General messages cannot interleave.
-          await Promise.all(parts.map(part => this.#outbox.send(part, facts)));
-        }
+        // Planning and every enqueue are synchronous: no other publication enters the batch.
+        const sends = this.#outbox.batch(() => plan.flatMap(part => {
+          if (part.type !== 'text') return [this.#outbox.file(part.type === 'photo' ? 'sendPhoto' : 'sendDocument',
+            { chat_id: pairing.chatId, artifact: part.artifact, caption: part.caption, disable_notification: mirrored.silent }, facts)];
+          const parts = plainParts(header, part.text).map(text => ({ chat_id: pairing.chatId, ...text, ...options }));
+          return this.#format === 'rich' ? [this.#outbox.rich({ chat_id: pairing.chatId,
+            rich_message: { markdown: `${header}\n${part.text}`, skip_entity_detection: true }, ...options }, parts, facts)]
+            : parts.map(text => this.#outbox.send(text, facts));
+        }));
+        await Promise.all(sends);
       });
     });
   }

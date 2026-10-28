@@ -17,7 +17,7 @@ export type TgVoice = Omit<TgDocument, 'file_name'> & { duration: number };
 export type TgAudio = TgDocument & { duration: number };
 export type TgVideo = TgAudio & { width: number; height: number };
 export type TgVideoNote = Omit<TgVoice, 'mime_type'> & { length: number };
-export type SendFile = { chat_id: number | string; path: string; filename: string; mime: string; caption?: string; disable_notification?: boolean; reply_parameters?: TgReplyParameters };
+export type SendFile = { chat_id: number | string; path: string; body?: Blob; filename: string; mime: string; caption?: string; disable_notification?: boolean; reply_parameters?: TgReplyParameters };
 export type TgMessage = {
   message_id: number;
   date: number;
@@ -102,7 +102,7 @@ export class TelegramApi {
     try {
       const form = new FormData();
       form.set('chat_id', String(params.chat_id));
-      form.set(field, await openAsBlob(params.path, { type: params.mime }), params.filename);
+      form.set(field, params.body ?? await openAsBlob(params.path, { type: params.mime }), params.filename);
       if (params.caption !== undefined) form.set('caption', params.caption);
       if (params.disable_notification !== undefined) form.set('disable_notification', String(params.disable_notification));
       if (params.reply_parameters) form.set('reply_parameters', JSON.stringify(params.reply_parameters));

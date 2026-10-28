@@ -311,5 +311,6 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/task-plan.test.ts`](../../../hub/test/task-plan.test.ts) | [Notes](hub-test-task-plan.test.ts.md) |
 | [`hub/test/task-prefixes.test.ts`](../../../hub/test/task-prefixes.test.ts) | [Notes](hub-test-task-prefixes.test.ts.md) |
 | [`hub/test/nvim-items-rules.test.ts`](../../../hub/test/nvim-items-rules.test.ts) | [Notes](hub-test-nvim-items-rules.test.ts.md) |
+| [`hub/test/telegram-artifacts.test.ts`](../../../hub/test/telegram-artifacts.test.ts) | [Notes](hub-test-telegram-artifacts.test.ts.md) |
 | [`hub/test/web-upload.test.ts`](../../../hub/test/web-upload.test.ts) | [Notes](hub-test-web-upload.test.ts.md) |
 | [`web/test/uploads.test.ts`](../../../web/test/uploads.test.ts) | [Notes](web-test-uploads.test.ts.md) |

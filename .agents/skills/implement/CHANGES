@@ -254,6 +254,7 @@ T-1378: Replace indefinite unmatched Telegram hold with terminal fallback and id
 T-1377: Document exact tracker save/removal receipts, retained 15 s bounds and healthy-watch safety reconciliation.
 
 T-1417: Bound native-close fixture drainage from disposal, with delayed-setup controls and independent acquisition receipts.
+T-1387: Document outbound artifact planner, native send receipts, confinement and General timeout/restart semantics.
 
 T-1385: Document durable Telegram inbound media, restart receipts and fallback edit replies.
 
@@ -274,6 +275,7 @@ T-1402: extend Discord connection guidance with resume and liveness receipt boun
 
 2026-10-28 · T-1404 source3 review: independently owned writer-entry receipt and pre-registered release/cancel/join control.
 
+T-1387 source review: require descriptor-bound uploads, pairing-independent fences and contiguous started publications.
 T-1402 integration: document settled paired REST health after pacing and retries; socket ACKs alone cannot clear it.
 
 T-1402 source1: retain job-local edit-404 health, client-refusal clock boundary and native/hub fixture ownership.

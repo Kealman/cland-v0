@@ -717,6 +717,15 @@ from `hub/test/tracker-reindex.ts` before checking projections. Healthy native
 watching has a 5 s safety stamp check; failed watching uses 500 ms. Receipt waits
 allow 15 s for loaded hosts and keep final semantic assertions.
 
+For Telegram outbound artifacts, use the sealed production-frame/fake-platform
+seam in `docs/agents/tests/hub-test-telegram-artifacts.test.ts.md`. Keep the
+planner messenger-neutral, batches durable before draining, and file jobs limited
+to artifact ids and captions. Bind upload contents to the shared descriptor-based no-follow opener at delivery,
+with bounded reads and finally-closed descriptors. Preserve plain
+CRLF-budgeted captions, messenger-scoped once keys across pairing changes,
+started-publication priority, safe same-chat sent-above native replies, and
+General missed/unknown-attempt fences after timeout/restart. Existing role clauses
+and wire frames cover this behaviour; add no permission lines.
 For Telegram inbound media, use the sealed production factory/frame/fake Bot API
 seam in `docs/agents/tests/hub-test-telegram-inbound.test.ts.md`. Persist native
 file facts before confirming the offset; recover per-chat FIFO workers, queue

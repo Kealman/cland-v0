@@ -1,13 +1,16 @@
+import { artifactBody, artifactFile, telegramArtifactLimits } from './artifact-plan.ts';
+import type { Artifact } from '../protocol.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { Outbox, type DeliveryResult, type OutboxInput } from './outbox.ts';
 import { RemoteState, type OutboxJob, type RemoteMessage, type RemoteStore } from './state.ts';
 import { TelegramApi, TelegramError, type SendMessage, type SendRichMessage, type SetMessageReaction, type EditMessageText } from './telegram-api.ts';
 import type { Clock } from '../hub/clock.ts';
 
+type FileIntent = { chat_id: string | number; artifact: string; caption: string; disable_notification?: boolean };
 type Payload = {
   key?: string; admission?: 'paired' | 'pairing' | 'old-chat'; userId?: string | null;
-  telegram: true; order: number; part: number; method: 'sendMessage' | 'sendRichMessage' | 'setMessageReaction' | 'editMessageText';
-  params: SendMessage | SendRichMessage | SetMessageReaction | EditMessageText; fallback?: SendMessage[];
+  telegram: true; batch?: number; order: number; part: number; method: 'sendMessage' | 'sendRichMessage' | 'setMessageReaction' | 'editMessageText' | 'sendPhoto' | 'sendDocument';
+  params: SendMessage | SendRichMessage | SetMessageReaction | EditMessageText | FileIntent; fallback?: SendMessage[];
   mapping: Omit<RemoteMessage, 'messageId'>;
 };
 type Receipt = DeliveryResult | { status: 'format-refused' };
@@ -34,12 +37,16 @@ export class TelegramOutbox {
   readonly #approvalOpen: (id: string) => boolean | Promise<boolean>;
   #stopping: Promise<void> | undefined;
   #cardsHeld = false;
+  #batch: number | undefined;
+  readonly #files: { root: string; artifact: (id: string) => Artifact | null } | undefined;
 
   constructor(api: TelegramApi, clock: Clock, options: {
+    files?: { root: string; artifact: (id: string) => Artifact | null } | undefined;
     store?: RemoteStore; signal?: AbortSignal; onError?: (error: unknown) => void; onSent?: () => void;
     askOpen?: (id: string) => boolean | Promise<boolean>;
     approvalOpen?: (id: string) => boolean | Promise<boolean>;
   } = {}) {
+    this.#files = options.files;
     this.#api = api; this.#clock = clock;
     // Legacy injected remotes have no project store; their queue remains lifetime-local.
     if (options.store) this.#store = options.store;
@@ -54,6 +61,23 @@ export class TelegramOutbox {
   send(params: SendMessage, facts: SendFacts = {}): Promise<void> {
     const fallback = facts.kind === 'card' && params.entities?.length ? [{ ...params, entities: [] }] : undefined;
     return this.#enqueue('sendMessage', params, facts, fallback);
+  }
+  file(method: 'sendPhoto' | 'sendDocument', params: FileIntent, facts: SendFacts): Promise<void> {
+    const key = `telegram.artifact:${params.artifact}`;
+    const previous = this.#store.outbox().find(job => (payload(job)?.key?.startsWith(`${key}:source:`) || ['sendPhoto', 'sendDocument'].includes(payload(job)?.method ?? '') && (payload(job)?.params as FileIntent).artifact === params.artifact)
+      && (job.state !== 'missed' && job.state !== 'reported' || this.#store.attempts(job.id).some(attempt => attempt.outcome !== 'never-left')));
+    if (previous) {
+      if (previous.source === facts.source) return Promise.resolve();
+      const receipt = this.#store.get(`telegram.outbox.receipt:${previous.id}`);
+      const result = receipt ? JSON.parse(receipt) as DeliveryResult : undefined;
+      if (result?.status === 'sent' && result.message) return this.send({ chat_id: params.chat_id,
+        text: `${params.caption}\n▣ ${params.artifact} ${this.#files?.artifact(params.artifact)?.title ?? ''} ${result.message.chatId === String(params.chat_id) ? '(sent above)' : '(sent above in the previous chat)'}`, ...(result.message.chatId === String(params.chat_id) ? { reply_parameters: { message_id: Number(result.message.messageId) } } : {}) },
+        { ...facts, key: `${key}:reference:${params.chat_id}:${facts.source}` });
+      // Keep the new message's text even when the original upload has no native id.
+      return this.send({ chat_id: params.chat_id, text: `${params.caption}\n▣ ${params.artifact} (delivery unconfirmed)` },
+        { ...facts, key: `${key}:reference:${params.chat_id}:${facts.source}` });
+    }
+    return this.#enqueue(method, params, { ...facts, key: `${key}:source:${facts.source}` });
   }
   edit(params: EditMessageText, facts: SendFacts): Promise<void> {
     const { message_id, ...reply } = params;
@@ -71,6 +95,13 @@ export class TelegramOutbox {
   setAvailable(available: boolean): void { this.#store.set('outbox.unavailable', available ? null : '1'); }
   /** Automatic publications wait for retained input and the gap, including edit fallbacks. */
   holdCards(held: boolean): void { this.#cardsHeld = held; }
+  batch<T>(enqueue: () => T): T {
+    const previous = this.#batch;
+    this.#batch = Number(this.#store.get('telegram.outbox.order') ?? 0) + 1;
+    try { return this.#store.transaction(enqueue); }
+    finally { this.#batch = previous; }
+  }
+
   rich(params: SendRichMessage, fallback: SendMessage[], facts: SendFacts): Promise<void> {
     return this.#enqueue('sendRichMessage', params, facts, fallback);
   }
@@ -92,7 +123,7 @@ export class TelegramOutbox {
     }
     const order = Number(this.#store.get('telegram.outbox.order') ?? 0) + 1;
     this.#store.set('telegram.outbox.order', String(order));
-    const intent: Payload = { ...(facts.key ? { key: facts.key } : {}), admission: facts.admission ?? 'paired', userId: this.#store.pairing()?.userId ?? null, telegram: true, order, part: 0, method, params, ...(fallback ? { fallback } : {}),
+    const intent: Payload = { ...(facts.key ? { key: facts.key } : {}), admission: facts.admission ?? 'paired', userId: this.#store.pairing()?.userId ?? null, telegram: true, ...(this.#batch === undefined ? {} : { batch: this.#batch }), order, part: 0, method, params, ...(fallback ? { fallback } : {}),
       mapping: { chatId: chat, topic: facts.topic ?? 'general', message: facts.source ?? null,
         ask: facts.ask ?? null, approval: facts.approval ?? null } };
     const lane = this.#lane(chat);
@@ -167,7 +198,7 @@ export class TelegramOutbox {
           if (!open) this.#store.set(`telegram.outbox.source-closed:${job.id}`, '1');
           return open;
         },
-        compare: (a, b) => Number(b.kind === 'card' || b.kind === 'edit') - Number(a.kind === 'card' || a.kind === 'edit')
+        compare: (a, b) => Number(this.#inBatch(b)) - Number(this.#inBatch(a)) || Number(b.kind === 'card' || b.kind === 'edit') - Number(a.kind === 'card' || a.kind === 'edit')
           || payload(a)!.order - payload(b)!.order || payload(a)!.part - payload(b)!.part,
         admit: job => {
           const intent = payload(job)!;
@@ -181,6 +212,11 @@ export class TelegramOutbox {
       this.#lanes.set(chat, lane);
     }
     return lane;
+  }
+
+  #inBatch(job: OutboxJob): boolean {
+    const intent = payload(job)!;
+    return intent.batch !== undefined && String(intent.batch) === this.#store.get(`telegram.outbox.batch:${intent.params.chat_id}`);
   }
 
   async #ready(chat: string): Promise<void> {
@@ -205,6 +241,7 @@ export class TelegramOutbox {
       this.#signal.throwIfAborted();
       const receipt = this.#store.get(`telegram.outbox.receipt:${job.id}`);
       if (receipt && (JSON.parse(receipt) as Receipt).status === 'format-refused') return this.#replace(job);
+      if (intent.batch !== undefined) this.#store.set(`telegram.outbox.batch:${chat}`, String(intent.batch));
       this.#store.set(`telegram.outbox.last:${chat}`, String(this.#clock.now().getTime()));
       let result: DeliveryResult;
       if (intent.method === 'setMessageReaction') {
@@ -213,6 +250,18 @@ export class TelegramOutbox {
       } else if (intent.method === 'editMessageText') {
         await this.#api.editMessageText(intent.params as EditMessageText, { signal: this.#signal });
         result = { status: 'sent' };
+      } else if (intent.method === 'sendPhoto' || intent.method === 'sendDocument') {
+        const params = intent.params as FileIntent;
+        const artifact = this.#files?.artifact(params.artifact);
+        const file = artifact && this.#files ? artifactFile(this.#files.root, artifact) : null;
+        if (!file || file.size > (intent.method === 'sendPhoto' ? telegramArtifactLimits.photo : telegramArtifactLimits.document)) {
+          const sent = await this.#api.sendMessage({ chat_id: params.chat_id, text: `${params.caption}\n▣ ${params.artifact} · file unavailable` }, { signal: this.#signal });
+          result = { status: 'sent', message: { ...intent.mapping, messageId: String(sent.message_id) } };
+        } else {
+          const body = await artifactBody(this.#files!.root, file.path, file.mime, intent.method === 'sendPhoto' ? telegramArtifactLimits.photo : telegramArtifactLimits.document, this.#signal);
+          const sent = await this.#api[intent.method]({ body, chat_id: params.chat_id, ...file, caption: params.caption, disable_notification: params.disable_notification ?? false }, { signal: this.#signal });
+          result = { status: 'sent', message: { ...intent.mapping, messageId: String(sent.message_id) } };
+        }
       } else {
         const sent = intent.method === 'sendMessage'
           ? await this.#api.sendMessage(intent.params as SendMessage, { signal: this.#signal })
