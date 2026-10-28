@@ -334,7 +334,63 @@ test('Telegram delivery arriving as stored feedback settles acquires the next re
   assert.equal(await drive(within(closed, 1_000)), poll.id);
 });
 
-test('Telegram restart reconciles a confirmed input whose durable session delivery frame was lost', async t => {
+for (const action of ['unpair', 'replace', 'same-chat', 'album-replace'] as const) test(`Telegram held stored reaction withholds later feedback after pairing ${action}`, async t => {
+  const { root, clock, fake, owner, state, start, drive } = await fixture(t);
+  const held = heldTelegramReaction({ apiRoot: fake.url, clock });
+  const store = new Store(join(root, '.cland/hub.db'));
+  const native = new TelegramRemote(held.api, clock, { store: store.remotes.forMessenger('telegram') });
+  owner.close(async () => { held.release(true); await native.stop(); await held.drain(); store.close(); });
+  const delivered = Promise.withResolvers<HubFrame>();
+  let humanId: string | undefined;
+  const remote: Remote = { id: native.id, via: native.via, start: (...args) => native.start(...args),
+    stop: () => native.stop(), run: () => native.run(), receive: frame => {
+      if (frame.type === 'result' && frame.ok && (frame.value as { message?: TopicMessage }).message?.text === 'Captured reaction')
+        humanId = (frame.value as { message: TopicMessage }).message.id;
+      if (frame.type === 'delivery' && frame.message === humanId && frame.stage === 'delivered') { delivered.resolve(frame); return; }
+      return native.receive(frame);
+    } };
+  const initial = owner.observe(signal => fake.waitForPoll(signal));
+  const hub = await start({}, { gatewayRemotes: [remote] });
+  await drive(within(initial, testWaitMs(5_000)));
+  const storedClose = owner.observe(signal => fake.waitForConnectionClose('setMessageReaction', signal), { drain: true });
+  if (action === 'album-replace') {
+    await control(fake.url, 'media', { items: [
+      { kind: 'photo', content: Buffer.from('first').toString('base64'), caption: 'Captured reaction' },
+      { kind: 'photo', content: Buffer.from('second').toString('base64') },
+    ] });
+    await until(() => state.get('telegram.offset') === '3', { what: 'album updates stored', timeoutMs: testWaitMs(5_000) });
+    await clock.advance(2_000);
+  } else await control(fake.url, 'say', { text: 'Captured reaction' });
+  const ok = await drive(within(held.completed, testWaitMs(5_000)));
+  await within(storedClose, testWaitMs(5_000));
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  await coord.waitForEvent(event => event.params.content === 'Captured reaction');
+  const delivery = await within(delivered.promise, testWaitMs(5_000));
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  assert.equal((await ui.request({ type: 'remote.unpair', messenger: 'telegram' })).ok, true);
+  if (action !== 'unpair') state.setPairing({ ...pairing, userId: '202', chatId: action === 'same-chat' ? '101' : '202' });
+  const confirmed = action === 'album-replace' ? undefined : owner.observe(signal => fake.waitForPoll(signal));
+  const receiving = native.receive(delivery);
+  held.release(ok);
+  await drive(Promise.resolve(receiving));
+  if (confirmed) assert.equal((await drive(within(confirmed, testWaitMs(5_000)))).params.offset, 2);
+  else await drive(until(() => state.get('media.identity:101:2') === 'completed', { what: 'withdrawn album feedback completed', timeoutMs: testWaitMs(5_000) }));
+  const receipt = JSON.parse(state.get(`telegram.inbound:${humanId}`)!);
+  assert.deepEqual(receipt.pairing, { userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId });
+  assert.equal(receipt.stored, false, 'withdrawn native result cannot settle feedback');
+  assert.equal(receipt.seen, false);
+  if (action === 'album-replace') {
+    assert.deepEqual(receipt.targets, [1, 2]);
+    assert.deepEqual(receipt.storedTargets ?? [], []);
+    assert.deepEqual(receipt.seenTargets ?? [], []);
+  }
+  const census = await control<{ requests: Array<{ method: string; params: unknown }> }>(fake.url, 'state');
+  assert.deepEqual(census.requests.filter(r => r.method === 'setMessageReaction').map(r => r.params), [
+    { chat_id: '101', message_id: 1, reaction: [{ type: 'emoji', emoji: '👌' }] },
+  ]);
+});
+
+for (const legacy of [false, true]) test(`Telegram restart reconciles a confirmed input whose durable session delivery frame was lost${legacy ? ' with a legacy receipt' : ''}`, async t => {
   const { root, clock, fake, owner, start, drive } = await fixture(t);
   const store = new Store(join(root, '.cland/hub.db'));
   const native = new TelegramRemote(new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock }), clock,
@@ -367,6 +423,10 @@ test('Telegram restart reconciles a confirmed input whose durable session delive
   assert.equal(original.stage, 'delivered', 'the hub has the durable session receipt');
   const before = JSON.parse(store.remotes.forMessenger('telegram').get(`telegram.inbound:${humanId}`)!);
   assert.equal(before.delivered, false, 'the platform adapter missed that frame');
+  if (legacy) {
+    delete before.pairing;
+    store.remotes.forMessenger('telegram').set(`telegram.inbound:${humanId}`, JSON.stringify(before));
+  }
   const closed = fake.waitForPollClose(poll.id);
   await first.stop();
   assert.equal(await drive(within(closed, 1_000)), poll.id);

@@ -2657,7 +2657,10 @@ another rich send. Accepted exchanges update `lastOutbound`
 without waiting for the remaining queue to empty. Stop cancels pacing and flood
 waits, aborts active HTTP and joins all drains before storage closes. Reaction stored/delivered/seen bits stay
 in `telegram.inbound:<message>` under the inbound handler's existing recovery
-policy; the queue supplies only each transport operation's own durable result.
+policy. New receipts retain the captured numeric pairing identity and check it
+before and after each reaction exchange; revoked or replaced pairings cannot
+settle feedback or schedule later reactions. Historical receipts without that
+optional identity retain chat-id recovery checks. The queue supplies only each transport operation's own durable result.
 A successful `getMe` makes the send transport available for recovery.
 
 See the [pacing frame/fake guide](../docs/agents/tests/hub-test-telegram-pacing.test.ts.md).

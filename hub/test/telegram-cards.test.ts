@@ -1375,7 +1375,8 @@ test('Telegram confirmed prompt answer recovers owed delivery feedback after com
   const beforeHistory = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage: string }> };
   assert.equal(beforeHistory.messages.find(message => message.id === answerId)!.stage, 'delivered');
   const before = JSON.parse(f.state.get(`telegram.inbound:${answerId}`)!) as { stored: boolean; delivered: boolean; seen: boolean };
-  assert.deepEqual(before, { chat: '101', message: input.message.message_id, stored: true, delivered: false, seen: false });
+  assert.deepEqual(before, { pairing: { userId: '101', chatId: '101', guildId: null },
+    chat: '101', message: input.message.message_id, stored: true, delivered: false, seen: false });
   await f.stop(); f.ui.close(); await f.coord.close();
   const next = f.newRemote();
   const eyes = f.fake.waitForRequest('setMessageReaction', receipt => JSON.stringify(receipt.params).includes('👀'));

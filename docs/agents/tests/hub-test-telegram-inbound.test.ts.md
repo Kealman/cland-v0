@@ -147,6 +147,15 @@ closed SQLite and zero clock timers. Media fake observations use pacingOwner
 signals, with independent post-acquisition setup bounds and drainage ownership;
 UI message observation checks captured frames under the same owner.
 
+T-1424's four generated `Telegram held stored reaction withholds later feedback
+after pairing <unpair|replace|same-chat|album-replace>` cases hold the completed native 👌
+receipt, retain actual session delivery, revoke pairing through the local frame,
+and optionally replace numeric identity. Release and join the reaction owner,
+retain confirmed offset 2, then assert captured identity, unsettled bits and the
+fake's exact one-reaction census. A same-chat sender change also revokes feedback.
+The restart delivery-recovery case runs with current and legacy receipts; removing
+only the optional pairing field proves old durable receipts still decode and
+repair 👀 under their original chat-id check.
 T-1386 album cases retain three ordered photo bytes on one message and every
 native reply map, with ordinary text closing the group. The restart case waits
 for offset 3 plus the exact native getUpdates(offset=3) receipt with empty
@@ -171,3 +180,13 @@ Recovery consults Gateway's messenger-scoped durable ingress receipt first.
 Receipt consumer controls also run telegram-cards (exact legacy single-message
 shape and confirmed prompt recovery), telegram-polling-restart and telegram-notices
 (absent receipt controls). Only album receipts gain targets and per-target progress.
+
+The `album-replace` held-feedback arm uses two native album photos. Retain
+durable offset 3 before advancing the collection clock, then actual session
+delivery while the first 👌 result is held. Replace the chat through local
+unpair and seeded numeric identity, release/join feedback, and wait for the
+second member's durable media completion. Assert targets [1, 2], captured
+pairing, no settled target bits and exactly one native 👌 with no later 👀.
+Pairing is checked after each target exchange, not after the album loop.
+Lost-upload-result recovery also creates new receipts with numeric identity;
+existing legacy receipts keep their compatibility check.

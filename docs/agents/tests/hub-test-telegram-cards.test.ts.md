@@ -351,3 +351,8 @@ T-1385 migrates the sticker/button regression's fallback-copy expectation to
 "This kind of message does not reach General". Retain its exactly-one reply
 count, held sticker reply, serial poll offset, answered ask and native outcome
 edit assertions. The sticker still gets a reply before the queued press settles.
+
+T-1424 retains the exact confirmed-prompt feedback receipt assertion, including
+its captured numeric pairing identity. Answers share the text reaction authority
+boundary; do not omit that field merely to preserve the old test expectation.
+The same restart case still proves one recovered 👀 and no duplicate answer.

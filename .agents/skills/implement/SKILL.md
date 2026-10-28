@@ -753,6 +753,10 @@ observers retain only sanitized errors and numeric channel ids. All REST paths
 stop on 401/40001/50014; test reads the application and sends one paired line.
 Existing role authority and optional wire fields remain unchanged.
 
+For Telegram reaction receipt authority, retain captured numeric pairing identity
+and check it before and after native I/O. Keep the optional-field legacy recovery
+control and held-feedback unpair/replacement cases in the Telegram inbound guide.
+
 For Discord replies and reaction feedback, extend the production-frame cases in
 `docs/agents/tests/hub-test-discord-messages.test.ts.md`. Keep mapped topic/reply
 routing, foreign-author rejection and legacy inbound tombstones. React through

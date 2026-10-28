@@ -1,10 +1,10 @@
 import type { HubFrame, HumanMessageKind, TopicMessage } from '../protocol.ts';
-import type { RemoteStore } from './state.ts';
+import type { Pairing, RemoteStore } from './state.ts';
 import type { TelegramUpdateHandler } from './telegram-polling.ts';
 import type { TelegramApi } from './telegram-api.ts';
 import type { RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 
-type Receipt = { chat: string; message: number; stored: boolean; delivered: boolean; seen: boolean; targets?: number[]; storedTargets?: number[]; seenTargets?: number[] };
+type Receipt = { pairing?: Pick<Pairing, 'userId' | 'chatId' | 'guildId'> | null; chat: string; message: number; stored: boolean; delivered: boolean; seen: boolean; targets?: number[]; storedTargets?: number[]; seenTargets?: number[] };
 
 /** Native text input uses the same human frame path as the workbenches. */
 export class TelegramInbound {
@@ -28,7 +28,7 @@ export class TelegramInbound {
       // Earlier HTTP awaits can deliver or finish another pending receipt.
       const receipt = JSON.parse(this.#store.get(key)!) as Receipt;
       if (receipt.seen) continue;
-      if (this.#store.pairing()?.chatId !== receipt.chat) continue;
+      if (!this.#paired(receipt)) continue;
       const message = this.#receipt({ chatId: receipt.chat, messageId: String(receipt.message) });
       if (!message) continue;
       receipt.delivered ||= message.stage === 'delivered' || message.stage === 'injected';
@@ -71,7 +71,9 @@ export class TelegramInbound {
         topic: saved.topic, message: saved.id, ask: null, approval: null });
       const key = `telegram.inbound:${saved.id}`;
       const value = this.#store.get(key);
+      const pairing = this.#store.pairing();
       const receipt: Receipt = value ? JSON.parse(value) as Receipt : {
+        pairing: pairing ? { userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId } : null,
         chat: ingress.chatId, message: Number(ingress.messageId), stored: false, delivered: false, seen: false,
       };
       if (members) receipt.targets = members.map(Number);
@@ -87,7 +89,8 @@ export class TelegramInbound {
   async #post(frame: Record<string, unknown>, ingress: RemoteIngress, signal: AbortSignal, stored?: () => void, bytes?: readonly Buffer[], members?: string[]): Promise<void> {
     const id = `telegram-in-${++this.#next}`;
     const result = Promise.withResolvers<TopicMessage>();
-    this.#pending.set(id, { ...result, receipt: { chat: ingress.chatId, message: Number(ingress.messageId),
+    const pairing = this.#store.pairing();
+    this.#pending.set(id, { ...result, receipt: { pairing: pairing ? { userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId } : null, chat: ingress.chatId, message: Number(ingress.messageId),
       stored: false, delivered: false, seen: false, ...(members ? { targets: members.map(Number) } : {}) } });
     const abort = () => result.reject(new Error('Telegram input cancelled'));
     signal.addEventListener('abort', abort, { once: true });
@@ -129,6 +132,15 @@ export class TelegramInbound {
     }
   }
 
+  #paired(receipt: Receipt): boolean {
+    const current = this.#store.pairing();
+    if (!current || current.chatId !== receipt.chat) return false;
+    // Older receipts have only a chat id; retain their original recovery scope.
+    if (receipt.pairing === undefined) return true;
+    return receipt.pairing !== null && current.userId === receipt.pairing.userId
+      && current.chatId === receipt.pairing.chatId && current.guildId === receipt.pairing.guildId;
+  }
+
   #flush(message: string): Promise<void> {
     const active = this.#reactions.get(message);
     if (active) return active;
@@ -139,7 +151,7 @@ export class TelegramInbound {
       try {
         for (;;) {
           const receipt = JSON.parse(this.#store.get(key)!) as Receipt;
-          const emoji = !receipt.stored ? '👌' : receipt.delivered && !receipt.seen ? '👀' : null;
+          const emoji = !this.#paired(receipt) ? null : !receipt.stored ? '👌' : receipt.delivered && !receipt.seen ? '👀' : null;
           if (emoji === null) {
             // Check arrivals and release ownership in one synchronous turn.
             // A later delivery acquires its own owner, even before this settles.
@@ -153,6 +165,11 @@ export class TelegramInbound {
             if (latest[field]?.includes(target)) continue;
             await this.#api.setMessageReaction({ chat_id: receipt.chat, message_id: target,
               reaction: [{ type: 'emoji', emoji }] }, { signal: this.#signal });
+            if (!this.#paired(receipt)) {
+              this.#reactions.delete(message);
+              owner.resolve();
+              return;
+            }
             this.#sent();
             const current = JSON.parse(this.#store.get(key)!) as Receipt;
             if (current.targets) (current[field] ??= []).push(target);
