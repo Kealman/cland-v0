@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1156
 branch: t/T-1407-the-cland-subcommands-status-help-mute
 created: 2026-10-27T23:38:47.247Z
-updated: 2026-10-28T17:11:05.866Z
+updated: 2026-10-28T18:25:10.667Z
 ---
 
 ## Summary
@@ -39,7 +39,7 @@ Spec §3.10 (Discord, `/status`, `/help`, the phone layout), §3.4 (mute); Q-129
 ## Acceptance criteria
 
 - [x] C1. `/cland status` answers ephemerally with a title line, bold-labelled groups ending with "This channel", one fact per line, sessions as bullets and the gateway's numbers last as small text, and no line joins facts with middle dots (test).
-  - done: impl-1407 · 2026-10-28T17:11:04.584Z
+  - done: impl-1407 · 2026-10-28T17:57:51.432Z
 - [x] C2. `/cland help` answers ephemerally with short headed sections, the subcommands as a bullet list and the trust lines last (test).
   - done: impl-1407 · 2026-10-28T17:11:04.689Z
 - [x] C3. `/cland mute` stops General in the channel, a replayed mute interaction applies once, and `/cland unmute` answers "N messages arrived while muted" with the count held back (test).
@@ -58,3 +58,48 @@ Shared files: discord-commands.ts
 ### impl-1407 · 2026-10-28T15:40:58.598Z
 
 Consumer inventory before changes (rule 20): searched hub/src, hub/test (all manifest tiers), web/, nvim/, docs/agents/, .agents/skills. Existing frames stay unchanged: hub.status and task.list summary consumed by Telegram commands, Gateway's frame authority, both workbenches and harness startup probes; topic.send ingress consumed by Gateway/General with existing RemoteIngress deduplication. DiscordCommands is constructed only by DiscordRemote; native callback/editOriginal consumers are DiscordCommands, discord-pairing.test.ts and discordExchangeOwner. Plan additive ephemeral defer API, preserving callback/edit signatures and legacy Remote start injection. PhoneReply/statusReply/helpReply consumers: telegram-commands.ts and remote-neutral.test.ts; keep models unchanged. applyMute/suppressMutedMessage consumers: TelegramRemote, remote-neutral.test.ts and Telegram mute tests; keep receipt/storage shape unchanged, add discord.mute:<interaction id>. Discord pairing tests retain foreign-user/channel and unpaired refusals. New production frame/fake REST/ws test file will prove rendered status/help, native private callbacks, mute receipts/count, ingress kinds/via/id and deferred original edits. No new frame shape, role authority or persisted schema; no workbench/old-hub migration needed.
+
+### rev-26 · 2026-10-28T17:56:08.288Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261028-1407-source-1
+commit: 41b3ebc635d4b2301053520f5df8fedca2da459f
+scope: full
+findings: [{"severity":"medium","text":"M1 Standards: new hub-test-discord-commands.test.ts.md is missing from the per-test index, so the unchanged test-docs membership guard rejects the branch. Add only the owning row and retain original red/green receipts.","file":"docs/agents/tests/index.md"},{"severity":"medium","text":"M2 Spec: renderReply/status/help can exceed Discord's 2000-code-point content budget, but #answer sends the entire result as one callback or original edit. Valid long project/session/release facts can therefore lose the private answer. Implement bounded ephemeral output preserving required groups/footer and literal facts; enforce callback/edit/followup limits in the fake and cover immediate and deferred long status.","file":"hub/src/remote/discord-commands.ts","line":44}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-13393 full source1 NOT CLEAR: M1 missing per-test index entry; M2 unbounded private content and fake interaction branch bypassing native size checks. Existing neutral layout, rolling identify counts/platform remaining, mute/replay, ingress/stored Sent and owned deferral/stop flows inspected. No reviewer workloads run, runtime criteria unverified. Consolidated audit complete; fresh pushed corrected source review required before verification.
+
+Criteria: C1 failed (Valid long status text exceeds the native callback/original-edit content budget and can lose the ephemeral answer.).
+
+### impl-1407 · 2026-10-28T17:57:36.790Z
+
+Source1 M1/M2 corrections: added owning test-guide index row; unchanged test-docs guard red 2/3 -> green3/3, A-13392 retains actual output. Added bounded PhoneReply pages preserving Unicode/escape atoms, ordered groups and final footer; first page callback/original edit, further pages private webhook followups (no replay). Fake now enforces 2000 code points for callback/edit/followup; immediate and deferred long-status regressions first red with missing native footer (7pass2fail), now green. Callback/edit API signatures retained; additive followup method consumed only by DiscordCommands and discordExchangeOwner. Additive fake per-interaction followups array leaves existing pairing/API consumers unchanged. No protocol/storage/role change. Existing SKILL/CHANGES entries retained without additions per Coordinator. No dev merge after source1.
+
+### rev-26 · 2026-10-28T17:59:29.547Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1407-source-2
+commit: 2b49ec1848b0c9f5fb16bd78e02d6329246247c0
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13394 full source2 clear resolves M1/M2: owning guide index and bounded literal PhoneReply pages; private awaited callback/edit/followup transport, flags/mention suppression, exact native 2000/2001 boundary and immediate/deferred long status controls inspected. Existing short layout, mute/replay, ingress/stored Sent, compatibility and shutdown assertions preserved. No reviewer workloads run. C1–C5 remain unverified until exact-head configured original runtime evidence; Coordinator integrated/full coverage stays separate.
+
+### rev-26 · 2026-10-28T18:25:10.667Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261028-1407-evidence-1
+commit: 2b49ec1848b0c9f5fb16bd78e02d6329246247c0
+scope: evidence
+findings: [{"severity":"medium","text":"Configured 2b6968fd/A-13396 interrupted exit124: two reaction-restart failures plus cursor-restart cancellation and hung worker. T2 incomplete; Web/T3/T4 absent. Ten command base cases plus 50 scoped repeats passed, but no overall passing runtime verification exists.","file":"hub/test/discord-messages.test.ts"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13398 records actual raw failure lines and separated partial counts: ordinary3311pass/2fail/1cancelled plus75loadpass(50commands/25site). Hub3388 completed includes repeats and excludes cancelled identity. No assertion diagnostic/root cause inferred; Coordinator shared-fix disposition pending. Source2/A-13394 remains clear, no criterion behavior failure assigned to passing commands and no fresh criterion marks. No reviewer workloads, no retry/source changes requested.
