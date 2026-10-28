@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1141
 branch: t/T-1387-outbound-artifacts-on-telegram-photos-up
 created: 2026-10-27T23:37:27.927Z
-updated: 2026-10-28T13:35:10.580Z
+updated: 2026-10-28T13:53:37.122Z
 ---
 
 > Pending: the once-per-remote behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.

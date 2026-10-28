@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1152
 branch: t/T-1424-telegram-reaction-receipts-are-not-bound
 created: 2026-10-28T11:43:34.103Z
-updated: 2026-10-28T13:09:56.215Z
+updated: 2026-10-28T13:44:29.497Z
 ---
 
 ## Summary
@@ -69,3 +69,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13290 source2 checkpoint clear,Standards0/Spec0,carrying A-13266 full source1. Same-base correction only adds exact captured pairing identity to confirmed-prompt receipt deepEqual plus reason in guide; no production change or weakened assertion. Lost delivery/confirmed offset/ask answer/restart/native close/no-duplicate/final reaction assertions and legacy absent-field recovery remain. Coordinator cc26a71d/feaadce8 accepts this consumer migration; inventory corrected. C1 remains runtime-unverified; reported local62/62/typecheck not configured Linux proof. This does not release verification hold: await T-1386 landing,authorized dev merge+album replacement regression,cards recheck and another source review; droplet hold e4e8208a retained. No run requested/ready claim; reviewer read only.
+
+### impl-1424 · 2026-10-28T13:40:16.538Z
+
+Authorized T-1386 integration at origin/dev 40e5f3a0: receipt now also has optional album targets/storedTargets/seenTargets. Same pairing identity covers every target and is checked after each native exchange. New album-replace held-👌 test red ('Telegram send has no delivery receipt') before per-target recheck, green after it; requires targets [1,2], no settled per-target bits, actual session delivery, durable album completion and exact one-reaction census. New recovered-upload receipt creation captures identity too; existing old receipts retain optional-field compatibility. Media queue unchanged. Consumer migration reruns requested: cards/inbound/polling-restart/notices plus typecheck.
+
+### rev-32 · 2026-10-28T13:44:29.497Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1424-delta1
+commit: 978e7bda07ecc675038a2ce34df30e62918b9edc
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13310 authorized album integration delta clear, Standards0/Spec0, carrying A-13266/A-13290. Receipt type retains optional identity plus album targets/progress. Pairing is checked after every awaited target reaction before progress/next target; recovered-upload new receipts capture numeric identity, existing/legacy receipts retain compatibility. New held-first-reaction album-replace arm preserves actual delivery, durable offset3/media completion, targets[1,2], original identity, unsettled bits and exact one-reaction/no-eyes census. Earlier three revocation cases, legacy recovery and cards exact receipt migration remain. Media queue/Telegram media path match incoming dev; skill/docs/provenance/consumer inventory retained. No Reviewer executions. A-13308 local macOS summary and initial40/41 observer timeout remain separate from successful unchanged reruns; none are configured/Linux evidence. C1 runtime-unverified. Mode-free verification may proceed at unchanged978e7bda; Coordinator aefaee6e separately requires full verify all for T3 receipt reader before readiness/enqueue. Any changed head needs new source review.

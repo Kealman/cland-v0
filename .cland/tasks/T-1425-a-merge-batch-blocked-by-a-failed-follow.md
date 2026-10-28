@@ -3,7 +3,7 @@ id: T-1425
 kind: task
 title: A merge batch blocked by a failed follow-up after landing never clears, and the queue stops behind it
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1153
 branch: t/T-1425-a-merge-batch-blocked-by-a-failed-follow
 created: 2026-10-28T12:21:37.799Z
-updated: 2026-10-28T13:33:59.193Z
+updated: 2026-10-28T13:42:52.878Z
 ---
 
 ## Summary
@@ -25,10 +25,13 @@ A merge batch whose landing succeeded but whose follow-up failed (`merged, follo
 
 - [x] C1. A blocked batch whose members are all landed or completed is cleaned up and cleared on the next tick, and the queue goes on to the next entry (test: fail a follow-up after landing, finish it with cland merge, then show the next queued item batched).
   - done: impl-1425 · 2026-10-28T13:13:58.917Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1425-evidence1 · 2026-10-28T13:42:48.596Z · commit ca5b1a792803845f3f7ca7280b5b288c7adb0f94
 - [x] C2. A follow-up failure after a successful landing doesn't block the queue: the batch records the failed step on the landed item, reports it, and the queue continues (test with a ps-timeout follow-up).
   - done: impl-1425 · 2026-10-28T13:22:04.020Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1425-evidence1 · 2026-10-28T13:42:48.596Z · commit ca5b1a792803845f3f7ca7280b5b288c7adb0f94
 - [x] C3. Startup clears a persisted blocked batch whose members are all landed (test).
   - done: impl-1425 · 2026-10-28T13:13:59.565Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1425-evidence1 · 2026-10-28T13:42:48.596Z · commit ca5b1a792803845f3f7ca7280b5b288c7adb0f94
 
 ## Notes
 
@@ -87,3 +90,18 @@ Full corrected-head source review clear, zero findings. A-13297 (/Users/evgeniyi
 ### coord · 2026-10-28T13:33:59.193Z
 
 Second occurrence 2026-10-28 13:32Z: batch 8af2f22c's follow-up failed on stopping impl-1402 ('process identity cannot be verified') after T-1402 landed, leaving T-1386 and T-1423 unlanded behind a blocked batch. That is C2's case: a follow-up failure after a landing must not stop the remaining members. It was cleared by cancelling and re-enqueueing T-1423.
+
+### rev-32 · 2026-10-28T13:42:48.596Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1425-evidence1
+commit: ca5b1a792803845f3f7ca7280b5b288c7adb0f94
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Configured evidence clear; Coordinator full-all 3dc0d1bd remains a separate pre-enqueue gate. A-13309 independently audits original 99ea15b6/A-13307 at unchanged source2 head: 3915 ordinary test passes, 499 file passes, 65 separate load passes, zero nonpassing/unfinished records. All eight new task cases pass ordinary + 5/5 load (48 task receipts), peak individual 0.363330475 s. C1 real TaskMerges manual follow-up recovery retains commit/no repeated landing and admits next heads; C2 ps-timeout recording/reporting plus report-fault later-tick/reopen/exactly-once settlement controls pass; C3 persisted startup cleanup/public merge.queue proof passes. Worker barrier, unchanged help guard, five typed retries and non-landed untyped hold pass. T0 host check separate excluded-candidate 10df1b6a, not repeated Linux typecheck. Linux c-8 lon1 T1/all fallback T2/Web completed; Shell156/1248, general2/Web4 workers; lifetime769s/$0.0534 not suite wall. Budgets/test lint report-only; no selected T3/T4, no full-all/enqueue claim. No Reviewer reruns or source changes.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -3,18 +3,19 @@ id: T-1403
 kind: task
 title: "The identify budget: 5 seconds apart, back-off only after failed identifies, the floor of remaining starts and the warning at 500"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1312
 blocked_by:
   - T-1402
-topic: null
+topic: topic-1154
 branch: t/T-1403-the-identify-budget-5-seconds-apart-back
 created: 2026-10-27T23:38:46.427Z
-updated: 2026-10-28T13:39:20.530Z
+updated: 2026-10-28T13:53:42.035Z
 ---
 
 ## Summary
@@ -37,11 +38,40 @@ Spec §3.8 (identify budget); research rule 12; Q-1293 (the 33-second recovery d
 
 ## Acceptance criteria
 
-- [ ] C1. Two identifies are never less than 5 seconds apart under the injected clock, including across a hub restart, and the identify count is read back from `hub.db` (test).
-- [ ] C2. Identifies that end before READY are followed by growing jittered waits, and a drop after READY reconnects without that back-off (test).
-- [ ] C3. A `remaining` below the floor on the fake stops the remote with the `identify-budget` cause and a warning naming when starts reset, and sends no identify (test).
-- [ ] C4. The 500th identify in 24 hours writes one warning line in General, and the 501st writes none (test).
+- [x] C1. Two identifies are never less than 5 seconds apart under the injected clock, including across a hub restart, and the identify count is read back from `hub.db` (test).
+  - done: impl-1403 · 2026-10-28T13:53:41.894Z
+- [x] C2. Identifies that end before READY are followed by growing jittered waits, and a drop after READY reconnects without that back-off (test).
+  - done: impl-1403 · 2026-10-28T13:46:11.783Z
+- [x] C3. A `remaining` below the floor on the fake stops the remote with the `identify-budget` cause and a warning naming when starts reset, and sends no identify (test).
+  - done: impl-1403 · 2026-10-28T13:46:11.894Z
+- [x] C4. The 500th identify in 24 hours writes one warning line in General, and the 501st writes none (test).
+  - done: impl-1403 · 2026-10-28T13:46:12.000Z
 
 ## Notes
 
 Shared files: discord-socket.ts
+
+## Comments
+
+### impl-1403 · 2026-10-28T13:40:24.806Z
+
+Consumer inventory (rule 20): searched Identify/identify-budget/session_start_limit/getGatewayBot/DiscordSocket/DiscordRemote across hub, web, .agents, qa and docs, including all test tiers. Production: discord.ts, discord-socket.ts, discord-api.ts, messenger.ts, notices.ts, state.ts; stop-cause consumers protocol.ts, gateway.ts and status/doctor/secrets docs retain existing identify-budget class and frame shapes. Tests: discord-api.test.ts, discord-messenger.test.ts, discord-messages.test.ts; fakes discord/{gateway,fake-api,exchange,hub}. Guides: hub/README.md, docs/agents/secrets.md and discord test guides; implement skill. No existing budget record reader; add messenger-scoped remote_state key without schema or wire changes. Existing 4003 and invalid-session timing assertions must migrate to five-second spacing. Existing optional-store callers keep in-memory budgeting. Old-wire remote-cli regressions unaffected (no protocol changes). Approved seams: production factory/frame and fake REST/ws with injected clock; persisted state read via existing RemoteStore.
+
+### rev-32 · 2026-10-28T13:51:15.113Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261028-1403-source1
+commit: 2239f7d7088c51ef11828b69e7f4a21a33f2bef1
+scope: full
+findings: [{"severity":"medium","text":"M1: owning REMOTE_USAGE snapshot omits the two new shipped Identify-policy lines, breaking unchanged exact-byte/help guards; migrate only this row.","file":"hub/test/fixtures/cli-usage/commands.json","line":71},{"severity":"medium","text":"M2: new restart/backoff/warning/floor timing setup uses lastInbound nonnull/clock equality as Hello/admission-ready proof. Every inbound frame sets it before handling. Pre-arm an independently bounded owned exact replacement connection/client admission-scheduled receipt before clock advances; preserve timing/native/persistence assertions and setup-drain controls.","file":"hub/test/discord-messenger.test.ts","line":477},{"severity":"medium","text":"M3: existing persisted realClock cursor/restart consumer still requires replacement Identify within1500ms after immediate restart, conflicting with new5s spacing. Migrate to injected-clock exact admission/native receipts, retain cursor/replay/two-message assertions, and audit neighbouring consumers.","file":"hub/test/discord-messages.test.ts","line":95}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Full source review not clear; consolidated A-13315 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13315-t-1403-full-source1-at-2239f7d7-not-clear.md). Three medium findings: M1 frozen REMOTE_USAGE omitted; M2 timing setup uses lastInbound status timestamps instead of exact replacement connection/client admission-scheduled receipts; M3 existing realClock persisted cursor/restart test still expects second Identify within1500ms, conflicting with new5s spacing. No additional findings. Claimant has reproduced M1 guard failures and M3 'restart READY: not within1500ms'; corrections remain outside this commit. Budget reservation-before-I/O, fresh remaining floor/reset cause, rolling warning and failed-only backoff reviewed; docs/skill provenance present. Reviewer read only/no executions. C1 not clear; C2–C4 runtime-unverified. Consolidate corrections/consumer inventory and original red/green receipts, push and request fresh full source review before mode-free verify. Stable dev base per rule11; no per-item QA.
+
+Criteria: C1 failed (Exact timing setup and existing persisted cursor/restart consumer require migration to the new five-second admission policy.).
+
+### impl-1403 · 2026-10-28T13:52:52.717Z
+
+Source1 corrections: M1 frozen commands.json REMOTE_USAGE row migrated with unchanged compatibility/full-help guards red then green; original outputs/exits in A-13314. M2 admission setup now pre-arms a bounded cancellation-owned diagnostic observer matching exact socket ordinal after timer installation, including opcode9 false; omitted/aborted observer controls drain native hub/fake/Store and timers. M3 reproduced discord-messages cursor/restart failure 'restart READY: not within 1500 ms' (exit1), migrated its production factory/hub/fake to shared FakeClock and exact admission/native Identify receipts without relaxing setup deadlines or durable cursor/replay/two-message assertions. Neighbour consumer audit: discord-pairing restart guards check REST registration or persisted numeric pairing, unaffected by websocket delay; remote-cli rotation/reload, config-set and setup fixtures use injected testMessenger rather than native Identify. All native repeated-Identify assertions located in discord-messenger and discord-messages are migrated. Existing protocol/old-wire fields unchanged.

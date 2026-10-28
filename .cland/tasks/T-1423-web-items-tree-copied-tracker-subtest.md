@@ -2,8 +2,8 @@
 id: T-1423
 kind: task
 title: web Items tree copied-tracker subtest times out on task.comment at 5 s once in a loaded task run
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1151
 branch: t/T-1423-web-items-tree-copied-tracker-subtest
 created: 2026-10-28T11:38:54.591Z
-updated: 2026-10-28T12:57:07.255Z
+updated: 2026-10-28T13:54:07.241Z
+closed: 2026-10-28T13:54:07.241Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13286 independently audits original A-13285 and A-13270. Same-head47c36a21 exits0:3907 ordinary passes/499 files+25 separate load passes,zero nonpassing outcomes/unmatched starts. Exact Linux CLI child20755 passes3.063917377s,parent55.251618002s; request129.685051ms,joint request/verdict197.927767ms,completed model<=0.6ms. Independent300-item/15ms guard and final verdict assertion retained/pass. C1 bounded attribution under0cbd62db: historicalA-13254 exact5000ms failure preserved; natural Linux queue/storage delay remains unobserved,5200ms control synthetic only. C2 under5a663726: original Darwin two-lane+CPU final10 distinct native passes/4of4/CPUprogress/browser-hub cleanup and matching final source blob,plus this ordinary same-head Linux Web green; no ten-Linux-repetition claim. Host T0 candidate20f197cc reused separately,T1/allT2/Web Linux c-8lon1,Shell156/1248,gates report-only,no T3/T4. C1–C2 verified; no additional all requested,Coordinator owns queue/T-1425/landing. Reviewer read only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-28T13:54:07.241Z
+
+Merged a749827288532906913e48e4161900988835e9b7 onto dev.
