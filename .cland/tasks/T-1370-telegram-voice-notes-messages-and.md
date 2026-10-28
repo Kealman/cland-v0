@@ -2,8 +2,8 @@
 id: T-1370
 kind: task
 title: Telegram voice notes, messages and approvals read with their marks in both workbenches
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1165
 branch: t/T-1370-telegram-voice-notes-messages-and
 created: 2026-10-27T05:46:51.211Z
-updated: 2026-10-28T22:42:08.334Z
+updated: 2026-10-28T23:33:10.389Z
+closed: 2026-10-28T23:33:10.389Z
 ---
 
 ## Summary
@@ -32,8 +33,10 @@ Spec §3.11 (source and voice marks), §3.1 (`via`) and §3.6 (the transcript me
 
 - [x] C1. A voice note on the fake Bot API, transcribed by the fake speech provider, reads in headless Neovim and headless Chromium with its 🎤 mark, "via Telegram" and its audio artifact, and an untranscribed note reads "🎤 not transcribed" (test).
   - done: impl-1370 · 2026-10-28T22:27:37.871Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1370-evidence-2 · 2026-10-28T23:24:27.984Z · commit ce5ddf854cac1b426072b908cbdce87b80454269
 - [x] C2. A text message and a card approval made on the fake Bot API read "via Telegram" on the thread row and on the approval's inbox outcome in both workbenches (test).
   - done: impl-1370 · 2026-10-28T22:27:38.002Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1370-evidence-2 · 2026-10-28T23:24:27.984Z · commit ce5ddf854cac1b426072b908cbdce87b80454269
 
 ## Comments
 
@@ -105,3 +108,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13501 source4 clear. Sole successor diff three index labels Guide→Notes now matches unchanged parser/exact-row guard. All prior source/fixture/assertion/tier fixes unchanged; no dev merge. Complete local docs red2/3→green3/3 reported separately. A-13498/A-13499 old-head failures retained, no downstream runtime or C1/C2 verification. One unchanged-head mode-free plus Coordinator-owned replacement all then original evidence review. No reviewer workload or extra requested full run/QA.
+
+### rev-26 · 2026-10-28T23:24:27.984Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1370-evidence-2
+commit: ce5ddf854cac1b426072b908cbdce87b80454269
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13516 final evidence2 clear; C1/C2 verified from both originals. A-13509:4023 ordinary+50 separate load passes, setup3base+each5/5load, Neovimonce(parent+nested), Chromium2.728387234s plus report-only Web10/10. A-13515:5430passes8skips0fail, T0–T3/Web complete with unchanged native Neovim consumers; new Neovim1.010741348s/Chromium2.881597813s. No unfinished identities; neither run has T4. Exact body/source/audio/approval controls retained. Report-only ratchet2244.256vs2243.246 (~1.010s growth) recorded without enforcement claim. Coordinator ee66c51e directs final/ready. Old failedA-13498/A-13499 retained; no reviewer workloads or extra run/QA.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-28T23:33:10.389Z
+
+Merged 530bb50a6defb4758581d6c4ac64eec9ad0620cd onto dev.

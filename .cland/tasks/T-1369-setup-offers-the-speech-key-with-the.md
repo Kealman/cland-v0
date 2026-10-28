@@ -3,7 +3,7 @@ id: T-1369
 kind: task
 title: Setup offers the speech key with the provider's data-use line
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1166
 branch: t/T-1369-setup-offers-the-speech-key-with-the
 created: 2026-10-27T05:46:51.082Z
-updated: 2026-10-28T22:54:58.744Z
+updated: 2026-10-28T22:56:21.254Z
 ---
 
 ## Summary
@@ -40,10 +40,13 @@ The remote-control page gains the speech key and its data-use line, and the tour
 
 - [x] C1. With a scripted prompter, setup shows the data-use line that `cland remote status` prints, reads a made-up key through the hidden question and stores it, ending in `done`; a decline prints `skip` and a present key `ok` (test).
   - done: impl-1369 · 2026-10-28T22:27:52.892Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1369-final1 · 2026-10-28T22:56:20.608Z · commit 33483bcddb0008221089895362274a54a2322bd2
 - [x] C2. With `provider = "command"` or `provider = ""`, setup asks nothing about a key, and without a terminal a missing ElevenLabs key prints `open` with `cland secret set speech.elevenlabs_key` (test).
   - done: impl-1369 · 2026-10-28T22:27:52.998Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1369-final1 · 2026-10-28T22:56:20.608Z · commit 33483bcddb0008221089895362274a54a2322bd2
 - [x] C3. The docs page and the tour stage name the speech key's command, and they pass the docs and onboarding command checks (test).
   - done: impl-1369 · 2026-10-28T22:30:13.628Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1369-final1 · 2026-10-28T22:56:20.608Z · commit 33483bcddb0008221089895362274a54a2322bd2
 
 ## Comments
 
@@ -110,3 +113,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13497 source3 clear. M2 resolved via exactly two fixture lines: pre-existing owned scratch gets private synthetic speech readiness. All original exit/favourite/roles/trust assertions preserved; no production change/dev merge. Item consumer inventory corrected. Reported local unchanged red11/2 to green13/13 and exact-head typecheck remain macOS evidence; A-13494/A-13496 remain failed partial Linux evidence. C1–C3 pending fresh configured original receipts. No Reviewer workloads or full run requested.
+
+### rev-31 · 2026-10-28T22:56:20.608Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1369-final1
+commit: 33483bcddb0008221089895362274a54a2322bd2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13508 configured final evidence clear; C1–C3 verified from original A-13504:4025 ordinary passes+70 separate load passes, seven new task identities each base+5/5, both favourite regressions/frozen help pass. T0/allT1/fallbackallT2/changedT3once/Web complete; remainingT3/T4 absent; actual Linux/CHS/host-tree/report-only limits retained. Existing scenario14.912s and advisory22.369s stanza need no allowance per Coordinator2b310cf4. Prior failed A-13494/A-13496 retained separately. Coordinator-required same-head full-all for six unchanged T3 consumers remains pending; this verdict does not satisfy it or permit enqueue before that gate. Head stays frozen.
+
+Criteria: C1 verified, C2 verified, C3 verified.
