@@ -68,6 +68,13 @@ keep the original bytes, one note deadline, bounded attempts and only transient
 retries. The fake records key presence only. Existing role clauses cover this
 boundary; add no permission lines.
 
+For command speech or provider selection, use
+`docs/agents/tests/hub-test-speech-command.test.ts.md`: sealed test-written Node
+scripts, literal argv, original stdin, the final credential filter, bounded
+redacted stderr and native close after deadline escalation. Use `speechProvider`
+with resolved secrets and the project registry; commands opt out of retries and
+receive the whole note deadline. Existing role clauses cover this boundary.
+
 For remote/speech configuration or reload, use the template/writer and frame/CLI
 seams in `docs/agents/tests/hub-test-config-set.test.ts.md`. Inject
 `gatewayMessenger` with the test messenger, resolve secrets inside the daemon,

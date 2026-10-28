@@ -1434,7 +1434,7 @@ polling. Other accepted input awaits its registered mirror or command handler.
 The messenger-neutral speech module (`hub/src/speech/index.ts`) supplies
 `SpeechProvider.transcribe({ audio, mime, filename, languageHint?, durationSec?, signal })`
 and `transcribeNote`. The wrapper defaults to one 90-second deadline, 30 seconds
-per attempt and at most two retries for rate-limited, unavailable or timeout;
+per cloud attempt and at most two retries for rate-limited, unavailable or timeout;
 backoff uses exponential jitter or Retry-After, bounded by the remaining deadline.
 Cancellation reports timeout. Other kinds (not-configured, auth, bad-audio,
 too-long, quota and command-failed) are terminal. Language codes and English names
@@ -1448,6 +1448,31 @@ redirects. The default host is `https://api.elevenlabs.io`; the test override
 no credentials, path, query or fragment. A missing key makes no request. The
 provider module alone does not activate gateway transcription. The existing
 `gatewayRemotes` fixture option retains its unconditional startup behavior.
+
+`speechProvider(settings.speech, secrets, { env, redact })` selects ElevenLabs,
+the command provider, or `null` when `provider = ""` (off). Resolved file secrets
+are accepted; `ELEVENLABS_API_KEY`, including an empty override, wins. The factory
+shares the project registry. `SPEECH_DATA_USE` supplies the provider-specific
+privacy lines for status/setup consumers.
+
+`CommandProvider` runs `[speech] command` as argv with `shell: false`, receives
+original audio bytes on stdin, and returns trimmed UTF-8 stdout. The final child
+environment strips remote/executor credentials and sets `CLAND_SPEECH_MIME` and
+`CLAND_SPEECH_LANGUAGE` (empty means detect). Stdout over 1 MiB is command-failed;
+stderr retains a bounded diagnostic tail redacted before display. Empty argv or
+an absent executable is not-configured. Nonzero exit/signal is command-failed.
+Commands opt out of retries, receive the whole note deadline (90 seconds by
+default), and cancellation sends SIGTERM then SIGKILL after 100 ms, joining native
+close before returning timeout. Each command owns a detached process group;
+escalation signals that group, including descendants holding inherited pipes.
+Cancellation settles only after native close and an ESRCH receipt for that group;
+a direct-child close alone does not prove descendants have been reaped.
+If native drainage is still incomplete two seconds after SIGKILL, the error
+reports incomplete drainage with the native exit/signal instead of waiting
+indefinitely. `resolveCommand(argv, env)` checks executable
+files at absolute paths or on PATH without starting them, returning a path or
+null for doctor. These provider exports alone do not activate gateway voice
+handling; the voice caller supplies the configured language and shared redactor.
 
 The role file retains its 500 ms auto-refresh and refresh before launches. A role
 edit validates and publishes the entire pair; config-only edits wait for an
@@ -2258,9 +2283,8 @@ does not change a running hub's environment.
 All four names, alongside `DIGITALOCEAN_TOKEN`, are removed by the shared
 `withoutExecutorCredentials` filter after child environment overlays. Harnesses,
 verification workers and fixture children use that filter. The speech command
-provider must use the same final filter when its launcher is implemented in
-E-1311; its generic child contract is covered here without a speech provider or
-platform call. The hub retains its own credentials for provider requests.
+provider uses the same final filter; its native launcher is covered by
+`hub/test/speech-command.test.ts` with synthetic credentials and disposable scripts. The hub retains its own credentials for provider requests.
 
 `cland secret` edits and lists the file only; environment overrides are never
 copied into it, changed by unset, or included in list output.

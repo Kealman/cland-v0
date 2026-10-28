@@ -3,7 +3,12 @@ import { remoteRedactor, type RemoteRedactor } from '../remote/redact.ts';
 
 export type SpeechInput = { audio: Uint8Array; mime: string; filename: string; languageHint?: string; durationSec?: number; signal?: AbortSignal };
 export type SpeechResult = { text: string; language?: string; durationSec?: number; segments?: Array<{ text: string; start: number; end: number }> };
-export interface SpeechProvider { name: string; transcribe(input: SpeechInput): Promise<SpeechResult> }
+export interface SpeechProvider {
+  name: string;
+  /** false: one whole-note attempt; transcribe must join its native I/O on abort. */
+  retry?: boolean;
+  transcribe(input: SpeechInput): Promise<SpeechResult>;
+}
 export type SpeechErrorKind = 'not-configured' | 'auth' | 'bad-audio' | 'too-long' | 'quota' | 'rate-limited' | 'unavailable' | 'timeout' | 'command-failed';
 export class SpeechError extends Error {
   readonly kind: SpeechErrorKind;
@@ -45,18 +50,23 @@ export async function transcribeNote(provider: SpeechProvider, input: SpeechInpu
       if (signal.aborted || clock.now().getTime() >= end) throw timeout();
       const controller = new AbortController();
       const attemptSignal = AbortSignal.any([signal, controller.signal]);
-      const attemptEnd = Math.min(end, clock.now().getTime() + 30_000);
+      const attemptEnd = Math.min(end, clock.now().getTime() + (provider.retry === false ? deadlineMs : 30_000));
       const attemptTimer = clock.setTimeout(() => controller.abort(), attemptEnd - clock.now().getTime());
       try {
-        const result = await abortable(() => provider.transcribe({ ...input, signal: attemptSignal }), attemptSignal, timeout);
+        const result = provider.retry === false
+          ? await provider.transcribe({ ...input, signal: attemptSignal })
+          : await abortable(() => provider.transcribe({ ...input, signal: attemptSignal }), attemptSignal, timeout);
         if (attemptSignal.aborted || clock.now().getTime() >= attemptEnd) throw timeout();
         return result;
       } catch (error) {
+        // Native command failures include their close/incomplete-drain receipt.
+        if (provider.retry === false && error instanceof SpeechError)
+          throw new SpeechError(error.kind, error.message, error.retryAfterMs, redact);
         if (signal.aborted || clock.now().getTime() >= end) throw timeout();
         const failure = error instanceof SpeechError
           ? new SpeechError(error.kind, error.message, error.retryAfterMs, redact)
           : new SpeechError('unavailable', 'Speech provider failed', undefined, redact);
-        if (attempt >= 2 || !['rate-limited', 'unavailable', 'timeout'].includes(failure.kind)) throw failure;
+        if (provider.retry === false || attempt >= 2 || !['rate-limited', 'unavailable', 'timeout'].includes(failure.kind)) throw failure;
         const retryAfter = failure.retryAfterMs;
         const delay = retryAfter !== undefined && Number.isFinite(retryAfter) && retryAfter >= 0
           ? retryAfter : 1_000 * 2 ** attempt * (0.5 + (options.random ?? Math.random)());

@@ -127,7 +127,7 @@ test('language codes, primary subtags and English names normalize to ISO 639-1',
   assert.equal(fake.requests[0]?.fields.model_id, 'custom');
 });
 
-test('each attempt is bounded at 30 seconds, cancellation stops retries, late success cannot escape', async t => {
+test('legacy providers without a retry policy retain 30-second attempts, bounded retries and cancellation', async t => {
   const fake = speechExchange(t);
   const clock = new ObservedClock();
   const signals: AbortSignal[] = [];

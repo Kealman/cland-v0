@@ -142,3 +142,10 @@ The provider registers its key before I/O. `SpeechError` redacts diagnostics at
 construction; unknown transport/provider errors use fixed messages. Provider
 response bodies and auth headers never become logs or request captures. See
 [the speech test seam](tests/hub-test-speech.test.ts.md).
+
+For command speech and provider selection, use `speechProvider` from
+`hub/src/speech/provider.ts` with the daemon environment, resolved secrets and
+project registry. The command uses the shared final credential filter and
+redacts stderr before publishing its bounded tail. Cancellation joins native
+close after SIGTERM/SIGKILL; commands run once within the note deadline.
+See [the command transport seam](tests/hub-test-speech-command.test.ts.md).
