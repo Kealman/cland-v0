@@ -118,6 +118,7 @@ export type Control = {
   remoteMuteDefault?: () => boolean;
   remoteTest?: (messenger: RemoteVia, pairing: import('../remote/state.ts').Pairing | null) => Promise<void>;
   remoteStatus?: () => import('../protocol.ts').RemoteStatusResult;
+  pairingApproved?: (messenger: RemoteVia, pairing: import('../remote/state.ts').Pairing) => void;
   pairingReplaced?: (messenger: RemoteVia, previous: import('../remote/state.ts').Pairing) => void;
   webLink?: (qr?: boolean) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
@@ -1871,6 +1872,7 @@ export class Dispatcher {
               remote.set('mute.missed', '0');
               core.inbox.pairingCodes.clear(frame.messenger);
             });
+            this.#options.control?.pairingApproved?.(frame.messenger, pairing);
             if (previous) this.#options.control?.pairingReplaced?.(frame.messenger, previous);
             return answer({ pairing });
           }

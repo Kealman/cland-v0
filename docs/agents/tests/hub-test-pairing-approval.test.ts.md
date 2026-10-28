@@ -28,3 +28,12 @@ Remote shape omits the callback and keeps serving, with an unavailable-notice
 diagnostic. Old Inbox/hello compatibility remains in
 `hub/test/pairing-codes.test.ts`. Keep strict recorded Neovim consumers green when
 changing the request union.
+
+Both numeric-persistence cases also retain the optional pairingApproved notification
+identity. The old Remote regression omits both pairing callbacks. Native Discord
+private approval edits use hub-test-discord-pairing.test.ts.md.
+
+The approval notification redaction control registers a fabricated secret after
+constructing the identity: the display name reaches the adapter as redacted
+content without disabling it; a numeric-id collision refuses notification and
+disables that adapter, preserving routing authority.

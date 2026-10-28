@@ -306,3 +306,4 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-remote-process.test.ts`](../../../hub/test/suite-remote-process.test.ts) | [Notes](hub-test-suite-remote-process.test.ts.md) |
 | [`hub/test/speech-command.test.ts`](../../../hub/test/speech-command.test.ts) | [Notes](hub-test-speech-command.test.ts.md) |
 | [`hub/test/speech.test.ts`](../../../hub/test/speech.test.ts) | [Notes](hub-test-speech.test.ts.md) |
+| [`hub/test/discord-pairing.test.ts`](../../../hub/test/discord-pairing.test.ts) | [Notes](hub-test-discord-pairing.test.ts.md) |

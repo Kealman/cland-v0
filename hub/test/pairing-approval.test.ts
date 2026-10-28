@@ -191,7 +191,7 @@ test('a configured messenger notice failure is redacted without rolling back the
 test('a previous Remote shape without a replacement callback remains usable and reports the missing notice', async t => {
   const root = await tempProject(t);
   const remote = testMessenger('telegram');
-  const { pairingReplaced: _callback, ...legacy } = remote;
+  const { pairingReplaced: _callback, pairingApproved: _approved, ...legacy } = remote;
   const log: Record<string, unknown>[] = [];
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [legacy], clock: new FakeClock(), log: entry => { log.push(entry); } });
   const nvim = await connectUi(t, hub.discovery, 'nvim');
@@ -227,6 +227,7 @@ for (const messenger of ['telegram', 'discord'] as const) test(`${messenger} app
   assert.deepEqual(after.pairings, before.pairings!.filter(row => row.messenger !== messenger));
   assert.equal(after.needsYou, before.needsYou - 3, 'the immediately reread inbox does not replay waiting codes');
   assert.deepEqual(remote.replacements, [], 'the first pairing replaces nobody');
+  assert.deepEqual(remote.approvals, [identity], 'optional notification receives the committed identity');
   // Equal names do not identify: a different numeric user/chat replaces this pairing.
   const nextIdentity = { ...identity, userId: '9007199254740995', chatId: '1234567890123456791' };
   remote.pair(nextIdentity);
@@ -238,6 +239,7 @@ for (const messenger of ['telegram', 'discord'] as const) test(`${messenger} app
   const repeated = await local.request({ type: 'pairing.approve', messenger, code: nextCode });
   assert.equal(repeated.ok, false, 'consumed codes cannot approve twice');
   assert.equal(remote.replacements.length, 1);
+  assert.deepEqual(remote.approvals, [identity, nextIdentity]);
   assert.deepEqual(other.replacements, [], 'replacement is messenger-scoped');
   await hub.stop();
   const store = new Store(join(root, '.cland', 'hub.db'));
@@ -247,4 +249,23 @@ for (const messenger of ['telegram', 'discord'] as const) test(`${messenger} app
     assert.equal(store.remotes.forMessenger(messenger).replies(identity.userId), 1, 'approval does not reset stranger limits');
     assert.equal(store.remotes.forMessenger(other.via).requests().length, 1);
   } finally { store.close(); }
+});
+
+test('approval notification redacts a newly registered display-name secret but refuses numeric identity collisions', async t => {
+  const { Gateway } = await import('../src/remote/gateway.ts');
+  const { remoteRedactor } = await import('../src/remote/redact.ts');
+  const { testRemoteStates } = await import('./fakes/messenger.ts');
+  const root = await tempProject(t); const hub = await projectHub(t, root);
+  const remote = testMessenger('discord', 'discord'); const state = testRemoteStates();
+  const redactor = remoteRedactor();
+  const gateway = new Gateway(hub.dispatcher, [remote], { state, redact: redactor });
+  onCleanup(t, () => gateway.stop()); await gateway.start();
+  const pairing = { userId: '90071992547409935', chatId: '90071992547409933', guildId: '90071992547409932', name: 'Fixture rotated credential' };
+  redactor.register([pairing.name]);
+  gateway.pairingApproved('discord', pairing);
+  assert.deepEqual(remote.approvals, [{ ...pairing, name: '[redacted]' }]);
+  assert.equal(state.forMessenger('discord').status().disabled, false);
+  redactor.register([pairing.userId]); gateway.pairingApproved('discord', pairing);
+  assert.equal(state.forMessenger('discord').status().disabled, true);
+  assert.equal(remote.approvals.length, 1, 'numeric identity cannot be rewritten into another destination');
 });

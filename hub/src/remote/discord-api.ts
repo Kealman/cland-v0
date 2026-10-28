@@ -49,6 +49,20 @@ export class DiscordApi {
   getCurrentApplication(options?: DiscordRequestOptions): Promise<DiscordApplication> {
     return this.#request('GET', '/oauth2/applications/@me', 'GET /oauth2/applications/@me', undefined, options);
   }
+  callback(id: string, token: string, content: string, options?: DiscordRequestOptions): Promise<unknown> {
+    return this.#request('POST', `/interactions/${encodeURIComponent(id)}/${encodeURIComponent(token)}/callback`, 'POST /interactions/:id/:token/callback',
+      { type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } }, options);
+  }
+  editOriginal(application: string, token: string, content: string, options?: DiscordRequestOptions): Promise<unknown> {
+    return this.#request('PATCH', `/webhooks/${encodeURIComponent(application)}/${encodeURIComponent(token)}/messages/@original`, 'PATCH /webhooks/:application/:token/messages/@original',
+      { content, allowed_mentions: { parse: [] } }, options);
+  }
+  listCommands(application: string, options?: DiscordRequestOptions): Promise<unknown[]> {
+    return this.#request('GET', `/applications/${encodeURIComponent(application)}/commands`, 'GET /applications/:application/commands', undefined, options);
+  }
+  putCommands(application: string, commands: object[], options?: DiscordRequestOptions): Promise<unknown[]> {
+    return this.#request('PUT', `/applications/${encodeURIComponent(application)}/commands`, 'PUT /applications/:application/commands', commands, options);
+  }
   getGatewayBot(options?: DiscordRequestOptions): Promise<DiscordGatewayBot> {
     return this.#request('GET', '/gateway/bot', 'GET /gateway/bot', undefined, options);
   }
@@ -81,12 +95,13 @@ export class DiscordApi {
           headers: { authorization: `Bot ${this.#token}`, 'user-agent': DISCORD_USER_AGENT, 'content-type': 'application/json', connection: 'close' },
           ...(body ? { body: JSON.stringify(body) } : {}) });
       } catch { throw new DiscordError(route, 0, 'request failed or exceeded its time bound'); }
+      if (response.status === 204 && response.ok) return undefined as T;
       let value: unknown;
       try { value = await response.json(); }
       catch { throw new DiscordError(route, response.status, 'invalid JSON response'); }
       if (!response.ok) {
         const error = value && typeof value === 'object' ? value as Record<string, unknown> : {};
-        throw new DiscordError(route, response.status, this.#redactor(typeof error.message === 'string' ? error.message : 'request refused'),
+        throw new DiscordError(route, response.status, route.includes(':token') ? 'interaction request refused' : this.#redactor(typeof error.message === 'string' ? error.message : 'request refused'),
           typeof error.code === 'number' && Number.isInteger(error.code) ? error.code : undefined,
           typeof error.retry_after === 'number' && Number.isFinite(error.retry_after) && error.retry_after >= 0 ? error.retry_after : undefined);
       }

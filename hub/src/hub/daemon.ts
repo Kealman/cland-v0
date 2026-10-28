@@ -330,6 +330,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
             mute: remote.get('mute') === 'true',
           }), botLink: publicLink };
         }) }),
+        pairingApproved: (messenger, pairing) => gateway?.pairingApproved(messenger, pairing),
         pairingReplaced: (messenger, previous) => gateway?.pairingReplaced(messenger, previous),
         webSessions: () => {
           if (!web) throw new Error('the web edge is unavailable');

@@ -112,7 +112,14 @@ refused; remote management authority is unchanged.
 The built-in Discord connection reads its application id when Discord is enabled
 and a token resolves. `cland remote status` exposes the bot invite with
 `scope=bot&permissions=117824`; connected requires READY and a recent heartbeat
-acknowledgement. Opening the invite does not pair a channel. The native connection
-layer alone does not handle Discord pairing interactions. Fake runs select an
+acknowledgement. Opening the invite does not pair a channel. Run `/cland pair` in a server text channel for a private code, then approve it
+with `cland remote approve discord <code>` on the trusted terminal or in Neovim.
+The code and in-memory interaction token expire after 15 minutes. Approval calls
+the optional `Remote.pairingApproved(pairing)` after the transaction commits;
+Discord edits the original private reply to Approved. Telegram and older adapters
+may omit the hook. A paired user can run pair in another channel to move the
+binding on approval; other users receive only private refusals. Global command
+registration compares the eight-subcommand definition before writing. See the
+[Discord pairing guide](tests/hub-test-discord-pairing.test.ts.md). Fake runs select an
 explicit loopback REST root with `CLAND_DISCORD_API_ROOT`; its gateway must also
 be loopback. No token belongs in a command argument or a frame.

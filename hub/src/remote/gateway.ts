@@ -31,6 +31,8 @@ export type Remote = {
   subscribe?: (changed: () => void) => () => void;
   /** Validate the token, then send exactly one line when a destination is paired. */
   test?: (pairing: Pairing | null, text: string) => void | Promise<void>;
+  /** Notify the adapter after local approval commits; absent on older remotes. */
+  pairingApproved?: (pairing: Pairing) => void | Promise<void>;
   /** Send one line to the captured old destination, never the newly paired chat. */
   pairingReplaced?: (previous: Pairing, text: string) => void | Promise<void>;
   /** Lifetime promise for the platform loop; stop must settle it and drain its writers. */
@@ -205,6 +207,16 @@ export class Gateway {
 
   /** A local reload retries runtime/startup failures even with unchanged configuration. */
   needsRestart(): boolean { return this.#disabled.size > 0; }
+
+  pairingApproved(messenger: RemoteVia, pairing: Pairing): void {
+    const remote = this.#started.find(remote => remote.via === messenger);
+    if (!this.#open || !remote || this.#disabled.has(remote) || !remote.pairingApproved) return;
+    try {
+      const safe = this.#output({ userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId, text: pairing.name });
+      const work = remote.pairingApproved({ userId: safe.userId, chatId: safe.chatId, guildId: safe.guildId, name: safe.text });
+      if (work) this.#observe(remote, work);
+    } catch (error) { this.#disable(remote, error); }
+  }
 
   pairingReplaced(messenger: RemoteVia, previous: Pairing): void {
     const remote = this.#started.find(remote => remote.via === messenger);

@@ -13,12 +13,12 @@ import type { DiscordActionRow, DiscordApplication, DiscordSessionStartLimit, Di
 export const DISCORD_TEST_TOKEN = 'fictional_discord_fixture_credential';
 export const DISCORD_IDS = {
   application: '90071992547409931', guild: '90071992547409932', channel: '90071992547409933',
-  secondChannel: '90071992547409934', human: '90071992547409935', member: '90071992547409936',
+  secondChannel: '90071992547409934', human: '90071992547409935', member: '90071992547409936', administrator: '90071992547409940',
   bot: '90071992547409937', role: '90071992547409938', webhook: '90071992547409939',
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; gateway: { identifies: number; heartbeats: number; payloads: number; validIdentify: boolean }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; gateway: { identifies: number; heartbeats: number; payloads: number; validIdentify: boolean }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
 function reply(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body));
 }
@@ -37,9 +37,10 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const events = new EventEmitter();
   const clock = options.clock ?? realClock;
   const redact = remoteRedactor([DISCORD_TEST_TOKEN]);
-  const state: DiscordState = { messages: [], requests: [], pings: [], redirectsFollowed: 0, gateway: { identifies: 0, heartbeats: 0, payloads: 0, validIdentify: false },
+  const state: DiscordState = { interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, gateway: { identifies: 0, heartbeats: 0, payloads: 0, validIdentify: false },
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
+  const interactionTokens = new Map<string, { id: string; at: number; callbacks: object[]; edits: object[] }>();
   const faults: Array<Record<string, unknown>> = [];
   const held = new Map<number, () => void>();
   let nextHold = 1;
@@ -72,9 +73,39 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       return reply(res, 200, {});
     }
     if (path.pathname === '/redirect-target') { state.redirectsFollowed++; return reply(res, 200, {}); }
+    if (path.pathname === '/control/interact') {
+      const id = String(nextId++), token = `synthetic_interaction_${id}`;
+      const record = { id, at: clock.now().getTime(), callbacks: [] as object[], edits: [] as object[] };
+      state.interactions.push(record); interactionTokens.set(token, record);
+      const user = body.user === 'member' ? DISCORD_IDS.member : body.user === 'administrator' ? DISCORD_IDS.administrator : DISCORD_IDS.human;
+      gateway.dispatch({ op: 0, t: 'INTERACTION_CREATE', s: Number(nextId % 100000n), d: {
+        id, token, application_id: DISCORD_IDS.application, type: 2,
+        guild_id: body.guild_id === null ? undefined : DISCORD_IDS.guild,
+        channel_id: body.channel_id ?? DISCORD_IDS.channel, channel: { type: body.channel_type ?? 0 },
+        member: { user: { id: user, username: body.user === 'member' ? 'Fixture member' : 'Fixture human' } },
+        data: { name: 'cland', options: [{ name: body.command ?? 'pair', type: 1 }] },
+      } });
+      return reply(res, 200, { id });
+    }
+    const callback = /^\/interactions\/(\d+)\/([^/]+)\/callback$/.exec(path.pathname);
+    const edit = /^\/webhooks\/(\d+)\/([^/]+)\/messages\/@original$/.exec(path.pathname);
+    if (callback || edit) {
+      const record = interactionTokens.get((callback ?? edit)![2]!);
+      if (!record || (callback && record.id !== callback[1]) || (edit && edit[1] !== DISCORD_IDS.application)) return reply(res, 404, { code: 10062 });
+      if (callback) {
+        if (clock.now().getTime() - record.at >= 3000) return reply(res, 404, { code: 10062 });
+        if (record.callbacks.length) return reply(res, 400, { code: 40060 });
+        record.callbacks.push(redact.value(body));
+      } else {
+        if (!record.callbacks.length || clock.now().getTime() - record.at >= 900000) return reply(res, 404, { code: 10015 });
+        record.edits.push(redact.value(body));
+      }
+      return reply(res, 200, {});
+    }
     if (path.pathname === '/control/dispatch') { gateway.dispatch(body); return reply(res, 200, {}); }
     if (path.pathname === '/control/configure') {
       gateway.configure(body);
+      if (Array.isArray(body.commands)) state.commands = body.commands;
       if (typeof body.gatewayUrl === 'string') gatewayUrl = body.gatewayUrl;
       application = { ...application, ...body.application as Partial<DiscordApplication>, id: DISCORD_IDS.application };
       if (body.session_start_limit) sessionStartLimit = body.session_start_limit as DiscordSessionStartLimit;
@@ -111,6 +142,10 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
         return reply(res, Number(fault.status ?? 500), { code: fault.code ?? 0,
           message: fault.echoToken ? DISCORD_TEST_TOKEN : 'Injected fault', retry_after: fault.retry_after });
       }
+    }
+    if (path.pathname === `/applications/${DISCORD_IDS.application}/commands`) {
+      if (req.method === 'PUT') { state.commands = body as unknown as object[]; state.commandWrites++; }
+      return reply(res, 200, state.commands);
     }
     if (path.pathname === '/oauth2/applications/@me') return reply(res, 200, application);
     if (path.pathname === '/gateway/bot') return reply(res, 200, { url: gatewayUrl ?? `ws://127.0.0.1:${(server.address() as { port: number }).port}`, session_start_limit: sessionStartLimit });
@@ -203,6 +238,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   onCleanup(t, close);
   let url = '';
   async function control(operation: 'state'): Promise<DiscordState>;
+  async function control(operation: 'interact', body: object): Promise<{ id: string }>;
   async function control(operation: 'say', body: object): Promise<DiscordMessage>;
   async function control(operation: 'configure' | 'fault' | 'release' | 'dispatch', body: object): Promise<Record<string, never>>;
   async function control(operation: string, body?: object): Promise<unknown> {

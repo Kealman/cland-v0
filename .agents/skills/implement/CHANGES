@@ -246,3 +246,5 @@ T-1382: route binary artifact upload work to frame/native-byte transaction and a
 
 T-1382 review: require exact registered-secret refusal without rewriting media bytes.
 - T-1398: document native Discord socket/frame/fake seam, ACK status and credential boundaries.
+
+T-1399: Document native Discord registration, pairing and optional approval notification seam.

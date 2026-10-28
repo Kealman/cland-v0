@@ -58,6 +58,10 @@ export class ConfiguredGateway {
     return this.#gateway?.status(messenger);
   }
 
+  pairingApproved(messenger: RemoteVia, pairing: Pairing): void {
+    this.#gateway?.pairingApproved(messenger, pairing);
+  }
+
   pairingReplaced(messenger: RemoteVia, previous: Pairing): void {
     this.#gateway?.pairingReplaced(messenger, previous);
   }

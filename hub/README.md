@@ -719,6 +719,13 @@ consumed and wrong-messenger codes grant no access. Identity comes from the
 stored request, never from extra caller fields. Binding and removal of all that
 messenger's waiting codes commit together in `hub.db`, preserving TEXT ids.
 
+After approval commits, the gateway calls optional `pairingApproved(pairing)`
+through ConfiguredGateway and the daemon control. Older adapters and Telegram
+may omit it. Discord uses it to edit the private pairing interaction to
+"Approved: this channel is paired with <project>". Tokens remain only in adapter
+memory, keyed to waiting codes, for at most 15 minutes, and are cleared on stop
+or approval. Callback failure cannot roll back the binding.
+
 After replacement, the gateway calls the adapter's optional
 `pairingReplaced(previous, text)` with the captured old numeric destination and
 one line: "This project is now paired with another chat." The adapter sends it
@@ -6689,8 +6696,8 @@ subsequent heartbeats follow the interval, and opcode 1 sends immediately.
 `cland remote status` reports connected only after READY and an acknowledgement
 within the last interval, with successful inbound/outbound timestamps and the
 application's invite (`scope=bot&permissions=117824`). Session facts remain in
-memory. This connection layer supplies no Discord pairing or message handlers;
-its optional native dispatch handlers are the extension point for those flows.
+memory. Discord pairing interactions use the native command router described below;
+message handlers use its optional native dispatch extension point.
 A connection failure disables only Discord and writes one General notice with
 its reason and reload guidance. Stop closes and joins the socket and clears
 heartbeat timers. The existing role and frame authority remain unchanged.
@@ -6699,3 +6706,26 @@ The token is private to the REST authorization header and gateway Identify;
 dispatch logs retain only validated event types and numeric ids. Native socket
 exceptions never become status or General text. See the
 [Discord connection test guide](../docs/agents/tests/hub-test-discord-messenger.test.ts.md).
+
+
+### Discord command registration and pairing
+
+When enabled with a resolved token and reachable API, Discord compares its global
+command list at startup and bulk-overwrites only a missing or changed definition.
+`/cland` is guild-only (`contexts [0]`, `integration_types [0]`), administrator
+visible (`default_member_permissions "0"`), with pair, status, inbox, mute, unmute,
+decision, question and help; decision and question require text. Pairing is
+implemented here; the other subcommands currently return a private availability
+note after checking the stored guild/channel/user identity.
+
+Run `/cland pair` in a guild text channel, then approve the private code locally
+with `cland remote approve discord <code>` or Neovim. The code lives 15 minutes;
+its private reply includes the numeric user id and approve command. Null pairing
+callback means silence. The paired user's pair in that channel names the project;
+in another channel it issues a code to move the remote on approval. A different
+user or a status in another channel gets a private refusal before any hub frame.
+The captured previous channel receives one replacement line. All snowflakes
+remain strings and TEXT through restarts. Native callbacks are type 4/flag 64,
+bypass outbound message lanes, and suppress mentions on sends and edits.
+Interaction tokens never enter frames, logs, journals or the database. See the
+[Discord pairing test guide](../docs/agents/tests/hub-test-discord-pairing.test.ts.md).

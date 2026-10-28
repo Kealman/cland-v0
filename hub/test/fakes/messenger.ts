@@ -29,13 +29,14 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
   let receiveFailure: { error: Error; type: string; async: boolean } | undefined;
   let tokenChecks = 0;
   const testLines: Array<{ pairing: Pairing; text: string }> = [];
+  const approvals: Pairing[] = [];
   const replacements: Array<{ pairing: Pairing; text: string }> = [];
   const client = frameClient(line => {
     if (!send || stopped) throw new Error('test messenger is not running');
     send(JSON.parse(line) as Record<string, unknown>);
   }, fn => { receive = fn; }, () => {});
   return {
-    id, via, client, delivery, replacements, testLines,
+    id, via, client, delivery, replacements, approvals, testLines,
     upload(frame: Record<string, unknown>, ingress: RemoteIngress, bytes: readonly Buffer[]) {
       if (!send || stopped) throw new Error('test messenger is not running');
       send(frame, ingress, bytes);
@@ -46,6 +47,7 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
       tokenChecks++;
       if (pairing) testLines.push({ pairing: { ...pairing }, text });
     },
+    pairingApproved(pairing: Pairing) { approvals.push({ ...pairing }); },
     pairingReplaced(pairing: Pairing, text: string) { replacements.push({ pairing: { ...pairing }, text }); },
     pair(identity: Pairing): string | null {
       if (!pair || stopped) throw new Error('test messenger pairing is not running');

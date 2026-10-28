@@ -662,3 +662,11 @@ Identify/header boundaries. Connection status requires READY plus a recent ACK;
 keep deterministic jitter, immediate opcode-1 heartbeat and per-messenger notices.
 Stop joins socket close and cancels timers. Existing frame shapes, optional
 callbacks and role clauses remain unchanged.
+
+For Discord command registration and pairing, use the sealed production-frame,
+CLI and loopback REST/ws seam in
+`docs/agents/tests/hub-test-discord-pairing.test.ts.md`. Compare global command
+writable fields before writing; callbacks remain private and bypass message lanes.
+Keep interaction tokens only in adapter memory with a 15-minute expiry. The
+optional pairingApproved hook follows the committed local grant; Telegram and
+older adapters may omit it. Existing role authority and frames remain unchanged.
