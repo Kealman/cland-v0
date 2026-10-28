@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:48.717Z
-updated: 2026-10-27T23:38:48.717Z
+updated: 2026-10-28T05:05:33.511Z
 ---
 
 > Pending: whether Discord attachments and voice stay in this epic (blocked by E-1311) or move to a 0.3.x release awaits the human's answer to ask 62b8d32f; the Coordinator's recommendation keeps them here. Do not launch before it is answered.
@@ -47,3 +47,9 @@ Spec §3.6 (inbound files, voice, bytes untouched), §3.8 (inbound voice); resea
 ## Notes
 
 Shared files: discord-inbound.ts; new hub/src/remote/discord-cdn.ts; hub/test/fakes/discord/ (CDN)
+
+## Comments
+
+### coord · 2026-10-28T05:05:33.511Z
+
+The human accepted the Coordinator's recommendation in ask 62b8d32f (2026-10-28 05:04Z, 'Да, все три рекомендации'). The pending note at the top of this item is resolved: build the behaviour as written; the hold is lifted and the ticket launches with its stage.

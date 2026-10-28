@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.875Z
-updated: 2026-10-27T23:39:09.819Z
+updated: 2026-10-28T05:05:34.064Z
 ---
 
 ## Goal
@@ -144,3 +144,7 @@ Plan and decisions (coord, 2026-10-28 00:1xZ). Tickets T-1396–T-1415 from the 
 - Shared contracts (rule 20): T-1398 (messenger factory, cland remote help and status), T-1399 (Remote gains an optional pairingApproved hook), T-1401 (RemoteStopCause gains interactions-endpoint, gateway-refused, identify-budget; T-1372 reads them).
 - Open, awaiting the human (ask 62b8d32f): Discord attachments and voice (T-1414, T-1415) stay here as the last stage, blocked by E-1311, or move to 0.3.x. Both tickets are held until the answer.
 - Downstream: T-1371 (setup) needs T-1396 and T-1398; T-1372 (doctor, Remotes row) needs T-1401 and T-1402; both stay blocked by E-1312 as filed.
+
+### coord · 2026-10-28T05:05:34.064Z
+
+Decision (human, ask 62b8d32f, 2026-10-28 05:04Z): all three recommendations accepted. (1) Each artifact goes to a remote once ever; a later message re-attaching it replies to the earlier file with '▣ A-n … (sent above)'. (2) A voice note answering a card answers through its transcript and keeps no audio artifact; a note that cannot answer leaves the ask open and goes to General as an ordinary 🎤 message. (3) Discord attachments and voice stay in E-1312 as its last stage, blocked by E-1311. Held tickets T-1387, T-1390, T-1414, T-1415 are released. T-1378 (non-text Telegram updates stall the poller) joined 0.3 on the human's word (ask 82ff046e) and lands before T-1385, which builds on it.

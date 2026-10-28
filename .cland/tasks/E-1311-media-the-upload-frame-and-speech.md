@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.753Z
-updated: 2026-10-27T23:47:38.100Z
+updated: 2026-10-28T05:05:33.933Z
 ---
 
 ## Goal
@@ -134,3 +134,7 @@ Plan and decisions (coord, 2026-10-28 00:0xZ). Tickets T-1381–T-1395 from the 
 ### coord · 2026-10-27T23:47:38.100Z
 
 Decision during the build (coord, 2026-10-28, on impl-1382's question): uploads and the one redactor. §3.6 "bytes, untouched" holds for every stored upload, so the redactor never rewrites an uploaded file. §3.12's one-redactor rule is met at `artifact.upload` by refusing any upload whose raw bytes contain a value the shared redactor knows (configured tokens and keys): exact byte match, every MIME type, nothing stored, no message, an error naming the kind (`secret-in-upload`) and the file but never the value; the gateway answers one line in the chat, the web composer shows the error. Captions and message text keep the existing text redaction. Applies to every producer of uploads (T-1382, T-1385, T-1388, T-1391, and E-1312's T-1414).
+
+### coord · 2026-10-28T05:05:33.933Z
+
+Decision (human, ask 62b8d32f, 2026-10-28 05:04Z): all three recommendations accepted. (1) Each artifact goes to a remote once ever; a later message re-attaching it replies to the earlier file with '▣ A-n … (sent above)'. (2) A voice note answering a card answers through its transcript and keeps no audio artifact; a note that cannot answer leaves the ask open and goes to General as an ordinary 🎤 message. (3) Discord attachments and voice stay in E-1312 as its last stage, blocked by E-1311. Held tickets T-1387, T-1390, T-1414, T-1415 are released. T-1378 (non-text Telegram updates stall the poller) joined 0.3 on the human's word (ask 82ff046e) and lands before T-1385, which builds on it.

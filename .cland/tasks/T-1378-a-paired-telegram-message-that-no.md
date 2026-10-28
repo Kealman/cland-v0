@@ -3,18 +3,18 @@ id: T-1378
 kind: task
 title: A paired Telegram message that no handler accepts (photo, sticker, voice, caption-only) blocks every later input in the chat
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: R-1278
 blocked_by: []
 regression_of: T-1341
-topic: null
-branch: null
+topic: topic-1137
+branch: t/T-1378-a-paired-telegram-message-that-no
 created: 2026-10-27T22:25:28.795Z
-updated: 2026-10-27T22:25:35.655Z
+updated: 2026-10-28T05:05:54.596Z
 ---
 
 ## Summary
