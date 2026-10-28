@@ -702,6 +702,11 @@ from `hub/test/tracker-reindex.ts` before checking projections. Healthy native
 watching has a 5 s safety stamp check; failed watching uses 500 ms. Receipt waits
 allow 15 s for loaded hosts and keep final semantic assertions.
 
+For speech doctor and status output, use the sealed CLI/fake speech seams in
+`docs/agents/tests/hub-test-doctor-remotes.test.ts.md` and
+`docs/agents/tests/hub-test-remote-cli.test.ts.md`. Doctor resolves presence only when a remote is enabled; unused/off speech is
+`ok` with its detail. Plain status computes data use from local config, keeping JSON/wire unchanged.
+
 For Discord application checks and terminal stops, use the sealed frame/REST/ws
 cases in `docs/agents/tests/hub-test-discord-messenger.test.ts.md`. Keep both
 Message Content flags, empty endpoint validation before Identify, one fresh

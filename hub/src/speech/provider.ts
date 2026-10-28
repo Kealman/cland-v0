@@ -6,6 +6,7 @@ import { ElevenLabsProvider } from './elevenlabs.ts';
 import type { SpeechProvider } from './index.ts';
 
 export const SPEECH_DATA_USE = {
+  '': 'Transcription is off; no audio is sent to a speech provider. Change provider in [speech].',
   elevenlabs: 'ElevenLabs may train on audio outside enterprise plans and stores transcripts; turn off "Improve the models for everyone" under Terms and privacy, Data use. Change provider in [speech].',
   command: 'The local speech command handles the audio; its own configuration controls data use. Change command or provider in [speech].',
 } as const;

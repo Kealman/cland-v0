@@ -25,3 +25,11 @@ zero fetch calls during doctor, equal fake API request lists before/after,
 and the connected status. Join the poll-close receipt at shutdown. This proves
 doctor's local status path with injected machine probes, not the networking
 behavior of independently installed toolchain binaries.
+
+Speech cases run doctor with a synthetic file key and a loopback fake ElevenLabs
+root and an enabled remote, retaining its literal fingerprint, absence of the key in output, missing-key
+fix and zero provider requests. Command mode resolves a disposable PATH executable
+with a write marker, proves that marker stays absent, and warns for missing and
+empty argv. Off mode omits provider-specific checks and reports ok "transcription off".
+Without an enabled remote either provider reports ok "speech unused until a
+remote is set up", with no key/command warning; repair tests stay unchanged. No paid service is used.

@@ -1,6 +1,10 @@
+import { basename, join } from 'node:path';
+import { readText } from '../init/files.ts';
+import { defaultConfig, parseConfig } from '../init/config.ts';
+import { SPEECH_DATA_USE } from '../speech/provider.ts';
 import { REMOTE_USAGE } from './usage.ts';
 import { parseArgs } from 'node:util';
-import { hubDiscovery, readDiscovery } from '../project.ts';
+import { hubDiscovery, projectRoot, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 import type { Pairing } from '../remote/state.ts';
 import type { RemoteStatusResult } from '../protocol.ts';
@@ -39,6 +43,13 @@ export async function runRemote(args: string[], cwd = process.cwd()): Promise<nu
   else {
     const { pairing } = value as { pairing: Pairing };
     text = `paired ${messenger}: ${pairing.name} (${pairing.userId})`;
+  }
+  if (sub === 'status' && !values.json) {
+    const root = discovery.root ?? projectRoot(cwd);
+    const configText = readText(join(root, '.cland/config.toml'));
+    const config = configText === null ? defaultConfig(basename(root)) : parseConfig(configText, basename(root));
+    const provider = config.speech.provider;
+    text += `\n\nspeech: ${provider || 'off'}. ${SPEECH_DATA_USE[provider]}`;
   }
   process.stdout.write(`${values.json ? JSON.stringify(value) : text}\n`);
   return 0;

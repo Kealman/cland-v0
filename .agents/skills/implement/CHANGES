@@ -255,6 +255,9 @@ T-1377: Document exact tracker save/removal receipts, retained 15 s bounds and h
 
 T-1417: Bound native-close fixture drainage from disposal, with delayed-setup controls and independent acquisition receipts.
 
+T-1394: point speech diagnostics changes to sealed CLI and fake-provider regressions.
+
+T-1394: keep unused/off speech healthy and gate key/command warnings on an enabled remote.
 2026-10-28 · T-1404: Discord REST header lanes, callback bypass and native nonce-recovery seams.
 T-1401: document Discord application checks, fatal stops and sealed test receipts.
 

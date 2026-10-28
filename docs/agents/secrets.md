@@ -90,6 +90,16 @@ including environment overrides; `cland secret list` reports the file only.
 token presence/fingerprint, reads enabled settings from config, and asks only
 the local running hub for connection and pairing. It makes no platform or paid
 call; `cland remote test <messenger>` remains the explicit platform check.
+Doctor reports `ok` with "speech unused until a remote is set up" when no remote
+is enabled, or "transcription off" for an empty provider. With at least one remote
+enabled, it reports `speech provider` and the resolved ElevenLabs key's
+presence/fingerprint or `cland secret set speech.elevenlabs_key`, and executable
+lookup for the command provider without running it. Empty or missing commands
+warn with the fix to edit `[speech] command`. Plain `cland remote status` appends
+`SPEECH_DATA_USE` for the current local config's provider, including the ElevenLabs
+training opt-out and stored transcripts; it points to `[speech]` for changes.
+The footer is local, while messenger facts describe loaded hub settings; JSON
+and wire replies stay unchanged.
 Stopped clients are warnings with the same cause/fix wording as General and
 the structured stopped line in `cland remote status`.
 The additive optional `remote.status` field `stopCause` preserves the old

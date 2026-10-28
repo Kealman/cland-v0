@@ -6,7 +6,7 @@ import { setSecret } from '../src/remote/secrets.ts';
 import { connectUi, projectHub } from './harness.ts';
 import { testMessenger } from './fakes/messenger.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
-import { writeFile } from 'node:fs/promises';
+import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Check } from '../src/doctor/report.ts';
 import { until } from './harness.ts';
@@ -17,6 +17,7 @@ import { telegramLivenessFixture } from './telegram-liveness-fixture.ts';
 import { control } from './telegram-polling-fixture.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { onCleanup } from './process-cleanup.ts';
+import { fakeSpeech } from './fakes/speech/fake-api.ts';
 import { legacyRemoteHubFixture } from './fakes/legacy-remote-hub.ts';
 
 const checks = (stdout: string): Check[] => (JSON.parse(stdout) as { checks: Check[] }).checks;
@@ -158,4 +159,82 @@ test('doctor reports unavailable local status when the old hub refuses remote st
   const rows = checks((await doctor(root, tools.env, '--json')).stdout);
   assert.equal(named(rows, 'telegram connection').detail, 'local remote status unavailable');
   assert.equal(named(rows, 'telegram connection').verdict, 'warn');
+});
+
+
+test('doctor reports speech key presence and fingerprint without a provider request or key value', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const config = defaultConfig('Active speech doctor');
+  config.remote.telegram.enabled = true;
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const api = await fakeSpeech(t);
+  const env = { ...tools.env, CLAND_ELEVENLABS_API_ROOT: api.url };
+  const key = 'made_up_doctor_speech_key';
+  setSecret(root, 'speech.elevenlabs_key', key);
+  const present = await doctor(root, env, '--json');
+  const rows = checks(present.stdout);
+  assert.deepEqual(named(rows, 'speech provider'), { name: 'speech provider', verdict: 'ok', detail: 'elevenlabs' });
+  assert.deepEqual(named(rows, 'speech elevenlabs key'), { name: 'speech elevenlabs key', verdict: 'ok', detail: 'present (d7d075072edc)' });
+  assert.equal((present.stdout + present.stderr).includes(key), false);
+  await writeFile(join(root, '.cland/secrets.toml'), '');
+  const absent = await doctor(root, env, '--json');
+  assert.deepEqual(named(checks(absent.stdout), 'speech elevenlabs key'), {
+    name: 'speech elevenlabs key', verdict: 'warn', detail: 'absent', fix: 'cland secret set speech.elevenlabs_key',
+  });
+  assert.deepEqual(api.requests, []);
+});
+
+
+test('doctor resolves speech command on PATH without executing and warns for missing or empty argv', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const executable = join(root, 'speech-probe');
+  const marker = join(root, 'command-ran');
+  await writeFile(executable, `#!/bin/sh\nprintf ran > "${marker}"\n`);
+  await chmod(executable, 0o700);
+  const config = defaultConfig('Speech doctor');
+  config.speech.provider = 'command';
+  config.remote.telegram.enabled = true;
+  const env = { ...tools.env, PATH: `${root}:${tools.env.PATH}` };
+  for (const [argv, verdict, detail] of [
+    [['speech-probe'], 'ok', executable],
+    [['missing-speech-probe'], 'warn', 'argv[0] not found: missing-speech-probe'],
+    [[], 'warn', 'empty command'],
+  ] as const) {
+    config.speech.command = [...argv];
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+    const rows = checks((await doctor(root, env, '--json')).stdout);
+    assert.equal(named(rows, 'speech provider').detail, 'command');
+    const command = named(rows, 'speech command');
+    assert.equal(command.verdict, verdict);
+    assert.equal(command.detail, detail);
+    if (verdict === 'warn') assert.equal(command.fix, 'edit [speech] command in .cland/config.toml');
+    assert.equal(rows.some(row => row.name === 'speech elevenlabs key'), false);
+  }
+  await assert.rejects(readFile(marker), { code: 'ENOENT' });
+  config.speech.provider = '';
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const off = checks((await doctor(root, env, '--json')).stdout);
+  assert.equal(named(off, 'speech provider').detail, 'transcription off');
+  assert.equal(off.some(row => row.name === 'speech command'), false);
+});
+
+
+test('doctor keeps unused speech healthy without remotes and reports transcription off', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const config = defaultConfig('Unused speech doctor');
+  for (const provider of ['elevenlabs', 'command', ''] as const) {
+    config.speech.provider = provider;
+    config.speech.command = ['missing-unused-command'];
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+    const result = await doctor(root, tools.env, '--json');
+    const rows = checks(result.stdout);
+    assert.deepEqual(named(rows, 'speech provider'), { name: 'speech provider', verdict: 'ok',
+      detail: provider ? 'speech unused until a remote is set up' : 'transcription off' });
+    assert.equal(rows.some(row => row.name === 'speech elevenlabs key' || row.name === 'speech command'), false);
+    const plain = await doctor(root, tools.env);
+    assert.ok(plain.stdout.includes(provider ? 'speech unused until a remote is set up' : 'transcription off'));
+  }
 });

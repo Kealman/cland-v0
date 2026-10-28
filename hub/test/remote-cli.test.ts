@@ -326,3 +326,51 @@ test('remote test after token rotation masks a colliding display name and refuse
     assert.equal(text.includes(identity.name) || text.includes(identity.userId), false);
   }
 });
+
+
+test('remote status ends with local speech data use for ElevenLabs, command and off with unchanged JSON', async t => {
+  const root = await tempProject(t);
+  await legacyRemoteHubFixture(t, root, { legacyStatus: true }).start();
+  const config = defaultConfig('Speech status');
+  const expected = [
+    ['elevenlabs', 'speech: elevenlabs. ElevenLabs may train on audio outside enterprise plans and stores transcripts; turn off "Improve the models for everyone" under Terms and privacy, Data use. Change provider in [speech].'],
+    ['command', 'speech: command. The local speech command handles the audio; its own configuration controls data use. Change command or provider in [speech].'],
+    ['', 'speech: off. Transcription is off; no audio is sent to a speech provider. Change provider in [speech].'],
+  ] as const;
+  let previous: unknown;
+  for (const [provider, line] of expected) {
+    config.speech.provider = provider;
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+    const result = await cland(root, 'remote', 'status');
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stdout.trimEnd().split('\n').at(-1), line);
+    const json = await cland(root, 'remote', 'status', '--json');
+    assert.equal(json.code, 0, json.stderr);
+    const value: unknown = JSON.parse(json.stdout);
+    if (previous) assert.deepEqual(value, previous);
+    previous = value;
+    assert.equal(json.stdout.includes('speech'), false);
+  }
+});
+
+test('remote status from a nested directory uses owning project speech config with old hub JSON unchanged', async t => {
+  const root = await tempProject(t);
+  const nested = join(root, 'src/nested');
+  await mkdir(nested, { recursive: true });
+  await legacyRemoteHubFixture(t, root, { legacyStatus: true }).start();
+  const config = defaultConfig('Nested speech status');
+  const baseline = await cland(root, 'remote', 'status', '--json');
+  assert.equal(baseline.code, 0, baseline.stderr);
+  for (const provider of ['command', ''] as const) {
+    config.speech.provider = provider;
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+    const result = await cland(nested, 'remote', 'status');
+    assert.equal(result.code, 0, result.stderr);
+    const line = result.stdout.trimEnd().split('\n').at(-1)!;
+    assert.ok(line.startsWith(`speech: ${provider || 'off'}. `), line);
+    assert.equal(line.includes('ElevenLabs'), false);
+    const json = await cland(nested, 'remote', 'status', '--json');
+    assert.equal(json.code, 0, json.stderr);
+    assert.deepEqual(JSON.parse(json.stdout), JSON.parse(baseline.stdout));
+  }
+});

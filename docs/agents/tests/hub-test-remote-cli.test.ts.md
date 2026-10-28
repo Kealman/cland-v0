@@ -52,3 +52,12 @@ unchanged numeric destination. A subsequent token equal to a numeric id must
 refuse before invoking the client; its diagnostic and drained log/journal remain
 safe. Keep this content-versus-routing distinction in the test callback as in
 pairing issuance and replacement notices.
+
+Speech data use uses the literal previous-hub status reply and changes only local
+config through ElevenLabs, command and off. Retain each exact final text line
+(training opt-out, stored transcripts and configuration location), identical JSON
+across all settings, and absence of speech fields from JSON. No reload or provider
+request is needed: the footer describes local config, not loaded hub settings.
+
+Nested-directory status uses the owning project config for command/off, with a
+previous-hub reply and identical JSON. Retain this against cwd-based defaults.

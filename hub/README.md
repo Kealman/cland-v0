@@ -2360,7 +2360,25 @@ through stdin or the hidden prompt, then run `cland hub reload`. With an enabled
 configured client and resolved token, reload drains the old client and starts its
 replacement. Pairing ids and mute remain in `hub.db`; each new pairing starts
 with the loaded `remote.mute_default`. Environment overrides still take precedence.
-The speech provider's data-use line is supplied by the media/speech feature.
+Plain `cland remote status` ends with the speech provider's data-use line from
+local `.cland/config.toml` (default `elevenlabs` when absent). It names ElevenLabs's
+possible training outside enterprise plans and stored transcripts, and how to
+turn off "Improve the models for everyone" under Terms and privacy, Data use.
+The `command` line defers data use to that command's configuration; the empty
+provider says transcription is off. Each line points to `[speech]` to change it.
+This footer reads current local config, independently of the hub's loaded
+settings; `--json` and the `remote.status` frame retain their existing shape.
+
+Doctor reads the same current speech config and resolved secrets, including
+`ELEVENLABS_API_KEY` over the file value. It prints `speech provider` with the
+name when at least one remote is enabled. With no enabled remote it reports
+`ok` with "speech unused until a remote is set up"; an empty provider reports
+`ok` with "transcription off". Only an enabled remote triggers the provider's
+key or command checks. ElevenLabs adds key presence/fingerprint or the fix
+`cland secret set speech.elevenlabs_key`. Command mode checks executable presence
+on PATH (or an absolute argv[0]) with `resolveCommand`, printing its path or a
+warning to edit `[speech] command`. Empty argv warns too. No provider request or
+command execution occurs; existing role permissions and clauses are unchanged.
 
 ### Remote state in the workbenches
 

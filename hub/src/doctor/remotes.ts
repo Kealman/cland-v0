@@ -7,6 +7,7 @@ import { layout, pidAlive, readDiscovery } from '../project.ts';
 import { askHubFrame } from '../cli/socket-client.ts';
 import type { RemoteStatusResult } from '../protocol.ts';
 import { remoteRedactor } from '../remote/redact.ts';
+import { resolveCommand } from '../speech/command.ts';
 import { remoteStopDetails } from '../remote/notices.ts';
 
 /** Local credential presence only; validation never constructs a platform client. */
@@ -19,10 +20,19 @@ export async function checkRemotes(root: string, env: NodeJS.ProcessEnv): Promis
   } catch {
     return [fail('remote config', 'cannot read remote enabled settings', 'repair .cland/config.toml')];
   }
+  const speechUsed = config.remote.telegram.enabled || config.remote.discord.enabled;
+  out.push(ok('speech provider', !config.speech.provider ? 'transcription off'
+    : speechUsed ? config.speech.provider : 'speech unused until a remote is set up'));
   let redact = remoteRedactor();
   try {
     const secrets = resolveSecrets(root, env);
     redact = remoteRedactor(Object.values(secrets));
+    if (speechUsed && config.speech.provider === 'elevenlabs') {
+      const key = secrets['speech.elevenlabs_key'];
+      out.push(key === undefined
+        ? warn('speech elevenlabs key', 'absent', 'cland secret set speech.elevenlabs_key')
+        : ok('speech elevenlabs key', `present (${secretFingerprint(key)})`));
+    }
     for (const messenger of ['telegram', 'discord'] as const) {
       const token = secrets[`${messenger}.token`];
       out.push(token === undefined && config.remote[messenger].enabled
@@ -31,6 +41,13 @@ export async function checkRemotes(root: string, env: NodeJS.ProcessEnv): Promis
     }
   } catch {
     out.push(fail('remote secrets', 'cannot resolve project secrets', 'check .cland/secrets.toml and remote environment overrides; use cland secret set <messenger>.token'));
+  }
+  if (speechUsed && config.speech.provider === 'command') {
+    const command = resolveCommand(config.speech.command, env);
+    out.push(command ? ok('speech command', redact.text(command))
+      : warn('speech command', config.speech.command[0]
+        ? `argv[0] not found: ${redact.text(config.speech.command[0])}` : 'empty command',
+      'edit [speech] command in .cland/config.toml'));
   }
   const discovery = readDiscovery(layout(root).discovery);
   let status: RemoteStatusResult | undefined;
