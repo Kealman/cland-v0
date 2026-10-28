@@ -3,7 +3,7 @@ id: T-1369
 kind: task
 title: Setup offers the speech key with the provider's data-use line
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -14,10 +14,10 @@ blocked_by:
   - T-1367
   - T-1368
   - E-1311
-topic: null
-branch: null
+topic: topic-1166
+branch: t/T-1369-setup-offers-the-speech-key-with-the
 created: 2026-10-27T05:46:51.082Z
-updated: 2026-10-27T22:46:20.450Z
+updated: 2026-10-28T22:23:15.933Z
 ---
 
 ## Summary

@@ -2,7 +2,8 @@
 id: E-1311
 kind: epic
 title: Media, the upload frame and speech
-state: open
+state: closed
+criterion_seq: 10
 labels:
   - epic
   - v0.3
@@ -11,10 +12,11 @@ assignee: null
 parent: R-1278
 blocked_by:
   - E-1310
-topic: null
+topic: topic-1163
 branch: null
 created: 2026-10-25T14:11:59.753Z
-updated: 2026-10-28T08:31:39.116Z
+updated: 2026-10-28T22:22:46.077Z
+closed: 2026-10-28T22:22:46.077Z
 ---
 
 ## Goal
@@ -53,15 +55,25 @@ QA runs the demo below on `dev` against the fake Bot API and a fake speech provi
 In a scratch project with the human paired on the fake, QA sends a photo with a caption, a document, a three-photo album and a 25 MB file, and reads the artifacts and messages in General and the reply about the oversized file. An agent posts a message with an image and a PDF, a single artifact with a short text, and a 60 MB file, and QA reads what the chat receives and checks that each artifact went once. QA sends a voice note, an audio file, a video note and a video, then a voice note with no key, one the fake provider fails, one with silence, one past `max_seconds`, and a voice reply to an open card, reading General, the echo and the answered ask. It switches to a fake `command` provider and transcribes again, then sets `provider = ""`. In headless Chromium it attaches a PNG in the composer and views PNG, JPEG, GIF and WebP artifacts inline, and in headless Neovim it opens an image. Finally it reads doctor's speech lines and `cland remote status`.
 
 - [ ] C1. `artifact.upload` creates the artifacts and one human message in one step without a ▣ post, refuses a file over the `[artifacts]` limit, and counts as a send for a remote.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.099Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C2. The web composer attaches files through the web edge's HTTP endpoint, and the web's artifact viewer renders PNG, JPEG, GIF and WebP inline under a size cap.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.099Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C3. Neovim opens an image artifact in the system viewer.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C4. Photos and documents from Telegram become the human's artifacts on one message with the caption as its text, an album is one message stored before the offset is confirmed, and a file over 20 MB gets a reply.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C5. Outbound images up to 10 MB go as photos and files up to 50 MB as documents, each artifact once per remote with the header as its caption, and larger files as a line with the name and path.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C6. The speech seam has the spec's shape and nine failure kinds, sends the original bytes with their MIME type, refuses redirects, and redacts keys from every error.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C7. The `elevenlabs` and `command` providers work as spec §3.6 says, `provider = ""` turns transcription off, and the command runs from an argv array with no remote secret in its environment.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C8. Voice notes, audio files and video notes are transcribed, videos and documents are not, and the length is checked before download, under one 90-second deadline with at most two retries for transient failures.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C9. A voice note becomes the human's 🎤 message with the audio attached, a missing key or a failure still posts the audio with one line in the chat, and the bot echoes the transcript with its timings and provider.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 - [ ] C10. A voice reply to a card answers its ask, doctor shows the speech key's presence and the command's resolution, and `cland remote status` shows the provider's data-use line.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-28-677-1311 · 2026-10-28T22:22:12.100Z · commit caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
 
 ## Constraints
 
@@ -146,3 +158,48 @@ Decision during the build (coord, 2026-10-28 08:3xZ, on T-1394's red doctor test
 ### coord · 2026-10-28T08:31:39.116Z
 
 Correction to the previous comment: doctor has only ok|warn|fail, so the no-remote and transcription-off cases report ok with a plain detail ('speech unused until a remote is set up' / 'transcription off'), not a new skip verdict; the doctor JSON contract is unchanged. With a remote enabled: missing key or unresolvable command → warn with the fix; present → ok.
+
+### qa-677 · 2026-10-28T22:22:12.100Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-28-677-1311
+commit: caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| case | surface / executor | result | evidence |
+| --- | --- | --- | --- |
+| M1 | hub-api / local macOS | PASS | A-13483: hub_test_artifact-upload.test.ts.log, hub_test_gateway.test.ts.log, hub_test_config-set.test.ts.log |
+| M2 | web-terminal / local macOS | PASS | A-13483: hub_test_web-upload.test.ts.log, hub_test_web-authority.test.ts.log, web_test_uploads.test.ts.log, web_test_artifacts.test.ts.log |
+| M3 | headless-grid / local macOS | PASS | A-13483: nvim_test_artifact-upload.test.ts.log |
+| M4 | hub-api / local macOS | PASS | A-13483: hub_test_telegram-inbound.test.ts.log |
+| M5 | hub-api / local macOS | PASS | A-13483: hub_test_telegram-artifacts.test.ts.log, hub_test_telegram-api.test.ts.log |
+| M6 | hub-api / local macOS | PASS | A-13483: hub_test_speech.test.ts.log, hub_test_speech-command.test.ts.log |
+| M7 | hub-api / local macOS | PASS | A-13483: hub_test_speech.test.ts.log, hub_test_speech-command.test.ts.log, hub_test_secrets-environment.test.ts.log, hub_test_telegram-voice-command.test.ts.log |
+| M8 | hub-api / local macOS | PASS | A-13483: hub_test_speech.test.ts.log, hub_test_telegram-voice.test.ts.log |
+| M9 | hub-api / local macOS | PASS | A-13483: hub_test_telegram-voice.test.ts.log |
+| M10 | hub-api / local macOS | PASS | A-13483: hub_test_telegram-voice-answers.test.ts.log, hub_test_doctor-remotes.test.ts.log, hub_test_remote-cli.test.ts.log |
+| M11 | hub-api / local macOS | PASS | A-13483: site_test_remote-docs.test.ts.log, hub_test_remote-docs.test.ts.log |
+| M12 | hub-api / local macOS | PASS | A-13483: landings-qualified.json, cover-summary.json, plan.json |
+
+Findings: none in scope. C1–C10 verified in run qa-dod-2026-10-28-677-1311 at caf0c17bbec0107f8a9d93e2d1beb5b8a8e63607. Clean detached checkout, fetched origin/dev and dev matched the pin; final demo freshness current:true.
+
+The 21 brief files ran serially on local macOS darwin arm64 / Node v24.21.0: 302 passes, 0 failures/skips/cancellations, 295 distinct generated cases (seven site docs cases execute again through the hub wrapper). All 80 required generated names matched passing output and pinned source. One additional served-page stamp check passed, excluded from 302. Web build exited0. Isolated Chrome Headless Shell156.0.8078.4/revision1248 and pinned Neovim v0.12.5; M3 actually ran, with CLAND_OPENER stub, no GUI viewer. The separate PATH nvim0.11.2 probe was not the test binary; nvim-identity.json records the pinned resolver. Built/served/pinned-source Web stamp matches 18a9c1d659bd6233bcf7ac40f3b8a6ed4724d7dd4c05f7d0948e2ab0d4e43f28.
+
+M5 exact 10 MiB threshold is source evidence: recognized images <=10*1024*1024 are photos, larger files through <=50*1024*1024 documents, larger still path text. No exact-10 MiB runtime case claimed. M6 exported transcribe input/result and nine failure kinds match spec §3.6; this is source shape evidence plus historical T0 typecheck. Retry/deadline assertions use controlled clocks, not measured production timing. M9 audio albums without transcripts and M10 successful voice answers without retained audio follow the human decisions named in the brief. Doctor/status ran only in sealed stores against stand-ins.
+
+M12: all 15 children closed done with clear hub review, an accepted green verify at that reviewed head, dev Item/Reviewed-by landing receipt and cover ancestry. Eleven source/landing patch ids match directly. For T-1381/1382/1383/1386 only a leading blank line in .agents/skills/implement/CHANGES differs; every other per-file delta and nonblank changelog addition matches. Exact differences retained; no waiver. All three stages are closed with paired covers. Cover→pin changes only tracker, durations.json and brief; all 21 test blobs match.
+
+Historical covers at adf3140ca2398e9dc3dc22bf532ef00dadcde44d / tree dde5469e574ac5f1f29353e506607a6ac2bb2c06: Linux droplet402bf5d7/A-13471 has5537 tests,5528 passes,9 skips; macOS446b22fd/A-13476 has5537 tests,5536 passes,1 skip. Both native result0/green, zero failures, every landing contained, all295 scoped cases pass including M3. T0/T1/T2/T3/baseT4/Web complete. OuterT4 repetitions skipped; lint/budgets/ratchet report-only (incomplete base timing records), no performance acceptance. Both Node24.21/Neovim0.12.5; Linux x64 CHS156.0.8078.4/build1248, historical macOS exact browser version unrecorded.
+
+Historical Linux c-8 lon1 shards: cland-v0-1ca1515c admission-through-finish1409.85s, provider lifetime1383.184s,$0.09605444; cland-v0-262f2323 1282.85s,lifetime1252.305s,$0.08696563; total$0.18302007. These are provider accounting, not pure test wall time. Local QA used no lease/new droplet; lifetime/cost not applicable. No full-suite rerun or load repetitions.
+
+Final evidence A-13483: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13483-e-1311-dod-qa-clear-at-caf0c17b-final-evidence/report.md. Twelve recorder rows, per-file native outputs, exact names/source checks, landing/cover receipts, browser stamps and publication scan are retained;71 copied-file hashes verified. Conservative sanitization also masks public helper-word collisions. Interim A-13482 is archived and superseded; no test or recorder row was rerun. All activity used sealed shared environment builders and fake services; no real bot/key, sandbox secrets or raw credential-bearing trace exported.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-10-28T22:22:46.077Z
+
+Closed on QA clear qa-dod-2026-10-28-677-1311 at caf0c17b (A-13483): C1–C10 verified, M1–M12 pass. Stages closed by covers 1a4d9946/c75e81d3 (stage 1), 0bbe819e/af00dc78 (stage 2) and 402bf5d7/446b22fd (stage 3). Decisions: once-per-remote artifacts; a voice reply to a card keeps no audio (62b8d32f); uploads refuse registered secrets; an audio album stays one message without transcripts, with per-file transcripts deferred to T-1433 (c848fe23).
