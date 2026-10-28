@@ -11,3 +11,8 @@ T-542: Public T2 merge/merge.queue frames retain sorted workspace/root manifest 
 T-1207: Public merge/topic.history frames assert successful enqueue and the exact epic/files in advisory demo warnings, routed to Coordinator/item lead. Git history is injected; lease files and tracker landing/verdict records are seeded only in the sealed disposable root. Active unexpired leases (even after an earlier recorded demo) and due demos warn; stage QA does not complete a demo. Building, completed, closed, unlanded and unrelated epics remain quiet, as do expired/released leases after a recorded demo. The merge reply is the warning publication boundary, so history is read after that receipt without elapsed-time waits.
 
 T-1207 M1: Corrupt lease JSON and null, malformed or throwing Git history reads retain a successful enqueue/queue entry and exact unavailable-warning diagnostic. Only diagnostic reads are faulted; existing admission/authorization controls stay active.
+
+T-1425 seeds a closed task with its durable merge receipt and an old failed
+batch before projectHub starts. Observe the injected repository's cleanup
+receipt, then assert the public merge.queue frame has cleared the batch.
+Preparation, checkout and budget reads fail the test: recovery needs no new run.

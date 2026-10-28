@@ -77,6 +77,81 @@ const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/ex
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
 
+for (const restart of [false, true]) test(`all-terminal blocked batch clears ${restart ? 'at startup' : 'after manual merge'} and batches the next entry`, async t => {
+  const state = await fixture(t);
+  const { f, entries, boundary, landed } = state;
+  const cleaned: string[] = [];
+  boundary.cleanup = async candidate => { cleaned.push(candidate.cwd); };
+  await state.runner.tick();
+  const batch = state.runner.snapshot()!;
+  await f.finish(batch.run!);
+  // A pre-upgrade failed follow-up, reconciled through ordinary merge later.
+  batch.failed = 'merged, follow-up failed: stop sessions: cannot inspect the OS process table: ps failed or timed out';
+  f.store.setMeta('merge-batch', JSON.stringify(batch));
+  const members = [...entries];
+  for (const entry of members) await boundary.land(entry, batch.candidate!);
+  entries.push(...members.map((entry, index) => ({ ...entry, item: `T-${index + 4}` })));
+  if (restart) await state.reopen();
+  await state.runner.tick();
+  assert.deepEqual(cleaned, [f.root]);
+  await state.runner.tick();
+  assert.deepEqual(state.runner.snapshot()?.members.map(entry => entry.item), ['T-4', 'T-5', 'T-6']);
+  assert.notEqual(state.runner.snapshot()?.run, batch.run);
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+});
+
+test('all-completed recovery waits for the admitted worker before cleanup', async t => {
+  const { f, runner, boundary } = await fixture(t);
+  const cleaned: string[] = [];
+  boundary.cleanup = async candidate => { cleaned.push(candidate.cwd); };
+  await runner.tick();
+  const batch = runner.snapshot()!;
+  batch.completed = batch.members.map(entry => entry.item);
+  batch.failed = 'old follow-up failure';
+  f.store.setMeta('merge-batch', JSON.stringify(batch));
+  await runner.tick();
+  assert.deepEqual(cleaned, []);
+  assert.equal(runner.snapshot()?.id, batch.id);
+  await f.finish(batch.run!);
+  await runner.tick();
+  assert.deepEqual(cleaned, [f.root]);
+  assert.equal(runner.snapshot(), null);
+});
+
+for (const restart of [false, true]) test(`a failed follow-up notice survives ${restart ? 'reopen' : 'a later tick'} without holding remaining landings`, async t => {
+  const state = await fixture(t);
+  const { f, boundary, landed, entries, reports } = state;
+  const land = boundary.land, report = boundary.report;
+  const logs: Record<string, unknown>[] = [];
+  boundary.log = log => { logs.push(log); };
+  let unavailable = true;
+  boundary.land = async (entry, candidate) => {
+    await land(entry, candidate);
+    if (entry.item === 'T-1') throw new Error('merged, follow-up failed: stop sessions: ps failed or timed out');
+  };
+  boundary.report = (batch, text, phase) => {
+    if (phase?.startsWith('follow-up:') && unavailable) throw new Error('notice sink unavailable');
+    report(batch, text, phase);
+  };
+  await state.runner.tick();
+  await f.finish(f.suites.status()[0]!.id);
+  await state.runner.tick();
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(state.runner.snapshot(), null);
+  assert.ok(logs.some(log => log.event === 'merge-follow-up-report-failed' && log.item === 'T-1'
+    && log.reason === 'merged, follow-up failed: stop sessions: ps failed or timed out' && log.error === 'notice sink unavailable'));
+  if (restart) await state.reopen();
+  await state.runner.tick();
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  unavailable = false;
+  await state.runner.tick();
+  assert.equal(reports.filter(text => text.startsWith('T-1: merged, follow-up failed: stop sessions: ps failed or timed out')).length, 1);
+  await state.runner.tick();
+  assert.equal(reports.filter(text => text.startsWith('T-1: merged, follow-up failed:')).length, 1, 'successful delivery settles the obligation');
+  assert.deepEqual(entries, []);
+  assert.equal(f.suites.status().length, 1, 'report retries cannot rerun the green suite');
+});
+
 test('a throwing blocked report resolves the background tick and retains both failures across reopen', async t => {
   const state = await fixture(t);
   const { boundary, landed, dropped } = state;
@@ -681,14 +756,19 @@ test('batch preparation reports the pinned and current heads when a task ref mov
   });
 });
 
-async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task' | 'dirty') {
+async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task' | 'dirty' | 'follow-up' | 'manual-follow-up') {
   const { f, runner, landed, reports, boundary, entries, dropped } = await fixture(t);
   let moved = false;
+  let followUpPending = true;
+  if (movement === 'manual-follow-up') entries.splice(1);
   if (movement === 'dirty') await writeFile(join(f.root, 'root-note.txt'), 'clean');
   // Exercise the real receipt and finishMerge path with Git represented by
   // immutable object/ref facts. Worktree removal returns an OS-edge receipt.
   const heads = new Map(entries.map(entry => [entry.branch, entry.head])); heads.set('dev', 'a'.repeat(40));
   const git = async (args: string[]) => {
+    if (movement === 'manual-follow-up' && args[0] === 'show') return 'Item: T-1';
+    if (movement === 'manual-follow-up' && args[0] === 'symbolic-ref') return 'dev';
+    if (movement === 'manual-follow-up' && args[0] === 'rev-parse' && args.at(-1)!.endsWith('^')) return 'a'.repeat(40);
     if (args[0] === 'for-each-ref') return [...heads].map(([branch, head]) => `${head} refs/heads/${branch}`).join('\n');
     if (args[0] === 'rev-parse') return heads.get(args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '')) ?? null;
     if (args[0] === 'merge-base') return 'a'.repeat(40);
@@ -710,7 +790,10 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
   t.after(() => queue.stop());
   for (const entry of entries) f.store.enqueueMerge(entry);
   const worktrees = { serial: async <T>(work: () => Promise<T>) => work(), prune: async () => ({ removed: [], failed: [] }), pruneMerged: async () => ({ removed: [], failed: [] }) };
-  const merges = new TaskMerges(tracker, worktrees, () => {}, undefined, {}, async (_root, operation) => operation(), queue,
+  const mergeLogs: Record<string, unknown>[] = [];
+  const merges = new TaskMerges(tracker, worktrees, log => { mergeLogs.push(log); }, async item => {
+    if ((movement === 'follow-up' || movement === 'manual-follow-up') && followUpPending && item === 'T-1') throw new Error('cannot inspect the OS process table: ps failed or timed out');
+  }, f.env, async (_root, operation) => operation(), queue,
     async (_root, branch, message, _resumed, prepared) => {
       if (movement === 'dirty' && await readFile(join(f.root, 'root-note.txt'), 'utf8') !== 'clean') {
         throw new MergeError('merge-dirty', 'uncommitted changes in root-note.txt', ['root-note.txt']);
@@ -730,10 +813,15 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
     });
   t.after(() => merges.stop());
   const land = boundary.land;
+  boundary.isLanded = entry => tracker.summary(entry.item)?.state === 'closed' && !!tracker.mergeReceipt(entry.item);
   boundary.land = async (entry, candidate) => {
     try {
       const result = await merges.merge(entry.item, entry.by, work => work(), undefined, () => {}, { head: entry.head, base: heads.get('dev')! });
-      assert.ok('commit' in result && !result.followUp, JSON.stringify(result));
+      assert.ok('commit' in result, JSON.stringify(result));
+      if (result.followUp) {
+        await land(entry, candidate);
+        throw new Error(result.followUp.error);
+      }
     } catch (error) {
       // Match the hub boundary: base races rebuild; ordinary gate refusals drop.
       if (error instanceof MergeError && error.code === 'merge-changed' && /(?:batch|integration) base moved/.test(error.message)) throw new BatchRebuild(error.message);
@@ -742,14 +830,35 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
     }
     await land(entry, candidate);
   };
+  if (movement === 'manual-follow-up') await f.clock.advance(600_000);
   await runner.tick();
   assert.equal(f.suites.status().length, 1, 'one batch suite submitted');
   const run = f.suites.status()[0]!;
   assert.equal(run.occasion, 'batch');
   assert.deepEqual(run.selection?.tiers, ['T1', 'T3']);
   assert.deepEqual(landed, [], 'no entry lands before green');
-  assert.equal(runner.snapshot()?.members.length, 3);
+  assert.equal(runner.snapshot()?.members.length, movement === 'manual-follow-up' ? 1 : 3);
   await f.finish(run.id);
+  if (movement === 'manual-follow-up') {
+    const batch = runner.snapshot()!;
+    const entry = entries[0]!;
+    await assert.rejects(boundary.land(entry, batch.candidate!), /merged, follow-up failed: stop sessions:.*ps failed or timed out/);
+    // Retain the state written by the pre-upgrade controller after that error.
+    batch.failed = 'merged, follow-up failed: stop sessions: ps failed or timed out';
+    f.store.setMeta('merge-batch', JSON.stringify(batch));
+    followUpPending = false;
+    const repaired = await merges.merge(entry.item, entry.by, work => work());
+    assert.ok('commit' in repaired && !repaired.followUp, JSON.stringify(repaired));
+    assert.equal(repaired.commit, tracker.mergeReceipt(entry.item)?.commit);
+    entries.push(...[4, 5, 6].map(n => ({ ...entry, item: `T-${n}`, branch: `t/${n}` })));
+    await runner.tick();
+    assert.equal(runner.snapshot(), null);
+    await runner.tick();
+    assert.deepEqual(runner.snapshot()?.members.map(member => member.item), ['T-4', 'T-5', 'T-6']);
+    assert.notEqual(runner.snapshot()?.run, run.id);
+    assert.deepEqual(landed, ['T-1'], 'manual retry finishes follow-up without another landing');
+    return;
+  }
   if (movement === 'dirty') await writeFile(join(f.root, 'root-note.txt'), 'dirty');
   await runner.tick();
   if (movement === 'dirty') {
@@ -779,8 +888,16 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
   assert.ok(landed.every(id => tracker.summary(id)?.state === 'closed'));
   assert.match(reports.join('\n'), /T-1, T-2, T-3.*tree code-complete.*T1, T3.*wall/s);
   assert.equal(runner.snapshot(), null);
+  if (movement === 'follow-up') {
+    assert.ok(mergeLogs.some(log => log.event === 'merge-follow-up-failed' && log.id === 'T-1' && log.step === 'stop sessions'));
+    assert.match(reports.join('\n'), /T-1: merged, follow-up failed: stop sessions: cannot inspect the OS process table: ps failed or timed out/);
+  }
   queue.stop(); merges.stop(); await tracker.stop();
 }
+
+test('manual merge finishes a failed landed follow-up and the retained batch admits the next heads', t => queuedLanding(t, 'manual-follow-up'));
+
+test('a ps-timeout follow-up is recorded and reported while the remaining heads land', t => queuedLanding(t, 'follow-up'));
 
 test('three queued heads run once on a single candidate before landing FIFO', t => queuedLanding(t, 'none'));
 test('a dirty root blocks then automatically lands the same green batch once clean', t => queuedLanding(t, 'dirty'));

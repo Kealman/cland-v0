@@ -43,3 +43,25 @@ whose message resembles a code still holds for human or Coordinator action.
 Assert the named cause and automatic-retry or action-required notice.
 
 T-542 M3: the T1 FIFO landing fixture supplies immutable landed-commit paths for the new dependency report through its existing Git-fact seam (`diff-tree`). Keep the three-head FIFO, landing receipt and closed-item assertions. Missing Git facts now appear in the assertion diagnostics. No timing change, native Git or process boundary is needed.
+
+T-1425 covers retained all-landed blocked batches at the controller/Store seam,
+with manual reconciliation and reopen controls. Observe candidate cleanup and
+the next batch's distinct admitted run. All-completed recovery retains the
+checkout until the admitted worker's durable completion/report receipt.
+The TaskMerges composition injects a ps-timeout at afterMerge, checks its
+`stop sessions` failure record and item-named batch report, then proves all
+remaining members land FIFO with the same green receipt. Untyped pre-landing
+failures still hold; the five typed recoverable landing errors still retry.
+No real ps timeout, process load, platform or credential is needed.
+The manual-retry composition uses the real TaskMerges merge operation (the CLI's
+handler) after the injected stop-sessions failure. Seed the old controller's held
+batch, repair the follow-up and retry the same item; assert the original commit,
+then cleanup and admission of the next queued heads. Git remains immutable facts,
+and the command executable itself is not launched in this T1 case.
+
+M2 report-fault controls throw only for the follow-up phase in a three-member
+batch. Assert all three land, the batch clears, and the log records the original
+follow-up reason separately from the report error. With the sink still failed,
+tick again or reopen the Store; then recover it and observe exactly one delivery
+and settlement without rerunning the green suite. The durable notice obligation
+is independent of candidate cleanup and the batch record.

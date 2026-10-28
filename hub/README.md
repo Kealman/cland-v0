@@ -5504,6 +5504,7 @@ batch, completed members and green receipt across restart. The blocked notice
 names the cause; the queue retries on later ticks once it is resolved, rechecking
 the candidate against the retained evidence. Other held failures wait for human
 or Coordinator action, as their notice states.
+When the item is closed with a durable merge receipt, a failed follow-up is reported for that item and the batch continues. Repair the named step with `cland merge T-n`; the landing is not repeated. A retained blocked batch whose members are all landed or completed clears on the next tick, including startup, after admitted workers finish. Follow-up notices have a durable delivery obligation separate from the batch. A failed notice retains the original follow-up reason and separate report error; later ticks retry it even after candidate cleanup or hub restart, without holding remaining landings or the next batch.
 If publishing that blocked notice fails, the batch retains its original `failed`
 reason and a separate `reportError`; the hub logs `merge-batch-report-failed`
 and keeps serving. Periodic T3 search and nightly/periodic skip notices also

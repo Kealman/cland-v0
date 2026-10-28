@@ -20,6 +20,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { batchRebuildReason } from '../src/hub/merge-batch-territory.ts';
 import { verificationFixture } from './verification-fixture.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { Store } from '../src/hub/store.ts';
 import { HubCore } from '../src/hub/core.ts';
 
 async function checkoutClandFixture(cwd: string) {
@@ -150,6 +151,33 @@ for (const fault of ['lease', 'history-unavailable', 'history-malformed', 'histo
   assert.equal((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries.length, 1);
   const messages = (await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: topic.id, limit: 100 })).messages;
   assert.ok(messages.some(message => message.text === `merge-demo-warning-unavailable ${item.id}: ${fault === 'lease' ? 'demo leases unavailable' : `${epic.id} landed files unavailable`}. Enqueue succeeded.`));
+});
+
+test('startup clears a persisted all-landed blocked batch through the public queue frame', async t => {
+  const cleaned: string[] = [];
+  const { ui } = await fixture(t, { batchRepository: {
+    git: async () => assert.fail('terminal recovery must not prepare Git'),
+    facts: async () => assert.fail('terminal recovery must not inspect budgets'),
+    identity: async () => assert.fail('terminal recovery must not inspect trees'),
+    checkout: async () => assert.fail('terminal recovery must not check out'),
+    remove: async candidate => { cleaned.push(candidate.cwd); },
+  } }, undefined, async tracker => {
+    const actor = { id: 'human', name: 'human', role: null, human: true };
+    const item = await tracker.create(actor, { title: 'Already landed', size: 'S', branch: 't/landed' });
+    tracker.recordMerge(item.id, { commit: 'c'.repeat(40), base: 'dev', branch: 't/landed', tip: 'd'.repeat(40) });
+    await tracker.close(actor, item.id);
+    const store = new Store(join(tracker.root, '.cland/hub.db'));
+    try {
+      store.setMeta('merge-batch', JSON.stringify({ id: 'old-blocked',
+        members: [{ item: item.id, branch: 't/landed', head: 'd'.repeat(40), verdictBase: 'dev', enqueued: '2026-10-16T12:00:00Z', by: actor }],
+        failed: 'merged, follow-up failed: stop sessions: ps failed or timed out',
+        candidate: { base: 'base', head: 'head', tree: 'tree', cwd: join(tracker.root, 'old-candidate'), budgetLines: [] },
+      }));
+    } finally { store.close(); }
+  });
+  await until(() => cleaned.length === 1, { what: 'persisted terminal candidate cleanup receipt', timeoutMs: 1500 });
+  assert.match(cleaned[0]!, /old-candidate$/);
+  assert.equal((await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch, null);
 });
 
 test('hub serves queue and status frames after its batch blocked notice throws', async t => {

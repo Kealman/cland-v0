@@ -16,6 +16,7 @@ type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: str
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
 export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; budgetLines?: string[]; files: string[]; steps?: VerificationStep['name'][]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
 export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; failed?: string; reportError?: string; retryLanding?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
+type FollowUpReport = { batch: MergeBatch; item: string; error: string; reportError?: string };
 export type BatchBoundary = {
   log?: LogFn;
   changed?(): void;
@@ -27,7 +28,7 @@ export type BatchBoundary = {
   cleanup(candidate: BatchCandidate): Promise<void>;
   checkout(candidate: BatchCandidate): Promise<void>;
   isLanded(entry: MergeQueueEntry): boolean;
-  report(batch: MergeBatch, text: string, phase?: 'rebuild'): void;
+  report(batch: MergeBatch, text: string, phase?: 'rebuild' | `follow-up:${string}`): void;
   notice(notice: TopicNotice): void;
 };
 export class BatchRebuild extends Error {}
@@ -127,7 +128,9 @@ export class MergeBatches {
   }
   async #tick(): Promise<void> {
     const settings = this.settings();
-    if (!settings.queue || this.#closed) return;
+    if (this.#closed) return;
+    this.#reportFollowUps();
+    if (!settings.queue) return;
     let batch = this.snapshot();
     if (!batch) {
       const entries = this.boundary.entries().slice(0, settings.batch);
@@ -139,6 +142,11 @@ export class MergeBatches {
     if (admitted && !batch.run) { batch.run = admitted.id; this.#save(batch); }
     // A cancellation cannot replace the candidate checkout under a live worker.
     if (admitted && !admitted.reported || this.suites.status().some(job => job.batch?.id === batch!.id && !job.reported)) return;
+    // Retained failures cannot hold a batch after every member has finished.
+    // Keep this after the worker barrier: cleanup must not remove a live checkout.
+    if (batch.members.every(entry => batch!.completed?.includes(entry.item) || batch!.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry))) {
+      await this.#cleanup(batch); this.#save(null); return;
+    }
     if (batch.diagnosis?.unresolved) { await this.#unresolved(batch); return; }
     for (const entry of batch.members) {
       if (batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry)) continue;
@@ -213,16 +221,52 @@ export class MergeBatches {
         batch = { id: randomUUID(), members: remaining, candidate: current };
         this.#save(batch); return;
       }
+      let followUp: string | undefined;
       try { await this.boundary.land(entry, current); }
       catch (error) {
-        if (error instanceof MergeError && ['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) throw new RetryLanding(error.message);
-        throw error;
+        // The durable close + merge receipt is authoritative even when a
+        // later follow-up (for example stopping sessions) failed.
+        if (this.boundary.isLanded(entry)) {
+          followUp = error instanceof Error ? error.message : String(error);
+        } else {
+          if (error instanceof MergeError && ['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) throw new RetryLanding(error.message);
+          throw error;
+        }
       }
       delete batch.failed; delete batch.retryLanding;
-      (batch.completed ??= []).push(entry.item); this.#save(batch);
+      this.store.transaction(() => {
+        (batch!.completed ??= []).push(entry.item); this.#save(batch);
+        if (followUp !== undefined) {
+          const pending = this.#pendingFollowUps();
+          pending.push({ batch: structuredClone(batch!), item: entry.item, error: followUp });
+          this.store.setMeta('merge-follow-up-reports', JSON.stringify(pending));
+        }
+      });
     }
+    this.#reportFollowUps();
     await this.#cleanup(batch);
     this.#save(null);
+  }
+  #pendingFollowUps(): FollowUpReport[] {
+    return JSON.parse(this.store.meta('merge-follow-up-reports') ?? '[]') as FollowUpReport[];
+  }
+  #reportFollowUps(): void {
+    const pending = this.#pendingFollowUps();
+    for (const report of [...pending]) {
+      try {
+        this.boundary.report(report.batch, `${report.item}: ${report.error}\nLanding is complete; repair the named follow-up with cland merge ${report.item}. The queue continues.`, `follow-up:${report.item}`);
+        pending.splice(pending.indexOf(report), 1);
+      } catch (error) {
+        report.reportError = error instanceof Error ? error.message : String(error);
+      }
+      // The obligation survives candidate cleanup, batch replacement and reopen.
+      // Dispatch notice ids make a replay after a crash idempotent.
+      this.store.setMeta('merge-follow-up-reports', JSON.stringify(pending));
+      if (pending.includes(report)) {
+        try { this.boundary.log?.({ event: 'merge-follow-up-report-failed', batch: report.batch.id, item: report.item, reason: report.error, error: report.reportError }); }
+        catch { /* a failed logger cannot hold landing or delivery retries */ }
+      }
+    }
   }
   async #cleanup(batch: MergeBatch): Promise<void> {
     const candidates = [batch.candidate, ...batch.diagnosis?.jobs.map(job => job.candidate) ?? []].filter((candidate): candidate is BatchCandidate => !!candidate);

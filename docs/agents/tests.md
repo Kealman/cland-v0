@@ -491,6 +491,7 @@ Recoverable landing errors (`merge-dirty`, `merge-checkout`, `merge-git`,
 green evidence across restart. The notice names the cause and automatic retry;
 later ticks recheck the candidate and retry without cancelling a member.
 Other held failures name the required human or Coordinator action.
+When the item is closed with a durable merge receipt, a failed follow-up is reported for that item and the batch continues. Repair the named step with `cland merge T-n`; the landing is not repeated. A retained blocked batch whose members are all landed or completed clears on the next tick, including startup, after admitted workers finish. Follow-up notices have a durable delivery obligation separate from the batch. A failed notice retains the original follow-up reason and separate report error; later ticks retry it even after candidate cleanup or hub restart, without holding remaining landings or the next batch.
 Blocked-report fault injection must throw at the report boundary, independently
 of closed-item lead routing. Assert the tick resolves, the original reason and
 separate report error survive reopen, and public queue/status reads still reply.
