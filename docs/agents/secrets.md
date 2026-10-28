@@ -135,3 +135,10 @@ correlation ids; inbound routing redaction remains strict. Doctor's local status
 and `remote.state` do not include harness endpoints. See the native producer
 proof in [OpenCode adapter tests](tests/hub-test-opencode-adapter.test.ts.md)
 and the [gateway secret guide](tests/hub-test-gateway-secrets.test.ts.md).
+
+Speech callers construct `ElevenLabsProvider` with the resolved key and the
+project-owned `RemoteRedactor` and pass that same redactor to `transcribeNote`.
+The provider registers its key before I/O. `SpeechError` redacts diagnostics at
+construction; unknown transport/provider errors use fixed messages. Provider
+response bodies and auth headers never become logs or request captures. See
+[the speech test seam](tests/hub-test-speech.test.ts.md).

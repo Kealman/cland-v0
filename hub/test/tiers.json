@@ -460,6 +460,7 @@
     "hub/test/snapshot-framing.test.ts": "T1",
     "hub/test/source-fixture.test.ts": "T1",
     "hub/test/spawn-census.test.ts": "T3",
+    "hub/test/speech.test.ts": "T2",
     "hub/test/spoke-artifact-budget.test.ts": "T2",
     "hub/test/spoke-identity.test.ts": "T2",
     "hub/test/spoke-readiness.test.ts": "T2",

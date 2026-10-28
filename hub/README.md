@@ -1431,7 +1431,22 @@ the previous config/roles snapshots. Secret or gateway application failures are
 reported as remote configuration failures and preserve valid role admission. Pairing and outbox storage remain in `hub.db`. Telegram's native
 client supplies token checks, explicit sends, private `/start` pairing and durable-offset
 polling. Other accepted input awaits its registered mirror or command handler.
-Speech execution requires its provider. The existing
+The messenger-neutral speech module (`hub/src/speech/index.ts`) supplies
+`SpeechProvider.transcribe({ audio, mime, filename, languageHint?, durationSec?, signal })`
+and `transcribeNote`. The wrapper defaults to one 90-second deadline, 30 seconds
+per attempt and at most two retries for rate-limited, unavailable or timeout;
+backoff uses exponential jitter or Retry-After, bounded by the remaining deadline.
+Cancellation reports timeout. Other kinds (not-configured, auth, bad-audio,
+too-long, quota and command-failed) are terminal. Language codes and English names
+normalize to lower-case ISO 639-1 where available.
+
+`ElevenLabsProvider` accepts the resolved key, `[speech] model` and project-owned
+redactor; callers pass that registry to the wrapper too. It uploads original bytes,
+MIME and filename, with `tag_audio_events=false`, optional language hint and no
+redirects. The default host is `https://api.elevenlabs.io`; the test override
+`CLAND_ELEVENLABS_API_ROOT` admits only loopback HTTP with an explicit port and
+no credentials, path, query or fragment. A missing key makes no request. The
+provider module alone does not activate gateway transcription. The existing
 `gatewayRemotes` fixture option retains its unconditional startup behavior.
 
 The role file retains its 500 ms auto-refresh and refresh before launches. A role

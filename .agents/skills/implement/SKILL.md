@@ -54,6 +54,13 @@ Import credential code inside daemon startup and reuse its resolver closure on
 reload, passing the daemon environment and registering before gateway activation.
 Keep `project.ts` import-free; preserve the CLI import budget and startup receipts.
 
+For the speech seam and ElevenLabs transport, use the T2 loopback/fake-clock
+boundary in `docs/agents/tests/hub-test-speech.test.ts.md`. Pass the project-owned
+redactor and resolved key to the provider and the same registry to `transcribeNote`;
+keep the original bytes, one note deadline, bounded attempts and only transient
+retries. The fake records key presence only. Existing role clauses cover this
+boundary; add no permission lines.
+
 For remote/speech configuration or reload, use the template/writer and frame/CLI
 seams in `docs/agents/tests/hub-test-config-set.test.ts.md`. Inject
 `gatewayMessenger` with the test messenger, resolve secrets inside the daemon,
