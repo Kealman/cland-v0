@@ -2,8 +2,8 @@
 id: T-1386
 kind: task
 title: An album is one message with every attachment, stored before the offset is confirmed, and a hub killed mid-album loses nothing
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1150
 branch: t/T-1386-an-album-is-one-message-with-every
 created: 2026-10-27T23:37:27.669Z
-updated: 2026-10-28T12:21:02.757Z
+updated: 2026-10-28T13:38:50.805Z
+closed: 2026-10-28T13:38:50.805Z
 ---
 
 ## Summary
@@ -126,3 +127,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Configured final evidence clear;C1–C3verified. A-13281 independently audits originalA-13280/1410ba58 atsource3head:3903ordinarypasses/498files,45separateloads(20album/25site),fourrequired/controlidentitieseachbase+5/5load,maxbase.228193658s/maxload.460318022s. Exact nativeconfirmation-beforestop,groupquietwindow/order/caption/oversize-name/maps and lost-success/expired-file original-id/bytes/noredownload assertions retained. Legacycards promptshape case nowpass.221300967s;cards62/inbound36/API27/notices14allpass. T0host/T1/allfallbackT2/Webcomplete,T3/T4unrun;pollingrestartnotselected. Linuxc8lon1 Node24.21/Neovim0.12.5 isolatedCHS156.0.8078.4/v1248;hosttreed2d92ed reused/not repeatedLinux typecheck. Budgets/lintreport-only,827s/$0.0575accounting. Componentstop/reopennotSIGKILL. ParentA-13273/A-13274remainfailed. IMPORTANT:Coordinatorfull98ef370eisstillrunning,separateenqueuegatepending—notclearedbythisverdict. No Reviewer execution/provider/stageQA claim.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T13:38:50.805Z
+
+Merged 40e5f3a0d93f523ae81d58211e82dfa8908bfc7a onto dev.

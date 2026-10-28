@@ -2,8 +2,8 @@
 id: T-1402
 kind: task
 title: Zombie connections, reconnect requests and invalid sessions resume without an identify, with the offline and recovery lines
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1146
 branch: t/T-1402-zombie-connections-reconnect-requests
 created: 2026-10-27T23:38:46.285Z
-updated: 2026-10-28T11:55:39.626Z
+updated: 2026-10-28T13:33:15.321Z
+closed: 2026-10-28T13:32:28.079Z
 ---
 
 ## Summary
@@ -152,3 +153,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13271 independently audits original new-head b86939bc/A-13268 and retained old-head full24a4be42/A-13258. Current configured:3910 ordinary passes/497 files+80 separate load passes,zero nonpassing outcomes/unfinished starts; all11 task identities ordinary+5/5,C1–C4 retained semantic/General/durable/secret/cleanup assertions confirmed,max own1.350376262s. Host candidate24c6118 reused separately; Linux c-8nyc1 T1/allT2fallback/Web complete,HeadlessShell156/1248,report-only budgets/lint,no current T3/T4. Prior full at664fe6d7:5289pass/8skip/695files,zero failures; actual T0–T3/Web exit0,no separate T4 tier; eight skips not passes. Coordinator95a6ed43 explicitly retains that scope for mechanical c88754f9 integration and requires current configured green→final→ready; head attribution remains separate. C1–C4 verified atc88754f9. No reviewer execution/edits; Coordinator owns queue/landing and printed batch follow-up blocker.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-28T13:32:28.079Z
+
+Merged a528baa459d471d25892a49e7ad289e21532ab6e onto dev.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-28T12:40:06.296Z
+updated: 2026-10-28T13:33:58.758Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -426,3 +426,11 @@ Incident 2026-10-26 00:26Z: the macOS stage cover eb2ca0d8 at dev 998612a6 (A-12
 ### coord · 2026-10-28T12:40:06.296Z
 
 2026-10-28 11:55–12:37Z: the review requests for T-1423 and T-1387 waited about 40 min in the hub's verifier queue while rev-26, rev-31 and rev-32 were idle with stale pending markers. Coord assigned them by name at 12:37Z; T-1423 cleared at 12:39Z. Filed as a bug in C-325.
+
+### human · 2026-10-28T13:25:19.118Z
+
+Hub restart #58 by cland-impl at 13:22:08Z 2026-10-28 (coord ask 99e4939a, option 1): merge queue stuck since 11:49Z on the blocked batch ca93a32f record (T-1391 already landed; T-1425 filed). Gate: droplet 37be161d gone 13:19:44Z, 2-minute clear window held. Stop→serve 17 s; meta merge-batch set to JSON null (the form #save writes); new hub pid 83539, port 59877, web 56935, nice 0, NODE_OPTIONS 8 GB heap, DO token present, starter cli. Coord bridge: injected 13:23:18Z, coordinator role intact. Queue formed batch 8af2f22c (T-1402, T-1386, T-1423) at once. Doctor 30 ok / 6 warn / 0 fail. Side effect: the new hub's own git maintenance at 13:22:54Z failed at 13:23:12Z with 'collector pid 98280 has unresolved ownership' (owner file .cland/run/git-maintenance-owner.json left, pid gone); recovery re-runs on the next territory lock (territory.ts withTerritoryLockAsync), pgrep -g now answers in 64 ms.
+
+### coord · 2026-10-28T13:33:58.758Z
+
+2026-10-28 13:32Z, again: batch 8af2f22c (T-1402, T-1386, T-1423) landed T-1402 (a528baa4), then blocked on 'stop sessions: could not stop impl-1402: its process identity cannot be verified', so T-1386 and T-1423 didn't land. Coord finished T-1402 with cland merge T-1402, then cancelled T-1423, which cleared the batch (new batch 665b42b6 with T-1386), and re-enqueued T-1423. Same class as T-1425: a follow-up failure after a landing stops the queue.

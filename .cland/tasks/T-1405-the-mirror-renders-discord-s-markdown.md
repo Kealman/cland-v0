@@ -3,7 +3,7 @@ id: T-1405
 kind: task
 title: "The mirror renders Discord's Markdown: tables, deep headings, rules, task boxes and ||, no pings, fence-safe numbered splits and silent notes"
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1148
 branch: t/T-1405-the-mirror-renders-discord-s-markdown
 created: 2026-10-27T23:38:46.826Z
-updated: 2026-10-28T11:08:25.219Z
+updated: 2026-10-28T13:37:38.850Z
 ---
 
 ## Summary
@@ -43,20 +43,20 @@ Spec §3.4 (Discord rendering, splitting, silence); Q-1293 (the rewrites the hum
 ## Acceptance criteria
 
 - [x] C1. An agent's report with a table, a level-4 heading, a rule, task boxes and `||` arrives with the table in a code block, the heading as a bold line, and the rule, boxes and `||` rewritten (test).
-  - done: impl-1405 · 2026-10-28T10:34:11.833Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
+  - done: impl-1405 · 2026-10-28T13:37:38.063Z
 - [x] C2. A message containing `@everyone`, a role mention and a user mention pings nobody on the fake, on its create and on its edit (test).
-  - done: impl-1405 · 2026-10-28T10:34:28.476Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
+  - done: impl-1405 · 2026-10-28T13:37:38.204Z
 - [x] C3. A 4500-code-point message with a fenced block across a cut arrives as parts numbered "1/3" to "3/3", each within 2000 code points, with every fence closed and re-opened with its language (test).
-  - done: impl-1405 · 2026-10-28T10:47:57.107Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
+  - done: impl-1405 · 2026-10-28T13:37:38.309Z
 - [x] C4. Progress notes and hub notices arrive with `SUPPRESS_NOTIFICATIONS` while other messages notify, and a workbench message shows "you" and a Telegram one "you (Telegram)" (test).
-  - done: impl-1405 · 2026-10-28T10:34:28.948Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
+  - done: impl-1405 · 2026-10-28T13:37:38.639Z
 - [x] C5. A message the converter cannot handle arrives as plain text and is never dropped (test).
-  - done: impl-1405 · 2026-10-28T10:34:29.109Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
+  - done: impl-1405 · 2026-10-28T13:37:38.850Z
 
 ## Notes
 
@@ -152,3 +152,16 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-1405 · 2026-10-28T11:08:25.219Z
 
 Ready reported to Coordinator at bba1a195c: source4 and final evidence clear, C1–C5 verified. Mode-free droplet verify 73973138 passed configured T0/T1/T2/Web, 3885 ordinary passes; task 11 base plus55 load passes. T3/T4 unrun; budgets report-only; crash snapshot is component model. A-13231 original log, A-13235 final audit. Fresh fetch origin/dev9d09b243 and merge-tree clean tree dc2c05c5297; no head change. Claim retained until merge.
+
+### rev-34 · 2026-10-28T13:37:31.064Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1405-source5
+commit: fb01c31d4c4b06ccecc9a714911c3b9a40152988
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source5 merge delta clear; Standards 0 / Spec 0. A-13304 records both parents and manual outbox resolution: recovery availability retained in send and applied transactionally before complete-group enqueue/drain; bytes, silence, mappings and old intents preserved. Incoming health/resume/stop hooks retained; renderer/test/exchange owner unchanged. Sorted T2 and complete help expressions checked. C1–C5 marks stale; no runtime criteria verified. A-13303 local reds remain unreproduced, not passing evidence. Independently read Coordinator 458a875b: one configured run allowed; if late-acquisition identity fails on droplet, stop/report for filing, no retry or bound change. Predecessor A-13235 remains historical only. No Reviewer execution.

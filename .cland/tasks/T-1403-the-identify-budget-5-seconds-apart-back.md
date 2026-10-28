@@ -3,7 +3,7 @@ id: T-1403
 kind: task
 title: "The identify budget: 5 seconds apart, back-off only after failed identifies, the floor of remaining starts and the warning at 500"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-1312
 blocked_by:
   - T-1402
 topic: null
-branch: null
+branch: t/T-1403-the-identify-budget-5-seconds-apart-back
 created: 2026-10-27T23:38:46.427Z
-updated: 2026-10-28T08:10:56.307Z
+updated: 2026-10-28T13:39:20.530Z
 ---
 
 ## Summary

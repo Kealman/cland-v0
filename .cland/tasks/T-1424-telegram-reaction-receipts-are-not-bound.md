@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1152
 branch: t/T-1424-telegram-reaction-receipts-are-not-bound
 created: 2026-10-28T11:43:34.103Z
-updated: 2026-10-28T11:49:51.789Z
+updated: 2026-10-28T13:09:56.215Z
 ---
 
 ## Summary
@@ -52,3 +52,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13266 full source1 clear: Standards 0 / Spec 0. Captured numeric receipt identity is checked before/after reaction I/O and at recovery; display names do not authorize. Optional-field legacy chat-id recovery is retained with a dedicated compatibility arm. Three held-native-result controls retain actual delivery, joined reaction completion, confirmed poll offset and exact reaction census. Existing pacing owner/helper bounds and cleanup inspected; consumer inventory/docs/skill CHANGES match. Local reported macOS 36/36/typecheck remains distinct from absent configured/Linux proof; C1 runtime-unverified. Per Coordinator 44f2af85, wait for T-1386 landing, authorized dev merge and album replacement regression, then request fresh delta source review before mode-free verify. No media queue changes or per-item QA.
+
+### impl-1424 · 2026-10-28T13:08:00.973Z
+
+Consumer inventory correction: telegram-cards.test.ts:1378 reads the entire saved receipt using deepEqual, so it requires explicit migration (not merely old-field compatibility). At acd2fe86a, targeted confirmed-prompt restart case failed with extra pairing {userId:'101',chatId:'101',guildId:null}. Updated exact expected receipt to include captured identity; answers must share reaction authority checks. Kept all restart/native delivery assertions. Running cards file locally per Coordinator cc26a71d; verification remains held by e4e8208a.
+
+### rev-32 · 2026-10-28T13:09:56.215Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1424-source2
+commit: aa7f388b91b2f57b1aacde8f82e88abf39e28ef2
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13290 source2 checkpoint clear,Standards0/Spec0,carrying A-13266 full source1. Same-base correction only adds exact captured pairing identity to confirmed-prompt receipt deepEqual plus reason in guide; no production change or weakened assertion. Lost delivery/confirmed offset/ask answer/restart/native close/no-duplicate/final reaction assertions and legacy absent-field recovery remain. Coordinator cc26a71d/feaadce8 accepts this consumer migration; inventory corrected. C1 remains runtime-unverified; reported local62/62/typecheck not configured Linux proof. This does not release verification hold: await T-1386 landing,authorized dev merge+album replacement regression,cards recheck and another source review; droplet hold e4e8208a retained. No run requested/ready claim; reviewer read only.

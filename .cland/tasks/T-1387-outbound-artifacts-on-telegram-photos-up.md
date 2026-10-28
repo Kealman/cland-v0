@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1141
 branch: t/T-1387-outbound-artifacts-on-telegram-photos-up
 created: 2026-10-27T23:37:27.927Z
-updated: 2026-10-28T12:38:18.096Z
+updated: 2026-10-28T13:35:10.580Z
 ---
 
 > Pending: the once-per-remote behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.
@@ -53,14 +53,19 @@ The message's artifacts are `artifact` and `artifacts` deduplicated by id. Teleg
 
 - [x] C1. An agent's General message with a PNG and a PDF and a long text arrives as the text, one photo and one document, each captioned with the message's header and each sent exactly once, even though the message carries the PNG in both `artifact` and `artifacts` (test).
   - done: impl-1387 · 2026-10-28T11:50:27.648Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
 - [x] C2. A single 2 KB note artifact with a one-line text arrives as one document whose caption is the header, a newline and the text, with no `caption_entities` (test).
   - done: impl-1387 · 2026-10-28T08:21:14.096Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
 - [x] C3. A 60 MB artifact, made as a sparse file, arrives as one line naming its id, title, size and `.cland/artifacts/…` path with no absolute path, and a 12 MB PNG arrives as a document (test).
   - done: impl-1387 · 2026-10-28T08:21:14.438Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
 - [x] C4. Restarting the hub while a file job is queued sends it once, and an upload the fake holds past its timeout is not resent (test).
   - done: impl-1387 · 2026-10-28T08:21:14.578Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
 - [x] C5. An image uploaded through the web's `artifact.upload` path arrives captioned "you · message", while the same upload made via Telegram is not sent back to Telegram (test).
   - done: impl-1387 · 2026-10-28T08:21:14.709Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1387-evidence1 · 2026-10-28T13:00:24.853Z · commit b89d352747d26d45baab803a0e634d3154a3982f
 
 ## Notes
 
@@ -124,3 +129,44 @@ A-13267 full source2: Standards 1 medium / Spec 0. H1 descriptor-bound no-follow
 ### impl-1387 · 2026-10-28T11:55:38.115Z
 
 Source2 remaining M4 fixed without runtime/dev changes: each owned native receipt is now armed with an independent test-scaled 5 s deadline at observation creation. Its finally cancels and joins the raw observer. Preparation is separately bounded before fixture acquisition and rejects on earlier fixture failure; late acquisition/stopped receipts also have bounds. New omitted-exact-receipt control holds actual getMe but expects an impossible exact request id. Expiring its separate receipt clock aborts acquisition before the hub setup clock advances and reaches exact TCP close, native server/connection/handler drainage, stopped hub, closed Store and zero timers/observations. Local macOS Node24.21.0 at changed tree: 14/14 artifact cases pass (latest file wall 8.05 s, not Linux/baseline evidence); typecheck/test:tiers/diff checks pass. Runtime behavior remains the source2-reviewed version; configured/Linux verification still pending.
+
+### rev-32 · 2026-10-28T12:42:23.998Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1387-source3
+commit: b89d352747d26d45baab803a0e634d3154a3982f
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13284 full source3 clear,Standards0/Spec0. Rechecked full4c8f16189...head scope and A-13257/A-13267 H1/M2–M4. Descriptor-bound no-follow/capped/cancelled Blob upload preserves extracted WebArtifacts behavior; messenger-scoped once-ever artifact fence follows human62b8d32f across pairing/restart with safe native reply targets; persisted started-batch priority preserves publication order. Remaining M4 now has independently armed observation/preparation/late-acquisition/stopped bounds,cancel+join of raw native observers,and omitted exact-id control driven by its separate clock before hub setup time,retaining close/Store/hub/census/timer assertions. C1–C5 source tests/docs/skill provenance/consumer inventory intact; runtime criteria remain unverified. Local14/14 Darwin/typecheck/preflight claims are not configured/Linux evidence. Run mode-free configured verify at this unchanged head then original-record final review; Coordinator's separate full-all landing gate remains,no per-item QA. Reviewer read only,no tests/browser/probes.
+
+### rev-32 · 2026-10-28T13:00:24.853Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1387-evidence1
+commit: b89d352747d26d45baab803a0e634d3154a3982f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Configured evidence clear; Coordinator full-all af9b7f7e still pending/separate landing gate. A-13289 independently audits original fda0d0e3/A-13287 at unchanged source3 head:3913 ordinary passes/498files+95 separate load passes,zero nonpassing outcomes/unfinished starts. All14 artifact cases ordinary+5/5(70 task samples),max ownload1.298428905s; C1–C5 exact native file/text/caption/byte/fallback/restart/uncertainty/echo assertions confirmed. Once-ever pairing/restart,descriptor leaf/parent swaps,contiguous publication and three independent setup/drain controls pass; unchanged WebArtifacts-unit2/API27/Web-artifact14 cases pass. Host T0 candidateef1692e reused separately,Linux c-8lon1 T1/allT2fallback/Web complete,isolated Shell156/1248,budgets/lint report-only,no T3/T4 selected. C1–C5 verified from this configured receipt; no full-cover/enqueue claim. Head stays frozen until Coordinator full result; reviewer read only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-32 · 2026-10-28T13:35:10.580Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1387-delta1
+commit: 629e84f75bf3ca6c763bf6df2a643f465bba2f66
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear, zero findings; A-13302 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13302-t-1387-authorized-integration-delta-at-629e84f75-clear.md). Checked both parents, Coordinator dfba9015/42271bcb authorization, combined conflict and seven overlapping paths. messenger persistence retains files? plus discordNotice transition; daemon preserves both. Outbound opener/planner/Telegram implementation/all14 task tests and guide byte-identical to source3 b89d3527; prior H1/M2–M4 remain resolved. Other incoming paths match landed dev, additive guidance/provenance/tier/doc composition retained. No Reviewer executions. C1–C5 old runtime marks remain b89d3527 only; same-head mode-free configured evidence required at629e84f75. Coordinator expressly carries old full-all af9b7f7e/A-13294 for this mechanical resolution; actual prior log T0–T3/Web with8skips and no separate T4 phase, not new-head coverage. Keep head unchanged; further source change needs new review before verification. No final readiness or new-head runtime marks in this source pass.
