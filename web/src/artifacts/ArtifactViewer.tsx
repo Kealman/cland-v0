@@ -6,7 +6,10 @@ import { ArtifactViewerFallback } from './ArtifactNavigation.ts';
 import { MarkdownBody } from '../MarkdownBody.tsx';
 import s from './Artifacts.module.css';
 
-type Content = { url: string; name: string; type: 'page' | 'text' | 'markdown' | 'download'; text?: string };
+const MAX_INLINE_IMAGE_BYTES = 10 * 1024 * 1024;
+const INLINE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+
+type Content = { url: string; name: string; type: 'page' | 'text' | 'markdown' | 'image' | 'download'; text?: string; size?: number; imageFailed?: boolean };
 export function ArtifactViewer({ connection, selected }: AreaContentProps) {
   const fallback = useContext(ArtifactViewerFallback);
   const selection = artifactSelection(connection.artifacts, selected) ?? artifactSelection(fallback ? [fallback] : undefined, selected);
@@ -28,8 +31,12 @@ export function ArtifactViewer({ connection, selected }: AreaContentProps) {
       const response = await fetch(url, { method: 'HEAD', signal: controller.signal, credentials: 'omit' });
       if (!response.ok) throw new Error(response.status === 404 ? 'Artifact file not found' : `Artifact request failed (${response.status})`);
       const mime = response.headers.get('Content-Type')?.split(';')[0] ?? '';
+      const length = response.headers.get('Content-Length');
+      const size = length !== null && /^\d+$/.test(length) ? Number(length) : undefined;
+      const inlineImage = INLINE_IMAGE_TYPES.has(mime) && size !== undefined && Number.isSafeInteger(size) && size <= MAX_INLINE_IMAGE_BYTES;
       if (/\.mmd$/i.test(name)) url.search = '?render=mermaid';
-      const type = /\.mmd$/i.test(name) || mime === 'text/html' || (artifact.kind === 'diagram' && mime === 'image/svg+xml') ? 'page'
+      const type = /\.mmd$/i.test(name) || mime === 'text/html' || mime === 'image/svg+xml' ? 'page'
+        : inlineImage ? 'image'
         : (artifact.kind === 'note' || artifact.kind === 'prompt') && /\.(md|markdown)$/i.test(name) ? 'markdown'
           : mime.startsWith('text/') || mime === 'application/json' || /\.(mmd|markdown)$/i.test(name) ? 'text' : 'download';
       let text: string | undefined;
@@ -38,7 +45,7 @@ export function ArtifactViewer({ connection, selected }: AreaContentProps) {
         if (!body.ok) throw new Error(body.status === 404 ? 'Artifact file not found' : `Artifact request failed (${body.status})`);
         text = await body.text();
       }
-      if (current) { setError(''); setContent({ url: url.href, name, type, ...(text === undefined ? {} : { text }) }); }
+      if (current) { setError(''); setContent({ url: url.href, name, type, ...(INLINE_IMAGE_TYPES.has(mime) && size !== undefined ? { size } : {}), ...(text === undefined ? {} : { text }) }); }
     })().catch((error: unknown) => { if (current) { setContent(undefined); setError(error instanceof Error ? error.message : String(error)); } });
     return () => { current = false; controller.abort(); };
   }, [artifact, file, connection.live, command]);
@@ -51,6 +58,9 @@ export function ArtifactViewer({ connection, selected }: AreaContentProps) {
       {source ? <pre className={s.text} role="region" aria-label="File text">{content.text}</pre>
         : <div className={s.markdown} role="region" aria-label="Rendered Markdown"><MarkdownBody text={content.text ?? ''} /></div>}
     </>}
+    {!artifact?.fileDeleted && content?.type === 'image' && <img key={content.url} className={s.image} src={content.url} alt={artifact?.title ?? content.name} referrerPolicy="no-referrer" onError={() => setContent(value => value?.url === content.url ? { ...value, type: 'download', imageFailed: true } : value)} />}
+    {!artifact?.fileDeleted && content?.imageFailed && <p className={s.meta}>Image could not be loaded.</p>}
+    {!artifact?.fileDeleted && content?.type === 'download' && content.size !== undefined && <p className={s.meta}>{content.size.toLocaleString()} bytes</p>}
     {!artifact?.fileDeleted && content?.type === 'text' && <pre className={s.text} role="region" aria-label="File text">{content.text}</pre>}
     {!artifact?.fileDeleted && content && (content.type !== 'page' || /\.mmd$/i.test(content.name)) && <a className={s.download} href={content.url.split('?')[0]} download={content.name}>Download {content.name}</a>}
   </div>;

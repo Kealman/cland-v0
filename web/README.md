@@ -838,6 +838,13 @@ its own sandbox response policy. Scripts cannot read the workbench document or
 cookies. The selected artifact id remains visible while capability reads load.
 Folder children use the same capability with encoded relative paths.
 
+PNG, JPEG, GIF and WebP capability responses with a declared `Content-Length`
+of at most 10 MiB load inline, scaled to the pane, with the artifact title as alt
+text and the named download link below. Folder images follow the same rule.
+Larger images show their byte size and download; an absent or invalid length
+keeps the download view. A broken image shows a one-line note and download.
+SVG uses the sandboxed frame.
+
 Notes and prompts with a Markdown file open rendered with the same `MarkdownBody`
 as messages: headings, lists, fenced code and the parser's other supported blocks.
 HTML remains literal text. **Show source** switches to raw text, and **Show

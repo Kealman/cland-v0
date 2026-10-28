@@ -234,3 +234,5 @@ T-1356: Document stale-card local closure, private foreign-card refusal, late pr
 - T-1360 source review M1/M2: Require live publication settlement after recovery source drops and a native edit receipt rather than fallback notification for old-copy retirement.
 
 - T-1360 M3: Scope resumed-drain reconciliation to captured waiters; preserve later/new-lane delivery receipts and all unchanged 429/reopen controls.
+
+T-1392: Point web artifact image work to decoded-image, size-boundary and fallback Playwright receipts.

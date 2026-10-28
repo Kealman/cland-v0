@@ -80,6 +80,10 @@ credentials/routing out of `remote.state`. Connection/pairing/mute changes are
 immediate; only depth changes coalesce. Raw positional socket consumers explicitly
 consume the connect event before their result. No new keys or role permissions.
 
+For web artifact image previews, use the sealed Playwright seam in
+`docs/agents/tests/web-test-artifacts.test.ts.md`: observe decoded natural width,
+the inclusive size boundary, folder children and download fallbacks.
+
 For remote terminal commands, token rotation or messenger status/test callbacks,
 use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,
 legacy optional callbacks and previous-hub refusal coverage.

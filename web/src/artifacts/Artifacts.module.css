@@ -14,3 +14,5 @@
 .identity { flex: none; padding: 8px 20px; font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .toggle { align-self: flex-start; margin: 0 20px 8px; padding: 6px 12px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--text); }
 .markdown { padding: 0 20px; overflow: auto; }
+
+.image { flex: 1; min-height: 0; width: 100%; object-fit: contain; }

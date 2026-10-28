@@ -541,3 +541,95 @@ test('Mermaid strict mode blocks source scripts and callbacks, and a parse failu
     });
   });
 });
+
+test('PNG, JPEG, GIF and WebP artifacts and a folder image load inline with a download', async t => {
+  const fixture = await webFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const source = join(fixture.root, 'images');
+  await mkdir(source);
+  await fixture.pageCase(t, async page => {
+    const samples = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 4; canvas.height = 3;
+      canvas.getContext('2d')!.fillRect(0, 0, 4, 3);
+      return ['image/png', 'image/jpeg', 'image/webp'].map(mime => canvas.toDataURL(mime).split(',')[1]!);
+    });
+    const artifacts: Artifact[] = [];
+    for (const [extension, bytes] of [['png', samples[0]!], ['jpeg', samples[1]!], ['webp', samples[2]!], ['gif', 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'], ['cap.png', samples[0]!]] as const) {
+      const path = join(source, `sample.${extension}`);
+      const decoded = Buffer.from(bytes, 'base64');
+      await writeFile(path, extension === 'cap.png' ? Buffer.concat([decoded, Buffer.alloc(10 * 1024 * 1024 - decoded.length)]) : decoded);
+      const made = await ui.request({ type: 'artifact.create', kind: 'file', title: `${extension} picture`, topic: 'general', path });
+      assert.equal(made.ok, true, made.error);
+      artifacts.push((made.value as { artifact: Artifact }).artifact);
+    }
+    const made = await ui.request({ type: 'artifact.create', kind: 'file', title: 'Image folder', topic: 'general', path: source, entry: 'sample.png' });
+    assert.equal(made.ok, true, made.error);
+    const folder = (made.value as { artifact: Artifact }).artifact;
+    await page.getByRole('button', { name: 'Artifacts', exact: true }).click();
+    const mine = page.locator('[data-artifact-section="mine"]');
+    const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
+    const open = async (id: string) => {
+      const row = mine.locator(`[data-object-id="${id}"]`);
+      await row.click(); await row.press('Enter');
+    };
+    for (const artifact of artifacts) {
+      const image = drawer.getByRole('img', { name: artifact.title, exact: true });
+      const appeared = image.waitFor();
+      await open(artifact.id); await appeared;
+      await pageUntil(page, () => {
+        const image = document.querySelector('[data-artifact-viewer] img') as HTMLImageElement | null;
+        return !!image?.complete && image.naturalWidth > 0;
+      }, `${artifact.title} decoded`);
+      assert.ok(await image.evaluate(node => (node as HTMLImageElement).naturalWidth > 0));
+      assert.equal(await image.getAttribute('src'), await drawer.locator('a[download]').getAttribute('href'));
+      assert.equal(await drawer.locator('iframe').count(), 0);
+    }
+    const child = mine.locator(`[data-object-id="${folder.id}/sample.png"]`);
+    const listed = child.waitFor(); await open(folder.id); await listed;
+    const image = drawer.getByRole('img');
+    const appeared = image.waitFor(); await open(`${folder.id}/sample.png`); await appeared;
+    await pageUntil(page, () => {
+      const image = document.querySelector('[data-artifact-viewer] img') as HTMLImageElement | null;
+      return !!image?.complete && image.naturalWidth > 0;
+    }, 'folder image decoded');
+    assert.equal(await drawer.getByRole('link', { name: 'Download sample.png', exact: true }).count(), 1);
+  });
+});
+
+test('over-cap PNG retains its size and download while SVG stays sandboxed and broken images fall back', async t => {
+  const fixture = await webFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  const artifacts: Artifact[] = [];
+  for (const [name, bytes] of [
+    ['large.png', Buffer.alloc(10 * 1024 * 1024 + 1)],
+    ['drawing.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><text y="20">Sandbox image</text></svg>')],
+    ['broken.png', Buffer.from('not a PNG')],
+  ] as const) {
+    const path = join(fixture.root, name);
+    await writeFile(path, bytes);
+    const result = await ui.request({ type: 'artifact.create', kind: 'file', topic: 'general', title: name, path });
+    assert.equal(result.ok, true, result.error);
+    artifacts.push((result.value as { artifact: Artifact }).artifact);
+  }
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Artifacts', exact: true }).click();
+    const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
+    const open = async (artifact: Artifact, receipt: Promise<unknown>) => {
+      const row = page.locator(`[data-artifact-section="mine"] [data-object-id="${artifact.id}"]`);
+      await row.click(); await row.press('Enter'); await receipt;
+    };
+    const large = artifacts[0]!;
+    await open(large, drawer.getByRole('link', { name: `Download ${basename(large.path)}`, exact: true }).waitFor());
+    assert.equal(await drawer.locator('img').count(), 0);
+    assert.ok((await drawer.textContent())?.includes('10,485,761 bytes'));
+    assert.equal(await drawer.getByText('Image could not be loaded.', { exact: true }).count(), 0);
+    await open(artifacts[1]!, drawer.frameLocator('iframe').getByText('Sandbox image', { exact: true }).waitFor());
+    assert.equal(await drawer.locator('iframe').getAttribute('sandbox'), 'allow-scripts');
+    assert.equal(await drawer.locator('img').count(), 0);
+    const broken = artifacts[2]!;
+    await open(broken, drawer.getByText('Image could not be loaded.', { exact: true }).waitFor());
+    assert.equal(await drawer.locator('img').count(), 0);
+    assert.equal(await drawer.getByRole('link', { name: `Download ${basename(broken.path)}`, exact: true }).count(), 1);
+  });
+});

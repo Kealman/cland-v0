@@ -32,3 +32,12 @@ The fixtures create all source bytes in the disposable root; no live project,
 GUI browser or added hub process is used.
 `hub/test/web-area-state.test.ts` keeps the lower-tier callback proof for live
 artifact changes raced against a page and reconnect replacement.
+
+Image cases use browser-generated PNG/JPEG/WebP and fixed GIF bytes in scratch
+files, exercising artifact.create and capability HEAD/GET. Each format and a
+folder child must finish decoding with naturalWidth > 0, title alt text and the
+same capability on its download. A padded valid PNG proves the inclusive 10 MiB
+boundary; an over-cap PNG proves the byte-size download fallback without an img
+or a decode-error note. A file SVG retains allow-scripts sandboxing, and invalid
+PNG bytes leave a one-line note and named download. Build candidate web assets
+before standalone runs; the browser fixture consumes web/dist.

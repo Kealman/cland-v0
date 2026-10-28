@@ -463,6 +463,10 @@ backslashes and symlink escapes are refused. MIME types follow the extension
 (with `application/octet-stream` for unknown extensions). Responses use
 `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: no-referrer` and `Content-Security-Policy: sandbox allow-scripts`.
+The web viewer previews PNG, JPEG, GIF and WebP only when HEAD declares a size
+of at most 10 MiB, retaining the download link; larger images show their byte
+size and download. Unknown lengths keep the download view, and decode failure
+adds a one-line note. Folder children follow the same rule; SVG stays sandboxed.
 For a `.mmd` file, `?render=mermaid` serves a text-escaped HTML wrapper at the
 same capability, with strict Mermaid rendering inside the opaque-origin iframe.
 The original URL still serves raw bytes. The renderer and its CSS load only on
