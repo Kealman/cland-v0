@@ -2,8 +2,8 @@
 id: T-1405
 kind: task
 title: "The mirror renders Discord's Markdown: tables, deep headings, rules, task boxes and ||, no pings, fence-safe numbered splits and silent notes"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1148
 branch: t/T-1405-the-mirror-renders-discord-s-markdown
 created: 2026-10-27T23:38:46.826Z
-updated: 2026-10-28T13:57:34.996Z
+updated: 2026-10-28T15:06:27.835Z
+closed: 2026-10-28T15:06:27.835Z
 ---
 
 ## Summary
@@ -44,24 +45,34 @@ Spec §3.4 (Discord rendering, splitting, silence); Q-1293 (the rewrites the hum
 
 - [x] C1. An agent's report with a table, a level-4 heading, a rule, task boxes and `||` arrives with the table in a code block, the heading as a bold line, and the rule, boxes and `||` rewritten (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
-  - done: impl-1405 · 2026-10-28T13:37:38.063Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
+  - done: impl-1405 · 2026-10-28T14:26:21.315Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-3 · 2026-10-28T14:42:30.972Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-4 · 2026-10-28T14:56:25.786Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
 - [x] C2. A message containing `@everyone`, a role mention and a user mention pings nobody on the fake, on its create and on its edit (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
-  - done: impl-1405 · 2026-10-28T13:37:38.204Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
+  - done: impl-1405 · 2026-10-28T14:26:21.731Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-3 · 2026-10-28T14:42:31.648Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-4 · 2026-10-28T14:56:25.786Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
 - [x] C3. A 4500-code-point message with a fenced block across a cut arrives as parts numbered "1/3" to "3/3", each within 2000 code points, with every fence closed and re-opened with its language (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
-  - done: impl-1405 · 2026-10-28T13:37:38.309Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
+  - done: impl-1405 · 2026-10-28T14:26:22.138Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-3 · 2026-10-28T14:42:31.900Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-4 · 2026-10-28T14:56:25.786Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
 - [x] C4. Progress notes and hub notices arrive with `SUPPRESS_NOTIFICATIONS` while other messages notify, and a workbench message shows "you" and a Telegram one "you (Telegram)" (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
-  - done: impl-1405 · 2026-10-28T13:37:38.639Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
+  - done: impl-1405 · 2026-10-28T14:26:22.400Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-3 · 2026-10-28T14:42:32.295Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-4 · 2026-10-28T14:56:25.786Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
 - [x] C5. A message the converter cannot handle arrives as plain text and is never dropped (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
-  - done: impl-1405 · 2026-10-28T13:37:38.850Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final2 · 2026-10-28T13:56:51.936Z · commit fb01c31d4c4b06ccecc9a714911c3b9a40152988
+  - done: impl-1405 · 2026-10-28T14:26:22.819Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-3 · 2026-10-28T14:42:32.536Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
+  - verified: rev-26 [reviewer] · run rev-20261028-1405-evidence-4 · 2026-10-28T14:56:25.787Z · commit 166b2937e846d8509398a2244c8cf860ea08afca
 
 ## Notes
 
@@ -185,3 +196,56 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final2 clear; C1–C5 verified. A-13324 independently audits original A-13321 / 210487c2 at source5 head: 3929 ordinary passes / 501 files, 80 separate load passes (55 task / 25 site). All 11 render/group/replay/cleanup cases pass base plus 5/5 loads; late acquisition .104125344s base / .343470566s load max, so Coordinator 458a875b's conditional stop/report was not triggered. Prior local drainage reds remain unreproduced, not retrospectively green or causally resolved. API 26 / messages 18 / messenger 31 / neutral 5 and help/docs guards pass, including merged REST recovery/notice controls. T0 host / T1 / all fallback T2 / Web complete; T3/T4 unrun. Linux c-8 sfo2, Node 24.21 / Neovim .12.5, isolated CHS 156.0.8078.4 / v1248; host tree 81d76eba reused, not Linux typecheck. Budgets/lint report-only; 1015s / $0.0705 accounting. Snapshot is component proof, not native SIGKILL. No Reviewer execution/provider/stage QA claim.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-26 · 2026-10-28T14:26:14.378Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1405-source-delta-6
+commit: 166b2937e846d8509398a2244c8cf860ea08afca
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13342 authorized second dev merge delta clear, Standards0/Spec0. Sole manual skill conflict retains complete Discord rendering and Telegram album entries exactly once; all parent CHANGES provenance retained. T-1405 implementation/test/guide/tiers/durations byte unchanged from final-clear fb01c31d4. Whole merge incorporates landed Telegram/T-1423 shared changes; not a claim that first-parent delta contains only docs. C1–C5 runtime marks stale; no criteria newly verified. Refresh done and obtain one prescribed mode-free same-head run, then original-record final review. Prior A-13303 local reds remain red/unreproduced; retain Coordinator458a875b stop/report condition. No automatic retry/full run requested.
+
+### impl-1405 · 2026-10-28T14:41:15.457Z
+
+Run39c1dc54 at166b2937e failed Web inbox.test.ts selected request/message unfold at89:12: expected /read/, actual ✓ general · left Inbox. T0/T1/T2 passed; Web1failure; T3/T4 unrun. Shared-defect candidate reported to lead, Bugs provisional S. Holding diagnosis/retry pending Coordinator shared fix. Original A-13347.
+
+### rev-26 · 2026-10-28T14:42:34.184Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261028-1405-evidence-3
+commit: 166b2937e846d8509398a2244c8cf860ea08afca
+scope: evidence
+findings: [{"severity":"medium","text":"Original configured A-13347/run39c1dc54 failed: expected /read/ but actual '✓ general · left Inbox' in the physical-d selected-row case. This unchanged Web assertion is T-1430; Coordinator's one resubmit does not make the original failed run clear.","file":"web/test/inbox.test.ts","line":89}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13348 original-record audit:3933 ordinary identities=3932pass/1Webfail,80 separate load passes, zero unfinished. All11 rendering cases base+5/5 pass; C1–C5 individually verified under this run, no failed task criterion. Late-acquisition passes; earlier conditional failure not triggered. Overall evidence NOT CLEAR per failed-run clause. T0/T1/T2 green, Web red, T3/T4 unrun; host reuse/report-only limits retained. Coordinator02715ff6 separately authorizes one unchanged-head resubmit09a70607 for T-1430; assess fresh result when available. No extra retry/source edit/full run requested.
+
+### rev-26 · 2026-10-28T14:56:25.787Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1405-evidence-4
+commit: 166b2937e846d8509398a2244c8cf860ea08afca
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13353 final current-head original-record audit clear, Standards0/Spec0. Authorized single resubmit09a70607/A-13351:3933 ordinary passes,80 separate scoped load passes,zero fail/cancel/skip/unfinished. All11 rendering cases base+5/5; C1–C5 freshly verified. Max task base0.315501612/load0.462512254s; late acquisition passes. Prior Inbox identity nowpass1.280838691s, but original A-13347 remains failed/T-1430 and earlier A-13303 local reds remain unreproduced. T0/allT1/fallbackallT2/Web completed Linux c-8lon1 CHS156/revision1248; T3/T4unrun,host gate reused,budgets/lint report-only,snapshot component limits retained. No further edit/retry/all requested; Coordinator enqueue/landing separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1405 · 2026-10-28T14:56:51.031Z
+
+Ready reported at166b2937e. Final current-head review clear A-13353, C1–C5 verified; authorized resubmit09a70607/A-13351 passed3933 ordinary T0/T1/T2/Web plus80loads (55task). Failed A-13347/T-1430 retained, no diagnosis claim; T3/T4 unrun, report-only/host-reuse/component limits. Fresh origin/devcfcd0c61 fetch and merge-tree clean4e997710. No further edits/execution; claim retained until merge.
+
+### coord · 2026-10-28T15:06:27.835Z
+
+Merged f7fd8892306bf6c360627703d8a964bedd796af9 onto dev.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T12:40:05.299Z
-updated: 2026-10-28T12:40:05.299Z
+updated: 2026-10-28T14:25:12.590Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Review requests queued "for the next free live Reviewer" weren't delivered for a
 ## Notes
 
 Evidence: `who` at 12:37Z (rev-26 pending T-1405, rev-31 pending T-1402, rev-32 pending T-1406, all idle); A-13282 (rev-26 cleared T-1423 at 12:39Z after the direct assignment). Incident in T-204.
+
+## Comments
+
+### coord · 2026-10-28T14:25:12.590Z
+
+Again 2026-10-28 13:57–14:25Z: T-1405's delta review request (5291b0c2) waited about 28 min unassigned; coord assigned it to rev-26 by name at 14:25Z.
