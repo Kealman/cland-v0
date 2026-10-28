@@ -3,7 +3,7 @@ id: T-1386
 kind: task
 title: An album is one message with every attachment, stored before the offset is confirmed, and a hub killed mid-album loses nothing
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1150
 branch: t/T-1386-an-album-is-one-message-with-every
 created: 2026-10-27T23:37:27.669Z
-updated: 2026-10-28T11:45:53.624Z
+updated: 2026-10-28T12:21:02.757Z
 ---
 
 ## Summary
@@ -36,10 +36,13 @@ An item over the download cap is left out, and the reply names it. The other ite
 
 - [x] C1. A three-photo album on the fake arrives as one General message with three artifacts in the album's order and the first item's caption as its text (test).
   - done: impl-1386 · 2026-10-28T11:39:32.390Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1386-final · 2026-10-28T12:21:02.490Z · commit 44975f3983a6cd6ad8b3d6dab80df7b84b23d483
 - [x] C2. A hub stopped after the album's second update is confirmed, and restarted before the third, posts one message with all three artifacts, and the fake shows every update confirmed exactly once (test).
   - done: impl-1386 · 2026-10-28T11:45:00.977Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1386-final · 2026-10-28T12:21:02.490Z · commit 44975f3983a6cd6ad8b3d6dab80df7b84b23d483
 - [x] C3. A four-item album with one 25 MB document arrives as one message with three artifacts, and the chat gets one reply naming the oversized file (test).
   - done: impl-1386 · 2026-10-28T11:39:43.145Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1386-final · 2026-10-28T12:21:02.490Z · commit 44975f3983a6cd6ad8b3d6dab80df7b84b23d483
 
 ## Notes
 
@@ -78,3 +81,48 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source2 clear; Standards0/Spec0. A-13262 audits M1 exact pre-armed native offset3 confirmation before stop and M2 trusted durable ingress lookup before downloads, transactional member-map/feedback repair. Actual dropped-success result plus committed history, expired originals and no-redownload assertions retained alongside original album/oversize/legacy coverage. No new wire authority; old optional shapes retained. C1–C3 claimantdone, runtime-unverified. Graceful component restart notSIGKILL; localmacOS claimsnotconfiguredLinux proof. No Reviewer execution. Same-head mode-free run/final original-record audit required; Coordinator full-all gate separate.
+
+### impl-1386 · 2026-10-28T12:01:45.147Z
+
+Corrected receipt consumer inventory after full run fbc57daf failure. Exact failure at telegram-cards.test.ts:1378: actual legacy receipt has extra storedTargets:[3]. Search telegram.inbound:|storedTargets|seenTargets across hub/web/nvim/shared/.agents/docs/qa finds production TelegramInbound recovery/post/receive/flush; direct tests telegram-cards (exact legacy shape), telegram-inbound (delivered bit), telegram-polling-restart (absent receipt), telegram-notices (absent receipt); docs inbound/polling-restart guides and hub README. Remote-state/migration tests found no direct receipt decoder; RemoteStore remains generic string KV, with no inbound schema migration. All tiers included in rg scope. No wire/client/QA/startup reader found. Preserve legacy receipt shape; album-only targets and progress arrays. Run all four reader test files locally in sequence plus API/typecheck. Previous consumer inventory was incomplete: telegram-cards omitted.
+
+### rev-34 · 2026-10-28T12:03:09.231Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1386-evidence1
+commit: 8a20bec7ff46ab05f5f56c4bb6c4a584ca905301
+scope: evidence
+findings: [{"severity":"medium","text":"M3 Standards: new feedback progress adds storedTargets:[3] to ungrouped prompt receipt, breaking unchanged exact-shape recovery consumer. Inventory missed cards reader; preserve legacy single-target shape or migrate all readers deliberately, retaining old-row/native feedback assertions.","file":"hub/test/telegram-cards.test.ts","line":1378}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence1 not clear; A-13276 quotes actual deep-equality failure before item-owned classification. A-13274 mode-free3239ordinarypass1fail+45loads; four albumcasesbase+5/5loadpass butT2red/Webunrun. CoordinatorA-13273all independently has same3239pass1fail, same shape assertion,T3/Webunrun—not fullcover. No runtimecriteria verified or specific albumassertionfailure inferred. Source review missed direct cards persisted-record reader. CorrectM3/reinventory, fresh source review before new verification; no same-head flake retry. No Reviewer execution.
+
+### rev-34 · 2026-10-28T12:04:13.428Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1386-source3
+commit: 44975f3983a6cd6ad8b3d6dab80df7b84b23d483
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source3 clear,Standards0/Spec0. A-13277 audits M3 album-only target/progress fields and omitted-members legacy recovery path. Exact cards shape assertion unchanged; immutable search confirms full direct-reader inventory(cards/inbound/pollingrestart/notices), docs/skill corrected. M1nativeconfirmation/M2durableingress repair and all original semantic controls retained. C1–C3 claimantdone, runtime-unverified. A-13273/A-13274 stay failed parent evidence; no Reviewer execution. Fresh mode-free and Coordinator full-all receipts remain distinct; final original-record same-head audit required.
+
+### rev-34 · 2026-10-28T12:21:02.490Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1386-final
+commit: 44975f3983a6cd6ad8b3d6dab80df7b84b23d483
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Configured final evidence clear;C1–C3verified. A-13281 independently audits originalA-13280/1410ba58 atsource3head:3903ordinarypasses/498files,45separateloads(20album/25site),fourrequired/controlidentitieseachbase+5/5load,maxbase.228193658s/maxload.460318022s. Exact nativeconfirmation-beforestop,groupquietwindow/order/caption/oversize-name/maps and lost-success/expired-file original-id/bytes/noredownload assertions retained. Legacycards promptshape case nowpass.221300967s;cards62/inbound36/API27/notices14allpass. T0host/T1/allfallbackT2/Webcomplete,T3/T4unrun;pollingrestartnotselected. Linuxc8lon1 Node24.21/Neovim0.12.5 isolatedCHS156.0.8078.4/v1248;hosttreed2d92ed reused/not repeatedLinux typecheck. Budgets/lintreport-only,827s/$0.0575accounting. Componentstop/reopennotSIGKILL. ParentA-13273/A-13274remainfailed. IMPORTANT:Coordinatorfull98ef370eisstillrunning,separateenqueuegatepending—notclearedbythisverdict. No Reviewer execution/provider/stageQA claim.
+
+Criteria: C1 verified, C2 verified, C3 verified.

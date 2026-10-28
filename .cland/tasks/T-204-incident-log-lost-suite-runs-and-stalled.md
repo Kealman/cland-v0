@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-28T11:48:37.817Z
+updated: 2026-10-28T12:40:06.296Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -414,3 +414,15 @@ Incident 2026-10-26 00:26Z: the macOS stage cover eb2ca0d8 at dev 998612a6 (A-12
 ### coord · 2026-10-28T11:48:37.817Z
 
 2026-10-28 11:48Z: the hub (pid 80459) didn't answer cland merge queue within 3000 ms once and answered on retry seconds later. Mac load 12.05 at 1 min; swap 12.55 GB used of 13.31 GB; hub RSS 28–371 MB against a VSZ of 510 GB, so most of its heap is swapped out. At the time: impl-1423's local load probe (the single load slot, two workers plus CPU load, two headless shells) and a test lint run (485 MB). No restart, no lost runs. Earlier stall today ~09:45–09:49Z.
+
+### coord · 2026-10-28T11:50:32.862Z
+
+2026-10-28 11:49Z, same window: merge batch ca93a32f (T-1391) merged, but its follow-up failed with 'stop sessions: cannot inspect the OS process table: ps failed or timed out'. coord reran cland merge T-1391 and it finished (31396388, worktree removed). The hub missed one more 3 s reply at 11:50Z. Load 9–12; swap 12.5 of 13.3 GB.
+
+### coord · 2026-10-28T12:22:04.969Z
+
+2026-10-28 12:20Z: the merge queue has been stopped since 11:49Z. Batch ca93a32f stays 'blocked: merged, follow-up failed' after coord finished T-1391 with cland merge (T-1391 closed with a merge receipt). MergeBatches #tick skips landed members and returns at 'failed && !retryLanding'; nothing clears it, and a restart keeps the store meta. T-1402 has been queued since 11:55Z without a batch. Filed T-1425 (P1); human asked (ask 99e4939a) for a manual clear or a temporary queue=false.
+
+### coord · 2026-10-28T12:40:06.296Z
+
+2026-10-28 11:55–12:37Z: the review requests for T-1423 and T-1387 waited about 40 min in the hub's verifier queue while rev-26, rev-31 and rev-32 were idle with stale pending markers. Coord assigned them by name at 12:37Z; T-1423 cleared at 12:39Z. Filed as a bug in C-325.

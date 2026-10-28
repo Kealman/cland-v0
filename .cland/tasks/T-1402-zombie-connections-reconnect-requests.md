@@ -3,7 +3,7 @@ id: T-1402
 kind: task
 title: Zombie connections, reconnect requests and invalid sessions resume without an identify, with the offline and recovery lines
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1146
 branch: t/T-1402-zombie-connections-reconnect-requests
 created: 2026-10-27T23:38:46.285Z
-updated: 2026-10-28T11:36:24.035Z
+updated: 2026-10-28T11:55:39.626Z
 ---
 
 ## Summary
@@ -46,15 +46,19 @@ Spec §3.8 (connection, resume), §3.9 (liveness, telling the human); research r
 - [x] C1. With the fake withholding heartbeat acknowledgements, the remote terminates the socket without code 1000 or 1001 and resumes, and a message the human typed meanwhile reaches General exactly once (test).
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
   - done: impl-1402 · 2026-10-28T11:36:23.322Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-final2 · 2026-10-28T11:55:38.528Z · commit c88754f9ab96b1ebfd9ffb2b61db056994ca2ac7
 - [x] C2. Ten forced drops, an op 7 and an op 9 with `d: true` each resume, and the fake counts no identify beyond the first (test).
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
   - done: impl-1402 · 2026-10-28T11:36:23.468Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-final2 · 2026-10-28T11:55:38.528Z · commit c88754f9ab96b1ebfd9ffb2b61db056994ca2ac7
 - [x] C3. An op 9 with `d: false` leads to one fresh identify after a wait of 1 to 5 seconds under the injected clock (test).
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
   - done: impl-1402 · 2026-10-28T11:36:23.579Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-final2 · 2026-10-28T11:55:38.528Z · commit c88754f9ab96b1ebfd9ffb2b61db056994ca2ac7
 - [x] C4. Three minutes without a working connection give one "Discord remote offline since" line in General and one recovery line, and the status row shows offline at once (test).
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
   - done: impl-1402 · 2026-10-28T11:36:24.035Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-final2 · 2026-10-28T11:55:38.528Z · commit c88754f9ab96b1ebfd9ffb2b61db056994ca2ac7
 
 ## Notes
 
@@ -133,3 +137,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13251 authorized integration delta clear: parent664fe6d7+dev4c8f16189. One manual persistence type resolution retains Discord transition? and Telegram maxUploadMb; combined daemon/factory passes both correctly. Own Discord runtime/tests/fakes/guides byte-identical; incoming media/speech/Items/help/durations match dev. Skills/CHANGES/README unions intact,no new contract/assertion/allowance. C1–C4 remain stale/runtime-unverified at new head; old A-13229 belongs only to664fe6d7. Local Darwin typecheck claim not Linux proof. Submit authorized mode-free verify at unchangedc88754f9 then original-record evidence review. Coordinator retains pending full24a4be42 old-head T3/T4 gate only if usable green receipt arrives; no pass inferred from running state.
+
+### rev-32 · 2026-10-28T11:55:38.528Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1402-final2
+commit: c88754f9ab96b1ebfd9ffb2b61db056994ca2ac7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13271 independently audits original new-head b86939bc/A-13268 and retained old-head full24a4be42/A-13258. Current configured:3910 ordinary passes/497 files+80 separate load passes,zero nonpassing outcomes/unfinished starts; all11 task identities ordinary+5/5,C1–C4 retained semantic/General/durable/secret/cleanup assertions confirmed,max own1.350376262s. Host candidate24c6118 reused separately; Linux c-8nyc1 T1/allT2fallback/Web complete,HeadlessShell156/1248,report-only budgets/lint,no current T3/T4. Prior full at664fe6d7:5289pass/8skip/695files,zero failures; actual T0–T3/Web exit0,no separate T4 tier; eight skips not passes. Coordinator95a6ed43 explicitly retains that scope for mechanical c88754f9 integration and requires current configured green→final→ready; head attribution remains separate. C1–C4 verified atc88754f9. No reviewer execution/edits; Coordinator owns queue/landing and printed batch follow-up blocker.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

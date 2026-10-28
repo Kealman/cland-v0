@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1142
 branch: t/T-1391-the-web-composer-attaches-files-through
 created: 2026-10-27T23:37:28.755Z
-updated: 2026-10-28T11:49:25.232Z
+updated: 2026-10-28T12:20:01.083Z
 closed: 2026-10-28T11:48:45.697Z
 ---
 

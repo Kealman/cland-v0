@@ -3,7 +3,7 @@ id: T-1387
 kind: task
 title: "Outbound artifacts on Telegram: photos up to 10 MB, documents up to 50 MB, each artifact once per remote, and a line for anything larger"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1141
 branch: t/T-1387-outbound-artifacts-on-telegram-photos-up
 created: 2026-10-27T23:37:27.927Z
-updated: 2026-10-28T11:40:35.264Z
+updated: 2026-10-28T12:38:18.096Z
 ---
 
 > Pending: the once-per-remote behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.
@@ -51,8 +51,8 @@ The message's artifacts are `artifact` and `artifacts` deduplicated by id. Teleg
 
 ## Acceptance criteria
 
-- [ ] C1. An agent's General message with a PNG and a PDF and a long text arrives as the text, one photo and one document, each captioned with the message's header and each sent exactly once, even though the message carries the PNG in both `artifact` and `artifacts` (test).
-  - failed: rev-31 [reviewer] · 2026-10-28T11:40:35.264Z · note Once-ever file delivery resets after pairing replacement, and card priority can interleave an artifact publication's native parts.
+- [x] C1. An agent's General message with a PNG and a PDF and a long text arrives as the text, one photo and one document, each captioned with the message's header and each sent exactly once, even though the message carries the PNG in both `artifact` and `artifacts` (test).
+  - done: impl-1387 · 2026-10-28T11:50:27.648Z
 - [x] C2. A single 2 KB note artifact with a one-line text arrives as one document whose caption is the header, a newline and the text, with no `caption_entities` (test).
   - done: impl-1387 · 2026-10-28T08:21:14.096Z
 - [x] C3. A 60 MB artifact, made as a sparse file, arrives as one line naming its id, title, size and `.cland/artifacts/…` path with no absolute path, and a 12 MB PNG arrives as a document (test).
@@ -102,3 +102,25 @@ finding_counts: {"high":1,"medium":3,"low":0}
 Full source1 A-13257: Standards 1 medium M4 (Store/observer ownership before acquisition and failed setup); Spec H1 high (lstat path check then openAsBlob pathname reopen permits symlink substitution), M2 medium (once-ever per-remote key incorrectly pairing-scoped), M3 medium (batch enqueue does not prevent card/edit dispatch interleaving). Complete merged source reviewed; inbound queue/maxUploadMb and optional outbound resolver preserved. E-1311 accepted once-ever decision confirmed, no approval hold. Local merged-tree 6/32/62 claims are not configured/Linux evidence. Consolidate controls/fixes, push and request fresh full source review before mode-free verify. Keep dev base unless Coordinator directs; no per-item QA, Coordinator full all remains required.
 
 Criteria: C1 failed (Once-ever file delivery resets after pairing replacement, and card priority can interleave an artifact publication's native parts.).
+
+### impl-1387 · 2026-10-28T11:50:23.718Z
+
+Source1 fixes H1/M2–M4 consolidated, same dev base 4c8f16189. H1 extracts existing WebArtifacts no-follow opening into hub/artifact-file.ts; Telegram checks descriptor type/cap and reads at most cap+1 bytes with cancellation into transient Blob before API consumption, finally closes FD. Added leaf/parent API-boundary swaps with authorized digest positive controls (both red before fix). M2 messenger artifact fence ignores pairing, recognizes earlier persisted file jobs, and only replies by native id in the same destination; replacement/restart controls red at two uploads then green at one. M3 persisted batch marker keeps started publication contiguous; held-first-send + concurrent ask/card and later General proved native card interleaving red before fix. M4 pre-registered pacingOwner owns Stores/acquisition/observers; omitted/aborted startup controls prove exact native close, stopped acquired hub, closed Store, zero observations and timers.
+Consumer supplement for extracted opener/optional native Blob: production WebArtifacts→web-edge and TelegramOutbox→TelegramApi; existing web-artifacts-unit/telegram-api path-only regressions retain old interfaces and optional open injection. No wire fields/permissions changed. Per-file docs, README and implement guidance updated. Local macOS Node24.21.0 changed telegram-artifacts file: 13/13 pass (latest total 19.43s under host load, no Linux or baseline claim); typecheck/test:tiers/wording/diff checks pass. Existing unchanged API/web tests deferred to configured verify under local changed-file-only load restriction.
+
+### rev-31 · 2026-10-28T11:53:36.326Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261028-1387-source2
+commit: 53855f166447ae2a3dc42a1d2d2fd2f2d4b7bdd2
+scope: full
+findings: [{"severity":"medium","text":"M4 follow-up, Standards/rule 9: pacingOwner.observe adds ownership but no deadline; passing its signal overrides the fake helpers' default 5 s timeout. Bare awaits for held/resumed receipts (125/132/205), and ready/held receipts before injected-clock triggering (275–277), lack independent setup bounds. Missing receipt/preparation failure can strand the control before cancellation/drainage. Add separately armed bounded observation plus cancel/join and an omitted exact-receipt control, retaining native close/Store/hub/timer assertions.","file":"hub/test/telegram-artifacts.test.ts","line":125}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13267 full source2: Standards 1 medium / Spec 0. H1 descriptor-bound no-follow reader, M2 messenger artifact fence across pairing/restart and safe native reply destination, and M3 persisted started-batch dispatch priority resolve source1 production findings. M4 Store/observer ownership is corrected, but cancellation ownership does not supply independent setup deadlines; the passed owner signal replaces helper defaults. Local reported macOS 13/13/typecheck/tiers remains separate from absent Linux/configured evidence. C1 claimant done restoration retained, all runtime verification pending. Correct remaining bounded-receipt issue, push and request fresh source review before mode-free verify; stable dev base, no per-item QA, Coordinator separate full all before enqueue.
+
+### impl-1387 · 2026-10-28T11:55:38.115Z
+
+Source2 remaining M4 fixed without runtime/dev changes: each owned native receipt is now armed with an independent test-scaled 5 s deadline at observation creation. Its finally cancels and joins the raw observer. Preparation is separately bounded before fixture acquisition and rejects on earlier fixture failure; late acquisition/stopped receipts also have bounds. New omitted-exact-receipt control holds actual getMe but expects an impossible exact request id. Expiring its separate receipt clock aborts acquisition before the hub setup clock advances and reaches exact TCP close, native server/connection/handler drainage, stopped hub, closed Store and zero timers/observations. Local macOS Node24.21.0 at changed tree: 14/14 artifact cases pass (latest file wall 8.05 s, not Linux/baseline evidence); typecheck/test:tiers/diff checks pass. Runtime behavior remains the source2-reviewed version; configured/Linux verification still pending.

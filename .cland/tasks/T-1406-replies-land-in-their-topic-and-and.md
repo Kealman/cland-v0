@@ -3,7 +3,7 @@ id: T-1406
 kind: task
 title: Replies land in their topic, and 👌 and 👀 confirm the human's messages
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1149
 branch: t/T-1406-replies-land-in-their-topic-and-and
 created: 2026-10-27T23:38:47.088Z
-updated: 2026-10-28T11:43:45.620Z
+updated: 2026-10-28T11:56:06.168Z
 ---
 
 ## Summary
@@ -36,10 +36,13 @@ Spec §3.4 (replies, feedback by reaction), §3.8 (inbound); research rule 34.
 
 - [x] C1. A reply to a mirrored General message reaches General as a reply to that message, and a reply to an unmapped message reaches General as a plain message (test).
   - done: impl-1406 · 2026-10-28T11:20:29.597Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1406-final2 · 2026-10-28T11:56:05.124Z · commit bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
 - [x] C2. The human's message gets 👌 once General stores it and 👀 once its addressee has it, each exactly once, even with a hub restart between the two (test).
   - done: impl-1406 · 2026-10-28T11:20:29.754Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1406-final2 · 2026-10-28T11:56:05.124Z · commit bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
 - [x] C3. Another member's reply to a mirrored message reaches nothing and gets no reaction (test).
   - done: impl-1406 · 2026-10-28T11:14:29.619Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1406-final2 · 2026-10-28T11:56:05.124Z · commit bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
 
 ## Notes
 
@@ -95,3 +98,18 @@ findings: [{"severity":"medium","text":"Configured run 12c8e330/A-13254 exited 1
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-13259 independently audits original A-13254: 3883 ordinary passes/2 failures plus 55 separate passing load samples; all 24 Discord message cases pass, six selected identities each 5/5. T0/T1/all fallback T2 passed; Web failed; T3/T4 absent. Exact failed typed finishes and actual timeout quoted, Linux/droplet/browser/host-tree reuse and report-only limits retained. Source2 A-13244 remains clear; C1–C3 claimant marks preserved, no final verification asserted. Coordinator decision 92f84f5f owns T-1423 and one unchanged-head retry e7b7565a, currently running. No diagnosis or further retry authorized by this review.
+
+### rev-31 · 2026-10-28T11:56:05.124Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1406-final2
+commit: bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13272 independently audits authorized unchanged-head retry e7b7565a/A-13269: 3885 ordinary passes plus 55 separate load passes, zero fail/cancel/skip/todo; all 24 Discord message base cases and six selected identities each 5/5. C1 mapped/unknown/deleted replies, C2 durable reactions/restart/held-pairing revocation, C3 foreign-input exclusion with durable cursor completion verified against source2 assertions and typed original finishes. T0/T1/fallback all T2/Web complete; T3/T4 absent. Linux c-8 lon1, pinned Headless Shell156/v1248, host TREE reuse, actual Web workers4 vs task2 and report-only performance/lint limits retained. Prior failed 12c8e330/A-13254/evidence1 A-13259 and T-1423 remain historical; Coordinator92f84f5f authorized this sole retry, whose previously failing Web child/parent both pass. No root-cause fix claim. Source2/A-13244 unchanged; no per-item QA. Fresh conflict check/ready then Coordinator-owned queue/integrated gates; existing blocked batch follow-up not resolved by this verdict.
+
+Criteria: C1 verified, C2 verified, C3 verified.
