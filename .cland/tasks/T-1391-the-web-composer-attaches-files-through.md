@@ -2,8 +2,8 @@
 id: T-1391
 kind: task
 title: The web composer attaches files through an HTTP endpoint on the web edge, with its cookie and Origin checks
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1142
 branch: t/T-1391-the-web-composer-attaches-files-through
 created: 2026-10-27T23:37:28.755Z
-updated: 2026-10-28T11:19:00.831Z
+updated: 2026-10-28T11:49:25.232Z
+closed: 2026-10-28T11:48:45.697Z
 ---
 
 ## Summary
@@ -43,12 +44,15 @@ The web edge's own listener gains `POST /upload`. It accepts files only with a v
 - [x] C1. In headless Chromium, a PNG attached in General's composer and sent with a text arrives as one human message with that text and the PNG artifact, with no ▣ message (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
   - done: impl-1391 · 2026-10-28T11:19:00.358Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final2 · 2026-10-28T11:37:03.112Z · commit cfe969712933f4c214952331b7b219b2c1b55c36
 - [x] C2. `POST /upload` without the cookie answers 401, with a foreign Origin 403, and with a body over the limit 413, and none of them creates an artifact or a message (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
   - done: impl-1391 · 2026-10-28T11:19:00.533Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final2 · 2026-10-28T11:37:03.112Z · commit cfe969712933f4c214952331b7b219b2c1b55c36
 - [x] C3. A file over `max_upload_mb` chosen in the composer shows as refused and is not sent, and the composer's other keys and the existing artifact chip still work (test).
   - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
   - done: impl-1391 · 2026-10-28T11:19:00.831Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final2 · 2026-10-28T11:37:03.112Z · commit cfe969712933f4c214952331b7b219b2c1b55c36
 
 ## Notes
 
@@ -259,3 +263,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source9 correction clear, Standards0/Spec0. A-13241 records sole TASK_USAGE row restoration, exact prior-green value and complete expression audit:36/36 command blocks plus31/31 exported compositions equal frozen expected, including IMPORT_USAGE and trailing credential guidance. Both merged help additions/guards/templates unchanged; upload implementation and allowance unchanged. Prior source8 first-literal proof corrected. A-13239 stays failed parent-only/T2Webunrun; A-13223 earlier parent-onlygreen. No runtime criteria verified at new head; fresh claimant marks/configured exact-head verification/original-record audit required. No Reviewer execution.
+
+### rev-34 · 2026-10-28T11:37:03.112Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-final2
+commit: cfe969712933f4c214952331b7b219b2c1b55c36
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final2 clear; C1–C3 verified at exact source9 head. A-13253 independently audits original A-13250/0501c1ff:3887 ordinary passes/500files,60 separate non-Web loads(35item/25site),T0host/T1/all fallbackT2/Web complete,T3/T4unrun. Required upload3.761177550s,phone geometry2.238638838s,composed-usage guard.002475065s pass; six HTTP safety/ownership/drain cases eachbase+5/5load and native caller-copy1+5/5load. Validated Web upload10/10report-onlyCPU repetitions,21.165s extra outside180.761s ordinaryWeb budget. Fixed4.98s/Nov04 retention perCoordinator76fe0c56, not1.5xnew sample;T-1421 timing follow-up. Linuxc8nyc1 Node24.21/Neovim0.12.5 isolatedCHS156.0.8078.4/v1248;hosttreec5901f17 reused/not repeatedLinux typecheck. Budgets/lint134 warningsreport-only;936s/$0.0650accounting. ParentA-13239remainsfailed,oldergreenparentnotreused. No Reviewer execution/provider/stageQA claim.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T11:48:45.697Z
+
+Merged 31396388180979d51286425dd3f3b2b11ed4cc5e onto dev.

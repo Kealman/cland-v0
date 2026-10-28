@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1141
 branch: t/T-1387-outbound-artifacts-on-telegram-photos-up
 created: 2026-10-27T23:37:27.927Z
-updated: 2026-10-28T08:21:14.709Z
+updated: 2026-10-28T11:40:35.264Z
 ---
 
 > Pending: the once-per-remote behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.
@@ -51,8 +51,8 @@ The message's artifacts are `artifact` and `artifacts` deduplicated by id. Teleg
 
 ## Acceptance criteria
 
-- [x] C1. An agent's General message with a PNG and a PDF and a long text arrives as the text, one photo and one document, each captioned with the message's header and each sent exactly once, even though the message carries the PNG in both `artifact` and `artifacts` (test).
-  - done: impl-1387 · 2026-10-28T08:21:13.942Z
+- [ ] C1. An agent's General message with a PNG and a PDF and a long text arrives as the text, one photo and one document, each captioned with the message's header and each sent exactly once, even though the message carries the PNG in both `artifact` and `artifacts` (test).
+  - failed: rev-31 [reviewer] · 2026-10-28T11:40:35.264Z · note Once-ever file delivery resets after pairing replacement, and card priority can interleave an artifact publication's native parts.
 - [x] C2. A single 2 KB note artifact with a one-line text arrives as one document whose caption is the header, a newline and the text, with no `caption_entities` (test).
   - done: impl-1387 · 2026-10-28T08:21:14.096Z
 - [x] C3. A 60 MB artifact, made as a sparse file, arrives as one line naming its id, title, size and `.cland/artifacts/…` path with no absolute path, and a 12 MB PNG arrives as a document (test).
@@ -87,3 +87,18 @@ Rule 16: no CLI flags, settings, role permissions or wire frames added; existing
 ### impl-1387 · 2026-10-28T08:21:07.080Z
 
 Consumer inventory (delivery extension; no existing reply/list/schema/refusal or wire payload changes): production daemon→messengerFactory→TelegramRemote→TelegramOutbox; TelegramCards/TelegramPrompts retain send/edit/reaction APIs and legacy payloads; shared mirrorOut and RemoteState remain unchanged; Discord mirror/outbox callers remain unaffected. Persisted job readers: TelegramOutbox resume/prove, Telegram gap identity matcher and generic outbox/gap/status depth readers accept new native methods through existing params.chat_id and source. Tests/fixtures found by repository-wide rg (including tiers T3/T4): telegram-rendering, pacing and pacing-fixture, notices, approvals, cards, mute, polling-restart, polling-fixture, inbound, polling; remote-state, remote-neutral; discord messenger/messages/pairing. Existing old-payload regressions stay unchanged (no mandatory files callback for injected clients). Shipped guidance hits: implement skill and card/inbound/pacing test guides; new artifact guide updates the new behaviour. No QA brief/startup probe/web/Neovim consumer of internal Telegram job methods found. No mandatory client field added: older wire frames and injected remotes retain text-only operation without the optional artifact resolver.
+
+### rev-31 · 2026-10-28T11:40:35.264Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261028-1387-source1
+commit: 54dccdcabbf33b9298c1d722ec845c96a58d2611
+scope: full
+findings: [{"severity":"high","text":"H1 Spec/security: artifactFile checks pathname components with lstat, then TelegramApi reopens params.path via openAsBlob. A leaf or parent replacement between validation and consumption can upload an outside file. Bind upload bytes/stream to an actually confined no-follow open; reuse the existing web-artifacts confinement boundary. Add a deterministic after-validation/before-consumption swap and authorized-file positive control.","file":"hub/src/remote/telegram-outbox.ts","line":245},{"severity":"medium","text":"M2 Spec: once-ever fencing is keyed by chat/current user/artifact, contradicting the accepted E-1311 decision that each artifact goes to a remote once ever. Re-pairing resets the fence and permits a second upload. Keep the per-messenger artifact fence independent of pairing and handle later references safely across destinations; preserve uncertainty/outage semantics and test replacement/restart.","file":"hub/src/remote/telegram-outbox.ts","line":65},{"severity":"medium","text":"M3 Spec: synchronous batch enqueue alone does not keep publication sends contiguous. The existing outbox comparator prioritizes a newly arrived card/edit ahead of remaining General artifact parts. Prove held-first-send plus concurrent card/publication ordering and preserve the required non-interleaving group, or obtain explicit Coordinator disposition for the conflict.","file":"hub/src/remote/telegram.ts","line":243},{"severity":"medium","text":"M4 Standards: Store cleanup is registered only after awaited projectHub succeeds; failed acquisition leaves the Store unowned. Held/resumed observers are also armed before intervening operations without immediate rejection retention and a shared cancel/join failure path. Register ownership before acquisition, reuse shared fixture ownership, and retain omitted/aborted setup controls proving stopped hubs/native close/closed Store/no pending observations or timers.","file":"hub/test/telegram-artifacts.test.ts","line":23}]
+finding_counts: {"high":1,"medium":3,"low":0}
+
+Full source1 A-13257: Standards 1 medium M4 (Store/observer ownership before acquisition and failed setup); Spec H1 high (lstat path check then openAsBlob pathname reopen permits symlink substitution), M2 medium (once-ever per-remote key incorrectly pairing-scoped), M3 medium (batch enqueue does not prevent card/edit dispatch interleaving). Complete merged source reviewed; inbound queue/maxUploadMb and optional outbound resolver preserved. E-1311 accepted once-ever decision confirmed, no approval hold. Local merged-tree 6/32/62 claims are not configured/Linux evidence. Consolidate controls/fixes, push and request fresh full source review before mode-free verify. Keep dev base unless Coordinator directs; no per-item QA, Coordinator full all remains required.
+
+Criteria: C1 failed (Once-ever file delivery resets after pairing replacement, and card priority can interleave an artifact publication's native parts.).

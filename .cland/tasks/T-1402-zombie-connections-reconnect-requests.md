@@ -3,7 +3,7 @@ id: T-1402
 kind: task
 title: Zombie connections, reconnect requests and invalid sessions resume without an identify, with the offline and recovery lines
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1146
 branch: t/T-1402-zombie-connections-reconnect-requests
 created: 2026-10-27T23:38:46.285Z
-updated: 2026-10-28T11:06:55.249Z
+updated: 2026-10-28T11:36:24.035Z
 ---
 
 ## Summary
@@ -44,17 +44,17 @@ Spec §3.8 (connection, resume), §3.9 (liveness, telling the human); research r
 ## Acceptance criteria
 
 - [x] C1. With the fake withholding heartbeat acknowledgements, the remote terminates the socket without code 1000 or 1001 and resumes, and a message the human typed meanwhile reaches General exactly once (test).
-  - done: impl-1402 · 2026-10-28T10:34:03.267Z
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
+  - done: impl-1402 · 2026-10-28T11:36:23.322Z
 - [x] C2. Ten forced drops, an op 7 and an op 9 with `d: true` each resume, and the fake counts no identify beyond the first (test).
-  - done: impl-1402 · 2026-10-28T10:34:03.432Z
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
+  - done: impl-1402 · 2026-10-28T11:36:23.468Z
 - [x] C3. An op 9 with `d: false` leads to one fresh identify after a wait of 1 to 5 seconds under the injected clock (test).
-  - done: impl-1402 · 2026-10-28T10:34:03.539Z
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
+  - done: impl-1402 · 2026-10-28T11:36:23.579Z
 - [x] C4. Three minutes without a working connection give one "Discord remote offline since" line in General and one recovery line, and the status row shows offline at once (test).
-  - done: impl-1402 · 2026-10-28T10:44:09.699Z
   - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
+  - done: impl-1402 · 2026-10-28T11:36:24.035Z
 
 ## Notes
 
@@ -120,3 +120,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Configured evidence clear only; final readiness remains contingent on Coordinator full24a4be42 still pending. A-13230 independently audits original45efac9e/A-13229 at exact unchanged source2 head:3885 ordinary test passes/497 files plus80 separate load passes,zero nonpassing outcomes/unmatched starts. C1–C4 identities each ordinary+5/5 load; REST outage,acknowledged missing-edit404,four owner-failure controls and legacy API subscription also ordinary+5/5,55 task-specific load passes total. Retained exact close/replay/Identify,General,secret,durable settlement and Store-after-writer-drain assertions confirmed; max own observation1.096468244s. Host T0 candidatee258be1 reused separately; Linux c-8nyc1 T1/allT2fallback/Web complete,isolated HeadlessShell156/1248,budgets/lint report-only. No T3/T4 selected. C1–C4 verified from this configured receipt, no full-cover/ready/enqueue claim. Required same-head full run must receive original-record review when it lands.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-32 · 2026-10-28T11:36:14.341Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1402-delta1
+commit: c88754f9ab96b1ebfd9ffb2b61db056994ca2ac7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13251 authorized integration delta clear: parent664fe6d7+dev4c8f16189. One manual persistence type resolution retains Discord transition? and Telegram maxUploadMb; combined daemon/factory passes both correctly. Own Discord runtime/tests/fakes/guides byte-identical; incoming media/speech/Items/help/durations match dev. Skills/CHANGES/README unions intact,no new contract/assertion/allowance. C1–C4 remain stale/runtime-unverified at new head; old A-13229 belongs only to664fe6d7. Local Darwin typecheck claim not Linux proof. Submit authorized mode-free verify at unchangedc88754f9 then original-record evidence review. Coordinator retains pending full24a4be42 old-head T3/T4 gate only if usable green receipt arrives; no pass inferred from running state.

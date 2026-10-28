@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-28T09:49:21.434Z
+updated: 2026-10-28T11:48:37.817Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -410,3 +410,7 @@ Incident 2026-10-26 00:26Z: the macOS stage cover eb2ca0d8 at dev 998612a6 (A-12
 ### coord · 2026-10-28T09:49:21.434Z
 
 2026-10-28 ~09:45–09:50Z: live hub (pid 80459, restart #57) intermittently did not answer its socket (10–15 s client timeouts on several coord CLI calls: a verify submission 'no reply within 15 s', two 'verify queue' timeouts, one 'task comment' timeout) while at ~68% CPU with Mac 1m load 6.63; between stalls it answered within 2 s, and the in-flight verify submission (coord T-1385 at 919a2241) was admitted, so nothing was lost or doubled. Concurrent: periodic dev T3 a396c52c finishing, two droplet acquisitions (coord T-1385, impl-1404 T-1404), seven implementers active. No restart.
+
+### coord · 2026-10-28T11:48:37.817Z
+
+2026-10-28 11:48Z: the hub (pid 80459) didn't answer cland merge queue within 3000 ms once and answered on retry seconds later. Mac load 12.05 at 1 min; swap 12.55 GB used of 13.31 GB; hub RSS 28–371 MB against a VSZ of 510 GB, so most of its heap is swapped out. At the time: impl-1423's local load probe (the single load slot, two workers plus CPU load, two headless shells) and a test lint run (485 MB). No restart, no lost runs. Earlier stall today ~09:45–09:49Z.

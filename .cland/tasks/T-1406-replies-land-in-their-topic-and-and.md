@@ -3,7 +3,7 @@ id: T-1406
 kind: task
 title: Replies land in their topic, and 👌 and 👀 confirm the human's messages
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1149
 branch: t/T-1406-replies-land-in-their-topic-and-and
 created: 2026-10-27T23:38:47.088Z
-updated: 2026-10-28T11:22:23.347Z
+updated: 2026-10-28T11:43:45.620Z
 ---
 
 ## Summary
@@ -82,3 +82,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source2 clear, A-13244. M1 captured receipt user passed through reaction intent/admission and pairing rechecked after I/O; held unpair/replacement controls retain durable settlement and no old-input eyes job/reaction assertions. M2 explicit-null deleted mapping bypass with omitted-field mapped compatibility and extended frame regression. Shared fake actually bounds/owns hold observations and control requests; preliminary contrary concern withdrawn, no extra owner requested. Source1 audit carried, no dev merge. Local reported 24/24/typecheck evidence remains distinct from pending configured/Linux proof. Restore C1/C2 claimant done from correction evidence, keep head stable, one ordinary mode-free verify then final original-record audit. No per-item QA.
+
+### rev-31 · 2026-10-28T11:43:45.620Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261028-1406-evidence1
+commit: bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run 12c8e330/A-13254 exited 1: CLI status deltas reorder a focused task and change its hub roll-up failed with Error: no result for task.comment within 5000ms (harness.ts:679); parent Items case also failed. Positive Discord receipts do not supply a passing configured gate. Coordinator filed T-1423 and authorized one unchanged-head retry; final evidence remains pending its terminal result.","file":"web/test/items.test.ts","line":83}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13259 independently audits original A-13254: 3883 ordinary passes/2 failures plus 55 separate passing load samples; all 24 Discord message cases pass, six selected identities each 5/5. T0/T1/all fallback T2 passed; Web failed; T3/T4 absent. Exact failed typed finishes and actual timeout quoted, Linux/droplet/browser/host-tree reuse and report-only limits retained. Source2 A-13244 remains clear; C1–C3 claimant marks preserved, no final verification asserted. Coordinator decision 92f84f5f owns T-1423 and one unchanged-head retry e7b7565a, currently running. No diagnosis or further retry authorized by this review.
