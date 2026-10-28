@@ -158,10 +158,15 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
           }
         }
       } else Object.assign(params, JSON.parse(raw.toString('utf8') || '{}'));
+      if (req.method === 'POST' && req.url === '/control/expire-files') {
+        const expired = files.size;
+        files.clear();
+        return reply(res, 200, { expired });
+      }
       if (req.method === 'POST' && req.url === '/control/media') {
         const items = params.items;
         if (!Array.isArray(items) || !items.length) return reply(res, 400, { error: 'items required' });
-        const album = items.length > 1 ? `album-${nextUpdate}` : undefined;
+        const album = typeof params.group === 'string' ? params.group : items.length > 1 ? `album-${nextUpdate}` : undefined;
         const queued: TgUpdate[] = [];
         for (const item of items) {
           if (!['photo', 'document', 'voice', 'audio', 'video_note', 'video'].includes(item.kind)) return reply(res, 400, { error: 'invalid media kind' });

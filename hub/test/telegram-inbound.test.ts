@@ -735,3 +735,121 @@ for (const action of ['unpair', 'replace'] as const) test(`Telegram upload commi
   assert.deepEqual(await fs.readdir(join(root, '.cland/artifacts')), []);
   await clean(ui, hub);
 });
+
+test('Telegram three-photo album is one ordered captioned message before following text', async t => {
+  const { fake, state, start, drive, clean } = await fixture(t);
+  await control(fake.url, 'media', { album: true, items: [
+    { kind: 'photo', content: Buffer.from('first').toString('base64'), caption: 'album caption' },
+    { kind: 'photo', content: Buffer.from('second').toString('base64'), caption: 'ignored' },
+    { kind: 'photo', content: Buffer.from('third').toString('base64') },
+  ] });
+  await control(fake.url, 'say', { text: 'after album' });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, hub.discovery);
+  await drive(until(() => state.get('media.identity:101:4') === 'completed', { what: 'following text completed', timeoutMs: 2_000 }));
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.deepEqual(history.messages.map(m => m.text), ['album caption', 'after album']);
+  const album = history.messages[0]!;
+  assert.deepEqual(await Promise.all(album.artifacts!.map(a => readFile(a.path, 'utf8'))), ['first', 'second', 'third']);
+  for (const id of ['1', '2', '3']) assert.equal(state.message('101', id)?.message, album.id);
+  await clean(ui, hub);
+});
+
+test('Telegram album resumes after two confirmed updates before its third item', async t => {
+  const { fake, state, clock, owner, start, drive, clean } = await fixture(t);
+  const rows = await control<import('../src/remote/telegram-api.ts').TgUpdate[]>(fake.url, 'media', { items: [
+    { kind: 'photo', content: Buffer.from('one').toString('base64') },
+    { kind: 'photo', content: Buffer.from('two').toString('base64'), caption: 'first non-empty' },
+  ] });
+  const confirmed = owner.observe(signal => fake.waitForRequest('getUpdates', r => r.params.offset === 3, signal));
+  const first = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  await until(() => state.get('telegram.offset') === '3', { what: 'second album update durable confirmation', timeoutMs: 2_000 });
+  assert.equal((await within(confirmed, testWaitMs(5_000))).params.offset, 3);
+  const before = await connectUi(t, first.discovery);
+  assert.deepEqual(((await before.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages, []);
+  await first.stop();
+  await clock.advance(10_000); // Restart starts a fresh two-second collection window.
+  await control(fake.url, 'media', { group: rows[0]!.message!.media_group_id, items: [
+    { kind: 'photo', content: Buffer.from('three').toString('base64') },
+  ] });
+  const second = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, second.discovery);
+  await until(() => state.get('telegram.offset') === '4', { what: 'third album update durable confirmation', timeoutMs: 2_000 });
+  assert.deepEqual(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages, []);
+  await clock.advance(1_999);
+  assert.equal(state.get('media.identity:101:1'), 'stored');
+  await clock.advance(1);
+  await drive(until(() => state.get('media.identity:101:3') === 'completed', { what: 'recovered album completion', timeoutMs: 2_000 }));
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.deepEqual(history.messages.map(m => m.text), ['first non-empty']);
+  assert.deepEqual(await Promise.all(history.messages[0]!.artifacts!.map(a => readFile(a.path, 'utf8'))), ['one', 'two', 'three']);
+  const native = await control<{ requests: Array<{ method: string; params: { offset?: number; message_id?: number; reaction?: Array<{ emoji: string }> } }> }>(fake.url, 'state');
+  assert.deepEqual(native.requests.filter(r => r.method === 'getUpdates').map(r => r.params.offset).filter((offset): offset is number => offset !== undefined), [3, 3, 4]);
+  assert.deepEqual(native.requests.filter(r => r.method === 'setMessageReaction' && r.params.reaction?.[0]?.emoji === '👌').map(r => r.params.message_id), [1, 2, 3]);
+  await clean(ui, second);
+});
+
+test('Telegram four-item album omits the oversized document with one named reply', async t => {
+  const { fake, state, clock, start, drive, clean } = await fixture(t);
+  await control(fake.url, 'media', { items: [
+    { kind: 'photo', content: Buffer.from('a').toString('base64'), caption: 'mixed album' },
+    { kind: 'document', file_name: 'too-large.pdf', file_size: 25 * 1024 * 1024 },
+    { kind: 'photo', content: Buffer.from('b').toString('base64') },
+    { kind: 'photo', content: Buffer.from('c').toString('base64') },
+  ] });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, hub.discovery);
+  await until(() => state.get('telegram.offset') === '5', { what: 'four album updates confirmed after storage', timeoutMs: 2_000 });
+  await clock.advance(2_000);
+  await drive(until(() => state.get('media.identity:101:4') === 'completed', { what: 'mixed album completed', timeoutMs: 2_000 }));
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.deepEqual(history.messages.map(m => m.text), ['mixed album']);
+  assert.deepEqual(await Promise.all(history.messages[0]!.artifacts!.map(a => readFile(a.path, 'utf8'))), ['a', 'b', 'c']);
+  const native = await control<{ requests: Array<{ method: string }>; messages: TgMessage[] }>(fake.url, 'state');
+  assert.equal(native.requests.filter(r => r.method === 'getFile').length, 3);
+  assert.deepEqual(native.messages.map(m => m.text), ['too-large.pdf is 25 MB: a bot can download at most 20 MB, so it was not stored']);
+  for (const id of ['1', '2', '3', '4']) assert.equal(state.message('101', id)?.message, history.messages[0]!.id);
+  await clean(ui, hub);
+});
+
+test('Telegram committed album repairs every member after lost upload result without expired files', async t => {
+  const { clock, fake, owner, state, start, drive, clean } = await fixture(t);
+  const native = new TelegramRemote(new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock }), clock, { store: state });
+  owner.close(() => native.stop());
+  const lost = Promise.withResolvers<TopicMessage>();
+  const dropped = owner.observe(signal => abortable(lost.promise, signal));
+  const remote: Remote = { id: native.id, via: native.via, start: (...args) => native.start(...args),
+    stop: () => native.stop(), run: () => native.run(), receive: frame => {
+      if (frame.type === 'result' && frame.ok && (frame.value as { message?: TopicMessage }).message?.text === 'committed album') {
+        lost.resolve((frame.value as { message: TopicMessage }).message);
+        return;
+      }
+      return native.receive(frame);
+    } };
+  const confirmed = owner.observe(signal => fake.waitForRequest('getUpdates', r => r.params.offset === 3, signal));
+  await control(fake.url, 'media', { items: [
+    { kind: 'photo', content: Buffer.from('saved one').toString('base64'), caption: 'committed album' },
+    { kind: 'photo', content: Buffer.from('saved two').toString('base64') },
+  ] });
+  const first = await start({}, { gatewayRemotes: [remote] });
+  await within(confirmed, testWaitMs(5_000));
+  await clock.advance(2_000);
+  const original = await within(dropped, testWaitMs(5_000));
+  const ui = await connectUi(t, first.discovery);
+  assert.equal(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages[0]!.id, original.id);
+  assert.equal(state.message('101', '2'), null, 'result never reached the adapter');
+  await first.stop();
+  assert.equal(state.get('media.identity:101:2'), 'stored');
+  assert.equal((await control<{ expired: number }>(fake.url, 'expire-files', {})).expired, 2);
+  const second = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const recovered = await connectUi(t, second.discovery);
+  await drive(until(() => state.get('media.identity:101:2') === 'completed', { what: 'committed album repaired', timeoutMs: 2_000 }));
+  for (const id of ['1', '2']) assert.equal(state.message('101', id)?.message, original.id);
+  const history = (await recovered.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.deepEqual(history.messages.map(m => m.id), [original.id]);
+  assert.deepEqual(await Promise.all(history.messages[0]!.artifacts!.map(a => readFile(a.path, 'utf8'))), ['saved one', 'saved two']);
+  const platform = await control<{ requests: Array<{ method: string; params: { message_id?: number; reaction?: Array<{ emoji: string }> } }> }>(fake.url, 'state');
+  assert.equal(platform.requests.filter(r => r.method === 'getFile').length, 2, 'restart does not need expired native files');
+  assert.deepEqual(platform.requests.filter(r => r.method === 'setMessageReaction' && r.params.reaction?.[0]?.emoji === '👌').map(r => r.params.message_id), [1, 2]);
+  await clean(recovered, second);
+});

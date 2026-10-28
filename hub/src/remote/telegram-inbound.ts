@@ -4,7 +4,7 @@ import type { TelegramUpdateHandler } from './telegram-polling.ts';
 import type { TelegramApi } from './telegram-api.ts';
 import type { RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 
-type Receipt = { chat: string; message: number; stored: boolean; delivered: boolean; seen: boolean };
+type Receipt = { chat: string; message: number; stored: boolean; delivered: boolean; seen: boolean; targets?: number[]; storedTargets?: number[]; seenTargets?: number[] };
 
 /** Native text input uses the same human frame path as the workbenches. */
 export class TelegramInbound {
@@ -56,21 +56,46 @@ export class TelegramInbound {
     return this.#post({ ...fields, type: 'topic.answer' }, ingress, this.#signal, stored);
   }
 
-  upload(fields: Record<string, unknown>, ingress: RemoteIngress, bytes: readonly Buffer[]): Promise<void> {
-    return this.#post({ ...fields, type: 'artifact.upload' }, ingress, this.#signal, undefined, bytes);
+  /** A committed upload survives a lost result even when native files expire. */
+  async recoverUpload(ingress: RemoteIngress, members?: string[]): Promise<boolean> {
+    const saved = this.#receipt?.(ingress);
+    if (!saved) return false;
+    this.#saveUpload(saved, ingress, members);
+    await this.#flush(saved.id);
+    return true;
   }
 
-  async #post(frame: Record<string, unknown>, ingress: RemoteIngress, signal: AbortSignal, stored?: () => void, bytes?: readonly Buffer[]): Promise<void> {
+  #saveUpload(saved: TopicMessage, ingress: RemoteIngress, members?: string[]): void {
+    this.#store.transaction(() => {
+      for (const messageId of members ?? [ingress.messageId]) this.#store.putMessage({ chatId: ingress.chatId, messageId,
+        topic: saved.topic, message: saved.id, ask: null, approval: null });
+      const key = `telegram.inbound:${saved.id}`;
+      const value = this.#store.get(key);
+      const receipt: Receipt = value ? JSON.parse(value) as Receipt : {
+        chat: ingress.chatId, message: Number(ingress.messageId), stored: false, delivered: false, seen: false,
+      };
+      if (members) receipt.targets = members.map(Number);
+      receipt.delivered ||= saved.stage === 'delivered' || saved.stage === 'injected';
+      this.#store.set(key, JSON.stringify(receipt));
+    });
+  }
+
+  upload(fields: Record<string, unknown>, ingress: RemoteIngress, bytes: readonly Buffer[], members?: string[]): Promise<void> {
+    return this.#post({ ...fields, type: 'artifact.upload' }, ingress, this.#signal, undefined, bytes, members);
+  }
+
+  async #post(frame: Record<string, unknown>, ingress: RemoteIngress, signal: AbortSignal, stored?: () => void, bytes?: readonly Buffer[], members?: string[]): Promise<void> {
     const id = `telegram-in-${++this.#next}`;
     const result = Promise.withResolvers<TopicMessage>();
     this.#pending.set(id, { ...result, receipt: { chat: ingress.chatId, message: Number(ingress.messageId),
-      stored: false, delivered: false, seen: false } });
+      stored: false, delivered: false, seen: false, ...(members ? { targets: members.map(Number) } : {}) } });
     const abort = () => result.reject(new Error('Telegram input cancelled'));
     signal.addEventListener('abort', abort, { once: true });
     try {
       signal.throwIfAborted();
       this.#send({ ...frame, id }, ingress, bytes);
       const saved = await result.promise;
+      if (members) this.#saveUpload(saved, ingress, members);
       stored?.();
       await this.#flush(saved.id);
     } finally {
@@ -122,10 +147,17 @@ export class TelegramInbound {
             owner.resolve();
             return;
           }
-          await this.#api.setMessageReaction({ chat_id: receipt.chat, message_id: receipt.message,
-            reaction: [{ type: 'emoji', emoji }] }, { signal: this.#signal });
-          this.#sent();
-          // A delivery can arrive during the HTTP exchange; retain its durable bit.
+          for (const target of receipt.targets ?? [receipt.message]) {
+            const field = emoji === '👌' ? 'storedTargets' : 'seenTargets';
+            const latest = JSON.parse(this.#store.get(key)!) as Receipt;
+            if (latest[field]?.includes(target)) continue;
+            await this.#api.setMessageReaction({ chat_id: receipt.chat, message_id: target,
+              reaction: [{ type: 'emoji', emoji }] }, { signal: this.#signal });
+            this.#sent();
+            const current = JSON.parse(this.#store.get(key)!) as Receipt;
+            if (current.targets) (current[field] ??= []).push(target);
+            this.#store.set(key, JSON.stringify(current));
+          }
           const current = JSON.parse(this.#store.get(key)!) as Receipt;
           if (emoji === '👌') current.stored = true; else current.seen = true;
           this.#store.set(key, JSON.stringify(current));

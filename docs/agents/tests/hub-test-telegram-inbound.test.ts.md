@@ -146,3 +146,28 @@ controls retain exact getFile close identity, stopped hub, drained observers,
 closed SQLite and zero clock timers. Media fake observations use pacingOwner
 signals, with independent post-acquisition setup bounds and drainage ownership;
 UI message observation checks captured frames under the same owner.
+
+T-1386 album cases retain three ordered photo bytes on one message and every
+native reply map, with ordinary text closing the group. The restart case waits
+for offset 3 plus the exact native getUpdates(offset=3) receipt with empty
+General, joins the stopped hub, advances downtime, and
+adds a third file using the fake control's optional opaque `group`. Wait for
+offset 4, advance 1999 then 1 injected milliseconds, and assert one message with
+the first non-empty caption, exact bytes and one stored reaction per item. The
+fake poll offsets [3, 3, 4] show the second and third cursor confirmations;
+re-polling offset 3 on startup does not confirm an item twice. This is stopped
+in-process restart evidence, not an OS SIGKILL test. The four-item case omits the
+25 MB document, retains the three other files in order, maps all four items,
+and asserts one named native refusal plus exactly three getFile requests.
+
+The committed-album/lost-result case drops the actual successful upload result
+at the Remote receive seam, verifies the committed General message through
+public history, and stops with the group still stored. The fake `expire-files`
+control removes all native downloads before restart. Retain exact original
+message id and bytes, maps for both members, one stored reaction for each,
+queue completion, and only two total getFile calls (both before restart).
+Recovery consults Gateway's messenger-scoped durable ingress receipt first.
+
+Receipt consumer controls also run telegram-cards (exact legacy single-message
+shape and confirmed prompt recovery), telegram-polling-restart and telegram-notices
+(absent receipt controls). Only album receipts gain targets and per-target progress.

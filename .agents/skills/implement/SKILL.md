@@ -743,3 +743,15 @@ Identify for 4003, structured fatal causes and one General notice. API error
 observers retain only sanitized errors and numeric channel ids. All REST paths
 stop on 401/40001/50014; test reads the application and sends one paired line.
 Existing role authority and optional wire fields remain unchanged.
+
+For Telegram albums, keep the opaque media grouping in the durable FIFO: commit
+each item before offset confirmation, close on two injected seconds of quiet or
+the chat's next update outside the group, and reset open-group quiet time on
+restart. Retain ordered files, first non-empty caption, first-item ingress and
+all native reply/feedback mappings. Confirm restart setup through the native
+getUpdates cursor receipt. Recover committed uploads from the durable ingress
+receipt before downloads so a lost result plus expired files cannot drop maps.
+Only album receipts carry target lists and per-target progress; preserve the
+legacy single-message receipt shape and its prompt-recovery regression.
+An oversized member must not drop its peers.
+Use the album cases in the inbound guide, including legacy single-input recovery.

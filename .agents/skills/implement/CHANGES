@@ -277,3 +277,8 @@ T-1402: extend Discord connection guidance with resume and liveness receipt boun
 T-1402 integration: document settled paired REST health after pacing and retries; socket ACKs alone cannot clear it.
 
 T-1402 source1: retain job-local edit-404 health, client-refusal clock boundary and native/hub fixture ownership.
+2026-10-28 · T-1386: durable album grouping, restart window and per-item maps/receipts.
+
+2026-10-28 · T-1386 source review: native cursor receipt and committed-upload recovery before downloads.
+
+2026-10-28 · T-1386 source3: restrict target/progress fields to album receipts, retaining exact legacy single-message shape.

@@ -324,7 +324,7 @@ export class TelegramRemote implements Remote {
         handle: async (update: TgUpdate) => {
           const message = update.message!;
           this.#media!.enqueue({ chat: String(message.chat.id), message: String(message.message_id), date: message.date, ...(this.#late(message.date) ? { late: this.#late(message.date)! } : {}),
-            caption: message.caption ?? '', ...(message.reply_to_message ? { reply: String(message.reply_to_message.message_id) } : {}), file: mediaFile(message)! });
+            ...(message.media_group_id ? { group: message.media_group_id } : {}), caption: message.caption ?? '', ...(message.reply_to_message ? { reply: String(message.reply_to_message.message_id) } : {}), file: mediaFile(message)! });
         },
       }, ...(this.#inbound ? [{
         accepts: this.#inbound.handler.accepts,
@@ -340,7 +340,11 @@ export class TelegramRemote implements Remote {
         accepts: () => true,
         handle: (update: TgUpdate) => this.#unsupported(update),
       }];
-      await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers, ...(this.#cards ? { foreignCard: this.#cards.foreign } : {}),
+      await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers: handlers.map(handler => ({ ...handler, handle: async (update, signal) => {
+        const message = update.message ?? update.edited_message ?? update.callback_query?.message;
+        if (message) this.#media!.closeOutside(String(message.chat.id), update.message?.media_group_id);
+        await handler.handle(update, signal);
+      } })), ...(this.#cards ? { foreignCard: this.#cards.foreign } : {}),
         initialOffline: !!this.#offline, offline: reason => this.#failed(reason), caughtUp: () => this.#caughtUp() }, this.#abort.signal,
         () => {
           this.#lastInbound = this.#clock.now().toISOString();
@@ -388,33 +392,46 @@ export class TelegramRemote implements Remote {
         ...(input.reply ? { reply_to_message: { message_id: Number(input.reply), date: 0, chat: { id: Number(input.chat), type: 'private' } } } : {}) } }, this.#abort.signal);
       return;
     }
-    const file = input.file!;
+    if (await this.#inbound!.recoverUpload(ingress, input.items?.map(item => item.message))) return;
     const limit = Math.min(20, this.#polling!.maxUploadMb?.() ?? 50);
-    const refuse = (text: string) => this.#commandReply({ update_id: 0, message: { message_id: Number(input.message), date: input.date, chat: { id: Number(input.chat), type: 'private' } } }, [plainCommandReply(text)]);
-    if (file.size !== undefined && file.size > limit * 1024 * 1024) {
-      await refuse(`${file.name} is ${Math.ceil(file.size / (1024 * 1024))} MB: a bot can download at most ${limit} MB, so it was not stored`);
-      return;
+    const files: Array<{ name: string; mime: string }> = [];
+    const payload: Buffer[] = [];
+    for (const item of input.items ?? [input]) {
+      const file = item.file!;
+      const refuse = (text: string) => this.#commandReply({ update_id: 0, message: { message_id: Number(item.message), date: item.date, chat: { id: Number(item.chat), type: 'private' } } }, [plainCommandReply(text)]);
+      if (file.size !== undefined && file.size > limit * 1024 * 1024) {
+        await refuse(`${file.name} is ${Math.ceil(file.size / (1024 * 1024))} MB: a bot can download at most ${limit} MB, so it was not stored`);
+        continue;
+      }
+      try {
+        const native = await this.#api.getFile({ file_id: file.fileId }, { signal: this.#abort.signal });
+        if (!native.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
+        const bytes = await this.#api.download(native.file_path, Math.floor(limit * 1024 * 1024), this.#abort.signal);
+        if (!admitted()) return;
+        files.push({ name: file.name, mime: file.mime }); payload.push(bytes);
+      } catch (error) {
+        if (this.#abort.signal.aborted || fatal(error)) throw error;
+        if (!admitted()) return;
+        if (error instanceof TelegramError && (error.code === 429 || error.code >= 500 || error.code === 0 && !/cap|invalid/.test(error.description))) {
+          await refuse(`${file.name} could not be stored; retrying`);
+          throw error;
+        }
+        await refuse(`${file.name} could not be stored`);
+      }
     }
+    if (!files.length || !admitted()) return;
+    const reply = input.reply ? store.message(input.chat, input.reply) : null;
+    const reference = reply?.message ? store.get(`telegram.notice-reference:${reply.message}`) : null;
     try {
-      const native = await this.#api.getFile({ file_id: file.fileId }, { signal: this.#abort.signal });
-      if (!native.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
-      const bytes = await this.#api.download(native.file_path, Math.floor(limit * 1024 * 1024), this.#abort.signal);
-      if (!admitted()) return;
-      const reply = input.reply ? store.message(input.chat, input.reply) : null;
-      const reference = reply?.message ? store.get(`telegram.notice-reference:${reply.message}`) : null;
-      const late = input.late;
       await this.#inbound!.upload({ topic: reference ? 'general' : reply?.topic ?? 'general',
         ...(reply?.message && !reference ? { replyTo: reply.message } : {}),
-        caption: `${reference ? reference + ' ' : ''}${input.caption}${late ? `\n\n(${late})` : ''}`,
-        files: [{ name: file.name, mime: file.mime }] }, ingress, [bytes]);
+        caption: `${reference ? reference + ' ' : ''}${input.caption}${input.late ? `\n\n(${input.late})` : ''}`, files }, ingress, payload, input.items?.map(item => item.message));
     } catch (error) {
       if (this.#abort.signal.aborted || fatal(error)) throw error;
       if (!admitted()) return;
-      if (error instanceof TelegramError && (error.code === 429 || error.code >= 500 || error.code === 0 && !/cap|invalid/.test(error.description))) {
-        await refuse(`${file.name} could not be stored; retrying`);
-        throw error;
-      }
-      await refuse(`${file.name} could not be stored`);
+      if (error instanceof TelegramError && (error.code === 429 || error.code >= 500 || error.code === 0 && !/cap|invalid/.test(error.description))) throw error;
+      await this.#commandReply({ update_id: 0, message: { message_id: Number(input.message), date: input.date,
+        chat: { id: Number(input.chat), type: 'private' } } }, [plainCommandReply(`${files.map(file => file.name).join(', ')} could not be stored`)]);
     }
   }
 

@@ -2864,6 +2864,21 @@ Replies use the native mirrored-message map; other files go to General. The same
 👌/👀 receipts and late-input caption suffix apply. Ordinary text queues behind
 pending media; commands, prompts and button presses bypass that queue. Startup
 recovers queued work, and native ingress deduplication prevents duplicate uploads.
+Items with the same opaque group key (`media_group_id` on Telegram) share one
+queue entry. Joining the group and its per-item stored receipt commit in one
+transaction before the poller confirms the update. A group closes after two
+seconds without an item on the injected clock, or the next admitted chat update
+outside that group. Startup gives recovered open groups a fresh two-second
+window; closed groups resume immediately. One upload uses the first item's
+ingress identity, ordered files and first non-empty caption; every native item
+maps to the resulting message and receives its own stored/seen reaction.
+Only album receipts carry target lists and per-target progress; single-message
+receipts retain their original fields.
+If the upload committed but its result was lost, recovery uses the durable ingress
+receipt to repair member maps and resume feedback before attempting native file
+I/O; expired messenger files cannot discard an already committed album.
+An oversized item receives one named reply and is omitted while the other files
+still arrive together. Legacy ungrouped queue entries recover as single inputs.
 Workers retain their paired numeric identity; unpairing or replacement revokes
 pending media before upload and again at artifact commit. Fatal native media
 401/403/409 responses save the stopped state and retain work for hub reload.
