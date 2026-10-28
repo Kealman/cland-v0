@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
 import { drive } from './remote-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { eventually, projectHub, connectUi, inProcessSpoke } from './harness.ts';
+import { eventually, projectHub, connectUi, inProcessSpoke, until } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { caseDeadlines } from './case-deadlines.ts';
@@ -22,7 +22,7 @@ test('a reported two-shard Linux stage cover counts on the first run after hub r
   const f = await setup.wait('sealed close fixture', () => integrated(setup.fixtures, '', 2, undefined, { machine: 'scripted' }));
   f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const run = await f.launch('all', '--fresh', '--occasion', 'stage');
+  const run = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   await setup.wait('both shard start receipts', () => startedShards(f, run.id));
   for (const n of [1, 2]) f.machine.finish(`${run.id}-shard-${n}`, 0);
   await f.clock.advance(1000);
@@ -67,7 +67,7 @@ test('two-shard stage result shows each shard T4 tier line', async t => {
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify(f.durationContext.manifest));
   f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   await startedShards(f, job.id);
   for (const [index, path] of paths.entries()) {
     f.machine.finish(`${job.id}-shard-${index + 1}`, 0, '# tests 1\n# pass 1\n' + `suite timing ${JSON.stringify({ file: path, name: 'soak', seconds: 0.01 })}\n`);
@@ -91,7 +91,7 @@ test('two-shard close reports despite a corrupt spend ledger and the executor sw
   const f = await setup.wait('isolated close fixture', () => integrated(setup.fixtures, '', 2, undefined, { machine: 'scripted' }));
   f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   await setup.wait('two durably running shards', () => startedShards(f, job.id));
   const runs = [1, 2].map(n => `${job.id}-shard-${n}`);
   const path = join(f.root, '.cland/executor-state/spend.json');
@@ -154,7 +154,7 @@ test('pre-lease shard failures retain reservation release through executor resta
     if (++acquiring === 2) entered.resolve();
     await release.promise;
   });
-  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   await setup.wait('both shards reach pre-lease provider lookup', () => entered.promise);
   const saved = await readFile(path, 'utf8');
   assert.deepEqual(await readLeases(f.root), []);
@@ -203,7 +203,7 @@ for (const mixed of [false, true]) test(`generic pre-execution shard acquisition
     if (mixed && ref.id.endsWith('shard-1')) throw new ProviderCapacityUnavailable('size c-8 unavailable in lon1');
     throw new Error(`snapshot unavailable for ${ref.id.endsWith('shard-1') ? 'one' : 'two'}`);
   });
-  const job = await run.wait('stage admission', () => f.launch('all', '--fresh', '--occasion', 'stage'));
+  const job = await run.wait('stage admission', () => drive(f, f.launch('all', '--fresh', '--occasion', 'stage')));
   await run.wait('acquisition I/O', () => f.verificationSettled());
   const reported = f.result(job.id);
   await f.clock.advance(1000);
@@ -238,7 +238,7 @@ test('a Coordinator integrated batch reserves two shards without stage provenanc
     const ledger = JSON.parse(await readFile(join(f.root, '.cland/executor-state/spend.json'), 'utf8')) as { entries: { reservation: number; cost: number | null }[] };
     reservations = ledger.entries.filter(e => e.cost === null).map(e => e.reservation);
   });
-  const job = await f.launch('all', '--fresh');
+  const job = await drive(f, f.launch('all', '--fresh'));
   const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   assert.ok(queue.remote);
   assert.equal(queue.remote.length, 2, 'the batch occupies both remote slots');
@@ -264,7 +264,7 @@ test('live and restored shards separate remote execution from collection in one 
   const f = await integrated(t, '', 2, undefined, { machine: 'scripted' });
   f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   await startedShards(f, job.id);
   await f.clock.advance(4000);
   await f.verificationSettled();
@@ -335,10 +335,94 @@ test('cancelling while provider sizes are held joins reservation before reportin
   assert.equal((await f.messages(id)).length, 1);
 });
 
-test('a batch sharding fallback publishes one warning frame and one whole-run result', async t => {
-  const f = await integrated(t, 'daily_spend_usd=0.1', 2, undefined, { machine: 'scripted' });
+/** Registered before caseDeadlines: release/cancel/join precedes its drainage
+ * and every fixture hook, even when acquisition or observation is abandoned. */
+function contendedSubmission(t: Parameters<typeof caseDeadlines>[0]) {
+  type Fixture = Awaited<ReturnType<typeof integrated>>;
+  const lifetime = new AbortController();
+  let fixture: Fixture | undefined;
+  let lock: ReturnType<typeof acquireLockAsync> | undefined;
+  let submission: ReturnType<Fixture['launch']> | undefined;
+  let observation: Promise<void> | undefined;
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    lifetime.abort(new Error('submission setup disposed'));
+    await (await lock)?.release();
+    await Promise.allSettled(observation ? [observation] : []);
+    if (fixture && submission) {
+      await drive(fixture, submission);
+      await drive(fixture, fixture.verificationSettled());
+    }
+  })();
+  onCleanup(t, close);
+  return {
+    begin(f: Fixture, publish = true, signal?: AbortSignal) {
+      assert.equal(lock, undefined);
+      fixture = f;
+      lock = acquireLockAsync(`${spendPath(f.env)}.lock`, undefined, undefined, 'UTC', f.dependencies.processes);
+      const work = (async () => {
+        await lock;
+        lifetime.signal.throwIfAborted();
+        const stopped = signal ? AbortSignal.any([lifetime.signal, signal]) : lifetime.signal;
+        // Observe only this fixture's requested retry, never advance before
+        // native lock release. Cancellation settles the loop and clears its timer.
+        observation = until(() => stopped.aborted || publish && f.waits.pending.length > 0,
+          { what: 'shard reservation requested its retry', timeoutMs: 2000 })
+          .then(() => { stopped.throwIfAborted(); });
+        void observation.catch(() => {});
+        submission = f.launch('all', '--fresh');
+        void submission.catch(() => {});
+        await observation;
+        await (await lock)!.release();
+        return drive(f, submission);
+      })();
+      void work.catch(() => {});
+      return work;
+    },
+    close,
+  };
+}
+
+async function fallbackFixture(setup: ReturnType<typeof caseDeadlines>) {
+  const f = await setup.wait('isolated fallback fixture', () => integrated(setup.fixtures, 'daily_spend_usd=0.1', 2, undefined, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } }));
+  await setup.wait('initial executor sweep', () => eventually('durable initial sweep', async () => {
+    await f.ui.request({ type: 'hub.status', flushLogs: true });
+    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
+  }));
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const job = await f.launch('all', '--fresh');
+  await setup.wait('startup verification settled', () => f.verificationSettled());
+  return f;
+}
+
+for (const mode of ['omitted', 'aborted'] as const) test(`fallback submission setup drains an ${mode} retry observation`, async t => {
+  const owner = contendedSubmission(t);
+  const setup = caseDeadlines(t);
+  const f = await fallbackFixture(setup);
+  const cancellation = new AbortController();
+  const work = owner.begin(f, false, cancellation.signal);
+  const failed = assert.rejects(work, /submission setup disposed|observation aborted/);
+  void failed.catch(() => {});
+  // Observe the real lock retry independently of the intentionally absent
+  // setup notification before cancelling; this is not the final receipt.
+  await until(() => f.waits.pending.length > 0, { what: 'contended submission retry', timeoutMs: 2000 });
+  if (mode === 'aborted') cancellation.abort(new Error('observation aborted'));
+  await owner.close();
+  await failed;
+  assert.equal(f.waits.pending.length, 0);
+  await assert.rejects(readFile(`${spendPath(f.env)}.lock`), { code: 'ENOENT' });
+  const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; state: string }[] }).suites;
+  const job = jobs[0]!;
+  assert.equal(job.state, 'running', 'disposal joins the admitted submission and native writers');
+  await f.clock.advance(1000);
+  assert.match((await drive(f, f.result(job.id))).text, /exit 0/);
+  assert.deepEqual(f.api.droplets, []);
+});
+
+test('a batch sharding fallback publishes one warning frame and one whole-run result', async t => {
+  const owner = contendedSubmission(t);
+  const setup = caseDeadlines(t);
+  const f = await fallbackFixture(setup);
+  const job = await owner.begin(f);
   await drive(f, f.machine.started(job.id));
   await eventually('fallback durably running', async () => {
     const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; state: string }[] }).suites;
@@ -360,7 +444,7 @@ test('task heads and non-Coordinator batches keep one remote slot', async t => {
   ]) {
     f.candidate.branch = request.branch;
     assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: request.role })).ok, true);
-    const job = await f.launch(request.mode, '--fresh');
+    const job = await drive(f, f.launch(request.mode, '--fresh'));
     const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
     assert.ok(queue.remote);
     assert.deepEqual(queue.remote.map(run => run.id), [job.id]);
@@ -378,7 +462,7 @@ test('task heads and non-Coordinator batches keep one remote slot', async t => {
 test('another project stage close skips sharding and runs once without a check', async t => {
   const f = await integrated(t, '', 2, undefined, { machine: 'scripted', stack: 'other', check: '', test: 'printf project-test' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   const history = (await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] };
   assert.deepEqual(history.messages.filter(m => m.text.startsWith('sharding skipped:')).map(m => [m.text, m.severity]), [['sharding skipped: project commands are not sharded', 'warn']]);
   await drive(f, f.machine.started(job.id));
