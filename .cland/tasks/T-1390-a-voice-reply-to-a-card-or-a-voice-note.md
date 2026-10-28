@@ -2,8 +2,8 @@
 id: T-1390
 kind: task
 title: A voice reply to a card, or a voice note after "Other answer…" or "Decline…", answers the ask
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1159
 branch: t/T-1390-a-voice-reply-to-a-card-or-a-voice-note
 created: 2026-10-27T23:37:28.501Z
-updated: 2026-10-28T19:49:04.750Z
+updated: 2026-10-28T20:29:10.607Z
+closed: 2026-10-28T20:29:10.607Z
 ---
 
 > Pending: the voice-reply behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.
@@ -37,10 +38,13 @@ When the note cannot answer (no key, off, a failure, nothing recognised or no ma
 
 - [x] C1. A voice reply to a free-answer card answers the ask with the transcript "via Telegram", the card is edited to its outcome, and the transcript is not posted to General (test).
   - done: impl-1390 · 2026-10-28T19:24:47.000Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1390-final · 2026-10-28T20:22:06.419Z · commit 6dbdc654e6a8a926c4c0f7f101d2cb6aa585b767
 - [x] C2. A voice note after "Decline…" records the decline with the transcript as the reason, and a voice reply "Second." to an options-only card whose second option is "second" answers option 2 (test).
   - done: impl-1390 · 2026-10-28T19:32:06.874Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1390-final · 2026-10-28T20:22:06.419Z · commit 6dbdc654e6a8a926c4c0f7f101d2cb6aa585b767
 - [x] C3. A voice reply to a card while the fake provider fails leaves the ask open with its buttons, the chat gets one line, and the audio reaches General as a "🎤 not transcribed" message (test).
   - done: impl-1390 · 2026-10-28T19:24:48.532Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1390-final · 2026-10-28T20:22:06.419Z · commit 6dbdc654e6a8a926c4c0f7f101d2cb6aa585b767
 
 ## Notes
 
@@ -96,3 +100,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Current-head configured evidence clear, not final ready. A-13435 independently audits A-13434: 3991 ordinary/503 file passes, 55 task-owned load passes (all 11 identities 5/5) plus 25 unrelated site load passes. T0/T1/all fallback T2/Web complete, no T3/T4; host prepared-tree typecheck reused, runtime trees match. C1–C3 assertion evidence is present at this head, but verification/ready marks are intentionally deferred because Coordinator 5cbd1ba5 requires the semantic T-1389 merge, delta source review and a new-head run. No new findings. Parent evidence cannot cover that future resolution.
+
+### rev-34 · 2026-10-28T19:53:44.439Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1390-source3
+commit: 6dbdc654e6a8a926c4c0f7f101d2cb6aa585b767
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized T-1389 merge delta source is clear. Refusal helper precedes admission-time prompt capture and queued transcription; only admitted standalone voice can answer. Incoming audio/video-note filenames/captions and album attachment policy survive, as do committed-answer recovery and all source2 prompt controls. No new-head local/runtime checks under COVER-QUIET; parent evidence is historical only. After explicit cover end, complete Coordinator-required both voice files plus typecheck before the one same-head mode-free run. Criteria remain unverified pending new-head evidence.
+
+### rev-34 · 2026-10-28T20:22:06.419Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1390-final
+commit: 6dbdc654e6a8a926c4c0f7f101d2cb6aa585b767
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence is clear. Original A-13446 independently yields 4013 ordinary passes/504 passing files plus 55 task-owned load passes (11 identities, each 5/5) and 25 unrelated site repetitions. All 19 incoming voice admission/echo cases and cards/inbound/docs controls pass. Source3 plus exact generated-case receipts establish C1–C3. T0/T1/all fallback T2/Web complete; host prepared-tree receipt reused with runtime source equality, no repeated Linux typecheck. T3/T4/live platform/stage QA absent; timing/lint warnings report-only. No findings; parent evidence was not substituted for this merge run.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T20:29:10.607Z
+
+Merged 3a3ec99f10a9b548c8b5a4e012a8a1f95ed06d11 onto dev.
