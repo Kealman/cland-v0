@@ -346,3 +346,8 @@ press's confirmed offset, saved answer, native outcome edit and exactly one
 guidance reply. Native held/poll/edit-close observers are pre-owned by the shared
 pacing disposer; its omitted/aborted setup controls are in the inbound file.
 Fake-clock pacing advances only from durable outbox waits.
+
+T-1385 migrates the sticker/button regression's fallback-copy expectation to
+"This kind of message does not reach General". Retain its exactly-one reply
+count, held sticker reply, serial poll offset, answered ask and native outcome
+edit assertions. The sticker still gets a reply before the queued press settles.

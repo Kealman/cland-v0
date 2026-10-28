@@ -1668,6 +1668,6 @@ test('Telegram handles a button queued behind a sticker after its reply settles'
   assert.equal(outcome.text, 'Three');
   await driveTelegram(f.clock, f.state, edited);
   assert.ok((await f.messages()).some(message => message.message_id === card.message_id && message.text?.includes('Three · human via Telegram')));
-  assert.equal((await f.messages()).filter(message => message.text === 'Please use text, buttons or commands.').length, 1);
+  assert.equal((await f.messages()).filter(message => message.text === 'This kind of message does not reach General').length, 1);
   await f.stop();
 });

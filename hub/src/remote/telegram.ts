@@ -1,3 +1,4 @@
+import { MediaQueue, type MediaInput } from './media.ts';
 import { mirrorOut } from './mirror.ts';
 import type { Remote, RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 import type { Pairing } from './state.ts';
@@ -14,7 +15,7 @@ import { TelegramPrompts } from './telegram-prompts.ts';
 import { plainParts } from './telegram-render.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 
-export type TelegramRemoteOptions = TelegramPollingOptions & { projectName?: () => string; webOrigin?: () => string };
+export type TelegramRemoteOptions = TelegramPollingOptions & { maxUploadMb?: (() => number) | undefined; projectName?: () => string; webOrigin?: () => string };
 
 /** The gateway owns this client's lifetime, including explicit tests and old-chat notices. */
 export class TelegramRemote implements Remote {
@@ -39,6 +40,8 @@ export class TelegramRemote implements Remote {
   #lastOutbound: string | null = null;
   #botLink: string | null = null;
   #stopping: Promise<void> | undefined;
+  #fatalError: Error | undefined;
+  #media: MediaQueue | undefined;
   #inbound: TelegramInbound | undefined;
   #cards: TelegramCards | undefined;
   #prompts: TelegramPrompts | undefined;
@@ -143,14 +146,16 @@ export class TelegramRemote implements Remote {
       if ((!this.#abort.signal.aborted || this.#fatal) && error instanceof TelegramError && [401, 403, 409].includes(error.code)) {
         const stopCause = error.code === 401 ? 'token' : error.code === 403 ? 'blocked' : 'other-consumer';
         const { cause, fix } = remoteStopDetails('telegram', stopCause)!;
+        const terminal = remoteStopError('telegram', stopCause, error.message);
         if (!this.#fatal) {
+          this.#fatalError = terminal;
           this.#fatal = true;
           this.#stopped = true;
           this.#abort.abort();
           this.#polling?.notice?.(cause, fix);
           this.#clock.clearTimeout(this.#offlineTimer);
         }
-        throw remoteStopError('telegram', stopCause, error.message);
+        throw terminal;
       }
       throw error;
     });
@@ -174,6 +179,7 @@ export class TelegramRemote implements Remote {
     if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, { setMessageReaction: async params => { await this.#outbox.react(params); return true; } }, this.#abort.signal,
       () => {}, receipt, written => this.#late(written));
     if (this.#polling) {
+      this.#media = new MediaQueue(this.#polling.store, this.#clock, this.#abort.signal, input => this.#track(() => this.#mediaInput(input)));
       this.#prompts = new TelegramPrompts(this.#polling.store, this.#outbox, (type, fields, ingress) => this.#request(type, fields, ingress),
         (fields, ingress, stored) => this.#inbound!.answer(fields, ingress, stored), written => this.#late(written));
       this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal, this.#prompts, this.#polling.webOrigin);
@@ -246,6 +252,7 @@ export class TelegramRemote implements Remote {
       await this.#outbox.resume();
       if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
       await this.#transient(async () => { await this.#inbound?.recover(); });
+      this.#media?.recover();
       const handlers = [...this.#polling.handlers ?? [], ...(this.#cards ? [this.#cards.handler] : []), {
         accepts: (update: TgUpdate) => /^\/(?:mute|unmute)(?:@[A-Za-z0-9_]+)?\s*$/.test(update.message?.text ?? ''),
         handle: async (update: TgUpdate) => {
@@ -312,7 +319,23 @@ export class TelegramRemote implements Remote {
             throw error;
           });
         },
-      }, ...(this.#prompts ? [this.#prompts.handler] : []), ...(this.#inbound ? [this.#inbound.handler] : []), {
+      }, ...(this.#prompts ? [this.#prompts.handler] : []), {
+        accepts: (update: TgUpdate) => !!update.message && !!mediaFile(update.message),
+        handle: async (update: TgUpdate) => {
+          const message = update.message!;
+          this.#media!.enqueue({ chat: String(message.chat.id), message: String(message.message_id), date: message.date, ...(this.#late(message.date) ? { late: this.#late(message.date)! } : {}),
+            caption: message.caption ?? '', ...(message.reply_to_message ? { reply: String(message.reply_to_message.message_id) } : {}), file: mediaFile(message)! });
+        },
+      }, ...(this.#inbound ? [{
+        accepts: this.#inbound.handler.accepts,
+        handle: async (update: TgUpdate, signal: AbortSignal) => {
+          const message = update.message!;
+          if (!message.text!.startsWith('/') && this.#media!.has(String(message.chat.id))) {
+            this.#media!.enqueue({ chat: String(message.chat.id), message: String(message.message_id), date: message.date, ...(this.#late(message.date) ? { late: this.#late(message.date)! } : {}),
+              caption: '', text: message.text!, ...(message.reply_to_message ? { reply: String(message.reply_to_message.message_id) } : {}) });
+          } else await this.#inbound!.handler.handle(update, signal);
+        },
+      }] : []), {
         // Dedicated media handlers go before this terminal fallback.
         accepts: () => true,
         handle: (update: TgUpdate) => this.#unsupported(update),
@@ -327,6 +350,9 @@ export class TelegramRemote implements Remote {
             this.#clock.clearTimeout(this.#offlineTimer);
           }
         });
+      // A media failure aborts polling too. Join that native poll before
+      // propagating the fatal cause through the gateway-observed lifetime.
+      if (this.#fatalError) throw this.#fatalError;
     });
   }
 
@@ -341,10 +367,55 @@ export class TelegramRemote implements Remote {
     const message = update.message;
     if (!message || this.#polling!.store.get(`telegram.command:${message.chat.id}:${message.message_id}`) === null)
       logUnhandledTelegramUpdate(update, this.#polling!.log);
-    // Edits and unmapped presses have no new message to forward or reply to.
-    if (!message) return;
-    // Reuse the durable command fence: an interrupted reply cannot be duplicated.
-    await this.#commandReply(update, [plainCommandReply('Please use text, buttons or commands.')]);
+    const target = message ?? update.edited_message;
+    if (!target) return;
+    await this.#commandReply({ ...update, message: target }, [plainCommandReply('This kind of message does not reach General')]);
+  }
+
+  async #mediaInput(input: MediaInput): Promise<void> {
+    const store = this.#polling!.store;
+    const ingress = { chatId: input.chat, messageId: input.message };
+    const captured = input.pairing ?? store.pairing();
+    const admitted = () => {
+      const current = store.pairing();
+      return !!captured && !!current && current.chatId === input.chat && current.chatId === captured.chatId
+        && current.userId === captured.userId && current.guildId === captured.guildId;
+    };
+    if (!admitted()) return;
+    if (input.text !== undefined) {
+      await this.#inbound!.handler.handle({ update_id: 0, message: { message_id: Number(input.message), date: input.late ? 0 : input.date,
+        chat: { id: Number(input.chat), type: 'private' }, text: input.text + (input.late ? `\n\n(${input.late})` : ''),
+        ...(input.reply ? { reply_to_message: { message_id: Number(input.reply), date: 0, chat: { id: Number(input.chat), type: 'private' } } } : {}) } }, this.#abort.signal);
+      return;
+    }
+    const file = input.file!;
+    const limit = Math.min(20, this.#polling!.maxUploadMb?.() ?? 50);
+    const refuse = (text: string) => this.#commandReply({ update_id: 0, message: { message_id: Number(input.message), date: input.date, chat: { id: Number(input.chat), type: 'private' } } }, [plainCommandReply(text)]);
+    if (file.size !== undefined && file.size > limit * 1024 * 1024) {
+      await refuse(`${file.name} is ${Math.ceil(file.size / (1024 * 1024))} MB: a bot can download at most ${limit} MB, so it was not stored`);
+      return;
+    }
+    try {
+      const native = await this.#api.getFile({ file_id: file.fileId }, { signal: this.#abort.signal });
+      if (!native.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
+      const bytes = await this.#api.download(native.file_path, Math.floor(limit * 1024 * 1024), this.#abort.signal);
+      if (!admitted()) return;
+      const reply = input.reply ? store.message(input.chat, input.reply) : null;
+      const reference = reply?.message ? store.get(`telegram.notice-reference:${reply.message}`) : null;
+      const late = input.late;
+      await this.#inbound!.upload({ topic: reference ? 'general' : reply?.topic ?? 'general',
+        ...(reply?.message && !reference ? { replyTo: reply.message } : {}),
+        caption: `${reference ? reference + ' ' : ''}${input.caption}${late ? `\n\n(${late})` : ''}`,
+        files: [{ name: file.name, mime: file.mime }] }, ingress, [bytes]);
+    } catch (error) {
+      if (this.#abort.signal.aborted || fatal(error)) throw error;
+      if (!admitted()) return;
+      if (error instanceof TelegramError && (error.code === 429 || error.code >= 500 || error.code === 0 && !/cap|invalid/.test(error.description))) {
+        await refuse(`${file.name} could not be stored; retrying`);
+        throw error;
+      }
+      await refuse(`${file.name} could not be stored`);
+    }
   }
 
   async #commandReply(update: TgUpdate, replies: import('./telegram-commands.ts').CommandReply[], publish?: (key: string) => Promise<void>): Promise<void> {
@@ -379,10 +450,21 @@ export class TelegramRemote implements Remote {
     this.#stopped = true;
     this.#clock.clearTimeout(this.#offlineTimer);
     this.#abort.abort();
-    return this.#stopping ??= Promise.allSettled([this.#outbox.stop(), ...this.#work]).then(() => {});
+    return this.#stopping ??= Promise.allSettled([this.#outbox.stop(), this.#media?.stop(), ...this.#work]).then(() => {});
   }
 }
 
 function time(at: string): string { return new Date(at).toTimeString().slice(0, 5); }
 
 function fatal(error: unknown): boolean { return error instanceof TelegramError && [401, 403, 409].includes(error.code); }
+
+function mediaFile(message: import('./telegram-api.ts').TgMessage): import('./media.ts').MediaFile | undefined {
+  const photo = message.photo?.length ? message.photo.reduce((largest, size) => size.width * size.height > largest.width * largest.height ? size : largest) : undefined;
+  const kind = photo ? 'photo' : message.document ? 'document' : message.audio ? 'audio' : message.video_note ? 'video_note' : message.video ? 'video' : undefined;
+  const file = photo ?? message.document ?? message.audio ?? message.video_note ?? message.video;
+  if (!kind || !file) return;
+  const named = file as import('./telegram-api.ts').TgDocument;
+  return { kind, fileId: file.file_id, name: photo ? `photo-${message.message_id}.jpg` : named.file_name ?? `${kind}-${message.message_id}.bin`,
+    mime: photo ? 'image/jpeg' : named.mime_type ?? 'application/octet-stream', ...(file.file_size !== undefined ? { size: file.file_size } : {}),
+    ...('duration' in file ? { duration: file.duration } : {}) };
+}

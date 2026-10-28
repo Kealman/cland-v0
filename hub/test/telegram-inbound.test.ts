@@ -1,7 +1,7 @@
 // T2: native Telegram mirror through public frames and the loopback Bot API.
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tempProject, connectUi, inProcessSpoke, until, testWaitMs } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
@@ -10,7 +10,7 @@ import { Store } from '../src/hub/store.ts';
 import { fakeTelegram, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { control, pairing } from './telegram-polling-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
-import { within } from '../src/executor/droplet/deadline.ts';
+import { within, abortable } from '../src/executor/droplet/deadline.ts';
 import type { TopicMessage, HubFrame } from '../src/protocol.ts';
 import { TelegramApi, type TgMessage } from '../src/remote/telegram-api.ts';
 import { heldTelegramReaction } from './fakes/telegram/held-reaction.ts';
@@ -35,7 +35,24 @@ async function fixture(t: TestContext) {
   const logs: Record<string, unknown>[] = [];
   const start = (extra: Record<string, string>, options: import('./harness.ts').ProjectHubOptions = {}) =>
     owner.start(root, extra, clock, { hubOptions: { ...options, log: entry => { logs.push(entry); options.log?.(entry); } } });
-  return { root, clock, fake, owner, store, state, start, logs, drive: <T>(work: Promise<T>) => driveTelegram(clock, state, work) };
+  const frame = (ui: Awaited<ReturnType<typeof connectUi>>, predicate: (frame: Record<string, unknown>) => boolean) => owner.observe(async signal => {
+    await until(() => signal.aborted || ui.frames.some(predicate), { what: 'owned media frame receipt', timeoutMs: testWaitMs(5_000) });
+    signal.throwIfAborted();
+    return ui.frames.find(predicate)!;
+  });
+  const clean = async (ui: Awaited<ReturnType<typeof connectUi>>, hub: { stop: () => Promise<void> }) => {
+    const listed = await ui.request({ type: 'artifact.list' });
+    assert.equal(listed.ok, true, listed.error);
+    const artifacts = (listed.value as { artifacts: import('../src/protocol.ts').Artifact[] }).artifacts;
+    const sinks = await Promise.all(artifacts.map(a => readFile(a.path)));
+    const unsafe = (value: Buffer) => value.includes(TELEGRAM_TEST_TOKEN) || value.includes('/file/bot');
+    assert.ok(unsafe(Buffer.from(TELEGRAM_TEST_TOKEN)) && unsafe(Buffer.from('/file/botfixture')), 'secret scan positive controls');
+    await hub.stop();
+    for (const value of [Buffer.from(JSON.stringify(ui.frames)), Buffer.from(JSON.stringify(logs)), ...sinks,
+      await readFile(join(root, '.cland/log/hub.log')), await readFile(join(root, '.cland/journal.jsonl'))])
+      assert.equal(unsafe(value), false, 'native/public sinks contain no token or file URL');
+  };
+  return { root, clock, fake, owner, store, state, start, logs, clean, frame, drive: <T>(work: Promise<T>) => driveTelegram(clock, state, work) };
 }
 
 test('Telegram text decisions questions and formatting reach General as the human', async t => {
@@ -377,11 +394,11 @@ test('Telegram restart reconciles a confirmed input whose durable session delive
 test('Telegram unsupported messages reply once confirm and do not replay after restart', async t => {
   const { root, clock, fake, owner, start, drive, logs } = await fixture(t);
   const payloads = [
-    { photo: [{ file_id: 'fake-photo', width: 1, height: 1 }] },
+    { location: { latitude: 1, longitude: 2 } },
     { sticker: { file_id: 'fake-sticker' } },
     { voice: { file_id: 'fake-voice', duration: 1 } },
     { caption: 'caption only' },
-    { document: { file_id: 'fake-document' } },
+    { contact: { phone_number: '123' } },
   ];
   for (const [index, payload] of payloads.entries()) await control(fake.url, 'update', { message: {
     message_id: 100 + index, date: 1, chat: { id: 101, type: 'private' },
@@ -397,7 +414,7 @@ test('Telegram unsupported messages reply once confirm and do not replay after r
   assert.equal(history.ok, true, history.error);
   assert.deepEqual((history.value as { messages: TopicMessage[] }).messages.map(message => message.text), ['Text after unsupported input']);
   const before = await control<{ messages: TgMessage[] }>(fake.url, 'state');
-  assert.deepEqual(before.messages.map(message => message.text), Array(5).fill('Please use text, buttons or commands.'));
+  assert.deepEqual(before.messages.map(message => message.text), Array(5).fill('This kind of message does not reach General'));
   assert.deepEqual(logs.filter(entry => entry.event === 'telegram-update-unhandled').map(({ ts: _ts, eventsVersion: _version, ...entry }) => entry), payloads.map((_, index) => ({ event: 'telegram-update-unhandled', update: index + 1, kind: 'message' })));
   const closed = owner.observe(signal => fake.waitForPollClose(poll.id, signal));
   await hub.stop();
@@ -414,7 +431,7 @@ test('Telegram unsupported messages reply once confirm and do not replay after r
   assert.equal(await within(end, 1_000), receipt.id);
 });
 
-test('Telegram silently confirms an edit and delivers the following text', async t => {
+test('Telegram replies to an edit and delivers the following text', async t => {
   const { fake, owner, start, drive, logs } = await fixture(t);
   await control(fake.url, 'update', { edited_message: {
     message_id: 100, date: 1, chat: { id: 101, type: 'private' },
@@ -429,7 +446,7 @@ test('Telegram silently confirms an edit and delivers the following text', async
   const history = await ui.request({ type: 'topic.history', topic: 'general' });
   assert.equal(history.ok, true, history.error);
   assert.deepEqual((history.value as { messages: TopicMessage[] }).messages.map(message => message.text), ['After edit']);
-  assert.deepEqual((await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages, []);
+  assert.deepEqual((await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages.map(m => m.text), ['This kind of message does not reach General']);
   assert.deepEqual(logs.filter(entry => entry.event === 'telegram-update-unhandled').map(({ ts: _ts, eventsVersion: _version, ...entry }) => entry), [{ event: 'telegram-update-unhandled', update: 1, kind: 'edited_message' }]);
   const closed = owner.observe(signal => fake.waitForPollClose(poll.id, signal));
   await hub.stop();
@@ -470,4 +487,251 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram input fixt
   assert.throws(() => store.remotes.forMessenger('telegram').outbox(), /not open|closed/i);
   assert.equal(clock.pending, 0);
   assert.equal(setupClock.pending, 0);
+});
+
+test('Telegram photo caption uploads the largest size as one human artifact message', async t => {
+  const { fake, owner, start, drive, clean } = await fixture(t);
+  const small = await control<import('../src/remote/telegram-api.ts').TgUpdate[]>(fake.url, 'media', { items: [{ kind: 'photo', content: Buffer.from('small').toString('base64') }] });
+  const large = await control<import('../src/remote/telegram-api.ts').TgUpdate[]>(fake.url, 'media', { items: [{ kind: 'photo', content: Buffer.from('large photo').toString('base64') }] });
+  // Override the native update with both independently registered sizes.
+  const photo = large[0]!.message!;
+  await control(fake.url, 'update', { message: { ...photo, message_id: 99, caption: 'the error', photo: [small[0]!.message!.photo![0], { ...photo.photo![0], width: 100, height: 100 }] } });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, hub.discovery);
+  await drive(until(async () => ((await control<{ requests: Array<{ method: string; params: { message_id: number; reaction: Array<{ emoji: string }> } }> }>(fake.url, 'state')).requests.filter(r => r.method === 'setMessageReaction').map(r => r.params)).some(r => r.message_id === 99 && r.reaction[0]?.emoji === '👌'), { what: 'photo stored reaction', timeoutMs: 2_000 }));
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  const messages = history.messages.filter(m => m.text === 'the error');
+  assert.equal(messages.length, 1);
+  const message = messages[0]!;
+  assert.equal(message.from, 'human'); assert.equal(message.via, 'telegram');
+  assert.equal(message.artifacts?.length, 1);
+  const artifact = message.artifacts![0]!;
+  assert.ok(artifact.path.endsWith('.jpg'));
+  assert.equal(await (await import('node:fs/promises')).readFile(artifact.path, 'utf8'), 'large photo');
+  await clean(ui, hub);
+});
+
+test('Telegram documents keep names and empty captions and reply into the mapped topic', async t => {
+  const { fake, owner, state, start, drive, clean, frame } = await fixture(t);
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, hub.discovery);
+  await ui.request({ type: 'subscribe' });
+  const created = await ui.request({ type: 'topic.create', title: 'Document destination' });
+  const topic = (created.value as { topic: { id: string } }).topic.id;
+  const source = await ui.request({ type: 'topic.send', topic, text: 'Original' });
+  const id = (source.value as { message: TopicMessage }).message.id;
+  state.putMessage({ chatId: '101', messageId: '500', topic, message: id, ask: null, approval: null });
+  const posted = frame(ui, f => f.type === 'message' && (f.message as TopicMessage).artifacts?.[0]?.title === 'reply.pdf');
+  const rows = await control<import('../src/remote/telegram-api.ts').TgUpdate[]>(fake.url, 'media', { items: [{ kind: 'document', file_name: 'plain.bin', content: Buffer.from('plain').toString('base64') }] });
+  await control(fake.url, 'update', { message: { ...rows[0]!.message, message_id: 99,
+    document: { ...rows[0]!.message!.document, file_name: 'reply.pdf', mime_type: 'application/pdf' },
+    reply_to_message: { message_id: 500, chat: { id: 101, type: 'private' }, date: 1 } } });
+  const reply = (await drive(posted)).message as TopicMessage;
+  assert.equal(reply.topic, topic); assert.equal(reply.replyTo, id); assert.equal(reply.text, '');
+  assert.equal(reply.artifacts![0]!.title, 'reply.pdf');
+  assert.equal(await (await import('node:fs/promises')).readFile(reply.artifacts![0]!.path, 'utf8'), 'plain');
+  const general = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.equal(general.messages.filter(m => m.via === 'telegram').length, 1);
+  assert.equal(general.messages.find(m => m.via === 'telegram')!.text, '');
+  await clean(ui, hub);
+});
+
+test('Telegram refuses a declared 25 MB document without getFile and leaks no file URL or token', async t => {
+  const { fake, owner, start, drive, clean } = await fixture(t);
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, hub.discovery);
+  await ui.request({ type: 'subscribe' });
+  const reply = owner.observe(signal => fake.waitForRequest('sendMessage', r => String(r.params.text).includes('25 MB'), signal));
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'large.bin', file_size: 25 * 1024 * 1024 }] });
+  assert.equal((await drive(reply)).params.text, 'large.bin is 25 MB: a bot can download at most 20 MB, so it was not stored');
+  const state = await control<{ requests: Array<{ method: string }> }>(fake.url, 'state');
+  assert.equal(state.requests.some(r => r.method === 'getFile'), false);
+  assert.deepEqual(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages, []);
+  await clean(ui, hub);
+});
+
+test('Telegram recovers confirmed media once and keeps following text behind it', async t => {
+  const { fake, owner, state, start, drive, clean, frame } = await fixture(t);
+  const held = owner.observe(signal => fake.waitForHeldRequest('getFile', signal));
+  const closed = owner.observe(signal => fake.waitForConnectionClose('getFile', signal), { drain: true });
+  await control(fake.url, 'fault', { method: 'getFile', code: 500, response: 'hold' });
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'recover.bin', content: Buffer.from('recover bytes').toString('base64'), caption: 'media first' }] });
+  await control(fake.url, 'say', { text: 'text second' });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const heldReceipt = await within(held, testWaitMs(5_000));
+  await until(() => state.get('telegram.offset') === '3', { what: 'confirmed media and following text', timeoutMs: 2_000 });
+  const ui = await connectUi(t, hub.discovery);
+  assert.deepEqual(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages, []);
+  await hub.stop();
+  assert.equal((await within(closed, testWaitMs(5_000))).id, heldReceipt.id);
+  const next = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const nextUi = await connectUi(t, next.discovery);
+  await drive(until(async () => {
+    const history = (await nextUi.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+    return history.messages.some(m => m.text === 'text second');
+  }, { what: 'recovered media then text', timeoutMs: 2_000 }));
+  const history = (await nextUi.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.deepEqual(history.messages.map(m => m.text), ['media first', 'text second']);
+  assert.equal(history.messages[0]!.artifacts!.length, 1);
+  assert.equal(await (await import('node:fs/promises')).readFile(history.messages[0]!.artifacts![0]!.path, 'utf8'), 'recover bytes');
+  await clean(nextUi, next);
+});
+
+test('Telegram transient media retries once without blocking commands or duplicating a message', async t => {
+  const { fake, owner, clock, start, state, drive, clean } = await fixture(t);
+  const failure = owner.observe(signal => fake.waitForRequest('getFile', () => true, signal));
+  await control(fake.url, 'fault', { method: 'getFile', code: 500 });
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'retry.bin', content: Buffer.from('retry bytes').toString('base64') }] });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  await within(failure, testWaitMs(5_000));
+  const ui = await connectUi(t, hub.discovery);
+  const command = owner.observe(signal => fake.waitForRequest('sendMessage', r => String(r.params.text).includes('Cancelled'), signal));
+  await control(fake.url, 'say', { text: '/cancel' });
+  await drive(command);
+  await clock.advance(1_000);
+  await drive(until(async () => ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages.some(m => m.artifacts?.[0]?.title === 'retry.bin'), { what: 'retried artifact', timeoutMs: 2_000 }));
+  assert.equal(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages.length, 1);
+  await drive(until(() => state.get('media.identity:101:1') === 'completed', { what: 'media completion receipt', timeoutMs: 2_000 }));
+  assert.equal(state.entries('media.queue:').length, 0);
+  await clean(ui, hub);
+});
+
+test('media last-owner handoff drains an enqueue in the retiring worker turn', async t => {
+  const { MediaQueue } = await import('../src/remote/media.ts');
+  const { state, clock, owner } = await fixture(t);
+  const abort = new AbortController();
+  const first = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const finished = Promise.withResolvers<void>();
+  const seen: string[] = [];
+  const queue = new MediaQueue(state, clock, abort.signal, input => {
+    seen.push(input.message);
+    if (input.message === '1') { entered.resolve(); return first.promise; }
+    finished.resolve(); return Promise.resolve();
+  });
+  owner.close(async () => { abort.abort(); first.resolve(); await queue.stop(); });
+  queue.enqueue({ chat: '101', message: '1', date: 1, caption: '' });
+  await within(entered.promise, 1_000);
+  first.resolve();
+  queueMicrotask(() => queue.enqueue({ chat: '101', message: '2', date: 1, caption: '' }));
+  await within(finished.promise, 1_000);
+  await until(() => state.get('media.identity:101:2') === 'completed', { what: 'successor completion receipt', timeoutMs: 1_000 });
+  assert.deepEqual(seen, ['1', '2']);
+});
+
+for (const method of ['getFile', 'download'] as const) for (const action of ['unpair', 'replace'] as const) test(`Telegram held ${method} media cannot publish after pairing ${action}`, async t => {
+  const { fake, owner, state, start, drive, clean } = await fixture(t);
+  const held = owner.observe(signal => fake.waitForHeldRequest(method, signal));
+  const closed = owner.observe(signal => fake.waitForConnectionClose(method, signal), { drain: true });
+  await control(fake.url, 'fault', { method, code: 500, response: 'hold' });
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'private.bin', content: Buffer.from('private bytes').toString('base64') }] });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const entered = await within(held, testWaitMs(5_000));
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  assert.equal((await ui.request({ type: 'remote.unpair', messenger: 'telegram' })).ok, true);
+  if (action === 'replace') state.setPairing({ userId: '202', chatId: '202', guildId: null, name: 'Replacement human' });
+  await control(fake.url, 'release-requests', { ids: [entered.id] });
+  assert.equal((await within(closed, testWaitMs(5_000))).id, entered.id);
+  await drive(until(() => state.get('media.identity:101:1') === 'completed', { what: 'withdrawn media completion', timeoutMs: 2_000 }));
+  assert.deepEqual(((await ui.request({ type: 'artifact.list' })).value as { artifacts: unknown[] }).artifacts, []);
+  assert.deepEqual(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages, []);
+  await clean(ui, hub);
+});
+
+for (const method of ['getFile', 'download'] as const) for (const code of [401, 403, 409]) test(`Telegram media ${method} ${code} saves fatal state and recovers queued work on reload`, async t => {
+  const { fake, owner, state, start, drive, clean } = await fixture(t);
+  const polled = owner.observe(signal => fake.waitForPoll(signal));
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const poll = await within(polled, testWaitMs(5_000));
+  const closed = owner.observe(signal => fake.waitForPollClose(poll.id, signal), { drain: true });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await control(fake.url, 'fault', { method, code });
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'fatal.bin', content: Buffer.from('retained bytes').toString('base64') }] });
+  await until(() => state.status().disabled, { what: 'durable fatal media status', timeoutMs: 1_000 });
+  const status = (await ui.request({ type: 'remote.status' })).value as { remotes: import('../src/protocol.ts').RemoteStatusRow[] };
+  const row = status.remotes.find(r => r.messenger === 'telegram')!;
+  assert.equal(row.connection, 'disabled');
+  assert.equal(row.stopCause, code === 401 ? 'token' : code === 403 ? 'blocked' : 'other-consumer');
+  assert.equal(await within(closed, testWaitMs(5_000)), poll.id);
+  assert.equal(state.entries('media.queue:').length, 1);
+  const before = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.equal(before.messages.filter(m => m.fromKind === 'hub' && m.text.includes(`(${code})`)).length, 1);
+  const resumed = owner.observe(signal => fake.waitForPoll(signal));
+  assert.equal((await ui.request({ type: 'hub.reload' })).ok, true);
+  await within(resumed, testWaitMs(5_000));
+  await drive(until(() => state.get('media.identity:101:1') === 'completed', { what: 'fatal input recovered on unchanged reload', timeoutMs: 2_000 }));
+  assert.equal(state.status().disabled, false);
+  const after = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+  assert.equal(after.messages.filter(m => m.artifacts?.[0]?.title === 'fatal.bin').length, 1);
+  await clean(ui, hub);
+});
+
+for (const failure of ['omitted', 'aborted'] as const) test(`Telegram held media fixture drains observers after ${failure} setup receipt`, async t => {
+  const { root, clock, fake, owner, store } = await fixture(t);
+  const setupClock = new FakeClock();
+  const abort = new AbortController();
+  // This observer never receives its event: disposal must cancel and join it.
+  const waiting = owner.observe(signal => fake.waitForHeldRequest('sendDocument', signal));
+  const cancelled = assert.rejects(waiting, /observation aborted/);
+  await control(fake.url, 'fault', { method: 'getFile', code: 500, response: 'hold' });
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'held.bin', content: Buffer.from('held bytes').toString('base64') }] });
+  const held = owner.observe(signal => fake.waitForHeldRequest('getFile', signal));
+  const closed = owner.observe(signal => fake.waitForConnectionClose('getFile', signal), { drain: true });
+  // A loaded runner may spend over a second acquiring the hub.
+  await new Promise(resolve => setTimeout(resolve, 1_100)); // lint-allow-wall-clock: fault injection exceeds the former pre-disposal observer deadline (T-1417)
+  const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, {
+    receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal,
+  });
+  const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
+  const hub = await within(owner.serving, testWaitMs(5_000));
+  const receipt = await within(held, testWaitMs(5_000));
+  if (failure === 'omitted') await setupClock.advance(1_000);
+  else abort.abort(new Error('Telegram pacing fixture setup cancelled'));
+  await rejected;
+  await owner.dispose();
+  await cancelled;
+  await hub.stopped;
+  assert.equal((await within(closed, testWaitMs(5_000))).id, receipt.id);
+  assert.equal(owner.observations(), 0);
+  assert.throws(() => store.remotes.forMessenger('telegram').outbox(), /not open|closed/i);
+  assert.equal(clock.pending, 0);
+  assert.equal(setupClock.pending, 0);
+});
+
+
+for (const action of ['unpair', 'replace'] as const) test(`Telegram upload commit rejects pairing ${action} during native file preparation`, async t => {
+  const { root, fake, owner, state, start, drive, clean } = await fixture(t);
+  const fs = await import('node:fs/promises');
+  const { syncBuiltinESMExports } = await import('node:module');
+  const written = Promise.withResolvers<string>();
+  const observedWrite = owner.observe(signal => abortable(written.promise, signal));
+  const release = Promise.withResolvers<void>();
+  const nativeOpen = fs.default.open;
+  const mock = t.mock.method(fs.default, 'open', async (...args: Parameters<typeof nativeOpen>) => {
+    const file = await nativeOpen(...args);
+    if (String(args[0]).includes('/.cland/artifacts/')) {
+      const write = file.writeFile.bind(file);
+      file.writeFile = async (...values: Parameters<typeof write>) => {
+        await write(...values);
+        written.resolve(String(args[0]));
+        await release.promise;
+      };
+    }
+    return file;
+  });
+  syncBuiltinESMExports();
+  owner.close(() => { release.resolve(); mock.mock.restore(); syncBuiltinESMExports(); });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'commit.bin', content: Buffer.from('commit bytes').toString('base64') }] });
+  const path = await within(observedWrite, testWaitMs(5_000));
+  assert.equal(await readFile(path, 'utf8'), 'commit bytes', 'native preparation completed before revocation');
+  assert.equal((await ui.request({ type: 'remote.unpair', messenger: 'telegram' })).ok, true);
+  if (action === 'replace') state.setPairing({ userId: '202', chatId: '202', guildId: null, name: 'Replacement human' });
+  release.resolve();
+  await drive(until(() => state.get('media.identity:101:1') === 'completed', { what: 'revoked upload completion', timeoutMs: 2_000 }));
+  assert.deepEqual(((await ui.request({ type: 'artifact.list' })).value as { artifacts: unknown[] }).artifacts, []);
+  assert.deepEqual(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages, []);
+  assert.deepEqual(await fs.readdir(join(root, '.cland/artifacts')), []);
+  await clean(ui, hub);
 });

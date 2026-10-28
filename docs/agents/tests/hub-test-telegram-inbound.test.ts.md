@@ -86,14 +86,14 @@ Reaction success carries no new message map; an unknown prior transport intent
 stays fenced while the existing inbound recovery reconciles its feedback state.
 
 `Telegram unsupported messages reply once confirm and do not replay after restart`
-queues a photo, sticker, voice, caption-only message and document before ordinary
+queues a location, sticker, voice, caption-only message and contact before ordinary
 text. Retain five guidance replies, offset 7, exact General text and five logs
 containing only event/update id/kind. Stop/join and reopen the same database;
 retain offset 7, unchanged native messages and no additional fallback logs. This
 is in-process reopen evidence, not SIGKILL coverage.
 
-`Telegram silently confirms an edit and delivers the following text` retains
-next offset 3, only the following text in General, no reply and exactly one
+`Telegram replies to an edit and delivers the following text` retains
+next offset 3, only the following text in General, one fallback reply and exactly one
 content-free `edited_message` diagnostic. Dedicated handlers run before the final
 fallback; the command fence prevents duplicate guidance after interrupted handling.
 
@@ -116,3 +116,33 @@ separate five-second setup bounds before triggering setup failure. Keep the
 matching native close id, stopped hub, cancelled unmatched observer, closed
 SQLite and zero observer/timer assertions. A deadline rejection is still a
 failure, never a successful drain.
+
+T-1385 adds native photo/document uploads through the production factory. Keep
+largest-size bytes, JPEG suffix, one captioned human message, empty captions,
+named document replies in a mapped topic, and the declared-25-MB refusal with no
+getFile call. The restart case holds getFile, observes durable offset 3 with an
+empty General, stops/joins the hub, and reopens to retain exactly media then text.
+This is in-process restart evidence, not SIGKILL coverage. The transient failure
+case preserves command bypass and waits for a durable media completion receipt
+before asserting the queue drained. Sink scans have token/URL positive controls
+and inspect actual frames, log, journal and every uploaded artifact's raw bytes.
+
+Review corrections retain a deterministic public MediaQueue handoff test: resolve
+one native-worker callback, enqueue the successor in the retiring owner's turn,
+and wait for its durable completed identity before asserting exact order. Held
+getFile and download controls revoke pairing through remote.unpair, optionally
+replace it, observe the exact native close id, and assert no artifact/message.
+File-preparation controls hold a real FileHandle.writeFile after exact bytes are
+written, revoke pairing before releasing it, and retain the rollback/no-message
+assertions. The filesystem mock is restored through syncBuiltinESMExports and
+its release is registered with the pacing owner before hub acquisition.
+
+The six generated `Telegram media <getFile|download> <401|403|409> saves fatal
+state and recovers queued work on reload` cases retain saved disabled status,
+stopCause, one native hub notice, the exact poll-close receipt and one uploaded
+artifact after unchanged reload. Fatal media completion joins polling before
+reaching Gateway's lifetime observer. The omitted/aborted held-media setup
+controls retain exact getFile close identity, stopped hub, drained observers,
+closed SQLite and zero clock timers. Media fake observations use pacingOwner
+signals, with independent post-acquisition setup bounds and drainage ownership;
+UI message observation checks captured frames under the same owner.

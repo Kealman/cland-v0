@@ -2823,12 +2823,30 @@ The next poll confirms that stored offset. Messages and edits share the
 button presses on one card are distinct. The outgoing `remote_messages` reply map
 remains independent. These keys persist across restarts without a new database.
 
+Paired photos, documents, audio files, video notes and videos enter a durable
+messenger-scoped per-chat media FIFO in `hub.db` before the update offset advances.
+Photos use the largest size as `photo-<message id>.jpg`; documents retain their
+name and MIME type (default `application/octet-stream`). The worker downloads
+through the capped Bot API client and calls `artifact.upload` with native bytes,
+the ingress identity and caption, producing one human message with artifacts.
+Replies use the native mirrored-message map; other files go to General. The same
+👌/👀 receipts and late-input caption suffix apply. Ordinary text queues behind
+pending media; commands, prompts and button presses bypass that queue. Startup
+recovers queued work, and native ingress deduplication prevents duplicate uploads.
+Workers retain their paired numeric identity; unpairing or replacement revokes
+pending media before upload and again at artifact commit. Fatal native media
+401/403/409 responses save the stopped state and retain work for hub reload.
+Declared sizes above the smaller of 20 MB and `[artifacts] max_upload_mb` receive
+one explanation without `getFile`; permanent failures receive one reply and leave
+the queue, transient failures retain it for retry. Token-bearing download URLs
+stay inside the client. Voice notes use the unsupported-input fallback here.
+
 The native registry is assembled after startup recovery and before polling begins;
 there is no asynchronous handler-installation wait. After injected and dedicated
 handlers, a terminal fallback replies to unsupported paired messages with
-“Please use text, buttons or commands.” It silently confirms edits. The dedicated card handler still acknowledges
+“This kind of message does not reach General”. Edits get the same one-line reply. The dedicated card handler still acknowledges
 unmapped presses with “This button is not available”. Replies reuse the durable command fence, so interrupted handling never
-replies twice. Future media handlers precede this fallback. A lower-level registry
+replies twice. Media handlers precede this fallback. A lower-level registry
 with no match also confirms silently rather than holding later input forever.
 Both paths log `telegram-update-unhandled` with only the numeric update id and
 allowed update kind, never text, captions or file ids. Confirmation and dedupe

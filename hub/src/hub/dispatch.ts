@@ -1721,6 +1721,7 @@ export class Dispatcher {
             return answer(core.withdrawHumanMessage(frame.topic, frame.message));
           }
           case 'artifact.upload': {
+            const pairing = via ? core.store.remotes.forMessenger(via).pairing() : null;
             const resumed = this.#guard.resumer(frame.type, client);
             const root = this.#options.control?.status().root;
             if (!root) throw new Error('this hub serves no project for artifacts');
@@ -1729,6 +1730,11 @@ export class Dispatcher {
               if (transport.edge === 'gateway') {
                 const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
                 if (refusal) throw new ToolForbidden('human', frame.type, refusal.reason ?? 'gateway refusal');
+              }
+              if (via && pairing) {
+                const current = core.store.remotes.forMessenger(via).pairing();
+                if (!current || current.chatId !== pairing.chatId || current.userId !== pairing.userId || current.guildId !== pairing.guildId)
+                  throw new ToolForbidden('human', frame.type, 'remote pairing changed during upload');
               }
               if (!core.store.topic(frame.topic)) throw new Error('no such topic');
             };

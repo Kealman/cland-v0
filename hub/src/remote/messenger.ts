@@ -11,7 +11,7 @@ import { TelegramRemote } from './telegram.ts';
 /** Resolve platform roots from the daemon's environment, never a session's frames. */
 export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedactor, clock: Clock, persistence?: {
   discordNotice?: (cause: string, fix: string) => void;
-  state: RemoteState; log?: LogFn; projectName?: () => string; webOrigin?: () => string; notice?: (cause: string, fix: string, transition?: boolean) => void;
+  maxUploadMb?: () => number; state: RemoteState; log?: LogFn; projectName?: () => string; webOrigin?: () => string; notice?: (cause: string, fix: string, transition?: boolean) => void;
 }): MessengerFactory {
   return (via, token, settings) => {
     if (via === 'discord') return new DiscordRemote(new DiscordApi(token, { redactor, clock,
@@ -21,7 +21,7 @@ export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedacto
     });
     return new TelegramRemote(new TelegramApi(token, { redactor, clock,
       ...(env.CLAND_TELEGRAM_API_ROOT !== undefined ? { apiRoot: env.CLAND_TELEGRAM_API_ROOT } : {}),
-    }), clock, persistence ? { store: persistence.state.forMessenger('telegram'), ...(persistence.log ? { log: persistence.log } : {}),
+    }), clock, persistence ? { store: persistence.state.forMessenger('telegram'), maxUploadMb: persistence.maxUploadMb, ...(persistence.log ? { log: persistence.log } : {}),
       ...(persistence.projectName ? { projectName: persistence.projectName } : {}),
       ...(persistence.webOrigin ? { webOrigin: persistence.webOrigin } : {}),
       ...(persistence.notice ? { notice: persistence.notice } : {}),

@@ -522,7 +522,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
       const { messengerFactory } = await import('../remote/messenger.ts');
       const { remoteNotice } = await import('../remote/notices.ts');
       gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock, {
-        state: store.remotes, log, projectName: () => remoteOutput.text(roles.config().name),
+        state: store.remotes, log, maxUploadMb: () => roles.config().artifacts.maxUploadMb, projectName: () => remoteOutput.text(roles.config().name),
         webOrigin: () => roles.config().web.origin,
         discordNotice: (cause, fix) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'discord', cause, fix),
         notice: (cause, fix, transition) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'telegram', cause, fix, transition),

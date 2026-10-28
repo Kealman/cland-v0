@@ -702,6 +702,20 @@ from `hub/test/tracker-reindex.ts` before checking projections. Healthy native
 watching has a 5 s safety stamp check; failed watching uses 500 ms. Receipt waits
 allow 15 s for loaded hosts and keep final semantic assertions.
 
+For Telegram inbound media, use the sealed production factory/frame/fake Bot API
+seam in `docs/agents/tests/hub-test-telegram-inbound.test.ts.md`. Persist native
+file facts before confirming the offset; recover per-chat FIFO workers, queue
+ordinary text behind media, and keep commands/prompts/presses independent. Pass
+bytes beside artifact.upload frames and reuse the native ingress and stored/seen
+receipts. Unsupported paired messages and edits receive the terminal one-line
+reply. No additional role-clause permission is needed.
+
+For deferred remote media, retain the captured paired numeric identity across
+native I/O and recheck it at upload and commit. Join fatal-media poll shutdown
+before surfacing its stop cause to Gateway. Exercise owner handoff, held native
+I/O revocation, file-preparation revocation and omitted/aborted setup controls
+with pre-owned observers and exact close/completion receipts.
+
 For speech doctor and status output, use the sealed CLI/fake speech seams in
 `docs/agents/tests/hub-test-doctor-remotes.test.ts.md` and
 `docs/agents/tests/hub-test-remote-cli.test.ts.md`. Doctor resolves presence only when a remote is enabled; unused/off speech is

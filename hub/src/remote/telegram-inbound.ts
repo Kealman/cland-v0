@@ -56,7 +56,11 @@ export class TelegramInbound {
     return this.#post({ ...fields, type: 'topic.answer' }, ingress, this.#signal, stored);
   }
 
-  async #post(frame: Record<string, unknown>, ingress: RemoteIngress, signal: AbortSignal, stored?: () => void): Promise<void> {
+  upload(fields: Record<string, unknown>, ingress: RemoteIngress, bytes: readonly Buffer[]): Promise<void> {
+    return this.#post({ ...fields, type: 'artifact.upload' }, ingress, this.#signal, undefined, bytes);
+  }
+
+  async #post(frame: Record<string, unknown>, ingress: RemoteIngress, signal: AbortSignal, stored?: () => void, bytes?: readonly Buffer[]): Promise<void> {
     const id = `telegram-in-${++this.#next}`;
     const result = Promise.withResolvers<TopicMessage>();
     this.#pending.set(id, { ...result, receipt: { chat: ingress.chatId, message: Number(ingress.messageId),
@@ -65,7 +69,7 @@ export class TelegramInbound {
     signal.addEventListener('abort', abort, { once: true });
     try {
       signal.throwIfAborted();
-      this.#send({ ...frame, id }, ingress);
+      this.#send({ ...frame, id }, ingress, bytes);
       const saved = await result.promise;
       stored?.();
       await this.#flush(saved.id);

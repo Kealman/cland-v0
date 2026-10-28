@@ -8078,7 +8078,7 @@
     "hub/test/telegram-cards.test.ts::Telegram handles a button queued behind a sticker after its reply settles": 0.170207,
     "hub/test/telegram-inbound.test.ts::Telegram input fixture drains observers after aborted setup receipt": 1.415096,
     "hub/test/telegram-inbound.test.ts::Telegram input fixture drains observers after omitted setup receipt": 1.570758,
-    "hub/test/telegram-inbound.test.ts::Telegram silently confirms an edit and delivers the following text": 0.109134,
+    "hub/test/telegram-inbound.test.ts::Telegram replies to an edit and delivers the following text": 0.109134,
     "hub/test/telegram-inbound.test.ts::Telegram unsupported messages reply once confirm and do not replay after restart": 0.222545,
     "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after aborted setup receipt": 0.153056,
     "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after omitted setup receipt": 0.178086,
