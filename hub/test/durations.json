@@ -4027,7 +4027,7 @@
     "hub/test/nvim-items-rules.test.ts::changed Git facts stale hub verdicts while retaining file provenance": 0.45132,
     "hub/test/nvim-items-rules.test.ts::closed container and task state survives tracker projection": 0.201211,
     "hub/test/nvim-items-rules.test.ts::configured kinds receive canonical ids in tracker snapshots": 0.109828,
-    "hub/test/nvim-items-rules.test.ts::the tracker indexes hand-written files and saved titles within one second": 0.865756,
+    "hub/test/nvim-items-rules.test.ts::the tracker indexes hand-written files and saved titles before client projections": 0.865756,
     "hub/test/nvim-needs-you-rules.test.ts::needs-you chip and both inbox views agree: defaults with events": 0.380159,
     "hub/test/nvim-needs-you-rules.test.ts::needs-you chip and both inbox views agree: events raised to Now": 0.221055,
     "hub/test/nvim-needs-you-rules.test.ts::needs-you chip and both inbox views agree: responses in Watch, Background and Archive with Now events": 0.198295,
@@ -8890,7 +8890,7 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-929)"
     },
-    "hub/test/nvim-items-rules.test.ts::the tracker indexes hand-written files and saved titles within one second": {
+    "hub/test/nvim-items-rules.test.ts::the tracker indexes hand-written files and saved titles before client projections": {
       "seconds": 2.079091,
       "owner": "E-880",
       "added": "2026-10-20",

@@ -308,3 +308,6 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/speech-command.test.ts`](../../../hub/test/speech-command.test.ts) | [Notes](hub-test-speech-command.test.ts.md) |
 | [`hub/test/speech.test.ts`](../../../hub/test/speech.test.ts) | [Notes](hub-test-speech.test.ts.md) |
 | [`hub/test/discord-pairing.test.ts`](../../../hub/test/discord-pairing.test.ts) | [Notes](hub-test-discord-pairing.test.ts.md) |
+| [`hub/test/task-plan.test.ts`](../../../hub/test/task-plan.test.ts) | [Notes](hub-test-task-plan.test.ts.md) |
+| [`hub/test/task-prefixes.test.ts`](../../../hub/test/task-prefixes.test.ts) | [Notes](hub-test-task-prefixes.test.ts.md) |
+| [`hub/test/nvim-items-rules.test.ts`](../../../hub/test/nvim-items-rules.test.ts) | [Notes](hub-test-nvim-items-rules.test.ts.md) |

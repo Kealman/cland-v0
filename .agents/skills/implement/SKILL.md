@@ -678,3 +678,8 @@ Keep nonce proofs within the documented conservative window; old unknown sends
 stay fenced. Serialize inbound text and advance its cursor after the hub result,
 with durable message-id deduplication and unchanged ingress frames. Existing role
 clauses already cover this boundary; add no permission lines.
+
+For external tracker saves, use `reindexedAfter` (or `removedAfter` for deletion)
+from `hub/test/tracker-reindex.ts` before checking projections. Healthy native
+watching has a 5 s safety stamp check; failed watching uses 500 ms. Receipt waits
+allow 15 s for loaded hosts and keep final semantic assertions.

@@ -1,5 +1,6 @@
 // T2: item indexing, Lead claims and verdict freshness through injected hub edges.
 // Refresh client inputs: CLAND_RECORD_T902=1 node --test hub/test/nvim-items-rules.test.ts
+import { reindexedAfter } from './tracker-reindex.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -106,7 +107,7 @@ test('configured kinds receive canonical ids in tracker snapshots', async t => {
   await capture(root, ui, 'containers');
 });
 
-test('the tracker indexes hand-written files and saved titles within one second', async (t) => {
+test('the tracker indexes hand-written files and saved titles before client projections', async (t) => {
   const root = await tempProject(t);
   const tasks = join(root, '.cland', 'tasks');
   await mkdir(tasks, { recursive: true });
@@ -118,14 +119,14 @@ test('the tracker indexes hand-written files and saved titles within one second'
   assert.equal(claimed.code, 0, claimed.stderr);
 
   await capture(root, ui, 'tree');
-  await writeFile(join(tasks, 'T-10-born-by-hand.md'), itemFile('T-10', 'Born by hand', { parent: 'T-5', kind: 'question' }));
-  await eventually('hand-written item re-indexed within one second', async () => {
+  await reindexedAfter(t, root, join(tasks, 'T-10-born-by-hand.md'), () => writeFile(join(tasks, 'T-10-born-by-hand.md'), itemFile('T-10', 'Born by hand', { parent: 'T-5', kind: 'question' })));
+  await eventually('hand-written item is available after receipt', async () => {
     const r = await ui.request({ type: 'task.view', item: 'Q-10' });
     return r.ok ? true : undefined;
   }, 1000);
   await capture(root, ui, 'added');
-  await writeFile(join(tasks, 'T-7-transport.md'), itemFile('T-7', 'Transport over QUIC', { parent: 'T-5', kind: 'question' }));
-  await eventually('saved title re-indexed within one second', async () => {
+  await reindexedAfter(t, root, join(tasks, 'T-7-transport.md'), () => writeFile(join(tasks, 'T-7-transport.md'), itemFile('T-7', 'Transport over QUIC', { parent: 'T-5', kind: 'question' })));
+  await eventually('saved title is available after receipt', async () => {
     const r = await ui.request({ type: 'task.view', item: 'Q-7' });
     return r.ok && (r.value as { item: { title: string } }).item.title === 'Transport over QUIC' ? true : undefined;
   }, 1000);

@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import files, { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import files, { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
@@ -10,6 +10,7 @@ import { Tracker, DEBOUNCE_MS, type ItemChange } from '../src/tracker/tracker.ts
 import { FakeClock } from './fake-clock.ts';
 import { handleTaskRequest, type TaskRequest } from '../src/tracker/requests.ts';
 import { tempProject, until } from './harness.ts';
+import { watchFolder, SAFETY_POLL_MS } from '../src/watch.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 
@@ -451,4 +452,63 @@ test('card transport facts stay compact and defer closed facts to by-id pages', 
   assert.deepEqual(page.follows, ['T-998']);
   assert.equal(page.verify?.head, 'a'.repeat(40));
   assert.equal(Object.hasOwn(page.verify!, 'artifact'), false);
+});
+
+// The native watcher stays open and error-free; deliberately lose only its notifications.
+test('a healthy watcher with dropped events still indexes hand edits, additions and removals', async t => {
+  const root = await tempProject(t), dir = join(root, '.cland/tasks');
+  await mkdir(dir, { recursive: true });
+  const file = join(dir, 'T-1-original.md'), removed = join(dir, 'T-2-removed.md');
+  await writeFile(file, '---\nid: T-1\ntitle: Original\n---\n');
+  await writeFile(removed, '---\nid: T-2\ntitle: Removed\n---\n');
+  let dropped = 0;
+  const records: Array<Record<string, unknown>> = [];
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const tracker = new Tracker({ root, db: ':memory:', git: async () => '',
+    log: record => records.push(record),
+    watch: (dir, handlers, options) => watchFolder(dir, {
+      changed: () => { dropped++; }, poll: handlers.poll,
+    }, options),
+  });
+  t.after(async () => { await tracker.stop(); t.mock.timers.reset(); });
+  await tracker.start();
+  const before = records.length;
+  const started = performance.now();
+  await writeFile(file, '---\nid: T-1\ntitle: Hand edited\n---\n');
+  await writeFile(join(dir, 'T-3-added.md'), '---\nid: T-3\ntitle: Added\n---\n');
+  await rm(removed);
+  await until(() => dropped > 0, { what: 'native notifications deliberately dropped', timeoutMs: 5000 });
+  t.mock.timers.tick(SAFETY_POLL_MS);
+  await until(() => records.slice(before).some(r => r.event === 'task-reindexed' && r.file === 'T-1-original.md') &&
+    records.slice(before).some(r => r.event === 'task-reindexed' && r.file === 'T-3-added.md') &&
+    records.slice(before).some(r => r.event === 'task-removed' && r.file === 'T-2-removed.md'),
+    { what: 'safety rescan indexes edits despite dropped native events', timeoutMs: 10000 });
+  assert.equal(tracker.view('T-1')?.title, 'Hand edited');
+  assert.equal(tracker.view('T-3')?.title, 'Added');
+  assert.throws(() => tracker.view('T-2'), /no item T-2/);
+  assert.equal(records.some(r => r.event === 'task-watch-error'), false);
+  t.diagnostic(`dropped native callbacks ${dropped}; mocked safety interval ${SAFETY_POLL_MS} ms; durable re-index/removal receipts after ${(performance.now() - started).toFixed(1)} ms`);
+});
+
+test('an unchanged first poll uses the startup stamp without reading or parsing item files', async t => {
+  const root = await tempProject(t), dir = join(root, '.cland/tasks');
+  await mkdir(dir, { recursive: true });
+  for (const n of [2, 10]) await writeFile(join(dir, `T-${n}-item.md`), serializeItem(parseItem(`---\nid: T-${n}\nkind: task\nstatus: backlog\ntitle: Item ${n}\n---\n`)));
+  let poll!: () => void, reads = 0, parses = 0, stats = 0;
+  const tracker = new Tracker({ root, db: ':memory:', git: async () => '',
+    watch: (_dir, handlers) => { poll = handlers.poll; return { close() {} }; },
+    parse: (...args) => { parses++; return parseItem(...args); },
+    files: { ...files,
+      readFile: async (...args) => { if (args[0].endsWith('-item.md')) reads++; return files.readFile(...args); },
+      stat: async path => { if (path.endsWith('-item.md')) stats++; return files.stat(path); },
+    },
+  });
+  t.after(() => tracker.stop());
+  await tracker.start();
+  reads = parses = 0;
+  poll();
+  await tracker.stop(); // Drains the admitted poll before checking its I/O receipts.
+  assert.equal(stats, 2);
+  assert.equal(reads, 0);
+  assert.equal(parses, 0);
 });

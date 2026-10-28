@@ -1,5 +1,6 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Epic plans through the project hub, socket frames, CLI and in-process MCP handlers.
+import { reindexedAfter } from './tracker-reindex.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { componentTask } from './component-task.ts';
 import test from 'node:test';
@@ -204,7 +205,7 @@ test('invalid hand edits keep the accepted plan across restart, and valid hand e
   const file = join(root, epic.path);
   const original = await readFile(file, 'utf8');
   const broken = original.replace('scope: affected', 'scope: broken');
-  await writeFile(file, broken);
+  await reindexedAfter(t, root, file, () => writeFile(file, broken));
   await eventually('watcher refuses plan', async () => {
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const records = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
@@ -221,7 +222,7 @@ test('invalid hand edits keep the accepted plan across restart, and valid hand e
   assert.equal(restarted.code, 0, restarted.stderr);
   assert.deepEqual(JSON.parse(restarted.stdout).plan, plan);
   assert.match(JSON.parse(restarted.stdout).planError, /scope must/);
-  await writeFile(file, original.replace('scope: affected', 'scope: full'));
+  await reindexedAfter(t, root, file, () => writeFile(file, original.replace('scope: affected', 'scope: full')));
   await eventually('valid hand plan is journalled', async () => {
     assert.equal((await restartedUi.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const records = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line));

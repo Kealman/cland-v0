@@ -265,3 +265,9 @@ filenames, byte sizes and SHA-256 in the single release ask. On `web-bundle`
 follow-up failure, keep `release.tmp` and `.cland/release-web/` and retry the same
 item/version. Never replace conflicting remote assets. Defaults and legacy
 receipts keep generic projects and old releases on their prior path.
+
+Hand saves use the native folder watcher with a 100 ms debounce. A 5 s safety
+stamp check recovers missed native notifications; refused or failed watching
+uses 500 ms checks. Checks compare listing, mtime, size and inode without reading
+or parsing unchanged files. Under load, wait for the exact file’s durable
+`task-reindexed` (or `task-removed`) receipt before checking client projections.

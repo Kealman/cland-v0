@@ -1,4 +1,5 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
+import { removedAfter } from './tracker-reindex.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile, readdir, rm, rename } from 'node:fs/promises';
@@ -264,7 +265,7 @@ test('removing an unclaimed child sends its terminal event to the surviving pare
   t.after(() => Promise.all([coord.close(), lead.close()]));
   await coord.waitForPresence(['coord', 'parent-lead']);
   assert.equal((await lead.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
-  await rm(join(dir, 'T-2-child.md'));
+  await removedAfter(t, root, join(dir, 'T-2-child.md'), () => rm(join(dir, 'T-2-child.md')));
   const event = await eventually('removed child is reported', async () => {
     const result = await ui.request({ type: 'topic.history', topic: 'agents' });
     return (result.value as { messages: Array<{ kind: string; text: string; to: string[] }> }).messages.find(message => message.kind === 'event' && message.text.includes('T-2 removed'));

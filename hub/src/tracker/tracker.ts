@@ -885,10 +885,11 @@ export class Tracker {
     for (const id of pending ?? []) this.#scheduleReady(id);
   }
 
-  /** The item files with their times and sizes: what a poll compares when the folder cannot be watched. */
+  /** The item files with their times and sizes: what both safety and fallback polls compare. */
   #folderStamp(): string {
     try {
-      return this.#itemFiles()
+      // Match the async stamp order; numeric startup order would force a full first rescan.
+      return this.#itemFiles().sort()
         .map((name) => {
           try {
             const s = statSync(join(this.#dir, name));

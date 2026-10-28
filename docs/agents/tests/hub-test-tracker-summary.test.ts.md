@@ -34,3 +34,11 @@ No elapsed wall time supplies evidence for the debounce contract.
 
 The native watcher receipt is covered separately in
 [`tracker.test.ts`](hub-test-tracker.test.ts.md).
+
+The healthy-watcher loss regression keeps the real native watcher open but drops
+its change callbacks at the injected Tracker watcher seam. After observing a
+dropped callback it advances the mocked interval by the production safety period,
+waits for the exact edit/add/remove log receipts, and checks the final views.
+Only interval time is mocked; native I/O remains real. Tracker stop precedes timer
+reset and fixture cleanup. The initial synchronous stamp uses the async stamp’s
+lexical order, avoiding a spurious full first rescan on multi-digit item ids.
