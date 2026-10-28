@@ -753,6 +753,16 @@ observers retain only sanitized errors and numeric channel ids. All REST paths
 stop on 401/40001/50014; test reads the application and sends one paired line.
 Existing role authority and optional wire fields remain unchanged.
 
+For Discord mirror rendering, use the production-frame/loopback receipts in
+`docs/agents/tests/hub-test-discord-render.test.ts.md`. Render and fall back before
+durable enqueue; commit all numbered parts in one synchronous transaction before
+starting a drain. Persist the rendered bytes and optional silence flag, keeping
+historical payloads readable. Preserve empty allowed_mentions on creates and
+edits, SUPPRESS_EMBEDS, and original source mappings for every numbered part.
+Split by Unicode code points with headers and fence closures in the budget;
+prefer complete blocks and reopen split fences with their language. Existing
+role clauses cover these paths; add no permission lines.
+
 For Telegram albums, keep the opaque media grouping in the durable FIFO: commit
 each item before offset confirmation, close on two injected seconds of quiet or
 the chat's next update outside the group, and reset open-group quiet time on

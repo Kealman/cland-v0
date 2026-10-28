@@ -1,5 +1,6 @@
 import { DiscordInbound } from './discord-inbound.ts';
 import type { DiscordMessage } from './discord-api.ts';
+import { renderDiscord } from './discord-render.ts';
 import { mirrorOut } from './mirror.ts';
 import { DiscordOutbox } from './discord-outbox.ts';
 import { randomUUID } from 'node:crypto';
@@ -106,7 +107,9 @@ export class DiscordRemote implements Remote {
     if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return;
     const pairing = this.#options.store?.pairing();
     const mirrored = mirrorOut(frame.message, 'discord');
-    if (pairing && mirrored) return this.#outbox?.send(pairing.chatId, `${mirrored.header}\n${mirrored.text}`, frame.message.id).catch(error => this.#outwardError(error));
+    if (pairing && mirrored) return this.#outbox?.sendGroup(pairing.chatId,
+      renderDiscord(mirrored.header, mirrored.text), frame.message.id, mirrored.silent)
+      .catch(error => this.#outwardError(error));
   }
   run(): Promise<void> {
     return this.#running ??= (async () => {

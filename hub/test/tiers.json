@@ -122,6 +122,7 @@
     "hub/test/discord-messages.test.ts": "T2",
     "hub/test/discord-messenger.test.ts": "T2",
     "hub/test/discord-pairing.test.ts": "T2",
+    "hub/test/discord-render.test.ts": "T2",
     "hub/test/doctor-cli.test.ts": "T3",
     "hub/test/doctor-harness-probe.test.ts": "T1",
     "hub/test/doctor-isolation.test.ts": "T3",

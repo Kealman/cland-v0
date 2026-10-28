@@ -6848,8 +6848,18 @@ Interaction tokens never enter frames, logs, journals or the database. See the
 
 With Discord enabled, a loaded token, reachable REST/gateway and an approved
 pairing, General uses the shared mirror filter and an `author · kind` header.
-This path sends plain text; Discord Markdown conversion and splitting belong to
-the rendering layer. The durable Discord outbox owns one lane per channel over
+The renderer aligns Markdown tables in code blocks, turns headings deeper than
+level three into bold lines, rules into ─ lines and task boxes into ☐/☑, and
+escapes literal `||` outside code blocks. Parts fit 2000 Unicode code points,
+including the repeated header and `n/m` suffix; split code blocks close and
+reopen with their language. Conversion failures fall back to the plain source.
+The complete rendered group is enqueued in one synchronous transaction before
+any part starts delivery, so later sources cannot interleave and crash replay
+uses identical bytes.
+Workbench authors show “you”; Telegram authors show “you (Telegram)”. Progress
+and hub notices add `SUPPRESS_NOTIFICATIONS`; other messages notify normally.
+Every create and edit disables parsed mentions.
+The durable Discord outbox owns one lane per channel over
 the neutral Outbox. Creates carry a job-derived nonce of at most 25 characters,
 `enforce_nonce`, `SUPPRESS_EMBEDS` and an empty `allowed_mentions`. The attempt
 precedes I/O; the returned message id and sent state commit together. Recovery
