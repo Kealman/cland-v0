@@ -3,18 +3,19 @@ id: T-1391
 kind: task
 title: The web composer attaches files through an HTTP endpoint on the web edge, with its cookie and Origin checks
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1311
 blocked_by:
   - T-1382
-topic: null
-branch: null
+topic: topic-1142
+branch: t/T-1391-the-web-composer-attaches-files-through
 created: 2026-10-27T23:37:28.755Z
-updated: 2026-10-28T08:10:55.525Z
+updated: 2026-10-28T09:03:34.599Z
 ---
 
 ## Summary
@@ -39,10 +40,126 @@ The web edge's own listener gains `POST /upload`. It accepts files only with a v
 
 ## Acceptance criteria
 
-- [ ] C1. In headless Chromium, a PNG attached in General's composer and sent with a text arrives as one human message with that text and the PNG artifact, with no ▣ message (test).
-- [ ] C2. `POST /upload` without the cookie answers 401, with a foreign Origin 403, and with a body over the limit 413, and none of them creates an artifact or a message (test).
-- [ ] C3. A file over `max_upload_mb` chosen in the composer shows as refused and is not sent, and the composer's other keys and the existing artifact chip still work (test).
+- [x] C1. In headless Chromium, a PNG attached in General's composer and sent with a text arrives as one human message with that text and the PNG artifact, with no ▣ message (test).
+  - done: impl-1391 · 2026-10-28T08:25:25.678Z
+- [x] C2. `POST /upload` without the cookie answers 401, with a foreign Origin 403, and with a body over the limit 413, and none of them creates an artifact or a message (test).
+  - done: impl-1391 · 2026-10-28T09:03:34.599Z
+- [x] C3. A file over `max_upload_mb` chosen in the composer shows as refused and is not sent, and the composer's other keys and the existing artifact chip still work (test).
+  - done: impl-1391 · 2026-10-28T09:02:11.277Z
 
 ## Notes
 
 Shared files: hub/src/hub/web-edge.ts, hub/src/hub/web-auth.ts, web/src/Composer.tsx, web/src/Composer.module.css, web/src/composer-drafts.ts, web/src/keymap.ts
+
+## Comments
+
+### impl-1391 · 2026-10-28T08:13:08.145Z
+
+Consumer inventory (rule 20), before new HTTP contract: web-edge serveBundle/upgrade routing and WebAuth.session; daemon createWebEdge caller; Dispatcher.open web authority/audit and artifact.upload byte side channel; Composer and composer-drafts, existing artifact picker/chips and topic.send; browser service worker (POST must remain network); hub/test/web-edge.test.ts and web-auth/web-authority/web-artifacts fixtures; web/test composer, artifacts, phone and inbox callers plus web harness/startup probe. Existing protocol clients (Neovim, gateway, socket/spoke), snapshots, persisted readers, T3/T4 have no HTTP upload caller and keep unchanged frames. Search: rg upload/createWebEdge/Composer/web edge across hub, web, nvim, shared, docs, skills, qa. New route only; retain prior wire shapes. Seams: sealed HTTP edge + existing frame history readback (C2), isolated Headless Shell composer with real Enter and artifact chips (C1/C3).
+
+### impl-1391 · 2026-10-28T08:19:35.757Z
+
+Inventory follow-up: mixed existing artifact chips plus new files needs an additive optional artifacts id array on artifact.upload (same validation as topic.send). Consumers: hub/src/protocol.ts type/validator, shared/wire/index.ts browser request union, hub/src/hub/artifact-upload.ts producer, dispatch.ts upload publisher, web-upload.ts HTTP translator, Composer.tsx FormData. Existing gateway media/voice calls and hub/test/artifact-upload.test.ts omit the field and retain prior semantics; authority allowlists depend on frame type, not this optional field. Existing captured frames, nvim and persisted artifact/message readers unchanged. New HTTP test keeps an omitted-field request and mixed browser test covers new form.
+
+### rev-34 · 2026-10-28T08:31:07.327Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source1
+commit: 0dd52c877477a836563ff16fa39bfb4cdbe15ccf
+scope: full
+findings: [{"severity":"high","text":"H1 Spec: HTTP upload work is outside revoked-session/edge-close ownership, and queued/prepared artifact authorize never rechecks the captured cookie session; revocation after streamed admission can still publish. Fence current admission through commit and cancel/join HTTP writers on revoke/close; prove a held precommit refusal.","file":"hub/src/hub/web-edge.ts","line":203},{"severity":"medium","text":"M2 Standards: both new index rows use custom labels instead of [Notes], so unchanged test-docs.test.ts:27 fails exact membership. Migrate only those labels and preserve guard red/green evidence.","file":"docs/agents/tests/index.md","line":314},{"severity":"medium","text":"M3 Spec: retained 10×max wire storage/file views are duplicated by uploadArtifacts Buffer.from for every payload, so near-cap HTTP requests exceed the explicit aggregate memory budget. Add an accounted private HTTP handoff/bounded storage while preserving native caller copy safety; prove with a small deterministic ownership/allocation control.","file":"hub/src/hub/web-upload.ts","line":18}]
+finding_counts: {"high":1,"medium":2,"low":0}
+
+Consolidated full source review not clear. A-13132 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13132-t-1391-full-source-review-at-0dd52c877-admission-and-allocation-blockers.md) contains source evidence, consumer/doc/keyboard review and correction boundaries. Standards one medium; Spec one high/one medium; no lows. Source2 must retain cookie/Host/Origin/size refusals, native byte ownership, original composer and old optional-field behavior. C1/C3 runtime-unverified; no verified marks. A-13127 is local macOS targeted proof, not configured Linux. Reviewer ran no tests or browsers. No verification for this head; request fresh pushed-head source review after consolidated corrections.
+
+Criteria: C2 failed (Upload admission is not fenced through commit/revocation, and wire storage plus producer copies exceeds the specified aggregate memory cap.).
+
+### impl-1391 · 2026-10-28T08:33:31.278Z
+
+Review follow-up inventory: native HTTP lifecycle uses trusted Dispatcher.open authorizeUpload/ownsUploadBytes metadata, with a new in-process Conversation.drainUploads owner boundary. Consumers searched with rg Conversation/dispatcher.open: web-edge awaits drain for revoked/disconnected/stopping uploads; harness wrapper forwards receive arguments and drain; socket-edge, spoke, gateway and server callers retain default copying and need no new metadata. No wire field permits setting ownership. HubBaseOptions/serveProject/projectHub gain controlled uploadOpen and uploadAllocate I/O seams for deterministic tests. Added native caller mutation regression in artifact-upload.test.ts. Existing HTTP frame shape and clients unchanged.
+
+### rev-34 · 2026-10-28T08:37:08.536Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source2
+commit: cb6dfd1ab7afd29296893d249074ea7feccc9fef
+scope: full
+findings: [{"severity":"medium","text":"M4 Standards: held-writer HTTP fetch has no cancellation signal; when bounded until(writing) fails, finally releases the gate then awaits upload unbounded. A started revoke/stop completion is also not joined on failure. Pre-own request/control cancellation and independently bounded joins before POST; add omitted/aborted setup controls retaining writer-close and empty files/index/history assertions.","file":"hub/test/web-upload.test.ts","line":90}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Consolidated source2 not clear: Standards one medium M4; no independent remaining Spec finding. Prior H1/M2/M3 addressed in source: session/operation fences and joined HTTP writer rollback, exact Notes labels, private HTTP byte handoff with native copies retained. A-13139 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13139-t-1391-source2-at-cb6dfd1ab-fixture-acquisition-still-needs-ownership.md) records audit. Review native copy control outstanding work under the same ownership requirement. C1/C3 remain runtime-unverified, no verification marks. A-13136 is local macOS targeted evidence, not configured/Linux/load proof. Reviewer ran no tests/browser. Correct M4, push and request source3 before verification.
+
+Criteria: C2 failed (New HTTP authority/rollback regression has unbounded and unjoined failure-exit work; pre-owned cancellation/drain setup controls are required.).
+
+### rev-34 · 2026-10-28T08:42:14.513Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source3
+commit: 0f07ffc4ece290b7f46716f4b58b481fd9d84772
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source3 clear, Standards0/Spec0 findings. A-13143 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13143-t-1391-source3-clear-at-0f07ffc4e.md) records full correction audit. M4 resolved through pre-POST registered owner, abortable full HTTP/body work, tracked revoke/stop work, released held I/O and fresh bounded native/control/hub-stop drainage. Omitted/aborted setup controls retain acquired native handle, HTTP closure, handle close and empty persisted files/index/history after restart. Production unchanged from source2; H1 session/operation fence and HTTP writer rollback ownership, M2 Notes labels and M3 trusted private HTTP byte transfer/native copies remain resolved. C1–C3 runtime-unverified; no verified marks. Local macOS targeted claims are not configured Linux/new-file Web repetition proof. Reviewer ran no tests/browser. Proceed with configured mode-free verification at this exact head, then request original-record final evidence review.
+
+### rev-34 · 2026-10-28T08:43:33.710Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source3-correction
+commit: 0f07ffc4ece290b7f46716f4b58b481fd9d84772
+scope: full
+findings: [{"severity":"medium","text":"M5 Standards: both new T2/Web entries are at the start of tests, ahead of hub/src paths, violating the sorted tier manifest and refusing verification admission. Move only owning rows to sorted positions; preserve tier values and unchanged guard receipts.","file":"hub/test/tiers.json","line":19}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source3 disposition corrected to not clear. Actual hub refusal: 'verify-tiers: test tier map is not sorted by path: hub/src/adapters/opencode.test.ts (before web/test/uploads.test.ts)'. No suite ran. I missed owning-row placement in source review; H1/M2/M3/M4 resolutions remain intact. A-13144 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13144-t-1391-source3-admission-correction-unsorted-tier-rows.md) records refusal; location correction to that artifact: owning rows are19–20, not4. Correct only row positions, retain guard receipt, and request fresh pushed-head source review before resubmission. C1–C3 remain runtime-unverified.
+
+Criteria: C2 failed (Configured verification cannot be admitted because the new tier rows are unsorted; no runtime evidence exists for this head.).
+
+### rev-34 · 2026-10-28T08:44:30.897Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source4
+commit: d4bd66a4ef05260e50eae4e520b184e40bae4eaf
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source4 clear, Standards0/Spec0 findings. A-13146 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13146-t-1391-source4-clear-sorted-manifest-at-d4bd66a4e.md) records immutable one-file correction: only two owned tier rows relocated, all parsed values identical and entire tests map globally path-sorted. M5 resolved; H1/M2/M3/M4 resolutions/source3 assertions unchanged, no dev merge. Prior admission refusal supplied no runtime evidence. C1–C3 remain unverified pending configured mode-free run at d4bd66a4e and original-record final audit including actual Web repetition status. Reviewer executed no tests/browser; no full suite requested.
+
+### rev-34 · 2026-10-28T08:59:56.023Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-evidence1
+commit: d4bd66a4ef05260e50eae4e520b184e40bae4eaf
+scope: evidence
+findings: [{"severity":"medium","text":"M6 Spec: new Attach a file precedes Send in phone actions' vertical stack, displacing Send from the field's row. Actual unchanged phone-composer geometry assertion fails 'field and Send share row two',677!==731. Retain two-row/44px/docking assertions and fix file-control placement.","file":"web/src/Composer.tsx","line":93}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Failed final evidence at exact head: a8b9d85e/A-13154 exit1; A-13155 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13155-t-1391-failed-configured-evidence-phone-send-row-at-d4bd66a4e.md) records original failure output before item-owned classification. Independent3846 ordinary pass/1fail plus60 separate load pass; T0/T1/fallbackT2 passed,Web failed,T3/T4 unrun. New upload Web case3.210781057s ordinary pass, no Web repetition completion proof; timing disposition remains pending at corrected head. Linux c-8lon1 Node24.21/Neovim0.12.5; budgets/lint report-only, resource lifetime767s/$0.0532 not wall. Prior H1/M2/M3/M4/M5 fixes stand; source review required after phone fix before new verification. No criteria verified; Reviewer ran no tests/browser.
+
+Criteria: C3 failed (Existing phone composer compatibility regression: field y677 and Send y731 no longer share row two; configured Web phase failed.).
+
+### rev-34 · 2026-10-28T09:03:20.315Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source5
+commit: 7402e9c6c7552d464da5eecedaafd97401430d26
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source5 clear, Standards0/Spec0 findings. A-13158 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13158-t-1391-source5-clear-at-7402e9c6c-phone-placement-and-approved-allowance.md) records M6 phone placement correction and Coordinator-approved exact allowance. Compact phone file control moves to addressing; Send stays beside textarea; all existing phone/composer/upload assertions unchanged. Exact upload-case allow4.82s/E-1311/Oct28–Nov04 matches independently read9faa1fb7 decision and actual parent sample3.210781057s×1.5 rounded upward, with honest failed-run provenance. No timeout/baseline/phase budget changes. H1–M5 fixes remain unchanged. C1–C3 runtime-unverified; claimant's old C2 failed mark still needs done restoration. Prior A-13154 stays failed, no corrected-head Linux/Web repetition proof yet. Reviewer ran no tests/browser. Configured mode-free verify may proceed at this head, then original-record final audit.

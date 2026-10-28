@@ -3,7 +3,7 @@ id: T-1404
 kind: task
 title: "REST pacing: lanes per bucket and channel from the rate-limit headers, no repeat of 401, 403 or 404, and a timed-out send posts once"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1312
 blocked_by:
   - T-1400
-topic: null
-branch: null
+topic: topic-1145
+branch: t/T-1404-rest-pacing-lanes-per-bucket-and-channel
 created: 2026-10-27T23:38:46.684Z
-updated: 2026-10-28T08:10:56.599Z
+updated: 2026-10-28T08:12:59.915Z
 ---
 
 ## Summary
@@ -48,3 +48,9 @@ Spec §3.8 (REST), §3.9 (outbox); research rules 16 to 18 and 21.
 ## Notes
 
 Shared files: discord-api.ts, discord-outbox.ts; hub/test/fakes/discord/ (rate limits)
+
+## Comments
+
+### impl-1404 · 2026-10-28T08:12:59.915Z
+
+Rule 20 consumer census before changing REST retry/refusal policy: production DiscordApi consumers are discord.ts (startup, run, pairing replacement), discord-commands.ts (registration, callbacks/@original), discord-outbox.ts (durable creates) and messenger.ts (factory). Tests: discord-api, discord-messenger, discord-pairing, discord-messages; fake-api imports types/User-Agent. Shipped guidance: implement skill; docs/agents/tests/hub-test-discord-{api,messenger,pairing,messages}.test.ts.md; hub/README Discord section. Repo-wide search found no T3/T4/client wire consumers of DiscordError/DiscordApi, no persisted native error readers or startup probes. No wire shape change planned. Preserve constructor defaults and callback bypass; additive clock/deadline options. Durable outbox must classify definite 401/403/404 as dropped rather than uncertain/reprove; paired-channel terminal errors stop only Discord.

@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:11:59.753Z
-updated: 2026-10-28T05:05:33.933Z
+updated: 2026-10-28T08:31:39.116Z
 ---
 
 ## Goal
@@ -138,3 +138,11 @@ Decision during the build (coord, 2026-10-28, on impl-1382's question): uploads 
 ### coord · 2026-10-28T05:05:33.933Z
 
 Decision (human, ask 62b8d32f, 2026-10-28 05:04Z): all three recommendations accepted. (1) Each artifact goes to a remote once ever; a later message re-attaching it replies to the earlier file with '▣ A-n … (sent above)'. (2) A voice note answering a card answers through its transcript and keeps no audio artifact; a note that cannot answer leaves the ask open and goes to General as an ordinary 🎤 message. (3) Discord attachments and voice stay in E-1312 as its last stage, blocked by E-1311. Held tickets T-1387, T-1390, T-1414, T-1415 are released. T-1378 (non-text Telegram updates stall the poller) joined 0.3 on the human's word (ask 82ff046e) and lands before T-1385, which builds on it.
+
+### coord · 2026-10-28T08:31:05.352Z
+
+Decision during the build (coord, 2026-10-28 08:3xZ, on T-1394's red doctor tests): doctor's speech line follows E-1313's untouched-remote rule. With no remote enabled it reports skip ('speech unused until a remote is set up'); provider = "" reports skip ('transcription off'); with a remote enabled, a missing ElevenLabs key or an unresolvable command argv[0] reports warn, a present key or resolvable command reports ok. A fresh project with the default provider = "elevenlabs" therefore stays fully healthy.
+
+### coord · 2026-10-28T08:31:39.116Z
+
+Correction to the previous comment: doctor has only ok|warn|fail, so the no-remote and transcription-off cases report ok with a plain detail ('speech unused until a remote is set up' / 'transcription off'), not a new skip verdict; the doctor JSON contract is unchanged. With a remote enabled: missing key or unresolvable command → warn with the fix; present → ok.
