@@ -92,6 +92,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   const files = new Map<string, { bytes: Buffer | undefined; size: number; path: string; holdOpen: boolean }>();
   let nextFile = 1;
   const uploads: Array<Record<string, unknown>> = [];
+  const inboundMedia: TgMessage[] = [];
   const messages: TgMessage[] = [];
   const forceReplyMessages = new Set<number>();
   let commands: unknown[] = [];
@@ -182,7 +183,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
           const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800, chat: { id: 101, type: 'private' }, from: HUMAN,
             [item.kind]: item.kind === 'photo' ? [media] : media, ...(album ? { media_group_id: album } : {}), ...(item.caption !== undefined ? { caption: item.caption } : {}) };
           const update = redact.value({ update_id: nextUpdate++, message });
-          queued.push(update); updates.push(update);
+          inboundMedia.push(message); queued.push(update); updates.push(update);
         }
         wake();
         return reply(res, 200, queued);
@@ -347,7 +348,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         if (!uploaded || uploaded.size > (method === 'sendPhoto' ? 10 : 50) * 1024 * 1024 || [...String(params.caption ?? '')].length > 1024)
           return reply(res, 400, { ok: false, error_code: 400, description: 'file or caption is too big' });
         const replyParameters = params.reply_parameters as TgReplyParameters | undefined;
-        const target = replyParameters && messages.find(message => message.message_id === replyParameters.message_id && String(message.chat.id) === String(params.chat_id));
+        const target = replyParameters && [...messages, ...inboundMedia].find(message => message.message_id === replyParameters.message_id && String(message.chat.id) === String(params.chat_id));
         if (replyParameters && !target) return reply(res, 400, { ok: false, error_code: 400, description: 'reply not found' });
         uploads.push(redact.value({ method, ...uploaded, caption: params.caption ?? '' }));
         const media = { file_id: `sent-${nextMessage}`, file_unique_id: `sent-${nextMessage}`, file_size: uploaded.size, file_name: uploaded.name, mime_type: uploaded.mime };
@@ -418,7 +419,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
           return reply(res, 400, { ok: false, error_code: 400, description: 'Invalid Telegram entity nesting' });
         const markup = params.reply_markup as TgReplyMarkup | undefined;
         const replyParameters = params.reply_parameters as TgReplyParameters | undefined;
-        const repliedTo = replyParameters && messages.find(message => message.message_id === replyParameters.message_id
+        const repliedTo = replyParameters && [...messages, ...inboundMedia].find(message => message.message_id === replyParameters.message_id
           && String(message.chat.id) === String(params.chat_id));
         if (replyParameters && !repliedTo) return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message to reply not found' });
         const message: TgMessage = redact.value({ message_id: nextMessage++, date: 1_793_044_800,

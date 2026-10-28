@@ -1,3 +1,7 @@
+import { remoteRedactor, type RemoteRedactor } from './redact.ts';
+import { voiceNote } from './voice.ts';
+import type { SpeechProvider } from '../speech/index.ts';
+import type { ProjectConfig } from '../init/config.ts';
 import { artifactPlan, telegramArtifactLimits } from './artifact-plan.ts';
 import type { Artifact } from '../protocol.ts';
 import { MediaQueue, type MediaInput } from './media.ts';
@@ -17,7 +21,7 @@ import { TelegramPrompts } from './telegram-prompts.ts';
 import { plainParts } from './telegram-render.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 
-export type TelegramRemoteOptions = TelegramPollingOptions & { maxUploadMb?: (() => number) | undefined; files?: { root: string; artifact: (id: string) => Artifact | null } | undefined; projectName?: () => string; webOrigin?: () => string };
+export type TelegramRemoteOptions = TelegramPollingOptions & { redact?: RemoteRedactor; speech?: SpeechProvider | null | undefined; speechSettings?: ProjectConfig['speech']; maxUploadMb?: (() => number) | undefined; files?: { root: string; artifact: (id: string) => Artifact | null } | undefined; projectName?: () => string; webOrigin?: () => string };
 
 /** The gateway owns this client's lifetime, including explicit tests and old-chat notices. */
 export class TelegramRemote implements Remote {
@@ -44,6 +48,7 @@ export class TelegramRemote implements Remote {
   #stopping: Promise<void> | undefined;
   #fatalError: Error | undefined;
   #media: MediaQueue | undefined;
+  readonly #voiceEchoes = new Set<string>();
   #inbound: TelegramInbound | undefined;
   #cards: TelegramCards | undefined;
   #prompts: TelegramPrompts | undefined;
@@ -259,6 +264,7 @@ export class TelegramRemote implements Remote {
       if (!this.#polling) return; // Previous injected clients keep their check/send-only lifetime.
       await this.#transient(async () => { await this.#inbound?.recover(); });
       this.#media?.recover();
+      for (const row of this.#polling!.store.entries('media.voice:')) this.#voiceEcho(row.key);
       const handlers = [...this.#polling.handlers ?? [], ...(this.#cards ? [this.#cards.handler] : []), {
         accepts: (update: TgUpdate) => /^\/(?:mute|unmute)(?:@[A-Za-z0-9_]+)?\s*$/.test(update.message?.text ?? ''),
         handle: async (update: TgUpdate) => {
@@ -382,6 +388,37 @@ export class TelegramRemote implements Remote {
     await this.#commandReply({ ...update, message: target }, [plainCommandReply('This kind of message does not reach General')]);
   }
 
+  /** Echo delivery has its own durable owner; an unknown send never holds inbound FIFO. */
+  #voiceEcho(key: string): void {
+    if (this.#voiceEchoes.has(key) || this.#abort.signal.aborted) return;
+    const store = this.#polling!.store;
+    const saved = store.get(key);
+    if (!saved) return;
+    const intent = JSON.parse(saved) as { input: MediaInput; line: string; ready: boolean };
+    if (!intent.ready) return;
+    const { input, line } = intent;
+    const current = store.pairing();
+    if (!current || !input.pairing || current.chatId !== input.chat || current.userId !== input.pairing.userId || current.guildId !== input.pairing.guildId) {
+      store.set(key, null); return;
+    }
+    this.#voiceEchoes.add(key);
+    const parts = [...line].length <= 4096 ? [{ text: line }] : commandParts(plainCommandReply('🎤', line.replace(/^🎤 /, '')));
+    void this.#track(async () => {
+      try {
+        await Promise.all(parts.map((part, index) => this.#outbox.send({ chat_id: input.chat, text: part.text,
+          reply_parameters: { message_id: Number(input.message) } }, { key: `voice:${input.chat}:${input.message}${parts.length > 1 ? `:${index}` : ''}` })));
+        store.set(key, null);
+        store.set(`media.voice-outcome:${input.chat}:${input.message}`, 'sent');
+      } catch (error) {
+        if (this.#abort.signal.aborted) return;
+        // The outbox retains attempt/unknown receipts; do not retry a fenced send.
+        store.set(key, null);
+        store.set(`media.voice-outcome:${input.chat}:${input.message}`, 'incomplete');
+        if (fatal(error)) throw error;
+      } finally { this.#voiceEchoes.delete(key); }
+    }).catch(() => {});
+  }
+
   async #mediaInput(input: MediaInput): Promise<void> {
     const store = this.#polling!.store;
     const ingress = { chatId: input.chat, messageId: input.message };
@@ -398,7 +435,32 @@ export class TelegramRemote implements Remote {
         ...(input.reply ? { reply_to_message: { message_id: Number(input.reply), date: 0, chat: { id: Number(input.chat), type: 'private' } } } : {}) } }, this.#abort.signal);
       return;
     }
-    if (await this.#inbound!.recoverUpload(ingress, input.items?.map(item => item.message))) return;
+    const voiceKey = `media.voice:${input.chat}:${input.message}`;
+    if (await this.#inbound!.recoverUpload(ingress, input.items?.map(item => item.message))) {
+      const saved = store.get(voiceKey);
+      if (saved !== null) {
+        const intent = JSON.parse(saved) as { input: MediaInput; line: string; ready: boolean };
+        store.set(voiceKey, JSON.stringify({ ...intent, ready: true }));
+        this.#voiceEcho(voiceKey);
+      }
+      return;
+    }
+    if (input.file?.kind === 'voice') {
+      const result = await voiceNote({ fetch: async signal => {
+        const file = await this.#api.getFile({ file_id: input.file!.fileId }, { signal });
+        if (!file.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
+        return this.#api.download(file.file_path, Math.min(20, this.#polling!.maxUploadMb?.() ?? 50) * 1024 * 1024, signal);
+      }, provider: this.#polling!.speech ?? null, clock: this.#clock, signal: this.#abort.signal,
+      message: input.message, mime: input.file.mime, duration: input.file.duration, language: this.#polling!.speechSettings?.language });
+      if (!admitted()) return;
+      store.set(voiceKey, JSON.stringify({ input: { chat: input.chat, message: input.message, pairing: captured }, line: (this.#polling!.redact ?? remoteRedactor()).text(result.line), ready: false }));
+      await this.#inbound!.upload({ topic: 'general', caption: result.text, files: [{ name: result.name, mime: result.mime }] }, ingress, [result.bytes]);
+      if (!admitted()) return;
+      const intent = JSON.parse(store.get(voiceKey)!) as Record<string, unknown>;
+      store.set(voiceKey, JSON.stringify({ ...intent, ready: true }));
+      this.#voiceEcho(voiceKey);
+      return;
+    }
     const limit = Math.min(20, this.#polling!.maxUploadMb?.() ?? 50);
     const files: Array<{ name: string; mime: string }> = [];
     const payload: Buffer[] = [];
@@ -483,11 +545,11 @@ function fatal(error: unknown): boolean { return error instanceof TelegramError 
 
 function mediaFile(message: import('./telegram-api.ts').TgMessage): import('./media.ts').MediaFile | undefined {
   const photo = message.photo?.length ? message.photo.reduce((largest, size) => size.width * size.height > largest.width * largest.height ? size : largest) : undefined;
-  const kind = photo ? 'photo' : message.document ? 'document' : message.audio ? 'audio' : message.video_note ? 'video_note' : message.video ? 'video' : undefined;
-  const file = photo ?? message.document ?? message.audio ?? message.video_note ?? message.video;
+  const kind = message.voice ? 'voice' : photo ? 'photo' : message.document ? 'document' : message.audio ? 'audio' : message.video_note ? 'video_note' : message.video ? 'video' : undefined;
+  const file = message.voice ?? photo ?? message.document ?? message.audio ?? message.video_note ?? message.video;
   if (!kind || !file) return;
   const named = file as import('./telegram-api.ts').TgDocument;
   return { kind, fileId: file.file_id, name: photo ? `photo-${message.message_id}.jpg` : named.file_name ?? `${kind}-${message.message_id}.bin`,
-    mime: photo ? 'image/jpeg' : named.mime_type ?? 'application/octet-stream', ...(file.file_size !== undefined ? { size: file.file_size } : {}),
+    mime: photo ? 'image/jpeg' : named.mime_type ?? (message.voice ? 'audio/ogg' : 'application/octet-stream'), ...(file.file_size !== undefined ? { size: file.file_size } : {}),
     ...('duration' in file ? { duration: file.duration } : {}) };
 }

@@ -396,7 +396,7 @@ test('Telegram unsupported messages reply once confirm and do not replay after r
   const payloads = [
     { location: { latitude: 1, longitude: 2 } },
     { sticker: { file_id: 'fake-sticker' } },
-    { voice: { file_id: 'fake-voice', duration: 1 } },
+    { dice: { emoji: '🎲', value: 4 } },
     { caption: 'caption only' },
     { contact: { phone_number: '123' } },
   ];

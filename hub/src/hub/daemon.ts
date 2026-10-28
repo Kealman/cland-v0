@@ -1,3 +1,4 @@
+import { speechProvider } from '../speech/provider.ts';
 import { remoteRedactor } from '../remote/redact.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { RemoteWorkbench } from '../remote/workbench.ts';
@@ -528,7 +529,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
         webOrigin: () => roles.config().web.origin,
         discordNotice: (cause, fix, transition) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'discord', cause, fix, transition),
         notice: (cause, fix, transition) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'telegram', cause, fix, transition),
-      }), create);
+      }), create, (settings, secrets) => speechProvider(settings, secrets, { env, cwd: root, redact: remoteOutput }));
       await gateway.update(roles.config(), remoteSecrets);
     }
   };

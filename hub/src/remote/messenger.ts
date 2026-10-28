@@ -15,7 +15,7 @@ export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedacto
   discordNotice?: (cause: string, fix: string, transition?: boolean) => void;
   maxUploadMb?: () => number; state: RemoteState; log?: LogFn; projectName?: () => string; webOrigin?: () => string; notice?: (cause: string, fix: string, transition?: boolean) => void;
 }): MessengerFactory {
-  return (via, token, settings) => {
+  return (via, token, settings, speech) => {
     if (via === 'discord') return new DiscordRemote(new DiscordApi(token, { redactor, clock,
       ...(env.CLAND_DISCORD_API_ROOT !== undefined ? { apiRoot: env.CLAND_DISCORD_API_ROOT } : {}),
     }), token, clock, { fake: env.CLAND_DISCORD_API_ROOT !== undefined,
@@ -23,7 +23,7 @@ export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedacto
     });
     return new TelegramRemote(new TelegramApi(token, { redactor, clock,
       ...(env.CLAND_TELEGRAM_API_ROOT !== undefined ? { apiRoot: env.CLAND_TELEGRAM_API_ROOT } : {}),
-    }), clock, persistence ? { store: persistence.state.forMessenger('telegram'), files: persistence.files, maxUploadMb: persistence.maxUploadMb, ...(persistence.log ? { log: persistence.log } : {}),
+    }), clock, persistence ? { redact: redactor, speech, speechSettings: settings.speech, store: persistence.state.forMessenger('telegram'), files: persistence.files, maxUploadMb: persistence.maxUploadMb, ...(persistence.log ? { log: persistence.log } : {}),
       ...(persistence.projectName ? { projectName: persistence.projectName } : {}),
       ...(persistence.webOrigin ? { webOrigin: persistence.webOrigin } : {}),
       ...(persistence.notice ? { notice: persistence.notice } : {}),

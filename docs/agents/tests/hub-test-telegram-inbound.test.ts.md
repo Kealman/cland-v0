@@ -86,7 +86,7 @@ Reaction success carries no new message map; an unknown prior transport intent
 stays fenced while the existing inbound recovery reconciles its feedback state.
 
 `Telegram unsupported messages reply once confirm and do not replay after restart`
-queues a location, sticker, voice, caption-only message and contact before ordinary
+queues a location, sticker, dice, caption-only message and contact before ordinary
 text. Retain five guidance replies, offset 7, exact General text and five logs
 containing only event/update id/kind. Stop/join and reopen the same database;
 retain offset 7, unchanged native messages and no additional fallback logs. This

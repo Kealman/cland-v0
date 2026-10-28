@@ -2287,6 +2287,30 @@ mark. `hub/package.json` has no version. `CLAND_VERSION_OVERRIDE` is for tests
 that simulate an update. A release bump is an ordinary commit merged before
 the release's dry run; `cland release` does not write the version.
 
+## Telegram voice transcripts
+
+With Telegram enabled and paired, voice notes join its durable media FIFO.
+The gateway downloads the original bytes and passes bytes, MIME type and a
+matching `voice-<message id>.ogg`, `.mp3` or `.m4a` name to the speech provider.
+The provider receives no Telegram URL. General receives one human message,
+`🎤 <transcript>`, with the audio artifact. The chat receives a reply to the note
+with the transcript, duration, download/transcription times and provider name;
+the General message is excluded from the mirror back to Telegram.
+
+An empty transcript becomes `🎤 nothing recognised`. Missing credentials or
+`[speech] provider = ""` retain the audio as `🎤 not transcribed` and send one
+setup/off line. Provider failures retain the audio and name the failure kind,
+for example `🎤 not transcribed: quota`. Download and transcription share one
+90-second deadline. `cland hub reload` rebuilds the provider from current speech
+settings and resolved secrets, including a switch to the local command provider.
+Long echoes use numbered replies within Telegram's 4096-code-point budget.
+Echo delivery has its own durable worker: an unknown native receipt remains
+fenced and records an incomplete outcome without blocking later inbound text
+or media. A missing command points to `[speech] command`; the ElevenLabs key hint
+is specific to ElevenLabs.
+Corrections are new messages; transcript messages are never edited. Media and
+upload ingress deduplication prevent a replay from posting another message.
+
 ## Project secrets
 
 `cland secret set <name>` reads one value from stdin or a hidden terminal prompt;

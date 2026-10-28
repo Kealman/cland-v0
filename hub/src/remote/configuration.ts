@@ -1,3 +1,5 @@
+import { speechProvider } from '../speech/provider.ts';
+import type { SpeechProvider } from '../speech/index.ts';
 import { isDeepStrictEqual } from 'node:util';
 import type { ProjectConfig } from '../init/config.ts';
 import type { RemoteVia } from '../protocol.ts';
@@ -7,19 +9,20 @@ import type { Pairing } from './state.ts';
 
 export type RemoteSettings = Pick<ProjectConfig, 'remote' | 'speech'>;
 /** Native platform construction stays injectable; credentials never enter frames. */
-export type MessengerFactory = (via: RemoteVia, token: string, settings: RemoteSettings) => Remote;
+export type MessengerFactory = (via: RemoteVia, token: string, settings: RemoteSettings, speech?: SpeechProvider | null) => Remote;
 
 /** Own replacement gateways through their final stop receipt, including reload/shutdown races. */
 export class ConfiguredGateway {
   readonly #factory: MessengerFactory;
   readonly #create: (remotes: readonly Remote[]) => Gateway;
+  readonly #speech: typeof speechProvider;
   #gateway: Gateway | undefined;
   #loaded: { settings: RemoteSettings; secrets: Secrets } | undefined;
   #work: Promise<void> = Promise.resolve();
   #closing = false;
 
-  constructor(factory: MessengerFactory, create: (remotes: readonly Remote[]) => Gateway) {
-    this.#factory = factory; this.#create = create;
+  constructor(factory: MessengerFactory, create: (remotes: readonly Remote[]) => Gateway, speech: typeof speechProvider = speechProvider) {
+    this.#speech = speech; this.#factory = factory; this.#create = create;
   }
 
   update(config: ProjectConfig, secrets: Secrets): Promise<void> {
@@ -35,7 +38,7 @@ export class ConfiguredGateway {
         const token = candidate.secrets[`${via}.token`];
         if (!candidate.settings.remote[via].enabled || !token) continue;
         // A construction fault has the same isolated lifetime as a startup fault.
-        try { remotes.push(this.#factory(via, token, structuredClone(candidate.settings))); }
+        try { remotes.push(this.#factory(via, token, structuredClone(candidate.settings), this.#speech(candidate.settings.speech, candidate.secrets))); }
         catch (error) { remotes.push({ id: via, via, start: () => { throw error; }, receive: () => {}, stop: () => {} }); }
       }
       if (remotes.length) {

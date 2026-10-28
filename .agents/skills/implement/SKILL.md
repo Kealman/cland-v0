@@ -782,6 +782,20 @@ legacy single-message receipt shape and its prompt-recovery regression.
 An oversized member must not drop its peers.
 Use the album cases in the inbound guide, including legacy single-input recovery.
 
+For Telegram voice notes, use the sealed production-factory/frame/fake Bot API
+and fake speech provider in `docs/agents/tests/hub-test-telegram-voice.test.ts.md`.
+Keep original bytes, MIME/suffix, one human transcript and one native reply,
+including missing/off/quota/empty outcomes. Keep the native hub.reload command
+provider switch at T3 in `docs/agents/tests/hub-test-telegram-voice-command.test.ts.md`.
+The optional fourth MessengerFactory argument carries the speech provider; old
+three-argument factories remain valid. Preserve legacy frames and receipt shapes.
+Existing role clauses cover voice uploads; add no permission lines.
+
+Voice echo delivery owns a separate ready intent and terminal outcome from the
+inbound FIFO. Preserve bounded numbered parts, stable part keys and unknown-send
+fences, and prove held accepted-echo close/restart plus later General input.
+Empty/missing speech commands keep audio and name command setup.
+
 For Discord Identify admission use the native factory/frame/fake cases in
 `docs/agents/tests/hub-test-discord-messenger.test.ts.md`: persist reservations
 before socket I/O, pre-arm the bounded client admission-scheduled observer before restart/close
