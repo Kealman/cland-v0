@@ -47,7 +47,11 @@ adds no frame, role permission or role-clause line.
 
 For remote configuration, use `cland config set remote.telegram.enabled true`
 and `cland hub reload`; activation requires a resolved token. The daemon has a
-built-in Telegram fetch client; Discord requires an injected platform factory.
+built-in Telegram fetch client and Discord REST/gateway client. The daemon
+environment may select loopback fakes with `CLAND_TELEGRAM_API_ROOT` or
+`CLAND_DISCORD_API_ROOT`; production Discord uses API v10 and a known-host
+`wss` gateway. Discord status includes the application invite; pairing and
+message handling require the corresponding native handlers.
 For a paired Telegram chat, `remote.telegram.format` defaults to `rich`, with
 plain text and computed entities after a rejection. Set it to `entities` for
 that path directly; both paths disable link previews. General uses the

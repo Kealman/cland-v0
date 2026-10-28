@@ -654,3 +654,11 @@ Clause procedure (project implementer):
 ## Verdict procedure
 
 - On a not-clear verdict, fix the findings, commit and push a new head, then request review again before a new verification run and request affected QA again yourself. A clear source verdict starts verification; the Reviewer settles the final verdict on its same-head result. A final clear verdict needs no relay to the Coordinator: the hub checks freshness and sends the nearest supervising Lead (or the Coordinator) the one `ready` status event. Keep your claim until merge; report only if blocked.
+
+For the native Discord connection, use the sealed frame/loopback REST/ws seam in
+`docs/agents/tests/hub-test-discord-messenger.test.ts.md`. Keep gateway URL
+validation before socket construction, API v10 JSON/intents 33281 and token-only
+Identify/header boundaries. Connection status requires READY plus a recent ACK;
+keep deterministic jitter, immediate opcode-1 heartbeat and per-messenger notices.
+Stop joins socket close and cancels timers. Existing frame shapes, optional
+callbacks and role clauses remain unchanged.

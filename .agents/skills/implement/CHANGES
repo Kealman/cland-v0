@@ -245,3 +245,4 @@ T-1384: Add command speech/provider-selection native seam and cancellation guida
 T-1382: route binary artifact upload work to frame/native-byte transaction and authority regressions.
 
 T-1382 review: require exact registered-secret refusal without rewriting media bytes.
+- T-1398: document native Discord socket/frame/fake seam, ACK status and credential boundaries.

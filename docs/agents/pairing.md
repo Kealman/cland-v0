@@ -108,3 +108,11 @@ from snapshots and pushes, clearing stale facts if a snapshot omits the optional
 field. Connection and pairing changes bypass the one-second depth-only
 coalescing window. The web receives the safe push while `remote.status` remains
 refused; remote management authority is unchanged.
+
+The built-in Discord connection reads its application id when Discord is enabled
+and a token resolves. `cland remote status` exposes the bot invite with
+`scope=bot&permissions=117824`; connected requires READY and a recent heartbeat
+acknowledgement. Opening the invite does not pair a channel. The native connection
+layer alone does not handle Discord pairing interactions. Fake runs select an
+explicit loopback REST root with `CLAND_DISCORD_API_ROOT`; its gateway must also
+be loopback. No token belongs in a command argument or a frame.

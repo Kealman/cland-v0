@@ -31,7 +31,7 @@ test('Discord reads application, gateway, channel and descending history without
   await fake.control('configure', { application: { flags: 32768, bot_public: true, interactions_endpoint_url: 'https://endpoint.invalid' },
     session_start_limit: { total: 1000, remaining: 42, reset_after: 60000, max_concurrency: 1 } });
   assert.deepEqual(await api.getCurrentApplication(), { id: fake.ids.application, flags: 32768, bot_public: true, interactions_endpoint_url: 'https://endpoint.invalid' });
-  assert.deepEqual(await api.getGatewayBot(), { url: 'wss://gateway.discord.invalid', session_start_limit: { total: 1000, remaining: 42, reset_after: 60000, max_concurrency: 1 } });
+  assert.deepEqual(await api.getGatewayBot(), { url: fake.url.replace('http:', 'ws:'), session_start_limit: { total: 1000, remaining: 42, reset_after: 60000, max_concurrency: 1 } });
   const posted = [];
   for (const user of ['human', 'member', 'bot', 'webhook'] as const) posted.push(await fake.control('say', { user, content: user }));
   const state = await fake.control('state');
@@ -244,4 +244,57 @@ test('Discord fake closed before acquisition cancels native observers and refuse
   await rejected;
   await assert.rejects(owner.start(), /setup aborted/);
   assert.deepEqual(owner.receipts(), { listening: false, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
+});
+
+test('Discord fake omitted and aborted websocket setup receipts dispose the same native owner', async t => {
+  for (const mode of ['omitted', 'aborted'] as const) {
+    const setupClock = new FakeClock(); const abort = new AbortController();
+    const owner = discordFixtureOwner(t, { setupClock, publishGatewayListening: false, signal: abort.signal });
+    const native = owner.gatewayListening(); const starting = owner.start();
+    const failed = assert.rejects(starting, mode === 'omitted' ? /gateway listening receipt deadline/ : /setup aborted/);
+    try {
+      await native;
+      if (mode === 'omitted') await setupClock.advance(1000); else abort.abort();
+      await failed;
+    } finally {
+      abort.abort(); await owner.close(); await Promise.allSettled([native, starting, failed]);
+    }
+    assert.deepEqual(owner.gatewayReceipts(), { listening: true, closed: true, clients: 0 });
+    assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
+    assert.equal(setupClock.pending, 0);
+  }
+});
+
+test('Discord fake omitted and aborted websocket close observers retain held REST drainage', async t => {
+  const { WebSocket } = await import('ws');
+  const { within } = await import('../src/executor/droplet/deadline.ts');
+  for (const mode of ['omitted', 'aborted'] as const) {
+    const setupClock = new FakeClock();
+    const fake = await fakeDiscordFixture(t, { setupClock, publishGatewayClose: false });
+    const socket = new WebSocket(fake.url.replace('http:', 'ws:'));
+    const closed = new Promise<void>(resolve => socket.once('close', () => resolve()));
+    socket.on('error', () => {});
+    const hello = new Promise<void>(resolve => socket.once('message', () => resolve()));
+    const observerAbort = new AbortController();
+    const observer = fake.waitForGatewayClose(observerAbort.signal);
+    const missing = assert.rejects(observer, mode === 'omitted' ? /gateway close receipt deadline/ : /abort/i);
+    await fake.control('fault', { response: 'hold' });
+    const held = fake.waitForHold();
+    const callAbort = new AbortController();
+    const call = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url }).getCurrentApplication({ signal: callAbort.signal });
+    void call.catch(() => {});
+    try {
+      await within(hello, 1000); await held;
+      await within(fake.closeGateway(), 1000); await within(closed, 1000);
+      assert.deepEqual(fake.gatewayReceipts(), { listening: true, closed: true, clients: 0 });
+      if (mode === 'omitted') await setupClock.advance(1000); else observerAbort.abort();
+      await missing;
+      await fake.close();
+    } finally {
+      callAbort.abort(); observerAbort.abort(); socket.terminate();
+      await fake.close(); await Promise.allSettled([call, observer, missing, held, closed]);
+    }
+    assert.deepEqual(fake.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
+    assert.equal(setupClock.pending, 0);
+  }
 });

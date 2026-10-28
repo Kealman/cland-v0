@@ -29,6 +29,8 @@ test('cland --help retains its pre-refactor output byte for byte', async t => {
   // execFile resolves only after the real child has exited successfully.
   assert.equal(actual.stdout, expected);
   assert.equal(actual.stderr, '');
+  assert.match(actual.stdout, /CLAND_DISCORD_API_ROOT/);
+  assert.doesNotMatch(actual.stdout, /Discord requires an injected client/);
   assert.deepEqual(fixture.snapshot(), before);
 });
 

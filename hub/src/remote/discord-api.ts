@@ -71,24 +71,28 @@ export class DiscordApi {
       'PATCH /channels/:channel/messages/:message', { ...input, allowed_mentions: { parse: [] } }, options);
   }
   async #request<T>(method: string, path: string, route: string, body?: object, options?: DiscordRequestOptions): Promise<T> {
-    const signal = options?.signal ? AbortSignal.any([AbortSignal.timeout(35_000), options.signal]) : AbortSignal.timeout(35_000);
-    let response: Response;
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), 35_000); timer.unref();
+    const signal = options?.signal ? AbortSignal.any([deadline.signal, options.signal]) : deadline.signal;
     try {
-      response = await fetch(this.#root + path, { method, redirect: 'error', signal,
-        headers: { authorization: `Bot ${this.#token}`, 'user-agent': DISCORD_USER_AGENT, 'content-type': 'application/json', connection: 'close' },
-        ...(body ? { body: JSON.stringify(body) } : {}) });
-    } catch { throw new DiscordError(route, 0, 'request failed or exceeded its time bound'); }
-    let value: unknown;
-    try { value = await response.json(); }
-    catch { throw new DiscordError(route, response.status, 'invalid JSON response'); }
-    if (!response.ok) {
-      const error = value && typeof value === 'object' ? value as Record<string, unknown> : {};
-      throw new DiscordError(route, response.status, this.#redactor(typeof error.message === 'string' ? error.message : 'request refused'),
-        typeof error.code === 'number' && Number.isInteger(error.code) ? error.code : undefined,
-        typeof error.retry_after === 'number' && Number.isFinite(error.retry_after) && error.retry_after >= 0 ? error.retry_after : undefined);
-    }
-    // Gateway and application URLs are protocol data. Keep them intact while
-    // still passing any credential echo through the shared output redactor.
-    return redactValue(value, text => text.includes(this.#token) ? this.#redactor.text(text) : text) as T;
+      let response: Response;
+      try {
+        response = await fetch(this.#root + path, { method, redirect: 'error', signal,
+          headers: { authorization: `Bot ${this.#token}`, 'user-agent': DISCORD_USER_AGENT, 'content-type': 'application/json', connection: 'close' },
+          ...(body ? { body: JSON.stringify(body) } : {}) });
+      } catch { throw new DiscordError(route, 0, 'request failed or exceeded its time bound'); }
+      let value: unknown;
+      try { value = await response.json(); }
+      catch { throw new DiscordError(route, response.status, 'invalid JSON response'); }
+      if (!response.ok) {
+        const error = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+        throw new DiscordError(route, response.status, this.#redactor(typeof error.message === 'string' ? error.message : 'request refused'),
+          typeof error.code === 'number' && Number.isInteger(error.code) ? error.code : undefined,
+          typeof error.retry_after === 'number' && Number.isFinite(error.retry_after) && error.retry_after >= 0 ? error.retry_after : undefined);
+      }
+      // Gateway and application URLs are protocol data. Keep them intact while
+      // still passing any credential echo through the shared output redactor.
+      return redactValue(value, text => text.includes(this.#token) ? this.#redactor.text(text) : text) as T;
+    } finally { clearTimeout(timer); }
   }
 }

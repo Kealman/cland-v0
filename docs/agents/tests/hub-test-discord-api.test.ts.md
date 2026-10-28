@@ -44,4 +44,17 @@ component constraints follow the [Message resource](https://docs.discord.com/dev
 and [Component reference](https://docs.discord.com/developers/components/reference).
 Requests expose only a boolean receipt for the fixed User-Agent because the
 shared capture redactor removes URLs. Authorization is never captured.
-Pacing, gateway events, interactions and live-bot behavior are outside this file.
+The fake also hosts a loopback ws gateway on its REST port; its configurable
+Hello, safe Identify receipt and heartbeat/dispatch controls are covered by
+[discord-messenger](hub-test-discord-messenger.test.ts.md). Pacing, interactions
+and live-bot behavior are outside this file.
+
+The websocket owner has independent listening/closed receipts. Options
+`publishGatewayListening: false` and `publishGatewayClose: false` omit public
+observations, while native `gatewayListening`/`gatewayReceipts` remain available.
+`waitForGatewayClose(signal)` is bounded by setupClock; `closeGateway` closes the
+owned websocket server. Tests omit or abort setup/close observers with an active
+client and held REST request, then retain native ws closure and zero resources
+after the same idempotent disposer. Websocket close and every other drainage
+are independently bounded and all-settled: an incomplete ws receipt cannot skip
+REST release or native server/socket/handler/observer drainage.

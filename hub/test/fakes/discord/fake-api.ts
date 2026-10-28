@@ -1,3 +1,4 @@
+import { fakeGateway } from './gateway.ts';
 import { EventEmitter } from 'node:events';
 import { abortable, within } from '../../../src/executor/droplet/deadline.ts';
 import { createServer, type ServerResponse, type IncomingMessage } from 'node:http';
@@ -17,13 +18,13 @@ export const DISCORD_IDS = {
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; gateway: { identifies: number; heartbeats: number; payloads: number; validIdentify: boolean }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
 function reply(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body));
 }
 
 /** In-process fake; no accounts, filesystem, inherited credentials or child launches. */
-type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean };
+type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
 export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const lifetime = new AbortController();
   const serving = Promise.withResolvers<void>();
@@ -36,12 +37,13 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const events = new EventEmitter();
   const clock = options.clock ?? realClock;
   const redact = remoteRedactor([DISCORD_TEST_TOKEN]);
-  const state: DiscordState = { messages: [], requests: [], pings: [], redirectsFollowed: 0,
+  const state: DiscordState = { messages: [], requests: [], pings: [], redirectsFollowed: 0, gateway: { identifies: 0, heartbeats: 0, payloads: 0, validIdentify: false },
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
   const faults: Array<Record<string, unknown>> = [];
   const held = new Map<number, () => void>();
   let nextHold = 1;
+  let gatewayUrl: string | undefined;
   let application: DiscordApplication = { id: DISCORD_IDS.application, flags: 32768, bot_public: false, interactions_endpoint_url: null };
   let sessionStartLimit: DiscordSessionStartLimit = { total: 1000, remaining: 1000, reset_after: 86400000, max_concurrency: 1 };
   let nextId = 90071992547410000n;
@@ -70,7 +72,10 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       return reply(res, 200, {});
     }
     if (path.pathname === '/redirect-target') { state.redirectsFollowed++; return reply(res, 200, {}); }
+    if (path.pathname === '/control/dispatch') { gateway.dispatch(body); return reply(res, 200, {}); }
     if (path.pathname === '/control/configure') {
+      gateway.configure(body);
+      if (typeof body.gatewayUrl === 'string') gatewayUrl = body.gatewayUrl;
       application = { ...application, ...body.application as Partial<DiscordApplication>, id: DISCORD_IDS.application };
       if (body.session_start_limit) sessionStartLimit = body.session_start_limit as DiscordSessionStartLimit;
       return reply(res, 200, {});
@@ -108,7 +113,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       }
     }
     if (path.pathname === '/oauth2/applications/@me') return reply(res, 200, application);
-    if (path.pathname === '/gateway/bot') return reply(res, 200, { url: 'wss://gateway.discord.invalid', session_start_limit: sessionStartLimit });
+    if (path.pathname === '/gateway/bot') return reply(res, 200, { url: gatewayUrl ?? `ws://127.0.0.1:${(server.address() as { port: number }).port}`, session_start_limit: sessionStartLimit });
     const channelMatch = /^\/channels\/(\d+)$/.exec(path.pathname);
     if (channelMatch && [DISCORD_IDS.channel, DISCORD_IDS.secondChannel].some(id => id === channelMatch[1])) {
       return reply(res, 200, { id: channelMatch[1], guild_id: DISCORD_IDS.guild,
@@ -155,6 +160,8 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     const work = handle(req, res).catch(() => { if (!res.destroyed) reply(res, 400, { message: 'Invalid request' }); });
     handlers.add(work); void work.finally(() => handlers.delete(work));
   });
+  const gateway = fakeGateway(server);
+  state.gateway = gateway.state;
   server.on('connection', socket => {
     const closed = Promise.withResolvers<void>();
     sockets.set(socket, closed.promise);
@@ -183,6 +190,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       }
     });
     const results = await Promise.allSettled([
+      within(gateway.close(), 2000, realClock, () => new Error('Discord fake gateway close incomplete')),
       within(nativeClosed.promise, 2000, realClock, () => new Error('Discord fake native close incomplete')),
       within((async () => {
         while (sockets.size || handlers.size) await Promise.allSettled([...sockets.values(), ...handlers]);
@@ -196,14 +204,18 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   let url = '';
   async function control(operation: 'state'): Promise<DiscordState>;
   async function control(operation: 'say', body: object): Promise<DiscordMessage>;
-  async function control(operation: 'configure' | 'fault' | 'release', body: object): Promise<Record<string, never>>;
+  async function control(operation: 'configure' | 'fault' | 'release' | 'dispatch', body: object): Promise<Record<string, never>>;
   async function control(operation: string, body?: object): Promise<unknown> {
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), 2000);
+    try {
     const response = await fetch(`${url}/control/${operation}`, {
       method: body ? 'POST' : 'GET', ...(body ? { body: JSON.stringify(body) } : {}),
-      headers: { connection: 'close' }, signal: AbortSignal.any([lifetime.signal, AbortSignal.timeout(2000)]),
+      headers: { connection: 'close' }, signal: AbortSignal.any([lifetime.signal, deadline.signal]),
     });
     if (!response.ok) throw new Error('Discord fake control request refused');
     return await response.json();
+    } finally { clearTimeout(timer); }
   }
   function observeNative<T>(work: Promise<T>): Promise<T> {
     const observation = within(abortable(work, lifetime.signal), 2000)
@@ -213,7 +225,14 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   }
   const receipts = () => ({ listening: didListen, closed: didClose, connections: sockets.size,
     handlers: handlers.size, observers: observers.size, held: held.size });
-  const client = () => ({ url, ids: DISCORD_IDS, control, close, receipts,
+  function gatewayCloseObservation(signal = t.signal): Promise<void> {
+    const published = options.publishGatewayClose === false ? new Promise<void>(() => {}) : gateway.closed;
+    const observation = within(abortable(published, AbortSignal.any([signal, lifetime.signal])), 1000, options.setupClock ?? realClock,
+      () => new Error('Discord fake gateway close receipt deadline reached')).finally(() => observers.delete(observation));
+    observers.add(observation);
+    return observation;
+  }
+  const client = () => ({ gatewayReceipts: gateway.receipts, closeGateway: gateway.close, waitForGatewayClose: gatewayCloseObservation, url, ids: DISCORD_IDS, control, close, receipts,
     held: () => observeNative(nativeHeld.promise),
     waitForHold(signal = AbortSignal.timeout(2000)): Promise<number> {
       const pending = Promise.withResolvers<number>();
@@ -235,10 +254,13 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       const ready = within(abortable(serving.promise, signal), 1000, options.setupClock ?? realClock,
         () => new Error('Discord fake listening receipt deadline reached'));
       void ready.catch(() => {});
+      const gatewayReady = within(abortable(options.publishGatewayListening === false ? new Promise<void>(() => {}) : gateway.listening, signal),
+        1000, options.setupClock ?? realClock, () => new Error('Discord fake gateway listening receipt deadline reached'));
+      void gatewayReady.catch(() => {});
       signal.throwIfAborted();
       invoked = true;
       server.listen({ port: 0, host: '127.0.0.1', signal: lifetime.signal });
-      await ready;
+      await Promise.all([ready, gatewayReady]);
       signal.throwIfAborted();
       const address = server.address();
       if (!address || typeof address === 'string') throw new Error('Discord fake did not bind loopback');
@@ -252,6 +274,8 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   })();
   return { start, close, receipts,
     listening: () => observeNative(nativeListening.promise),
+    gatewayListening: () => observeNative(gateway.listening),
+    gatewayReceipts: gateway.receipts,
   };
 }
 

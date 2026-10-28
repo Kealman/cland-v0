@@ -1,3 +1,5 @@
+import { DiscordApi } from './discord-api.ts';
+import { DiscordRemote } from './discord.ts';
 import type { MessengerFactory } from './configuration.ts';
 import type { Clock } from '../hub/clock.ts';
 import type { RemoteRedactor } from './redact.ts';
@@ -8,10 +10,15 @@ import { TelegramRemote } from './telegram.ts';
 
 /** Resolve platform roots from the daemon's environment, never a session's frames. */
 export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedactor, clock: Clock, persistence?: {
+  discordNotice?: (cause: string, fix: string) => void;
   state: RemoteState; log?: LogFn; projectName?: () => string; webOrigin?: () => string; notice?: (cause: string, fix: string, transition?: boolean) => void;
 }): MessengerFactory {
   return (via, token, settings) => {
-    if (via !== 'telegram') throw new Error('Discord platform client is unavailable; an injected messenger factory is required');
+    if (via === 'discord') return new DiscordRemote(new DiscordApi(token, { redactor,
+      ...(env.CLAND_DISCORD_API_ROOT !== undefined ? { apiRoot: env.CLAND_DISCORD_API_ROOT } : {}),
+    }), token, clock, { fake: env.CLAND_DISCORD_API_ROOT !== undefined,
+      ...(persistence ? { store: persistence.state.forMessenger('discord'), log: entry => persistence.log?.(redactor.value(entry)), notice: persistence.discordNotice } : {}),
+    });
     return new TelegramRemote(new TelegramApi(token, { redactor, clock,
       ...(env.CLAND_TELEGRAM_API_ROOT !== undefined ? { apiRoot: env.CLAND_TELEGRAM_API_ROOT } : {}),
     }), clock, persistence ? { store: persistence.state.forMessenger('telegram'), ...(persistence.log ? { log: persistence.log } : {}),

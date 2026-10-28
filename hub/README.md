@@ -6671,3 +6671,31 @@ The in-process fake at `hub/test/fakes/discord/fake-api.ts` uses fabricated
 credentials and IDs above 2^53. Its control API supports `configure`, `say`,
 `fault`, `release` and `state`. See the
 [Discord REST test notes](../docs/agents/tests/hub-test-discord-api.test.ts.md).
+
+### Discord gateway connection
+
+With `remote.discord.enabled` and a resolved `discord.token`, the default
+messenger factory reads the application and connects using the pinned `ws`
+client. REST defaults to `https://discord.com/api/v10`;
+`CLAND_DISCORD_API_ROOT` accepts only an explicit loopback HTTP fake with a port.
+The production gateway must use `wss` on `discord.gg` or its subdomains; when
+using the fake REST root it must instead use `ws` on explicit loopback with a
+port. Credentials, query strings, fragments and redirects are refused before
+Identify. The socket requests API v10 JSON, without compression or sharding,
+and identifies with intents 33281 and no presence.
+
+Hello schedules the first heartbeat at its interval multiplied by random jitter;
+subsequent heartbeats follow the interval, and opcode 1 sends immediately.
+`cland remote status` reports connected only after READY and an acknowledgement
+within the last interval, with successful inbound/outbound timestamps and the
+application's invite (`scope=bot&permissions=117824`). Session facts remain in
+memory. This connection layer supplies no Discord pairing or message handlers;
+its optional native dispatch handlers are the extension point for those flows.
+A connection failure disables only Discord and writes one General notice with
+its reason and reload guidance. Stop closes and joins the socket and clears
+heartbeat timers. The existing role and frame authority remain unchanged.
+
+The token is private to the REST authorization header and gateway Identify;
+dispatch logs retain only validated event types and numeric ids. Native socket
+exceptions never become status or General text. See the
+[Discord connection test guide](../docs/agents/tests/hub-test-discord-messenger.test.ts.md).
