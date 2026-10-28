@@ -410,3 +410,14 @@ test('the authenticated web human can withdraw a queued message and receives its
   const history = await local.request({ type: 'topic.history', topic: 'general' });
   assert.equal((history.value as { messages: Array<{ id: string; stage: string }> }).messages.find(m => m.id === message.id)?.stage, 'withdrawn');
 });
+
+
+test('web authority admits artifact.upload without local filesystem access', async t => {
+  const { web } = await clients(t);
+  const result = await web.request({ type: 'artifact.upload', topic: 'general', caption: 'Attached', files: [{ name: 'image.png', mime: 'image/png', data: 'YQ==' }] });
+  assert.equal(result.ok, true, result.error);
+  const value = result.value as { message: { text: string; artifacts: { id: string }[] }; artifacts: { id: string; creator: string }[] };
+  assert.equal(value.message.text, 'Attached');
+  assert.deepEqual(value.message.artifacts, value.artifacts);
+  assert.equal(value.artifacts[0]!.creator, 'human');
+});

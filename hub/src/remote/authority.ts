@@ -20,6 +20,13 @@ export const GATEWAY_AUTHORITY = {
     }
     return frame.topic === 'general' ? null : 'new messages may only go into General; other topics require a reply';
   },
+  'artifact.upload': (frame, topicOf) => {
+    if (frame.replyTo !== undefined) {
+      const topic = typeof frame.replyTo === 'string' ? topicOf(frame.replyTo) : null;
+      return topic !== null && topic === frame.topic ? null : 'a reply must name an existing message in the same topic';
+    }
+    return frame.topic === 'general' ? null : 'new messages may only go into General; other topics require a reply';
+  },
   'topic.answer': true,
   'approval.answer': true,
   'hub.status': true,

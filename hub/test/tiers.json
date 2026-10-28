@@ -58,6 +58,7 @@
     "hub/test/artifact-delete.test.ts": "T2",
     "hub/test/artifact-folders.test.ts": "T2",
     "hub/test/artifact-lifecycle.test.ts": "T2",
+    "hub/test/artifact-upload.test.ts": "T2",
     "hub/test/artifacts-git.test.ts": "T3",
     "hub/test/artifacts.test.ts": "T2",
     "hub/test/ask-chain.test.ts": "T2",

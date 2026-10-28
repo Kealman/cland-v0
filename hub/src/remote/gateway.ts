@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 
 /** Trusted native identity, carried separately from the frame and scoped by messenger. */
 export type RemoteIngress = { chatId: string; messageId: string };
-export type RemoteSend = (frame: Record<string, unknown>, ingress?: RemoteIngress) => void;
+export type RemoteSend = (frame: Record<string, unknown>, ingress?: RemoteIngress, bytes?: readonly Buffer[]) => void;
 export type RemoteReceipt = (ingress: RemoteIngress) => TopicMessage | null;
 
 function inputId(via: RemoteVia, ingress: RemoteIngress): string {
@@ -118,12 +118,16 @@ export class Gateway {
       if (remote.subscribe) this.#unsubscribers.push(remote.subscribe(this.#changed));
       this.#state.forMessenger(remote.id).setStatus({ disabled: false, reason: null });
       try {
-        await remote.start((frame, ingress) => {
+        await remote.start((frame, ingress, bytes) => {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
           const id = `gateway-${++this.#nextId}`;
           this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
           const messageId = ingress ? inputId(remote.via, ingress) : undefined;
-          try { this.#conversation!.receive(JSON.stringify(this.#output({ ...frame, id })), remote.via, messageId); }
+          try {
+            const metadata = bytes && frame.type === 'artifact.upload' && Array.isArray(frame.files)
+              ? { ...frame, files: frame.files.map(file => { const { data, ...rest } = file as Record<string, unknown>; return rest; }) } : frame;
+            this.#conversation!.receive(JSON.stringify(this.#output({ ...metadata, id })), remote.via, messageId, bytes);
+          }
           catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
         }, this.#pairing ? identity => {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');

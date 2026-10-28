@@ -3113,7 +3113,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. Only a Question starts a wait for its addressee; every kind marks the topic read.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution, kind: HumanMessageKind = 'message', via?: RemoteVia): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution, kind: HumanMessageKind = 'message', via?: RemoteVia, uploadCaption = false): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -3136,7 +3136,8 @@ export class HubCore {
     }
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });
-    if (!text.trim()) throw new Error('an empty message is not sent');
+    // Only the binary upload producer opts in; legacy prompt/topic sends keep their refusal.
+    if (!text.trim() && !(uploadCaption && artifacts?.length)) throw new Error('an empty message is not sent');
     const nowMs = this.#now().getTime();
     let tags: string[];
     let unmentioned: string[] = [];

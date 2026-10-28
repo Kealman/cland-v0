@@ -589,8 +589,7 @@ replacement construction and cleanup. Each in-process project owns a separate re
 
 Every new remote or speech write must use this API before its sink: `.text` for
 artifact contents, `.value` for journal records and `redactFrame` for frames; use the callable
-form for diagnostic errors. Remote artifacts have no producer in the current
-gateway, which refuses artifact actions. The native journal and artifact sink
+form for diagnostic errors. Native edges can upload human files through `artifact.upload`; other artifact actions remain refused. The native journal and artifact sink
 regressions exercise the shared API for media/speech producers. Legacy `start(send)` implementations remain valid;
 pairing-capable adapters accept the optional trusted `pair` callback described below.
 
@@ -599,13 +598,14 @@ pairing-capable adapters accept the optional trusted `pair` callback described b
 - `topic.send` into `general`, or with `replyTo` naming a stored message in the
   requested topic. Cross-topic or missing-message replies are refused, including
   in General. Sends carrying `artifacts` are refused.
+- `artifact.upload` under the same General/reply rule as `topic.send`, creating human files and one message.
 - `topic.answer` and `approval.answer`, through their existing human handlers,
   excluding ids in the local `pairing:` namespace.
 - `hub.status`, `task.list` and `inbox.list`.
 
 The dispatcher checks this deny-by-default policy before replay, validation or
 actor resolution. Every other request, including session lifecycle, release,
-push, sync, configuration, artifact actions, pairing approval and unknown frame
+push, sync, configuration, other artifact actions, pairing approval and unknown frame
 names, returns `ok: false`, `code: "forbidden"` and a reason naming the request.
 Any own `as` field is refused. The gateway owns the client hello and subscribes
 to model frames; a remote cannot open another identity or subscription. Local,
@@ -6082,6 +6082,29 @@ Directory sources are copied as a single folder artifact, with `folder: true` an
 
 `artifact.list` is also a spoke tool. With `artifact: "A-3"` it resolves that id and returns `{artifact, files}` for a folder (`files` is a sorted list of relative file names), or `{artifact}` for a file. Without an id it lists the project or a supplied topic. Files are discovered on request, so editing or adding them does not require reindexing.
 
+Human clients can send `artifact.upload` with `topic`, `files: [{name, mime, data}]`,
+optional `caption`, `to`, `kind` and `replyTo`. Socket `data` is strict base64,
+within the existing 1 MiB frame cap. In-process edges pass `readonly Buffer[]`
+as the fourth `Conversation.receive` argument; gateway `RemoteSend` accepts it
+as the third argument after the optional ingress identity. Metadata follows the
+same authority and audit path; audit keeps file count and caption length, never bytes.
+The result is `{message, artifacts}`. One to ten files are validated before any
+write, bounded individually by `[artifacts] max_upload_mb`. Names lose directory
+components and control characters. A safe extension from the name wins; otherwise
+known image/PDF/audio/text MIME types choose the extension, then `.bin`.
+Invalid MIME types become `application/octet-stream`. Every MIME type is checked
+for exact raw-byte matches against the shared registry of configured and rotated
+secrets before file preparation and again before commit. A match refuses the
+entire upload with `secret-in-upload` and a redacted filename, never a secret
+value or its setting name. Accepted bytes are never rewritten. Files, their index entries
+and the single human message commit under the shared artifact creation queue;
+failed publication removes the prepared files. Artifact events still publish,
+without a separate ▣ message. Empty captions are allowed with attachments.
+Sessions cannot call this frame. Remote uploads obey General/reply authority and
+record `via`; repeated trusted ingress ids return the original message and files.
+Frame fields cannot choose that identity. No built-in client attachment UI or
+platform media downloader is implied by this protocol seam.
+
 The UI can send `artifact.create` and `artifact.list` frames; list returns `{artifacts: [...]}` for the project or a supplied `topic`. Drafts are included in lists and emit `artifact` events for subscribed clients. A human `prompt.send` frame (`artifact: "A-3"`, optional `attach: true`) reads the saved prompt and posts its text when it fits `[hygiene].max_text_bytes` (8 KiB by default). Above the cap, or with `attach`, it posts `Prompt A-3: <title>` with the artifact attached. The pointer is bounded to the byte cap on a complete UTF-8 character boundary; the full title remains in attachment metadata. The message and `sent` status commit together before publication: a failed post or status write leaves the draft and no delivery. A prompt already sent cannot be posted again through `prompt.send`.
 
 The spoke's `send` accepts `artifacts: ["A-3", "A-4"]` alongside `text`, `to` and `topic`. Each id must exist in that topic, be unarchived, and have a readable file; unknown or foreign-topic ids refuse the whole send. Availability and caller permissions are checked again after asynchronous file preparation. Attached prompt drafts become `sent` with the post. Deliveries include an `artifacts` array of metadata and durable paths; `artifact_id` and `artifact_path` name the first attachment for compatibility. Attachment messages retain their text alongside chips in the workbench.
@@ -6107,7 +6130,7 @@ The built-in role tool lists now grant `artifact.keep`, `artifact.move` and `art
 
 Folder promotion copies the entire tree, including nested files, binary bytes and empty directories, into a new project-relative directory. The destination names that directory; it must not already exist, even if empty. Symlinks and special files added to an artifact after creation are refused, and the saved entry must still exist as a regular file. Promotion reserves the artifact across the copy and removes the entire partial destination on copy, permission or index failure. The source remains in the artifact workspace, and Git's index and commits are untouched. The same confined-path rules apply to folder promotion, including nested `.cland` or `.git` paths.
 
-`cland init` writes `[artifacts]` with `retention_days = 30`. `cland update` adds that section to managed configurations that lack it and keeps changed values, including zero. It leaves unmarked config files and existing `roles.toml` files alone; an existing explicit Coordinator tool list needs `"artifact.promote"` added by the human.
+`cland init` writes `[artifacts]` with `retention_days = 30` and `max_upload_mb = 50`. The upload limit is a positive per-file MiB count and applies after a hub restart. `cland update` adds that section to managed configurations that lack it and keeps changed values, including zero. It leaves unmarked config files and existing `roles.toml` files alone; an existing explicit Coordinator tool list needs `"artifact.promote"` added by the human.
 
 Promotion reserves its artifact across asynchronous I/O, rechecks permission and the latest index state after copying, and rolls back its exclusive destination if the index write fails. A notification failure after the index commit keeps both the copied file and its promoted mark, returning a successful result with a `followUp` warning; a retry sees the existing promotion. Subscriber and error-logger failures cannot reverse committed promotion, archive or reopen state. Retention retains a hard link until deletion and its index write finish, so a topic reopened during deletion or an index write failure restores the original bytes. Interrupted retention is recovered on the next sweep; failed housekeeping is retried. A concurrent promotion/cleanup of the same artifact is refused with `artifact-busy` and can be retried.
 

@@ -27,6 +27,13 @@ requiring a hub or valid project configuration.
 
 Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
+For binary human uploads, use `docs/agents/tests/hub-test-artifact-upload.test.ts.md`.
+Keep bytes beside native frames, authority before ingress replay, and all files plus
+one human message in the shared artifact queue and store transaction. Sessions have
+no upload authority; refuse every MIME on exact registered-secret bytes through
+the shared registry and preserve accepted bytes. Existing role clauses need no
+additional permission lines.
+
 For gateway routing, authority or remote failure isolation, use the sealed frame-protocol and
 test-messenger seam in `docs/agents/tests/hub-test-gateway.test.ts.md`. Keep
 authority before replay/actor resolution and resolve reply topics from stored

@@ -27,7 +27,7 @@ export type ProjectConfig = {
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
-  artifacts: { retentionDays: number };
+  artifacts: { retentionDays: number; maxUploadMb: number };
   web: { port: number; dist: string; bind: string; origin: string };
   remote: { muteDefault: boolean; telegram: { enabled: boolean; format: 'rich' | 'entities' }; discord: { enabled: boolean } };
   speech: { provider: 'elevenlabs' | 'command' | ''; model: string; language: string; maxSeconds: number; command: string[] };
@@ -48,7 +48,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
-  artifacts: { retentionDays: 30 },
+  artifacts: { retentionDays: 30, maxUploadMb: 50 },
   web: { port: 0, dist: '', bind: '127.0.0.1', origin: '' },
   remote: { muteDefault: false, telegram: { enabled: false, format: 'rich' }, discord: { enabled: false } },
   speech: { provider: 'elevenlabs', model: 'scribe_v2', language: '', maxSeconds: 600, command: [] },
@@ -225,6 +225,7 @@ command = ${JSON.stringify(c.speech.command)}
 # Archived artifact files are removed after this many days; their index entries stay.
 [artifacts]
 retention_days = ${c.artifacts.retentionDays}
+max_upload_mb = ${c.artifacts.maxUploadMb}
 
 # Surface.kind = layer (now, watch, background, archive); read at hub start.
 [visibility]
@@ -461,6 +462,8 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     c.web.dist = web.dist;
   }
   const a = (doc.artifacts ?? {}) as Record<string, unknown>;
+  accepts('artifacts.max_upload_mb', a.max_upload_mb, typeof a.max_upload_mb === 'number' && Number.isFinite(a.max_upload_mb) && a.max_upload_mb > 0, 'a positive number');
+  if (typeof a.max_upload_mb === 'number' && Number.isFinite(a.max_upload_mb) && a.max_upload_mb > 0) c.artifacts.maxUploadMb = a.max_upload_mb;
   accepts('artifacts.retention_days', a.retention_days, Boolean(typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0), 'a nonnegative number');
   if (typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0) c.artifacts.retentionDays = a.retention_days;
   const h = (doc.hygiene ?? {}) as Record<string, unknown>;

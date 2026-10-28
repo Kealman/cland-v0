@@ -68,7 +68,7 @@ const KEPT = [
   'move',
 ] as const;
 /** Free text: only its length is kept. */
-const TEXT = ['text', 'body', 'title', 'comment'] as const;
+const TEXT = ['caption', 'text', 'body', 'title', 'comment'] as const;
 const MAX = 80;
 
 const cap = (v: unknown): unknown => {
@@ -81,6 +81,7 @@ const cap = (v: unknown): unknown => {
 /** What the audit keeps of a request frame. A CLI's `as` is kept as the name it acts as. */
 export function summarize(frame: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
+  if (frame.type === 'artifact.upload' && Array.isArray(frame.files)) out.fileCount = frame.files.length;
   for (const k of KEPT) if (frame[k] !== undefined) out[k] = cap(frame[k]);
   for (const k of TEXT) if (typeof frame[k] === 'string') out[`${k}Chars`] = (frame[k] as string).length;
   // a handover note (#31), Markdown or its four sections: only its length

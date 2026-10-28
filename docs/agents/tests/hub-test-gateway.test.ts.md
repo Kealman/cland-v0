@@ -30,7 +30,7 @@ Observe `delivery`, ask and inbox/approval frames at the same seam. Approval
 completion must retain the fake adapter's native choice/note receipt as well
 as the closed record. Hub shutdown must stop the remotes before store disposal.
 
-Keep the six allowed request types explicit in the regression. Enumerate the
+Keep the seven allowed request types explicit in the regression. Enumerate the
 other human request types using the exhaustive web table, and retain pairing,
 unknown/prototype frame names and actor overrides. A forbidden result naming
 the request proves refusal before malformed payload validation; retained topic

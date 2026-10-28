@@ -1,3 +1,4 @@
+import { uploadArtifacts } from './artifact-upload.ts';
 import { suiteAuthor } from './suite-author.ts';
 import { dependencyInstallText } from '../dependency-install.ts';
 import { ModelOutput } from './model-output.ts';
@@ -131,7 +132,7 @@ export type Control = {
 
 export type Conversation = {
   /** One frame; only the in-process gateway supplies trusted messenger provenance. */
-  receive: (raw: string, via?: RemoteVia, messageId?: string) => void;
+  receive: (raw: string, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]) => void;
   /** Native gateway recovery only; not an action in the frame protocol. */
   messageReceipt?: (messageId: string, via?: import('../protocol.ts').RemoteVia) => import('../protocol.ts').TopicMessage | null;
   /** The transport closed. */
@@ -139,6 +140,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  uploadRedactor?: Pick<import('../remote/redact.ts').RemoteRedactor, 'containsSecret' | 'text'>;
   /** The project daemon admits provider recovery only after publishing serving. */
   deferExecutorRecovery?: boolean;
   publishRelease?: typeof import('../territory-release.ts').releaseGit;
@@ -1671,7 +1673,7 @@ export class Dispatcher {
       }
     };
 
-    const clientRequest = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string) => {
+    const clientRequest = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]) => {
       // Retired frames are outside the protocol, but old clients need a useful refusal.
       if (frame.type === 'inbox.dismiss' || frame.type === 'inbox.dismiss_all') {
         return peer.send({ type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
@@ -1716,6 +1718,33 @@ export class Dispatcher {
           case 'topic.withdraw': {
             if (this.#asSession(frame)) throw new Error('only the human may withdraw a message');
             return answer(core.withdrawHumanMessage(frame.topic, frame.message));
+          }
+          case 'artifact.upload': {
+            const resumed = this.#guard.resumer(frame.type, client);
+            const root = this.#options.control?.status().root;
+            if (!root) throw new Error('this hub serves no project for artifacts');
+            const authorize = () => {
+              if (this.#asSession(frame)) throw new ToolForbidden(null, frame.type, 'only the human may upload artifacts');
+              if (transport.edge === 'gateway') {
+                const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
+                if (refusal) throw new ToolForbidden('human', frame.type, refusal.reason ?? 'gateway refusal');
+              }
+              if (!core.store.topic(frame.topic)) throw new Error('no such topic');
+            };
+            const replay = (): { message: import('../protocol.ts').TopicMessage; artifacts: import('../protocol.ts').Artifact[] } | undefined => {
+              const message = messageId ? core.store.message(messageId) : null;
+              if (!message) return undefined;
+              if (message.fromKind !== 'human' || message.via !== via) throw new Error('remote input identity conflict');
+              return { message: { ...message, topic: message.topic!, seq: core.store.messageSeq(message.id), ...(core.store.stage(message.id) ? { stage: core.store.stage(message.id)! } : {}) }, artifacts: message.artifacts ?? [] };
+            };
+            const operation = this.#artifactQueue.then(() => uploadArtifacts(core.store, root, frame, bytes,
+              this.#options.projectConfig?.().artifacts.maxUploadMb ?? 50, artifacts => {
+                const { message } = core.sendFromHuman(frame.topic, frame.caption ?? '', frame.to, frame.replyTo, undefined, undefined, artifacts, messageId, undefined, frame.kind, via, true);
+                return { message, artifacts };
+              }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor));
+            this.#artifactQueue = operation.catch(() => {});
+            later(frame.type, operation.then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+            return;
           }
           case 'topic.send': {
             // The message's durable primary key closes the crash window before
@@ -2067,7 +2096,7 @@ export class Dispatcher {
       return again !== null;
     };
 
-    const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string): void => {
+    const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]): void => {
         if (kind === 'spoke') {
           // A replaced or closing socket's buffered frames would act under a name it no longer holds.
           if (!peer.isOpen() || connection === null || !core.isCurrent(connection)) {
@@ -2079,6 +2108,7 @@ export class Dispatcher {
           if (frame.type !== 'ping') {
             if (replayed(frame)) return;
             audit(frame.id, { session: connection.name, sessionId: connection.sessionId, role: connection.role, tool: String(frame.type), args: summarize(frame) });
+            if (frame.type === 'artifact.upload') return peer.send(Dispatcher.#failure(String(frame.id), new ToolForbidden(connection.role, 'artifact.upload', 'only the human may upload artifacts')));
             const bad = Dispatcher.#verdictFromText(frame);
             if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
             if (!this.#permitted(connection, frame, peer)) return;
@@ -2390,7 +2420,8 @@ export class Dispatcher {
           return;
         }
         if (frame.type === 'merge' && isClientRequest(frame)) return merge(frame as import('../protocol.ts').MergeRequest, caller);
-        clientRequest(frame, via, messageId);
+        if (frame.type === 'artifact.upload' && caller) return peer.send(Dispatcher.#failure(String(frame.id), new ToolForbidden(caller.role, 'artifact.upload', 'only the human may upload artifacts')));
+        clientRequest(frame, via, messageId, bytes);
     };
 
     return {
@@ -2412,7 +2443,7 @@ export class Dispatcher {
         const stage = core.store.stage(messageId);
         return message?.topic ? { ...message, topic: message.topic, seq: core.store.messageSeq(messageId), ...(stage ? { stage } : {}) } : null;
       } } : {}),
-      receive: (raw, via, messageId) => {
+      receive: (raw, via, messageId, bytes) => {
         if (done) return;
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
@@ -2426,7 +2457,7 @@ export class Dispatcher {
         }
         // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
         this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame,
-          transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined));
+          transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined, bytes));
       },
       closed: () => {
         done = true;

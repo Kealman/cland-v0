@@ -95,6 +95,8 @@ export type Artifact = {
   /** Owned manual-delete storage, recorded before any bytes move. */
   deletion?: { path: string; backup: string };
 };
+export type ArtifactUpload = { type: 'artifact.upload'; id: string; topic: string; caption?: string; files: { name: string; mime: string; data?: string }[]; to?: string[]; replyTo?: string; kind?: HumanMessageKind };
+
 export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
 export type ArtifactPromote = { type: 'artifact.promote'; id: string; artifact: string; path: string };
@@ -440,7 +442,7 @@ export type HubFrame =
   /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
    *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. `refusal`: a hygiene refusal (typed). */
   // cli-neovim-only: the web authority policy keeps this request in local clients.
-  | { type: 'result'; id: string; ok: false; error: string; files?: string[]; recovery?: { commit: string; base: string }; account?: string; resetsAt?: string | null; code?: 'cli-neovim-only' | 'account-limited' | 'verify-all-reserved' | 'verify-tiers' | 'verify-test-lint' | 'verify-shards' | import('./territory-push.ts').PushCode | import('./territory-publish.ts').PublishCode | import('./release.ts').ReleaseCode | import('./merge.ts').MergeCode | 'forbidden' | 'invalid_argument' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
+  | { type: 'result'; id: string; ok: false; error: string; files?: string[]; recovery?: { commit: string; base: string }; account?: string; resetsAt?: string | null; code?: 'cli-neovim-only' | 'account-limited' | 'verify-all-reserved' | 'verify-tiers' | 'verify-test-lint' | 'verify-shards' | import('./territory-push.ts').PushCode | import('./territory-publish.ts').PublishCode | import('./release.ts').ReleaseCode | import('./merge.ts').MergeCode | 'forbidden' | 'invalid_argument' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'secret-in-upload' | 'artifact-busy'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
   | { type: 'error'; code: RefusalCode; message: string; action?: 'restart-hub' }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
@@ -738,6 +740,7 @@ export type ClientRequest =
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
+  | ArtifactUpload
   | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string; artifacts?: string[]; kind?: HumanMessageKind }
   /** Human-only recall before any adapter submission: `{text, message: TopicMessage}`. */
   | { type: 'topic.withdraw'; id: string; topic: string; message: string }
@@ -1129,6 +1132,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && (f.before === undefined || typeof f.before === 'string' || isMessageSeq(f.before)) && (f.after === undefined || isMessageSeq(f.after)) && (f.before === undefined || f.after === undefined) && isAgentsHistoryFilter(f);
     case 'topic.withdraw':
       return typeof f.topic === 'string' && typeof f.message === 'string';
+    case 'artifact.upload':
+      return typeof f.topic === 'string' && (f.caption === undefined || typeof f.caption === 'string') && Array.isArray(f.files) && (f.kind === undefined || f.kind === 'message' || f.kind === 'decision' || f.kind === 'question') && (f.to === undefined || Array.isArray(f.to) && f.to.every(t => typeof t === 'string')) && (f.replyTo === undefined || typeof f.replyTo === 'string');
     case 'topic.send':
       return (
         typeof f.topic === 'string' &&

@@ -3,6 +3,7 @@ import type { HubFrame, RemoteVia } from '../../src/protocol.ts';
 import type { Outbox } from '../../src/remote/outbox.ts';
 import { outboxMessenger } from './outbox-messenger.ts';
 import type { RemoteStatus } from '../../src/remote/gateway.ts';
+import type { RemoteSend, RemoteIngress } from '../../src/remote/gateway.ts';
 import type { Pairing } from '../../src/remote/state.ts';
 
 export function testRemoteStates() {
@@ -17,7 +18,7 @@ export function testRemoteStates() {
 export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia; startError?: Error } = 'telegram') {
   const options: { via?: RemoteVia; startError?: Error } = typeof source === 'string' ? { via: source } : source;
   const via = options.via ?? 'telegram';
-  let send: ((frame: Record<string, unknown>) => void) | undefined;
+  let send: RemoteSend | undefined;
   let pair: ((identity: Pairing) => string | null) | undefined;
   let receive!: (chunk: string) => void;
   let outbox: Outbox | undefined;
@@ -35,6 +36,10 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
   }, fn => { receive = fn; }, () => {});
   return {
     id, via, client, delivery, replacements, testLines,
+    upload(frame: Record<string, unknown>, ingress: RemoteIngress, bytes: readonly Buffer[]) {
+      if (!send || stopped) throw new Error('test messenger is not running');
+      send(frame, ingress, bytes);
+    },
     get tokenChecks() { return tokenChecks; },
     test(pairing: Pairing | null, text: string) {
       if (!started || stopped) throw new Error('test messenger is not running');
@@ -55,7 +60,7 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
       loop.reject(error);
     },
     failReceive(error: Error, type = 'message', async = false) { receiveFailure = { error, type, async }; },
-    start(request: (frame: Record<string, unknown>) => void, pairing?: (identity: Pairing) => string | null) {
+    start(request: RemoteSend, pairing?: (identity: Pairing) => string | null) {
       send = request; started = true;
       pair = pairing;
       if (options.startError) throw options.startError;

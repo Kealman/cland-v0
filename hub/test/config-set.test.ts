@@ -329,7 +329,7 @@ test('config set refuses unknown keys, invalid parser values and silently ignore
   }
   for (const [key, value] of [
     ['project.name', ''], ['verification.budget', false], ['verification.lock_path', 'relative'],
-    ['verification.cache_max_age_minutes', -1], ['keys.layouts', [1]], ['artifacts.retention_days', 'two'],
+    ['verification.cache_max_age_minutes', -1], ['keys.layouts', [1]], ['artifacts.retention_days', 'two'], ['artifacts.max_upload_mb', 0], ['artifacts.max_upload_mb', -1], ['artifacts.max_upload_mb', '50'],
     ['hygiene.rate_limit_max', 'two'], ['hygiene.max_text_bytes', 0.5],
     ['verification.droplet.workers', 0], ['visibility.messages.agent', 'never'],
   ]) {
@@ -414,4 +414,16 @@ test('atomic settings replacement refuses a changed source and removes its tempo
   assert.throws(() => writeAtomic(root, path, 'candidate', 'original source'), /changed while setting it; retry/);
   assert.equal(await readFile(path, 'utf8'), 'human changed this');
   assert.deepEqual(await readdir(root), ['config.toml']);
+});
+
+
+test('artifact upload limit stays startup-only and reload refuses the pending edit', async t => {
+  const { root, path } = await fixture(t);
+  const result = await cland(root, 'config', 'set', 'artifacts.max_upload_mb', '1', '--json');
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { key: 'artifacts.max_upload_mb', value: 1, applies: 'restart' });
+  const reload = await cland(root, 'hub', 'reload');
+  assert.equal(reload.code, 1);
+  assert.match(reload.stderr, /artifacts changed: restart required/);
+  assert.equal(parseConfig(await readFile(path, 'utf8'), root).artifacts.maxUploadMb, 1);
 });

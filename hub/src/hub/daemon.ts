@@ -272,6 +272,7 @@ export async function serveProject(root: string, options: { gatewayMessenger?: M
     log({ event: 'hub-startup-step', step: 'restoring core and suites', pid: process.pid });
     log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });
     hub = createHubBase({
+      uploadRedactor: remoteOutput,
       deferExecutorRecovery: true,
       clock,
       secret,

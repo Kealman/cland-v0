@@ -35,6 +35,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/secrets.test.ts`](../../../hub/test/secrets.test.ts) | [Notes](hub-test-secrets.test.ts.md) |
 | [`hub/test/secret-input.test.ts`](../../../hub/test/secret-input.test.ts) | [Notes](hub-test-secret-input.test.ts.md) |
 | [`hub/test/secrets-git.test.ts`](../../../hub/test/secrets-git.test.ts) | [Notes](hub-test-secrets-git.test.ts.md) |
+| [`hub/test/artifact-upload.test.ts`](../../../hub/test/artifact-upload.test.ts) | [Notes](hub-test-artifact-upload.test.ts.md) |
 | [`hub/test/gateway.test.ts`](../../../hub/test/gateway.test.ts) | [Notes](hub-test-gateway.test.ts.md) |
 | [`hub/test/gateway-state.test.ts`](../../../hub/test/gateway-state.test.ts) | [Notes](hub-test-gateway-state.test.ts.md) |
 | [`hub/test/poller-lease.test.ts`](../../../hub/test/poller-lease.test.ts) | [Notes](hub-test-poller-lease.test.ts.md) |

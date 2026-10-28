@@ -513,7 +513,7 @@ test('gateway refuses every other request before dispatch, including pairing and
   const root = await tempProject(t);
   const messenger = testMessenger();
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [messenger] });
-  const allowed = new Set(['topic.send', 'topic.answer', 'approval.answer', 'hub.status', 'task.list', 'inbox.list']);
+  const allowed = new Set(['artifact.upload', 'topic.send', 'topic.answer', 'approval.answer', 'hub.status', 'task.list', 'inbox.list']);
   for (const type of [...Object.keys(WEB_AUTHORITY).filter(type => !allowed.has(type)), 'pairing.approve', 'remote.pair.approve', 'send', 'ask', 'hello', 'future.frame', 'constructor', '__proto__', 'toString']) {
     const result = await messenger.client.request({ type });
     assert.equal(result.ok, false, type);

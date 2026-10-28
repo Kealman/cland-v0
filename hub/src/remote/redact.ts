@@ -3,6 +3,8 @@ import type { HubFrame } from '../protocol.ts';
 /** One project-owned registry. Keep rotated values until all old consumers have drained. */
 export type RemoteRedactor = ((text: string) => string) & {
   register: (secrets: readonly string[]) => void;
+  /** Exact UTF-8 secret bytes only; media stays untouched when accepted. */
+  containsSecret: (bytes: Uint8Array) => boolean;
   /** Persistence output: retain document length and whitespace. */
   text: (text: string) => string;
   /** JSON records: scrub nested string values while preserving schema keys. */
@@ -48,8 +50,12 @@ export function remoteRedactor(secrets: readonly string[] = []): RemoteRedactor 
     for (const span of spans) { result += input.slice(cursor, span.start) + '[redacted]'; cursor = span.end; }
     return result + input.slice(cursor);
   };
+  const containsSecret = (bytes: Uint8Array): boolean => {
+    const buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return [...values].some(value => buffer.includes(Buffer.from(value, 'utf8')));
+  };
   const value = <T>(input: T): T => redactValue(input, text);
-  return Object.assign((input: string) => text(input).replace(/[\x00-\x1f\x7f\u2028\u2029]+/g, ' ').slice(0, 500), { register, text, value });
+  return Object.assign((input: string) => text(input).replace(/[\x00-\x1f\x7f\u2028\u2029]+/g, ' ').slice(0, 500), { register, text, value, containsSecret });
 }
 
 /** JSON keys are schema, not content. Keep them stable for records and clients. */
@@ -57,7 +63,7 @@ export function redactValue<T>(input: T, redact: (text: string) => string): T {
   return mapStrings(input, text => redact(text));
 }
 
-const CONTENT_FIELDS = new Set(['text', 'reason', 'error', 'note', 'title', 'question', 'body', 'description', 'content', 'summary', 'command']);
+const CONTENT_FIELDS = new Set(['caption', 'text', 'reason', 'error', 'note', 'title', 'question', 'body', 'description', 'content', 'summary', 'command']);
 
 /** Never rewrite an action, identifier or correlation to a different operation. */
 export function redactFrame<T>(input: T, redact: (text: string) => string): T {

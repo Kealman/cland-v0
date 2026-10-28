@@ -7,7 +7,7 @@ import type { Artifact, ArtifactCreate, ArtifactKind } from '../protocol.ts';
 import { folderFiles, folderName } from './artifact-folder.ts';
 import type { Store } from './store.ts';
 
-export type ArtifactErrorCode = 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy';
+export type ArtifactErrorCode = 'secret-in-upload' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy';
 export class ArtifactError extends Error {
   readonly code: ArtifactErrorCode;
   constructor(code: ArtifactErrorCode, message: string) { super(message); this.code = code; }
@@ -18,8 +18,11 @@ const creations = new WeakMap<Store, Promise<unknown>>();
 
 /** All callers sharing an index serialize preparation through registration or cleanup. */
 export function createArtifact(...args: Parameters<typeof prepareArtifact>): Promise<Artifact> {
-  const store = args[0], resumed = args[5];
-  const operation = (creations.get(store) ?? Promise.resolve()).then(() => resumed(() => prepareArtifact(...args)));
+  return artifactCreation(args[0], () => args[5](() => prepareArtifact(...args)));
+}
+
+export function artifactCreation<T>(store: Store, work: () => Promise<T>): Promise<T> {
+  const operation = (creations.get(store) ?? Promise.resolve()).then(work);
   creations.set(store, operation.catch(() => {}));
   return operation;
 }

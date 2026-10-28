@@ -240,3 +240,6 @@ T-1381: Document Telegram file transport and held-open chunked download seam.
 - T-1396: document the Discord fetch/fake REST seam and secret-safe receipts.
 - T-1396 source review: the Discord fixture owner fences late setup and drains native handles, operations and observers independently.
 T-1383: document the speech provider/fake-clock seam and shared redactor ownership.
+T-1382: route binary artifact upload work to frame/native-byte transaction and authority regressions.
+
+T-1382 review: require exact registered-secret refusal without rewriting media bytes.
