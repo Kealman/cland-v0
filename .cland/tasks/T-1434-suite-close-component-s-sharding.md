@@ -2,8 +2,8 @@
 id: T-1434
 kind: task
 title: suite-close-component's sharding-fallback case times out on suite.start at the harness's 5 s bound once on a macOS stage cover
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1161
 branch: t/T-1434-suite-close-component-s-sharding
 created: 2026-10-28T19:57:06.286Z
-updated: 2026-10-28T20:15:59.391Z
+updated: 2026-10-28T20:44:13.685Z
+closed: 2026-10-28T20:44:13.685Z
 ---
 
 ## Summary
@@ -25,6 +26,7 @@ updated: 2026-10-28T20:15:59.391Z
 
 - [x] C1. The suite.start wait in this test is attributed from receipts (hub request time against the work done) and either bounded from them or shown to pass 10/10 under two workers plus CPU load on macOS, with no weakened assertions.
   - done: impl-1434 · 2026-10-28T20:08:52.261Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1434-evidence-1 · 2026-10-28T20:37:09.299Z · commit 7884115cdc67af1111f99ef46c989d28b08a6aac
 
 ## Notes
 
@@ -73,3 +75,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13445 source2 clear resolves M1 via pre-caseDeadlines real-context owner, captured lock/release, cancellation-aware bounded observation, caught/driven/joined submission and native I/O drainage; omitted/aborted controls retain native/durable/provider assertions. Related nine normal awaits now drive; intentional held cancellation unchanged. Coordinator accepts latent-retry mechanism without named landing attribution. C1 pending exact-head configured original runtime evidence and clearly scoped local receipts. No reviewer workloads, product/shared/timeout/tier changes or full run requested.
+
+### rev-26 · 2026-10-28T20:37:09.299Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1434-evidence-1
+commit: 7884115cdc67af1111f99ef46c989d28b08a6aac
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13460 final evidence clear; C1 verified against accepted deterministic retry attribution/bounded correction and original A-13457 named receipts. 4004 ordinary+35 separate load passes, unfinished0; touched14/14, fallback0.436933519s, setup controls0.379559188/0.431559088s plus each5/5 load (max1.248619362s). T0/T1/allT2/Web green, T3/T4 unrun. Exact-head source A-13445 unchanged; local A-13444 narrative provenance kept separate without invented CPU telemetry. Linux provenance, host-gate reuse, report-only diagnostics and lifetime/cost in artifact. No reviewer workloads or additional run requested.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-28T20:44:13.685Z
+
+Merged 6eab403f608cc1f7fcc2d6b1254e46c602212a1e onto dev.
