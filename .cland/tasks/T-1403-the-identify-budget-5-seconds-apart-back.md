@@ -2,8 +2,8 @@
 id: T-1403
 kind: task
 title: "The identify budget: 5 seconds apart, back-off only after failed identifies, the floor of remaining starts and the warning at 500"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1154
 branch: t/T-1403-the-identify-budget-5-seconds-apart-back
 created: 2026-10-27T23:38:46.427Z
-updated: 2026-10-28T14:11:39.512Z
+updated: 2026-10-28T17:51:43.629Z
+closed: 2026-10-28T17:51:43.629Z
 ---
 
 ## Summary
@@ -107,3 +108,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Configured evidence clear; C1–C4 verified, Coordinator full-all remains separate/pending. A-13333 audits original f98604fb/A-13331 at unchanged source2 head:3929ordinary passes/499files+60separate load passes,zero nonpassing/unfinished starts. Seven new task identities ordinary+5/5load (42task finishes),maxsample1.141160432s. Checked persisted restart timestamps/exact5000ms boundary; failed-only jitter/cap/deadlines and READY reset; floor99/100,fresh recheck/reset timestamp/noIdentify and live hub;500/501 rolling warning/pruning. Exact admission omitted/aborted drainage controls, migrated cursor/restart consumer, unchanged resume/nonresumable and help guards pass; messenger38/messages18. Host T0 candidate029323f4 separate,not repeated Linux typecheck; Linuxc-8lon1 T1/allT2fallback/Web,Shell156/1248,2general/4Web workers,lifetime755s/$0.0524 notwall. Budget/lint report-only. No selectedT3/T4; Coordinator73b37880 separately schedules same-head full-all before enqueue. No full-all/readiness claim, Reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-28T17:51:43.629Z
+
+Merged 341a071e4c01289cee3ed8c621de24459d5ba152 onto dev.

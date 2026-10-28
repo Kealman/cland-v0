@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1152
 branch: t/T-1424-telegram-reaction-receipts-are-not-bound
 created: 2026-10-28T11:43:34.103Z
-updated: 2026-10-28T17:04:19.003Z
+updated: 2026-10-28T17:26:28.320Z
 ---
 
 ## Summary
@@ -24,8 +24,9 @@ TelegramInbound's flush stores reaction receipts without binding them to the pai
 ## Acceptance criteria
 
 - [x] C1. A stored reaction receipt carries the pairing identity captured on arrival; after any native reaction I/O, flush rechecks it, and a receipt whose pairing was unpaired or replaced sends no later reaction (test: hold 👌, unpair or replace, then show no 👀 to the old chat on the fake).
-  - done: impl-1424 · 2026-10-28T11:47:20.812Z
   - verified: rev-32 [reviewer] · run rev-20261028-1424-evidence1 · 2026-10-28T14:01:48.778Z · commit 978e7bda07ecc675038a2ce34df30e62918b9edc
+  - done: impl-1424 · 2026-10-28T17:04:25.417Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1424-evidence2 · 2026-10-28T17:26:03.699Z · commit d172be37dd9c3da62864ff3a10e147ed29567e66
 
 ## Notes
 
@@ -100,5 +101,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Configured evidence clear; C1 verified, Coordinator full-all still separate/pending. A-13329 audits original9e92ccca/A-13326 at unchanged delta1 head:3927ordinary passes/499files+50separate load,zero nonpassing/unfinished. Four held-native revocation arms unpair/replace/same-chat/album-replace each ordinary+5/5load; legacy recovery ordinary+5/5, max own0.51534829s. Original identity, actual session delivery, exact one👌/no👀, album targets[1,2]/unsettled bits/durable completion and non-album confirmed cursor assertions pass. Current-shape recovery and exact confirmed-prompt cards consumer pass, plus inbound41/cards62/notices14. Host T0fa283d25 separate; Linuxc-8lon1 T1/allT2fallback/Web complete, Shell156/1248,2general/4Web workers,lifetime870s/$0.0604 notwall. Budgets/lint report-only. No T3/T4 selected, polling-restart unexecuted; Coordinator aefaee6e/e339cedc separately requires same-head full-all before enqueue. No full-all/ready claim, Reviewer rerun or per-item QA.
+
+Criteria: C1 verified.
+
+### rev-32 · 2026-10-28T17:08:05.325Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1424-delta2
+commit: d172be37dd9c3da62864ff3a10e147ed29567e66
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13374 authorized dev merge delta2 clear, Standards0/Spec0; carrying A-13266/A-13290/A-13310. Task inbound production, inbound/cards/polling-restart/notices tests and guide byte unchanged from978e7bda. All reaction/Discord-render/album skill blocks and both parents' nonblank CHANGES entries retained. Overall delta includes landed production/tests:53/56 paths exactly incoming dev, remaining3 additive skill/README preservation; manual resolution confined to skill text. Incoming T-1423 fix retained. Coordinator a122aa11 assigns continuity; rev26 released overlap without verdict. C1 old runtime mark stale: source clearance only, fresh mode-free configured verification and exact-head original-record evidence review required. Prior1a29cb17/A-13358 stays overall Web-red with8skips and no executed separateT4 phase; Coordinator b22a18b0/29f33070 accepts bounded successful T3 carry only. No Reviewer executions/edits or per-item QA. Head must remain d172be37 for this clearance.
+
+### rev-32 · 2026-10-28T17:26:03.699Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1424-evidence2
+commit: d172be37dd9c3da62864ff3a10e147ed29567e66
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13385 final current-head evidence clear; C1 refreshed. Source delta2 A-13374 retained. Original0d043574/A-13384 independently parsed3960ordinary test passes/501file passes +50separate load tests,zero nonpassing/unfinished. Four held-native reaction revocation arms and legacy recovery each ordinary+5/5 explicit load passes; max own0.481204321s. Captured numeric pairing, actual delivery, exact one👌/no👀, unsettled progress and album targets[1,2]/durable completion assertions retained. Inbound41/cards62/notices14 pass; current and legacy lost-delivery recovery plus cards exact consumer pass. Current Web copied-tracker parent+CLI-status child now pass. HostT0 check29.307s/gate01e1e403 separate; Linuxc8lon1 T1/allT2fallback/Web complete,Node24.21/Nvim.12.5/Shell156v1248,2general/4Web workers,life904s/$0.0628 notsuitewall. Budgets/lint134findings report-only. No currentT3/T4. Coordinator b22a18b0/29f33070 explicitly carries prior978e7bda A-13358 successful T3, incl4polling-restart cases independently confirmed. That old whole run remains exit1/5329pass/2fail/8skip,T0–T3pass/Webred,no separateT4 phase. No failed-run exception beyond that bounded phase carry, no full-green-all/currentT3 claim. Ready report can follow Coordinator's sequence; enqueue belongs to Coordinator. No Reviewer executions/edits/reruns or per-item QA.
 
 Criteria: C1 verified.

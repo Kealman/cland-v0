@@ -5,6 +5,7 @@ title: The /cland subcommands status, help, mute, unmute, decision and question,
 state: open
 status: in progress
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-1156
 branch: t/T-1407-the-cland-subcommands-status-help-mute
 created: 2026-10-27T23:38:47.247Z
-updated: 2026-10-28T15:40:58.598Z
+updated: 2026-10-28T17:11:05.866Z
 ---
 
 ## Summary
@@ -37,11 +38,16 @@ Spec §3.10 (Discord, `/status`, `/help`, the phone layout), §3.4 (mute); Q-129
 
 ## Acceptance criteria
 
-- [ ] C1. `/cland status` answers ephemerally with a title line, bold-labelled groups ending with "This channel", one fact per line, sessions as bullets and the gateway's numbers last as small text, and no line joins facts with middle dots (test).
-- [ ] C2. `/cland help` answers ephemerally with short headed sections, the subcommands as a bullet list and the trust lines last (test).
-- [ ] C3. `/cland mute` stops General in the channel, a replayed mute interaction applies once, and `/cland unmute` answers "N messages arrived while muted" with the count held back (test).
-- [ ] C4. `/cland decision` and `/cland question` send their text to General with that kind and `via = "discord"` (test).
-- [ ] C5. A subcommand whose answer takes longer than 2 seconds under the injected clock is deferred ephemerally before 3 seconds and completed by editing the original response (test).
+- [x] C1. `/cland status` answers ephemerally with a title line, bold-labelled groups ending with "This channel", one fact per line, sessions as bullets and the gateway's numbers last as small text, and no line joins facts with middle dots (test).
+  - done: impl-1407 · 2026-10-28T17:11:04.584Z
+- [x] C2. `/cland help` answers ephemerally with short headed sections, the subcommands as a bullet list and the trust lines last (test).
+  - done: impl-1407 · 2026-10-28T17:11:04.689Z
+- [x] C3. `/cland mute` stops General in the channel, a replayed mute interaction applies once, and `/cland unmute` answers "N messages arrived while muted" with the count held back (test).
+  - done: impl-1407 · 2026-10-28T17:11:05.093Z
+- [x] C4. `/cland decision` and `/cland question` send their text to General with that kind and `via = "discord"` (test).
+  - done: impl-1407 · 2026-10-28T17:11:05.504Z
+- [x] C5. A subcommand whose answer takes longer than 2 seconds under the injected clock is deferred ephemerally before 3 seconds and completed by editing the original response (test).
+  - done: impl-1407 · 2026-10-28T17:11:05.866Z
 
 ## Notes
 

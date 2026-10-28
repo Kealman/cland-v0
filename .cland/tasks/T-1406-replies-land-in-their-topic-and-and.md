@@ -2,8 +2,8 @@
 id: T-1406
 kind: task
 title: Replies land in their topic, and 👌 and 👀 confirm the human's messages
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1149
 branch: t/T-1406-replies-land-in-their-topic-and-and
 created: 2026-10-27T23:38:47.088Z
-updated: 2026-10-28T15:28:46.960Z
+updated: 2026-10-28T17:09:34.643Z
+closed: 2026-10-28T17:09:34.643Z
 ---
 
 ## Summary
@@ -144,3 +145,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13363 final3 clear refreshes C1–C3 at merged head. Independently audited original a7113e1c/A-13362:3961 ordinary passes+55 separate load passes, zero fail/cancel/skip/todo; messages24/24 with six identities each5/5, render11/11, messenger31/31. Source2 assertions and delta1/A-13361 composition retained; exact routing/reaction/restart/foreign/revocation finishes all pass. T0/T1/all fallback T2/Web complete, T3/T4 absent; Linux c-8 sfo2, pinned CHS156/v1248, task2/Web4, host TREE reuse and report-only lint/timing/missing-baseline limits explicit. Old A-13254/T-1423 failure and A-13269 green remain at old head. No extra run/per-item QA/local check under cover-quiet. Fresh conflict check/ready; Coordinator enqueue after cover hold/integrated gates.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T17:09:34.643Z
+
+Merged 31834220b737e9c850ac5829936a03addfb00d8e onto dev.
