@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-27T18:55:11.213Z
+updated: 2026-10-28T09:49:21.434Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -406,3 +406,7 @@ Incident 2026-10-26 00:26Z: the macOS stage cover eb2ca0d8 at dev 998612a6 (A-12
 ### coord · 2026-10-27T18:55:11.213Z
 
 2026-10-27 18:36:55–18:37:45Z: live hub (pid 80459, restart #57) did not answer `suite.slot` check for ~50 s. Effects: the macOS stage cover 38ecf883 at dev 44b8310d (A-12863) took 24 `AdmissionTimeout: admission timed out after 15 s: project hub busy; not a test result` failures across executor-health, executor-prepare, executor-run, executor-safety and related remote-fixture files (plus one cascaded executor-safety case), so the cover is red without a test result; coord's spoke dropped (`bye` 18:37:13, `coordinator-vacant`) and reconnected at 18:37:41 with the role clause acked and injected. Hub RSS afterwards 362 MB, same pid. Cause not identified; the stall began right after the 18:36:42 heartbeat and overlapped the Linux stage cover 111bc5a3's shard-1 ending. Both stage covers rerun after T-1376 lands.
+
+### coord · 2026-10-28T09:49:21.434Z
+
+2026-10-28 ~09:45–09:50Z: live hub (pid 80459, restart #57) intermittently did not answer its socket (10–15 s client timeouts on several coord CLI calls: a verify submission 'no reply within 15 s', two 'verify queue' timeouts, one 'task comment' timeout) while at ~68% CPU with Mac 1m load 6.63; between stalls it answered within 2 s, and the in-flight verify submission (coord T-1385 at 919a2241) was admitted, so nothing was lost or doubled. Concurrent: periodic dev T3 a396c52c finishing, two droplet acquisitions (coord T-1385, impl-1404 T-1404), seven implementers active. No restart.

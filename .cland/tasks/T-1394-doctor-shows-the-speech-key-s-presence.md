@@ -3,7 +3,7 @@ id: T-1394
 kind: task
 title: Doctor shows the speech key's presence and the command's resolution, and cland remote status shows the provider's data-use line
 state: open
-status: ready
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1144
 branch: t/T-1394-doctor-shows-the-speech-key-s-presence
 created: 2026-10-27T23:37:29.292Z
-updated: 2026-10-28T08:51:42.937Z
+updated: 2026-10-28T09:52:15.702Z
 ---
 
 ## Summary
@@ -41,14 +41,17 @@ No line performs a network request or a spawn of the command; resolution is a PA
 ## Acceptance criteria
 
 - [x] C1. Doctor with a made-up ElevenLabs key in `.cland/secrets.toml` shows the speech key present with its fingerprint and never the value, without one it warns with `cland secret set speech.elevenlabs_key`, and the fake ElevenLabs receives no request in either run (test).
-  - done: impl-1394 · 2026-10-28T08:15:50.716Z
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-1 · 2026-10-28T08:51:42.691Z · commit cad60172eebfa48da62f4b1f9cfb3a5a789775e2
+  - done: impl-1394 · 2026-10-28T09:28:12.758Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-2 · 2026-10-28T09:52:11.490Z · commit 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
 - [x] C2. Doctor with `provider = "command"` shows `ok` for a command on `PATH` and a warning naming a missing `argv[0]`, and the command is never run (test).
-  - done: impl-1394 · 2026-10-28T08:15:50.811Z
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-1 · 2026-10-28T08:51:42.691Z · commit cad60172eebfa48da62f4b1f9cfb3a5a789775e2
+  - done: impl-1394 · 2026-10-28T09:28:13.006Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-2 · 2026-10-28T09:52:11.989Z · commit 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
 - [x] C3. `cland remote status` prints the ElevenLabs data-use line naming "Improve the models for everyone" and stored transcripts, and the command and off lines for the other settings (test).
-  - done: impl-1394 · 2026-10-28T08:18:46.044Z
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-1 · 2026-10-28T08:51:42.691Z · commit cad60172eebfa48da62f4b1f9cfb3a5a789775e2
+  - done: impl-1394 · 2026-10-28T09:28:13.382Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-2 · 2026-10-28T09:52:12.420Z · commit 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
 
 ## Notes
 
@@ -119,3 +122,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13151 independently audits original A-13149/ebc8e877 at unchanged source3 head: 3844 ordinary passes plus 50 scoped load passes, zero failures/skips/cancellations/unfinished. All five task identities pass base+5/5 load; both retained doctor repair regressions pass. T0/T1/fallback all T2/Web completed; no T3/T4. Linux droplet/pinned isolated browser provenance confirmed; host typecheck reused, timing/lint report-only. Previous A-13131 remains failed. C1–C3 verified; Coordinator integrated coverage/landing separate.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T09:24:24.990Z
+
+Coord disposition 2026-10-28 09:25Z: coord's full verify e2311197 at cad60172 (A-13169) was red only on hub/test/suite.test.ts::failure cleanup preserves a live worker whose recorded start identity is unavailable — unrelated to this item (suite cleanup), first red in the runs checked, 5/5 alone on dev; filed as T-1420. Every T3/T4 doctor and remote-status consumer the full run was required for passed (T0/T1/T2 green; T3 1241/1242). Accepted for enqueue under the flaky-rerun rule without a second full run.
+
+### rev-26 · 2026-10-28T09:28:03.165Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1394-source-delta-1
+commit: 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13175: Coordinator-authorized merge delta clear, both axes zero findings. Combined diff preserves both skill paragraphs and the speech/Discord REMOTE_USAGE union in source+frozen fixture. Speech logic and doctor/CLI tests byte-identical to cad60172e. Prior criterion marks are stale; restore claimant done and run fresh mode-free verify at this frozen head. Prior full A-13169 remains red/T-1420, with Coordinator 54b74c7b explicitly waiving another full run; no T4/Web pass from that interrupted run.
+
+### impl-1394 · 2026-10-28T09:44:52.725Z
+
+Coordinator disposition cc19efe7 (topic-1144): run 07820bd6-d746-49b2-9f9a-f8dc337660c7 at 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68, log A-13182, accepted as item evidence. Only failure web/test/items.test.ts::the Items tree reads the copied live tracker snapshot is shared dev defect T-1419, already flagged on T-1401/T-1391 at the same merge-base and assigned separately. No T-1394 file is involved; T-1394 changes no web code. T0/T1/T2 passed, Web failed, T3/T4 not selected. No rerun required by Coordinator; this is accepted red-run evidence with explicit shared-defect attribution, not a green run. Earlier Coordinator all run e2311197/A-13169 at cad60172e failed only shared suite-cleanup identity T-1420; all doctor/remote-status T3 consumers passed, Web/T4 unexecuted; Coordinator 54b74c7b requires no second all run. Requesting final evidence review at unchanged 88ee4a32b citing both dispositions.
+
+### rev-26 · 2026-10-28T09:52:15.702Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261028-1394-evidence-2
+commit: 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run 07820bd6/A-13182 remains failed: 3000ms timeout waiting for exact Live fixture stage. Coordinator attributes shared dev defect T-1419; no T-1394 Web source involved. Coordinator 7007fd1d supersedes accepted-red disposition; failed run cannot receive clear.","file":"web/test/items.test.ts","line":57}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13187 independently confirms 3853 ordinary passes/1 Web failure, 50 separate load passes, zero unfinished. All five task cases base+5/5 pass; C1–C3 individually verified under this run, no criterion failure. T0/T1/T2 green, Web red, T3/T4 unrun; host reuse/report-only diagnostics retained. Overall evidence not clear per Reviewer clause. Coordinator 7007fd1d supersedes cc19efe7: wait for T-1419, then authorized dev merge/source review/mode-free verify/new evidence review. Prior T-1420 full receipt stays red; no ready/enqueue claim.

@@ -3,7 +3,7 @@ id: T-1385
 kind: task
 title: Photos and documents from Telegram become the human's artifacts on one message, through a durable media queue, and no paired update stalls the poll loop
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1140
 branch: t/T-1385-photos-and-documents-from-telegram
 created: 2026-10-27T23:37:27.517Z
-updated: 2026-10-28T09:09:26.835Z
+updated: 2026-10-28T09:49:57.416Z
 ---
 
 > Overlap: T-1378 (Bugs, regression of T-1341) proposes a smaller fix for the same poll-loop stall and awaits the human's answer to ask 82ff046e. If T-1378 lands first, build on it and keep its tests; otherwise this ticket's fallback reply closes T-1378's criteria too.
@@ -174,3 +174,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final original-record audit A-13163 carries source4/A-13153 and full source2/A-13137. Fresh exact-head configured74f4f9e5/A-13161 exited0,3859 ordinary passes/497files with no fail/cancel/skip,125 separate load passes. Inbound32/32 and20 new identities exactly5/5 each=100 explicit load passes; worst1.405704420s, no new allowance needed, native file finish10.423631836s distinct from9.52s case aggregate. Named photo/docs/cap/restart/FIFO, owner handoff, held-I/O and actual commit revocation, six fatal/reload and two setup/drain controls all pass. Token/URL sink scans and unsupported/edit/following-text assertions support C5; corrected sticker/button identity passes0.153167383s with original count/serial/outcome assertions. C1–C5 verified. Host T0/check32.734s at excluded gatea5a50685 separate from Linux runtime; c-8lon1 cland-v0-288973c1 Node24.21/Nvim0.12.5 workers2, ordinary Web4, T1/all fallback T2/Web pass. T3/T4 unselected, no full cover claimed. Machine lifetime844s/$0.0586 not suite wall; isolated HeadlessShell156.0.8078.4/1248. Budgets/lint/ratchet report-only134/61. Prior preflight refusal and failed2cb65551/A-13148 stay retained old-head evidence. Standards0, Spec0. Coordinator's separately authorized full verify all remains required before enqueue; this task evidence verdict does not satisfy it.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-32 · 2026-10-28T09:28:20.900Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1385-delta1
+commit: 919a22410a4cb988e8546037b1e25ed567434cb4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13176 audits Coordinator003a6abc-authorized dev integration: parents accepted d8882612 + dev95e764b1, treeae276486. Carries full source4/A-13153 and old-head final/A-13163. Both skill guidance sections and CHANGES retained. Native media/FIFO/pairing/commit/fatal logic, Telegram tests/guides, caption/cap/reply/receipts and exact duration key/value are byte-identical to accepted task; upstream Discord union/notice additions preserve Telegram mappings. Both-parent/combined diff has no integration findings. A-13174 true serial Darwin inbound32/cards62/typecheck/tiers exit0; overlapping earlier attempts separately labelled. Old A-13161 stays old-head; full400100f9/A-13172 cancelled143 before T0 completion, runtime counts unavailable. C1–C5 runtime marks stale at new head, not reverified here. One fresh mode-free configured run then final original-record review; Coordinator separately owns full verify all before enqueue.
+
+### rev-32 · 2026-10-28T09:45:44.923Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261028-1385-evidence2
+commit: 919a22410a4cb988e8546037b1e25ed567434cb4
+scope: evidence
+findings: [{"severity":"medium","text":"E2 Evidence: configured14b05884/A-13184 exits1; actual locator.waitFor Timeout3000ms waiting for initial 'Live fixture stage' row. No merged-head passing configured receipt; candidate shared defect pending Coordinator classification, no media-source diagnosis.","file":"web/test/items.test.ts","line":57}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13185 audits exact merged-head original result. T0/T1/allfallbackT2 pass, Web fails; ordinary3868/3869 and one failed case/file,125 separate load passes. Inbound32/32 plus20×5load=100pass, max1.386984020s, native file10.910820602s distinct from reporter9.691s aggregate. Host T0 separate35.962s/gatebe635cfd; Linux c-8nyc1 cland-v0-16d743f1 Node24.21/Nvim0.12.5 general/load2/Web4, isolated HeadlessShell156.0.8078.4/1248. Lifetime903s/$0.0627 not suite wall; T3/T4 unselected; budgets/lint report-only134/61. C1–C5 remain stale/runtime-unverified; no criteria failed solely for external Web failure. Delta sourceA-13176 retained, old-headA-13161/cancelledA-13172 not current passes. Freeze head and await Coordinator disposition before retry/fix; changed head needs review. Full verify all gate remains.
+
+### impl-1385 · 2026-10-28T09:46:12.285Z
+
+Coordinator disposition a935c06c-492d-4270-ad49-278bd966693b (topic-1140): run14b05884 at919a22410/A-13184 is accepted as item evidence despite its sole Web failure, attributed by Coordinator to shared dev defect T-1419 (assigned impl-1419, reported on three other branches). This item's diff touches no web/ file. Exact failure: web/test/items.test.ts::the Items tree reads the copied live tracker snapshot, items.test.ts:57, locator.waitFor Timeout3000ms waiting for 'Live fixture stage' visible. Run remains exit1/Web red; this disposition does not relabel it green. T0/T1/T2 complete/pass; own inbound32 ordinary +100 explicit load pass. Head frozen; no Items diagnosis/edit/retry here. Coordinator submitted separate full verify all at919a22410 and will accept only T-1419 identities by the same disposition before enqueue.
+
+### impl-1385 · 2026-10-28T09:49:57.416Z
+
+Correction: Coordinator message3b3d3b87 (Agents,09:49:32Z) supersedes acceptance a935c06c. The failed T-1419 Web run14b05884/A-13184 cannot carry ready and is retained as failed history only. Hold919a22410 frozen until T-1419 lands and Coordinator authorizes rule11 dev merge. Then rerun touched files, delta source review, mode-free verification with actual green receipt, final evidence review. Coordinator full verify all07de2f02 continues for pre-merge T3 evidence; Coordinator states the upcoming T-1419 test-only merge will not invalidate that T3 evidence.

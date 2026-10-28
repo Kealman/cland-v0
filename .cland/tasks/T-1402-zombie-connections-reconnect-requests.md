@@ -12,10 +12,10 @@ parent: E-1312
 blocked_by:
   - T-1400
   - T-1401
-topic: null
+topic: topic-1146
 branch: t/T-1402-zombie-connections-reconnect-requests
 created: 2026-10-27T23:38:46.285Z
-updated: 2026-10-28T09:16:04.643Z
+updated: 2026-10-28T09:24:10.235Z
 ---
 
 ## Summary
@@ -50,3 +50,13 @@ Spec §3.8 (connection, resume), §3.9 (liveness, telling the human); research r
 ## Notes
 
 Shared files: discord-socket.ts, discord.ts; hub/test/fakes/discord/ (gateway sessions)
+
+## Comments
+
+### impl-1402 · 2026-10-28T09:17:11.148Z
+
+Consumer inventory before changing reconnect/liveness policy: DiscordSocket is constructed only by discord.ts; DiscordRemote by messenger.ts and injected discord-messenger tests. Native dispatch consumers: DiscordCommands, DiscordInbound, outbox.observe and optional handlers. Fake gateway consumers: discord-messenger, discord-messages, discord-pairing and fake-discord tests/fixture helpers. Notice consumers: messengerFactory persistence callback, daemon remoteNotice, tests with distinct Discord/Telegram callbacks. Status readers across protocol/gateway, CLI, doctor, web and nvim remain unchanged (connected boolean/optional fields). Searched hub/web/nvim/qa/.agents/docs including all tiers, shipped skills, startup probes and persisted readers; no new wire shape, schema or refusal class. Preserve remote-cli previous-hub regressions. Resume state remains memory-only here; restart persistence and expired click reconciliation belong to T-1412/1413.
+
+### impl-1402 · 2026-10-28T09:24:10.235Z
+
+Socket-side implementation committed at dd63db42f. Local macOS Node v24.21.0: discord-messenger.test.ts 25/25 (4.141 s file), root typecheck pass; no Linux/full-suite/source verdict. Red controls: zombie and invalid-session exact receipt timeouts; forced-drop baseline disabled rather than disconnected; offline notice timeout before implementation. Evidence/scope A-13170, durable artifact in item topic. Coordinator holds first review until T-1404 lands and instructs dev integration; settled REST health hook remains pending on its paced layer. No criterion completion marks yet.

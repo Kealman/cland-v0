@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1142
 branch: t/T-1391-the-web-composer-attaches-files-through
 created: 2026-10-27T23:37:28.755Z
-updated: 2026-10-28T09:03:34.599Z
+updated: 2026-10-28T09:20:22.075Z
 ---
 
 ## Summary
@@ -163,3 +163,29 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source5 clear, Standards0/Spec0 findings. A-13158 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13158-t-1391-source5-clear-at-7402e9c6c-phone-placement-and-approved-allowance.md) records M6 phone placement correction and Coordinator-approved exact allowance. Compact phone file control moves to addressing; Send stays beside textarea; all existing phone/composer/upload assertions unchanged. Exact upload-case allow4.82s/E-1311/Oct28–Nov04 matches independently read9faa1fb7 decision and actual parent sample3.210781057s×1.5 rounded upward, with honest failed-run provenance. No timeout/baseline/phase budget changes. H1–M5 fixes remain unchanged. C1–C3 runtime-unverified; claimant's old C2 failed mark still needs done restoration. Prior A-13154 stays failed, no corrected-head Linux/Web repetition proof yet. Reviewer ran no tests/browser. Configured mode-free verify may proceed at this head, then original-record final audit.
+
+### rev-34 · 2026-10-28T09:20:21.127Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-evidence2
+commit: 7402e9c6c7552d464da5eecedaafd97401430d26
+scope: evidence
+findings: [{"severity":"medium","text":"Shared T-1419 blocks final evidence: original locator.waitFor Timeout3000ms waiting for exact reviewer tree-verifier in ancestor Items row; child and parent fail. Coordinator427a6982 confirms shared dev defect and orders hold/no diagnosis/edit/retry until shared-fix merge instruction.","file":"web/test/items.test.ts","line":130}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Run507e5264/A-13166 remains not clear, exit1. A-13167 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13167-t-1391-evidence2-failed-source6-allowance-only-audit.md) audits actual output before Coordinator-confirmed shared-defect classification. Unique3845 ordinary pass/2fail plus60 non-Web load pass; T0/T1/all fallbackT2 passed,Web failed,T3/T4 unrun. Phone row passes2.001332864s; upload passes3.319656720s but no Web repetition proof. No criterion-specific upload failure or verified mark recorded; suite failure blocks final gate. Worst-sample allowance correction reviewed separately at successor02cb87413. Preserve failed receipt; no unapproved retry.
+
+### rev-34 · 2026-10-28T09:20:22.075Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source6
+commit: 02cb874134ee44eeed086778c87311a85ecd16d7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source6 allowance-only correction clear, Standards0/Spec0 findings. A-13167 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13167-t-1391-evidence2-failed-source6-allowance-only-audit.md) records immutable diff and authority: exact upload-case allowance4.82→4.98 and updated provenance only; E-1311/Oct28–Nov04 unchanged. Actual worst3.319656720s from failed507e5264×1.5=4.979485080s, rounded upward, follows Coordinator9faa1fb7. Honest reason keeps both red whole runs and passing task samples distinct. Production/test assertions/timeouts/baselines/source selection unchanged, no dev merge. C1–C3 remain runtime-unverified; A-13166 remains failed, no parent/full pass reuse. Independently read Coordinator427a6982: shared T-1419, hold diagnosis/Items edits/retry until posted fix and authorized merge/resubmit; fresh source review after that merge. Reviewer ran no tests/browser.
