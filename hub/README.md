@@ -525,6 +525,13 @@ The readiness bound is below the harness tool-call deadlines: [Codex defaults to
 
 ## Gateway authority
 
+The shared remote decisions live in `src/remote/mirror.ts` (General eligibility,
+authors and silent delivery), `gap.ts` (captured missed-source receipts),
+`replies.ts` (phone reply facts), `cards.ts` (`inboxPublication` order) and
+`RemoteStore.applyMute` (idempotent command receipts). Telegram keeps its native
+rendering, job matcher and `telegram.gap` / `telegram.mute:<chat>:<message>` keys.
+These internal helpers change no frame or persisted record shape.
+
 `src/remote/gateway.ts` is an edge inside the hub process. When `serveProject`
 receives active `gatewayRemotes`, it starts one remote per messenger and opens
 one dispatcher conversation for all of them as `human`. Client model frames

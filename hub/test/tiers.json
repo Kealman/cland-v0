@@ -325,6 +325,7 @@
     "hub/test/remote-docs-pairing.test.ts": "T2",
     "hub/test/remote-docs.test.ts": "T1",
     "hub/test/remote-fixture-lifecycle.test.ts": "T4",
+    "hub/test/remote-neutral.test.ts": "T1",
     "hub/test/remote-scripted.test.ts": "T2",
     "hub/test/remote-state-migration.test.ts": "T2",
     "hub/test/remote-state.test.ts": "T1",

@@ -114,7 +114,10 @@ export class RemoteStore {
   }
   /** Commit the command effect before any external reply or polling receipt. */
   applyTelegramMute(chatId: string, messageId: number, muted: boolean): string | null {
-    const receipt = `telegram.mute:${chatId}:${messageId}`;
+    return this.applyMute(`telegram.mute:${chatId}:${messageId}`, muted);
+  }
+  /** Apply a messenger-owned command receipt exactly once. */
+  applyMute(receipt: string, muted: boolean): string | null {
     if (this.get(receipt) !== null) return null;
     this.#db.exec('savepoint remote_mute');
     try {

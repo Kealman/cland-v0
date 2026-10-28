@@ -62,3 +62,18 @@ export function closedCardLine(card: Pick<AskCard, 'state' | 'outcome'>, asker: 
   if (card.state === 'cancelled') return 'Cancelled: topic or item closed';
   return undefined;
 }
+
+export type InboxPublication = { id: string; since: string } & (
+  { kind: 'ask'; ask: InboxAsk } | { kind: 'approval'; approval: InboxApproval } | { kind: 'notice'; notice: RemoteNotice }
+);
+
+/** One publication order shared by messenger inbox commands. */
+export function inboxPublication(inbox: Inbox, webOrigin?: string): InboxPublication[] {
+  const rows: InboxPublication[] = [
+    ...inbox.asks.map(ask => ({ kind: 'ask' as const, id: ask.id, since: ask.since, ask })),
+    ...inbox.approvals.filter(row => row.answerIn === 'hub' && row.state !== 'closed')
+      .map(approval => ({ kind: 'approval' as const, id: approval.id, since: approval.since, approval })),
+    ...noticeCards(inbox, webOrigin).map(notice => ({ kind: 'notice' as const, id: notice.id, since: notice.since, notice })),
+  ];
+  return rows.sort((a, b) => a.since.localeCompare(b.since) || a.id.localeCompare(b.id));
+}

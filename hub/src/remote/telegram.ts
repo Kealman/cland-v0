@@ -1,3 +1,4 @@
+import { mirrorOut } from './mirror.ts';
 import type { Remote, RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 import type { Pairing } from './state.ts';
 import type { RemoteConnection, HubFrame, HubStatus, Inbox } from '../protocol.ts';
@@ -221,12 +222,12 @@ export class TelegramRemote implements Remote {
     const pairing = this.#polling?.store.pairing();
     if (!pairing) return;
     const message = frame.message;
-    if (message.kind === 'request' || message.answerTo || message.ask && !message.ask.to || message.fromKind === 'human' && message.via === 'telegram') return;
+    const mirrored = mirrorOut(message, 'telegram');
+    if (!mirrored) return;
     if (message.fromKind !== 'hub' && this.#polling!.store.suppressMutedMessage(message.id)) return;
     return this.#track(async () => {
-      const author = message.fromKind === 'human' ? message.via === 'discord' ? 'you (Discord)' : 'you' : message.from;
-      const header = `${author} · ${message.kind ?? 'message'}`;
-      const options = { link_preview_options: { is_disabled: true }, disable_notification: message.kind === 'progress' || message.fromKind === 'hub' };
+      const { header } = mirrored;
+      const options = { link_preview_options: { is_disabled: true }, disable_notification: mirrored.silent };
       const facts = { kind: 'general' as const, source: message.id, topic: 'general', missed: !!this.#offline };
       const parts = plainParts(header, message.text).map(part => ({ chat_id: pairing.chatId, ...part, ...options }));
       await this.#transient(async () => {

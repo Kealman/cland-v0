@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { AskCard, HubFrame, Inbox, InboxApproval, InboxAsk } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { TelegramOutbox } from './telegram-outbox.ts';
-import { approvalCard, approvalOutcomeLine, askCard, closedCardLine, noticeCards, type CardAction, type RemoteCard, type RemoteNotice } from './cards.ts';
+import { approvalCard, approvalOutcomeLine, askCard, closedCardLine, inboxPublication, type CardAction, type RemoteCard, type RemoteNotice } from './cards.ts';
 
 import type { TelegramPrompts } from './telegram-prompts.ts';
 
@@ -130,14 +130,9 @@ export class TelegramCards {
 
   /** Queue the entire publication before waiting on its paced sends. */
   async publishInbox(inbox: Inbox, resend?: string): Promise<number> {
-    const rows = [
-      ...inbox.asks.map(row => ({ ...row, publish: () => this.publish([row], resend) })),
-      ...inbox.approvals.filter(row => row.answerIn === 'hub' && row.state !== 'closed')
-        .map(row => ({ ...row, publish: () => this.publishApprovals([row], resend) })),
-      ...noticeCards(inbox, this.#webOrigin?.()).map(row => ({ ...row, publish: () => this.#publishNotice(row, resend) })),
-    ];
-    rows.sort((a, b) => a.since.localeCompare(b.since) || a.id.localeCompare(b.id));
-    await Promise.all(rows.map(row => row.publish()));
+    const rows = inboxPublication(inbox, this.#webOrigin?.());
+    await Promise.all(rows.map(row => row.kind === 'ask' ? this.publish([row.ask], resend)
+      : row.kind === 'approval' ? this.publishApprovals([row.approval], resend) : this.#publishNotice(row.notice, resend)));
     return rows.length;
   }
 
