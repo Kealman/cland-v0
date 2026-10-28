@@ -3,7 +3,7 @@ id: T-1407
 kind: task
 title: The /cland subcommands status, help, mute, unmute, decision and question, answered ephemerally and laid out for a phone
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -13,10 +13,10 @@ blocked_by:
   - T-1397
   - T-1399
   - T-1400
-topic: null
-branch: null
+topic: topic-1156
+branch: t/T-1407-the-cland-subcommands-status-help-mute
 created: 2026-10-27T23:38:47.247Z
-updated: 2026-10-28T08:10:57.140Z
+updated: 2026-10-28T15:40:58.598Z
 ---
 
 ## Summary
@@ -46,3 +46,9 @@ Spec §3.10 (Discord, `/status`, `/help`, the phone layout), §3.4 (mute); Q-129
 ## Notes
 
 Shared files: discord-commands.ts
+
+## Comments
+
+### impl-1407 · 2026-10-28T15:40:58.598Z
+
+Consumer inventory before changes (rule 20): searched hub/src, hub/test (all manifest tiers), web/, nvim/, docs/agents/, .agents/skills. Existing frames stay unchanged: hub.status and task.list summary consumed by Telegram commands, Gateway's frame authority, both workbenches and harness startup probes; topic.send ingress consumed by Gateway/General with existing RemoteIngress deduplication. DiscordCommands is constructed only by DiscordRemote; native callback/editOriginal consumers are DiscordCommands, discord-pairing.test.ts and discordExchangeOwner. Plan additive ephemeral defer API, preserving callback/edit signatures and legacy Remote start injection. PhoneReply/statusReply/helpReply consumers: telegram-commands.ts and remote-neutral.test.ts; keep models unchanged. applyMute/suppressMutedMessage consumers: TelegramRemote, remote-neutral.test.ts and Telegram mute tests; keep receipt/storage shape unchanged, add discord.mute:<interaction id>. Discord pairing tests retain foreign-user/channel and unpaired refusals. New production frame/fake REST/ws test file will prove rendered status/help, native private callbacks, mute receipts/count, ingress kinds/via/id and deferred original edits. No new frame shape, role authority or persisted schema; no workbench/old-hub migration needed.

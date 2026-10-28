@@ -3,7 +3,7 @@ id: T-1389
 kind: task
 title: "What is transcribed and the limits: audio files and video notes within the cap, never videos or documents, and the length checked before download"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:28.350Z
-updated: 2026-10-27T23:37:28.350Z
+updated: 2026-10-28T17:02:23.983Z
 ---
 
 ## Summary

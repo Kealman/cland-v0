@@ -3,7 +3,7 @@ id: T-1390
 kind: task
 title: A voice reply to a card, or a voice note after "Other answer…" or "Decline…", answers the ask
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:28.501Z
-updated: 2026-10-28T05:05:33.221Z
+updated: 2026-10-28T17:02:24.549Z
 ---
 
 > Pending: the voice-reply behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.

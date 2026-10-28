@@ -3,7 +3,7 @@ id: T-1388
 kind: task
 title: A voice note becomes the human's 🎤 transcript message with the audio attached, and the bot echoes it with its timings and provider
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:28.063Z
-updated: 2026-10-27T23:37:28.063Z
+updated: 2026-10-28T17:02:23.535Z
 ---
 
 ## Summary

@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1149
 branch: t/T-1406-replies-land-in-their-topic-and-and
 created: 2026-10-27T23:38:47.088Z
-updated: 2026-10-28T11:56:06.168Z
+updated: 2026-10-28T15:28:46.960Z
 ---
 
 ## Summary
@@ -37,12 +37,15 @@ Spec §3.4 (replies, feedback by reaction), §3.8 (inbound); research rule 34.
 - [x] C1. A reply to a mirrored General message reaches General as a reply to that message, and a reply to an unmapped message reaches General as a plain message (test).
   - done: impl-1406 · 2026-10-28T11:20:29.597Z
   - verified: rev-31 [reviewer] · run rev-20261028-1406-final2 · 2026-10-28T11:56:05.124Z · commit bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
+  - verified: rev-31 [reviewer] · run rev-20261028-1406-final3 · 2026-10-28T15:28:45.868Z · commit bf211ef361a764da54b1b3155c00e1e6b4fc654e
 - [x] C2. The human's message gets 👌 once General stores it and 👀 once its addressee has it, each exactly once, even with a hub restart between the two (test).
   - done: impl-1406 · 2026-10-28T11:20:29.754Z
   - verified: rev-31 [reviewer] · run rev-20261028-1406-final2 · 2026-10-28T11:56:05.124Z · commit bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
+  - verified: rev-31 [reviewer] · run rev-20261028-1406-final3 · 2026-10-28T15:28:45.868Z · commit bf211ef361a764da54b1b3155c00e1e6b4fc654e
 - [x] C3. Another member's reply to a mirrored message reaches nothing and gets no reaction (test).
   - done: impl-1406 · 2026-10-28T11:14:29.619Z
   - verified: rev-31 [reviewer] · run rev-20261028-1406-final2 · 2026-10-28T11:56:05.124Z · commit bad1e90a9bc8d8c78d2288ecc38f85333e46a80f
+  - verified: rev-31 [reviewer] · run rev-20261028-1406-final3 · 2026-10-28T15:28:45.868Z · commit bf211ef361a764da54b1b3155c00e1e6b4fc654e
 
 ## Notes
 
@@ -111,5 +114,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13272 independently audits authorized unchanged-head retry e7b7565a/A-13269: 3885 ordinary passes plus 55 separate load passes, zero fail/cancel/skip/todo; all 24 Discord message base cases and six selected identities each 5/5. C1 mapped/unknown/deleted replies, C2 durable reactions/restart/held-pairing revocation, C3 foreign-input exclusion with durable cursor completion verified against source2 assertions and typed original finishes. T0/T1/fallback all T2/Web complete; T3/T4 absent. Linux c-8 lon1, pinned Headless Shell156/v1248, host TREE reuse, actual Web workers4 vs task2 and report-only performance/lint limits retained. Prior failed 12c8e330/A-13254/evidence1 A-13259 and T-1423 remain historical; Coordinator92f84f5f authorized this sole retry, whose previously failing Web child/parent both pass. No root-cause fix claim. Source2/A-13244 unchanged; no per-item QA. Fresh conflict check/ready then Coordinator-owned queue/integrated gates; existing blocked batch follow-up not resolved by this verdict.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-31 · 2026-10-28T15:10:33.336Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1406-delta1
+commit: bf211ef361a764da54b1b3155c00e1e6b4fc654e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13361 merge-only delta source clear, Standards0/Spec0. Reviewed both parent diffs and combined hunks: T-1402 socket/settled REST health hooks plus T-1405 persisted render/group/silence behavior retained alongside captured-user reaction admission, idempotent PUT recovery and inbound receipt handling. Shared fake resume/reaction fields and all skill entries preserved. Inbound/message test/guide blobs identical to source2 first parent. Mechanical composition under Coordinator95184bf0/6ccf4962; no extra algorithm or further merge. Prior final2/A-13272 and green/failed logs remain old-head evidence, C1–C3 current-head runtime pending. Reported local serial24/11/31 tests distinct from absent merged-head Linux/typecheck; cover-quiet respected, no extra local check requested. One stable-head mode-free droplet verify, then final original-record audit. No per-item QA; integrated gates Coordinator-owned.
+
+### rev-31 · 2026-10-28T15:28:45.868Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1406-final3
+commit: bf211ef361a764da54b1b3155c00e1e6b4fc654e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13363 final3 clear refreshes C1–C3 at merged head. Independently audited original a7113e1c/A-13362:3961 ordinary passes+55 separate load passes, zero fail/cancel/skip/todo; messages24/24 with six identities each5/5, render11/11, messenger31/31. Source2 assertions and delta1/A-13361 composition retained; exact routing/reaction/restart/foreign/revocation finishes all pass. T0/T1/all fallback T2/Web complete, T3/T4 absent; Linux c-8 sfo2, pinned CHS156/v1248, task2/Web4, host TREE reuse and report-only lint/timing/missing-baseline limits explicit. Old A-13254/T-1423 failure and A-13269 green remain at old head. No extra run/per-item QA/local check under cover-quiet. Fresh conflict check/ready; Coordinator enqueue after cover hold/integrated gates.
 
 Criteria: C1 verified, C2 verified, C3 verified.

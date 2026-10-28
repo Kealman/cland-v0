@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-28T13:33:58.758Z
+updated: 2026-10-28T16:33:17.698Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -434,3 +434,15 @@ Hub restart #58 by cland-impl at 13:22:08Z 2026-10-28 (coord ask 99e4939a, optio
 ### coord · 2026-10-28T13:33:58.758Z
 
 2026-10-28 13:32Z, again: batch 8af2f22c (T-1402, T-1386, T-1423) landed T-1402 (a528baa4), then blocked on 'stop sessions: could not stop impl-1402: its process identity cannot be verified', so T-1386 and T-1423 didn't land. Coord finished T-1402 with cland merge T-1402, then cancelled T-1423, which cleared the batch (new batch 665b42b6 with T-1386), and re-enqueued T-1423. Same class as T-1425: a follow-up failure after a landing stops the queue.
+
+### coord · 2026-10-28T15:39:33.499Z
+
+2026-10-28 ~15:37–15:39Z: hub pid 83539 (restart #58) stopped answering for about 2 min (session.launch for T-1407 timed out at 60 s, then send at 10 s, then CLI at 3 s); every crew spoke reconnected at 15:38:57Z; coord's bridge held. Hub CPU 96%, RSS 323 MB, swap 13.27 of 14.34 GB, load ~7. Running at the time: the E-1311 stage covers (Linux 0bbe819e on droplets, macOS 572b61da locally at 2 workers). The T-1407 launch finished despite the timeout. No restart, no lost runs.
+
+### coord · 2026-10-28T15:46:46.779Z
+
+2026-10-28 15:50Z, cause of today's hub stalls (cland-impl's finding): fseventsd holds about 4.1 GB RSS and swap is at 11.5 of 12 GB, against the hub's about 0.5 GB. The hub is a victim of memory pressure, not its cause. fseventsd has run at 90–125% CPU since about 14:00Z; replayd (screen capture) at about 76%. These are the same FSEvents latencies behind T-1427 and T-1431. The 15:37–15:39Z stall turned E-1311's macOS stage cover 572b61da red with 8 AdmissionTimeouts (classified load-flake). Restart #59 waits for the hub's periodic dev T3 72ed2007 to finish.
+
+### human · 2026-10-28T16:33:17.698Z
+
+Hub restart #59 by cland-impl at 16:31:29Z 2026-10-28 on coord's go (dev 60ad6021 = origin/dev; purpose: make the T-1425 stuck-merge-batch fix live after the 15:37–15:39Z stall). Gate: waited for the hub's own periodic dev T3 droplet 4932c982 (run 72ed2007) to finish, clear window held 16:30:55Z, merge queue empty. Stop→serve 12 s; new hub pid 35680, port 56920, web 56935, nice 0, NODE_OPTIONS 8 GB heap, DO token present, starter cli, no meta edit. Coord bridge: injected 16:31:46Z, coordinator role intact. Hub git maintenance completed 16:32:10–16:32:17Z, stale owner file from 13:23Z gone. Doctor 32 ok / 4 warn / 0 fail. Machine: the human restarted fseventsd at ~16:14Z (ask 8a8f8681 option 1; old pid 536 held 3.3–4.1 GB RSS at 89–125% CPU after 23 days up); new pid 96946 at 8 MB, 0% CPU; swap 11.5→9.3 GB and falling.

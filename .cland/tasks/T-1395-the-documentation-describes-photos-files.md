@@ -3,7 +3,7 @@ id: T-1395
 kind: task
 title: The documentation describes photos, files and voice from Telegram, and the composer's attachments
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:29.571Z
-updated: 2026-10-27T23:37:29.571Z
+updated: 2026-10-28T17:02:25.079Z
 ---
 
 ## Summary
