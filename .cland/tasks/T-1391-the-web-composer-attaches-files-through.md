@@ -3,7 +3,7 @@ id: T-1391
 kind: task
 title: The web composer attaches files through an HTTP endpoint on the web edge, with its cookie and Origin checks
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1142
 branch: t/T-1391-the-web-composer-attaches-files-through
 created: 2026-10-27T23:37:28.755Z
-updated: 2026-10-28T09:20:22.075Z
+updated: 2026-10-28T11:02:57.220Z
 ---
 
 ## Summary
@@ -42,10 +42,13 @@ The web edge's own listener gains `POST /upload`. It accepts files only with a v
 
 - [x] C1. In headless Chromium, a PNG attached in General's composer and sent with a text arrives as one human message with that text and the PNG artifact, with no ▣ message (test).
   - done: impl-1391 · 2026-10-28T08:25:25.678Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
 - [x] C2. `POST /upload` without the cookie answers 401, with a foreign Origin 403, and with a body over the limit 413, and none of them creates an artifact or a message (test).
   - done: impl-1391 · 2026-10-28T09:03:34.599Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
 - [x] C3. A file over `max_upload_mb` chosen in the composer shows as refused and is not sent, and the composer's other keys and the existing artifact chip still work (test).
   - done: impl-1391 · 2026-10-28T09:02:11.277Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
 
 ## Notes
 
@@ -189,3 +192,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source6 allowance-only correction clear, Standards0/Spec0 findings. A-13167 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13167-t-1391-evidence2-failed-source6-allowance-only-audit.md) records immutable diff and authority: exact upload-case allowance4.82→4.98 and updated provenance only; E-1311/Oct28–Nov04 unchanged. Actual worst3.319656720s from failed507e5264×1.5=4.979485080s, rounded upward, follows Coordinator9faa1fb7. Honest reason keeps both red whole runs and passing task samples distinct. Production/test assertions/timeouts/baselines/source selection unchanged, no dev merge. C1–C3 remain runtime-unverified; A-13166 remains failed, no parent/full pass reuse. Independently read Coordinator427a6982: shared T-1419, hold diagnosis/Items edits/retry until posted fix and authorized merge/resubmit; fresh source review after that merge. Reviewer ran no tests/browser.
+
+### rev-34 · 2026-10-28T10:45:14.334Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source7
+commit: 83d84d376c5450054cad47cf6b83dc78b0c76a84
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge-delta source clear; Standards0/Spec0. A-13216 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13216-t-1391-source7-shared-fix-merge-and-help-resolution.md) records both parents, carried source and help conflict audit. WEB_USAGE and REMOTE_USAGE frozen rows exactly match shipped exports, guards unchanged. Upload implementation/ownership/composer tests remain byte-identical to source6; sorted tiers and approved4.98s allowance retained; shared T-1419 is present. C1–C3 remain runtime-unverified. A-13166 stays failed parent-head evidence with no Web repetition proof. No Reviewer execution; configured exact-head run and original-record audit required for final evidence.
+
+### rev-34 · 2026-10-28T11:02:56.974Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-final
+commit: 83d84d376c5450054cad47cf6b83dc78b0c76a84
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1/C2/C3 verified. A-13228 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13228-t-1391-final-original-case-and-repetition-evidence.md) independently audits original A-13223 exact-head run0c4d3438:3882 unique ordinary passes/500files,60 separate non-Web load (35item-owned/25site-docs),T0/T1/all fallbackT2/Web complete,T3/T4 unrun. Required PNG/caption/refusal/keys/chips case3.501430628s; unchanged phone row1.932106133s, composer8/8,phone6/6, HTTP6/6 plus5/5load each, native caller-copy1+5/5load, auth/Origin/Host/cap/no-publish and revoke/stop/drain/single-allocation assertions retained. Runner validates Web upload10/10 whole-file repetitions under CPU load/two workers/report-only;18.438s extra outside155.629s ordinary Web budget. Coordinator76fe0c56 explicitly keeps4.98s/currentgreenhead, supersedesraise instruction, expiryNov04/T-1421 retained. Linuxc8nyc1 Node24.21/Neovim0.12.5 isolatedCHS156.0.8078.4/v1248; hostcheck35.213s, preparedtree64e9ed1 reused not Linux typecheck;826s/$0.0574 accounting. Budget/lint warnings report-only. Original failed runs remain failed; no Reviewer execution, provider or stageQA claim.
+
+Criteria: C1 verified, C2 verified, C3 verified.

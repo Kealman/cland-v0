@@ -2,8 +2,8 @@
 id: T-1394
 kind: task
 title: Doctor shows the speech key's presence and the command's resolution, and cland remote status shows the provider's data-use line
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1144
 branch: t/T-1394-doctor-shows-the-speech-key-s-presence
 created: 2026-10-27T23:37:29.292Z
-updated: 2026-10-28T09:52:15.702Z
+updated: 2026-10-28T11:07:40.870Z
+closed: 2026-10-28T11:07:40.870Z
 ---
 
 ## Summary
@@ -42,16 +43,19 @@ No line performs a network request or a spawn of the command; resolution is a PA
 
 - [x] C1. Doctor with a made-up ElevenLabs key in `.cland/secrets.toml` shows the speech key present with its fingerprint and never the value, without one it warns with `cland secret set speech.elevenlabs_key`, and the fake ElevenLabs receives no request in either run (test).
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-1 · 2026-10-28T08:51:42.691Z · commit cad60172eebfa48da62f4b1f9cfb3a5a789775e2
-  - done: impl-1394 · 2026-10-28T09:28:12.758Z
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-2 · 2026-10-28T09:52:11.490Z · commit 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
+  - done: impl-1394 · 2026-10-28T10:43:12.450Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1394-final-3 · 2026-10-28T11:00:38.823Z · commit b6973bfce3f6eca4a890dc4e40c22116cce63630
 - [x] C2. Doctor with `provider = "command"` shows `ok` for a command on `PATH` and a warning naming a missing `argv[0]`, and the command is never run (test).
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-1 · 2026-10-28T08:51:42.691Z · commit cad60172eebfa48da62f4b1f9cfb3a5a789775e2
-  - done: impl-1394 · 2026-10-28T09:28:13.006Z
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-2 · 2026-10-28T09:52:11.989Z · commit 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
+  - done: impl-1394 · 2026-10-28T10:43:13.049Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1394-final-3 · 2026-10-28T11:00:38.823Z · commit b6973bfce3f6eca4a890dc4e40c22116cce63630
 - [x] C3. `cland remote status` prints the ElevenLabs data-use line naming "Improve the models for everyone" and stored transcripts, and the command and off lines for the other settings (test).
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-1 · 2026-10-28T08:51:42.691Z · commit cad60172eebfa48da62f4b1f9cfb3a5a789775e2
-  - done: impl-1394 · 2026-10-28T09:28:13.382Z
   - verified: rev-26 [reviewer] · run rev-20261028-1394-evidence-2 · 2026-10-28T09:52:12.420Z · commit 88ee4a32bd5bbb6eac998e8f6544713c95b6ff68
+  - done: impl-1394 · 2026-10-28T10:43:13.683Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1394-final-3 · 2026-10-28T11:00:38.824Z · commit b6973bfce3f6eca4a890dc4e40c22116cce63630
 
 ## Notes
 
@@ -156,3 +160,35 @@ findings: [{"severity":"medium","text":"Configured run 07820bd6/A-13182 remains 
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-13187 independently confirms 3853 ordinary passes/1 Web failure, 50 separate load passes, zero unfinished. All five task cases base+5/5 pass; C1–C3 individually verified under this run, no criterion failure. T0/T1/T2 green, Web red, T3/T4 unrun; host reuse/report-only diagnostics retained. Overall evidence not clear per Reviewer clause. Coordinator 7007fd1d supersedes cc19efe7: wait for T-1419, then authorized dev merge/source review/mode-free verify/new evidence review. Prior T-1420 full receipt stays red; no ready/enqueue claim.
+
+### rev-26 · 2026-10-28T10:43:57.656Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1394-source-delta-2
+commit: b6973bfce3f6eca4a890dc4e40c22116cce63630
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13213 shared-fix merge delta source clear, Standards0/Spec0. Exact parents 88ee4a32b + dev1d8b6941c. Speech/doctor/CLI code, help/frozen fixtures and owning tests/guides byte unchanged; landed T-1419 Items source/allowances match dev, shared T-1404 already reviewed. C1–C3 runtime marks remain stale until new-head evidence. Prior A-13182 and full e2311197/T-1420 remain red with retained attribution, not new passing receipts. One authorized mode-free verification at unchanged head, then original-record final review. No additional all requested; Coordinator owns integrated disposition and landing.
+
+### rev-32 · 2026-10-28T11:00:38.824Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1394-final-3
+commit: b6973bfce3f6eca4a890dc4e40c22116cce63630
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13222 independently audits original configured e4036231/A-13221 at unchanged source-delta-2 head: 3879 ordinary test passes/497 file passes, 50 separate load test passes, zero nonpassing finishes or unfinished starts. All five task identities have ordinary + exactly 5/5 load passes; C1 key/fingerprint/no-request, C2 PATH/no-execution/missing+empty argv, C3 literal data-use/unchanged JSON and nested old-hub regression confirmed against source assertions. Max task load 1.748132261 s. Host T0/check retained separately (excluded candidate ed765b7, not repeated Linux typecheck); Linux c-8 nyc1 T1/all-T2 fallback/Web completed. Headless Shell156.0.8078.4/v1248; budgets/lint report-only, no T3/T4 selected. Prior A-13182 remains red; e2311197/T-1420 remains a separate failed full receipt with Coordinator's retained consumer-evidence/no-new-all disposition, not a full-cover pass. C1–C3 verified at this head. Reviewer read only; Coordinator owns integrated disposition and landing.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T11:07:40.870Z
+
+Merged ccba2235add620b6a96d2510b6e34dcd4fb5e4c6 onto dev.

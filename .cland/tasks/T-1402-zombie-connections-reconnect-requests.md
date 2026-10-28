@@ -3,7 +3,7 @@ id: T-1402
 kind: task
 title: Zombie connections, reconnect requests and invalid sessions resume without an identify, with the offline and recovery lines
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1146
 branch: t/T-1402-zombie-connections-reconnect-requests
 created: 2026-10-27T23:38:46.285Z
-updated: 2026-10-28T10:37:31.449Z
+updated: 2026-10-28T11:06:55.249Z
 ---
 
 ## Summary
@@ -45,12 +45,16 @@ Spec §3.8 (connection, resume), §3.9 (liveness, telling the human); research r
 
 - [x] C1. With the fake withholding heartbeat acknowledgements, the remote terminates the socket without code 1000 or 1001 and resumes, and a message the human typed meanwhile reaches General exactly once (test).
   - done: impl-1402 · 2026-10-28T10:34:03.267Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
 - [x] C2. Ten forced drops, an op 7 and an op 9 with `d: true` each resume, and the fake counts no identify beyond the first (test).
   - done: impl-1402 · 2026-10-28T10:34:03.432Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
 - [x] C3. An op 9 with `d: false` leads to one fresh identify after a wait of 1 to 5 seconds under the injected clock (test).
   - done: impl-1402 · 2026-10-28T10:34:03.539Z
-- [ ] C4. Three minutes without a working connection give one "Discord remote offline since" line in General and one recovery line, and the status row shows offline at once (test).
-  - failed: rev-26 [reviewer] · 2026-10-28T10:37:31.449Z · note An expected job-local missing-edit 404 marks an acknowledged healthy remote disconnected and can emit an offline notice.
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
+- [x] C4. Three minutes without a working connection give one "Discord remote offline since" line in General and one recovery line, and the status row shows offline at once (test).
+  - done: impl-1402 · 2026-10-28T10:44:09.699Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1402-evidence1 · 2026-10-28T11:06:54.736Z · commit 664fe6d73d9ea5f255088042e5512805806cc673
 
 ## Notes
 
@@ -84,3 +88,35 @@ finding_counts: {"high":0,"medium":3,"low":0}
 A-13207 consolidated full source1 audit: Standards M2 pre-owned observer/operation cleanup before Store/root closure, M3 actual client retry boundary before fake-time advance; Spec M1 job-local missing-edit 404 incorrectly marks remote offline. Three medium findings. C4 failed; C1–C3 runtime-unverified. Fix M1–M3 retaining all semantic assertions and actual red/green controls, then request fresh exact pushed-head source review before verification. Reviewer ran no tests; no full run requested; no dev merge absent Coordinator direction.
 
 Criteria: C4 failed (An expected job-local missing-edit 404 marks an acknowledged healthy remote disconnected and can emit an offline notice.).
+
+### impl-1402 · 2026-10-28T10:43:52.381Z
+
+Source1 corrections: M1 reproduced by new acknowledged native 404-edit control (expected connected, got disconnected); missing-message PATCH404 now preserves onError/rejection but emits no failed health, and remains healthy past 180001ms with no outage/recovery. M2 adds pre-registered discordHubFixtureOwner built on existing exchange owner, joins hub/native/observers before injected Store closure, and covers omitted+aborted setup/held receipts with native closed/zero writer/handler/observer/timer and hub-stopped→store-closed order. M3 adds useful allowlisted route/numeric status/code discord-rest-refused diagnostic to existing log sink; exact client refusal ordinal is observed before each 1/2/4s advance. Reviewers confirmed FakeClock's pre-time-change setImmediate drains the rejection→pause registration microtasks; no new production test hook. Consumer inventory: existing DiscordRemoteOptions.log/messengerFactory redacted sink, daemon log, projectHub sink and CLI log readers retain arbitrary-event compatibility; no wire/schema/authority changes.
+
+### rev-32 · 2026-10-28T10:50:34.596Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1402-source2
+commit: 664fe6d73d9ea5f255088042e5512805806cc673
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source2 clear at 664fe6d73; A-13220 records the complete successor audit and resolution of A-13207 M1–M3. Missing-edit PATCH404 preserves acknowledged health/no transitions; pre-owned fixture joins hub/native/observers before injected Store closure, with omitted/aborted setup/held controls; exact sanitized client-refusal ordinals plus the pre-time-change FakeClock yield establish retry registration without intervening I/O. Original General, durable settlement, replay/resume and secret assertions retained; docs/skill/consumer inventory aligned. No findings. C1–C4 remain runtime-unverified; no reviewer tests/browser/probes. Claimant local Darwin evidence is labelled separately. Mode-free configured verification may now run at this exact head; Coordinator's subsequent verify-all requirement remains.
+
+### rev-32 · 2026-10-28T11:06:54.736Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1402-evidence1
+commit: 664fe6d73d9ea5f255088042e5512805806cc673
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Configured evidence clear only; final readiness remains contingent on Coordinator full24a4be42 still pending. A-13230 independently audits original45efac9e/A-13229 at exact unchanged source2 head:3885 ordinary test passes/497 files plus80 separate load passes,zero nonpassing outcomes/unmatched starts. C1–C4 identities each ordinary+5/5 load; REST outage,acknowledged missing-edit404,four owner-failure controls and legacy API subscription also ordinary+5/5,55 task-specific load passes total. Retained exact close/replay/Identify,General,secret,durable settlement and Store-after-writer-drain assertions confirmed; max own observation1.096468244s. Host T0 candidatee258be1 reused separately; Linux c-8nyc1 T1/allT2fallback/Web complete,isolated HeadlessShell156/1248,budgets/lint report-only. No T3/T4 selected. C1–C4 verified from this configured receipt, no full-cover/ready/enqueue claim. Required same-head full run must receive original-record review when it lands.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

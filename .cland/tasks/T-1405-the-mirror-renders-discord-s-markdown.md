@@ -3,7 +3,7 @@ id: T-1405
 kind: task
 title: "The mirror renders Discord's Markdown: tables, deep headings, rules, task boxes and ||, no pings, fence-safe numbered splits and silent notes"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1148
 branch: t/T-1405-the-mirror-renders-discord-s-markdown
 created: 2026-10-27T23:38:46.826Z
-updated: 2026-10-28T10:42:40.088Z
+updated: 2026-10-28T11:06:51.455Z
 ---
 
 ## Summary
@@ -46,8 +46,8 @@ Spec §3.4 (Discord rendering, splitting, silence); Q-1293 (the rewrites the hum
   - done: impl-1405 · 2026-10-28T10:34:11.833Z
 - [x] C2. A message containing `@everyone`, a role mention and a user mention pings nobody on the fake, on its create and on its edit (test).
   - done: impl-1405 · 2026-10-28T10:34:28.476Z
-- [ ] C3. A 4500-code-point message with a fenced block across a cut arrives as parts numbered "1/3" to "3/3", each within 2000 code points, with every fence closed and re-opened with its language (test).
-  - failed: rev-34 [reviewer] · 2026-10-28T10:42:40.088Z · note Multipart regressions close the injected Store before subject drainage on failure; fixture ownership must be corrected.
+- [x] C3. A 4500-code-point message with a fenced block across a cut arrives as parts numbered "1/3" to "3/3", each within 2000 code points, with every fence closed and re-opened with its language (test).
+  - done: impl-1405 · 2026-10-28T10:47:57.107Z
 - [x] C4. Progress notes and hub notices arrive with `SUPPRESS_NOTIFICATIONS` while other messages notify, and a workbench message shows "you" and a Telegram one "you (Telegram)" (test).
   - done: impl-1405 · 2026-10-28T10:34:28.948Z
 - [x] C5. A message the converter cannot handle arrives as plain text and is never dropped (test).
@@ -100,3 +100,31 @@ finding_counts: {"high":0,"medium":1,"low":0}
 M1 sorted T2 registration and M2 transactional complete-group enqueue are corrected in source. One remaining medium Standards finding M3; no remaining Spec finding. Artifact records full review/limits. Crash replay is a consistent SQLite snapshot component model, not native process-death evidence. No configured verification or Reviewer test ran; no criteria verified. C3 currently lacks a restored claimant done mark as well. Fresh source review required after ownership correction.
 
 Criteria: C3 failed (Multipart regressions close the injected Store before subject drainage on failure; fixture ownership must be corrected.).
+
+### rev-34 · 2026-10-28T10:46:37.668Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1405-source3
+commit: 7c1cd3971e4795f17211cc584964fe96c2baf731
+scope: full
+findings: [{"severity":"medium","text":"M3 remains for partial startup: owner close runs hub?.stop concurrently with unresolved projectHub; it can observe undefined, then close Store after the late acquisition settles without stopping that subject. Fence/stop late acquisition before tracked startup settles; prove held startup cancellation and Store-open-until-stop.","file":"hub/test/discord-render.test.ts","line":28}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Standards M3 held-I/O cleanup corrected, but partial-startup acquisition remains unsafe; Spec0 additional findings. Audit A-13217 records the exact ownership trace and limits. No production change, M1/M2 corrected; no Reviewer execution or configured proof. Fresh source review required before verification.
+
+Criteria: C3 failed (Regression fixture lacks a late subject-acquisition shutdown fence when cleanup races pending hub startup.).
+
+### rev-34 · 2026-10-28T10:48:54.888Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1405-source4
+commit: bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source4 clear, Standards0/Spec0. A-13219 records complete-group persistence and all fixture corrections. M1 sorted T2 map; M2 transactional entire group before native drain; M3 subject/recovered ownership with late-acquisition abort stop/join before tracked startup settles and Store closes. Actual held-subject control retains stop-before-Store-close assertions; existing order/replay/mapping and omitted/aborted setup checks preserved. C1–C5 claimant done, all runtime-unverified. Snapshot replay is a component model, not native process kill evidence. No Reviewer execution. Configured exact-head verification and original-record audit remain necessary for final review.
