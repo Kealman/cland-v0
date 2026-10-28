@@ -2,8 +2,8 @@
 id: T-1385
 kind: task
 title: Photos and documents from Telegram become the human's artifacts on one message, through a durable media queue, and no paired update stalls the poll loop
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1140
 branch: t/T-1385-photos-and-documents-from-telegram
 created: 2026-10-27T23:37:27.517Z
-updated: 2026-10-28T11:02:34.741Z
+updated: 2026-10-28T11:34:01.792Z
+closed: 2026-10-28T11:34:01.792Z
 ---
 
 > Overlap: T-1378 (Bugs, regression of T-1341) proposes a smaller fix for the same poll-loop stall and awaits the human's answer to ask 82ff046e. If T-1378 lands first, build on it and keep its tests; otherwise this ticket's fallback reply closes T-1378's criteria too.
@@ -47,25 +48,30 @@ A photo or document from the paired human becomes their message in General, or a
 ## Acceptance criteria
 
 - [x] C1. A photo with the caption "the error" sent on the fake arrives as one General message from `human` "via Telegram" with that text and one `.jpg` artifact whose bytes match the largest size, and the photo message gets 👌 (test).
-  - done: impl-1385 · 2026-10-28T08:20:37.586Z
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final · 2026-10-28T09:09:26.339Z · commit d88826124244b561668ecf1d283217eebb38860c
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final3 · 2026-10-28T11:02:34.198Z · commit 6efcf432649032a2cac50670c585d2189d6714a8
+  - done: impl-1385 · 2026-10-28T11:26:46.204Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1385-final4 · 2026-10-28T11:27:29.220Z · commit 6dbafabb9a9eb6fc0052e81636b8880c9ee83c77
 - [x] C2. A document replying to a mirrored message in an item topic lands in that topic as a reply carrying the document artifact with its name, and a document without a caption arrives with an empty text and the artifact (test).
-  - done: impl-1385 · 2026-10-28T08:20:37.709Z
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final · 2026-10-28T09:09:26.339Z · commit d88826124244b561668ecf1d283217eebb38860c
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final3 · 2026-10-28T11:02:34.198Z · commit 6efcf432649032a2cac50670c585d2189d6714a8
+  - done: impl-1385 · 2026-10-28T11:26:46.366Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1385-final4 · 2026-10-28T11:27:29.221Z · commit 6dbafabb9a9eb6fc0052e81636b8880c9ee83c77
 - [x] C3. A document declared as 25 MB gets the 20 MB reply, `getFile` is never called for it, and nothing reaches General (test).
-  - done: impl-1385 · 2026-10-28T08:20:37.964Z
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final · 2026-10-28T09:09:26.339Z · commit d88826124244b561668ecf1d283217eebb38860c
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final3 · 2026-10-28T11:02:34.198Z · commit 6efcf432649032a2cac50670c585d2189d6714a8
+  - done: impl-1385 · 2026-10-28T11:26:46.643Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1385-final4 · 2026-10-28T11:27:29.221Z · commit 6dbafabb9a9eb6fc0052e81636b8880c9ee83c77
 - [x] C4. After a stopped hub restarts on a media item that was stored and confirmed but not yet uploaded, it is uploaded exactly once, and a text sent after it reaches General after it (test).
-  - done: impl-1385 · 2026-10-28T08:33:41.700Z
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final · 2026-10-28T09:09:26.339Z · commit d88826124244b561668ecf1d283217eebb38860c
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final3 · 2026-10-28T11:02:34.198Z · commit 6efcf432649032a2cac50670c585d2189d6714a8
+  - done: impl-1385 · 2026-10-28T11:26:46.814Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1385-final4 · 2026-10-28T11:27:29.221Z · commit 6dbafabb9a9eb6fc0052e81636b8880c9ee83c77
 - [x] C5. No frame, hub log line, journal record, artifact or General message produced by these cases contains the made-up token or a `/file/bot` URL, and a sticker and an edited message each get the one-line reply while a later text still reaches General (test).
-  - done: impl-1385 · 2026-10-28T08:20:38.216Z
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final · 2026-10-28T09:09:26.339Z · commit d88826124244b561668ecf1d283217eebb38860c
   - verified: rev-32 [reviewer] · run rev-20261028-1385-final3 · 2026-10-28T11:02:34.198Z · commit 6efcf432649032a2cac50670c585d2189d6714a8
+  - done: impl-1385 · 2026-10-28T11:26:47.103Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1385-final4 · 2026-10-28T11:27:29.221Z · commit 6dbafabb9a9eb6fc0052e81636b8880c9ee83c77
 
 ## Notes
 
@@ -245,3 +251,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13227 independently audits original exact-head run55eea0dc/A-13224: exit0,3894 ordinary test passes/497 file passes,125 separate load passes,zero nonpassing finishes/unmatched starts. Inbound32 ordinary and all20 new identities×5 load pass; C1 photo/largest bytes/one attributed artifact+reaction,C2 documents/reply/empty caption,C3 cap refusal/no getFile,C4 confirmed restart/exactly-once FIFO,C5 actual sink scans with positive controls and unsupported/edit/sticker regressions verified against retained assertions. Owner-handoff,held-I/O and commit revocation,fatal/reload,missing/aborted setup controls pass; peak own observation1.366636243s,no own>=3s allowance. Host T0 candidate bccdbc3 reused separately; Linux c-8nyc1 T1/allT2fallback/Web complete,isolated HeadlessShell156/1248; budgets/lint report-only. No current T3/T4 selected. Coordinator6235c226/34a8bbd1 retains old919a2241 T3exit0 phases from A-13206 and waives second all absent hub/src conflict; whole old run stays failed/Webred,not new-head or full green. Current shared Items identity passes. C1–C5 verified; Coordinator owns landing. No reviewer execution or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-32 · 2026-10-28T11:09:30.535Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1385-delta3
+commit: 6dbafabb9a9eb6fc0052e81636b8880c9ee83c77
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13236 source delta3 clear at authorized T-1394 integration. Exact parents6efcf432+dev9d09b243; sole skill conflict preserves both Telegram media/deferred-authority paragraphs and incoming speech doctor/status guidance. CHANGES/README unions intact. Own accepted runtime/tests/guides/duration manifest byte-identical to prior final3 head; incoming T-1394 code/help/frozen fixtures/tests/guides match dev. No hub/src conflict/resolution,new authority or weakened assertion. Prior A-13224 is old-head green only; C1–C5 marks stale pending new-head receipt. Retained old-head T3-phase/no-second-all disposition unchanged,overall old full stays Web-failed. Lead local typecheck/tiers reports not new runtime evidence. Run authorized mode-free verify at unchanged6dbafabb then original-record final review; no runtime criteria newly verified by this source-only pass.
+
+### rev-32 · 2026-10-28T11:27:29.221Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1385-final4
+commit: 6dbafabb9a9eb6fc0052e81636b8880c9ee83c77
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13247 independently audits new exact-head75c7350a/A-13245: exit0,3899 ordinary tests/497 files passed plus125 separate scoped load passes,zero nonpassing outcomes/unmatched starts. Inbound32base and all20 new identities×5load pass,including native photo/doc/cap/restartFIFO/secret sinks plus handoff,held/commit revocation,fatal/reload and setup-drain controls. Unsupported/edit/sticker-button and shared Items cases pass. Peak own case1.368559879s; no own new>=3s allowance. Host T0 candidate8908afa reused separately; Linux c-8nyc1 T1/allT2fallback/Web complete,HeadlessShell156/1248,gates report-only; no T3/T4 selected. Current source delta3/A-13236 confirms own source/tests unchanged and no hub/src conflict. Coordinator retains old919a2241 T3-phase evidence A-13206/no-second-all disposition; old whole run remains Web-failed,not current/full green. C1–C5 verified at6dbafabb; Coordinator owns landing. No reviewer execution/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-28T11:34:01.792Z
+
+Merged 4c8f16189a7d1a4e82b33e7b826dbe574a4b62fc onto dev.

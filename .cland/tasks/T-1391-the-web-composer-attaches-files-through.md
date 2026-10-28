@@ -3,7 +3,7 @@ id: T-1391
 kind: task
 title: The web composer attaches files through an HTTP endpoint on the web edge, with its cookie and Origin checks
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1142
 branch: t/T-1391-the-web-composer-attaches-files-through
 created: 2026-10-27T23:37:28.755Z
-updated: 2026-10-28T11:02:57.220Z
+updated: 2026-10-28T11:19:00.831Z
 ---
 
 ## Summary
@@ -41,14 +41,14 @@ The web edge's own listener gains `POST /upload`. It accepts files only with a v
 ## Acceptance criteria
 
 - [x] C1. In headless Chromium, a PNG attached in General's composer and sent with a text arrives as one human message with that text and the PNG artifact, with no ▣ message (test).
-  - done: impl-1391 · 2026-10-28T08:25:25.678Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
+  - done: impl-1391 · 2026-10-28T11:19:00.358Z
 - [x] C2. `POST /upload` without the cookie answers 401, with a foreign Origin 403, and with a body over the limit 413, and none of them creates an artifact or a message (test).
-  - done: impl-1391 · 2026-10-28T09:03:34.599Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
+  - done: impl-1391 · 2026-10-28T11:19:00.533Z
 - [x] C3. A file over `max_upload_mb` chosen in the composer shows as refused and is not sent, and the composer's other keys and the existing artifact chip still work (test).
-  - done: impl-1391 · 2026-10-28T09:02:11.277Z
   - verified: rev-34 [reviewer] · run rev-34-20261028-1391-final · 2026-10-28T11:02:56.974Z · commit 83d84d376c5450054cad47cf6b83dc78b0c76a84
+  - done: impl-1391 · 2026-10-28T11:19:00.831Z
 
 ## Notes
 
@@ -220,3 +220,42 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2/C3 verified. A-13228 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13228-t-1391-final-original-case-and-repetition-evidence.md) independently audits original A-13223 exact-head run0c4d3438:3882 unique ordinary passes/500files,60 separate non-Web load (35item-owned/25site-docs),T0/T1/all fallbackT2/Web complete,T3/T4 unrun. Required PNG/caption/refusal/keys/chips case3.501430628s; unchanged phone row1.932106133s, composer8/8,phone6/6, HTTP6/6 plus5/5load each, native caller-copy1+5/5load, auth/Origin/Host/cap/no-publish and revoke/stop/drain/single-allocation assertions retained. Runner validates Web upload10/10 whole-file repetitions under CPU load/two workers/report-only;18.438s extra outside155.629s ordinary Web budget. Coordinator76fe0c56 explicitly keeps4.98s/currentgreenhead, supersedesraise instruction, expiryNov04/T-1421 retained. Linuxc8nyc1 Node24.21/Neovim0.12.5 isolatedCHS156.0.8078.4/v1248; hostcheck35.213s, preparedtree64e9ed1 reused not Linux typecheck;826s/$0.0574 accounting. Budget/lint warnings report-only. Original failed runs remain failed; no Reviewer execution, provider or stageQA claim.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-34 · 2026-10-28T11:11:11.430Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source8
+commit: 744b6ffd55fc5ac09dfe05d1f22c2a20709aba9a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source8 merge+correction clear, Standards0/Spec0 findings. A-13237 records both merge parents and final snapshot: all36 usage rows equal shipped literals including standalone IMPORT_USAGE, valid JSON/no markers; both upload and upstream speech/doctor help retained, guards unchanged. Upload implementation/tests/ownership byte-identical to final-clear83d84d376, approved4.98s/Nov04 retained perCoordinator76fe0c56. A-13223 covers parent only; C1–C3 marks stale and runtime-unverified at new head. Restore claimant done marks before final settlement. No Reviewer execution; configured same-head run/original-record audit required.
+
+### rev-34 · 2026-10-28T11:17:07.569Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-evidence3
+commit: 744b6ffd55fc5ac09dfe05d1f22c2a20709aba9a
+scope: evidence
+findings: [{"severity":"medium","text":"M7 Standards: TASK_USAGE frozen row is truncated to first literal; shipped export composes IMPORT_USAGE and trailing credential guidance. Actual immutable guard fails deep equality; restore complete owning row and retain guards. Source8 static extraction missed the same composition.","file":"hub/test/fixtures/cli-usage/commands.json","line":23}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence3 not clear. A-13240 quotes actual A-13239 assertion before item-owned classification: TASK_USAGE actual includes import/credential suffix, expected ends after node_modules.1128 ordinary pass/1fail plus25 unrelated site-doc loads;T0pass,T1fail,T2/Web unexecuted,T3/T4unrun. No new upload/runtime criteria verified, no criterion-specific upload failure inferred. Source8 36/36 literal-only comparison was incomplete and is withdrawn as composed-export proof. Restore exact owning fixture row/unchanged guards, preserve merged help, fresh source review before new configured run. Parent A-13223 remains parent-only green; no Reviewer execution.
+
+### rev-34 · 2026-10-28T11:18:51.584Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1391-source9
+commit: cfe969712933f4c214952331b7b219b2c1b55c36
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source9 correction clear, Standards0/Spec0. A-13241 records sole TASK_USAGE row restoration, exact prior-green value and complete expression audit:36/36 command blocks plus31/31 exported compositions equal frozen expected, including IMPORT_USAGE and trailing credential guidance. Both merged help additions/guards/templates unchanged; upload implementation and allowance unchanged. Prior source8 first-literal proof corrected. A-13239 stays failed parent-only/T2Webunrun; A-13223 earlier parent-onlygreen. No runtime criteria verified at new head; fresh claimant marks/configured exact-head verification/original-record audit required. No Reviewer execution.

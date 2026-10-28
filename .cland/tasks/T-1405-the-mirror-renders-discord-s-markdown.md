@@ -3,7 +3,7 @@ id: T-1405
 kind: task
 title: "The mirror renders Discord's Markdown: tables, deep headings, rules, task boxes and ||, no pings, fence-safe numbered splits and silent notes"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1148
 branch: t/T-1405-the-mirror-renders-discord-s-markdown
 created: 2026-10-27T23:38:46.826Z
-updated: 2026-10-28T11:06:51.455Z
+updated: 2026-10-28T11:08:25.219Z
 ---
 
 ## Summary
@@ -44,14 +44,19 @@ Spec §3.4 (Discord rendering, splitting, silence); Q-1293 (the rewrites the hum
 
 - [x] C1. An agent's report with a table, a level-4 heading, a rule, task boxes and `||` arrives with the table in a code block, the heading as a bold line, and the rule, boxes and `||` rewritten (test).
   - done: impl-1405 · 2026-10-28T10:34:11.833Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
 - [x] C2. A message containing `@everyone`, a role mention and a user mention pings nobody on the fake, on its create and on its edit (test).
   - done: impl-1405 · 2026-10-28T10:34:28.476Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
 - [x] C3. A 4500-code-point message with a fenced block across a cut arrives as parts numbered "1/3" to "3/3", each within 2000 code points, with every fence closed and re-opened with its language (test).
   - done: impl-1405 · 2026-10-28T10:47:57.107Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
 - [x] C4. Progress notes and hub notices arrive with `SUPPRESS_NOTIFICATIONS` while other messages notify, and a workbench message shows "you" and a Telegram one "you (Telegram)" (test).
   - done: impl-1405 · 2026-10-28T10:34:28.948Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
 - [x] C5. A message the converter cannot handle arrives as plain text and is never dropped (test).
   - done: impl-1405 · 2026-10-28T10:34:29.109Z
+  - verified: rev-34 [reviewer] · run rev-34-20261028-1405-final · 2026-10-28T11:08:03.792Z · commit bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
 
 ## Notes
 
@@ -128,3 +133,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source4 clear, Standards0/Spec0. A-13219 records complete-group persistence and all fixture corrections. M1 sorted T2 map; M2 transactional entire group before native drain; M3 subject/recovered ownership with late-acquisition abort stop/join before tracked startup settles and Store closes. Actual held-subject control retains stop-before-Store-close assertions; existing order/replay/mapping and omitted/aborted setup checks preserved. C1–C5 claimant done, all runtime-unverified. Snapshot replay is a component model, not native process kill evidence. No Reviewer execution. Configured exact-head verification and original-record audit remain necessary for final review.
+
+### rev-34 · 2026-10-28T11:08:03.792Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1405-final
+commit: bba1a195cc6249a97c9050d85f64d8e8ff19fb3a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C5 verified. A-13235 independently audits original A-13231 at exact source4 head:3885 ordinary passes/499files,80 separate load(55task/25site). All11 rendering/ping/split/silence/fallback/paragraph/group-order/snapshot/cleanup identities pass base+5/5load; maxbase.443064163s/maxload.537855719s, no new3s allowance. Existing nonce/old-intent recovery18/18,API25/25 including mention positive control,neutral mirror5/5 and help/docs guards pass. Snapshot is component SQLite crash-persistence model, not native hub death/restart. T0host,T1,all fallbackT2,Web complete;T3/T4 unrun;Web0newfiles/0repetitionsrequired. Linuxc8nyc1 Node24.21/Neovim0.12.5 isolatedCHS156.0.8078.4/v1248; prepared hosttreec8f63a39 reuse/not repeated Linux typecheck. Budget/lint134 warnings report-only;997s/$0.0693 accounting notwall. No Reviewer execution/provider/stageQA claim.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1405 · 2026-10-28T11:08:25.219Z
+
+Ready reported to Coordinator at bba1a195c: source4 and final evidence clear, C1–C5 verified. Mode-free droplet verify 73973138 passed configured T0/T1/T2/Web, 3885 ordinary passes; task 11 base plus55 load passes. T3/T4 unrun; budgets report-only; crash snapshot is component model. A-13231 original log, A-13235 final audit. Fresh fetch origin/dev9d09b243 and merge-tree clean tree dc2c05c5297; no head change. Claim retained until merge.
