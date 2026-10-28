@@ -7,7 +7,18 @@ import { webFixture, pageUntil } from './harness.ts';
 import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { seedItem, seedTree } from './items-fixture.ts';
 import { currentRelease } from '../src/current-release.ts';
+import type { Page } from 'playwright-core';
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
+
+// The full copied tracker can queue snapshot/page/delta work on a loaded runner.
+// Bound the actual rendered row, independently of hub launch or mutation replies.
+const copiedRowTimeout = 15_000;
+async function rebuildTiming(page: Page) {
+  return page.evaluate(() => {
+    const entries = performance.getEntriesByName('cland.items.rebuild') as PerformanceMeasure[];
+    return { rebuilds: entries.length, maxMs: Math.max(0, ...entries.map(e => e.duration)), items: entries.at(-1)?.detail.items };
+  });
+}
 
 // The copied tracker's current release, chosen as the web chooses it, so the test outlives each release's close.
 async function liveRelease(root: string) {
@@ -28,6 +39,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     await cp(resolve(import.meta.dirname, '../../.cland/tasks'), join(root, '.cland/tasks'), {
       recursive: true, filter: source => !basename(source).startsWith('R-1100-'),
     });
+    t.diagnostic(`copied tracker files: ${(await readdir(join(root, '.cland/tasks'))).length}; browser ${process.platform}/${process.arch} isolated Headless Shell`);
     // Plant the live regression even when this checkout predates Public launch.
     await seedItem(root, 'R-1100', 'release', 'Public launch');
     // Choose after seeding the fixture tree: its versioned release outranks unversioned live ones, as in the web.
@@ -38,15 +50,17 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     await seedItem(root, 'T-900401', 'task', 'Live release planned task', { parent: 'E-900400', status: 'planned' }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
   } });
   await fixture.pageCase(t, async page => {
+    const started = performance.now();
     await page.keyboard.press('2');
     const tree = page.getByRole('tree', { name: 'Items tree' });
-    await tree.waitFor();
+    await tree.waitFor({ timeout: copiedRowTimeout });
     const release = tree.locator(`[data-object-id="${live.id}"]`);
-    await release.waitFor();
+    await release.waitFor({ timeout: copiedRowTimeout });
     assert.ok((await release.textContent() ?? '').includes(live.title!), `${live.id} row names its title`);
     assert.equal(await release.getAttribute('aria-expanded'), 'true');
     const epic = tree.locator('[data-object-id="E-900400"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
-    await epic.waitFor();
+    await epic.waitFor({ timeout: copiedRowTimeout });
+    t.diagnostic(`copied tracker initial rows: ${performance.now() - started} ms; model ${JSON.stringify(await rebuildTiming(page))}`);
     assert.equal(await epic.locator('[role="meter"]').count(), 1);
     assert.match(await epic.textContent() ?? '', /S1/);
     for (const key of [':categories', ':unscheduled', ':releases']) {
@@ -54,15 +68,15 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
     }
     await epic.click();
     await page.keyboard.press('l');
-    await tree.getByText('Live fixture stage', { exact: true }).waitFor();
-    await tree.locator('[data-object-id="T-900401"]').waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+    await tree.getByText('Live fixture stage', { exact: true }).waitFor({ timeout: copiedRowTimeout });
+    await tree.locator('[data-object-id="T-900401"]').waitFor({ timeout: copiedRowTimeout }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
     const output = resolve(import.meta.dirname, '../test-results');
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, 'items-tree.png') });
     for (const view of ['Board', 'Graph']) {
       await page.getByRole('button', { name: view, exact: true }).click();
       const scope = page.getByLabel(`${view} scope`, { exact: true });
-      await scope.waitFor();
+      await scope.waitFor({ timeout: copiedRowTimeout });
       assert.ok((await scope.textContent() ?? '').includes(live.id), `${view} scope names ${live.id}`);
     }
   });
@@ -78,7 +92,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       assert.deepEqual(epics.slice(-2), ['E-900027', 'E-900026'], 'done epics follow live epics in close order'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await epic.click();
       await page.keyboard.press('l');
-      await tree.getByText('First stage', { exact: true }).waitFor();
+      await tree.getByText('First stage', { exact: true }).waitFor({ timeout: copiedRowTimeout });
       const task = tree.locator('[data-object-id="T-900002"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await task.click();
       assert.match(await task.textContent() ?? '', /review r2/);
@@ -87,8 +101,8 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       assert.equal(await task.locator('[title="Ordinal"]').textContent(), '1');
       const before = await tree.locator('[data-object-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
       // The durable boundary is the changed row plus the ancestor meter, not the CLI reply.
-      const changed = task.locator('[title="Closed"]').waitFor();
-      const ancestor = epic.locator('[role="meter"][aria-valuenow="2"]').waitFor();
+      const changed = task.locator('[title="Closed"]').waitFor({ timeout: copiedRowTimeout });
+      const ancestor = epic.locator('[role="meter"][aria-valuenow="2"]').waitFor({ timeout: copiedRowTimeout });
       void changed.catch(() => {}); void ancestor.catch(() => {});
       const result = await cland(fixture.root, 'task', 'edit', 'T-900002', '--status', 'done', '--json'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       assert.equal(result.code, 0, result.stderr);
@@ -102,7 +116,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       assert.equal(await tree.locator('[data-object-id="R-900000"] [role="meter"]').getAttribute('data-mode'), 'proportional');
       assert.equal(await epic.locator('[role="meter"]').getAttribute('data-mode'), 'cells');
       assert.deepEqual(await task.locator('[title^="reviewer ·"]').allTextContents(), ['✗ review r2'], 'status delta retains only the latest review and its original round');
-      const nextVerdict = task.getByText('✓ review r3', { exact: true }).waitFor();
+      const nextVerdict = task.getByText('✓ review r3', { exact: true }).waitFor({ timeout: copiedRowTimeout });
       void nextVerdict.catch(() => {});
       const posted = await ui.request({ type: 'task.comment', item: 'T-900002', text: 'Third source review', // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
         verdict: { verdict: 'review', result: 'clear', run: 'web-r3', scope: 'full', findings: [] } });
@@ -127,12 +141,16 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
         t.after(() => session.close());
         await session.waitForPresence([name]);
         if (role === 'implementer') assert.equal((await ui.request({ type: 'task.edit', item: 'T-900003', assignee: name })).ok, true); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
-        const receipt = epic.getByText(role === 'implementer' ? name : `${role} ${name}`, { exact: true }).waitFor();
+        const started = performance.now();
+        await page.evaluate(() => performance.clearMeasures('cland.items.rebuild'));
+        const task = tree.locator('[data-object-id="T-900003"]'); // cland-allow-tracker-id: seedTree plants this row in the scratch tracker.
+        const label = role === 'implementer' ? name : `${role} ${name}`;
+        const receipt = Promise.all([epic, task].map(row => row.getByText(label, { exact: true }).waitFor({ timeout: copiedRowTimeout })));
         void receipt.catch(() => {});
         const held = await session.call<{ ok: boolean; error?: string }>(tool, { id: 'T-900003' }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
         assert.equal(held.ok, true, held.error);
         await receipt;
-        const task = tree.locator('[data-object-id="T-900003"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+        t.diagnostic(`${role} ancestor receipt: ${performance.now() - started} ms; model ${JSON.stringify(await rebuildTiming(page))}`);
         assert.match(await task.textContent() ?? '', new RegExp(name));
         assert.match(await epic.textContent() ?? '', new RegExp(name));
       }
@@ -147,9 +165,9 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       await categories.focus();
       await page.keyboard.press('l');
       const category = tree.locator('[data-object-id="C-900060"]');
-      await category.waitFor();
+      await category.waitFor({ timeout: copiedRowTimeout });
       assert.match(await category.textContent() ?? '', /4 open.*1 done.*idle work/);
-      for (const id of ['T-900061', 'T-900062', 'T-900063', 'T-900065']) await tree.locator(`[data-object-id="${id}"]`).waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+      for (const id of ['T-900061', 'T-900062', 'T-900063', 'T-900065']) await tree.locator(`[data-object-id="${id}"]`).waitFor({ timeout: copiedRowTimeout }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       assert.equal(await tree.locator('[data-object-id="T-900064"]').count(), 0, 'fourth open item stays behind N more'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       const more = tree.locator('[data-tree-key=":more:C-900060"]');
       assert.match(await more.textContent() ?? '', /1 more/);
@@ -157,7 +175,7 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       sent.length = 0;
       await page.keyboard.press('z');
       await page.keyboard.press('a');
-      await tree.locator('[data-object-id="T-900064"]').waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+      await tree.locator('[data-object-id="T-900064"]').waitFor({ timeout: copiedRowTimeout }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await page.keyboard.press('j');
       assert.equal(await tree.locator('[data-object-id="T-900064"]').evaluate(node => document.activeElement === node), true); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await page.keyboard.press('k');
@@ -165,25 +183,25 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       await page.keyboard.press('h');
       assert.equal(await more.getAttribute('aria-expanded'), 'false');
       await page.evaluate(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'в', shiftKey: true, bubbles: true, cancelable: true })));
-      await tree.locator('[data-object-id="T-900065"]').waitFor({ state: 'detached' }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
-      await tree.getByText('D hides 1 done', { exact: true }).waitFor();
+      await tree.locator('[data-object-id="T-900065"]').waitFor({ state: 'detached', timeout: copiedRowTimeout }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+      await tree.getByText('D hides 1 done', { exact: true }).waitFor({ timeout: copiedRowTimeout });
       assert.deepEqual(sent, [], 'local folds and filters send no hub requests');
       await page.reload();
-      await category.waitFor();
+      await category.waitFor({ timeout: copiedRowTimeout });
       assert.equal(await categories.getAttribute('aria-expanded'), 'true');
       assert.equal(await more.getAttribute('aria-expanded'), 'false');
       assert.equal(await tree.locator('[data-object-id="T-900065"]').count(), 0); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
-      await tree.getByText('D hides 1 done', { exact: true }).waitFor();
+      await tree.getByText('D hides 1 done', { exact: true }).waitFor({ timeout: copiedRowTimeout });
       await page.keyboard.press('Shift+D');
-      await tree.locator('[data-object-id="T-900065"]').waitFor(); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
+      await tree.locator('[data-object-id="T-900065"]').waitFor({ timeout: copiedRowTimeout }); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       const releases = tree.locator('[data-tree-key=":releases"]');
       await releases.focus();
       await page.keyboard.press('l');
       assert.equal(await tree.locator('[data-object-id="R-900090"]').count(), 0);
       await page.keyboard.press('Shift+A');
-      await tree.locator('[data-object-id="R-900090"]').waitFor();
+      await tree.locator('[data-object-id="R-900090"]').waitFor({ timeout: copiedRowTimeout });
       await page.reload();
-      await tree.locator('[data-object-id="R-900090"]').waitFor();
+      await tree.locator('[data-object-id="R-900090"]').waitFor({ timeout: copiedRowTimeout });
       assert.equal(await releases.getAttribute('aria-expanded'), 'true');
       await page.getByRole('button', { name: 'Help', exact: true }).click();
       const help = page.getByRole('dialog', { name: 'Items keys' });

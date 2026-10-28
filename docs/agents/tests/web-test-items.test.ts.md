@@ -18,3 +18,21 @@ with unchanged request/DOM bounds and authoritative sibling comparisons. The
 copied-tracker fixture owns large-model coverage rather than adding an unrelated
 full-tracker rescan to the ordering regression. The 300-item transition preserves every rebuild measure and compares
 that buffer with an independently armed PerformanceObserver capture.
+
+The copied snapshot's rendered receipts (including requested stage plans,
+status/verdict deltas, folds and live claims/holds) have an explicit 15 s bound for loaded runners. Hold observers
+are armed for **both** the task and ancestor before the mutation; the reply alone
+never settles the assertion. Missing rows still fail at the bound. Other fixtures
+keep the harness's 3 s default and the 300-item model keeps its 15 ms limit.
+Diagnostics report copied file count, initial row elapsed time, claim/hold elapsed
+time and synchronous model maximum/count. Elapsed row time includes transport,
+scheduling and DOM commit; model time excludes those costs. The browser receives
+open summaries initially, so the number of copied files is not its model size.
+T-1419's Darwin two-worker CPU-load baseline copied 1,418 files but rebuilt only
+98–99 initial summaries; a claim receipt took 3,269.9 ms with model work <=0.3 ms.
+A subsequent two-worker CPU-load probe naturally reproduced the parent failure:
+`First stage` plan hydration exceeded its 3 s row wait (intermediate run 9/10;
+claims subtest 10/10). This identifies insufficient receipt headroom rather than
+a multi-second model rebuild. Historical Linux hold timeouts remain the original
+failure evidence; local evidence does not identify which Linux scheduler or hub
+queue supplied its delay.
