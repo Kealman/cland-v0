@@ -3,7 +3,7 @@ id: T-1382
 kind: task
 title: "artifact.upload: files as bytes become the human's artifacts on one new message, without a ▣ post, under the [artifacts] limit"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1126
 branch: t/T-1382-artifact-upload-files-as-bytes-become
 created: 2026-10-27T23:37:26.682Z
-updated: 2026-10-28T00:05:50.344Z
+updated: 2026-10-28T00:21:41.551Z
 ---
 
 ## Summary
@@ -50,14 +50,19 @@ Neovim, the web client, skills and QA briefs gain no call in this ticket. Sessio
 
 - [x] C1. One `artifact.upload` with a PNG and a PDF from a human socket client makes exactly one General message from `human` carrying both artifacts with `.png` and `.pdf` paths, the caption as its text, and no `▣` message in the topic (test).
   - done: impl-1382 · 2026-10-27T23:44:26.236Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1382-final1 · 2026-10-28T00:21:40.905Z · commit 8960afce4836a76d89ed4359bbac924deff9cfcc
 - [x] C2. A file one byte over `max_upload_mb`, or an eleventh file, is refused with a validation error and leaves no artifact index entry, no file under `.cland/artifacts` and no message (test).
   - done: impl-1382 · 2026-10-27T23:44:26.341Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1382-final1 · 2026-10-28T00:21:40.905Z · commit 8960afce4836a76d89ed4359bbac924deff9cfcc
 - [x] C3. Through an injected gateway remote, an upload into General with Buffers beside the frame records `via = "telegram"`, an upload into an item topic without a reply is refused as `forbidden` by the gateway table, and a replay with the same ingress id returns the first message without new artifacts (test).
   - done: impl-1382 · 2026-10-27T23:44:27.299Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1382-final1 · 2026-10-28T00:21:40.905Z · commit 8960afce4836a76d89ed4359bbac924deff9cfcc
 - [x] C4. A session's `artifact.upload` is refused as `forbidden`, and `topic.send` with `artifacts` from a remote stays refused (test).
   - done: impl-1382 · 2026-10-27T23:44:27.921Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1382-final1 · 2026-10-28T00:21:40.905Z · commit 8960afce4836a76d89ed4359bbac924deff9cfcc
 - [x] C5. `cland init` renders `max_upload_mb = 50` under `[artifacts]`, `cland update` adds it to a managed config that lacks it, and `cland config set artifacts.max_upload_mb 0` is refused (test).
   - done: impl-1382 · 2026-10-27T23:44:28.168Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1382-final1 · 2026-10-28T00:21:40.905Z · commit 8960afce4836a76d89ed4359bbac924deff9cfcc
 
 ## Notes
 
@@ -128,3 +133,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear, A-12974. M4 resolved at8960afce/treeeb9a7835: sendFromHuman's internal uploadCaption defaultsfalse and only artifact.upload suppliestrue with validated nonempty artifacts. Ordinary prompt.send/attachedSend/topic.send/other callers keep previous blank-text refusal; no frame/API flag. Entire3file diff checked; no dev merge, unchanged original consumer tests/guards and upload assertions. Prior M1/M2/M3/L1 fixes from A-12954 carry. A-12973 selected macOS correction note retains actual original-test red and local artifacts15/prompt-races6/upload4/desktopcomposer8twice/phonecomposer6/typecheck greens and isolated HeadlessShell limits; no current Linux/full proof. Old A-12969 remains failed partial original-head evidence, not reused green. C1–C5 unverified. Submit one configured mode-free verify at unchanged8960afce then final original-log named outcomes including previously failing prompt identity, phases/load/executor/browser review. No extra merge/per-item QA requested; Coordinator owns shared-contract verify all. Reviewer read-only.
+
+### rev-31 · 2026-10-28T00:21:40.905Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1382-final1
+commit: 8960afce4836a76d89ed4359bbac924deff9cfcc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final corrected-head evidence clear; A-12990 independently audits original A-12989/ebb9593e at8960afce/treeeb9a7835.3787ordinary pass,zero fail/cancel/skip/TODO plus30 separate loadpass for six exact identities×5. Four upload cases, startup-limit case and web-authority upload eachbase+5/5; maxnew0.620267939s,no new>=3s allowance. C1–C5 verified across exact message/files/rollback/nativevia/ingress/session+gateway refusals/secret-producer/init-update/config guards. Prior failing exact empty-prompt identity now passes0.101611063s with original assertion/draft check unchanged; artifacts15/gateway20/webauthority45/configset20/init13/help5/compat1 current ordinary passes. T0/allT1/fallback all hub+NeovimT2/changedT3init13once/mappedT4guard1once/Web complete; remainingT3/otherT4/fullsoak absent. Addedphasewall7.700s T3/2.304s T4 excludesmachinewait; no repetitions there,Web0newfiles/0requiredreps. Linuxx64c-8lon1 Node24.21/Neovim0.12.5 HeadlessShell156.0.8078.4/v1248 workers2,lifetime785s/$0.0545 machineaccounting. HostgateTREE5c681a0f reused,not secondremote typecheck. Budgets/lint/ratchet report-only;134findings/61files,one missing baseline and existing overruns retained. OldfailedA-12969 remains prior-head partial evidence. No integrated-all/liveplatform claim; Coordinator owns ready/enqueue/separate shared-contract verify all. No extra merge/run/per-item QA requested. Reviewer read-only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

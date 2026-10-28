@@ -3,7 +3,7 @@ id: T-1384
 kind: task
 title: 'The command provider and provider selection: an argv run with the bytes on stdin and no remote secret, and provider = "" turning transcription off'
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1311
 blocked_by:
   - T-1383
-topic: null
-branch: null
+topic: topic-1132
+branch: t/T-1384-the-command-provider-and-provider
 created: 2026-10-27T23:37:27.222Z
-updated: 2026-10-27T23:37:39.545Z
+updated: 2026-10-28T00:26:54.060Z
 ---
 
 ## Summary
@@ -51,3 +51,9 @@ Spec §3.6 (the `command` provider, providers in 0.3, data use); research §7 "T
 ## Notes
 
 Shared files: hub/src/speech/ (new)
+
+## Comments
+
+### impl-1384 · 2026-10-28T00:26:54.060Z
+
+Consumer inventory before shared speech retry-policy extension: production speech/index.ts (transcribeNote), ElevenLabsProvider, and speech/elevenlabs.ts imports; tests speech.test.ts plus fakes/speech/exchange.ts. No production transcribeNote caller yet (voice pipeline is T-1388). Search covered hub/src, hub/test, docs, qa and shipped .agents/skills, including T3/T4 guides; no wire shape changes. Config's speech shape, remote factory settings, persisted configuration readers and their config-set/init tests remain unchanged. Existing providers keep the cloud default; an optional provider retry policy will opt command out, with a legacy provider regression retained. New speechProvider factory, resolveCommand and SPEECH_DATA_USE exports are additive; later doctor/status/voice consumers use them. Tests use native subprocess seam because no hub frame invokes speech yet.

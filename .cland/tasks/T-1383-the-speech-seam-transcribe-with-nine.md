@@ -2,8 +2,8 @@
 id: T-1383
 kind: task
 title: "The speech seam: transcribe with nine failure kinds, retries within one 90-second deadline, and the ElevenLabs provider against a fake"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1127
 branch: t/T-1383-the-speech-seam-transcribe-with-nine
 created: 2026-10-27T23:37:27.091Z
-updated: 2026-10-28T00:16:07.759Z
+updated: 2026-10-28T00:25:51.355Z
+closed: 2026-10-28T00:25:51.355Z
 ---
 
 ## Summary
@@ -54,12 +55,16 @@ Spec §3.6 (the speech seam, providers, bytes untouched); research Q-1289 §7 an
 
 - [x] C1. An OGG note transcribes through the fake ElevenLabs into `{ text, language: "ru" }` from a `"rus"` response, and the fake recorded `model_id=scribe_v2`, `tag_audio_events=false`, no `language_code` without a hint, and the original bytes with `audio/ogg` and `voice.ogg` (test).
   - done: impl-1383 · 2026-10-27T23:42:34.823Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1383-final · 2026-10-28T00:18:52.893Z · commit 8813562803f8035c0b90d3d39841743b502a22a8
 - [x] C2. Against the fake, a missing key, 401, `invalid_audio`, `audio_too_long`, 402, persistent 429, persistent 503 and a response slower than the deadline each reject with not-configured, auth, bad-audio, too-long, quota, rate-limited, unavailable and timeout respectively (test).
   - done: impl-1383 · 2026-10-27T23:49:38.164Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1383-final · 2026-10-28T00:18:52.893Z · commit 8813562803f8035c0b90d3d39841743b502a22a8
 - [x] C3. A 429 with `Retry-After: 2` followed by a 200 transcribes after a 2-second wait under the injected clock, a third consecutive 503 is not retried, and auth, bad-audio, too-long and quota are never retried (test).
   - done: impl-1383 · 2026-10-27T23:49:38.278Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1383-final · 2026-10-28T00:18:52.893Z · commit 8813562803f8035c0b90d3d39841743b502a22a8
 - [x] C4. A 302 from the fake is not followed and the redirect target receives no request, and no `SpeechError` message from any kind contains the made-up key, even when the fake echoes it in its error body (test).
   - done: impl-1383 · 2026-10-27T23:42:35.799Z
+  - verified: rev-32 [reviewer] · run rev-20261028-1383-final · 2026-10-28T00:18:52.893Z · commit 8813562803f8035c0b90d3d39841743b502a22a8
 
 ## Notes
 
@@ -111,3 +116,22 @@ findings: [{"severity":"medium","text":"E1 Evidence: configured run 78bce2b0 exi
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Failed evidence disposition A-12970 audits A-12965. Exact-head host T0 and Linux T1 passed; fallback T2 failed at Events view waitScreen nvim/test/events.test.ts:33, Web unexecuted, T3/T4 unselected. Ordinary 3488/3489 pass with one fail; 90 separate load passes. All 13 speech cases and 5/5 each (65) passed; maximum speech sample 0.134228648 s. Ordinary speech native file finish is 0.479921799 s; printed 0.256 s is observed case-duration aggregate. None of this makes the configured run green. C1–C4 remain runtime-unverified; no criterion failed solely for this run failure. Source2 remains the source audit. Await Coordinator disposition before retry/shared fix; changed head requires source review. No final clear or ready claim.
+
+### rev-32 · 2026-10-28T00:18:52.893Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261028-1383-final
+commit: 8813562803f8035c0b90d3d39841743b502a22a8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record audit A-12988 (corrects A-12985 executor name) carries source2/A-12951. Coordinator 89e857d2 authorized one unchanged-head rerun after red 78bce2b0/A-12965; e7847aa7 accepts green f123b97e/A-12983. Earlier red and T-1416 remain retained, not relabelled. Green has 3780 ordinary passes across 491 files, no failures/cancellations/skips; 90 separate load passes. Speech: all 13 ordinary identities plus exactly 5/5 each (65 explicit load completions), peak 0.114499904 s; native file finish 0.395968236 s. Named bytes/metadata, nine error kinds/no-key, Retry-After/attempt/total deadlines, redirect/redaction and setup/drain controls support C1–C4. Former failing Events identity passes 0.985293313 s. Host T0 separate at excluded-tree gate ef384710172aa15ec5bb88d0b58b2c64ddd4a1fe; Linux x64 droplet c-8 lon1 cland-v0-8b423cfa, Node24.21.0, Neovim0.12.5 completed T1/all fallback T2/Web. General/load workers2, ordinary Web4; no T3/T4 run. Machine lifetime686s/$0.0476 is not suite wall. Duration/tier/lint/ratchet report-only, 134 lint findings/61 files and missing baseline retained. Standards and Spec: no outstanding findings. New usable receipt resolves E1 under explicit Coordinator disposition. Merge/integrated cover/landing remain separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-28T00:25:51.355Z
+
+Merged 6bd1f3531d2e990b344440f0e8dc41b01a027f8b onto dev.
