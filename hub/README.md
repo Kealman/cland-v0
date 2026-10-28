@@ -6814,6 +6814,26 @@ credentials and IDs above 2^53. Its control API supports `configure`, `say`,
 `fault`, `release` and `state`. See the
 [Discord REST test notes](../docs/agents/tests/hub-test-discord-api.test.ts.md).
 
+### Discord ask cards
+
+With Discord enabled and paired, inbox publications enqueue open asks as durable
+card jobs ahead of queued General messages, oldest first. General mute does not
+mute cards. A legacy card has a bold title, its question and at most three action
+rows: options five per row, then Other answer… (when free answers are allowed)
+and Decline…. Options use text labels if all fit 34 code points, otherwise numbered
+buttons and an option list. Large questions are clipped with a workbench marker
+within Discord's 2000-code-point content budget.
+
+Component ids are checked against the stored ask model and mapped native message.
+Only the paired guild/channel/user can act. An option click commits topic.answer
+through the gateway with Discord provenance and interaction ingress before a
+single type-7 update removes its components and shows the shared outcome line.
+At two seconds pending hub work is acknowledged with type 6; completion then
+uses a durable outbox edit. Native callbacks bypass message pacing. Other answer…
+and Decline… currently reply privately “not available yet”. No new terminal
+command, hub frame or role permission is required. See the
+[card test guide](../docs/agents/tests/hub-test-discord-cards.test.ts.md).
+
 ### Discord gateway connection
 
 With `remote.discord.enabled` and a resolved `discord.token`, the default

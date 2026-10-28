@@ -18,7 +18,7 @@ export const DISCORD_IDS = {
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { reactions: Array<{ channel: string; message: string; user: string; emoji: string }>; interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[]; followups: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { reactions: Array<{ channel: string; message: string; user: string; emoji: string }>; interactions: Array<{ id: string; at: number; loseCallbackResponse?: boolean; callbackTimes: number[]; callbacks: object[]; edits: object[]; followups: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
 
 function reply(res: ServerResponse, status: number, body: unknown): void {
   if (!res.headersSent) res.writeHead(status, { 'content-type': 'application/json' });
@@ -26,7 +26,7 @@ function reply(res: ServerResponse, status: number, body: unknown): void {
 }
 
 /** In-process fake; no accounts, filesystem, inherited credentials or child launches. */
-type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
+type FakeOptions = { onCallback?: (id: string, type: number) => void; clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
 export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const lifetime = new AbortController();
   const serving = Promise.withResolvers<void>();
@@ -43,7 +43,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
 
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
-  const interactionTokens = new Map<string, { id: string; at: number; callbacks: object[]; edits: object[]; followups: object[] }>();
+  const interactionTokens = new Map<string, { id: string; at: number; loseCallbackResponse?: boolean; callbackTimes: number[]; callbacks: object[]; edits: object[]; followups: object[] }>();
   const faults: Array<Record<string, unknown>> = [];
   const held = new Map<number, () => void>();
   let nextHold = 1;
@@ -80,15 +80,16 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     if (path.pathname === '/redirect-target') { state.redirectsFollowed++; return reply(res, 200, {}); }
     if (path.pathname === '/control/interact') {
       const id = String(nextId++), token = `synthetic_interaction_${id}`;
-      const record = { id, at: clock.now().getTime(), callbacks: [] as object[], edits: [] as object[], followups: [] as object[] };
+      const record = { id, loseCallbackResponse: body.lose_callback_response === true, message: typeof body.message_id === 'string' ? body.message_id : undefined, at: clock.now().getTime(), callbackTimes: [] as number[], callbacks: [] as object[], edits: [] as object[], followups: [] as object[] };
       state.interactions.push(record); interactionTokens.set(token, record);
       const user = body.user === 'member' ? DISCORD_IDS.member : body.user === 'administrator' ? DISCORD_IDS.administrator : DISCORD_IDS.human;
       gateway.dispatch({ op: 0, t: 'INTERACTION_CREATE', s: Number(nextId % 100000n), d: {
-        id, token, application_id: DISCORD_IDS.application, type: 2,
+        id, token, application_id: DISCORD_IDS.application, type: body.custom_id ? 3 : 2,
+        ...(body.custom_id ? { message: { id: body.message_id } } : {}),
         guild_id: body.guild_id === null ? undefined : DISCORD_IDS.guild,
         channel_id: body.channel_id ?? DISCORD_IDS.channel, channel: { type: body.channel_type ?? 0 },
         member: { user: { id: user, username: body.user === 'member' ? 'Fixture member' : 'Fixture human' } },
-        data: { name: 'cland', options: [{ name: body.command ?? 'pair', type: 1, ...(typeof body.text === 'string' ? { options: [{ name: 'text', type: 3, value: body.text }] } : {}) }] },
+        data: body.custom_id ? { custom_id: body.custom_id } : { name: 'cland', options: [{ name: body.command ?? 'pair', type: 1, ...(typeof body.text === 'string' ? { options: [{ name: 'text', type: 3, value: body.text }] } : {}) }] },
       } });
       return reply(res, 200, { id });
     }
@@ -103,7 +104,14 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       if (callback) {
         if (clock.now().getTime() - record.at >= 3000) return reply(res, 404, { code: 10062 });
         if (record.callbacks.length) return reply(res, 400, { code: 40060 });
+        options.onCallback?.(record.id, Number(body.type));
+        record.callbackTimes.push(clock.now().getTime());
         record.callbacks.push(redact.value(body));
+        if (record.loseCallbackResponse) { req.socket.destroy(); return; }
+        if (body.type === 7) {
+          const message = state.messages.find(m => m.id === (record as typeof record & { message?: string }).message);
+          if (message) Object.assign(message, redact.value(body.data));
+        }
       } else {
         if (!record.callbacks.length || clock.now().getTime() - record.at >= 900000) return reply(res, 404, { code: 10015 });
         if (followup) record.followups.push(redact.value(body)); else record.edits.push(redact.value(body));

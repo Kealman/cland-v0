@@ -1,3 +1,4 @@
+import { DiscordCards } from './discord-cards.ts';
 import { DiscordIdentifyBudget } from './discord-identify.ts';
 import { DiscordInbound } from './discord-inbound.ts';
 import type { DiscordMessage } from './discord-api.ts';
@@ -25,6 +26,7 @@ export class DiscordRemote implements Remote {
   readonly #api: DiscordApi; readonly #token: string; readonly #options: DiscordRemoteOptions;
   readonly #commands: DiscordCommands;
   readonly #outbox: DiscordOutbox | undefined;
+  readonly #cards: DiscordCards | undefined;
   #inbound: DiscordInbound | undefined; #bot: string | undefined;
   #restFailedChannel: string | undefined;
   #detachExchange: (() => void) | undefined;
@@ -39,6 +41,7 @@ export class DiscordRemote implements Remote {
     this.#clock = clock;
     this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal, () => this.status().connected);
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
+    this.#cards = options.store && this.#outbox ? new DiscordCards(options.store, this.#outbox, api, clock, this.#abort.signal) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
     this.#detachApi = api.onError((error, channel) => {
       if (['POST /channels/:channel/messages', 'PATCH /channels/:channel/messages/:message'].includes(error.route))
@@ -98,6 +101,7 @@ export class DiscordRemote implements Remote {
     if (signal?.aborted) cancel();
     this.#abort.signal.throwIfAborted();
     this.#commands.start(_pair, _send);
+    this.#cards?.start(_send);
     if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal, this.#outbox, receipt);
     try {
       const application = await this.#api.getCurrentApplication({ signal: signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal });
@@ -114,8 +118,9 @@ export class DiscordRemote implements Remote {
   }
   receive(frame: HubFrame): void | Promise<void> {
     this.#commands.receive(frame);
+    const cards = this.#cards?.receive(frame);
     const feedback = this.#inbound?.receive(frame);
-    if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return feedback;
+    if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return Promise.all([cards, feedback]).then(() => {});
     const pairing = this.#options.store?.pairing();
     const mirrored = mirrorOut(frame.message, 'discord');
     if (mirrored && frame.message.fromKind !== 'hub' && this.#options.store?.suppressMutedMessage(frame.message.id)) return;
@@ -137,6 +142,7 @@ export class DiscordRemote implements Remote {
           const ids = Object.fromEntries(Object.entries(frame.d ?? {}).filter(([key, value]) => ['id', 'channel_id', 'guild_id'].includes(key) && typeof value === 'string' && /^\d+$/.test(value)));
           this.#options.log?.({ event: 'discord-dispatch', type, ...ids });
           this.#commands.dispatch(frame);
+          this.#cards?.dispatch(frame);
           for (const handler of this.#options.handlers ?? []) handler(frame);
           if (frame.t === 'READY') this.#bot = (frame.d.user as { id?: string } | undefined)?.id;
           if (frame.t === 'MESSAGE_CREATE' && this.#bot && (frame.d.author as { id?: string } | undefined)?.id === this.#bot) this.#outbox?.observe(frame.d as DiscordMessage);
@@ -193,5 +199,5 @@ export class DiscordRemote implements Remote {
   async pairingReplaced(previous: Pairing, text: string): Promise<void> {
     await this.#api.createMessage(previous.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal }).catch(error => this.#outwardError(error));
   }
-  async stop(): Promise<void> { this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); await this.#terminal; await this.#socket.stop(); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); this.#detachExchange?.(); }
+  async stop(): Promise<void> { this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); await this.#terminal; await this.#socket.stop(); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#cards?.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); this.#detachExchange?.(); }
 }

@@ -119,6 +119,7 @@
     "hub/test/dev-t3-search-component.test.ts": "T2",
     "hub/test/dev-t3-search.test.ts": "T1",
     "hub/test/discord-api.test.ts": "T2",
+    "hub/test/discord-cards.test.ts": "T2",
     "hub/test/discord-commands.test.ts": "T2",
     "hub/test/discord-messages.test.ts": "T2",
     "hub/test/discord-messenger.test.ts": "T2",

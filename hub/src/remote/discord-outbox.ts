@@ -1,9 +1,9 @@
 import { Outbox, type DeliveryResult } from './outbox.ts';
 import type { RemoteStore, OutboxJob, RemoteMessage } from './state.ts';
-import { DiscordError, type DiscordApi, type DiscordMessage } from './discord-api.ts';
+import { DiscordError, type DiscordApi, type DiscordMessage, type DiscordActionRow } from './discord-api.ts';
 import type { Clock } from '../hub/clock.ts';
 
-type Intent = { discord: true; channel: string; user: string; silent?: boolean; content: string; reaction?: { message: string; emoji: string }; mapping: Omit<RemoteMessage, 'messageId'> };
+type Intent = { discord: true; channel: string; user: string; silent?: boolean; content: string; edit?: string; components?: DiscordActionRow[]; reaction?: { message: string; emoji: string }; mapping: Omit<RemoteMessage, 'messageId'> };
 const intent = (job: OutboxJob) => job.payload as Intent;
 const nonce = (job: OutboxJob) => job.id.replaceAll('-', '').slice(0, 25);
 /** Per-channel owners over the neutral durable queue. Native receipts contain ids only. */
@@ -12,6 +12,20 @@ export class DiscordOutbox {
   readonly #store: RemoteStore; readonly #api: DiscordApi; readonly #clock: Clock; readonly #signal: AbortSignal;
   constructor(api: DiscordApi, store: RemoteStore, clock: Clock, signal: AbortSignal) {
     this.#api = api; this.#store = store; this.#clock = clock; this.#signal = signal;
+  }
+  async edit(channel: string, target: string, content: string, source: string): Promise<void> {
+    this.#signal.throwIfAborted();
+    const lane = this.#lane(channel);
+    lane.enqueue({ kind: 'edit', target, source, payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, edit: target } });
+    await lane.drain();
+  }
+  async card(channel: string, content: string, components: DiscordActionRow[], ask: string, topic: string): Promise<void> {
+    this.#signal.throwIfAborted();
+    const lane = this.#lane(channel), source = `discord.card:${channel}:${ask}`;
+    if (!this.#store.outbox().some(job => job.source === source)) lane.enqueue({ kind: 'card', source,
+      payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components,
+        mapping: { chatId: channel, topic, message: ask, ask, approval: null } } });
+    await lane.drain();
   }
   async send(channel: string, content: string, source: string, silent = false, message = source): Promise<void> {
     this.#signal.throwIfAborted();
@@ -57,7 +71,7 @@ export class DiscordOutbox {
       lane = new Outbox(this.#store, {
         send: job => this.#deliver(job),
         prove: async job => {
-          if (intent(job).reaction) return { status: 'never-left' }; // PUT @me is idempotent, including a lost response.
+          if (intent(job).reaction || intent(job).edit) return { status: 'never-left' }; // Reactions and replacement edits are idempotent.
           const id = this.#store.get(`discord.outbox.receipt:${job.id}`);
           if (id) return this.#receipt(job, id);
           // Discord promises only "the past few minutes"; use a conservative two-minute window.
@@ -65,7 +79,7 @@ export class DiscordOutbox {
           // Let the neutral queue persist a distinct attempt before the recovery POST.
           return { status: 'never-left' };
         },
-      }, { clock: this.#clock, accepts: job => intent(job)?.discord === true && intent(job).channel === channel,
+      }, { clock: this.#clock, compare: (a, b) => Number(a.kind === 'general') - Number(b.kind === 'general'), accepts: job => intent(job)?.discord === true && intent(job).channel === channel,
         admit: job => { const pair = this.#store.pairing(); return pair?.chatId === channel && pair.userId === intent(job).user; } });
       this.#lanes.set(channel, lane);
     }
@@ -79,6 +93,11 @@ export class DiscordOutbox {
   }
   async #deliver(job: OutboxJob): Promise<DeliveryResult> {
     this.#signal.throwIfAborted();
+    if (intent(job).edit) {
+      try { await this.#api.editMessage(intent(job).channel, intent(job).edit!, { content: intent(job).content, components: [], flags: 4 }, { signal: this.#signal }); }
+      catch (error) { if (error instanceof DiscordError && [401, 403, 404].includes(error.status)) return { status: 'superseded' }; throw error; }
+      return { status: 'sent' };
+    }
     const reaction = intent(job).reaction;
     if (reaction) {
       try { await this.#api.addReaction(intent(job).channel, reaction.message, reaction.emoji, { signal: this.#signal }); }
@@ -93,7 +112,7 @@ export class DiscordOutbox {
     if (!this.#withinNonceWindow(job)) return { status: 'unknown' };
     const input = intent(job);
     let message: DiscordMessage;
-    try { message = await this.#api.createMessage(input.channel, { content: input.content, nonce: nonce(job), flags: 4 | (input.silent ? 4096 : 0) }, { signal: this.#signal, nonceDeadline: Date.parse(this.#store.attempts(job.id)[0]!.at) + 120_000 }); }
+    try { message = await this.#api.createMessage(input.channel, { content: input.content, ...(input.components ? { components: input.components } : {}), nonce: nonce(job), flags: 4 | (input.silent ? 4096 : 0) }, { signal: this.#signal, nonceDeadline: Date.parse(this.#store.attempts(job.id)[0]!.at) + 120_000 }); }
     catch (error) {
       if (error instanceof DiscordError && [401, 403, 404].includes(error.status)) return { status: 'superseded' };
       throw error;

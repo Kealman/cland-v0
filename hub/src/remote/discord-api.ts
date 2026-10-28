@@ -66,6 +66,10 @@ export class DiscordApi {
     return this.#request('POST', `/interactions/${encodeURIComponent(id)}/${encodeURIComponent(token)}/callback`, 'POST /interactions/:id/:token/callback',
       { type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } }, options);
   }
+  update(id: string, token: string, content: string | null, options?: DiscordRequestOptions): Promise<unknown> {
+    return this.#request('POST', `/interactions/${encodeURIComponent(id)}/${encodeURIComponent(token)}/callback`, 'POST /interactions/:id/:token/callback',
+      content === null ? { type: 6 } : { type: 7, data: { content, components: [], allowed_mentions: { parse: [] } } }, options);
+  }
   defer(id: string, token: string, options?: DiscordRequestOptions): Promise<unknown> {
     return this.#request('POST', `/interactions/${encodeURIComponent(id)}/${encodeURIComponent(token)}/callback`, 'POST /interactions/:id/:token/callback',
       { type: 5, data: { flags: 64, allowed_mentions: { parse: [] } } }, options);
