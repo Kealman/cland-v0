@@ -1,4 +1,5 @@
 // T2: production frames and loopback Discord REST/ws.
+import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { tempProject, projectHub, connectUi, inProcessSpoke, until } from './har
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { Store } from '../src/hub/store.ts';
 import { fakeDiscordFixture, DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { onCleanup, beforeDirectories } from './process-cleanup.ts';
 
 test('Discord General mirror has enforced nonce and atomic native mapping', async t => {
   const root = await tempProject(t); const fake = await fakeDiscordFixture(t);
@@ -111,7 +112,7 @@ test('Discord outbox proves crash sends by own nonce, bounded same-nonce retry, 
   const clock = new FakeClock(); const root = await tempProject(t); const fake = await fakeDiscordFixture(t, { clock });
   const store = new Store(join(root, 'hub.db')); onCleanup(t, () => store.close());
   const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
-  const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
+  const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url, clock });
   const outbox = new DiscordOutbox(api, state, clock, new AbortController().signal); onCleanup(t, () => outbox.stop());
   const seed = (id: string, age = 0) => {
     const job = { id, kind: 'message', source: id, state: 'sending', created: new Date(clock.now().getTime() - age).toISOString(), updated: clock.now().toISOString(),
@@ -193,36 +194,22 @@ test('Discord startup replay cancellation drains the held REST request before ga
 
 async function ownedOutbox(t: TestContext, publishHeld = true, suppliedClock?: import('../src/hub/clock.ts').Clock) {
   const { DiscordOutbox } = await import('../src/remote/discord-outbox.ts');
-  const { DiscordApi } = await import('../src/remote/discord-api.ts');
   const { realClock } = await import('../src/hub/clock.ts');
-  const abort = new AbortController();
-  const work: Promise<unknown>[] = [];
-  let outbox: InstanceType<typeof DiscordOutbox> | undefined, store: Store | undefined;
-  let closing: Promise<void> | undefined;
-  let fake: Awaited<ReturnType<typeof fakeDiscordFixture>> | undefined;
-  // Registered before fake setup and any observer/send, so every exit has one owner.
-  const close = () => closing ??= (async () => {
-    abort.abort();
-    try { await outbox?.stop(); } finally { await fake?.close(); await Promise.allSettled(work); store?.close(); }
-  })();
-  onCleanup(t, close);
-  const root = await tempProject(t);
   const clock = suppliedClock ?? realClock;
-  fake = await fakeDiscordFixture(t, { publishHeld, clock });
-  store = new Store(join(root, 'hub.db'));
+  const exchange = await discordExchangeOwner(t, { publishHeld, clock }).start();
+  const { fake, api, run, signal, close } = exchange;
+  const { root } = await exchange.project();
+  const store = new Store(join(root, 'hub.db')); exchange.afterDrain(() => store.close());
   const state = store.remotes.forMessenger('discord');
   state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
-  const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
-  outbox = new DiscordOutbox(api, state, clock, abort.signal);
-  const own = <T>(promise: Promise<T>): Promise<T> => { work.push(promise); void promise.catch(() => {}); return promise; };
-  const native = fake;
+  const outbox = new DiscordOutbox(api, state, clock, signal); exchange.stop(() => outbox.stop());
   return { root, fake, store, state, close, api, clock,
-    fault: () => own(native.control('fault', { response: 'hold' })),
-    release: () => own(native.control('release', {})),
-    nativeHeld: () => own(native.held()),
-    resume: () => own(outbox!.resume()),
-    observe: () => own(native.waitForHold(abort.signal)),
-    send: () => own(outbox!.send(ids.channel, 'Atomic receipt', 'atomic-source')),
+    fault: () => run(() => fake.control('fault', { response: 'hold' })),
+    release: () => run(() => fake.control('release', {})),
+    nativeHeld: () => run(() => fake.held()),
+    resume: () => run(() => outbox.resume()),
+    observe: () => run(() => fake.waitForHold(signal)),
+    send: () => run(() => outbox.send(ids.channel, 'Atomic receipt', 'atomic-source')),
   };
 }
 
@@ -266,4 +253,162 @@ test('Discord recovery POST owns a distinct attempt and never renews the origina
   await owner.resume();
   assert.equal(state.outbox().find(j => j.id === old.id)!.state, 'uncertain');
   assert.equal((await fake.control('state')).requests.length, before, 'fresh attempt cannot extend nonce eligibility');
+});
+
+for (const status of [401, 403, 404]) test(`Discord terminal ${status} is dropped durably and never replayed`, async t => {
+  const { DiscordApi } = await import('../src/remote/discord-api.ts');
+  const { DiscordOutbox } = await import('../src/remote/discord-outbox.ts');
+  const { realClock } = await import('../src/hub/clock.ts');
+  const root = await tempProject(t), fake = await fakeDiscordFixture(t);
+  const store = new Store(join(root, 'hub.db')); onCleanup(t, () => store.close());
+  const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
+  const box = new DiscordOutbox(api, state, realClock, new AbortController().signal); onCleanup(t, () => box.stop());
+  await fake.control('fault', { status }); await box.send(ids.channel, 'Refused', `source-${status}`);
+  assert.equal(state.outbox()[0]!.state, 'dropped'); await box.resume();
+  assert.equal((await fake.control('state')).requests.length, 1);
+});
+
+test('Discord stored then timed-out send proves its enforced nonce and posts once', async t => {
+  const { DiscordApi } = await import('../src/remote/discord-api.ts'); const { DiscordOutbox } = await import('../src/remote/discord-outbox.ts');
+  const { FakeClock } = await import('./fake-clock.ts'); const clock = new FakeClock();
+  const exchange = await discordExchangeOwner(t, { clock, timeoutMs: 100 }).start();
+  const { fake, api, signal, run } = exchange;
+  const { root } = await exchange.project();
+  const store = new Store(join(root, 'hub.db')); exchange.afterDrain(() => store.close());
+  const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const box = new DiscordOutbox(api, state, clock, signal); exchange.stop(() => box.stop());
+  const held = run(() => fake.waitForHold(signal)); await run(() => fake.control('fault', { response: 'holdStored' }));
+  const send = run(() => box.send(ids.channel, 'Once', 'timeout-source')); await held;
+  assert.equal((await fake.control('state')).messages.length, 1, 'stored before response hold');
+  await clock.advance(100); await send;
+  await run(() => box.resume());
+  assert.equal(state.outbox()[0]!.state, 'sent');
+  const native = await fake.control('state'); assert.equal(native.messages.length, 1);
+  const posts = native.requests.filter(r => r.method === 'POST'); assert.equal(posts.length, 2);
+  assert.equal(posts[0]!.body.nonce, posts[1]!.body.nonce);
+  assert.equal(posts[1]!.body.enforce_nonce, true);
+  assert.equal(state.message(ids.channel, native.messages[0]!.id)?.message, 'timeout-source');
+});
+
+test('Discord paired-channel refusal stops only the remote; missing edit leaves it running', async t => {
+  const { DiscordApi } = await import('../src/remote/discord-api.ts'); const { DiscordRemote } = await import('../src/remote/discord.ts');
+  const { realClock } = await import('../src/hub/clock.ts');
+  const root = await tempProject(t), fake = await fakeDiscordFixture(t);
+  const store = new Store(join(root, 'hub.db')); onCleanup(t, () => store.close());
+  const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const notices: string[] = []; const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
+  const remote = new DiscordRemote(api, DISCORD_TEST_TOKEN, realClock, { store: state, fake: true, notice: cause => notices.push(cause) });
+  onCleanup(t, () => remote.stop());
+  await assert.rejects(api.editMessage(ids.channel, '99999999999999999', { content: 'gone' }));
+  assert.equal(state.status().disabled, false); assert.equal(notices.length, 0);
+  await fake.control('fault', { status: 403 }); await assert.rejects(api.getChannel(ids.channel));
+  await until(() => state.status().disabled === true, { timeoutMs: 1000, what: 'durable blocked remote' });
+  assert.match(state.status().reason ?? '', /blocked.*403/); assert.equal(state.status().stopCause, 'blocked'); assert.equal(notices.length, 1);
+  assert.equal((await api.getCurrentApplication()).id, ids.application, 'REST server still serves');
+});
+
+test('Discord production frames drain twelve General messages in order without 429', async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const clock = new FakeClock();
+  const root = await tempProject(t), fake = await fakeDiscordFixture(t, { clock });
+  const config = defaultConfig('Pacing fixture'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db')); onCleanup(t, () => store.close());
+  const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  for (let i = 0; i < 12; i++) assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: `Burst ${i}`, kind: 'report' })).ok, true);
+  for (const count of [5, 10]) {
+    await until(() => state.outbox().filter(j => j.state === 'sent').length === count, { timeoutMs: 1500, what: `${count} durable mappings` });
+    await clock.advance(5000);
+  }
+  await until(() => state.outbox().filter(j => j.state === 'sent').length === 12, { timeoutMs: 1500, what: 'all twelve durable mappings' });
+  const native = await fake.control('state'); assert.equal(native.rateLimits, 0);
+  assert.deepEqual(native.messages.map(m => m.content), Array.from({ length: 12 }, (_, i) => `coord · report\nBurst ${i}`));
+  await hub.stop();
+});
+
+for (const wait of ['queue', 'header'] as const) test(`Discord aged recovery retains original deadline across ${wait} wait`, async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const clock = new FakeClock();
+  const { DiscordOutbox } = await import('../src/remote/discord-outbox.ts');
+  const exchange = await discordExchangeOwner(t, { clock }).start(); const { api, fake, run, signal } = exchange;
+  const { root } = await exchange.project(); const store = new Store(join(root, 'hub.db')); exchange.afterDrain(() => store.close());
+  const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const box = new DiscordOutbox(api, state, clock, signal); exchange.stop(() => box.stop());
+  const originalAt = clock.now().toISOString();
+  await api.createMessage(ids.channel, { content: 'Old native copy', nonce: 'aged' });
+  await clock.advance(110000);
+  const job = { id: 'aged', kind: 'message', source: 'aged', state: 'sending', created: originalAt, updated: originalAt,
+    payload: { discord: true, channel: ids.channel, user: ids.human, content: 'Old native copy', mapping: { chatId: ids.channel, topic: 'general', message: 'aged', ask: null, approval: null } } };
+  state.writeOutbox(job, { id: 'original-attempt', job: job.id, at: originalAt, outcome: null });
+  let blocker: Promise<unknown> | undefined;
+  if (wait === 'header') {
+    await fake.control('configure', { sendLimit: 1, sendWindow: 20000 });
+    await api.createMessage(ids.channel, { content: 'occupy bucket', nonce: 'occupy' });
+  } else {
+    const held = run(() => fake.waitForHold(signal));
+    await fake.control('fault', { response: 'hold' });
+    blocker = api.createMessage(ids.channel, { content: 'queue predecessor', nonce: 'predecessor' });
+    await held;
+  }
+  const resumed = run(() => box.resume());
+  await until(() => state.attempts('aged').length === 2, { timeoutMs: 1000, what: 'recovery attempt entered pacing' });
+  await clock.advance(20000);
+  if (blocker) { await fake.control('release', {}); await blocker; }
+  await resumed;
+  const native = await fake.control('state');
+  assert.equal(native.requests.filter(r => r.method === 'POST' && r.body.nonce === 'aged').length, 1, 'no late recovery POST');
+  assert.equal(native.messages.filter(m => m.nonce === 'aged').length, 1);
+  assert.equal(state.outbox().find(j => j.id === 'aged')!.state, 'uncertain');
+  assert.equal(state.attempts('aged')[0]!.at, originalAt);
+});
+
+for (const abortBeforeEntry of [false, true]) test(abortBeforeEntry
+  ? 'Discord incomplete exchange writer setup aborted before entry drains through its disposer'
+  : 'Discord incomplete exchange drain retains writer root and Store until native settlement', async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const drainClock = new FakeClock();
+  const { existsSync } = await import('node:fs');
+  const { abortable } = await import('../src/executor/droplet/deadline.ts');
+  const release = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>();
+  const entryAbort = new AbortController();
+  let writing: Promise<void> | undefined, entry: Promise<void> | undefined;
+  let close = async () => {}, remove = async () => {};
+  let disposing: Promise<void> | undefined;
+  const dispose = () => disposing ??= (async () => {
+    // Registered before acquisition and writer launch, including signal cleanup.
+    release.resolve(); entryAbort.abort(new Error('writer entry observation aborted'));
+    await Promise.allSettled([writing, entry]);
+    await close(); await remove();
+  })();
+  onCleanup(t, dispose); beforeDirectories(t, dispose);
+  const exchange = await discordExchangeOwner(t, { drainClock }).start(); close = exchange.close;
+  const project = await exchange.project(); const root = project.root; remove = project.remove;
+  const store = new Store(join(root, 'hub.db'));
+  let storeClosed = false, didEnter = false;
+  exchange.afterDrain(() => { store.close(); storeClosed = true; });
+  try {
+    // An intentionally ignored abort models an asynchronous Store writer still owned here.
+    writing = exchange.run(async () => {
+      didEnter = true; entered.resolve(); await release.promise;
+      store.remotes.forMessenger('discord').set('writer-receipt', 'settled');
+    });
+    entry = exchange.run(signal => abortable(entered.promise, AbortSignal.any([signal, entryAbort.signal])));
+    if (abortBeforeEntry) {
+      const noWriter = assert.rejects(writing, /aborted/), noEntry = assert.rejects(entry, /aborted/);
+      void noWriter.catch(() => {}); void noEntry.catch(() => {});
+      await close(); await Promise.all([noWriter, noEntry]);
+      assert.equal(didEnter, false); assert.equal(storeClosed, true);
+    } else {
+      await entry;
+      const removing = remove(); const incomplete = assert.rejects(removing, /disposal incomplete/); void incomplete.catch(() => {});
+      await drainClock.advance(2000); await incomplete;
+      assert.equal(existsSync(root), true, 'failed disposer retains the owned inode');
+      assert.equal(storeClosed, false);
+      store.remotes.forMessenger('discord').set('still-open', 'yes');
+      release.resolve(); await writing;
+      assert.equal(store.remotes.forMessenger('discord').get('writer-receipt'), 'settled');
+    }
+  } finally { await dispose(); }
+  assert.equal(storeClosed, true); assert.equal(existsSync(root), false);
+  assert.equal(exchange.pending(), 0);
 });

@@ -14,7 +14,7 @@ export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedacto
   state: RemoteState; log?: LogFn; projectName?: () => string; webOrigin?: () => string; notice?: (cause: string, fix: string, transition?: boolean) => void;
 }): MessengerFactory {
   return (via, token, settings) => {
-    if (via === 'discord') return new DiscordRemote(new DiscordApi(token, { redactor,
+    if (via === 'discord') return new DiscordRemote(new DiscordApi(token, { redactor, clock,
       ...(env.CLAND_DISCORD_API_ROOT !== undefined ? { apiRoot: env.CLAND_DISCORD_API_ROOT } : {}),
     }), token, clock, { fake: env.CLAND_DISCORD_API_ROOT !== undefined,
       ...(persistence ? { store: persistence.state.forMessenger('discord'), projectName: persistence.projectName, log: entry => persistence.log?.(redactor.value(entry)), notice: persistence.discordNotice } : {}),

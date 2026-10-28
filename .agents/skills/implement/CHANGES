@@ -255,4 +255,11 @@ T-1377: Document exact tracker save/removal receipts, retained 15 s bounds and h
 
 T-1417: Bound native-close fixture drainage from disposal, with delayed-setup controls and independent acquisition receipts.
 
+2026-10-28 · T-1404: Discord REST header lanes, callback bypass and native nonce-recovery seams.
 T-1401: document Discord application checks, fatal stops and sealed test receipts.
+
+2026-10-28 · T-1404 review: original nonce deadlines, bucket adoption and bounded exchange ownership.
+
+2026-10-28 · T-1404 source2 review: exchange-owned roots retain Stores on incomplete drain, including signal cleanup.
+
+2026-10-28 · T-1404 source3 review: independently owned writer-entry receipt and pre-registered release/cancel/join control.

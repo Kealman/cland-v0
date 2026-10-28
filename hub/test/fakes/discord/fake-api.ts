@@ -18,9 +18,10 @@ export const DISCORD_IDS = {
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; gateway: { identifies: number; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
 function reply(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body));
+  if (!res.headersSent) res.writeHead(status, { 'content-type': 'application/json' });
+  res.end(JSON.stringify(body));
 }
 
 /** In-process fake; no accounts, filesystem, inherited credentials or child launches. */
@@ -37,7 +38,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const events = new EventEmitter();
   const clock = options.clock ?? realClock;
   const redact = remoteRedactor([DISCORD_TEST_TOKEN]);
-  const state: DiscordState = { interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, gateway: { identifies: 0, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
+  const state: DiscordState = { interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
   const interactionTokens = new Map<string, { id: string; at: number; callbacks: object[]; edits: object[] }>();
@@ -48,6 +49,8 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   let application: DiscordApplication = { id: DISCORD_IDS.application, flags: 1 << 18, bot_public: false, interactions_endpoint_url: null };
   let sessionStartLimit: DiscordSessionStartLimit = { total: 1000, remaining: 1000, reset_after: 86400000, max_concurrency: 1 };
   let nextId = 90071992547410000n;
+  const buckets = new Map<string, { used: number; reset: number }>();
+  let sendLimit = 5, sendWindow = 5000;
   const nonces = new Map<string, { at: number; message: DiscordMessage }>();
   const sockets = new Map<Socket, Promise<void>>();
   const handlers = new Set<Promise<void>>();
@@ -106,6 +109,8 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     if (path.pathname === '/control/dispatch') { gateway.dispatch(body); return reply(res, 200, {}); }
     if (path.pathname === '/control/configure') {
       gateway.configure(body);
+      if (typeof body.sendLimit === 'number') sendLimit = body.sendLimit;
+      if (typeof body.sendWindow === 'number') sendWindow = body.sendWindow;
       if (Array.isArray(body.commands)) state.commands = body.commands;
       if (typeof body.gatewayUrl === 'string') gatewayUrl = body.gatewayUrl;
       application = { ...application, ...body.application as Partial<DiscordApplication>, id: DISCORD_IDS.application };
@@ -125,11 +130,28 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     }
     if (req.headers.authorization !== `Bot ${DISCORD_TEST_TOKEN}`) return reply(res, 401, { code: 0, message: 'Unauthorized' });
     state.requests.push(redact.value({ method: req.method!, path: path.pathname + path.search, body, userAgentValid: req.headers['user-agent'] === DISCORD_USER_AGENT }));
+    const rateMatch = /^\/channels\/(\d+)\/messages(?:\/\d+\/reactions\/[^/]+\/@me)?$/.exec(path.pathname);
+    const reaction = path.pathname.includes('/reactions/');
+    if (rateMatch && ((req.method === 'POST') || reaction)) {
+      const key = `${reaction ? 'reaction' : 'message'}:${rateMatch[1]}`;
+      const now = clock.now().getTime(), window = reaction ? 250 : sendWindow, limit = reaction ? 1 : sendLimit;
+      let bucket = buckets.get(key);
+      if (!bucket || now >= bucket.reset) { bucket = { used: 0, reset: now + window }; buckets.set(key, bucket); }
+      res.setHeader('X-RateLimit-Bucket', reaction ? 'reaction' : 'message');
+      res.setHeader('X-RateLimit-Reset-After', (bucket.reset - now) / 1000);
+      if (bucket.used >= limit) { state.rateLimits++; return reply(res, 429, { retry_after: (bucket.reset - now) / 1000 }); }
+      bucket.used++;
+      res.setHeader('X-RateLimit-Remaining', limit - bucket.used);
+      if (reaction) return reply(res, 200, {});
+    }
     const fault = faults.shift();
     if (fault) {
+      if (typeof fault.bucket === 'string') res.setHeader('X-RateLimit-Bucket', fault.bucket);
       if (fault.response === 'redirect') { res.writeHead(302, { location: '/redirect-target' }); res.end(); return; }
       if (fault.response === 'disconnect') { req.socket.destroy(); return; }
-      if (fault.response === 'hold') {
+      if (fault.response === 'holdStored') { /* held after persistence below */ }
+      else if (fault.response === 'hold' || fault.response === 'holdHeaders') {
+        if (fault.response === 'holdHeaders') { res.writeHead(200, { 'content-type': 'application/json' }); res.flushHeaders(); }
         await new Promise<void>(resolve => {
           const id = nextHold++;
           const release = () => { held.delete(id); resolve(); };
@@ -139,9 +161,10 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
           res.once('close', release);
         });
         if (res.destroyed) return;
-      } else {
+      } else if (fault.response !== 'holdStored') {
+        if (fault.status === 429) state.rateLimits++;
         return reply(res, Number(fault.status ?? 500), { code: fault.code ?? 0,
-          message: fault.echoToken ? DISCORD_TEST_TOKEN : 'Injected fault', retry_after: fault.retry_after });
+          message: fault.echoToken ? DISCORD_TEST_TOKEN : 'Injected fault', retry_after: fault.retry_after, global: fault.global });
       }
     }
     if (path.pathname === `/applications/${DISCORD_IDS.application}/commands`) {
@@ -180,6 +203,15 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       state.messages.push(redact.value(message));
       nonces.set(key, { at: clock.now().getTime(), message });
       state.pings.push(pings(body));
+      if (fault?.response === 'holdStored') {
+        await new Promise<void>(resolve => {
+          const id = nextHold++; const release = () => { held.delete(id); resolve(); };
+          held.set(id, release); nativeHeld.resolve();
+          if (options.publishHeld !== false) events.emit('held', id);
+          res.once('close', release);
+        });
+        if (res.destroyed) return;
+      }
       return reply(res, 200, redact.value(message));
     }
     if (req.method === 'PATCH') {

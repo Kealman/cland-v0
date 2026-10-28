@@ -32,9 +32,13 @@ export class DiscordRemote implements Remote {
     this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal);
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
-    this.#detachApi = api.onError(error => {
+    this.#detachApi = api.onError((error, channel) => {
       if (error.status === 401 || error.code === 40001 || error.code === 50014) {
         this.#fatal ??= remoteStopError('discord', 'token');
+        void this.#failed(this.#fatal, '').catch(() => {});
+      } else if (channel && options.store?.pairing()?.chatId === channel && [403, 404].includes(error.status)
+        && !(error.status === 404 && (error.route.startsWith('PATCH ') || error.route.includes('/reactions/')))) {
+        this.#fatal ??= remoteStopError('discord', 'blocked', `REST ${error.status}`);
         void this.#failed(this.#fatal, '').catch(() => {});
       }
     });

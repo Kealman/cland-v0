@@ -6760,6 +6760,25 @@ Startup cancellation aborts and joins replay I/O before shutdown. Older unknown 
 uses the neutral missed/gap classification). Discord promises only “the past few
 minutes”; this conservative local window is not a guaranteed platform TTL.
 
+REST requests serialize by method, route template and channel until a response
+names `X-RateLimit-Bucket`, then share that bucket/channel lane. Learning or
+changing a bucket adopts the current request until its response body completes. Remaining zero
+waits for `X-RateLimit-Reset-After`; limits are learned rather than configured.
+A 429 follows decimal `retry_after`, capped at five minutes; a global 429 holds
+all ordinary lanes. 5xx and code 130000 receive at most three retries with
+1/2/4-second backoff. Interaction callbacks and `@original` edits bypass both
+the lanes and outbox. A transport failure on a create gets at most one retry
+with the unchanged enforced nonce, strictly within the original attempt’s two-minute window;
+the immutable absolute deadline is rechecked after every queue/rate/backoff wait,
+immediately before each POST. Direct client creates use their call time when no
+durable attempt is supplied. An expired create stays uncertain and performs no
+late I/O. Other transport errors remain uncertain. The native retries remain inside the
+persisted attempt; crash recovery creates a distinct attempt as described above.
+401/403/404 never retry. A definite refused create is durably dropped; a 401
+stops Discord, and a paired-channel 403/404 stops it as blocked. A missing edit
+or reaction (404) drops only that operation. Restoring credentials or channel
+access requires `cland hub reload`. No command syntax or role grant changes.
+
 Only the paired channel and user may send ordinary text or replies (types 0 and
 19). Bots, webhooks, other authors/channels and system events receive silence.
 Accepted input uses the gateway's existing chat/message ingress identity to

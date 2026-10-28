@@ -1,5 +1,6 @@
 // T2: plain-fetch Discord client against a loopback REST fake; no hub process.
 import './cover-quiet.ts';
+import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DiscordApi, DiscordError } from '../src/remote/discord-api.ts';
@@ -59,7 +60,7 @@ test('Discord redacts echoed errors and receipts, refuses redirects and validate
   const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
   const logs: unknown[] = [];
   for (const method of ['log', 'warn', 'error'] as const) t.mock.method(console, method, (...args: unknown[]) => logs.push(args));
-  for (const status of [401, 403, 404, 429, 500]) {
+  for (const status of [401, 403, 404]) {
     await fake.control('fault', { status, code: 50035, retry_after: 7, echoToken: true });
     await assert.rejects(api.getCurrentApplication(), error => {
       assert.ok(error instanceof DiscordError);
@@ -80,7 +81,7 @@ test('Discord redacts echoed errors and receipts, refuses redirects and validate
   assert.equal(JSON.stringify(sent).includes(DISCORD_TEST_TOKEN), false);
   const state = await fake.control('state');
   assert.equal(state.redirectsFollowed, 0);
-  assert.equal(state.requests.length, 8, 'no failed call is retried');
+  assert.equal(state.requests.length, 6, 'no invalid or unproven call is retried');
   assert.equal(state.requests[0]!.userAgentValid, true);
   assert.equal(JSON.stringify([state, logs]).includes(DISCORD_TEST_TOKEN), false);
   let requested = 0;
@@ -115,6 +116,7 @@ test('Discord nonce expires on the injected clock and rejects missing or overlon
 
 test('Discord fake enforces Unicode content and legacy component limits on create and edit', async t => {
   const fake = await fakeDiscordFixture(t);
+  await fake.control('configure', { sendLimit: 100 });
   const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
   const button = { type: 2 as const, style: 1, label: '😀'.repeat(80), custom_id: 'a'.repeat(100) };
   const row = { type: 1 as const, components: [button] };
@@ -296,5 +298,161 @@ test('Discord fake omitted and aborted websocket close observers retain held RES
     }
     assert.deepEqual(fake.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
     assert.equal(setupClock.pending, 0);
+  }
+});
+
+test('Discord follows channel headers for twelve sends and changed bucket limits', async t => {
+  const { FakeClock } = await import('./fake-clock.ts');
+  const clock = new FakeClock(); const { fake, api } = await discordExchangeOwner(t, { clock }).start();
+  const abort = new AbortController(); t.after(() => abort.abort());
+  const pending = Array.from({ length: 12 }, (_, i) => api.createMessage(fake.ids.channel, { content: String(i), nonce: `burst-${i}` }, { signal: abort.signal }));
+  const all = Promise.all(pending); void all.catch(() => {});
+  await Promise.all(pending.slice(0, 5)); // client completion includes the final bucket header
+  await clock.advance(5000);
+  await Promise.all(pending.slice(5, 10));
+  await clock.advance(5000); await all;
+  assert.deepEqual((await fake.control('state')).messages.map(m => m.content), Array.from({ length: 12 }, (_, i) => String(i)));
+  assert.equal((await fake.control('state')).rateLimits, 0);
+  await fake.control('configure', { sendLimit: 2, sendWindow: 700 });
+  await api.createMessage(fake.ids.secondChannel, { content: 'a', nonce: 'changed-a' });
+  await api.createMessage(fake.ids.secondChannel, { content: 'b', nonce: 'changed-b' });
+  const third = api.createMessage(fake.ids.secondChannel, { content: 'c', nonce: 'changed-c' }, { signal: abort.signal });
+  await clock.advance(699); assert.equal((await fake.control('state')).messages.length, 14);
+  await clock.advance(1); await third;
+  assert.equal((await fake.control('state')).rateLimits, 0);
+});
+
+for (const seconds of [0.25, 301]) for (const global of [true, false]) test(`Discord 429 waits ${seconds}s capped at five minutes, global=${global}, while callbacks bypass`, async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const { until } = await import('./until.ts');
+  const clock = new FakeClock(); const { fake, api } = await discordExchangeOwner(t, { clock }).start();
+  const abort = new AbortController(); t.after(() => abort.abort());
+  let refused = false; t.after(api.onError(error => { if (error.status === 429) refused = true; }));
+  await fake.control('fault', { status: 429, retry_after: seconds, global });
+  const first = api.getChannel(fake.ids.channel, { signal: abort.signal }); void first.catch(() => {});
+  await until(() => refused, { timeoutMs: 1000, what: 'client received rate-limit refusal' });
+  // The callback/edit receipts below ensure client I/O progresses before advancing time.
+  const second = api.getChannel(fake.ids.secondChannel, { signal: abort.signal }); void second.catch(() => {});
+  const interaction = await fake.control('interact', { command: 'status' });
+  await api.callback(interaction.id, `synthetic_interaction_${interaction.id}`, 'callback');
+  await api.editOriginal(fake.ids.application, `synthetic_interaction_${interaction.id}`, 'edited');
+  assert.equal((await fake.control('state')).interactions[0]!.edits.length, 1);
+  const wait = Math.min(300000, seconds * 1000);
+  await clock.advance(wait - 1); assert.equal((await fake.control('state')).requests.filter(r => r.path.startsWith('/channels/')).length, global ? 1 : 2);
+  await clock.advance(1); await Promise.all([first, second]);
+  assert.equal((await fake.control('state')).requests.filter(r => r.path.startsWith('/channels/')).length, 3);
+});
+
+test('Discord retries transient errors with bounded backoff but never repeats invalid requests', async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const { until } = await import('./until.ts');
+  const clock = new FakeClock(); const { fake, api } = await discordExchangeOwner(t, { clock }).start();
+  for (const status of [401, 403, 404]) {
+    await fake.control('fault', { status }); await assert.rejects(api.getChannel(fake.ids.channel), (e: unknown) => e instanceof DiscordError && e.status === status);
+  }
+  assert.equal((await fake.control('state')).requests.length, 3);
+  let failures = 0; t.after(api.onError(error => { if (error.status === 503) failures++; }));
+  for (let i = 0; i < 4; i++) await fake.control('fault', { status: 503 });
+  const call = assert.rejects(api.getChannel(fake.ids.channel), (e: unknown) => e instanceof DiscordError && e.status === 503);
+  for (const [i, delay] of [1000, 2000, 4000].entries()) {
+    await until(async () => (await fake.control('state')).requests.length === 4 + i, { timeoutMs: 1000, what: 'transient attempt' });
+    await until(() => failures === i + 1, { timeoutMs: 1000, what: 'client received transient refusal' });
+    await clock.advance(delay);
+  }
+  await call; assert.equal((await fake.control('state')).requests.length, 7);
+});
+
+test('Discord reaction headers pace one per 250ms independently of channel sends', async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const clock = new FakeClock();
+  const { fake, api } = await discordExchangeOwner(t, { clock }).start();
+  const message = await api.createMessage(fake.ids.channel, { content: 'React', nonce: 'react' });
+  await api.addReaction(fake.ids.channel, message.id, '👌');
+  const abort = new AbortController(); t.after(() => abort.abort());
+  const next = api.addReaction(fake.ids.channel, message.id, '👀', { signal: abort.signal }); void next.catch(() => {});
+  await api.createMessage(fake.ids.channel, { content: 'Independent', nonce: 'independent' });
+  await clock.advance(249);
+  assert.equal((await fake.control('state')).requests.filter(r => r.method === 'PUT').length, 1);
+  await clock.advance(1); await next;
+  assert.equal((await fake.control('state')).requests.filter(r => r.method === 'PUT').length, 2);
+  assert.equal((await fake.control('state')).rateLimits, 0);
+});
+
+for (const global of [false, true]) test(`Discord stored timeout then long 429 global=${global} never repeats an expired nonce`, async t => {
+  const clock = new FakeClock();
+  const { fake, api, run, signal } = await discordExchangeOwner(t, { clock, timeoutMs: 100 }).start();
+  let limited = false; t.after(api.onError(error => { if (error.status === 429) limited = true; }));
+  const held = run(() => fake.waitForHold(signal));
+  await fake.control('fault', { response: 'holdStored' });
+  await fake.control('fault', { status: 429, retry_after: 301, global });
+  const send = api.createMessage(fake.ids.channel, { content: 'Once', nonce: 'old-proof' });
+  const rejected = assert.rejects(send, /nonce proof window/); void rejected.catch(() => {});
+  await held; assert.equal((await fake.control('state')).messages.length, 1);
+  await clock.advance(100);
+  const { until } = await import('./until.ts');
+  await until(() => limited, { timeoutMs: 1000, what: 'client received retry limit' });
+  await clock.advance(300000); await rejected;
+  const state = await fake.control('state');
+  assert.equal(state.requests.filter(r => r.method === 'POST').length, 2, 'no expired third POST');
+  assert.equal(state.messages.length, 1);
+});
+
+test('Discord discovering route owns its shared bucket until body completion, independently per channel', async t => {
+  const clock = new FakeClock(); const { fake, api, run, signal } = await discordExchangeOwner(t, { clock }).start();
+  const first = await api.createMessage(fake.ids.channel, { content: 'Known', nonce: 'known' });
+  const held = run(() => fake.waitForHold(signal));
+  await fake.control('fault', { response: 'holdHeaders', bucket: 'message' });
+  const edit = api.editMessage(fake.ids.channel, first.id, { content: 'Held discovering route' });
+  await held;
+  // Let independent I/O finish before observing admission on the already-known route.
+  await api.getChannel(fake.ids.secondChannel);
+  const queued = api.createMessage(fake.ids.channel, { content: 'After held body', nonce: 'queued' });
+  await api.createMessage(fake.ids.secondChannel, { content: 'Other channel progresses', nonce: 'other-channel' });
+  const state = await fake.control('state');
+  assert.equal(state.messages.filter(m => m.channel_id === fake.ids.channel).length, 1, 'shared bucket excludes the known route until body receipt');
+  assert.equal(state.messages.filter(m => m.channel_id === fake.ids.secondChannel).length, 1);
+  await fake.control('release', {}); await Promise.all([edit, queued]);
+  const final = await fake.control('state');
+  assert.deepEqual(final.messages.filter(m => m.channel_id === fake.ids.channel).map(m => m.content), ['Held discovering route', 'After held body']);
+});
+
+test('Discord exchange owner drains omitted/aborted setup and frozen pacing waits', async t => {
+  for (const mode of ['omitted', 'aborted', 'frozen'] as const) {
+    const clock = new FakeClock();
+    const owner = discordExchangeOwner(t, { clock, setupClock: clock, publishListening: mode === 'frozen' });
+    if (mode !== 'frozen') {
+      const starting = owner.start(); const failed = assert.rejects(starting, /deadline|aborted/); void failed.catch(() => {});
+      await owner.listening();
+      if (mode === 'omitted') await clock.advance(1000); else await owner.close();
+      await failed;
+    } else {
+      const exchange = await owner.start();
+      await exchange.fake.control('configure', { sendLimit: 1 });
+      await exchange.api.createMessage(exchange.fake.ids.channel, { content: 'first', nonce: 'first' });
+      const waiting = exchange.api.createMessage(exchange.fake.ids.channel, { content: 'frozen', nonce: 'frozen' });
+      const failed = assert.rejects(waiting); void failed.catch(() => {});
+      await exchange.api.getChannel(exchange.fake.ids.secondChannel);
+      await owner.close(); await failed;
+    }
+    await owner.close();
+    assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
+    assert.equal(owner.pending(), 0); assert.equal(clock.pending, 0);
+  }
+});
+
+test('Discord exchange owner joins missing heldStored observer and control aborted before launch', async t => {
+  for (const launch of [true, false]) {
+    const clock = new FakeClock(); const owner = discordExchangeOwner(t, { clock, publishHeld: false });
+    const { fake, api, run, signal } = await owner.start();
+    const observed = run(() => fake.waitForHold(signal)); const missing = assert.rejects(observed, /disposed|abort/i); void missing.catch(() => {});
+    if (launch) {
+      await run(() => fake.control('fault', { response: 'holdStored' }));
+      const send = api.createMessage(fake.ids.channel, { content: 'held', nonce: 'held' });
+      const failed = assert.rejects(send); void failed.catch(() => {});
+      await run(() => fake.held()); await owner.close(); await failed;
+    } else {
+      await owner.close();
+      await assert.rejects(run(() => fake.control('fault', { response: 'holdStored' })), /disposed/);
+    }
+    await missing; await owner.close();
+    assert.equal(owner.pending(), 0); assert.equal(clock.pending, 0);
+    assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
   }
 });

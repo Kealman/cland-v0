@@ -1,6 +1,6 @@
 import { Outbox, type DeliveryResult } from './outbox.ts';
 import type { RemoteStore, OutboxJob, RemoteMessage } from './state.ts';
-import type { DiscordApi, DiscordMessage } from './discord-api.ts';
+import { DiscordError, type DiscordApi, type DiscordMessage } from './discord-api.ts';
 import type { Clock } from '../hub/clock.ts';
 
 type Intent = { discord: true; channel: string; user: string; content: string; mapping: Omit<RemoteMessage, 'messageId'> };
@@ -56,7 +56,12 @@ export class DiscordOutbox {
     // Recheck at I/O: a restart after prove or queue work must not renew the window.
     if (!this.#withinNonceWindow(job)) return { status: 'unknown' };
     const input = intent(job);
-    const message = await this.#api.createMessage(input.channel, { content: input.content, nonce: nonce(job), flags: 4 }, { signal: this.#signal });
+    let message: DiscordMessage;
+    try { message = await this.#api.createMessage(input.channel, { content: input.content, nonce: nonce(job), flags: 4 }, { signal: this.#signal, nonceDeadline: Date.parse(this.#store.attempts(job.id)[0]!.at) + 120_000 }); }
+    catch (error) {
+      if (error instanceof DiscordError && [401, 403, 404].includes(error.status)) return { status: 'superseded' };
+      throw error;
+    }
     this.#signal.throwIfAborted();
     if (!/^\d+$/.test(message.id)) return { status: 'unknown' };
     this.#store.set(`discord.outbox.receipt:${job.id}`, message.id);

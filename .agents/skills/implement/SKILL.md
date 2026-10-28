@@ -34,6 +34,20 @@ no upload authority; refuse every MIME on exact registered-secret bytes through
 the shared registry and preserve accepted bytes. Existing role clauses need no
 additional permission lines.
 
+For Discord REST pacing, use the loopback client/fake and production-frame seams
+in `docs/agents/tests/hub-test-discord-api.test.ts.md` and
+`docs/agents/tests/hub-test-discord-messages.test.ts.md`. Inject the same clock
+into client and fake; assert native posts plus durable mappings. Keep callback
+and original-response edits outside lanes, preserve the unchanged enforced nonce
+on bounded native retries, carry the original attempt’s absolute nonce deadline
+through every queue/wait and check it immediately before I/O, and drop definite
+invalid requests without replay. Use the pre-registered exchange owner for
+fake-clock native operations and preserve learned-bucket ownership through body
+completion. Store-bearing exchanges use the owner’s project allocator and
+successful-drain removal barrier for ordinary and signal cleanup; retain roots
+and Stores after incomplete drainage until the real writer settles.
+Existing role clauses cover this flow; no permission line is added.
+
 For gateway routing, authority or remote failure isolation, use the sealed frame-protocol and
 test-messenger seam in `docs/agents/tests/hub-test-gateway.test.ts.md`. Keep
 authority before replay/actor resolution and resolve reply topics from stored
