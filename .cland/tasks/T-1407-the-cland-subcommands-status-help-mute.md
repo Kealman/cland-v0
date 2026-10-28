@@ -3,7 +3,7 @@ id: T-1407
 kind: task
 title: The /cland subcommands status, help, mute, unmute, decision and question, answered ephemerally and laid out for a phone
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:47.247Z
-updated: 2026-10-27T23:38:47.247Z
+updated: 2026-10-28T08:10:57.140Z
 ---
 
 ## Summary

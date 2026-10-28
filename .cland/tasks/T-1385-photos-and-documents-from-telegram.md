@@ -3,7 +3,7 @@ id: T-1385
 kind: task
 title: Photos and documents from Telegram become the human's artifacts on one message, through a durable media queue, and no paired update stalls the poll loop
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:27.517Z
-updated: 2026-10-27T23:37:27.517Z
+updated: 2026-10-28T08:10:54.534Z
 ---
 
 > Overlap: T-1378 (Bugs, regression of T-1341) proposes a smaller fix for the same poll-loop stall and awaits the human's answer to ask 82ff046e. If T-1378 lands first, build on it and keep its tests; otherwise this ticket's fallback reply closes T-1378's criteria too.

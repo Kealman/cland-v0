@@ -3,7 +3,7 @@ id: T-1401
 kind: task
 title: The application checks, the fatal close codes and cland remote test discord stop only this remote with its cause and fix
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:46.051Z
-updated: 2026-10-27T23:38:46.051Z
+updated: 2026-10-28T08:10:56.039Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1387
 kind: task
 title: "Outbound artifacts on Telegram: photos up to 10 MB, documents up to 50 MB, each artifact once per remote, and a line for anything larger"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:27.927Z
-updated: 2026-10-28T05:05:33.064Z
+updated: 2026-10-28T08:10:55.227Z
 ---
 
 > Pending: the once-per-remote behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.

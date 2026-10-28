@@ -3,7 +3,7 @@ id: T-1386
 kind: task
 title: An album is one message with every attachment, stored before the offset is confirmed, and a hub killed mid-album loses nothing
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:27.669Z
-updated: 2026-10-27T23:37:27.669Z
+updated: 2026-10-28T08:10:55.067Z
 ---
 
 ## Summary

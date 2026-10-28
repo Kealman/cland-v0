@@ -70,9 +70,11 @@
       "A-12873",
       "A-12877",
       "A-12925",
-      "A-12929"
+      "A-12929",
+      "A-13109",
+      "A-13114"
     ],
-    "commit": "c675faa34d7c1874d1aee14f2874814b11c276b5"
+    "commit": "4c729ffbf5fec7be8aea295d3416db410e5913f8"
   },
   "budget": {
     "testSeconds": 5,
@@ -2896,6 +2898,42 @@
     },
     "hub/test/remote-docs.test.ts": {
       "seconds": 0.000839,
+      "tests": 1
+    },
+    "hub/test/artifact-upload.test.ts": {
+      "seconds": 0.383577,
+      "tests": 4
+    },
+    "hub/test/discord-api.test.ts": {
+      "seconds": 0.189867,
+      "tests": 13
+    },
+    "hub/test/discord-messages.test.ts": {
+      "seconds": 1.016837,
+      "tests": 8
+    },
+    "hub/test/discord-messenger.test.ts": {
+      "seconds": 1.539034,
+      "tests": 8
+    },
+    "hub/test/discord-pairing.test.ts": {
+      "seconds": 2.07698,
+      "tests": 4
+    },
+    "hub/test/remote-neutral.test.ts": {
+      "seconds": 0.057445,
+      "tests": 5
+    },
+    "hub/test/speech-command.test.ts": {
+      "seconds": 1.244267,
+      "tests": 9
+    },
+    "hub/test/speech.test.ts": {
+      "seconds": 0.190105,
+      "tests": 13
+    },
+    "nvim/test/artifact-upload.test.ts": {
+      "seconds": 0.695194,
       "tests": 1
     }
   },
@@ -7965,7 +8003,91 @@
     "hub/test/telegram-cards.test.ts::Telegram sixty-second catch-up sends the gap before missed cards without resending open cards": 0.503757,
     "hub/test/telegram-cards.test.ts::Telegram uncertain old-copy marker fallback stays incomplete while recovery and later polls progress": 0.852901,
     "hub/test/telegram-cards.test.ts::Telegram uncertain outage replacement survives restart without retiring its old copy or blocking other cards": 0.531749,
-    "hub/test/telegram-notices.test.ts::Telegram inbox resends all four notice kinds oldest first and a new notice reply retains its topic": 0.352455
+    "hub/test/telegram-notices.test.ts::Telegram inbox resends all four notice kinds oldest first and a new notice reply retains its topic": 0.352455,
+    "hub/test/artifact-upload.test.ts::artifact.upload rejects registered secrets in text and binary while preserving clean bytes": 0.06348,
+    "hub/test/artifact-upload.test.ts::artifact.upload stores two files on exactly one human message without a chip post": 0.148202,
+    "hub/test/artifact-upload.test.ts::artifact.upload validates every file and rolls back a rejected message": 0.060582,
+    "hub/test/artifact-upload.test.ts::gateway upload uses native bytes and ingress, preserves send authority and refuses sessions": 0.111313,
+    "hub/test/config-set.test.ts::artifact upload limit stays startup-only and reload refuses the pending edit": 0.390265,
+    "hub/test/discord-api.test.ts::Discord enforced nonce stores one message and creates and edits suppress every mention": 0.049743,
+    "hub/test/discord-api.test.ts::Discord fake closed before acquisition cancels native observers and refuses later start": 0.000891,
+    "hub/test/discord-api.test.ts::Discord fake default mention behavior is a positive control for suppressed client mentions": 0.004036,
+    "hub/test/discord-api.test.ts::Discord fake enforces Unicode content and legacy component limits on create and edit": 0.02475,
+    "hub/test/discord-api.test.ts::Discord fake omitted and aborted hold observations always join the call and observers": 0.007899,
+    "hub/test/discord-api.test.ts::Discord fake omitted and aborted serving receipts close the acquisition owner": 0.002547,
+    "hub/test/discord-api.test.ts::Discord fake omitted and aborted websocket close observers retain held REST drainage": 0.01738,
+    "hub/test/discord-api.test.ts::Discord fake omitted and aborted websocket setup receipts dispose the same native owner": 0.002153,
+    "hub/test/discord-api.test.ts::Discord held requests release or abort with bounded cleanup": 0.0085,
+    "hub/test/discord-api.test.ts::Discord nonce expires on the injected clock and rejects missing or overlong nonces before sending": 0.005645,
+    "hub/test/discord-api.test.ts::Discord reads application, gateway, channel and descending history without rounding snowflakes": 0.02677,
+    "hub/test/discord-api.test.ts::Discord redacts echoed errors and receipts, refuses redirects and validates roots before fetch": 0.035771,
+    "hub/test/discord-api.test.ts::Discord sanitizes a successful provider body containing the credential": 0.003782,
+    "hub/test/discord-messages.test.ts::Discord accepts paired ordinary/reply text once, excludes other authors, and mirrors to Telegram": 0.17291,
+    "hub/test/discord-messages.test.ts::Discord cursor waits for the durable hub result and survives duplicate replay after restart": 0.234667,
+    "hub/test/discord-messages.test.ts::Discord General mirror has enforced nonce and atomic native mapping": 0.289197,
+    "hub/test/discord-messages.test.ts::Discord held-send owner drains omitted observer and abort before fault setup": 0.096654,
+    "hub/test/discord-messages.test.ts::Discord outbox proves crash sends by own nonce, bounded same-nonce retry, and fences old unknown sends": 0.051975,
+    "hub/test/discord-messages.test.ts::Discord records attempt before REST and publishes mapping with sent settlement": 0.043532,
+    "hub/test/discord-messages.test.ts::Discord recovery POST owns a distinct attempt and never renews the original nonce window": 0.054025,
+    "hub/test/discord-messages.test.ts::Discord startup replay cancellation drains the held REST request before gateway shutdown": 0.073877,
+    "hub/test/discord-messenger.test.ts::Discord credential-echo REST refusal stays out of CLI frames logs errors and journal": 0.23559,
+    "hub/test/discord-messenger.test.ts::Discord heartbeats use jitter then interval and op 1; stale acknowledgements disconnect status": 0.154467,
+    "hub/test/discord-messenger.test.ts::Discord production factory identifies and reports acknowledged connection and invite": 0.45371,
+    "hub/test/discord-messenger.test.ts::Discord production gateway allowlist refuses foreign hosts before external I/O": 0.000833,
+    "hub/test/discord-messenger.test.ts::Discord refuses gateway ws://192.0.2.1:8080 while Telegram keeps mirroring": 0.188208,
+    "hub/test/discord-messenger.test.ts::Discord refuses gateway wss://discord.gg.attacker.invalid while Telegram keeps mirroring": 0.232614,
+    "hub/test/discord-messenger.test.ts::messenger factory retains Telegram notice callback with Discord callback absent": 0.148713,
+    "hub/test/discord-messenger.test.ts::messenger factory retains Telegram notice callback with Discord callback present": 0.124899,
+    "hub/test/discord-pairing.test.ts::Discord CLI approval edits original privately, replaces old channel and preserves TEXT ids across restart without interaction secrets": 0.584262,
+    "hub/test/discord-pairing.test.ts::Discord fake enforces one acknowledgement, three-second callback deadline and fifteen-minute original edit lifetime": 0.013659,
+    "hub/test/discord-pairing.test.ts::Discord global cland definition writes once, compares on restart and repairs drift": 0.387726,
+    "hub/test/discord-pairing.test.ts::Discord pair uses private bounded code replies, expiry and stranger reply cap": 1.091333,
+    "hub/test/pairing-approval.test.ts::approval notification redacts a newly registered display-name secret but refuses numeric identity collisions": 0.107745,
+    "hub/test/remote-neutral.test.ts::Discord gap counts sources once without touching Telegram jobs or captured state": 0.030027,
+    "hub/test/remote-neutral.test.ts::Remote inbox publication interleaves open asks approvals and notices oldest first with id ties": 0.00756,
+    "hub/test/remote-neutral.test.ts::Remote mirror filters human actions and labels cross-messenger authors": 0.001723,
+    "hub/test/remote-neutral.test.ts::Remote mute receipts apply once and keep existing Telegram receipts authoritative": 0.017541,
+    "hub/test/remote-neutral.test.ts::Remote phone model uses the requested location label and puts gateway facts last": 0.000594,
+    "hub/test/speech-command.test.ts::command environment excludes synthetic remote credentials and includes MIME and language": 0.048058,
+    "hub/test/speech-command.test.ts::command gets the whole note deadline, escalates SIGTERM to SIGKILL and is never retried": 0.162073,
+    "hub/test/speech-command.test.ts::command receives original bytes and literal argv and returns trimmed UTF-8 text": 0.065104,
+    "hub/test/speech-command.test.ts::deadline drains a command descendant that inherits stdout and ignores SIGTERM": 0.235598,
+    "hub/test/speech-command.test.ts::factory uses environment key override, custom model and file-key fallback without real requests": 0.043718,
+    "hub/test/speech-command.test.ts::nonzero exit reports bounded redacted stderr; missing command is not-configured": 0.051397,
+    "hub/test/speech-command.test.ts::omitted and aborted readiness cancel and drain the registered owner before root removal": 0.357247,
+    "hub/test/speech-command.test.ts::provider selection distinguishes off and not-configured; command resolution checks executables": 0.050667,
+    "hub/test/speech-command.test.ts::stdout over 1 MiB fails, a signal fails and empty stdout succeeds": 0.230405,
+    "hub/test/speech.test.ts::a provider result observed after the deadline is timeout even before timers run": 0.000762,
+    "hub/test/speech.test.ts::a result observed after the attempt bound is retried within the note deadline": 0.001113,
+    "hub/test/speech.test.ts::every SpeechError kind redacts registered keys, including arbitrary provider errors": 0.005758,
+    "hub/test/speech.test.ts::fixture cleanup cancels frozen retries before native close": 0.00352,
+    "hub/test/speech.test.ts::fixture cleanup joins an in-flight native request with frozen behavior time": 0.004331,
+    "hub/test/speech.test.ts::fixture setup is bounded when listening is missing or setup is aborted": 0.026895,
+    "hub/test/speech.test.ts::language codes, primary subtags and English names normalize to ISO 639-1": 0.004744,
+    "hub/test/speech.test.ts::legacy providers without a retry policy retain 30-second attempts, bounded retries and cancellation": 0.002572,
+    "hub/test/speech.test.ts::OGG bytes and metadata reach ElevenLabs unchanged; rus becomes ru": 0.057613,
+    "hub/test/speech.test.ts::permanent provider failures are classified and never retried; missing key makes no request": 0.040981,
+    "hub/test/speech.test.ts::redirects are never followed and API override admits only loopback HTTP with a port": 0.004407,
+    "hub/test/speech.test.ts::Retry-After waits two seconds; persistent transient failures stop after attempt three": 0.021949,
+    "hub/test/speech.test.ts::slow response and Retry-After beyond the note deadline report timeout": 0.01546,
+    "hub/test/telegram-api.test.ts::Telegram capped exchange drains its exact native request after missed or aborted setup": 0.01002,
+    "hub/test/telegram-api.test.ts::Telegram files download exact bytes and abort a chunked body above the cap": 0.010282,
+    "hub/test/telegram-api.test.ts::Telegram media calls refuse redirects and redact echoed credential paths on every diagnostic surface": 0.045699,
+    "hub/test/telegram-api.test.ts::Telegram media control queues an album and all six native media kinds with resolvable files": 0.021097,
+    "hub/test/telegram-api.test.ts::Telegram multipart files preserve metadata and plain captions and enforce upload limits": 0.612804,
+    "hub/test/telegram-cards.test.ts::Telegram handles a button queued behind a sticker after its reply settles": 0.170207,
+    "hub/test/telegram-inbound.test.ts::Telegram input fixture drains observers after aborted setup receipt": 1.415096,
+    "hub/test/telegram-inbound.test.ts::Telegram input fixture drains observers after omitted setup receipt": 1.570758,
+    "hub/test/telegram-inbound.test.ts::Telegram silently confirms an edit and delivers the following text": 0.109134,
+    "hub/test/telegram-inbound.test.ts::Telegram unsupported messages reply once confirm and do not replay after restart": 0.222545,
+    "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after aborted setup receipt": 0.153056,
+    "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after omitted setup receipt": 0.178086,
+    "hub/test/tracker-summary.test.ts::a healthy watcher with dropped events still indexes hand edits, additions and removals": 1.09969,
+    "hub/test/tracker-summary.test.ts::an unchanged first poll uses the startup stamp without reading or parsing item files": 0.009473,
+    "hub/test/web-authority.test.ts::web authority admits artifact.upload without local filesystem access": 0.065068,
+    "nvim/test/artifact-upload.test.ts::uploaded PNG and extensionless JPEG open once in the viewer while a note opens in a buffer": 0.695194,
+    "web/test/artifacts.test.ts::over-cap PNG retains its size and download while SVG stays sandboxed and broken images fall back": 1.196565,
+    "web/test/artifacts.test.ts::PNG, JPEG, GIF and WebP artifacts and a folder image load inline with a download": 2.050499
   },
   "allow": {
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {

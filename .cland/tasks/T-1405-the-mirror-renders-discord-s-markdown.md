@@ -3,7 +3,7 @@ id: T-1405
 kind: task
 title: "The mirror renders Discord's Markdown: tables, deep headings, rules, task boxes and ||, no pings, fence-safe numbered splits and silent notes"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:46.826Z
-updated: 2026-10-27T23:38:46.826Z
+updated: 2026-10-28T08:10:56.735Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1391
 kind: task
 title: The web composer attaches files through an HTTP endpoint on the web edge, with its cookie and Origin checks
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:28.755Z
-updated: 2026-10-27T23:37:28.755Z
+updated: 2026-10-28T08:10:55.525Z
 ---
 
 ## Summary

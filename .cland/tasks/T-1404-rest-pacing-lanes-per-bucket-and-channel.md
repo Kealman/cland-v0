@@ -3,7 +3,7 @@ id: T-1404
 kind: task
 title: "REST pacing: lanes per bucket and channel from the rate-limit headers, no repeat of 401, 403 or 404, and a timed-out send posts once"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:46.684Z
-updated: 2026-10-27T23:38:46.684Z
+updated: 2026-10-28T08:10:56.599Z
 ---
 
 ## Summary

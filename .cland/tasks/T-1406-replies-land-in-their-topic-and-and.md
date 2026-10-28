@@ -3,7 +3,7 @@ id: T-1406
 kind: task
 title: Replies land in their topic, and 👌 and 👀 confirm the human's messages
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:47.088Z
-updated: 2026-10-27T23:38:47.088Z
+updated: 2026-10-28T08:10:56.870Z
 ---
 
 ## Summary

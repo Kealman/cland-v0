@@ -3,7 +3,7 @@ id: T-1394
 kind: task
 title: Doctor shows the speech key's presence and the command's resolution, and cland remote status shows the provider's data-use line
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:37:29.292Z
-updated: 2026-10-27T23:37:29.292Z
+updated: 2026-10-28T08:10:55.719Z
 ---
 
 ## Summary

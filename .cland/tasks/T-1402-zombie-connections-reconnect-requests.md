@@ -3,7 +3,7 @@ id: T-1402
 kind: task
 title: Zombie connections, reconnect requests and invalid sessions resume without an identify, with the offline and recovery lines
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:46.285Z
-updated: 2026-10-27T23:38:46.285Z
+updated: 2026-10-28T08:10:56.177Z
 ---
 
 ## Summary
