@@ -90,3 +90,14 @@ Store-bearing exchange fixtures use `exchange.project()` rather than a plain
 tempProject root, so both ordinary and signal directory cleanup repeat the
 successful-drain barrier. Rejected close attempts remain retryable after native
 settlement; a failed drain never closes a still-owned Store or removes its root.
+
+The additive onExchange regression preserves the one-argument legacy onError
+observer, validates only channel/boolean health facts, ignores successful reads,
+observes a successful message recovery, and retains unsubscribe behavior. The
+production-frame settled REST health case in discord-messenger.test.ts proves
+that pacing retries settle before health changes; native intermediate onError
+observers keep their existing semantics.
+
+A missing-message PATCH 404 preserves its ordinary rejection/onError receipt but
+does not emit failed exchange health; the live-native regression in the messenger
+file retains recent ACK status beyond the outage threshold.

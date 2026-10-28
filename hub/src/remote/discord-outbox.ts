@@ -16,6 +16,9 @@ export class DiscordOutbox {
   async send(channel: string, content: string, source: string): Promise<void> {
     this.#signal.throwIfAborted();
     const lane = this.#lane(channel);
+    // A new send probes recovery after an earlier unknown delivery marked this
+    // lane unavailable. Missed jobs remain fenced; only this new intent retries.
+    lane.setAvailable(true);
     if (!this.#store.outbox().some(j => j.source === source)) lane.enqueue({ kind: 'general', source,
       payload: { discord: true, channel, user: this.#store.pairing()?.userId, content,
         mapping: { chatId: channel, topic: 'general', message: source, ask: null, approval: null } } });

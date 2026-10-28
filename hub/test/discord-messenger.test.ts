@@ -1,6 +1,7 @@
 // T2: native factory, sealed frames and loopback Discord gateway/REST.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { discordHubFixtureOwner } from './fakes/discord/hub.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tempProject, projectHub, connectUi, cland, until } from './harness.ts';
@@ -8,9 +9,9 @@ import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { fakeDiscordFixture, DISCORD_TEST_TOKEN, DISCORD_IDS } from './fakes/discord/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { RemoteStatusRow } from '../src/protocol.ts';
-async function receipt<T>(read: () => Promise<T>, matches: (value: T) => boolean): Promise<T> {
+async function receipt<T>(read: () => Promise<T>, matches: (value: T) => boolean, what = 'exact Discord receipt'): Promise<T> {
   let value: T | undefined;
-  await until(async () => { value = await read(); return matches(value); }, { what: 'exact Discord receipt', timeoutMs: 2000 });
+  await until(async () => { value = await read(); return matches(value); }, { what, timeoutMs: 2000 });
   return value!;
 }
 test('Discord production factory identifies and reports acknowledged connection and invite', async t => {
@@ -267,4 +268,171 @@ test('Discord replacement notification auth failure retains token cause and join
   await hub.stop();
   const persisted = new Store(join(root, '.cland/hub.db'));
   try { assert.equal(persisted.remotes.forMessenger('discord').status().stopCause, 'token'); } finally { persisted.close(); }
+});
+
+async function resumeFixture(t: import('node:test').TestContext) {
+  const fixture = await discordHubFixtureOwner(t, { injected: true }).start();
+  await fixture.clock.advance(250); await receipt(fixture.status, r => r.connection === 'connected');
+  return fixture;
+}
+
+test('Discord zombie terminates resumably and buffered input reaches General once', async t => {
+  const { close, fake, clock, status, history } = await resumeFixture(t);
+  await fake.control('configure', { acknowledge: false });
+  await clock.advance(1000); await receipt(() => fake.control('state'), s => s.gateway.heartbeats === 2);
+  await clock.advance(1000);
+  await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
+  assert.equal((await status()).connection, 'disconnected');
+  assert.equal((await fake.control('state')).gateway.closes[0], 1006);
+  const message = { op: 0, t: 'MESSAGE_CREATE', d: { id: '99000000000000001', channel_id: DISCORD_IDS.channel, author: { id: DISCORD_IDS.human }, type: 0, content: 'During the zombie' } };
+  await fake.control('dispatch', message);
+  await fake.control('configure', { acknowledge: true });
+  await clock.advance(1000); await receipt(() => fake.control('state'), s => s.gateway.resumes === 1);
+  await receipt(history, rows => rows.some(m => m.text === 'During the zombie'));
+  await fake.control('dispatch', message);
+  await fake.control('dispatch', { ...message, d: { ...message.d, id: '99000000000000002', content: 'Replay drained' } });
+  const rows = await receipt(history, rows => rows.some(m => m.text === 'Replay drained'));
+  assert.equal(rows.filter(m => m.text === 'During the zombie').length, 1);
+  assert.equal((await fake.control('state')).gateway.identifies, 1);
+  assert.equal((await fake.control('state')).gateway.validResume, true);
+  await close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord ten drops, reconnect and resumable invalid session spend no extra Identify', async t => {
+  const { close, fake, clock, status } = await resumeFixture(t);
+  const resumableCodes = [4000, 4001, 4002, 4005, 4008];
+  for (let index = 0; index < 12 + resumableCodes.length; index++) {
+    if (index < 10) await fake.control('drop', {});
+    else if (index < 12) await fake.control('dispatch', { op: index === 10 ? 7 : 9, d: true });
+    else await fake.control('close', { code: resumableCodes[index - 12] });
+    await receipt(() => fake.control('state'), s => s.gateway.closes.length === index + 1);
+    assert.equal((await status()).connection, 'disconnected');
+    await clock.advance(1);
+    await receipt(() => fake.control('state'), s => s.gateway.resumes === index + 1);
+    await clock.advance(250); await receipt(status, r => r.connection === 'connected');
+  }
+  const state = await fake.control('state'); assert.equal(state.gateway.identifies, 1); assert.equal(state.gateway.validResume, true);
+  await close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord nonresumable invalid session waits random one to five seconds for fresh Identify', async t => {
+  const { close, fake, clock, status } = await resumeFixture(t);
+  await fake.control('dispatch', { op: 9, d: false });
+  await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
+  assert.equal((await status()).connection, 'disconnected');
+  await clock.advance(1999); assert.equal((await fake.control('state')).gateway.identifies, 1);
+  await clock.advance(1); await receipt(() => fake.control('state'), s => s.gateway.identifies === 2);
+  assert.equal((await fake.control('state')).gateway.resumes, 0);
+  await clock.advance(250); await receipt(status, r => r.connection === 'connected');
+  await close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord three minutes offline posts one General notice then one recovery', async t => {
+  const fixture = await discordHubFixtureOwner(t).start();
+  const { clock, fake, status, history } = fixture;
+  const notices = async () => (await history()).filter(m => /^Discord remote (offline since|recovered;)/.test(m.text));
+  await receipt(() => fake.control('state'), s => s.gateway.identifies === 1);
+  await clock.advance(1000); await receipt(status, r => r.connection === 'connected');
+  await fake.control('configure', { acknowledge: false, resumeWindow: 600000 });
+  await fake.control('drop', {});
+  await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
+  assert.equal((await status()).connection, 'disconnected');
+  await clock.advance(179999); assert.equal((await notices()).length, 0);
+  await clock.advance(1); await receipt(notices, rows => rows.length === 1);
+  assert.match((await notices())[0]!.text, /^Discord remote offline since 12:00: /);
+  await clock.advance(10000); assert.equal((await notices()).length, 1);
+  await fake.control('configure', { acknowledge: true });
+  // A real inbound ACK supplies the successful exchange, rather than just a resumed socket.
+  await receipt(() => fake.control('state'), s => s.gateway.resumes > 0);
+  await fake.control('dispatch', { op: 11, d: null });
+  await receipt(status, r => r.connection === 'connected');
+  const rows = await receipt(notices, rows => rows.length === 2);
+  assert.match(rows[1]!.text, /^Discord remote recovered; offline since 12:00/);
+  await fixture.close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord settled REST send outage survives socket ACKs until paired send recovers', async t => {
+  const { inProcessSpoke } = await import('./harness.ts');
+  const fixture = await discordHubFixtureOwner(t, { interval: 1000000 }).start();
+  const { root, clock, fake, ui, state, status, history, run, logs } = fixture;
+  const notices = async () => (await history()).filter(m => /^Discord remote (offline since|recovered;)/.test(m.text));
+  await fake.control('dispatch', { op: 11, d: null }); await receipt(status, r => r.connection === 'connected', 'REST health connected');
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  for (let i = 0; i < 4; i++) await fake.control('fault', { status: 500, echoToken: true });
+  const sends = async () => (await fake.control('state')).requests.filter(r => r.method === 'POST' && r.path === `/channels/${DISCORD_IDS.channel}/messages`);
+  assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'Failed health send' })).ok, true);
+  const refusals = async () => logs.filter(e => e.event === 'discord-rest-refused' && e.route === 'POST /channels/:channel/messages' && e.status === 500);
+  await receipt(sends, rows => rows.length === 1);
+  await receipt(refusals, rows => rows.length === 1, 'client refusal 1');
+  assert.equal((await status()).connection, 'connected', 'a retrying exchange has not settled as failed');
+  for (const [delay, count] of [[1000, 2], [2000, 3], [4000, 4]]) {
+    await clock.advance(delay!); await receipt(sends, rows => rows.length === count);
+    await receipt(refusals, rows => rows.length === count, `client refusal ${count}`);
+  }
+  await receipt(async () => state.outbox(), rows => rows.some(j => j.state === 'missed'));
+  assert.equal((await status()).connection, 'disconnected');
+  await fake.control('dispatch', { op: 11, d: null });
+  await clock.advance(179999); assert.equal((await notices()).length, 0);
+  await fake.control('fault', { response: 'hold' });
+  const held = run(signal => fake.waitForHold(signal));
+  await clock.advance(1); await held; await receipt(notices, rows => rows.length === 1, 'REST offline notice');
+  assert.match((await notices())[0]!.text, /REST sends unavailable/);
+  assert.equal((await status()).connection, 'disconnected', 'socket ACK cannot erase failed REST sends');
+  await fake.control('release', {});
+  await receipt(async () => state.outbox(), rows => rows.some(j => j.state === 'sent'), 'REST recovered sent settlement');
+  await receipt(status, r => r.connection === 'connected', 'REST health connected');
+  const rows = await receipt(notices, rows => rows.length === 2, 'REST recovered notice');
+  assert.match(rows[1]!.text, /Discord remote recovered;/);
+  assert.equal(JSON.stringify([ui.frames, rows, logs]).includes(DISCORD_TEST_TOKEN), false);
+  await fixture.close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord missing edit on an acknowledged live remote leaves connection healthy', async t => {
+  const fixture = await discordHubFixtureOwner(t, { injected: true, interval: 1000000 }).start();
+  const { api, fake, clock, status, notices, history } = fixture;
+  await fake.control('dispatch', { op: 11, d: null });
+  await receipt(status, r => r.connection === 'connected');
+  await assert.rejects(api.editMessage(DISCORD_IDS.channel, '99999999999999999', { content: 'deleted message' }));
+  assert.equal((await status()).connection, 'connected');
+  await clock.advance(180001);
+  assert.equal((await status()).connection, 'connected');
+  assert.deepEqual(notices, []);
+  await api.createMessage(DISCORD_IDS.channel, { content: 'ordinary send after missing edit', nonce: 'missing-edit-control' });
+  assert.equal((await status()).connection, 'connected');
+  assert.deepEqual(notices, [], 'neither an outage nor a recovery follows a job-local missing edit');
+  assert.equal((await history()).filter(m => /^Discord remote (offline since|recovered;)/.test(m.text)).length, 0);
+  await fixture.close(); assert.equal(clock.pending, 0);
+});
+
+for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${mode} setup receipt disposes the acquisition owner`, async t => {
+  const setupClock = new FakeClock(); const abort = new AbortController();
+  const owner = discordHubFixtureOwner(t, { fake: { publishListening: false, setupClock, signal: abort.signal } });
+  const listening = owner.listening(); void listening.catch(() => {});
+  const starting = owner.start();
+  const failed = assert.rejects(starting, mode === 'omitted' ? /listening receipt deadline/ : /aborted/); void failed.catch(() => {});
+  await listening;
+  if (mode === 'aborted') abort.abort(); else await setupClock.advance(1000);
+  await failed; await owner.close();
+  assert.equal(owner.pending(), 0); assert.equal(setupClock.pending, 0);
+  assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
+});
+
+for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${mode} held receipt joins writers before Store close`, async t => {
+  const setupClock = new FakeClock(); const abort = new AbortController();
+  const owner = discordHubFixtureOwner(t, { injected: true, interval: 1000000, fake: { publishHeld: false, setupClock } });
+  const fixture = await owner.start();
+  const { fake, api, run, hub, clock } = fixture;
+  await run(() => fake.control('fault', { response: 'hold' }));
+  const observed = run(signal => fake.waitForHold(AbortSignal.any([signal, abort.signal])));
+  const missing = assert.rejects(observed, mode === 'omitted' ? /hold receipt deadline/ : /aborted/); void missing.catch(() => {});
+  const send = api.createMessage(DISCORD_IDS.channel, { content: 'held native writer', nonce: 'cleanup-health' });
+  const cancelled = assert.rejects(send); void cancelled.catch(() => {});
+  await run(() => fake.held());
+  assert.equal(owner.dbClosed(), false);
+  if (mode === 'aborted') abort.abort(); else await setupClock.advance(1000);
+  await missing; await owner.close(); await cancelled; await hub.stopped;
+  assert.equal(owner.dbClosed(), true);
+  assert.deepEqual(owner.disposal, ['hub-stopped', 'store-closed']);
+  assert.equal(owner.pending(), 0); assert.equal(clock.pending, 0); assert.equal(setupClock.pending, 0);
+  assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
 });

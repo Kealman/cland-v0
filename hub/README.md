@@ -6765,13 +6765,30 @@ and identifies with intents 33281 and no presence.
 
 Hello schedules the first heartbeat at its interval multiplied by random jitter;
 subsequent heartbeats follow the interval, and opcode 1 sends immediately.
-`cland remote status` reports connected only after READY and an acknowledgement
+`cland remote status` reports connected only after READY or RESUMED and an acknowledgement
 within the last interval, with successful inbound/outbound timestamps and the
 application's invite (`scope=bot&permissions=117824`). Session facts remain in
 memory. Discord pairing interactions use the native command router described below;
 message handlers use its optional native dispatch extension point.
-A connection failure disables only Discord and writes one General notice with
-its reason and reload guidance. Before connecting it requires either Message Content
+A missed heartbeat ACK terminates the transport (no 1000/1001 close frame).
+Drops, opcode 7 and resumable opcode 9 reconnect to the validated resume URL
+with session id and sequence. A successful resume spends no Identify. Failed
+reconnect attempts use capped jittered backoff (up to 30 seconds); a working
+session resumes immediately. Opcode 9 false clears the session and waits a
+random 1–5 seconds before identifying. Message ids are durably deduplicated;
+interaction ids are deduplicated in memory for this socket lifetime.
+Connection loss changes status to disconnected immediately; after three minutes
+General gets one `Discord remote offline since HH:MM: <reason>` line and one
+recovery line after a recent ACK. A settled paired-channel POST/PATCH failure
+also makes status disconnected (a missing-message PATCH 404 stays job-local);
+it stays so across socket ACKs until a paired
+send succeeds. Health is reported after REST pacing and retries, through an
+optional native subscription carrying only channel id and success. Native
+message refusals log `discord-rest-refused` with an allowlisted route and numeric
+status/code; payloads, provider error messages and credentials stay private. A new send
+intent probes an unavailable outbox lane; prior missed jobs remain fenced.
+Transient socket loss keeps reconnecting.
+A terminal connection failure disables only Discord with cause and reload guidance. Before connecting it requires either Message Content
 application flag (1<<18 or 1<<19) and an empty Interactions Endpoint URL.
 A wrong setting stops before Identify. Close 4004 means `token`, 4014 means
 `message-content`, and 4010–4013 mean `gateway-refused` with the numeric code.
@@ -6780,10 +6797,10 @@ REST 401, 40001 and 50014 mean `token` across all request paths.
 Each stop writes one General cause/fix and structured status; `cland hub reload`
 retries the stopped client. `cland remote test discord` reads the application
 and posts exactly one fixed line when paired (no message when unpaired).
-Terminal stop closes with 1000, joins and joins the socket and clears
-heartbeat timers. The existing role and frame authority remain unchanged.
+Terminal stop closes with 1000 and joins the socket; ordinary stop terminates
+resumably. Both clear heartbeat, reconnect and offline-notice timers. The existing role and frame authority remain unchanged.
 
-The token is private to the REST authorization header and gateway Identify;
+The token is private to the REST authorization header and gateway Identify/Resume;
 dispatch logs retain only validated event types and numeric ids. Native socket
 exceptions never become status or General text. See the
 [Discord connection test guide](../docs/agents/tests/hub-test-discord-messenger.test.ts.md).

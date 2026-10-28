@@ -18,7 +18,7 @@ export const DISCORD_IDS = {
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
 function reply(res: ServerResponse, status: number, body: unknown): void {
   if (!res.headersSent) res.writeHead(status, { 'content-type': 'application/json' });
   res.end(JSON.stringify(body));
@@ -38,7 +38,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const events = new EventEmitter();
   const clock = options.clock ?? realClock;
   const redact = remoteRedactor([DISCORD_TEST_TOKEN]);
-  const state: DiscordState = { interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
+  const state: DiscordState = { interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, resumes: 0, validResume: false, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
   const interactionTokens = new Map<string, { id: string; at: number; callbacks: object[]; edits: object[] }>();
@@ -105,6 +105,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       }
       return reply(res, 200, {});
     }
+    if (path.pathname === '/control/drop') { gateway.drop(); return reply(res, 200, {}); }
     if (path.pathname === '/control/close') { gateway.closeCode(Number(body.code)); return reply(res, 200, {}); }
     if (path.pathname === '/control/dispatch') { gateway.dispatch(body); return reply(res, 200, {}); }
     if (path.pathname === '/control/configure') {
@@ -228,7 +229,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     const work = handle(req, res).catch(() => { if (!res.destroyed) reply(res, 400, { message: 'Invalid request' }); });
     handlers.add(work); void work.finally(() => handlers.delete(work));
   });
-  const gateway = fakeGateway(server);
+  const gateway = fakeGateway(server, clock);
   state.gateway = gateway.state;
   server.on('connection', socket => {
     const closed = Promise.withResolvers<void>();
@@ -273,7 +274,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   async function control(operation: 'state'): Promise<DiscordState>;
   async function control(operation: 'interact', body: object): Promise<{ id: string }>;
   async function control(operation: 'say', body: object): Promise<DiscordMessage>;
-  async function control(operation: 'configure' | 'fault' | 'release' | 'dispatch' | 'close', body: object): Promise<Record<string, never>>;
+  async function control(operation: 'configure' | 'fault' | 'release' | 'dispatch' | 'close' | 'drop', body: object): Promise<Record<string, never>>;
   async function control(operation: string, body?: object): Promise<unknown> {
     const deadline = new AbortController();
     const timer = setTimeout(() => deadline.abort(), 2000);

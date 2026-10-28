@@ -689,7 +689,11 @@ For the native Discord connection, use the sealed frame/loopback REST/ws seam in
 validation before socket construction, API v10 JSON/intents 33281 and token-only
 Identify/header boundaries. Connection status requires READY plus a recent ACK;
 keep deterministic jitter, immediate opcode-1 heartbeat and per-messenger notices.
-Stop joins socket close and cancels timers. Existing frame shapes, optional
+Stop joins socket close and cancels heartbeat, reconnect and offline timers.
+For resume/liveness changes, retain the guide’s zombie close, twelve-resume,
+invalid-session delay and exact three-minute notice receipts. Keep settled REST
+health separate from socket ACKs and job-local edit 404s; retain the paired-send
+recovery receipt and the guide’s client-refusal and cleanup ownership boundaries. Existing frame shapes, optional
 callbacks and role clauses remain unchanged.
 
 For Discord command registration and pairing, use the sealed production-frame,

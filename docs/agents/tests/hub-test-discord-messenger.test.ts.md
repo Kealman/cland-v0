@@ -27,10 +27,10 @@ Fixture cleanup owns gateway clients before server/socket/handler drainage.
 Existing remote-cli previous-hub and optional callback tests remain the old-wire
 regression; the public status schema and safe workbench projections are unchanged.
 
-The fake's `configure` also accepts interval, acknowledge and gatewayUrl;
+The fake's `configure` also accepts interval, acknowledge, resumeWindow and gatewayUrl;
 `dispatch` sends an opcode frame, and state.gateway exposes only safe counts
 and validIdentify. Identify credentials and arbitrary payloads are never captured.
-Resume, identify budgets and Discord message handling are outside these tests.
+Identify budgets and restart catch-up are outside these tests.
 Application controls set flags and endpoint URL. `close` takes a numeric code;
 state.gateway.closes records completed close handshakes without reasons.
 Application failures prove zero Identifies and continued Telegram mirroring.
@@ -57,3 +57,43 @@ finally block. Require token cause/fix in CLI while held, then the gateway's
 remote-disabled receipt, structured status, native close 1000, one General line
 and persisted stopCause after hub disposal. Terminal callers share one close
 promise; outward auth rejections preserve that structured error.
+
+Resume regressions retain native close 1006 for a zombie, RESUME validation,
+exactly one General input after duplicate replay, twelve resumes (ten drops,
+opcode 7 and opcode 9 true) with one Identify, and opcode 9 false's 1999/2000ms
+boundary under deterministic 0.25 jitter. `drop` terminates the fake transport;
+dispatches are sequenced and buffered for replay inside the injected-clock
+resume window (90 seconds by default). Safe state adds resumes/validResume;
+credentials stay out of receipts. The three-minute production-factory case
+observes disconnected immediately, zero notices at 179999ms, one at 180000ms,
+no repeat, then an actual ACK and one General recovery notice. Shutdown leaves
+zero injected timers. The optional Discord notice transition flag retains
+compatibility with two-argument callbacks and unchanged public status frames.
+
+The settled REST health case keeps a long fake heartbeat interval so socket
+liveness is independent of the send outage. Four sanitized 500 responses exhaust
+the paced request at injected 1/2/4-second waits; the first native failure leaves
+status connected while retries remain. Observe durable missed settlement before
+asserting disconnected, inject an ACK, then require zero notices at 179999ms and
+one at 180000ms. Arm the fake hold observer before the offline notice's mirrored
+send, retain the disconnected assertion while held, and recover only after that
+paired send's native release and durable sent settlement. Keep frame/notice
+credential scans and zero timers after stop.
+
+Source1 corrections: `fakes/discord/hub.ts` builds on discordExchangeOwner before
+acquiring a fake, root, Store or hub. Its stop barrier joins hub acquisition and
+shutdown; afterDrain closes injected storage only after native/observer joins.
+Owned run promises catch rejection immediately, bound operations independently
+of behaviour time, and cancel/drain a held observer and request on any exit.
+Omitted/aborted setup and held-receipt controls use that same disposer and retain
+native closed, zero writer/handler/observer/timer and Store-closed assertions.
+
+REST retry time starts after each exact client `discord-rest-refused` diagnostic
+(route, status and ordinal), in addition to the server request count. From
+onError through the request rejection and retry pause registration, only promise
+continuations intervene; FakeClock.advance's pre-time-change setImmediate drains
+those continuations before advancing. Preserve that ordering if the retry path
+changes. The diagnostic uses the existing log sink and contains no message body
+or provider error text. A separate acknowledged live-native edit-404 control
+keeps connected status past 180000ms and observes neither outage nor recovery,
+including after a successful send; a missing edit never changes exchange health.

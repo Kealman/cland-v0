@@ -36,6 +36,9 @@ export class DiscordApi {
   readonly #tails = new Map<string, Promise<void>>();
   readonly #waits = new Map<string, number>();
   #global = 0;
+  readonly #exchanges = new Set<(channel: string, ok: boolean) => void>();
+  /** Settled message sends/edits, after pacing and retries; no payloads or native errors. */
+  onExchange(listener: (channel: string, ok: boolean) => void): () => void { this.#exchanges.add(listener); return () => { this.#exchanges.delete(listener); }; }
   readonly #errors = new Set<(error: DiscordError, channel?: string) => void>();
   onError(listener: (error: DiscordError, channel?: string) => void): () => void { this.#errors.add(listener); return () => { this.#errors.delete(listener); }; }
   readonly #token: string;
@@ -115,6 +118,10 @@ export class DiscordApi {
     const nonceDeadline = route === 'POST /channels/:channel/messages' ? options?.nonceDeadline ?? this.#clock.now().getTime() + 120_000 : undefined;
     const major = /^\/channels\/([^/?]+)/.exec(path)?.[1] ?? '';
     const logical = `${route}:${major}`;
+    const exchange = (ok: boolean) => {
+      if (/^\d+$/.test(major) && (route === 'POST /channels/:channel/messages' || route === 'PATCH /channels/:channel/messages/:message'))
+        for (const listener of this.#exchanges) listener(major, ok);
+    };
     // A queued route resolves its bucket again after the previous owner finishes.
     const routeTail = this.#tails.get(logical) ?? Promise.resolve();
     const done = Promise.withResolvers<void>(); this.#tails.set(logical, done.promise);
@@ -140,7 +147,7 @@ export class DiscordApi {
           await this.#pause(due, options?.signal);
         if (nonceDeadline !== undefined && (!Number.isFinite(nonceDeadline) || this.#clock.now().getTime() >= nonceDeadline))
           throw new DiscordError(route, 0, 'nonce proof window expired');
-        try { return await this.#native<T>(method, path, route, body, options, logical, major, adopt); }
+        try { const result = await this.#native<T>(method, path, route, body, options, logical, major, adopt); exchange(true); return result; }
         catch (error) {
           if (!(error instanceof DiscordError)) throw error;
           if ([401, 403, 404].includes(error.status)) throw error;
@@ -156,6 +163,10 @@ export class DiscordApi {
           throw error;
         }
       }
+    } catch (error) {
+      // Editing a deleted native message is job-local, not a failed connection.
+      if (!(route === 'PATCH /channels/:channel/messages/:message' && error instanceof DiscordError && error.status === 404)) exchange(false);
+      throw error;
     } finally { done.resolve(); if (this.#tails.get(logical) === done.promise) this.#tails.delete(logical); }
   }
   async #native<T>(method: string, path: string, route: string, body?: object, options?: DiscordRequestOptions, logical?: string, major?: string, adopt?: (key: string) => unknown): Promise<T> {

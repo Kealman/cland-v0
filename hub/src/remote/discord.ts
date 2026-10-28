@@ -6,21 +6,26 @@ import { randomUUID } from 'node:crypto';
 import type { Remote, RemoteSend } from './gateway.ts';
 import type { Pairing, RemoteStore } from './state.ts';
 import type { HubFrame, RemoteConnection } from '../protocol.ts';
-import type { Clock } from '../hub/clock.ts';
+import type { Clock, ClockTimer } from '../hub/clock.ts';
 import type { LogFn } from '../log.ts';
 import { registerCommands, DiscordCommands } from './discord-commands.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 import { DiscordApi, DiscordError } from './discord-api.ts';
 import { DiscordSocket, discordGatewayUrl, type DiscordDispatch } from './discord-socket.ts';
-export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; log?: LogFn; notice?: (cause: string, fix: string) => void; fake?: boolean; random?: () => number; handlers?: Array<(frame: DiscordDispatch) => void> };
+export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; handlers?: Array<(frame: DiscordDispatch) => void> };
 
 /** Native credentials and dispatch data stay behind the gateway's frame port. */
 export class DiscordRemote implements Remote {
   readonly id = 'discord'; readonly via = 'discord';
+  readonly #clock: Clock;
+  #offline: { since: string; announced: boolean } | undefined;
+  #offlineTimer: ClockTimer | undefined;
   readonly #api: DiscordApi; readonly #token: string; readonly #options: DiscordRemoteOptions;
   readonly #commands: DiscordCommands;
   readonly #outbox: DiscordOutbox | undefined;
   #inbound: DiscordInbound | undefined; #bot: string | undefined;
+  #restFailedChannel: string | undefined;
+  #detachExchange: (() => void) | undefined;
   #detachApi: (() => void) | undefined;
   #fatal: Error | undefined;
   #terminal: Promise<void> | undefined;
@@ -29,10 +34,14 @@ export class DiscordRemote implements Remote {
   readonly #listeners = new Set<() => void>();
   #application: string | undefined; #running: Promise<void> | undefined; #failure: string | undefined;
   constructor(api: DiscordApi, token: string, clock: Clock, options: DiscordRemoteOptions = {}) {
+    this.#clock = clock;
     this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal);
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
     this.#detachApi = api.onError((error, channel) => {
+      if (['POST /channels/:channel/messages', 'PATCH /channels/:channel/messages/:message'].includes(error.route))
+        options.log?.({ event: 'discord-rest-refused', route: error.route, status: error.status,
+          ...(error.code !== undefined ? { code: error.code } : {}) });
       if (error.status === 401 || error.code === 40001 || error.code === 50014) {
         this.#fatal ??= remoteStopError('discord', 'token');
         void this.#failed(this.#fatal, '').catch(() => {});
@@ -42,8 +51,31 @@ export class DiscordRemote implements Remote {
         void this.#failed(this.#fatal, '').catch(() => {});
       }
     });
-    this.#socket = new DiscordSocket(clock, () => { for (const listener of this.#listeners) listener(); }, options.random);
+    this.#detachExchange = api.onExchange((channel, ok) => {
+      if (this.#abort.signal.aborted || options.store?.pairing()?.chatId !== channel) return;
+      this.#restFailedChannel = ok ? undefined : channel;
+      this.#connectionChanged();
+      for (const listener of this.#listeners) listener();
+    });
+    this.#socket = new DiscordSocket(clock, () => { this.#connectionChanged(); for (const listener of this.#listeners) listener(); }, options.random);
   }
+  #connectionChanged(): void {
+    if (this.#abort.signal.aborted) return;
+    if (this.#socket.connected() && !this.#restFailed()) {
+      const outage = this.#offline;
+      this.#clock.clearTimeout(this.#offlineTimer); this.#offline = undefined;
+      if (outage?.announced) this.#options.notice?.(`recovered; offline since ${outage.since.slice(11, 16)}`, '', true);
+    } else if (!this.#offline) {
+      const outage: { since: string; announced: boolean } = this.#offline = { since: this.#clock.now().toISOString(), announced: false };
+      this.#offlineTimer = this.#clock.setTimeout(() => {
+        if (this.#abort.signal.aborted || this.#offline !== outage) return;
+        outage.announced = true;
+        this.#options.notice?.(`offline since ${outage.since.slice(11, 16)}: ${this.#restFailed() ? 'REST sends unavailable' : 'gateway connection unavailable'}`, '', true);
+      }, 180000);
+      this.#offlineTimer.unref();
+    }
+  }
+  #restFailed(): boolean { return this.#restFailedChannel !== undefined && this.#restFailedChannel === this.#options.store?.pairing()?.chatId; }
   subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
   async start(_send: RemoteSend, _pair?: (identity: Pairing) => string | null, signal?: AbortSignal): Promise<void> {
     const cancel = () => {
@@ -79,6 +111,7 @@ export class DiscordRemote implements Remote {
   run(): Promise<void> {
     return this.#running ??= (async () => {
       try {
+        this.#connectionChanged();
         const gateway = await this.#api.getGatewayBot({ signal: this.#abort.signal });
         if (this.#abort.signal.aborted) return;
         const url = discordGatewayUrl(gateway.url, this.#options.fake ?? false);
@@ -124,11 +157,11 @@ export class DiscordRemote implements Remote {
       const stopCause = remoteStopCause(error);
       this.#options.store?.setStatus({ disabled: true, reason: this.#failure, ...(stopCause ? { stopCause } : {}) });
       this.#options.notice?.(cause, detail);
-      this.#abort.abort(); await this.#socket.stop(1000);
+      this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); await this.#socket.stop(1000);
     })();
   }
   status(): RemoteConnection {
-    return { connected: !this.#abort.signal.aborted && this.#socket.connected(), lastInbound: this.#socket.lastInbound,
+    return { connected: !this.#abort.signal.aborted && !this.#restFailed() && this.#socket.connected(), lastInbound: this.#socket.lastInbound,
       lastOutbound: this.#socket.lastOutbound, botLink: this.#application ? `https://discord.com/oauth2/authorize?client_id=${this.#application}&scope=bot&permissions=117824` : null,
       lastError: this.#failure ?? null };
   }
@@ -144,5 +177,5 @@ export class DiscordRemote implements Remote {
   async pairingReplaced(previous: Pairing, text: string): Promise<void> {
     await this.#api.createMessage(previous.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal }).catch(error => this.#outwardError(error));
   }
-  async stop(): Promise<void> { this.#abort.abort(); await this.#terminal; await this.#socket.stop(); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); }
+  async stop(): Promise<void> { this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); await this.#terminal; await this.#socket.stop(); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); this.#detachExchange?.(); }
 }

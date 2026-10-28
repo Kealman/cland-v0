@@ -525,7 +525,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
       gateway = new ConfiguredGateway(options.gatewayMessenger ?? messengerFactory(env, remoteOutput, clock, {
         state: store.remotes, log, maxUploadMb: () => roles.config().artifacts.maxUploadMb, projectName: () => remoteOutput.text(roles.config().name),
         webOrigin: () => roles.config().web.origin,
-        discordNotice: (cause, fix) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'discord', cause, fix),
+        discordNotice: (cause, fix, transition) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'discord', cause, fix, transition),
         notice: (cause, fix, transition) => remoteNotice(text => { hub.core.noticeInTopic('general', { kind: 'report', text }); }, remoteOutput, 'telegram', cause, fix, transition),
       }), create);
       await gateway.update(roles.config(), remoteSecrets);

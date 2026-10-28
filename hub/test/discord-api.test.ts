@@ -456,3 +456,24 @@ test('Discord exchange owner joins missing heldStored observer and control abort
     assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
   }
 });
+
+test('Discord settled exchange subscription adds only channel health and preserves legacy error observers', async t => {
+  const owner = discordExchangeOwner(t); const { fake, api, run } = await owner.start();
+  const health: Array<{ channel: string; ok: boolean }> = [];
+  const errors: string[] = [];
+  const detach = api.onExchange((channel, ok) => health.push({ channel, ok }));
+  const detachError = api.onError(error => errors.push(error.message));
+  await run(() => fake.control('fault', { status: 400, code: 50035, echoToken: true }));
+  await assert.rejects(api.createMessage(fake.ids.channel, { content: 'fails', nonce: 'health-fails' }), DiscordError);
+  assert.deepEqual(health, [{ channel: fake.ids.channel, ok: false }]);
+  assert.equal(errors.length, 1); assert.equal(errors[0]!.includes(DISCORD_TEST_TOKEN), false);
+  await api.getChannel(fake.ids.channel);
+  assert.equal(health.length, 1, 'reads do not heal failed sends');
+  await api.createMessage(fake.ids.channel, { content: 'recovers', nonce: 'health-recovers' });
+  assert.deepEqual(health, [{ channel: fake.ids.channel, ok: false }, { channel: fake.ids.channel, ok: true }]);
+  detach(); detachError();
+  await api.createMessage(fake.ids.secondChannel, { content: 'unsubscribed', nonce: 'health-detached' });
+  assert.equal(health.length, 2);
+  assert.equal(JSON.stringify(health).includes(DISCORD_TEST_TOKEN), false);
+  await owner.close();
+});

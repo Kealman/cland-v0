@@ -267,8 +267,13 @@ T-1394: keep unused/off speech healthy and gate key/command warnings on an enabl
 2026-10-28 · T-1404: Discord REST header lanes, callback bypass and native nonce-recovery seams.
 T-1401: document Discord application checks, fatal stops and sealed test receipts.
 
+T-1402: extend Discord connection guidance with resume and liveness receipt boundaries.
 2026-10-28 · T-1404 review: original nonce deadlines, bucket adoption and bounded exchange ownership.
 
 2026-10-28 · T-1404 source2 review: exchange-owned roots retain Stores on incomplete drain, including signal cleanup.
 
 2026-10-28 · T-1404 source3 review: independently owned writer-entry receipt and pre-registered release/cancel/join control.
+
+T-1402 integration: document settled paired REST health after pacing and retries; socket ACKs alone cannot clear it.
+
+T-1402 source1: retain job-local edit-404 health, client-refusal clock boundary and native/hub fixture ownership.

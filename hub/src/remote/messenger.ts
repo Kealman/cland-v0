@@ -10,7 +10,7 @@ import { TelegramRemote } from './telegram.ts';
 
 /** Resolve platform roots from the daemon's environment, never a session's frames. */
 export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedactor, clock: Clock, persistence?: {
-  discordNotice?: (cause: string, fix: string) => void;
+  discordNotice?: (cause: string, fix: string, transition?: boolean) => void;
   maxUploadMb?: () => number; state: RemoteState; log?: LogFn; projectName?: () => string; webOrigin?: () => string; notice?: (cause: string, fix: string, transition?: boolean) => void;
 }): MessengerFactory {
   return (via, token, settings) => {

@@ -24,6 +24,11 @@ export class DiscordSocket {
   #socket: WebSocket | undefined;
   #timer: ClockTimer | undefined;
   #interval = 0;
+  #awaitingAck = false;
+  #reconnect: ClockTimer | undefined;
+  #attempts = 0;
+  #retryDelay: number | undefined;
+  readonly #seenInteractions = new Set<string>();
   #ack: number | undefined;
   #ready = false;
   #stopping = false;
@@ -40,14 +45,15 @@ export class DiscordSocket {
   connected(): boolean { return !this.#stopping && this.#ready && this.#ack !== undefined && this.#clock.now().getTime() - this.#ack <= this.#interval; }
   run(url: string, token: string, dispatch: (frame: DiscordDispatch) => void): Promise<void> {
     const socket = this.#socket = new WebSocket(url, { perMessageDeflate: false, followRedirects: false, handshakeTimeout: 10_000, maxPayload: 4 * 1024 * 1024 });
-    const fail = () => { if (!this.#stopping) this.#completion.reject(new Error('Discord gateway connection closed or failed')); };
+    const fail = () => { if (!this.#stopping) socket.terminate(); };
     const send = (frame: unknown) => {
       if (socket.readyState !== WebSocket.OPEN || this.#stopping) return;
       socket.send(JSON.stringify(frame)); this.lastOutbound = this.#clock.now().toISOString();
     };
-    const heartbeat = () => { send({ op: 1, d: this.#sequence }); };
+    const heartbeat = () => { this.#awaitingAck = true; send({ op: 1, d: this.#sequence }); };
     const schedule = (delay: number) => {
       this.#timer = this.#clock.setTimeout(() => {
+        if (this.#awaitingAck) { this.#ready = false; socket.terminate(); this.#changed(); return; }
         heartbeat(); this.#changed(); schedule(this.#interval);
       }, delay); this.#timer.unref();
     };
@@ -64,9 +70,17 @@ export class DiscordSocket {
         }
         this.#interval = interval;
         schedule(interval * this.#random());
-        send({ op: 2, d: { token, intents: 33281, properties: { os: process.platform, browser: 'cland', device: 'cland' } } });
+        if (this.session) send({ op: 6, d: { token, session_id: this.session.id, seq: this.#sequence } });
+        else send({ op: 2, d: { token, intents: 33281, properties: { os: process.platform, browser: 'cland', device: 'cland' } } });
       } else if (frame.op === 1) heartbeat();
-      else if (frame.op === 11) this.#ack = this.#clock.now().getTime();
+      else if (frame.op === 11) { this.#ack = this.#clock.now().getTime(); this.#awaitingAck = false; }
+      else if (frame.op === 7 || frame.op === 9) {
+        if (frame.op === 9 && (frame.d as unknown) !== true) {
+          this.session = undefined; this.#sequence = null;
+          this.#retryDelay = 1000 + this.#random() * 4000;
+        }
+        this.#ready = false; socket.terminate();
+      }
       else if (frame.op === 0) {
         if (Number.isSafeInteger(frame.s)) this.#sequence = frame.s!;
         if (frame.t === 'READY') {
@@ -74,7 +88,14 @@ export class DiscordSocket {
           if (typeof frame.d?.session_id !== 'string' || typeof frame.d.resume_gateway_url !== 'string' || typeof user?.id !== 'string' || !/^\d+$/.test(user.id)) {
             this.#completion.reject(new Error('Discord gateway sent invalid READY')); return;
           }
+          try { discordGatewayUrl(frame.d.resume_gateway_url, url.startsWith('ws:')); } catch { this.#completion.reject(new Error('Discord gateway sent invalid resume URL')); return; }
+          this.#attempts = 0;
           this.session = { id: frame.d.session_id, resumeUrl: frame.d.resume_gateway_url, botId: user.id }; this.#ready = true;
+        }
+        if (frame.t === 'RESUMED') { this.#ready = true; this.#attempts = 0; }
+        if (frame.t === 'INTERACTION_CREATE' && typeof frame.d.id === 'string') {
+          if (this.#seenInteractions.has(frame.d.id)) return;
+          this.#seenInteractions.add(frame.d.id);
         }
         try { dispatch(frame); } catch { this.#completion.reject(new Error('Discord gateway dispatch failed')); }
       }
@@ -83,20 +104,31 @@ export class DiscordSocket {
     socket.on('error', fail);
     socket.once('close', code => {
       this.#ready = false; this.#closed.resolve(); this.#clock.clearTimeout(this.#timer);
-      if (!this.#stopping && code === 4003 && !this.#freshIdentifyUsed) {
-        this.#freshIdentifyUsed = true; this.session = undefined; this.#sequence = null;
-        this.#interval = 0; this.#ack = undefined; this.#closed = Promise.withResolvers<void>();
-        void this.run(url, token, dispatch); this.#changed(); return;
-      }
-      if (!this.#stopping && (code === 4003 || code === 4004 || (code >= 4010 && code <= 4014))) {
+      if (this.#stopping) { this.#changed(); return; }
+      if (code === 4004 || (code >= 4010 && code <= 4014) || (code === 4003 && this.#freshIdentifyUsed)) {
         this.#completion.reject(remoteStopError('discord', code === 4004 ? 'token' : code === 4014 ? 'message-content' : 'gateway-refused', `close code ${code}`));
-      } else fail();
+      } else {
+        if (code === 1000 || code === 1001 || code === 4003 || code === 4007 || code === 4009) {
+          if (code === 4003) this.#freshIdentifyUsed = true;
+          this.session = undefined; this.#sequence = null;
+        }
+        const delay = this.#retryDelay ?? (this.#attempts === 0 && this.session ? 0 : Math.min(30000, 1000 * 2 ** Math.min(this.#attempts, 5)) * (0.5 + this.#random() * 0.5));
+        this.#retryDelay = undefined; this.#attempts++;
+        const reconnect = () => {
+          if (this.#stopping) return;
+          this.#interval = 0; this.#ack = undefined; this.#awaitingAck = false;
+          this.#closed = Promise.withResolvers<void>();
+          void this.run(this.session ? discordGatewayUrl(this.session.resumeUrl, url.startsWith('ws:')) : url, token, dispatch);
+        };
+        if (code === 4003) reconnect();
+        else { this.#reconnect = this.#clock.setTimeout(reconnect, delay); this.#reconnect.unref(); }
+      }
       this.#changed();
     });
     return this.#completion.promise;
   }
   async stop(code?: 1000): Promise<void> {
-    this.#stopping = true; this.#clock.clearTimeout(this.#timer);
+    this.#stopping = true; this.#clock.clearTimeout(this.#timer); this.#clock.clearTimeout(this.#reconnect);
     if (this.#socket && this.#socket.readyState !== WebSocket.CLOSED) {
       if (code) this.#socket.close(code); else this.#socket.terminate();
     }
