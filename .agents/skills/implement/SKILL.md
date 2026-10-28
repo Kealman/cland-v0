@@ -704,6 +704,13 @@ Keep interaction tokens only in adapter memory with a 15-minute expiry. The
 optional pairingApproved hook follows the committed local grant; Telegram and
 older adapters may omit it. Existing role authority and frames remain unchanged.
 
+For Discord phone commands and ephemeral deferral, use the production-frame/fake
+REST/ws seam in `docs/agents/tests/hub-test-discord-commands.test.ts.md`.
+Read the shared identify reservations and fetch platform remaining starts; reuse
+neutral phone replies and mute receipts. Arm the two-second acknowledgement
+before hub work, join a started defer before editing the original, and cancel
+requests/deadlines on stop. Existing wire and role authority stay unchanged.
+
 For Discord General delivery, use the sealed frame/loopback and native receipt
 seams in `docs/agents/tests/hub-test-discord-messages.test.ts.md`. Reuse mirrorOut,
 record attempts before I/O and commit the native mapping with sent settlement.

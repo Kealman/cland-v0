@@ -6866,9 +6866,10 @@ When enabled with a resolved token and reachable API, Discord compares its globa
 command list at startup and bulk-overwrites only a missing or changed definition.
 `/cland` is guild-only (`contexts [0]`, `integration_types [0]`), administrator
 visible (`default_member_permissions "0"`), with pair, status, inbox, mute, unmute,
-decision, question and help; decision and question require text. Pairing is
-implemented here; the other subcommands currently return a private availability
-note after checking the stored guild/channel/user identity.
+decision, question and help; decision and question require text. The stored
+guild/channel/user identity gates every command. Status, help, mute, unmute,
+decision and question are implemented alongside pairing; inbox retains its private
+availability note until card publication is available.
 
 Run `/cland pair` in a guild text channel, then approve the private code locally
 with `cland remote approve discord <code>` or Neovim. The code lives 15 minutes;
@@ -6881,6 +6882,39 @@ remain strings and TEXT through restarts. Native callbacks are type 4/flag 64,
 bypass outbound message lanes, and suppress mentions on sends and edits.
 Interaction tokens never enter frames, logs, journals or the database. See the
 [Discord pairing test guide](../docs/agents/tests/hub-test-discord-pairing.test.ts.md).
+
+### Discord phone commands
+
+With an enabled, paired remote and reachable REST/gateway, `/cland status` and
+`/cland help` render the neutral phone reply model as Discord Markdown: a bold
+title, bold group labels, one fact per line and session/command bullets. Status
+ends its groups with **This channel** and appends small-text outbox depth,
+identifies reserved in the rolling last 24 hours and platform remaining session
+starts. Reservations may conservatively overcount an interrupted Identify;
+remaining starts are fetched from `/gateway/bot`, never inferred from the local
+count. Help ends with the pairing and workbench trust lines.
+
+`/cland mute` and `/cland unmute` apply the durable
+`discord.mute:<interaction id>` receipt once. Only eligible General sources are
+suppressed and counted, before splitting; hub notices remain eligible. Unmute
+says “N messages arrived while muted”. Telegram's mute state is independent.
+`/cland decision` and `/cland question` send their text field to General with that
+kind and Discord provenance, using the interaction id as ingress identity. The
+private “Sent” reply follows the hub's stored result.
+
+Commands acknowledge privately with type 4/flag 64. If work is pending after two
+injected-clock seconds, a type 5/flag 64 callback defers the response before the
+three-second deadline; completion joins that callback before editing `@original`.
+Status/help pages are packed within 2000 Unicode code points, preserving escaped
+literal atoms and all facts. The first page uses the callback or original edit;
+remaining pages use private webhook followups (flag 64 and empty allowed_mentions)
+in order, with the gateway/trust footer on the final page. These interaction
+responses bypass message lanes and the outbox; no failed or unknown followup is
+replayed. Shutdown
+cancels deadline timers, pending frame requests and native I/O before storage
+closes. Interaction tokens remain adapter memory only. Existing role clauses
+cover these human actions without additional permissions. See the
+[Discord command test guide](../docs/agents/tests/hub-test-discord-commands.test.ts.md).
 
 ### Discord General delivery
 

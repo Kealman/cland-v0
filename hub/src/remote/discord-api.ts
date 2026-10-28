@@ -66,9 +66,17 @@ export class DiscordApi {
     return this.#request('POST', `/interactions/${encodeURIComponent(id)}/${encodeURIComponent(token)}/callback`, 'POST /interactions/:id/:token/callback',
       { type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } }, options);
   }
+  defer(id: string, token: string, options?: DiscordRequestOptions): Promise<unknown> {
+    return this.#request('POST', `/interactions/${encodeURIComponent(id)}/${encodeURIComponent(token)}/callback`, 'POST /interactions/:id/:token/callback',
+      { type: 5, data: { flags: 64, allowed_mentions: { parse: [] } } }, options);
+  }
   editOriginal(application: string, token: string, content: string, options?: DiscordRequestOptions): Promise<unknown> {
     return this.#request('PATCH', `/webhooks/${encodeURIComponent(application)}/${encodeURIComponent(token)}/messages/@original`, 'PATCH /webhooks/:application/:token/messages/@original',
       { content, allowed_mentions: { parse: [] } }, options);
+  }
+  followup(application: string, token: string, content: string, options?: DiscordRequestOptions): Promise<unknown> {
+    return this.#request('POST', `/webhooks/${encodeURIComponent(application)}/${encodeURIComponent(token)}`, 'POST /webhooks/:application/:token',
+      { content, flags: 64, allowed_mentions: { parse: [] } }, options);
   }
   listCommands(application: string, options?: DiscordRequestOptions): Promise<unknown[]> {
     return this.#request('GET', `/applications/${encodeURIComponent(application)}/commands`, 'GET /applications/:application/commands', undefined, options);

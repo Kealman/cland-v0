@@ -37,7 +37,7 @@ export class DiscordRemote implements Remote {
   #application: string | undefined; #running: Promise<void> | undefined; #failure: string | undefined;
   constructor(api: DiscordApi, token: string, clock: Clock, options: DiscordRemoteOptions = {}) {
     this.#clock = clock;
-    this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal);
+    this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal, () => this.status().connected);
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
     this.#detachApi = api.onError((error, channel) => {
@@ -97,7 +97,7 @@ export class DiscordRemote implements Remote {
     this.#detachStartup = () => signal?.removeEventListener('abort', cancel);
     if (signal?.aborted) cancel();
     this.#abort.signal.throwIfAborted();
-    this.#commands.start(_pair);
+    this.#commands.start(_pair, _send);
     if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal, this.#outbox, receipt);
     try {
       const application = await this.#api.getCurrentApplication({ signal: signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal });
@@ -113,10 +113,12 @@ export class DiscordRemote implements Remote {
     }
   }
   receive(frame: HubFrame): void | Promise<void> {
+    this.#commands.receive(frame);
     const feedback = this.#inbound?.receive(frame);
     if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return feedback;
     const pairing = this.#options.store?.pairing();
     const mirrored = mirrorOut(frame.message, 'discord');
+    if (mirrored && frame.message.fromKind !== 'hub' && this.#options.store?.suppressMutedMessage(frame.message.id)) return;
     if (pairing && mirrored) return this.#outbox?.sendGroup(pairing.chatId,
       renderDiscord(mirrored.header, mirrored.text), frame.message.id, mirrored.silent)
       .catch(error => this.#outwardError(error));

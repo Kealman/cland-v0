@@ -292,5 +292,6 @@ T-1402 source1: retain job-local edit-404 health, client-refusal clock boundary 
 - T-1388: production voice transcript and reload test seam, optional provider factory argument.
 - T-1388 review: separate native command reload proof into T3; index both voice guides and order tier membership.
 - T-1388 review: bounded voice echoes, independent durable echo ownership and provider-specific setup hints.
+T-1407: Point Discord phone commands, mute receipts and private deferral to their production frame/fake REST/ws guide.
 Discord persisted Identify admission and sealed budget receipts (T-1403)
 Discord exact admission observers, cancellation controls and persisted cursor-restart migration (T-1403 source review)

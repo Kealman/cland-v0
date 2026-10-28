@@ -18,7 +18,7 @@ export const DISCORD_IDS = {
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { reactions: Array<{ channel: string; message: string; user: string; emoji: string }>; interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { reactions: Array<{ channel: string; message: string; user: string; emoji: string }>; interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[]; followups: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
 
 function reply(res: ServerResponse, status: number, body: unknown): void {
   if (!res.headersSent) res.writeHead(status, { 'content-type': 'application/json' });
@@ -43,7 +43,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
 
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
-  const interactionTokens = new Map<string, { id: string; at: number; callbacks: object[]; edits: object[] }>();
+  const interactionTokens = new Map<string, { id: string; at: number; callbacks: object[]; edits: object[]; followups: object[] }>();
   const faults: Array<Record<string, unknown>> = [];
   const held = new Map<number, () => void>();
   let nextHold = 1;
@@ -80,7 +80,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     if (path.pathname === '/redirect-target') { state.redirectsFollowed++; return reply(res, 200, {}); }
     if (path.pathname === '/control/interact') {
       const id = String(nextId++), token = `synthetic_interaction_${id}`;
-      const record = { id, at: clock.now().getTime(), callbacks: [] as object[], edits: [] as object[] };
+      const record = { id, at: clock.now().getTime(), callbacks: [] as object[], edits: [] as object[], followups: [] as object[] };
       state.interactions.push(record); interactionTokens.set(token, record);
       const user = body.user === 'member' ? DISCORD_IDS.member : body.user === 'administrator' ? DISCORD_IDS.administrator : DISCORD_IDS.human;
       gateway.dispatch({ op: 0, t: 'INTERACTION_CREATE', s: Number(nextId % 100000n), d: {
@@ -88,22 +88,25 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
         guild_id: body.guild_id === null ? undefined : DISCORD_IDS.guild,
         channel_id: body.channel_id ?? DISCORD_IDS.channel, channel: { type: body.channel_type ?? 0 },
         member: { user: { id: user, username: body.user === 'member' ? 'Fixture member' : 'Fixture human' } },
-        data: { name: 'cland', options: [{ name: body.command ?? 'pair', type: 1 }] },
+        data: { name: 'cland', options: [{ name: body.command ?? 'pair', type: 1, ...(typeof body.text === 'string' ? { options: [{ name: 'text', type: 3, value: body.text }] } : {}) }] },
       } });
       return reply(res, 200, { id });
     }
     const callback = /^\/interactions\/(\d+)\/([^/]+)\/callback$/.exec(path.pathname);
     const edit = /^\/webhooks\/(\d+)\/([^/]+)\/messages\/@original$/.exec(path.pathname);
-    if (callback || edit) {
-      const record = interactionTokens.get((callback ?? edit)![2]!);
-      if (!record || (callback && record.id !== callback[1]) || (edit && edit[1] !== DISCORD_IDS.application)) return reply(res, 404, { code: 10062 });
+    const followup = req.method === 'POST' ? /^\/webhooks\/(\d+)\/([^/]+)$/.exec(path.pathname) : null;
+    if (callback || edit || followup) {
+      const record = interactionTokens.get((callback ?? edit ?? followup)![2]!);
+      if (!record || (callback && record.id !== callback[1]) || ((edit ?? followup) && (edit ?? followup)![1] !== DISCORD_IDS.application)) return reply(res, 404, { code: 10062 });
+      const content = callback ? (body.data as { content?: unknown } | undefined)?.content : body.content;
+      if (content !== undefined && [...String(content)].length > 2000) return reply(res, 400, { code: 50035 });
       if (callback) {
         if (clock.now().getTime() - record.at >= 3000) return reply(res, 404, { code: 10062 });
         if (record.callbacks.length) return reply(res, 400, { code: 40060 });
         record.callbacks.push(redact.value(body));
       } else {
         if (!record.callbacks.length || clock.now().getTime() - record.at >= 900000) return reply(res, 404, { code: 10015 });
-        record.edits.push(redact.value(body));
+        if (followup) record.followups.push(redact.value(body)); else record.edits.push(redact.value(body));
       }
       return reply(res, 200, {});
     }
