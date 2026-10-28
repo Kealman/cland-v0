@@ -164,7 +164,7 @@ An ask or an approval shown in a remote as a message with buttons. The first ans
 _Avoid_: card (the item's picture in the Explorer), notice (a needs-you row shown without buttons), prompt, poll, keyboard
 
 **Transcript**:
-The text the speech provider heard in a voice note, or another recording, sent from a remote. It becomes the human's message, marked as voice, with the recording kept as an artifact, and it is never edited afterwards: a correction is the human's next message.
+The text the speech provider heard in a voice note, or another recording, sent from a remote. It becomes the human's message, marked as voice, with the recording kept as an artifact, and it is never edited afterwards: a correction is the human's next message. A transcript answering a remote card instead becomes the answer and keeps no recording artifact.
 _Avoid_: transcription (the act), dictation, caption, voice message (the recording)
 
 **Gap line**:

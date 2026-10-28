@@ -2307,6 +2307,16 @@ The provider receives no Telegram URL. General receives one human message,
 with the transcript, duration, download/transcription times and provider name;
 the General message is excluded from the mirror back to Telegram.
 
+A voice reply to an open ask card, or the next voice note after **Other answer…**
+or **Decline…**, uses the transcript as the answer or decline reason via Telegram.
+Options-only cards accept a number or option text ignoring case and trailing
+punctuation. Successful answers keep no audio artifact and post no General
+transcript; the note receives its transcript echo marked “answered” and the card
+shows its outcome. Failed, empty or unmatched notes leave the ask open and retain
+the ordinary audio message in General, with one explanatory reply in the chat.
+Late voice notes never answer, including explicit replies to cards. Voice targets
+are fixed when their updates are admitted, before any delay in the media FIFO.
+
 An empty transcript becomes `🎤 nothing recognised`. Missing credentials or
 `[speech] provider = ""` retain the audio as `🎤 not transcribed` and send one
 setup/off line. Provider failures retain the audio and name the failure kind,

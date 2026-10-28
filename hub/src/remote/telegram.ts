@@ -336,6 +336,9 @@ export class TelegramRemote implements Remote {
         accepts: (update: TgUpdate) => !!update.message && !!mediaFile(update.message),
         handle: async (update: TgUpdate) => {
           const message = update.message!;
+          const file = mediaFile(message)!;
+          if (file.kind === 'voice' && !message.media_group_id && !this.#mediaRefusal(file)) this.#prompts!.captureVoice(String(message.chat.id), String(message.message_id),
+            message.reply_to_message ? String(message.reply_to_message.message_id) : undefined, this.#late(message.date));
           this.#media!.enqueue({ chat: String(message.chat.id), message: String(message.message_id), date: message.date, ...(this.#late(message.date) ? { late: this.#late(message.date)! } : {}),
             ...(message.media_group_id ? { group: message.media_group_id } : {}), caption: message.caption ?? '', ...(message.reply_to_message ? { reply: String(message.reply_to_message.message_id) } : {}), file: mediaFile(message)! });
         },
@@ -420,6 +423,17 @@ export class TelegramRemote implements Remote {
     }).catch(() => {});
   }
 
+  /** The same pre-I/O policy guards prompt capture and queued media processing. */
+  #mediaRefusal(file: import('./media.ts').MediaFile): string | null {
+    const maxSeconds = this.#polling!.speechSettings?.maxSeconds ?? 600;
+    const limit = Math.min(20, this.#polling!.maxUploadMb?.() ?? 50);
+    const duration = file.duration ?? 0;
+    return file.kind === 'voice' && duration > maxSeconds
+      ? `🎤 a ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')} note is over the ${maxSeconds % 60 === 0 ? `${maxSeconds / 60}-minute` : `${maxSeconds}-second`} limit; it was not stored`
+      : file.size !== undefined && file.size > limit * 1024 * 1024
+        ? `${file.name} is ${Math.ceil(file.size / (1024 * 1024))} MB: a bot can download at most ${limit} MB, so it was not stored` : null;
+  }
+
   async #mediaInput(input: MediaInput): Promise<void> {
     const store = this.#polling!.store;
     const ingress = { chatId: input.chat, messageId: input.message };
@@ -449,12 +463,7 @@ export class TelegramRemote implements Remote {
     const maxSeconds = this.#polling!.speechSettings?.maxSeconds ?? 600;
     const limit = Math.min(20, this.#polling!.maxUploadMb?.() ?? 50);
     if (input.file && !input.items) {
-      const file = input.file;
-      const duration = file.duration ?? 0;
-      const refusal = file.kind === 'voice' && duration > maxSeconds
-        ? `🎤 a ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')} note is over the ${maxSeconds % 60 === 0 ? `${maxSeconds / 60}-minute` : `${maxSeconds}-second`} limit; it was not stored`
-        : file.size !== undefined && file.size > limit * 1024 * 1024
-          ? `${file.name} is ${Math.ceil(file.size / (1024 * 1024))} MB: a bot can download at most ${limit} MB, so it was not stored` : null;
+      const refusal = this.#mediaRefusal(input.file);
       if (refusal) {
         await this.#commandReply({ update_id: 0, message: { message_id: Number(input.message), date: input.date,
           chat: { id: Number(input.chat), type: 'private' } } }, [plainCommandReply(refusal)]);
@@ -462,6 +471,7 @@ export class TelegramRemote implements Remote {
       }
     }
     if (input.file && !input.items && transcribes(input.file, maxSeconds)) {
+      const target = input.file.kind === 'voice' ? this.#prompts!.captureVoice(input.chat, input.message, input.reply, input.late) : null;
       const result = await voiceNote({ fetch: async signal => {
         const file = await this.#api.getFile({ file_id: input.file!.fileId }, { signal });
         if (!file.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
@@ -470,7 +480,21 @@ export class TelegramRemote implements Remote {
       message: input.message, ...(input.file.kind === 'voice' ? {} : { filename: input.file.name }), mime: input.file.mime, duration: input.file.duration, language: this.#polling!.speechSettings?.language });
       if (!admitted()) return;
       store.set(voiceKey, JSON.stringify({ input: { chat: input.chat, message: input.message, pairing: captured }, line: (this.#polling!.redact ?? remoteRedactor()).text(result.line), ready: false }));
-      await this.#inbound!.upload({ topic: 'general', caption: result.text + (input.caption ? `\n${input.caption}` : ''), files: [{ name: result.name, mime: result.mime }] }, ingress, [result.bytes]);
+      let answered = false;
+      if (target && result.transcript) {
+        // Prepare the success echo before dispatch: recovery can find the answer
+        // receipt if the process stops after commit but before its result arrives.
+        const successLine = (this.#polling!.redact ?? remoteRedactor()).text(`${result.line} · answered`);
+        store.set(voiceKey, JSON.stringify({ input: { chat: input.chat, message: input.message, pairing: captured }, line: successLine, ready: false }));
+        const outcome = await this.#prompts!.voice({ update_id: 0, message: {
+          message_id: Number(input.message), date: input.date, chat: { id: Number(input.chat), type: 'private' }, text: result.transcript,
+        } }, target);
+        if (!admitted()) return;
+        answered = outcome.answered;
+        if (!answered) store.set(voiceKey, JSON.stringify({ input: { chat: input.chat, message: input.message, pairing: captured },
+          line: (this.#polling!.redact ?? remoteRedactor()).text(outcome.note ?? result.line), ready: false }));
+      }
+      if (!answered) await this.#inbound!.upload({ topic: 'general', caption: result.text + (input.caption ? `\n${input.caption}` : ''), files: [{ name: result.name, mime: result.mime }] }, ingress, [result.bytes]);
       if (!admitted()) return;
       const intent = JSON.parse(store.get(voiceKey)!) as Record<string, unknown>;
       store.set(voiceKey, JSON.stringify({ ...intent, ready: true }));

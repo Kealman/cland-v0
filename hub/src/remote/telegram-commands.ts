@@ -39,7 +39,7 @@ export function commandParts(reply: CommandReply): Formatted[] {
 
 export function telegramHelp(project: string): CommandReply {
   return renderReply(helpReply(project, { groups: [
-    { label: 'Follow', lines: ['General messages arrive here.', 'Asks arrive as cards; tap an option to answer.', 'Other answer… and Decline… open a reply prompt. /cancel keeps the ask open.', '/inbox re-sends open cards and notices oldest first. Earlier cards keep working.'] },
+    { label: 'Follow', lines: ['General messages arrive here.', 'Asks arrive as cards; tap an option to answer.', 'Other answer… and Decline… open a reply prompt. /cancel keeps the ask open.', 'Reply to an ask card or prompt with text or voice to answer. Successful voice answers keep no audio.', '/inbox re-sends open cards and notices oldest first. Earlier cards keep working.'] },
     { label: 'Send', lines: ['Write to the Coordinator, reply to a mirrored message, or answer an ask card.', '📥 request and item-message replies keep their topic; plan and terminal-approval replies go to General with a reference.', 'Plans are approved in the workbench; terminal approvals in their terminal.', 'Late messages stay in General; reply to a card to answer its open ask.', 'Use /decision or /question before your text.'] },
     { label: 'Commands', lines: TELEGRAM_COMMANDS.map(({ command, description }) => `• /${command}${['decision', 'question'].includes(command) ? ' <text>' : ''}: ${description}`) },
   ], small: ['Only the paired Telegram user in this private chat can act.', 'Pairing is approved locally. Session, release and configuration controls stay in the workbench.'] }));

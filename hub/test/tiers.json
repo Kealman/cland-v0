@@ -572,6 +572,7 @@
     "hub/test/telegram-polling.test.ts": "T2",
     "hub/test/telegram-render.test.ts": "T1",
     "hub/test/telegram-rendering.test.ts": "T2",
+    "hub/test/telegram-voice-answers.test.ts": "T2",
     "hub/test/telegram-voice-command.test.ts": "T3",
     "hub/test/telegram-voice.test.ts": "T2",
     "hub/test/termination-ownership.test.ts": "T3",

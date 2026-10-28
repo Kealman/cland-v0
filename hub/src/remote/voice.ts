@@ -17,6 +17,7 @@ export async function voiceNote(options: {
   try {
     const bytes = await options.fetch(signal);
     const downloaded = clock.now().getTime();
+    let transcript: string | undefined;
     let text: string;
     let line: string;
     try {
@@ -25,6 +26,7 @@ export async function voiceNote(options: {
         ...(options.language ? { languageHint: options.language } : {}),
         ...(options.duration === undefined ? {} : { durationSec: options.duration }), signal },
       { clock, deadlineMs: 90_000 - (downloaded - start) });
+      transcript = result.text.trim() || undefined;
       text = result.text.trim() ? `🎤 ${result.text.trim()}` : '🎤 nothing recognised';
       const duration = Math.floor(options.duration ?? result.durationSec ?? 0);
       line = `${text}\n${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')} · download ${((downloaded - start) / 1000).toFixed(1)} s · transcription ${((clock.now().getTime() - downloaded) / 1000).toFixed(1)} s · ${options.provider.name}`;
@@ -38,6 +40,6 @@ export async function voiceNote(options: {
           : 'Transcription needs a key. Run cland secret set speech.elevenlabs_key, then cland hub reload'
         : 'Transcription is off ([speech] provider)' : text;
     }
-    return { bytes, mime, name, text, line };
+    return { bytes, mime, name, text, line, transcript };
   } finally { clock.clearTimeout(timer); }
 }

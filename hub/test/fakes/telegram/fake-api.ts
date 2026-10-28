@@ -180,7 +180,8 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
             ...(['voice', 'audio', 'video_note', 'video'].includes(item.kind) ? { duration: item.duration ?? 1 } : {}),
             ...(item.kind === 'video_note' ? { length: item.length ?? 10 } : {}),
             ...(item.mime_type ? { mime_type: item.mime_type } : {}), ...(item.file_name ? { file_name: item.file_name } : {}) };
-          const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800, chat: { id: 101, type: 'private' }, from: HUMAN,
+          const message: TgMessage = { message_id: nextMessage++, date: item.date ?? 1_793_044_800, chat: { id: 101, type: 'private' }, from: HUMAN,
+            ...(item.reply_to_message ? { reply_to_message: item.reply_to_message } : {}),
             [item.kind]: item.kind === 'photo' ? [media] : media, ...(album ? { media_group_id: album } : {}), ...(item.caption !== undefined ? { caption: item.caption } : {}) };
           const update = redact.value({ update_id: nextUpdate++, message });
           inboundMedia.push(message); queued.push(update); updates.push(update);
