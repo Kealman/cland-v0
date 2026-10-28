@@ -84,3 +84,24 @@ advances during pending native HTTP. The pre-acquisition pacing owner owns each
 Store, every hub start/restart and the custom held reaction's release/drain.
 Reaction success carries no new message map; an unknown prior transport intent
 stays fenced while the existing inbound recovery reconciles its feedback state.
+
+`Telegram unsupported messages reply once confirm and do not replay after restart`
+queues a photo, sticker, voice, caption-only message and document before ordinary
+text. Retain five guidance replies, offset 7, exact General text and five logs
+containing only event/update id/kind. Stop/join and reopen the same database;
+retain offset 7, unchanged native messages and no additional fallback logs. This
+is in-process reopen evidence, not SIGKILL coverage.
+
+`Telegram silently confirms an edit and delivers the following text` retains
+next offset 3, only the following text in General, no reply and exactly one
+content-free `edited_message` diagnostic. Dedicated handlers run before the final
+fallback; the command fence prevents duplicate guidance after interrupted handling.
+
+The new fallback/edit/restart observers use `pacingOwner.observe` before setup.
+The shared disposer cancels and joins observations before SQLite closes; native
+close receipts use its bounded `drain` option to survive producer cancellation.
+`Telegram input fixture drains observers after omitted setup receipt` and its
+`aborted` counterpart hold an actual sticker reply, omit/abort the hub setup
+receipt, then retain native send close, stopped hub, cancelled unmatched poll
+observer, zero pending observations/timers and closed SQLite. These controls run
+through the same disposer as the fallback and held-card regressions.

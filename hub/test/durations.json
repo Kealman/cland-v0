@@ -7805,7 +7805,7 @@
     "hub/test/telegram-polling.test.ts::Telegram confirms only durable handling and deduplicates update and message ids": 0.190114,
     "hub/test/telegram-polling.test.ts::Telegram filters foreign identities unlisted kinds and bots before the handler": 0.098866,
     "hub/test/telegram-polling.test.ts::Telegram registry isolates private pairing starts and distinct callbacks on the same card": 0.078329,
-    "hub/test/telegram-polling.test.ts::Telegram retains unmatched input with paced retries and one content-free diagnostic": 0.104945,
+    "hub/test/telegram-polling.test.ts::Telegram confirms unmatched registry input without a retry loop": 0.104945,
     "hub/test/telegram-polling.test.ts::Telegram retries offline with zero timeout and restarts a stalled poll using injected time": 0.13613,
     "hub/test/telegram-polling.test.ts::Telegram waits for durable handler completion and joins its writer on stop": 0.078341,
     "hub/test/telegram-render.test.ts::Telegram code fences preserve literal fence prefixes until a complete legal closing line": 0.000176,

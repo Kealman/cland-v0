@@ -2805,11 +2805,16 @@ The next poll confirms that stored offset. Messages and edits share the
 button presses on one card are distinct. The outgoing `remote_messages` reply map
 remains independent. These keys persist across restarts without a new database.
 
-When accepted input has no matching handler, it stays unconfirmed. The loop
-waits one injected-clock second per retry and logs `telegram-update-unhandled`
-once for that blocked update, carrying only its numeric id. After explicitly
-injected handlers, the native registry handles private `/start`, paired bot
-membership, paired text and paired card presses. Other input requires its registered handler.
+The native registry is assembled after startup recovery and before polling begins;
+there is no asynchronous handler-installation wait. After injected and dedicated
+handlers, a terminal fallback replies to unsupported paired messages with
+“Please use text, buttons or commands.” It silently confirms edits. The dedicated card handler still acknowledges
+unmapped presses with “This button is not available”. Replies reuse the durable command fence, so interrupted handling never
+replies twice. Future media handlers precede this fallback. A lower-level registry
+with no match also confirms silently rather than holding later input forever.
+Both paths log `telegram-update-unhandled` with only the numeric update id and
+allowed update kind, never text, captions or file ids. Confirmation and dedupe
+still use the same durable savepoint, including across restart.
 Shutdown aborts the current poll and delay and joins the
 handler before the gateway releases its lease or storage. Legacy injected
 `TelegramRemote(api, clock)` clients retain their check/send-only lifetime.

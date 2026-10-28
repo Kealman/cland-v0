@@ -146,7 +146,7 @@ and the component/crash guides in `docs/agents/tests/hub-test-telegram-polling.t
 and `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`. Inbound text,
 replies, feedback and lost-result replay use `docs/agents/tests/hub-test-telegram-inbound.test.ts.md`.
 Attach handlers to the registry; keep native identity/recovery outside frames,
-reconcile feedback with durable session stages, and join replay-safe handlers on stop. Keep unmatched input paced and unconfirmed.
+reconcile feedback with durable session stages, and join replay-safe handlers on stop. Keep dedicated handlers before the terminal unsupported-input fallback; confirm unmatched input and retain its content-free id/kind diagnostic.
 For 📥 notices and plan/TUI General-reference routing, use
 `docs/agents/tests/hub-test-telegram-notices.test.ts.md`; preserve the gateway's existing authority.
 For Telegram liveness, use the production-factory/frame and fake-clock controls in

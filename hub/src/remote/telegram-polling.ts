@@ -21,6 +21,12 @@ export type TelegramPollingOptions = {
   caughtUp?: () => Promise<boolean | void>;
 };
 
+/** Content-free diagnostic shared by the registry and native terminal fallback. */
+export function logUnhandledTelegramUpdate(update: TgUpdate, log?: LogFn): void {
+  log?.({ event: 'telegram-update-unhandled', update: update.update_id,
+    kind: TELEGRAM_ALLOWED_UPDATES.find(kind => update[kind] !== undefined) });
+}
+
 function identity(update: TgUpdate, botId: number): { userId: string; chatId: string; dedupe?: string } | null {
   const kinds = Object.keys(update).filter(key => key !== 'update_id');
   if (kinds.length !== 1 || !TELEGRAM_ALLOWED_UPDATES.some(kind => kind === kinds[0])) return null;
@@ -46,7 +52,6 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
   const store = options.store;
   let offline = options.initialOffline ?? false;
   let conflictSince: number | undefined;
-  let unhandled: number | undefined;
   while (!signal.aborted) {
     let updates: TgUpdate[];
     try {
@@ -93,17 +98,10 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
       if (accepted && (!dedupe || store.get(`telegram.${dedupe}`) === null)) {
         const handler = foreign ? options.foreignCard : options.handlers?.find(handler =>
           (handler.kind === 'pairing' ? pairingStart : pairedInput) && handler.accepts(update));
-        if (!handler) {
-          if (unhandled !== update.update_id) {
-            unhandled = update.update_id;
-            options.log?.({ event: 'telegram-update-unhandled', update: update.update_id });
-          }
-          // Preserve input until a handler is installed; never spin on immediate replay.
-          complete = false;
-          await pause(clock, signal, 1_000);
-          break;
-        }
-        try { await handler.handle(update, signal); }
+        // The registry is assembled before polling starts. An unmatched kind
+        // cannot become handleable by replaying it; confirm it without spinning.
+        if (!handler) logUnhandledTelegramUpdate(update, options.log);
+        try { await handler?.handle(update, signal); }
         catch (error) {
           if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
           if (signal.aborted) { if (store.status().disabled) throw error; return; }
@@ -116,7 +114,6 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
           await waiting;
           break;
         }
-        unhandled = undefined;
         if (signal.aborted) return;
       }
       store.confirmTelegramUpdate(update.update_id, accepted ? dedupe : undefined);

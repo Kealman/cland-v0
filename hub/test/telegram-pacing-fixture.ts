@@ -11,6 +11,7 @@ export function pacingOwner(t: TestContext) {
   const hubs = new Set<Awaited<ReturnType<typeof projectHub>>>();
   const acquiring = new Set<Promise<Awaited<ReturnType<typeof projectHub>>>>();
   const observing = new Set<Promise<Awaited<ReturnType<typeof projectHub>>>>();
+  const observations = new Set<Promise<unknown>>();
   let disposing: Promise<void> | undefined;
   const abort = new AbortController();
   const serving = Promise.withResolvers<Awaited<ReturnType<typeof projectHub>>>();
@@ -33,12 +34,21 @@ export function pacingOwner(t: TestContext) {
     // A cancelled acquisition may still return a late hub; retain and stop it.
     await stopKnown(false);
     while (observing.size) await Promise.allSettled([...observing]);
+    while (observations.size) await Promise.allSettled([...observations]);
     if (failures.length) throw new AggregateError(failures, 'Telegram pacing fixture writers did not drain');
     db?.close();
   })();
   onCleanup(t, dispose);
   return {
     dispose, serving: serving.promise,
+    observations: () => observations.size,
+    observe: <T>(start: (signal: AbortSignal) => Promise<T>, options: { drain?: boolean } = {}): Promise<T> => {
+      // Native close receipts survive cancellation until writers have stopped.
+      const work = start(AbortSignal.any([t.signal, options.drain ? AbortSignal.timeout(1_000) : abort.signal]));
+      observations.add(work);
+      void work.then(() => observations.delete(work), () => observations.delete(work));
+      return work;
+    },
     close: (close: () => void | Promise<void>, options: { startupOnly?: boolean } = {}) => {
       closers.push({ close, startupOnly: options.startupOnly ?? false, called: false });
     },

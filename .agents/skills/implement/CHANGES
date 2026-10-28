@@ -249,3 +249,5 @@ T-1382 review: require exact registered-secret refusal without rewriting media b
 
 T-1399: Document native Discord registration, pairing and optional approval notification seam.
 T-1400: Document Discord General mirror/outbox receipts and store-before-cursor inbound seam.
+
+T-1378: Replace indefinite unmatched Telegram hold with terminal fallback and id/kind diagnostics; registry is installed before polling.

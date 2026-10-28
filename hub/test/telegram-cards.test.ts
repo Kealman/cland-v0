@@ -1644,3 +1644,30 @@ test('Telegram uncertain stale-card outcome fallback releases its callback and l
   assert.equal(native.messages.filter(row => row.reply_to_message?.message_id === card.message_id).length, 1, 'accepted unknown outcome reply is never retransmitted');
   assert.equal(native.requests.filter(row => row.method === 'answerCallbackQuery').length, 1);
 });
+
+
+test('Telegram handles a button queued behind a sticker after its reply settles', async t => {
+  const f = await fixture(t);
+  const { id, card } = await f.ask();
+  await control(f.fake.url, 'fault', { method: 'sendMessage', code: 500, response: 'hold' });
+  const replying = f.owner.observe(signal => f.fake.waitForHeldRequest('sendMessage', signal));
+  await control(f.fake.url, 'update', { message: { message_id: 900, date: 1,
+    chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' },
+    sticker: { file_id: 'fake-sticker' },
+  } });
+  const held = await driveTelegram(f.clock, f.state, within(replying, 1000));
+  const confirmed = f.owner.observe(signal => f.fake.waitForPoll(signal));
+  const edited = f.owner.observe(signal => f.fake.waitForConnectionClose('editMessageText', signal));
+  const press = await control<{ update_id: number }>(f.fake.url, 'press', { chat_id: 101, message_id: card.message_id, row: 2, column: 0 });
+  assert.equal(f.store.ask(id)!.state, 'open', 'serial handler awaits sticker reply');
+  await control(f.fake.url, 'release-requests', { ids: [held.id] });
+  const poll = await driveTelegram(f.clock, f.state, within(confirmed, 1000));
+  assert.equal(poll.params.offset, press.update_id + 1);
+  const outcome = f.store.ask(id)!.outcome;
+  assert.ok(outcome?.status === 'answered');
+  assert.equal(outcome.text, 'Three');
+  await driveTelegram(f.clock, f.state, edited);
+  assert.ok((await f.messages()).some(message => message.message_id === card.message_id && message.text?.includes('Three · human via Telegram')));
+  assert.equal((await f.messages()).filter(message => message.text === 'Please use text, buttons or commands.').length, 1);
+  await f.stop();
+});

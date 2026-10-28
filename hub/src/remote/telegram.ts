@@ -5,7 +5,7 @@ import type { RemoteConnection, HubFrame, HubStatus, Inbox } from '../protocol.t
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { TelegramApi, TelegramError, type TgUpdate } from './telegram-api.ts';
 import { TELEGRAM_COMMANDS, telegramHelp, telegramCommand, telegramStatus, commandParts, plainCommandReply } from './telegram-commands.ts';
-import { pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
+import { logUnhandledTelegramUpdate, pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
 import { flushTelegramGap } from './telegram-gap.ts';
 import { TelegramOutbox } from './telegram-outbox.ts';
 import { TelegramInbound } from './telegram-inbound.ts';
@@ -312,7 +312,11 @@ export class TelegramRemote implements Remote {
             throw error;
           });
         },
-      }, ...(this.#prompts ? [this.#prompts.handler] : []), ...(this.#inbound ? [this.#inbound.handler] : [])];
+      }, ...(this.#prompts ? [this.#prompts.handler] : []), ...(this.#inbound ? [this.#inbound.handler] : []), {
+        // Dedicated media handlers go before this terminal fallback.
+        accepts: () => true,
+        handle: (update: TgUpdate) => this.#unsupported(update),
+      }];
       await pollTelegram(this.#api, this.#clock, this.#botId, { ...this.#polling, handlers, ...(this.#cards ? { foreignCard: this.#cards.foreign } : {}),
         initialOffline: !!this.#offline, offline: reason => this.#failed(reason), caughtUp: () => this.#caughtUp() }, this.#abort.signal,
         () => {
@@ -331,6 +335,16 @@ export class TelegramRemote implements Remote {
       await this.#check();
       if (pairing) await this.#send(pairing.chatId, text);
     });
+  }
+
+  async #unsupported(update: TgUpdate): Promise<void> {
+    const message = update.message;
+    if (!message || this.#polling!.store.get(`telegram.command:${message.chat.id}:${message.message_id}`) === null)
+      logUnhandledTelegramUpdate(update, this.#polling!.log);
+    // Edits and unmapped presses have no new message to forward or reply to.
+    if (!message) return;
+    // Reuse the durable command fence: an interrupted reply cannot be duplicated.
+    await this.#commandReply(update, [plainCommandReply('Please use text, buttons or commands.')]);
   }
 
   async #commandReply(update: TgUpdate, replies: import('./telegram-commands.ts').CommandReply[], publish?: (key: string) => Promise<void>): Promise<void> {

@@ -338,3 +338,11 @@ one native outcome reply and one callback answer remain after shutdown. The
 unknown fallback is marked incomplete and stays fenced; it cannot hold the
 already-closed callback cursor. The pre-fix run failed at the exact boundary with
 `stale callback confirmation blocked by unknown fallback`.
+
+`Telegram handles a button queued behind a sticker after its reply settles` holds
+the native sticker guidance reply, queues a real mapped option-three press and
+retains the still-open ask while the reply is held. Release it, then retain the
+press's confirmed offset, saved answer, native outcome edit and exactly one
+guidance reply. Native held/poll/edit-close observers are pre-owned by the shared
+pacing disposer; its omitted/aborted setup controls are in the inbound file.
+Fake-clock pacing advances only from durable outbox waits.

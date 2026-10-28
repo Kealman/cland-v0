@@ -6,12 +6,14 @@ import { mkdir } from 'node:fs/promises';
 import { Store } from '../src/hub/store.ts';
 import { TelegramApi, type TgUpdate } from '../src/remote/telegram-api.ts';
 import { tempProject, projectHub, connectUi, until } from './harness.ts';
+import { pollTelegram } from '../src/remote/telegram-polling.ts';
 import { TelegramRemote } from '../src/remote/telegram.ts';
 import { fakeTelegram, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 
+import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { pairing, control, nativeRemote } from './telegram-polling-fixture.ts';
 
 test('Telegram confirms only durable handling and deduplicates update and message ids', async t => {
@@ -199,32 +201,35 @@ test('Telegram registry isolates private pairing starts and distinct callbacks o
   assert.equal(await within(closed, 1_000), receipt.id);
 });
 
-test('Telegram retains unmatched input with paced retries and one content-free diagnostic', async t => {
+test('Telegram confirms unmatched registry input without a retry loop', async t => {
+  const owner = pacingOwner(t);
   const root = await tempProject(t);
   const clock = new FakeClock();
   const fake = await fakeTelegram(t, { clock });
   await mkdir(join(root, '.cland'), { recursive: true });
-  const store = new Store(join(root, '.cland/hub.db'));
+  const store = owner.store(join(root, '.cland/hub.db'));
   const state = store.remotes.forMessenger('telegram');
   state.setPairing(pairing);
   const logs: Record<string, unknown>[] = [];
-  const remote = new TelegramRemote(new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock }), clock,
-    { store: state, handlers: [], log: entry => { logs.push(entry); } });
-  onCleanup(t, async () => { await remote.stop(); store.close(); });
+  const abort = new AbortController();
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock });
+  let running: Promise<void> | undefined;
+  owner.close(async () => { abort.abort(); await running; });
+  const polled = owner.observe(signal => fake.waitForPoll(signal));
   await control(fake.url, 'update', { edited_message: { message_id: 1, date: 1,
     chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' },
     text: 'payload must stay out of diagnostic' } });
-  const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote], clock });
-  await until(() => logs.some(entry => entry.event === 'telegram-update-unhandled'), { what: 'unmatched handler receipt', timeoutMs: 1_000 });
-  const retry = fake.waitForRequest('getUpdates');
-  const closed = fake.waitForConnectionClose('getUpdates');
-  await clock.advance(1_000);
-  assert.equal((await within(retry, 1_000)).params.offset, undefined);
-  await within(closed, 1_000);
-  await hub.stop();
-  assert.equal(state.get('telegram.offset'), null);
-  assert.deepEqual(logs, [{ event: 'telegram-update-unhandled', update: 1 }]);
+  running = pollTelegram(api, clock, 123456789, { store: state, handlers: [], log: entry => { logs.push(entry); } }, abort.signal, () => {});
+  void running.catch(() => {});
+  const receipt = await within(polled, 1_000);
+  assert.equal(receipt.params.offset, 2);
+  assert.equal(state.get('telegram.offset'), '2');
+  assert.deepEqual(logs, [{ event: 'telegram-update-unhandled', update: 1, kind: 'edited_message' }]);
+  const closed = owner.observe(signal => fake.waitForPollClose(receipt.id, signal));
+  abort.abort();
+  await running;
+  assert.equal(await within(closed, 1_000), receipt.id);
   const response = await control<{ requests: Array<{ method: string }> }>(fake.url, 'state');
-  assert.equal(response.requests.filter(request => request.method === 'getUpdates').length, 2, 'no immediate retry loop');
+  assert.equal(response.requests.filter(request => request.method === 'getUpdates').length, 2);
   assert.equal(clock.pending, 0);
 });

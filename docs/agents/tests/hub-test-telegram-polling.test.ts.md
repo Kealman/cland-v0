@@ -36,15 +36,14 @@ pairing handler, paired text uses its handler, duplicated callback ids are ignor
 and distinct presses of one bot-authored card both reach their handler. Retain
 an edited-message handler receipt, the bot's membership receipt and next offset 9.
 
-`Telegram retains unmatched input with paced retries and one content-free
-diagnostic` injects an edit without a matching handler; the native text mirror
-does not consume edits. Observe the first blocked-update log,
-advance one second, retain the actual repeat request and TCP close, then stop.
-The final offset remains absent, exactly two requests occurred, the sole log has
-only event/update id, and no timers remain. Input is preserved for its eventual
-handler; native text behavior has its own [guide](hub-test-telegram-inbound.test.ts.md).
-only event/update id, and no timers remain. Input is preserved for an installed
-handler; this does not exercise the native pairing/mirror features.
+`Telegram confirms unmatched registry input without a retry loop` exercises the
+public poller with a complete empty registry and an edit. Retain offset 2 in the
+next native poll and store, exactly two requests, zero remaining timers, and one
+content-free diagnostic containing only event, update id and `edited_message` kind.
+The native registry is fully assembled before polling, so no startup installation
+wait remains. Its terminal unsupported-input fallback is covered in the inbound guide. The shared pacing disposer owns the
+Store and poll operation before setup, cancels/joins observers and stops the
+poller before closing SQLite.
 
 Shared contract: `TelegramPollingOptions.handlers` selects the first applicable
 handler after authority filtering. The optional native `foreignCard` refusal

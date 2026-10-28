@@ -32,9 +32,10 @@ async function fixture(t: TestContext) {
   const store = owner.store(join(root, '.cland/hub.db'));
   const state = store.remotes.forMessenger('telegram');
   state.setPairing(pairing);
+  const logs: Record<string, unknown>[] = [];
   const start = (extra: Record<string, string>, options: import('./harness.ts').ProjectHubOptions = {}) =>
-    owner.start(root, extra, clock, { hubOptions: options });
-  return { root, clock, fake, owner, start, drive: <T>(work: Promise<T>) => driveTelegram(clock, state, work) };
+    owner.start(root, extra, clock, { hubOptions: { ...options, log: entry => { logs.push(entry); options.log?.(entry); } } });
+  return { root, clock, fake, owner, store, state, start, logs, drive: <T>(work: Promise<T>) => driveTelegram(clock, state, work) };
 }
 
 test('Telegram text decisions questions and formatting reach General as the human', async t => {
@@ -370,4 +371,101 @@ test('Telegram restart reconciles a confirmed input whose durable session delive
   const nextClosed = fake.waitForPollClose(next.id);
   await second.stop();
   assert.equal(await drive(within(nextClosed, 1_000)), next.id);
+});
+
+
+test('Telegram unsupported messages reply once confirm and do not replay after restart', async t => {
+  const { root, clock, fake, owner, start, drive, logs } = await fixture(t);
+  const payloads = [
+    { photo: [{ file_id: 'fake-photo', width: 1, height: 1 }] },
+    { sticker: { file_id: 'fake-sticker' } },
+    { voice: { file_id: 'fake-voice', duration: 1 } },
+    { caption: 'caption only' },
+    { document: { file_id: 'fake-document' } },
+  ];
+  for (const [index, payload] of payloads.entries()) await control(fake.url, 'update', { message: {
+    message_id: 100 + index, date: 1, chat: { id: 101, type: 'private' },
+    from: { id: 101, is_bot: false, first_name: 'Fixture human' }, ...payload,
+  } });
+  await control(fake.url, 'say', { text: 'Text after unsupported input' });
+  const polled = owner.observe(signal => fake.waitForPoll(signal));
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const poll = await drive(within(polled, 1_000));
+  assert.equal(poll.params.offset, 7);
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal(history.ok, true, history.error);
+  assert.deepEqual((history.value as { messages: TopicMessage[] }).messages.map(message => message.text), ['Text after unsupported input']);
+  const before = await control<{ messages: TgMessage[] }>(fake.url, 'state');
+  assert.deepEqual(before.messages.map(message => message.text), Array(5).fill('Please use text, buttons or commands.'));
+  assert.deepEqual(logs.filter(entry => entry.event === 'telegram-update-unhandled').map(({ ts: _ts, eventsVersion: _version, ...entry }) => entry), payloads.map((_, index) => ({ event: 'telegram-update-unhandled', update: index + 1, kind: 'message' })));
+  const closed = owner.observe(signal => fake.waitForPollClose(poll.id, signal));
+  await hub.stop();
+  assert.equal(await within(closed, 1_000), poll.id);
+  const reopened = owner.observe(signal => fake.waitForPoll(signal));
+  const next = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const receipt = await drive(within(reopened, 1_000));
+  assert.equal(receipt.params.offset, 7);
+  const after = await control<{ messages: TgMessage[] }>(fake.url, 'state');
+  assert.deepEqual(after.messages, before.messages, 'confirmed unsupported messages never reply again');
+  assert.equal(logs.filter(entry => entry.event === 'telegram-update-unhandled').length, 5);
+  const end = owner.observe(signal => fake.waitForPollClose(receipt.id, signal));
+  await next.stop();
+  assert.equal(await within(end, 1_000), receipt.id);
+});
+
+test('Telegram silently confirms an edit and delivers the following text', async t => {
+  const { fake, owner, start, drive, logs } = await fixture(t);
+  await control(fake.url, 'update', { edited_message: {
+    message_id: 100, date: 1, chat: { id: 101, type: 'private' },
+    from: { id: 101, is_bot: false, first_name: 'Fixture human' }, text: 'edited text',
+  } });
+  await control(fake.url, 'say', { text: 'After edit' });
+  const polled = owner.observe(signal => fake.waitForPoll(signal));
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const poll = await drive(within(polled, 1_000));
+  assert.equal(poll.params.offset, 3);
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal(history.ok, true, history.error);
+  assert.deepEqual((history.value as { messages: TopicMessage[] }).messages.map(message => message.text), ['After edit']);
+  assert.deepEqual((await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages, []);
+  assert.deepEqual(logs.filter(entry => entry.event === 'telegram-update-unhandled').map(({ ts: _ts, eventsVersion: _version, ...entry }) => entry), [{ event: 'telegram-update-unhandled', update: 1, kind: 'edited_message' }]);
+  const closed = owner.observe(signal => fake.waitForPollClose(poll.id, signal));
+  await hub.stop();
+  assert.equal(await within(closed, 1_000), poll.id);
+});
+
+
+for (const failure of ['omitted', 'aborted'] as const) test(`Telegram input fixture drains observers after ${failure} setup receipt`, async t => {
+  const { root, clock, fake, owner, store } = await fixture(t);
+  const setupClock = new FakeClock();
+  const abort = new AbortController();
+  // This observer never receives its event: disposal must cancel and join it.
+  const waiting = owner.observe(signal => fake.waitForPoll(signal));
+  const cancelled = assert.rejects(waiting, /observation aborted/);
+  await control(fake.url, 'fault', { method: 'sendMessage', code: 500, response: 'hold' });
+  await control(fake.url, 'update', { message: { message_id: 900, date: 1,
+    chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' },
+    sticker: { file_id: 'fake-sticker' },
+  } });
+  const held = owner.observe(signal => fake.waitForHeldRequest('sendMessage', signal));
+  const closed = owner.observe(signal => fake.waitForConnectionClose('sendMessage', signal), { drain: true });
+  const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, {
+    receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal,
+  });
+  const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
+  const hub = await within(owner.serving, 1_000);
+  const receipt = await within(held, 1_000);
+  if (failure === 'omitted') await setupClock.advance(1_000);
+  else abort.abort(new Error('Telegram pacing fixture setup cancelled'));
+  await rejected;
+  await owner.dispose();
+  await cancelled;
+  await hub.stopped;
+  assert.equal((await within(closed, 1_000)).id, receipt.id);
+  assert.equal(owner.observations(), 0);
+  assert.throws(() => store.remotes.forMessenger('telegram').outbox(), /not open|closed/i);
+  assert.equal(clock.pending, 0);
+  assert.equal(setupClock.pending, 0);
 });
