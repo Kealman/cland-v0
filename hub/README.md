@@ -6788,11 +6788,22 @@ memory. Discord pairing interactions use the native command router described bel
 message handlers use its optional native dispatch extension point.
 A missed heartbeat ACK terminates the transport (no 1000/1001 close frame).
 Drops, opcode 7 and resumable opcode 9 reconnect to the validated resume URL
-with session id and sequence. A successful resume spends no Identify. Failed
-reconnect attempts use capped jittered backoff (up to 30 seconds); a working
-session resumes immediately. Opcode 9 false clears the session and waits a
-random 1–5 seconds before identifying. Message ids are durably deduplicated;
+with session id and sequence. A successful resume spends no Identify. A working session resumes immediately; resume attempts spend no Identify budget. Opcode 9 false clears the session and waits a
+random 1–5 seconds before the next Identify admission check. Message ids are durably deduplicated;
 interaction ids are deduplicated in memory for this socket lifetime.
+Every Identify waits at least five seconds after the previous one, including
+across hub restarts. The Discord-scoped `discord.identify` record in `hub.db`
+retains rolling 24-hour timestamps, failed-attempt backoff and the warning time.
+Attempts are reserved before socket I/O; a crash can conservatively overcount.
+Only an Identify that closes before READY grows backoff: 5 seconds doubled to
+5 minutes, with equal jitter (half to all of that delay), also subject to the
+five-second spacing. READY clears backoff; an established session's drop adds none.
+Before each Identify, a fresh `GET /gateway/bot` must report at least 100 remaining
+session starts. Below 100, Discord stops with `identify-budget` and the UTC reset
+time derived from `reset_after`; wait until then and reload. General receives one
+warning at 500 local Identifies in 24 hours, at most once per rolling day. Other
+sessions of the same bot consume Discord's budget too; use one bot per project.
+Injected clients without a Store retain this budget only for their lifetime.
 Connection loss changes status to disconnected immediately; after three minutes
 General gets one `Discord remote offline since HH:MM: <reason>` line and one
 recovery line after a recent ACK. A settled paired-channel POST/PATCH failure
@@ -6814,7 +6825,7 @@ Each stop writes one General cause/fix and structured status; `cland hub reload`
 retries the stopped client. `cland remote test discord` reads the application
 and posts exactly one fixed line when paired (no message when unpaired).
 Terminal stop closes with 1000 and joins the socket; ordinary stop terminates
-resumably. Both clear heartbeat, reconnect and offline-notice timers. The existing role and frame authority remain unchanged.
+resumably. Both clear heartbeat, Identify admission, reconnect and offline-notice timers. The existing role and frame authority remain unchanged.
 
 The token is private to the REST authorization header and gateway Identify/Resume;
 dispatch logs retain only validated event types and numeric ids. Native socket

@@ -781,3 +781,11 @@ Only album receipts carry target lists and per-target progress; preserve the
 legacy single-message receipt shape and its prompt-recovery regression.
 An oversized member must not drop its peers.
 Use the album cases in the inbound guide, including legacy single-input recovery.
+
+For Discord Identify admission use the native factory/frame/fake cases in
+`docs/agents/tests/hub-test-discord-messenger.test.ts.md`: persist reservations
+before socket I/O, pre-arm the bounded client admission-scheduled observer before restart/close
+and observe its exact socket ordinal before injected-clock spacing checks, and keep
+failed-only equal-jitter backoff separate from resumes. The existing
+identify-budget stop cause carries the UTC reset time; no role permission or
+public frame changes are needed.

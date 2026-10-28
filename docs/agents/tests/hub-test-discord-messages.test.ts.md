@@ -14,6 +14,12 @@ Telegram receives the cross-remote author; Discord receives no echo.
 The controlled production frame port holds ingress before the hub stores it:
 lastMessageId must remain absent, then advance only after the saved result. A
 restart replays the same id before a second valid input, preserving deduplication.
+Its hub, production messenger and fake share FakeClock. Pre-arm the client
+`discord-identify-scheduled` observer before restart (new socket ordinal 1),
+observe the five-second timer installation, assert no Identify at 4999ms and
+observe the second native Identify at 5000ms. Keep both durable cursors and the
+final two-message assertion. Real-clock setup deadlines remain bounded at the
+original values; they do not absorb the intentional Identify spacing.
 Native outbox crash receipts prove a send by the bot's observed nonce, otherwise
 retry the same nonce strictly within two minutes of the attempt. At or beyond
 that bound, unknown delivery remains fenced. Discord documents only "the past

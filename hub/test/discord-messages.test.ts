@@ -1,4 +1,5 @@
 // T2: production frames and loopback Discord REST/ws.
+import { discordAdmissionObserver } from './fakes/discord/admission.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
@@ -67,16 +68,18 @@ test('Discord accepts paired ordinary/reply text once, excludes other authors, a
 test('Discord cursor waits for the durable hub result and survives duplicate replay after restart', async t => {
   const { messengerFactory } = await import('../src/remote/messenger.ts');
   const { remoteRedactor } = await import('../src/remote/redact.ts');
-  const { realClock } = await import('../src/hub/clock.ts');
-  const root = await tempProject(t); const fake = await fakeDiscordFixture(t);
+  const { FakeClock } = await import('./fake-clock.ts');
+  const clock = new FakeClock(); const admission = discordAdmissionObserver(t);
+  const root = await tempProject(t); const fake = await fakeDiscordFixture(t, { clock });
+  await fake.control('configure', { interval: 1000000 });
   const config = defaultConfig('Cursor fixture'); config.remote.discord.enabled = true;
   await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   const store = new Store(join(root, '.cland/hub.db')); onCleanup(t, () => store.close());
   const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
   const env = { CLAND_DISCORD_API_ROOT: fake.url };
-  const factory = messengerFactory(env, remoteRedactor(), realClock, { state: store.remotes });
+  const factory = messengerFactory(env, remoteRedactor(), clock, { state: store.remotes, log: admission.log });
   let release: (() => void) | undefined;
-  const start = () => projectHub(t, root, env, { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN }, gatewayMessenger: (...args) => {
+  const start = () => projectHub(t, root, env, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN }, gatewayMessenger: (...args) => {
     const remote = factory(...args); const native = remote.start.bind(remote);
     remote.start = (send, ...rest) => native((frame, ingress) => { release = () => send(frame, ingress); }, ...rest);
     return remote;
@@ -91,8 +94,13 @@ test('Discord cursor waits for the durable hub result and survives duplicate rep
   release!();
   await until(() => state.get('discord.lastMessageId') === d.id, { timeoutMs: 1500, what: 'store then cursor' });
   const saved = await ui.request({ type: 'topic.history', topic: 'general' }); assert.ok(JSON.stringify(saved.value).includes('Held at ingress'));
-  await hub.stop(); release = undefined; hub = await start(); ui = await connectUi(t, hub.discovery, 'nvim');
-  await until(async () => (await fake.control('state')).gateway.identifies === 2, { timeoutMs: 1500, what: 'restart READY' });
+  await hub.stop(); release = undefined;
+  const scheduled = admission.observe(1); // Replacement hub starts a new socket lifetime.
+  hub = await start(); ui = await connectUi(t, hub.discovery, 'nvim');
+  assert.equal((await scheduled).delay, 5000);
+  await clock.advance(4999); assert.equal((await fake.control('state')).gateway.identifies, 1);
+  await clock.advance(1);
+  await until(async () => (await fake.control('state')).gateway.identifies === 2, { timeoutMs: 1500, what: 'restart native Identify' });
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
   // A later valid input is the ordered completion barrier for the replay.
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { ...d, id: '90071992547430001' } });

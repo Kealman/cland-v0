@@ -287,3 +287,6 @@ T-1402 source1: retain job-local edit-404 health, client-refusal clock boundary 
 2026-10-28 · T-1386 source review: native cursor receipt and committed-upload recovery before downloads.
 
 2026-10-28 · T-1386 source3: restrict target/progress fields to album receipts, retaining exact legacy single-message shape.
+
+Discord persisted Identify admission and sealed budget receipts (T-1403)
+Discord exact admission observers, cancellation controls and persisted cursor-restart migration (T-1403 source review)

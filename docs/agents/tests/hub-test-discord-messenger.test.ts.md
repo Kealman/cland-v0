@@ -30,13 +30,13 @@ regression; the public status schema and safe workbench projections are unchange
 The fake's `configure` also accepts interval, acknowledge, resumeWindow and gatewayUrl;
 `dispatch` sends an opcode frame, and state.gateway exposes only safe counts
 and validIdentify. Identify credentials and arbitrary payloads are never captured.
-Identify budgets and restart catch-up are outside these tests.
+Restart history catch-up is outside these tests.
 Application controls set flags and endpoint URL. `close` takes a numeric code;
 state.gateway.closes records completed close handshakes without reasons.
 Application failures prove zero Identifies and continued Telegram mirroring.
 Fatal-code cases require persisted stopCause, one General cause/fix, real CLI
 status, continued Telegram delivery and no Identify after a clock advance.
-The 4003 case observes a second Identify before the second close. REST tests
+The 4003 case advances the five-second Identify spacing before observing its second Identify and closing again. REST tests
 cover 401/40001/50014, secret echo redaction, and the test command reads one
 application and posts one paired line. A REST stop observes close 1000.
 
@@ -97,3 +97,31 @@ changes. The diagnostic uses the existing log sink and contains no message body
 or provider error text. A separate acknowledged live-native edit-404 control
 keeps connected status past 180000ms and observes neither outage nor recovery,
 including after a successful send; a missing edit never changes exchange health.
+
+Identify admission cases use the same sealed production factory/frame/fake seam.
+The low-budget case configures `session_start_limit` (remaining 99, reset_after
+60000), observes disabled status and one General reset timestamp, then checks zero
+Identifies and continued hub service. Restart joins the first hub, reads the
+Discord `discord.identify` record through RemoteStore on a new hub.db handle,
+and arms the client admission observer before starting the replacement hub.
+The safe `discord-identify-scheduled` diagnostic names the socket ordinal and
+delay after the Identify timer is installed; observe it before the 4999/5000ms
+spacing boundary. It carries no provider payload, credentials or URL.
+The pre-READY fake control (`configure { ready: false }`) exercises failed
+Identifies under 0.25 random jitter: a long failed handshake waits 3125ms after
+close, followed by waits 6250, 12500, 25000,
+50000, 100000, 187500 and 187500ms; READY clears backoff to the spacing floor.
+The warning case seeds 499 valid timestamps plus an expired entry in the native
+Store, observes one General warning at 500, and retains no-repeat and persisted
+501-count assertions. A floor boundary control allows 100 starts, then changes the fake to 99 and
+requires the next Identify check to stop with its fresh reset timestamp.
+All shutdowns retain zero-timer assertions. No browser.
+
+Source-review correction: every Identify timing setup, including opcode 9 false,
+uses the pre-armed `discordAdmissionObserver` for the exact replacement socket
+ordinal. A hub restart creates a new socket lifetime (ordinal 1); reconnects
+increment the ordinal. The observer bounds setup separately from behavior time,
+joins on cancellation before directory cleanup, and removes its listener on all
+outcomes. Omitted and aborted publication controls require native close, no
+pending observer/listener/handler/writer, closed Store and zero scheduling timers.
+Do not use remote.status.lastInbound as an admission receipt.

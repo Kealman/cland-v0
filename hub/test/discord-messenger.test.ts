@@ -1,6 +1,7 @@
 // T2: native factory, sealed frames and loopback Discord gateway/REST.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { discordAdmissionObserver } from './fakes/discord/admission.ts';
 import { discordHubFixtureOwner } from './fakes/discord/hub.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -192,6 +193,8 @@ for (const [code, cause] of [[4004, 'token'], [4010, 'gateway-refused'], [4011, 
   await receipt(() => fake.control('state'), s => s.gateway.identifies === 1);
   await fake.control('close', { code });
   if (code === 4003) {
+    await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
+    await clock.advance(5000);
     await receipt(() => fake.control('state'), s => s.gateway.identifies === 2);
     await fake.control('close', { code });
   }
@@ -270,8 +273,8 @@ test('Discord replacement notification auth failure retains token cause and join
   try { assert.equal(persisted.remotes.forMessenger('discord').status().stopCause, 'token'); } finally { persisted.close(); }
 });
 
-async function resumeFixture(t: import('node:test').TestContext) {
-  const fixture = await discordHubFixtureOwner(t, { injected: true }).start();
+async function resumeFixture(t: import('node:test').TestContext, log?: (entry: Record<string, unknown>) => void) {
+  const fixture = await discordHubFixtureOwner(t, { injected: true, ...(log ? { log } : {}) }).start();
   await fixture.clock.advance(250); await receipt(fixture.status, r => r.connection === 'connected');
   return fixture;
 }
@@ -316,11 +319,16 @@ test('Discord ten drops, reconnect and resumable invalid session spend no extra 
 });
 
 test('Discord nonresumable invalid session waits random one to five seconds for fresh Identify', async t => {
-  const { close, fake, clock, status } = await resumeFixture(t);
+  const admission = discordAdmissionObserver(t);
+  const { close, fake, clock, status } = await resumeFixture(t, admission.log);
+  const scheduled = admission.observe(2);
   await fake.control('dispatch', { op: 9, d: false });
   await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
   assert.equal((await status()).connection, 'disconnected');
   await clock.advance(1999); assert.equal((await fake.control('state')).gateway.identifies, 1);
+  await clock.advance(1); assert.equal((await fake.control('state')).gateway.identifies, 1);
+  assert.equal((await scheduled).delay, 2750);
+  await clock.advance(2749); assert.equal((await fake.control('state')).gateway.identifies, 1);
   await clock.advance(1); await receipt(() => fake.control('state'), s => s.gateway.identifies === 2);
   assert.equal((await fake.control('state')).gateway.resumes, 0);
   await clock.advance(250); await receipt(status, r => r.connection === 'connected');
@@ -435,4 +443,137 @@ for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${
   assert.deepEqual(owner.disposal, ['hub-stopped', 'store-closed']);
   assert.equal(owner.pending(), 0); assert.equal(clock.pending, 0); assert.equal(setupClock.pending, 0);
   assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
+});
+
+test('Discord Identify floor stops below 100 with reset time and no Identify', async t => {
+  const root = await tempProject(t); const fake = await fakeDiscordFixture(t); const clock = new FakeClock();
+  await fake.control('configure', { session_start_limit: { total: 1000, remaining: 99, reset_after: 60000, max_concurrency: 1 } });
+  const config = defaultConfig('Identify floor'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  const row = await receipt(async () => ((await ui.request({ type: 'remote.status' })).value as { remotes: RemoteStatusRow[] }).remotes[1]!, r => r.connection === 'disabled');
+  assert.equal(row.stopCause, 'identify-budget');
+  assert.match(row.reason!, /2026-10-16T12:01:00.000Z/);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> };
+  const warnings = history.messages.filter(m => m.text.includes('identify budget'));
+  assert.equal(warnings.length, 1); assert.match(warnings[0]!.text, /2026-10-16T12:01:00.000Z/);
+  assert.equal((await fake.control('state')).gateway.identifies, 0);
+  assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
+  await hub.stop(); assert.equal(clock.pending, 0);
+});
+
+test('Discord Identify spacing and rolling count survive hub restart', async t => {
+  const { Store } = await import('../src/hub/store.ts');
+  const root = await tempProject(t); const clock = new FakeClock(); const fake = await fakeDiscordFixture(t, { clock });
+  await fake.control('configure', { interval: 1000000 });
+  const config = defaultConfig('Identify restart'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const admission = discordAdmissionObserver(t);
+  const start = () => projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { clock, log: admission.log, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
+  const first = await start();
+  await receipt(() => fake.control('state'), s => s.gateway.identifies === 1);
+  await first.stop();
+  const readBudget = () => { const db = new Store(join(root, '.cland/hub.db')); try { return JSON.parse(db.remotes.forMessenger('discord').get('discord.identify')!); } finally { db.close(); } };
+  assert.deepEqual(readBudget().timestamps, [clock.now().getTime()]);
+  const scheduled = admission.observe(1); // New hub owns a new socket ordinal.
+  const second = await start();
+  assert.equal((await scheduled).delay, 5000);
+  await clock.advance(4999); assert.equal((await fake.control('state')).gateway.identifies, 1);
+  await clock.advance(1); await receipt(() => fake.control('state'), s => s.gateway.identifies === 2);
+  assert.deepEqual(readBudget().timestamps, [Date.parse('2026-10-16T12:00:00Z'), Date.parse('2026-10-16T12:00:05Z')]);
+  await second.stop(); assert.equal(clock.pending, 0);
+});
+
+test('Discord failed Identifies grow equal-jitter waits through the cap; READY clears backoff', async t => {
+  const admission = discordAdmissionObserver(t);
+  const fixture = await discordHubFixtureOwner(t, { log: admission.log, injected: true, interval: 1000000, configure: { ready: false } }).start();
+  const { fake, clock, state, close } = fixture;
+  const origin = clock.now().getTime();
+  let count = 1;
+  await clock.advance(10000); // A long failed handshake still backs off after its close.
+  for (const delay of [3125, 6250, 12500, 25000, 50000, 100000, 187500, 187500]) {
+    const failedAt = clock.now().getTime();
+    const scheduled = admission.observe(count + 1);
+    await fake.control('close', { code: 4009 });
+    await receipt(() => fake.control('state'), s => s.gateway.closes.length === count);
+    await clock.advance(1);
+    assert.ok((await scheduled).delay > 0);
+    const previous = JSON.parse(state.get('discord.identify')!).timestamps.at(-1) as number;
+    const deadline = Math.max(previous + 5000, failedAt + delay);
+    await clock.advance(deadline - clock.now().getTime() - 1);
+    assert.equal((await fake.control('state')).gateway.identifies, count);
+    if (count === 8) await fake.control('configure', { ready: true });
+    await clock.advance(1);
+    count++; await receipt(() => fake.control('state'), s => s.gateway.identifies === count);
+    assert.equal(JSON.parse(state.get('discord.identify')!).timestamps.at(-1), deadline);
+  }
+  await receipt(async () => JSON.parse(state.get('discord.identify')!).failures, failures => failures === 0);
+  assert.ok(clock.now().getTime() > origin);
+  const scheduled = admission.observe(count + 1);
+  await fake.control('close', { code: 4009 });
+  await receipt(() => fake.control('state'), s => s.gateway.closes.length === count);
+  await clock.advance(1); assert.equal((await scheduled).delay, 4999);
+  await clock.advance(4998); assert.equal((await fake.control('state')).gateway.identifies, count);
+  await clock.advance(1); await receipt(() => fake.control('state'), s => s.gateway.identifies === count + 1);
+  await close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord 500th Identify warns General once across the 501st and prunes rolling day', async t => {
+  const clock = new FakeClock(); const now = clock.now().getTime();
+  const admission = discordAdmissionObserver(t);
+  const fixture = await discordHubFixtureOwner(t, { log: admission.log, clock, interval: 1000000, prepare: state => {
+    state.set('discord.identify', JSON.stringify({ timestamps: [now - 86400001, ...Array.from({ length: 499 }, (_, i) => now - (499 - i) * 5000)], failures: 0, warned: null }));
+  } }).start();
+  const { fake, state, history, close } = fixture;
+  const warnings = () => history().then(rows => rows.filter(m => m.text.includes('500 identifies')));
+  assert.equal((await receipt(warnings, rows => rows.length === 1)).length, 1);
+  assert.equal(JSON.parse(state.get('discord.identify')!).timestamps.length, 500);
+  const scheduled = admission.observe(2);
+  await fake.control('close', { code: 4009 }); await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
+  await clock.advance(1); assert.equal((await scheduled).delay, 4999);
+  await clock.advance(4999); await receipt(() => fake.control('state'), s => s.gateway.identifies === 2);
+  assert.equal(JSON.parse(state.get('discord.identify')!).timestamps.length, 501);
+  assert.equal((await warnings()).length, 1);
+  assert.equal(JSON.stringify(await history()).includes(DISCORD_TEST_TOKEN), false);
+  await close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord rereads the start budget before a fresh Identify after READY', async t => {
+  const admission = discordAdmissionObserver(t);
+  const { fake, clock, status, history, close } = await discordHubFixtureOwner(t, { log: admission.log, interval: 1000000,
+    configure: { session_start_limit: { total: 1000, remaining: 100, reset_after: 60000, max_concurrency: 1 } } }).start();
+  await fake.control('configure', { session_start_limit: { total: 1000, remaining: 99, reset_after: 90000, max_concurrency: 1 } });
+  const scheduled = admission.observe(2);
+  await fake.control('close', { code: 4009 });
+  await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
+  await clock.advance(1); assert.equal((await scheduled).delay, 4999);
+  await clock.advance(4999);
+  const row = await receipt(status, r => r.connection === 'disabled');
+  assert.equal(row.stopCause, 'identify-budget'); assert.match(row.reason!, /2026-10-16T12:01:35.000Z/);
+  assert.equal((await fake.control('state')).gateway.identifies, 1);
+  assert.equal((await history()).filter(m => m.text.includes('identify budget')).length, 1);
+  await close(); assert.equal(clock.pending, 0);
+});
+
+for (const mode of ['omitted', 'aborted'] as const) test(`Discord Identify ${mode} admission setup drains observers and native writers`, async t => {
+  const setupClock = new FakeClock(); const abort = new AbortController();
+  const admission = discordAdmissionObserver(t, { setupClock, publish: false });
+  const owner = discordHubFixtureOwner(t, { log: admission.log, interval: 1000000 });
+  const { fake, clock, logs, hub } = await owner.start();
+  const scheduled = admission.observe(2, abort.signal);
+  const incomplete = assert.rejects(scheduled, mode === 'omitted' ? /admission receipt deadline/ : /admission observation aborted/);
+  void incomplete.catch(() => {});
+  await fake.control('close', { code: 4009 });
+  await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
+  await clock.advance(1);
+  // Positive producer control: omit only observer publication, never substitute a status timestamp.
+  await receipt(async () => logs, entries => entries.some(e => e.event === 'discord-identify-scheduled' && e.connection === 2));
+  if (mode === 'aborted') abort.abort(new Error('Discord admission observation aborted')); else await setupClock.advance(2000);
+  await incomplete; await admission.close(); await owner.close(); await hub.stopped;
+  assert.equal(admission.pending(), 0); assert.equal(admission.listeners(), 0);
+  assert.equal(owner.pending(), 0); assert.equal(owner.dbClosed(), true);
+  assert.deepEqual(owner.disposal, ['hub-stopped', 'store-closed']);
+  assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
+  assert.equal(clock.pending, 0); assert.equal(setupClock.pending, 0);
 });

@@ -17,7 +17,7 @@ export function fakeGateway(server: Server, clock: Clock) {
   const state = { identifies: 0, resumes: 0, validResume: false, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] as number[] };
   const transports = new Set<Socket>();
   let interval = 1000, acknowledge = true, sequence = 0, disconnectedAt = 0;
-  let window = 90000;
+  let window = 90000, ready = true;
   const buffer: Record<string, unknown>[] = [];
   const active = new Set<WebSocket>();
   const publish = (body: Record<string, unknown>) => {
@@ -42,7 +42,7 @@ export function fakeGateway(server: Server, clock: Clock) {
           && url.searchParams.get('v') === '10' && url.searchParams.get('encoding') === 'json'
           && !url.searchParams.has('compress') && !req.headers['sec-websocket-extensions'];
         if (!state.validIdentify) { socket.close(4002); return; }
-        send(socket, { op: 0, t: 'READY', s: ++sequence, d: { session_id: 'fixture-session',
+        if (ready) send(socket, { op: 0, t: 'READY', s: ++sequence, d: { session_id: 'fixture-session',
           resume_gateway_url: `ws://127.0.0.1:${(server.address() as { port: number }).port}`, user: { id: DISCORD_IDS.bot } } });
       }
       if (frame.op === 6) {
@@ -60,7 +60,7 @@ export function fakeGateway(server: Server, clock: Clock) {
   });
   return { state, listening: listening.promise, closed: closed.promise,
     receipts: () => ({ listening: didListen, closed: didClose, clients: wss.clients.size }),
-    configure(body: Record<string, unknown>) { if (typeof body.holdClose === 'boolean') for (const transport of transports) { if (body.holdClose) transport.pause(); else transport.resume(); } if (typeof body.resumeWindow === 'number') window = body.resumeWindow; if (typeof body.interval === 'number') interval = body.interval; if (typeof body.acknowledge === 'boolean') acknowledge = body.acknowledge; },
+    configure(body: Record<string, unknown>) { if (typeof body.ready === 'boolean') ready = body.ready; if (typeof body.holdClose === 'boolean') for (const transport of transports) { if (body.holdClose) transport.pause(); else transport.resume(); } if (typeof body.resumeWindow === 'number') window = body.resumeWindow; if (typeof body.interval === 'number') interval = body.interval; if (typeof body.acknowledge === 'boolean') acknowledge = body.acknowledge; },
     closeCode(code: number) { for (const socket of wss.clients) socket.close(code); },
     dispatch: publish,
     drop() { for (const socket of wss.clients) socket.terminate(); },

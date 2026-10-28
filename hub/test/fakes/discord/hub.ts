@@ -1,3 +1,4 @@
+import type { RemoteStore } from '../../../src/remote/state.ts';
 import type { TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -13,6 +14,8 @@ import type { RemoteStatusRow } from '../../../src/protocol.ts';
 /** Register native/hub joins before acquisition; close injected storage only after drainage. */
 export function discordHubFixtureOwner(t: TestContext, options: {
   clock?: FakeClock; injected?: boolean; interval?: number;
+  log?: (entry: Record<string, unknown>) => void;
+  configure?: Record<string, unknown>; prepare?: (state: RemoteStore) => void;
   fake?: Parameters<typeof discordExchangeOwner>[1];
 } = {}) {
   const clock = options.clock ?? new FakeClock();
@@ -29,6 +32,7 @@ export function discordHubFixtureOwner(t: TestContext, options: {
       native.stop(async () => { const hub = await hubReady; await hub?.stop(); if (hub) { await hub.stopped; disposal.push('hub-stopped'); } });
       native.afterDrain(() => { db?.close(); dbClosed = true; disposal.push('store-closed'); });
       const root = await native.run(() => tempProject(t));
+      if (options.configure) await native.run(() => native.fake.control('configure', options.configure!));
       if (options.interval) await native.run(() => native.fake.control('configure', { interval: options.interval }));
       const config = defaultConfig('Discord native fixture'); config.remote.discord.enabled = true;
       await native.run(async () => {
@@ -37,11 +41,12 @@ export function discordHubFixtureOwner(t: TestContext, options: {
       });
       db = new Store(join(root, '.cland/hub.db'));
       const state = db.remotes.forMessenger('discord');
+      options.prepare?.(state);
       state.setPairing({ userId: DISCORD_IDS.human, chatId: DISCORD_IDS.channel, guildId: DISCORD_IDS.guild, name: 'Fixture human' });
       hubReady = projectHub(t, root, { CLAND_DISCORD_API_ROOT: native.fake.url }, {
-        clock, log: entry => logs.push(entry), syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN },
+        clock, log: entry => { logs.push(entry); options.log?.(entry); }, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN },
         ...(options.injected ? { gatewayMessenger: () => new DiscordRemote(native.api, DISCORD_TEST_TOKEN, clock,
-          { fake: true, random: () => 0.25, store: state, notice: cause => notices.push(cause) }) } : {}),
+          { log: entry => { logs.push(entry); options.log?.(entry); }, fake: true, random: () => 0.25, store: state, notice: cause => notices.push(cause) }) } : {}),
       });
       const hub = await native.run(() => hubReady!);
       const ui = await native.run(() => connectUi(t, hub.discovery, 'nvim'));

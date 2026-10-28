@@ -167,3 +167,12 @@ project registry. The command uses the shared final credential filter and
 redacts stderr before publishing its bounded tail. Cancellation joins native
 close after SIGTERM/SIGKILL; commands run once within the note deadline.
 See [the command transport seam](tests/hub-test-speech-command.test.ts.md).
+
+An enabled Discord client spaces Identifies by five seconds across restarts and
+retains its rolling count/backoff in hub.db. Failed Identifies back off with equal
+jitter up to five minutes; READY clears that penalty and resumes spend no start.
+Each Identify rereads Discord's remaining session starts: below 100 stops only
+Discord with `identify-budget` and a UTC reset time in status and General. Wait
+for that reset before `cland hub reload`. General warns at 500 local Identifies,
+at most once per rolling day. Keep one bot per project: other hubs consume the
+same platform budget and an overrun resets its token.

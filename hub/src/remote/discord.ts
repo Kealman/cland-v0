@@ -1,3 +1,4 @@
+import { DiscordIdentifyBudget } from './discord-identify.ts';
 import { DiscordInbound } from './discord-inbound.ts';
 import type { DiscordMessage } from './discord-api.ts';
 import { renderDiscord } from './discord-render.ts';
@@ -58,7 +59,16 @@ export class DiscordRemote implements Remote {
       this.#connectionChanged();
       for (const listener of this.#listeners) listener();
     });
-    this.#socket = new DiscordSocket(clock, () => { this.#connectionChanged(); for (const listener of this.#listeners) listener(); }, options.random);
+    const budget = new DiscordIdentifyBudget(clock, options.store);
+    this.#socket = new DiscordSocket(clock, () => { this.#connectionChanged(); for (const listener of this.#listeners) listener(); }, options.random, { scheduled: (connection, delay) => options.log?.({ event: 'discord-identify-scheduled', connection, delay }), delay: () => budget.delay(options.random ?? Math.random), ready: () => budget.ready(), failed: () => budget.failed(options.random ?? Math.random), reserve: () => {
+      if (budget.reserve()) options.notice?.('500 identifies in the last 24 hours', 'check for repeated failed connections before the session start budget runs out', true);
+    }, before: async () => {
+      const { session_start_limit: limit } = await api.getGatewayBot({ signal: this.#abort.signal });
+      if (!Number.isSafeInteger(limit?.remaining) || !Number.isFinite(limit.reset_after) || limit.reset_after < 0)
+        throw new Error('Discord gateway sent invalid session start limit');
+      if (limit.remaining < 100) throw remoteStopError('discord', 'identify-budget',
+        `session starts reset at ${new Date(clock.now().getTime() + limit.reset_after).toISOString()}`);
+    } });
   }
   #connectionChanged(): void {
     if (this.#abort.signal.aborted) return;
@@ -145,7 +155,7 @@ export class DiscordRemote implements Remote {
     if (cause) {
       const details = remoteStopDetails('discord', cause)!;
       const stopped = remoteStopCause(error) ? error as Error : remoteStopError('discord', cause);
-      const code = stopped.message.match(/; close code \d+$/)?.[0] ?? '';
+      const code = stopped.message.match(/; (?:close code \d+|session starts reset at [0-9TZ:.\-]+)$/)?.[0] ?? '';
       await this.stopWith(details.cause + code, details.fix, stopped);
       throw stopped;
     }
