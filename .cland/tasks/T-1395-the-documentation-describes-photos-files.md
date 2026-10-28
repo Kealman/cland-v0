@@ -2,8 +2,8 @@
 id: T-1395
 kind: task
 title: The documentation describes photos, files and voice from Telegram, and the composer's attachments
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -20,7 +20,8 @@ blocked_by:
 topic: topic-1162
 branch: t/T-1395-the-documentation-describes-photos-files
 created: 2026-10-27T23:37:29.571Z
-updated: 2026-10-28T20:43:58.590Z
+updated: 2026-10-28T21:10:16.103Z
+closed: 2026-10-28T21:10:16.103Z
 ---
 
 ## Summary
@@ -45,8 +46,10 @@ Setup's offer of the key stays with T-1369. The site's remote-docs test gains ch
 
 - [x] C1. The remote-control page names `max_upload_mb`, `[speech] provider`, `command`, `CLAND_SPEECH_MIME`, `CLAND_SPEECH_LANGUAGE` and the data-use line identical to `SPEECH_DATA_USE`, and the site's docs tests pass (test).
   - done: impl-1395 · 2026-10-28T20:43:34.533Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1395-evidence-2 · 2026-10-28T21:03:50.480Z · commit da715f5a9dc319b24d782e3d758ee05a39c74e78
 - [x] C2. The web page names file attachments in the composer and inline PNG, JPEG, GIF and WebP, and its existing docs checks pass (test).
   - done: impl-1395 · 2026-10-28T20:31:32.714Z
+  - verified: rev-26 [reviewer] · run rev-20261028-1395-evidence-2 · 2026-10-28T21:03:50.480Z · commit da715f5a9dc319b24d782e3d758ee05a39c74e78
 
 ## Notes
 
@@ -115,3 +118,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13464 source3 clear, M2 resolved with complete independent runtime equality over remote/speech/artifacts; sorted copy preserves duplicates and does not mutate export. Exact-head importing consumer audit confirms sole wrapper, guide updated, prior pages/guards unchanged. Local wrapper8/8 report separate; A-13462 retained failed. Current runtime C1 failure awaits successful original configured evidence, no fresh verification or reviewer workload. Restore claimant done as needed and submit mode-free at unchanged head.
+
+### rev-26 · 2026-10-28T21:03:50.480Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261028-1395-evidence-2
+commit: da715f5a9dc319b24d782e3d758ee05a39c74e78
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13468 final evidence2 clear, C1/C2 freshly verified from original A-13467. 4015 ordinary+35 separate load passes, no unfinished identities; seven site cases and migrated independent hub equality pass. Each site identity5/5 load; C1base0.000848316s/C2base0.000532640s/equality0.001600431s; maxsite load0.005380829s. T0/T1/allT2/Web green, T3/T4 unrun. Source A-13464 unchanged; prior failed A-13462/A-13463 retained. Linux/browser/host-gate reuse and report-only diagnostic provenance in artifact. No reviewer workloads, extra run or per-item QA requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-28T21:10:16.103Z
+
+Merged 1e891e93a3f9dc4cf74e2a20bd2e18008a46ad11 onto dev.
