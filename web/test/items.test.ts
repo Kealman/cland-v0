@@ -13,6 +13,8 @@ import type { ExplorerSummary } from '../../shared/wire/index.ts';
 // The full copied tracker can queue snapshot/page/delta work on a loaded runner.
 // Bound the actual rendered row, independently of hub launch or mutation replies.
 const copiedRowTimeout = 15_000;
+// The copied-tracker mutation result has its own bound; shared clients keep 5 s.
+const copiedRequestTimeout = 15_000;
 async function rebuildTiming(page: Page) {
   return page.evaluate(() => {
     const entries = performance.getEntriesByName('cland.items.rebuild') as PerformanceMeasure[];
@@ -118,10 +120,14 @@ test('the Items tree reads the copied live tracker snapshot', async t => {
       assert.deepEqual(await task.locator('[title^="reviewer ·"]').allTextContents(), ['✗ review r2'], 'status delta retains only the latest review and its original round');
       const nextVerdict = task.getByText('✓ review r3', { exact: true }).waitFor({ timeout: copiedRowTimeout });
       void nextVerdict.catch(() => {});
+      await page.evaluate(() => performance.clearMeasures('cland.items.rebuild'));
+      const requestStarted = performance.now();
       const posted = await ui.request({ type: 'task.comment', item: 'T-900002', text: 'Third source review', // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
-        verdict: { verdict: 'review', result: 'clear', run: 'web-r3', scope: 'full', findings: [] } });
+        verdict: { verdict: 'review', result: 'clear', run: 'web-r3', scope: 'full', findings: [] } }, copiedRequestTimeout);
+      const requestMs = performance.now() - requestStarted;
       assert.equal(posted.ok, true, posted.error);
       await nextVerdict;
+      t.diagnostic(`copied tracker task.comment result: ${requestMs} ms; rendered verdict: ${performance.now() - requestStarted} ms; model ${JSON.stringify(await rebuildTiming(page))}`);
       assert.deepEqual(await task.locator('[title*=" · web-r"]').allTextContents(), ['✓ review r3'], 'a subsequent verdict replaces the prior round');
     });
   });

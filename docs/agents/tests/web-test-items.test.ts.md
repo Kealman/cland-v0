@@ -36,3 +36,21 @@ claims subtest 10/10). This identifies insufficient receipt headroom rather than
 a multi-second model rebuild. Historical Linux hold timeouts remain the original
 failure evidence; local evidence does not identify which Linux scheduler or hub
 queue supplied its delay.
+
+The copied-tracker verdict regression reports the `task.comment` result elapsed
+separately from the rendered verdict row and synchronous model work. Request
+elapsed includes the scratch hub queue, storage, transport and scheduling; it
+does not attribute those costs individually. Compare model measures only for
+the completed verdict transition, after clearing earlier status measurements.
+The historic Linux `no result for task.comment within 5000ms` is a request-bound
+failure; row-bound evidence alone cannot explain it. Load evidence names the
+platform and distinguishes local repetitions from the ordinary Linux Web phase.
+
+Only this fixture's verdict `task.comment` request uses a 15 s result bound;
+the shared frame client's 5 s default remains unchanged. The verdict-row observer
+is armed before the request and has its independent 15 s bound and final assertion.
+T-1423's Darwin two-worker plus CPU baseline passed 10/10: requests ranged from
+39.2 to 1,415.8 ms against verdict model maxima of 0.1–0.3 ms. The precise queue
+or storage delay in the original Linux failure was not observed. A disposable
+5.2 s pre-handler delay control reproduces the old request timeout; it is a
+synthetic sensitivity check, not a natural Linux reproduction.
