@@ -2,8 +2,8 @@
 id: T-1389
 kind: task
 title: "What is transcribed and the limits: audio files and video notes within the cap, never videos or documents, and the length checked before download"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1160
 branch: t/T-1389-what-is-transcribed-and-the-limits-audio
 created: 2026-10-27T23:37:28.350Z
-updated: 2026-10-28T19:32:59.203Z
+updated: 2026-10-28T19:51:03.950Z
+closed: 2026-10-28T19:51:03.950Z
 ---
 
 ## Summary
@@ -37,10 +38,13 @@ The pipeline passes `durationSec` to the provider. A transcribed audio file's or
 
 - [x] C1. An audio file and a video note within the cap each arrive as a 🎤 transcript message with their file attached, while a video and an audio document arrive as plain attachments and the fake provider receives no request for them (test).
   - done: impl-1389 · 2026-10-28T19:25:30.474Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1389-final1 · 2026-10-28T19:43:53.676Z · commit 4e28e4fcf3c48b736fd68a47e90399e45d756ab9
 - [x] C2. An 11-minute voice note gets the one-line refusal, `getFile` is never called for it, the provider receives nothing, and nothing reaches General (test).
   - done: impl-1389 · 2026-10-28T19:25:30.699Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1389-final1 · 2026-10-28T19:43:53.676Z · commit 4e28e4fcf3c48b736fd68a47e90399e45d756ab9
 - [x] C3. A note whose provider answers 429 then 200 is transcribed, a provider slower than 90 seconds under the injected clock posts "🎤 not transcribed" naming the timeout, and the fake records at most three attempts for a persistent 503 (test).
   - done: impl-1389 · 2026-10-28T19:25:31.656Z
+  - verified: rev-31 [reviewer] · run rev-20261028-1389-final1 · 2026-10-28T19:43:53.676Z · commit 4e28e4fcf3c48b736fd68a47e90399e45d756ab9
 
 ## Notes
 
@@ -72,3 +76,22 @@ A-13425 full source1 clear: Standards0/Spec0. Reviewed recording admission/live 
 ### coord · 2026-10-28T19:32:59.203Z
 
 Decision (ask c848fe23, answered 19:32:50Z under the human's standing yes of 05:04Z): a Telegram album of audio files stays one message with every file attached and no transcription in 0.3; per-file album transcripts are T-1433 in Follow-ups.
+
+### rev-31 · 2026-10-28T19:43:53.676Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261028-1389-final1
+commit: 4e28e4fcf3c48b736fd68a47e90399e45d756ab9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13431 final clear verifies C1–C3 from source1/current exact-head A-13430/55a7f321 original finishes:3992 ordinary passes+85 separate load passes, zero fail/cancel/skip/todo/duplicate ids. All19 voice base cases,12 new identities each5/5; max new base.237624619/load.566423362s, no>=3s allowance. Exact admission/refusal/retry/deadline/reload/grouped-album assertions retained; Coordinator0ef9a955 group exception explicit. T0/T1/all fallback T2/Web complete; T3/T4 absent. Linux c-8 lon1, CHS156/v1248, task2/Web4, host TREE reuse, file4.048s vs observed case sum3.153s distinction and report-only limits retained. Coordinator38e56f48 explicitly requires no separate full-all; no all-tier claim. No per-item QA/additional run. Fresh conflict check/ready then Coordinator enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-28T19:51:03.950Z
+
+Merged 712e05c62eae3ab3f05aff70332bba47ae366531 onto dev.

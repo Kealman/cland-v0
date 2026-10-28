@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1159
 branch: t/T-1390-a-voice-reply-to-a-card-or-a-voice-note
 created: 2026-10-27T23:37:28.501Z
-updated: 2026-10-28T19:33:07.351Z
+updated: 2026-10-28T19:49:04.750Z
 ---
 
 > Pending: the voice-reply behaviour below is the Coordinator's recommendation awaiting the human's answer to ask 62b8d32f; do not launch before it is answered.
@@ -83,3 +83,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source is clear. A-13427 closes M1–M4: exact Notes row, all-late voice refusal, target/absence persisted synchronously at admission, voice numeric/text punctuation normalization. Original typed behavior and seven cases retained; four new native controls cover late/numeric/FIFO/absence. No configured runtime evidence yet; C1–C3 remain unverified. Preserve original correction outputs and request final evidence audit after one same-head mode-free run. T-1389 merge/head changes require fresh review.
+
+### rev-34 · 2026-10-28T19:49:04.750Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261028-1390-evidence1
+commit: 0e15cf5004430a5853e4df255970a3f422cd0fe2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Current-head configured evidence clear, not final ready. A-13435 independently audits A-13434: 3991 ordinary/503 file passes, 55 task-owned load passes (all 11 identities 5/5) plus 25 unrelated site load passes. T0/T1/all fallback T2/Web complete, no T3/T4; host prepared-tree typecheck reused, runtime trees match. C1–C3 assertion evidence is present at this head, but verification/ready marks are intentionally deferred because Coordinator 5cbd1ba5 requires the semantic T-1389 merge, delta source review and a new-head run. No new findings. Parent evidence cannot cover that future resolution.

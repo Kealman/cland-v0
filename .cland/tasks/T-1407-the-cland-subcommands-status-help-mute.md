@@ -2,8 +2,8 @@
 id: T-1407
 kind: task
 title: The /cland subcommands status, help, mute, unmute, decision and question, answered ephemerally and laid out for a phone
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1156
 branch: t/T-1407-the-cland-subcommands-status-help-mute
 created: 2026-10-27T23:38:47.247Z
-updated: 2026-10-28T19:12:20.065Z
+updated: 2026-10-28T19:44:27.225Z
+closed: 2026-10-28T19:44:27.225Z
 ---
 
 ## Summary
@@ -136,3 +137,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13415 final evidence2 verifies C1–C5 from original A-13414:3978 ordinary passes+75 separate loads(50commands/25site), no nonpass/unfinished. Ten exact command base cases each5/5; private layout/mute/replay/ingress/defer/stop/long/native-limit assertions retained. Messages24/24, messenger38/38, pairing4/4 including all three prior red restart boundaries pass at merged head. T0/T1/all fallbackT2/Web complete; T3/T4 absent. Pinned Linux/browser setup, host gate reuse and report-only budgets/lint explicit. Prior A-13396 red remains separate. Coordinator full20cd6379/CLI T3/enqueue remain separate gates; no reviewer workloads.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-28T19:44:27.225Z
+
+Merged e1536309a360192c8ea56d7a04ec61be67dbb1a4 onto dev.
