@@ -275,6 +275,7 @@ T-1402: extend Discord connection guidance with resume and liveness receipt boun
 
 2026-10-28 · T-1404 source3 review: independently owned writer-entry receipt and pre-registered release/cancel/join control.
 
+T-1406: Document Discord reply routing and durable reaction frame/fake evidence.
 T-1387 source review: require descriptor-bound uploads, pairing-independent fences and contiguous started publications.
 - 2026-10-28: Document Discord mirror render/fallback persistence, split budgets, silence and native receipt seam (T-1405).
 - 2026-10-28: Require atomic complete-group enqueue before native Discord delivery (T-1405 review correction).

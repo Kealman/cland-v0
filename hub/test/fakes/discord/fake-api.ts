@@ -18,7 +18,8 @@ export const DISCORD_IDS = {
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { reactions: Array<{ channel: string; message: string; user: string; emoji: string }>; interactions: Array<{ id: string; at: number; callbacks: object[]; edits: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+
 function reply(res: ServerResponse, status: number, body: unknown): void {
   if (!res.headersSent) res.writeHead(status, { 'content-type': 'application/json' });
   res.end(JSON.stringify(body));
@@ -38,7 +39,8 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const events = new EventEmitter();
   const clock = options.clock ?? realClock;
   const redact = remoteRedactor([DISCORD_TEST_TOKEN]);
-  const state: DiscordState = { interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, resumes: 0, validResume: false, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
+  const state: DiscordState = { reactions: [], interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, resumes: 0, validResume: false, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
+
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
   const interactionTokens = new Map<string, { id: string; at: number; callbacks: object[]; edits: object[] }>();
@@ -143,7 +145,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       if (bucket.used >= limit) { state.rateLimits++; return reply(res, 429, { retry_after: (bucket.reset - now) / 1000 }); }
       bucket.used++;
       res.setHeader('X-RateLimit-Remaining', limit - bucket.used);
-      if (reaction) return reply(res, 200, {});
+
     }
     const fault = faults.shift();
     if (fault) {
@@ -168,6 +170,12 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
           message: fault.echoToken ? DISCORD_TEST_TOKEN : 'Injected fault', retry_after: fault.retry_after, global: fault.global });
       }
     }
+      if (reaction) {
+        const parts = path.pathname.split('/');
+        const receipt = { channel: parts[2]!, message: parts[4]!, user: DISCORD_IDS.bot, emoji: decodeURIComponent(parts[6]!) };
+        if (!state.reactions.some(r => JSON.stringify(r) === JSON.stringify(receipt))) state.reactions.push(receipt);
+        return reply(res, 204, {});
+      }
     if (path.pathname === `/applications/${DISCORD_IDS.application}/commands`) {
       if (req.method === 'PUT') { state.commands = body as unknown as object[]; state.commandWrites++; }
       return reply(res, 200, state.commands);

@@ -412,3 +412,141 @@ for (const abortBeforeEntry of [false, true]) test(abortBeforeEntry
   assert.equal(storeClosed, true); assert.equal(existsSync(root), false);
   assert.equal(exchange.pending(), 0);
 });
+
+test('Discord routes mapped replies and leaves unknown references as plain General text', async t => {
+  const root = await tempProject(t), fake = await fakeDiscordFixture(t);
+  const config = defaultConfig('Reply fixture'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db')); onCleanup(t, () => store.close());
+  const state = store.remotes.forMessenger('discord');
+  state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  await coord.call('send', { topic: 'general', text: 'Reply target', kind: 'report' });
+  await until(async () => (await fake.control('state')).messages.some(m => m.content.includes('Reply target')), { timeoutMs: 1500, what: 'native mirror' });
+  const native = (await fake.control('state')).messages.find(m => m.content.includes('Reply target'))!;
+  await until(() => !!state.message(ids.channel, native.id), { timeoutMs: 1500, what: 'durable target map' });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'READY' });
+  const dispatch = (id: string, reference: string, deleted = false) => fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: {
+    id, type: 19, channel_id: ids.channel, author: { id: ids.human }, content: reference,
+    message_reference: { message_id: reference }, ...(deleted ? { referenced_message: null } : {}),
+  } });
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { id: '90071992547439999', type: 19, channel_id: ids.channel, author: { id: ids.member }, content: 'Foreign reply', message_reference: { message_id: native.id } } });
+  await dispatch('90071992547440000', native.id);
+  await dispatch('90071992547440001', '99999999999999999');
+  await dispatch('90071992547440002', native.id, true);
+  await until(() => state.get('discord.lastMessageId') === '90071992547440002', { timeoutMs: 1500, what: 'both replies committed' });
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  const messages = (history.value as { messages: import('../src/protocol.ts').TopicMessage[] }).messages.filter(m => m.via === 'discord');
+  assert.equal(messages.length, 3, 'foreign reply never enters General');
+  assert.equal((await fake.control('state')).reactions.some(r => r.message === '90071992547439999'), false, 'foreign reply has no feedback');
+  assert.equal(state.get('discord.inbound:90071992547439999'), null);
+  assert.equal(messages[0]!.replyTo, state.message(ids.channel, native.id)!.message);
+  assert.equal(messages[1]!.replyTo, undefined);
+  assert.equal(messages[2]!.replyTo, undefined, 'deleted mapped target becomes plain General text');
+  await hub.stop();
+});
+
+for (const lostDelivery of [false, true]) test(`Discord stored and delivered reactions survive a restart exactly once${lostDelivery ? ' with a lost delivery frame' : ''}`, async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const clock = new FakeClock();
+  const root = await tempProject(t), fake = await fakeDiscordFixture(t, { clock });
+  const config = defaultConfig('Feedback fixture'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db')); onCleanup(t, () => store.close());
+  const state = store.remotes.forMessenger('discord');
+  state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const { messengerFactory } = await import('../src/remote/messenger.ts');
+  const { remoteRedactor } = await import('../src/remote/redact.ts');
+  const factory = messengerFactory({ CLAND_DISCORD_API_ROOT: fake.url }, remoteRedactor(), clock, { state: store.remotes });
+  let dropped = false;
+  const start = () => projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN }, gatewayMessenger: (...args) => {
+    const remote = factory(...args), receive = remote.receive.bind(remote);
+    remote.receive = frame => {
+      if (lostDelivery && frame.type === 'delivery' && (frame.stage === 'delivered' || frame.stage === 'injected')) { dropped = true; return; }
+      return receive(frame);
+    };
+    return remote;
+  } });
+  state.set('discord.inbound:90071992547449999', '1'); // Previous persisted wire shape.
+  let hub = await start();
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'READY' });
+  const d = { id: '90071992547450000', type: 0, channel_id: ids.channel, author: { id: ids.human }, content: 'Deliver after restart' };
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { ...d, id: '90071992547449999', content: 'Legacy replay' } });
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
+  await until(async () => (await fake.control('state')).reactions.some(r => r.message === d.id && r.emoji === '👌'), { timeoutMs: 1500, what: 'stored reaction' });
+  assert.equal((await fake.control('state')).reactions.some(r => r.emoji === '👀'), false);
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal((history.value as { messages: import('../src/protocol.ts').TopicMessage[] }).messages.filter(m => m.via === 'discord').length, 1);
+  await until(() => state.outbox().some(j => j.source?.includes(d.id) && j.state === 'sent'), { timeoutMs: 1500, what: 'durable stored reaction settlement' });
+  await hub.stop(); await clock.advance(250); hub = await start();
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  const delivered = await coord.waitForEvent(e => e.params.content === d.content);
+  assert.equal(delivered.params.meta!.via, 'discord');
+  if (lostDelivery) {
+    await until(() => dropped, { timeoutMs: 1500, what: 'adapter dropped durable delivery frame' });
+    assert.equal((await fake.control('state')).reactions.some(r => r.emoji === '👀'), false);
+    await coord.close(); await hub.stop(); await clock.advance(250); hub = await start();
+  }
+  await until(async () => (await fake.control('state')).reactions.some(r => r.message === d.id && r.emoji === '👀'), { timeoutMs: 1500, what: 'delivered reaction after restart' });
+  await until(async () => (await fake.control('state')).gateway.identifies === (lostDelivery ? 3 : 2), { timeoutMs: 1500, what: 'restart READY' });
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
+  // A later durable cursor is the ordered barrier for duplicate replay.
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { ...d, id: '90071992547450001', content: 'Barrier' } });
+  await until(() => state.get('discord.lastMessageId') === '90071992547450001', { timeoutMs: 1500, what: 'replay barrier' });
+  const native = await fake.control('state');
+  assert.deepEqual(native.reactions.filter(r => r.message === d.id).map(r => [r.user, r.emoji]), [[ids.bot, '👌'], [ids.bot, '👀']]);
+  assert.equal(native.requests.filter(r => r.method === 'PUT' && r.path.includes(`/messages/${d.id}/reactions/`)).length, 2);
+  await hub.stop();
+});
+
+test('Discord replays an interrupted reaction idempotently after an unavailable outbox restart', async t => {
+  const { FakeClock } = await import('./fake-clock.ts'); const clock = new FakeClock();
+  const exchange = await discordExchangeOwner(t, { clock }).start();
+  const { root } = await exchange.project(), { api, fake, signal, run } = exchange;
+  const store = new Store(join(root, 'hub.db')); exchange.afterDrain(() => store.close());
+  const state = store.remotes.forMessenger('discord');
+  state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const { DiscordOutbox } = await import('../src/remote/discord-outbox.ts');
+  const box = new DiscordOutbox(api, state, clock, signal); exchange.stop(() => box.stop());
+  const at = clock.now().toISOString(), message = '90071992547460000';
+  await run(() => api.addReaction(ids.channel, message, '👌', { signal }));
+  state.writeOutbox({ id: 'interrupted-reaction', kind: 'message', source: `discord.reaction:${ids.channel}:${message}:👌`, state: 'sending', created: at, updated: at,
+    payload: { discord: true, channel: ids.channel, user: ids.human, reaction: { message, emoji: '👌' } } },
+  { id: 'lost-response', job: 'interrupted-reaction', at, outcome: 'unknown' });
+  state.set('outbox.unavailable', '1'); await clock.advance(250);
+  await run(() => box.resume());
+  assert.equal(state.outbox()[0]!.state, 'sent');
+  const native = await fake.control('state');
+  assert.equal(native.reactions.length, 1, 'PUT @me preserves one bot reaction after unknown response');
+  assert.equal(native.requests.filter(r => r.method === 'PUT').length, 2, 'one safe recovery attempt');
+  await run(() => box.resume());
+  assert.equal((await fake.control('state')).requests.filter(r => r.method === 'PUT').length, 2);
+});
+
+for (const replace of [false, true]) test(`Discord stops old-input feedback after ${replace ? 'same-channel pairing replacement' : 'unpair'} during held stored reaction`, async t => {
+  const root = await tempProject(t), fake = await fakeDiscordFixture(t);
+  const config = defaultConfig('Pairing race'); config.remote.discord.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db')); onCleanup(t, () => store.close());
+  const state = store.remotes.forMessenger('discord');
+  state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'READY' });
+  const abort = new AbortController(); onCleanup(t, () => abort.abort());
+  const held = fake.waitForHold(abort.signal); void held.catch(() => {});
+  await fake.control('fault', { response: 'hold' });
+  const message = '90071992547470000';
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { id: message, type: 0, channel_id: ids.channel, author: { id: ids.human }, content: 'Pairing race' } });
+  await held;
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  await coord.waitForEvent(e => e.params.content === 'Pairing race');
+  await until(() => JSON.parse(state.get(`discord.inbound:${message}`)!).delivered, { timeoutMs: 1500, what: 'delivery recorded while stored reaction held' });
+  state.setPairing(replace ? { userId: ids.member, chatId: ids.channel, guildId: ids.guild, name: 'Replacement' } : null);
+  await fake.control('release', {});
+  await until(() => state.outbox().some(j => j.source?.includes(message) && j.state === 'sent'), { timeoutMs: 1500, what: 'held reaction settled' });
+  await hub.stop();
+  assert.equal(state.outbox().some(j => j.source?.endsWith(`${message}:👀`)), false, 'no eyes job for retired identity');
+  assert.equal((await fake.control('state')).reactions.some(r => r.emoji === '👀'), false);
+});

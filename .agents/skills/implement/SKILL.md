@@ -753,6 +753,13 @@ observers retain only sanitized errors and numeric channel ids. All REST paths
 stop on 401/40001/50014; test reads the application and sends one paired line.
 Existing role authority and optional wire fields remain unchanged.
 
+For Discord replies and reaction feedback, extend the production-frame cases in
+`docs/agents/tests/hub-test-discord-messages.test.ts.md`. Keep mapped topic/reply
+routing, foreign-author rejection and legacy inbound tombstones. React through
+the durable outbox with idempotent PUT recovery; reconcile delivery receipts
+only after the gateway conversation opens. Observe sent settlement before a
+restart and retain both native emoji state and HTTP attempt assertions.
+
 For Discord mirror rendering, use the production-frame/loopback receipts in
 `docs/agents/tests/hub-test-discord-render.test.ts.md`. Render and fall back before
 durable enqueue; commit all numbered parts in one synchronous transaction before

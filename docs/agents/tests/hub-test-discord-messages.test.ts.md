@@ -20,7 +20,7 @@ that bound, unknown delivery remains fenced. Discord documents only "the past
 few minutes"; the two-minute bound is conservative, not a guaranteed platform TTL.
 General failures retain the neutral outbox's missed/gap classification; other
 unknown jobs remain uncertain. These tests do not claim REST bucket pacing,
-history catch-up, rendering/splitting, reactions or cards.
+history catch-up, rendering/splitting or cards.
 
 The held-send owner registers before fake setup, immediately catches and retains
 observations, setup operations and sends, and cancels/joins them before closing
@@ -66,3 +66,29 @@ Release/cancel/join disposal is registered before acquisition/launch and wraps
 entry setup in finally. Its aborted-before-entry variant closes the exchange
 before either action can enter, observes both rejections, then uses that same
 disposer and retains the native close/root-removal assertions.
+
+T-1406 adds mapped General reply and unmapped-reference assertions. A foreign
+member replies to the same native target before the ordered accepted-input
+barrier; assert exactly three human messages, no foreign receipt and no reaction.
+Reaction cases use production frames and the loopback fake with a shared fake
+clock. First observe 👌 and its durable sent settlement while no Coordinator is
+present; restart, deliver to the Coordinator and observe 👀. A second variant
+drops the delivery frame but retains the hub delivery, then restarts again to
+prove receipt reconciliation. Replay the original input before a later durable
+cursor and count exactly two PUTs for it, as well as bot-owned emoji state.
+The fake's reactions are additive state keyed by channel, message, bot and emoji.
+No browser or platform credentials are used.
+
+An interrupted-reaction outbox control seeds a stored native reaction with an
+unknown durable attempt and unavailable state, then resumes after the healthy
+startup boundary. Assert sent settlement, one bot reaction, two PUT attempts and
+no further PUT on the next resume. The frame cases also replay a legacy `1`
+tombstone before the accepted cursor barrier.
+
+Review regressions retain a known native mapping but supply Discord's explicit
+`referenced_message: null` deleted-target marker: it must become plain General
+text. Omitted referenced_message still uses its mapping. Held-reaction controls
+record delivered while 👌 is in flight, then unpair or replace the user in the
+same channel before release; after native settlement and hub stop, assert no 👀
+job or native reaction for the retired identity. Reaction intents carry the
+receipt's captured user rather than adopting the current pairing.

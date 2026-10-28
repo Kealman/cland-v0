@@ -4,7 +4,7 @@ import { renderDiscord } from './discord-render.ts';
 import { mirrorOut } from './mirror.ts';
 import { DiscordOutbox } from './discord-outbox.ts';
 import { randomUUID } from 'node:crypto';
-import type { Remote, RemoteSend } from './gateway.ts';
+import type { Remote, RemoteSend, RemoteReceipt } from './gateway.ts';
 import type { Pairing, RemoteStore } from './state.ts';
 import type { HubFrame, RemoteConnection } from '../protocol.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
@@ -78,7 +78,7 @@ export class DiscordRemote implements Remote {
   }
   #restFailed(): boolean { return this.#restFailedChannel !== undefined && this.#restFailedChannel === this.#options.store?.pairing()?.chatId; }
   subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
-  async start(_send: RemoteSend, _pair?: (identity: Pairing) => string | null, signal?: AbortSignal): Promise<void> {
+  async start(_send: RemoteSend, _pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt): Promise<void> {
     const cancel = () => {
       this.#abort.abort();
       void this.#outbox?.stop().catch(() => {});
@@ -88,7 +88,7 @@ export class DiscordRemote implements Remote {
     if (signal?.aborted) cancel();
     this.#abort.signal.throwIfAborted();
     this.#commands.start(_pair);
-    if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal);
+    if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal, this.#outbox, receipt);
     try {
       const application = await this.#api.getCurrentApplication({ signal: signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal });
       if (!/^\d+$/.test(application.id)) throw new Error('invalid application id');
@@ -103,8 +103,8 @@ export class DiscordRemote implements Remote {
     }
   }
   receive(frame: HubFrame): void | Promise<void> {
-    this.#inbound?.receive(frame);
-    if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return;
+    const feedback = this.#inbound?.receive(frame);
+    if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return feedback;
     const pairing = this.#options.store?.pairing();
     const mirrored = mirrorOut(frame.message, 'discord');
     if (pairing && mirrored) return this.#outbox?.sendGroup(pairing.chatId,
@@ -115,6 +115,7 @@ export class DiscordRemote implements Remote {
     return this.#running ??= (async () => {
       try {
         this.#connectionChanged();
+        await this.#inbound?.recover();
         const gateway = await this.#api.getGatewayBot({ signal: this.#abort.signal });
         if (this.#abort.signal.aborted) return;
         const url = discordGatewayUrl(gateway.url, this.#options.fake ?? false);

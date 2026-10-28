@@ -3,7 +3,7 @@ import type { RemoteStore, OutboxJob, RemoteMessage } from './state.ts';
 import { DiscordError, type DiscordApi, type DiscordMessage } from './discord-api.ts';
 import type { Clock } from '../hub/clock.ts';
 
-type Intent = { discord: true; channel: string; user: string; silent?: boolean; content: string; mapping: Omit<RemoteMessage, 'messageId'> };
+type Intent = { discord: true; channel: string; user: string; silent?: boolean; content: string; reaction?: { message: string; emoji: string }; mapping: Omit<RemoteMessage, 'messageId'> };
 const intent = (job: OutboxJob) => job.payload as Intent;
 const nonce = (job: OutboxJob) => job.id.replaceAll('-', '').slice(0, 25);
 /** Per-channel owners over the neutral durable queue. Native receipts contain ids only. */
@@ -19,6 +19,15 @@ export class DiscordOutbox {
     // A new send probes recovery; earlier missed jobs stay fenced.
     lane.setAvailable(true);
     this.#enqueue(lane, channel, content, source, silent, message);
+    await lane.drain();
+  }
+  async react(channel: string, message: string, emoji: '👌' | '👀', user: string): Promise<void> {
+    this.#signal.throwIfAborted();
+    const pair = this.#store.pairing();
+    if (pair?.chatId !== channel || pair.userId !== user) return;
+    const lane = this.#lane(channel), source = `discord.reaction:${channel}:${message}:${emoji}`;
+    if (!this.#store.outbox().some(j => j.source === source)) lane.enqueue({ kind: 'message', source,
+      payload: { discord: true, channel, user, reaction: { message, emoji } } });
     await lane.drain();
   }
   async sendGroup(channel: string, parts: string[], source: string, silent: boolean): Promise<void> {
@@ -48,6 +57,7 @@ export class DiscordOutbox {
       lane = new Outbox(this.#store, {
         send: job => this.#deliver(job),
         prove: async job => {
+          if (intent(job).reaction) return { status: 'never-left' }; // PUT @me is idempotent, including a lost response.
           const id = this.#store.get(`discord.outbox.receipt:${job.id}`);
           if (id) return this.#receipt(job, id);
           // Discord promises only "the past few minutes"; use a conservative two-minute window.
@@ -69,6 +79,16 @@ export class DiscordOutbox {
   }
   async #deliver(job: OutboxJob): Promise<DeliveryResult> {
     this.#signal.throwIfAborted();
+    const reaction = intent(job).reaction;
+    if (reaction) {
+      try { await this.#api.addReaction(intent(job).channel, reaction.message, reaction.emoji, { signal: this.#signal }); }
+      catch (error) {
+        if (error instanceof DiscordError && [401, 403, 404].includes(error.status)) return { status: 'superseded' };
+        throw error;
+      }
+      this.#signal.throwIfAborted();
+      return { status: 'sent' };
+    }
     // Recheck at I/O: a restart after prove or queue work must not renew the window.
     if (!this.#withinNonceWindow(job)) return { status: 'unknown' };
     const input = intent(job);
@@ -86,6 +106,8 @@ export class DiscordOutbox {
   async resume(): Promise<void> {
     this.#signal.throwIfAborted();
     for (const job of this.#store.outbox()) if (intent(job)?.discord) this.#lane(intent(job).channel);
+    // Startup has completed its authenticated application check; retry persisted work.
+    for (const lane of this.#lanes.values()) lane.setAvailable(true);
     await Promise.all([...this.#lanes.values()].map(lane => lane.drain()));
   }
   async stop(): Promise<void> { await Promise.all([...this.#lanes.values()].map(lane => lane.stop())); }

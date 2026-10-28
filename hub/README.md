@@ -6870,6 +6870,18 @@ Startup cancellation aborts and joins replay I/O before shutdown. Older unknown 
 uses the neutral missed/gap classification). Discord promises only “the past few
 minutes”; this conservative local window is not a guaranteed platform TTL.
 
+Paired-user replies resolve `message_reference.message_id` through the durable
+native message map, retaining the topic and `replyTo`. Unknown references and explicit deleted-target markers become
+plain General messages. Other members, bots and webhooks receive no feedback.
+After storage, `discord.inbound:<native-id>` records the native identity and hub
+message id. The outbox adds 👌 after that result and 👀 after delivered/injected;
+startup reconciles missed delivery frames against the hub's durable receipt once
+the conversation port is open. Each emoji has one durable job, and replay of an
+uncertain reaction uses the idempotent PUT `@me` endpoint. Legacy `1` input
+tombstones continue to deduplicate. Reaction jobs retain the input
+receipt's user identity, rechecking the pairing after I/O before later feedback.
+These reactions replace a message echo.
+
 REST requests serialize by method, route template and channel until a response
 names `X-RateLimit-Bucket`, then share that bucket/channel lane. Learning or
 changing a bucket adopts the current request until its response body completes. Remaining zero
