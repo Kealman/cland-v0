@@ -3,7 +3,7 @@ id: T-1424
 kind: task
 title: Telegram reaction receipts are not bound to the captured pairing, so a later 👀 can reach a replaced chat
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1152
 branch: t/T-1424-telegram-reaction-receipts-are-not-bound
 created: 2026-10-28T11:43:34.103Z
-updated: 2026-10-28T14:01:48.944Z
+updated: 2026-10-28T17:04:19.003Z
 ---
 
 ## Summary
