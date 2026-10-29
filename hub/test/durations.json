@@ -82,9 +82,11 @@
       "A-13612",
       "A-13610",
       "A-13645",
-      "A-13643"
+      "A-13643",
+      "A-13725",
+      "A-13729"
     ],
-    "commit": "a9314b5a3b210f7721991ec4d86f56292d8e46d4"
+    "commit": "06e2b10ed80a10966e2b4378be303a5bef40146c"
   },
   "budget": {
     "testSeconds": 5,
@@ -3001,6 +3003,10 @@
     "hub/test/discord-inbound-media.test.ts": {
       "seconds": 4.139875,
       "tests": 14
+    },
+    "hub/test/fixture-endpoints.test.ts": {
+      "seconds": 0.826533,
+      "tests": 10
     }
   },
   "tests": {
@@ -8437,7 +8443,38 @@
     "hub/test/discord-inbound-media.test.ts::Discord refuses long voice before CDN and voice number reply answers its mapped ask without audio": 0.391399,
     "hub/test/discord-inbound-media.test.ts::Discord stop during held cdn leaves input unconfirmed for resume": 0.214932,
     "hub/test/discord-inbound-media.test.ts::Discord stop during held speech leaves input unconfirmed for resume": 0.19238,
-    "hub/test/discord-inbound-media.test.ts::Discord voice keeps original audio and replies with transcript duration timings and provider": 0.180055
+    "hub/test/discord-inbound-media.test.ts::Discord voice keeps original audio and replies with transcript duration timings and provider": 0.180055,
+    "hub/test/discord-cards.test.ts::Discord late reaction setup aborted drains before Store disposal": 0.207067,
+    "hub/test/discord-cards.test.ts::Discord late reaction setup omitted drains before Store disposal": 1.371023,
+    "hub/test/doctor-remotes.test.ts::Discord workbench fixture drains aborted setup before Store and root removal": 0.103413,
+    "hub/test/doctor-remotes.test.ts::Discord workbench fixture drains omitted setup before Store and root removal": 0.10229,
+    "hub/test/doctor-remotes.test.ts::native Discord 4004 reaches doctor without platform I/O and includes numeric pairing identity": 0.15559,
+    "hub/test/doctor-remotes.test.ts::native Discord 4014 reaches doctor without platform I/O and includes numeric pairing identity": 0.135813,
+    "hub/test/fixture-endpoints.test.ts::sealed discord hub drains aborted setup before removing its root": 0.099423,
+    "hub/test/fixture-endpoints.test.ts::sealed discord hub drains omitted setup before removing its root": 0.138472,
+    "hub/test/fixture-endpoints.test.ts::sealed discord refuses missing and base-only API roots before external I/O": 0.005785,
+    "hub/test/fixture-endpoints.test.ts::sealed elevenlabs refuses missing and base-only API roots before external I/O": 0.020953,
+    "hub/test/fixture-endpoints.test.ts::sealed endpoint extras allow only explicit numeric loopback HTTP roots": 0.002064,
+    "hub/test/fixture-endpoints.test.ts::sealed hub refuses enabled discord without an extra root and keeps frames available": 0.204596,
+    "hub/test/fixture-endpoints.test.ts::sealed hub refuses enabled telegram without an extra root and keeps frames available": 0.110586,
+    "hub/test/fixture-endpoints.test.ts::sealed telegram hub drains aborted setup before removing its root": 0.141777,
+    "hub/test/fixture-endpoints.test.ts::sealed telegram hub drains omitted setup before removing its root": 0.102255,
+    "hub/test/fixture-endpoints.test.ts::sealed telegram refuses missing and base-only API roots before external I/O": 0.000622,
+    "hub/test/setup-remote-component.test.ts::Discord setup cancellation joins a held native application read before root cleanup": 0.019366,
+    "hub/test/setup-remote-component.test.ts::Discord setup checks application before enabling and pairs through native /cland pair (repair=decline)": 0.100051,
+    "hub/test/setup-remote-component.test.ts::Discord setup checks application before enabling and pairs through native /cland pair (repair=false)": 0.27914,
+    "hub/test/setup-remote-component.test.ts::Discord setup checks application before enabling and pairs through native /cland pair (repair=true)": 0.232642,
+    "hub/test/setup-remote-component.test.ts::Discord setup fixture joins hub and native close after aborted setup receipt": 0.097136,
+    "hub/test/setup-remote-component.test.ts::Discord setup fixture joins hub and native close after omitted setup receipt": 0.112904,
+    "hub/test/setup-remotes.test.ts::declining Discord prints skip with commands and is offered again without writes": 0.011015,
+    "hub/test/setup-remotes.test.ts::nonterminal Discord token=false enabled=false reports missing commands without writes": 0.007094,
+    "hub/test/setup-remotes.test.ts::nonterminal Discord token=false enabled=true reports missing commands without writes": 0.007269,
+    "hub/test/setup-remotes.test.ts::nonterminal Discord token=true enabled=false reports missing commands without writes": 0.009114,
+    "hub/test/setup-remotes.test.ts::nonterminal Discord token=true enabled=true reports missing commands without writes": 0.008187,
+    "hub/test/setup-remotes.test.ts::untouched nonterminal Discord is skip with Discord setup commands": 0.006396,
+    "hub/test/skills-onboarding.test.ts::remote tour includes Discord setup and local approval with shipped commands": 0.000916,
+    "nvim/test/remotes.test.ts::native Discord outage, recovery, pairing, voice and approval render in Neovim": 0.443576,
+    "web/test/remotes.test.ts::native Discord outage, recovery, pairing, voice and approval render in Chromium": 1.315548
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {

@@ -867,3 +867,11 @@ request within ten files of 20 MiB and 25 MiB encoded, multipart envelope
 included; fakes check the whole encoded body, not only file sizes. Keep the
 original enforced nonce and its deadline, an empty `allowed_mentions`, and old
 JSON callers and persisted payloads.
+
+For setup's Discord step, use `docs/agents/tests/hub-test-setup-remote-component.test.ts.md`
+with the fake Discord application; read the effective API root back and require
+loopback before any synthetic token I/O. For doctor's Discord stop causes, drive
+the native fake's close codes; for the Remotes row, voice, approval and pairing
+marks, use headless native inputs in both workbenches through
+`hub/test/discord-workbench-fixture.ts`. Keep at least one native-input case per
+supported messenger for every messenger-neutral workbench criterion.

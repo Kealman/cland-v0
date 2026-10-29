@@ -298,3 +298,4 @@ Discord exact admission observers, cancellation controls and persisted cursor-re
 Discord cards, modals, approvals and inbox; Telegram voice answers; setup speech keys and Telegram marks, one stage-close docs commit (T-1408, T-1409, T-1410, T-1411, T-1389, T-1390, T-1369, T-1370)
 Discord resume, replay and history catch-up, one stage-close docs commit (T-1412, T-1413)
 Discord files and voice in both directions, one stage-close docs commit (T-1414, T-1415)
+Discord setup step, doctor stop causes and workbench rows, one stage-close docs commit (T-1371, T-1372)
