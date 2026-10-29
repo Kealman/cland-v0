@@ -3,7 +3,7 @@ id: T-1371
 kind: task
 title: Setup's remote step offers Discord and checks the application
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -14,10 +14,10 @@ blocked_by:
   - T-1367
   - T-1368
   - E-1312
-topic: null
-branch: null
+topic: topic-1176
+branch: t/T-1371-setup-s-remote-step-offers-discord-and
 created: 2026-10-27T05:46:51.472Z
-updated: 2026-10-29T01:41:02.360Z
+updated: 2026-10-29T10:38:36.826Z
 ---
 
 ## Summary
