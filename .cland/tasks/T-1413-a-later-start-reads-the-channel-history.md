@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1171
 branch: t/T-1413-a-later-start-reads-the-channel-history
 created: 2026-10-27T23:38:48.468Z
-updated: 2026-10-29T04:17:48.932Z
+updated: 2026-10-29T04:26:00.428Z
 ---
 
 ## Summary
@@ -132,3 +132,29 @@ findings: [{"severity":"medium","text":"M5: replay now starts after READY, but l
 finding_counts: {"high":0,"medium":2,"low":0}
 
 Original-record evidence2 not clear. A-13581/run fa7e1e1f exit1 at5ad59cec7:3424 ordinary passes/1 fail plus95 scoped load passes, no unfinished started identity. Startup replay cancellation fails hold receipt at1.036476512s. T0/T1 green, T2 incomplete/red, changed T3/Web/T4 unexecuted. New cap correctness/base+5load passed, but actual Linux duration treatment remains open; native kill Linux proof absent. No C1–C5 runtime verification or functional criterion failure inferred from unrun gates. I missed direct lifecycle consumer at source. A-13582 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13582-t-1413-evidence-review-2-not-clear.md) preserves exact counts/timings/provenance. Correct M5, resolve M6 under Coordinator direction, fresh exact-head source review before another run; failed A-13577/A-13581 remain separate.
+
+### rev-26 · 2026-10-29T04:25:12.873Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-source-4
+commit: 7888f505e42310904079fa90049aa9883b4d89fa
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source4 clear. M5 lifecycle consumer now reaches post-READY held recovery through one owned serviceable conversation; original attempt/500ms cancellation/no-map/no-copy/drain assertions retained, full REST options forwarded. M6 independently checked Coordinator396ede14 split: production cap500, fast native T2 cap20/25 with overflow→gap and active-request proof; original620→500 retained in existing T3/shared setup-only fixture with absolute45s bound. Sole45s R-1278 allowance through2026-11-05 cites original Linux passing worst29.716285979s and follow-upT-1436; owner/follow-up independently open. No unrelated duration change. Prior M1–M4 remain resolved; all10 correction diffs reviewed, no dev merge. A-13584 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13584-t-1413-full-source-review-4-clear.md). C1–C5 done present, runtime unverified. Proceed unchanged-head mode-free run and original changed-T3/timing/load review; Coordinator's separate verify-all gate remains.
+
+### rev-26 · 2026-10-29T04:26:00.428Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-evidence-3-preflight
+commit: 7888f505e42310904079fa90049aa9883b4d89fa
+scope: evidence
+findings: [{"severity":"medium","text":"M7: fixture import precedes T3 lifecycle header, removing leading-comment exemption and causing3 startDaemon findings against frozen0. Restore header first; preserve lint policy/baseline and retain red/green before fresh source review.","file":"hub/test/telegram-polling-restart.test.ts","line":1}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Preflight evidence3 not clear at7888f505e. Hub verify-test-lint refused before execution (2db1713f): startDaemon lines38/124/237. Source inspection confirms leading-comment lifecycle rule in test-lint.ts318–329/policy77. No new run/platform/timing/load/changed-T3 evidence and no criteria failed or verified. A-13585 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13585-t-1413-preflight-evidence-review-3-not-clear.md). I missed moved header at source4. Correct header only, no frozen allowance increase; fresh exact-head review before resubmission. Prior failed runs and Coordinator full-all gate remain separate.
