@@ -1,6 +1,8 @@
 // T3: command stall, cancellation and inherited-pipe cleanup prove real process-tree termination.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { stdioWriterFixture } from './stdio-writer-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
+import { stdioWriters } from '../src/stdio-writers.ts';
 import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +12,7 @@ import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, te
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { systemProcesses } from '../src/system-processes.ts';
+import { endProcess, systemProcesses } from '../src/system-processes.ts';
 import { ownProcess, onCleanup, cleanupProcesses } from './process-cleanup.ts';
 import { until } from './until.ts';
 import type { Artifact } from '../src/protocol.ts';
@@ -232,7 +234,7 @@ setTimeout(()=>process.exit(0),3000);`);
   assert.match((await eventually('successor after exited-parent stall', async () => (await f.results()).find(m => m.id === `suite:${next.id}`))).text, /exit 0/);
 });
 
-test('verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor', async t => {
+test('verify reaps fast-exit inherited-pipe writers and preserves unrelated processes', async t => {
   // T3: real parent exit/reparenting determines whether the worker can prove pipe ownership.
   const bin = await tempProject(t, 'cland-fast-exit-ps-');
   // cland-allow-child-env: read-only which lookup for the process-table wrapper; no account or Git operation
@@ -269,40 +271,16 @@ await writeFile(${JSON.stringify(marker)},JSON.stringify({parent:process.pid,chi
 clearInterval(heartbeat);process.exit(0);`);
   const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { env: fixtureEnvironment(f.root, process.env),cwd:f.root, detached:true, stdio:'ignore'});
   ownProcess(t, foreign.pid);
-  for (let n=0;n<3;n++) await f.spoke.call('send',{to:['rev'],topic:f.topic,text:`seed ${n}`});
   const job = await f.launch();
   const pids = await eventually('fast pipe holder started after snapshot', () => readFile(marker,'utf8').then(text=>JSON.parse(text) as {parent:number;child:number},()=>undefined));
   ownProcess(t,pids.parent);ownProcess(t,pids.child);
   await eventually('fast parent exited with its unverified pipe holder alive',()=>!pidAlive(pids.parent)&&pidAlive(pids.child)?true:undefined);
-  // The warning follows the worker's stall watchdog and process/lease cleanup.
-  // Give that teardown its own bound so it cannot consume the warning's receipt wait.
-  await eventually('fast-exit worker cleanup receipt', () =>
-    readFile(join(f.root,'.cland/run/suites',job.id,'result.json'),'utf8').catch(() => undefined), 30000);
-  const warnings = async () => ((await f.ui.request({type:'topic.history',topic:'agents'})).value as {messages:Array<{id:string;severity?:string;text:string}>}).messages.filter(m=>m.id===`suite-cleanup:${job.id}`);
-  const notice = await eventually('one cleanup warning',async()=> (await warnings())[0]);
-  assert.equal(notice.severity,'warn'); assert.match(notice.text,/cleanup incomplete/);
-  await eventually('result is held by mute after warning',async()=> {
-    const status=(await f.ui.request({type:'hub.status', history: true})).value as HubStatus;
-    return status.suites?.find(s=>s.id===job.id)?.error?.includes('loop breaker') ? true : undefined;
-  });
-  assert.equal((await f.results()).length,0);
-  const inbox = (await f.ui.request({type:'inbox.list'})).value as {messages:Array<{id:string;severity?:string;layer?:string}>};
-  const inboxWarnings = inbox.messages.filter(m=>m.id===notice.id);
-  assert.equal(inboxWarnings.length,1);assert.equal(inboxWarnings[0]!.severity,'warn');assert.equal(inboxWarnings[0]!.layer,'now');
-  const successorMarker = join(f.root,'successor-ran');
-  await writeFile(join(f.root,'fast-parent.mjs'),`import {writeFile} from 'node:fs/promises'; await writeFile(${JSON.stringify(successorMarker)},'passed');`);
-  const next = await f.launch();
-  await eventually('successor admitted while original report is held',()=>readFile(successorMarker,'utf8').then(text=>text==='passed'?true:undefined,()=>undefined));
-  assert.equal((await f.ui.request({type:'hygiene.unmute',a:'impl',b:'rev'})).ok,true);
-  const result = await eventually('fast-exit incomplete cleanup result', async ()=>(await f.results()).find(m=>m.id===`suite:${job.id}`),20000);
-  assert.match(result.text,/exit 1.*stalled:.*cleanup incomplete: unverified inherited-pipe writer/);
-  assert.equal(pidAlive(pids.child),true,'unverified writer is preserved rather than falsely claimed reaped');
-  assert.equal(pidAlive(foreign.pid!),true);
-  assert.match((await eventually('successor after incomplete cleanup',async()=>(await f.results()).find(m=>m.id===`suite:${next.id}`))).text,/exit 0/);
-  await f.ui.request({type:'hub.status', history: true,flushLogs:true});
-  const journal=completeJournalLines(await readFile(join(f.root,'.cland/journal.jsonl'), 'utf8')).map(line=>JSON.parse(line));
-  assert.equal(journal.filter(r=>r.event==='verification-cleanup-incomplete'&&r.id===job.id).length,1);
-  assert.equal((await warnings()).length,1);
+  const result = await eventually('fast-exit writer reaped before terminal result', async () => (await f.results()).find(m => m.id === `suite:${job.id}`), 30000);
+  assert.match(result.text, /exit 1.*stalled:/);
+  assert.equal(pidAlive(pids.child), false, 'kernel-proven writer is reaped despite lost ancestry');
+  assert.doesNotMatch(result.text, /cleanup incomplete/);
+  assert.equal(pidAlive(foreign.pid!), true, 'unrelated same-cwd process survives');
+
 });
 
 test('verify keeps a slow command alive while partial stderr output continues', async t => {
@@ -344,4 +322,187 @@ await writeFile(${JSON.stringify(resultPath)}, JSON.stringify(outcome));`;
     await eventually('pipeline PID reaped', () => !pidAlive(pid) ? true : undefined);
     assert.equal(pidAlive(pid), false, `pipeline pid ${pid} survived stall cleanup`);
   }
+});
+
+test('native stdio census proves a writer and refuses changed birth', async t => {
+  const root = await tempProject(t, 'cland-stdio-census-');
+  const marker = join(root, 'ready');
+  const child = spawn(process.execPath, ['-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ready');setInterval(()=>{},1000)`], { cwd: root, env: fixtureEnvironment(root, process.env), stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
+  await eventually('native census writer ready', () => readFile(marker, 'utf8').then(text => text === 'ready' ? true : undefined, () => undefined));
+  const rows = (await systemProcesses()).filter(row => row.pid === child.pid);
+  assert.equal(rows.length, 1);
+  const writers = await stdioWriters([child.stdout, child.stderr], rows, fixtureEnvironment(root, process.env));
+  assert.deepEqual(writers.map(row => row.pid), [child.pid], `native endpoint census failed on ${process.platform}: requires /usr/bin/perl, Linux UNIX_DIAG/procfs or the supported Darwin proc_info ABI and inspection permission`);
+  assert.deepEqual(await stdioWriters([child.stdout, child.stderr], rows.map(row => ({...row, identity:'changed'})), fixtureEnvironment(root, process.env)), []);
+});
+
+test('verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor', async t => {
+  // T3: real parent exit/reparenting determines whether the worker can prove pipe ownership.
+  const bin = await tempProject(t, 'cland-fast-exit-ps-');
+  // cland-allow-child-env: read-only which lookup for the process-table wrapper; no account or Git operation
+  const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
+  const preload = join(bin, 'deny-endpoint.mjs');
+  const denied = join(bin, 'endpoint-denied');
+  await writeFile(preload, `import cp from 'node:child_process'; import {syncBuiltinESMExports} from 'node:module'; import {writeFileSync} from 'node:fs';
+const original=cp.spawn;
+cp.spawn=(bin,args,options)=>{
+  const inspector=bin==='/usr/bin/perl' && args?.[0]==='-e' && options?.stdio?.length===5 && options.stdio[3]?.readable && options.stdio[4]?.readable;
+  if(inspector) writeFileSync(${JSON.stringify(denied)},'denied');
+  return original(bin, inspector ? ['-e','exit 1'] : args, options);
+};
+syncBuiltinESMExports();`);
+  const armed = join(bin, 'armed'); const snapshot = join(bin, 'snapshot');
+  await writeFile(join(bin, 'ps'), `#!${process.execPath}
+import {spawnSync} from 'node:child_process'; import {existsSync,readFileSync,writeFileSync} from 'node:fs';
+import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
+import {pidAlive} from ${JSON.stringify(new URL('../src/project.ts', import.meta.url).href)};
+import {parseProcessTable} from ${JSON.stringify(new URL('../src/process-table.ts', import.meta.url).href)};
+// Match the native cleanup probe's buffer: ps eww includes every process's
+// environment, which exceeds spawnSync's 1 MiB default on a busy Mac.
+const result=spawnSync(${JSON.stringify(ps)}, process.argv.slice(2), {encoding:'utf8',maxBuffer:32*1024*1024});
+if (process.argv.includes('-e') && existsSync(${JSON.stringify(armed)}) && !existsSync(${JSON.stringify(snapshot)})) {
+  const parent=Number(readFileSync(${JSON.stringify(armed)},'utf8'));
+  if (result.status===0 && parseProcessTable(result.stdout).some(row=>row.pid===parent)) {
+    writeFileSync(${JSON.stringify(snapshot)},'captured');
+    // Keep this pre-child snapshot in flight until ancestry is gone. Otherwise a
+    // later capture can own the child while its parent yields in writeFile below.
+    await until(()=>!pidAlive(parent),{what:'fast parent exited before ownership observation resumes'});
+  }
+}
+process.stdout.write(result.stdout ?? ''); process.stderr.write(result.stderr ?? '');
+process.exitCode=result.status ?? 1;`, {mode:0o700});
+  const f = await fixture(t, `${process.execPath} fast-parent.mjs`, undefined, { text: '[hygiene]\nloop_breaker_max=2\n', verification: 'stall_timeout="3s"' }, {PATH:`${bin}:${process.env.PATH ?? ''}`, NODE_OPTIONS:`--import=${preload}`});
+  const marker = join(f.root, 'fast-pids.json');
+  await writeFile(join(f.root, 'fast-parent.mjs'), `import {spawn} from 'node:child_process'; import {writeFile} from 'node:fs/promises'; import {existsSync} from 'node:fs';
+import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
+const heartbeat=setInterval(()=>console.log('waiting for ownership snapshot'),100);
+await writeFile(${JSON.stringify(armed)}, String(process.pid));
+await until(()=>existsSync(${JSON.stringify(snapshot)}),{what:'ownership snapshot captured before pipe holder starts'});
+const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'inherit'});
+await writeFile(${JSON.stringify(marker)},JSON.stringify({parent:process.pid,child:child.pid}));
+clearInterval(heartbeat);process.exit(0);`);
+  const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { env: fixtureEnvironment(f.root, process.env),cwd:f.root, detached:true, stdio:'ignore'});
+  ownProcess(t, foreign.pid);
+  for (let n=0;n<3;n++) await f.spoke.call('send',{to:['rev'],topic:f.topic,text:`seed ${n}`});
+  const job = await f.launch();
+  const pids = await eventually('fast pipe holder started after snapshot', () => readFile(marker,'utf8').then(text=>JSON.parse(text) as {parent:number;child:number},()=>undefined));
+  ownProcess(t,pids.parent);ownProcess(t,pids.child);
+  await eventually('fast parent exited with its unverified pipe holder alive',()=>!pidAlive(pids.parent)&&pidAlive(pids.child)?true:undefined);
+  // The warning follows the worker's stall watchdog and process/lease cleanup.
+  // Give that teardown its own bound so it cannot consume the warning's receipt wait.
+  await eventually('fast-exit worker cleanup receipt', () =>
+    readFile(join(f.root,'.cland/run/suites',job.id,'result.json'),'utf8').catch(() => undefined), 30000);
+  const warnings = async () => ((await f.ui.request({type:'topic.history',topic:'agents'})).value as {messages:Array<{id:string;severity?:string;text:string}>}).messages.filter(m=>m.id===`suite-cleanup:${job.id}`);
+  const notice = await eventually('one cleanup warning',async()=> (await warnings())[0]);
+  assert.equal(await readFile(denied, 'utf8'), 'denied', 'the platform-independent inspector boundary was refused');
+  assert.equal(notice.severity,'warn'); assert.match(notice.text,/cleanup incomplete/);
+  await eventually('result is held by mute after warning',async()=> {
+    const status=(await f.ui.request({type:'hub.status', history: true})).value as HubStatus;
+    return status.suites?.find(s=>s.id===job.id)?.error?.includes('loop breaker') ? true : undefined;
+  });
+  assert.equal((await f.results()).length,0);
+  const inbox = (await f.ui.request({type:'inbox.list'})).value as {messages:Array<{id:string;severity?:string;layer?:string}>};
+  const inboxWarnings = inbox.messages.filter(m=>m.id===notice.id);
+  assert.equal(inboxWarnings.length,1);assert.equal(inboxWarnings[0]!.severity,'warn');assert.equal(inboxWarnings[0]!.layer,'now');
+  const successorMarker = join(f.root,'successor-ran');
+  await writeFile(join(f.root,'fast-parent.mjs'),`import {writeFile} from 'node:fs/promises'; await writeFile(${JSON.stringify(successorMarker)},'passed');`);
+  const next = await f.launch();
+  await eventually('successor admitted while original report is held',()=>readFile(successorMarker,'utf8').then(text=>text==='passed'?true:undefined,()=>undefined));
+  assert.equal((await f.ui.request({type:'hygiene.unmute',a:'impl',b:'rev'})).ok,true);
+  const result = await eventually('fast-exit incomplete cleanup result', async ()=>(await f.results()).find(m=>m.id===`suite:${job.id}`),20000);
+  assert.match(result.text,/exit 1.*stalled:.*cleanup incomplete: unverified inherited-pipe writer/);
+  assert.equal(pidAlive(pids.child),true,'unverified writer is preserved rather than falsely claimed reaped');
+  assert.equal(pidAlive(foreign.pid!),true);
+  assert.match((await eventually('successor after incomplete cleanup',async()=>(await f.results()).find(m=>m.id===`suite:${next.id}`))).text,/exit 0/);
+  await f.ui.request({type:'hub.status', history: true,flushLogs:true});
+  const journal=completeJournalLines(await readFile(join(f.root,'.cland/journal.jsonl'), 'utf8')).map(line=>JSON.parse(line));
+  assert.equal(journal.filter(r=>r.event==='verification-cleanup-incomplete'&&r.id===job.id).length,1);
+  assert.equal((await warnings()).length,1);
+});
+
+for (const channel of ['stdout', 'stderr'] as const) test(`native stdio census recovers a detached ${channel}-only writer after the other endpoint closes`, async t => {
+  const owner = stdioWriterFixture(t, channel);
+  const {root, parent, stdout, stderr} = owner;
+  const closed = channel === 'stdout' ? stderr : stdout;
+  closed.resume();
+  await owner.ready(t.signal);
+  const writer = JSON.parse(await readFile(owner.marker, 'utf8')) as {pid:number};
+  assert.equal(await owner.acquisition, writer.pid);
+  await owner.release();
+  await eventually('unused endpoint EOF observed after parent exit', () => closed.readableEnded && closed.destroyed && !pidAlive(parent.pid!) ? true : undefined);
+  assert.equal(closed.readableEnded, true);
+  assert.equal(pidAlive(writer.pid), true);
+  const foreign = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { cwd: root, env: fixtureEnvironment(root, process.env), stdio: 'ignore' });
+  ownProcess(t, foreign.pid);
+  const rows = (await systemProcesses()).filter(row => row.pid === writer.pid || row.pid === foreign.pid);
+  const writers = await stdioWriters([stdout, stderr], rows, fixtureEnvironment(root, process.env));
+  assert.deepEqual(writers.map(row => row.pid), [writer.pid], 'a closed sibling endpoint cannot hide the live writer');
+  assert.deepEqual(await stdioWriters([stdout, stderr], rows.map(row => ({...row, identity:'changed'})), fixtureEnvironment(root, process.env)), []);
+  for (const row of writers) assert.equal(await endProcess({pid:row.pid,pidStarted:row.started,pidIdentity:row.identity ?? null}, () => {}, 0), true);
+  assert.equal(pidAlive(writer.pid), false);
+  assert.equal(pidAlive(foreign.pid!), true, 'unrelated same-cwd process survives');
+});
+
+for (const failure of ['omitted', 'aborted'] as const) test(`single-channel writer owner drains ${failure} readiness before root removal`, async t => {
+  const owner = stdioWriterFixture(t, 'stdout', true);
+  const {root} = owner;
+  const cancel = new AbortController();
+  const ready = owner.ready(cancel.signal);
+  const rejected = assert.rejects(ready, /setup disposed|readiness aborted/);
+  const pid = await owner.acquisition;
+  assert.equal(pidAlive(pid), true);
+  await assert.rejects(readFile(owner.marker, 'utf8'), {code:'ENOENT'});
+  if (failure === 'aborted') cancel.abort(new Error('readiness aborted'));
+  const receipt = await owner.dispose();
+  await rejected;
+  assert.equal(receipt.rootPresent, true, 'the root exists at native close');
+  assert.equal(pidAlive(pid), false, 'detached writer stopped through the pre-registered owner');
+  assert.equal(pidAlive(owner.parent.pid!), false);
+  assert.equal(owner.observations(), 0);
+  assert.ok(await stat(root), 'root removal follows native drainage');
+});
+
+
+test('single-channel writer owner retains its root after incomplete stop until explicit recovery', async t => {
+  let incomplete = true;
+  const owner = stdioWriterFixture(t, 'stdout', false, () => { if (incomplete) throw new Error('forced incomplete native stop'); });
+  const {root} = owner;
+  onCleanup(t, async () => { incomplete = false; await owner.recover(); });
+  const pid = await owner.acquisition;
+  await owner.ready(t.signal);
+  await owner.release();
+  await assert.rejects(owner.dispose(), /forced incomplete native stop/);
+  await assert.rejects(owner.remove(), /forced incomplete native stop/);
+  assert.ok(await stat(root), 'incomplete disposal fences removal');
+  assert.equal(pidAlive(pid), true, 'the live writer still needs recovery');
+  incomplete = false;
+  const receipt = await owner.recover();
+  assert.equal(receipt.rootPresent, true);
+  assert.equal(pidAlive(pid), false);
+  await owner.remove();
+  await assert.rejects(stat(root), {code:'ENOENT'});
+});
+
+
+test('single-channel automatic teardown retains the root on incomplete disposal until recovery', async t => {
+  const hooks: Array<() => Promise<void>> = [];
+  const scope = { after: (hook: () => Promise<void>) => hooks.push(hook) } as unknown as import('node:test').TestContext;
+  let incomplete = true;
+  const owner = stdioWriterFixture(scope, 'stdout', false, () => { if (incomplete) throw new Error('forced incomplete automatic stop'); });
+  const {root} = owner;
+  onCleanup(t, async () => { incomplete = false; await owner.recover(); await owner.remove(); for (const hook of hooks) await hook(); });
+  const pid = await owner.acquisition;
+  await owner.ready(t.signal);
+  await owner.release();
+  assert.equal(hooks.length, 1, 'one registered cleanupSteps callback');
+  await assert.rejects(hooks[0]!(), /forced incomplete automatic stop|test fixture cleanup failed/);
+  assert.ok(await stat(root), 'automatic cleanup retains the root after failed disposal');
+  assert.equal(pidAlive(pid), true);
+  incomplete = false;
+  const receipt = await owner.recover();
+  assert.equal(receipt.rootPresent, true);
+  assert.equal(pidAlive(pid), false);
+  await hooks[0]!();
+  await assert.rejects(stat(root), {code:'ENOENT'});
 });

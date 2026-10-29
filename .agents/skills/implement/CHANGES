@@ -309,3 +309,8 @@ T-1336: distinguish metadata-only green dev tips as not reproduced (intermittent
 T-1162: Document Codex execution-evidence correction of approval races, preserving the unobservable protocol limit.
 
 T-1162 review M1: Require Telegram delivered-first and held-first outcome correction evidence.
+T-410: Document native inherited-stdio writer ownership and fast-exit/denied-census receipts.
+T-410 review: Preserve independent live endpoints after sibling EOF; document platform-independent denial and native single-channel controls.
+T-410 source2: Record independent IPC acquisition and native-close ownership for failed single-channel fixture setup.
+T-410 source3: Fence directory removal on the writer owner disposal receipt and prove incomplete-stop retention through explicit recovery.
+T-410 source4: Use one fenced root owner and exercise all registered automatic cleanup callbacks across failure and recovery.

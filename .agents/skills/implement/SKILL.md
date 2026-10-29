@@ -404,6 +404,11 @@ app-server confirmation, startup anchoring and post-startup timeout regressions.
 
 For local verification cancellation or compatibility recovery, use the sealed cancellation, recreated-root quarantine and blocked-queue seams in `docs/agents/tests.md`. Observe exact descendant death before root cleanup; retain the quarantine journal's old/new inodes and next-run admission receipt. Live machine locks are outside the fixture.
 
+For inherited-stdio cleanup, follow `hub/README.md#inherited-stdio-writer-ownership`
+and the fast-exit/denied-census controls in `docs/agents/tests/hub-test-suite-timeouts.test.ts.md`.
+Keep reciprocal endpoint and native birth proof, restore stream reads after duplication,
+and preserve unknown-writer warnings. Existing role permissions cover this cleanup.
+
 For hung verifier fixtures, use the real-runner PID receipts and early-failure
 controls in `docs/agents/tests/hub-test-suite-timeouts.test.ts.md`. Register
 cleanup before the fixture closes its clients, cancel through the owning

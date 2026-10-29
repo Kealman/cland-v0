@@ -1,3 +1,4 @@
+import { stdioWriters } from './stdio-writers.ts';
 import { processIdentityAsync } from './process-identity.ts';
 // Observe the command's bytes, rather than reporter totals, so silent test teardown is bounded too.
 import { spawn } from 'node:child_process';
@@ -60,6 +61,13 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       await observing;
       const started = await identity;
       if (!child.pid || !started) throw new Error('cannot verify silent command identity');
+      // Endpoint ownership survives reparenting even before the first ancestry
+      // snapshot. Native birth is bracketed around the census and rechecked by
+      // endProcess immediately before each signal.
+      const rows = await systemProcesses();
+      for (const row of await stdioWriters([child.stdout, child.stderr], rows, env)) {
+        if (row.identity) owned.set(row.pid, { pid: row.pid, started: row.started, identity: row.identity });
+      }
       // The root may be gone while inherited pipes are still open. Retained
       // identities still authorize cleanup; endProcess rechecks each before signalling.
       for (const proof of owned.values()) {

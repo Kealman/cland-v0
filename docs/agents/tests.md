@@ -1109,8 +1109,9 @@ Elapsed time beyond the run-wide default alone and unknown per-test budgets neve
 establish a hang.
 When an inherited-pipe writer cannot be verified, the result explicitly says
 cleanup is incomplete, Agents and the inbox receive one warning, and the queue
-is released. Unknown processes are preserved; exact fast-writer ownership is
-the follow-up T-410.
+is released. Unknown processes are preserved. Native endpoint inspection also
+recovers writers whose ancestry disappeared before observation; see
+[the method and failure modes](../../hub/README.md#inherited-stdio-writer-ownership).
 
 Implementers run verification through the hub, one invocation at a time per session:
 

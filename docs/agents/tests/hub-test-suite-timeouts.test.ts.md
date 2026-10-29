@@ -29,3 +29,40 @@ narrow regression loop. This uses no browser or provider account. Each nested
 runner uses `runnerFixtureEnvironment` after its final control overlay.
 The phase-sweep backstop is covered separately in
 [suite-runner.test.ts](hub-test-suite-runner.test.ts.md).
+
+The fast-exit writer regression holds a pre-child ps snapshot until the parent
+exits, preventing ancestry capture. The exact verifier result precedes assertions
+of native writer death and unrelated same-cwd process survival.
+Run on macOS and on a Linux droplet. The denied-census control preloads a sealed
+spawn wrapper that fails only the endpoint inspector; it retains the incomplete
+warning, Inbox/journal uniqueness, muted-result and successor-admission assertions.
+The native census case checks actual endpoints plus changed-birth refusal.
+
+The denied-census preload selects the Perl launch carrying the duplicated stdio
+streams, independently of the platform script, and persists its refusal receipt.
+The stdout-only and stderr-only native controls observe the unused channel's EOF
+and parent exit before census. Each retains changed-birth refusal, exact writer
+death after termination and unrelated same-cwd process survival.
+
+`stdio-writer-fixture.ts` registers its disposal fence before spawning. IPC
+acquisition captures the native writer independently of file readiness; the
+parent remains alive until the owner explicitly releases it. Normal census
+starts after that release, observed parent exit and the unused channel's EOF.
+Omitted/aborted readiness controls dispose through the same owner, abort and join
+readiness observations, retain late IPC acquisition and require native close plus
+writer death while the disposable root still exists.
+
+The same idempotent disposal promise also guards the root's `beforeRemove`.
+A forced incomplete-stop control observes removal refusal and the live writer's
+retained root, then explicitly recovers the owner, observes native close with the
+root present, and only then removes it. Recovery resets a failed disposal attempt;
+ordinary removal never retries a failed stop implicitly.
+
+The fixture allocates its own disposable root and registers exactly one directory
+owner with `beforeRemove`; callers do not pass a root already owned by
+`tempProject`. The automatic-teardown regression captures and executes the actual
+`cleanupSteps` callback registered through `after`, including all directory
+callbacks, as the process-cleanup tests do. It proves the root survives the first
+failed teardown, explicit recovery observes native close with the root present,
+and a second teardown removes it. Resource cleanup calls the owner's current
+idempotent disposal rather than caching a separate rejected lifecycle promise.

@@ -5157,7 +5157,9 @@ tests, captured by the package reporter before they finish. It terminates the
 verified command tree (including detached test runners and spokes), retaining
 observed child identities if a parent exits before its output pipes close. It sweeps owned
 suite roots, and releases compatibility leases before publishing the result.
-If a detached writer escapes observation and keeps inherited pipes open, the
+The stall path also inspects native endpoints to recover detached writers after
+ancestry disappears (see [ownership](#inherited-stdio-writer-ownership)).
+If a writer cannot be identified and keeps inherited pipes open, the
 failed result says `cleanup incomplete: unverified inherited-pipe writer`,
 including known parent/pipe evidence. The hub posts one warning in Agents and
 the human's inbox and journals it. It preserves unverified processes and releases
@@ -7336,3 +7338,37 @@ query or fragment. A root in `base` is stripped and takes the refusal path.
 Explicit external roots are refused without echoing the value. Production
 client defaults outside sealed fixtures remain unchanged. See
 [fixture tests](../docs/agents/tests/hub-test-fixture-endpoints.test.ts.md).
+
+
+### Inherited stdio writer ownership
+
+The local command supervisor duplicates its two live read streams into descriptors
+3 and 4 of a bounded `/usr/bin/perl` inspector using Node's public spawn API. The
+held endpoints prevent reuse during the census; closed channels use ignored
+descriptor slots, so one EOF cannot invalidate its live sibling. The inspector
+never reads command output. Streams resume after inspection so EOF remains an observed receipt.
+
+On macOS arm64/x64, `proc_info` syscall 336 enumerates `PROC_PIDLISTFDS` and reads
+`PROC_PIDFDSOCKETINFO` / `PROC_PIDFDPIPEINFO`. The validated 792-byte socket layout
+requires AF_UNIX, SOCK_STREAM and SOCKINFO_UN. A candidate's opaque socket handle
+must equal the reader's connected handle, and its connected handle must equal the
+reader's own handle. Pipes use the equivalent reciprocal handles in the 184-byte
+pipe layout. Layout definitions are in Apple's
+[`proc_info.h`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/proc_info.h).
+No lsof display address or Node private handle grants ownership.
+
+On Linux, a NETLINK_SOCK_DIAG UNIX_DIAG_SHOW_PEER dump maps the held socket inodes
+to their peer inodes. Reciprocal peer mappings and `/proc/<pid>/fd` identify holders.
+For pipes, the same held inode plus writable `/proc/<pid>/fdinfo` flags proves a
+writer. These are the kernel's
+[UNIX diagnostics UAPI](https://github.com/torvalds/linux/blob/master/include/uapi/linux/unix_diag.h).
+
+Both methods bracket inspection with coherent native process birth and recheck
+birth before each signal through the existing process-tree termination owner.
+Cwd, command text and process groups never substitute for endpoint evidence.
+The helper has a three-second deadline and a 1 MiB output bound. Missing Perl,
+unsupported ABI/platform, permission denial, unavailable Linux UNIX diagnostics,
+malformed/truncated replies, disappeared descriptors and deadline expiry grant no
+new ownership. The existing incomplete-cleanup warning remains if EOF is absent;
+unidentifiable processes survive and the queue moves on. This is local worker
+cleanup; droplet cancellation retains its executor-owned release path.

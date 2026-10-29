@@ -5191,6 +5191,7 @@
     "hub/test/suite-timeouts.test.ts::verify keeps a slow command alive while partial stderr output continues": 7.130747,
     "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": 8.221823,
     "hub/test/suite-timeouts.test.ts::verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process": 10.231718,
+    "hub/test/suite-timeouts.test.ts::verify reaps fast-exit inherited-pipe writers and preserves unrelated processes": 9.726985,
     "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": 9.262527,
     "hub/test/suite-wait-metrics.test.ts::hourly verification-wait journal values match queue snapshots and do not repeat after restart (fake clock)": 0.055462,
     "hub/test/suite-wait-metrics.test.ts::last 50 is bounded independently per executor, with cache counts and nulls for empty samples": 0.00075,
@@ -10321,6 +10322,13 @@
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-929)"
+    },
+    "hub/test/suite-timeouts.test.ts::verify reaps fast-exit inherited-pipe writers and preserves unrelated processes": {
+      "seconds": 15,
+      "owner": "E-880",
+      "added": "2026-10-29",
+      "expires": "2026-11-05",
+      "reason": "T-410 fast-exit inherited-pipe writer census: 3 s silence watchdog plus TERM/KILL/native receipts; A-14101 measured 9.727 s on Linux c-8 with 2 workers, rounded 1.5x headroom."
     },
     "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
       "seconds": 16.939424,
