@@ -3,6 +3,7 @@ id: E-1314
 kind: epic
 title: Release v0.3.0 from the item
 state: open
+criterion_seq: 6
 labels:
   - epic
   - v0.3
@@ -20,7 +21,7 @@ blocked_by:
 topic: topic-1195
 branch: null
 created: 2026-10-25T14:12:00.243Z
-updated: 2026-10-29T16:36:37.724Z
+updated: 2026-10-29T18:40:26.251Z
 ---
 
 ## Goal
@@ -63,6 +64,7 @@ In a scratch project with both remotes paired on the fakes, QA answers an ask fr
 - [ ] C1. Every other epic of R-1278 is closed on a clear QA verdict, and no open item other than this epic remains under R-1278.
 - [ ] C2. The integrated pass is clear on the fakes: one gate across both remotes and both workbenches, attachments once per remote with the cross-remote marks, both remotes caught up after a short and a long restart, and one remote stopped while the other serves.
 - [ ] C3. The live run on the sandbox bots, with the human on the phone, is done on this Mac against a sandbox project, its findings filed, and no real token reached a droplet.
+  - verified: qa-677 [qa] · run qa-live-2026-10-29-677-1314 · 2026-10-29T18:36:11.541Z · commit e75612f0fd52910aaf93fa634bd7e1aac8ba14a0
 - [ ] C4. The web-and-phone page's section on remotes and the page on `cland remote` and `cland secret` describe the release as built.
 - [ ] C5. The root `package.json` and the lockfile are at 0.3.0 on `dev`, R-1278's `## Notes` describe the release by epic with a "Not verified" section, and `cland release --item R-1278 --dry-run` shows them with version 0.3.0.
 - [ ] C6. A full suite is green on the `dev` tip of the dry run, on droplets with no real token, with a local run on macOS for the macOS-only cases.
@@ -103,3 +105,15 @@ stages:
       - - T-1443
       - - T-1441
 ```
+
+## Comments
+
+### coord · 2026-10-29T18:40:26.251Z
+
+C3 (live run) verified by qa-677, run qa-live-2026-10-29-677-1314. Scope:
+- Live walk L0–L7 at 189d5100, plus L9h (hub-only restart) at 78d77a32.
+- Findings filed and fixed on dev: T-1446 (Telegram pairing confirmation, L2 FAIL), T-1447 (native replies, L3 FAIL), T-1449 (Telegram media retry feedback, from L6).
+- Not verified, by the human's decision (2026-10-29 18:16:15Z, the Mac was busy with other work): L8 real network outage, the L9 phone, card and catch-up steps, and the L2/L3 phone reruns on the fixed build.
+- QA's locality audit: no real token reached a droplet (157 sandbox audit rows, no remote execution; 90 captures scanned).
+- The sandbox is cleaned up (L10).
+These go into R-1278's "Not verified" notes section. The case table is in QA's summary artifact in topic-1195.

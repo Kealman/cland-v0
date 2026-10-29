@@ -3,7 +3,7 @@ id: T-1431
 kind: task
 title: tracker-summary's dropped-events test waits only 5 s for macOS to deliver a native FSEvents callback and fails on a busy Mac
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1206
 branch: t/T-1431-tracker-summary-s-dropped-events-test
 created: 2026-10-28T15:10:06.059Z
-updated: 2026-10-29T18:19:38.391Z
+updated: 2026-10-29T18:34:59.225Z
 ---
 
 ## Summary
@@ -25,6 +25,7 @@ updated: 2026-10-29T18:19:38.391Z
 
 - [x] C1. The native-delivery wait is sized from measured FSEvents latency receipts under load, or replaced with a trigger the test owns, without weakening what the test proves (healthy watcher, events dropped, safety rescan indexes everything), with 10/10 under two workers plus CPU load on macOS.
   - done: impl-1431 · 2026-10-29T18:16:57.795Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1431-final · 2026-10-29T18:34:58.111Z · commit 5849789b175ea972b96afd503c03dc82d5559145
 
 ## Notes
 
@@ -52,3 +53,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13929: Standards/Spec source clear. Owned fs.watch callbacks retain healthy production watchFolder/safety timer, stale-before-interval and exact reconciliation/cleanup assertions. Original local A-13923 ten native passes/two lanes/one progressing CPU worker audited with raw head/CPU-exit capture limits; 0-test failed setup remains separate. C1 final runtime unverified pending exact-head configured evidence. No Reviewer execution or further stress run.
+
+### rev-34 · 2026-10-29T18:34:58.111Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1431-final
+commit: 5849789b175ea972b96afd503c03dc82d5559145
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13958: Original A-13957 confirms 4192 ordinary passes; required watcher case .031951091 s and retained durable reconciliation assertions. Separate original macOS 10/10 two-lane CPU proof/capture limits preserved from A-13929. C1 verified. Host reuse, report-only warnings, existing identity/no task load repetitions, absent T3/T4 retained. Coordinator owns integration/enqueue.
+
+Criteria: C1 verified.

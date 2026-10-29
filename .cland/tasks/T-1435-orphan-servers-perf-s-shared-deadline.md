@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1207
 branch: t/T-1435-orphan-servers-perf-s-shared-deadline
 created: 2026-10-28T21:37:03.480Z
-updated: 2026-10-29T18:17:53.479Z
+updated: 2026-10-29T18:25:40.364Z
 ---
 
 ## Summary
@@ -35,3 +35,29 @@ First sighting; load flake under the flaky-rerun rule (one cover resubmit).
 ### impl-1435 · 2026-10-29T18:14:45.659Z
 
 Scope/seam: retain native sweepOrphans process-lifecycle regression. No production, wire, schema or shared policy change. Plan to stop the owned native fixture, verify its stopped OS state, freeze Date at the sweep boundary, and expire that clock only when the sweep sends its first TERM. This keeps discovery outside the deadline race and makes deadline rejection independent of scheduler speed; actual OS signals remain observable. Awaiting Coordinator's separate exclusive stress slot.
+
+### rev-34 · 2026-10-29T18:25:15.184Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1435-source1
+commit: cd764c73a06ed7ae0de4f479cce16358819512f1
+scope: full
+findings: [{"severity":"medium","text":"M1: the new guide has a descriptive H1 and no Notes index membership; the unchanged test-docs guard rejects it. Correct the owned heading/index metadata and obtain successor source clearance.","file":"docs/agents/tests/hub-test-orphan-servers-perf.test.ts.md","line":1}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13937 records the consolidated Standards/Spec audit and original macOS stress limits. No independent Spec finding. Reported documentation successor is outside this fixed-head verdict; C1 runtime remains unverified pending corrected-head source and configured evidence.
+
+### rev-34 · 2026-10-29T18:25:40.364Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1435-source2
+commit: 0fe36e7c4b40ee06299a797be41452d60f34b667
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13939: Exact H1 and Notes index membership resolve sole M1. Native test/stress source unchanged from A-13937; no dev merge. Standards/Spec clear; runtime C1 remains unverified pending exact-head configured evidence.

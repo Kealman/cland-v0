@@ -3,17 +3,18 @@ id: T-1316
 kind: task
 title: suite-check.test.ts keeps its own copied fixture environment instead of the shared builder
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1210
+branch: t/T-1316-suite-check-test-ts-keeps-its-own-copied
 created: 2026-10-25T20:54:33.494Z
-updated: 2026-10-29T15:59:37.435Z
+updated: 2026-10-29T18:40:16.102Z
 ---
 
 ## Summary
@@ -22,4 +23,28 @@ updated: 2026-10-29T15:59:37.435Z
 
 ## Acceptance criteria
 
-- [ ] C1. suite-check.test.ts launches its fixtures through the shared `fixtureEnvironment` (plus `scratchGitEnvironment` where Git runs), with no local allowlist copy; the file passes unchanged in assertions on Linux and macOS, and the T0 child-environment guard covers it.
+- [x] C1. suite-check.test.ts launches its fixtures through the shared `fixtureEnvironment` (plus `scratchGitEnvironment` where Git runs), with no local allowlist copy; the file passes unchanged in assertions on Linux and macOS, and the T0 child-environment guard covers it.
+  - done: impl-1316 · 2026-10-29T18:38:51.619Z
+
+## Comments
+
+### impl-1316 · 2026-10-29T18:37:44.583Z
+
+Scope: replace suite-check.test.ts’s copied launcher environment with fixtureEnvironment and scratchGitEnvironment, preserve existing lifecycle assertions, remove child-env exemptions so T0 inspects both launches. Pre-agreed seam for this maintenance item is the T0 child-environment source guard plus existing native suite-check fixtures; no production wire/schema/authority contract changes. Parent E-1444 is a backlog sweep with no additional v0.3 spec sections.
+
+### impl-1316 · 2026-10-29T18:39:01.683Z
+
+Committed/pushed fe49808567d68290addde9609457f1b52cc7ab13; source review requested. Coordinator clarified scratchGitEnvironment means where needed: this fixture requires no deliberate excludes override, so both launches use fixtureEnvironment directly. T0 inventory identifies both as sealed builder, no exemptions. Local macOS targeted T3: 3/3 unchanged cases pass (A-13962). Root npm run typecheck passed. Fresh origin/dev fetch + merge was already up to date. Linux verification pending source clearance.
+
+### rev-31 · 2026-10-29T18:40:16.102Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1316-source1
+commit: fe49808567d68290addde9609457f1b52cc7ab13
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source1 clear, Standards/Spec0. Both native launches now use shared fixtureEnvironment with explicit scratch TMPDIR, no copied allowlist or guard exemptions. Scratch dirs match builder; lifecycle/receipt/reaping/root assertions unchanged. Coordinator9fb64020 explicitly clarifies no unnecessary scratchGitEnvironment excludes override here; shared builder already seals Git. Existing tier/identity/QA refs unaffected. A-13963 full audit and local macOS3/3/source-guard evidence limits. C1 final verification awaits same-head configured Linux/T0/changedT3 receipts; no Reviewer execution.

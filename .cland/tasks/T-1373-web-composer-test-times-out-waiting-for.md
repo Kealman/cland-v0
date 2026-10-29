@@ -3,17 +3,17 @@ id: T-1373
 kind: task
 title: Web composer test times out waiting for the General row after reload on a loaded Linux droplet
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1211
+branch: t/T-1373-web-composer-test-times-out-waiting-for
 created: 2026-10-27T07:48:08.661Z
-updated: 2026-10-29T15:59:39.155Z
+updated: 2026-10-29T18:39:45.343Z
 ---
 
 ## Summary
@@ -27,3 +27,13 @@ Make the case wait for the reloaded shell's topic list to be ready before it cli
 ## Acceptance criteria
 
 - [ ] C1. The case waits on an explicit post-reload readiness receipt before selecting General and passes 10/10 under the load gate's CPU load at two workers (test).
+
+## Comments
+
+### impl-1373 · 2026-10-29T18:37:55.797Z
+
+Scope: test-only reload readiness at existing headless Web DOM/authenticated-frame seam. No shared contract changes. Inspecting existing harness readiness before changing the composer case; C1 also requires queued Linux two-worker CPU-load repetitions.
+
+### impl-1373 · 2026-10-29T18:39:45.343Z
+
+Red receipt on macOS: held post-reload topic frames reproduce `locator.click: Timeout 3000ms exceeded` waiting for `[data-object-id="general"]`, thread :20, case :199 (one selected case, exit 1). Prior attempt was incomplete: missing generated Web bundle; built bundle before valid red. Fix now separately awaits rendered target row with 15 s readiness bound and final visibility assertion before normal click. Regression retains all original draft/read/offline/replay checks.

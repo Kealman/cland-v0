@@ -2,8 +2,8 @@
 id: T-1449
 kind: task
 title: "Telegram: a retryable media download shows 'could not be stored; retrying' even when the retry succeeds"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1203
 branch: t/T-1449-telegram-a-retryable-media-download
 created: 2026-10-29T17:47:47.016Z
-updated: 2026-10-29T18:10:32.227Z
+updated: 2026-10-29T18:34:05.646Z
+closed: 2026-10-29T18:34:05.646Z
 ---
 
 ## Summary
@@ -29,10 +30,13 @@ Don't alarm the human about a transient failure that recovers: send the "could n
 
 - [x] C1. On the fake Bot API, a first `getFile` or download failure followed by success sends no failure line to the chat and stores the artifact once; the test fails before the fix.
   - done: impl-1449 · 2026-10-29T17:58:13.957Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1449-final · 2026-10-29T18:26:27.924Z · commit 8dd1974869fc9b5972521b2f86dc6c16c5c31793
 - [x] C2. Exhausted retries still send one clear failure line naming the file.
   - done: impl-1449 · 2026-10-29T17:58:14.075Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1449-final · 2026-10-29T18:26:27.924Z · commit 8dd1974869fc9b5972521b2f86dc6c16c5c31793
 - [x] C3. The hub log records the retryable error's class and code without token-bearing URLs.
   - done: impl-1449 · 2026-10-29T17:58:15.583Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1449-final · 2026-10-29T18:26:27.924Z · commit 8dd1974869fc9b5972521b2f86dc6c16c5c31793
 
 ## Comments
 
@@ -73,3 +77,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13912: One retired duration baseline removed only; source1 behavior remains clear. Admission refusal executed no tiers and is retained separately. No fabricated replacement samples or changed allowances. C1–C3 runtime unverified; exact-head configured result and Coordinator repeat-failure stop/report condition remain.
+
+### impl-1449 · 2026-10-29T18:24:36.155Z
+
+Same-head Linux verification b4c2a3ba-e77b-486f-b889-6dbb75160551 at 8dd1974869fc9b5972521b2f86dc6c16c5c31793: T0/T1/all fallback T2/Web exit0, 4191 pass, 0 fail/cancel/skip/todo; T3/T4 deferred, budget/lint report-only. A-13935 original log. Linux c-8 lon1 droplet Node24.21.0; Web Chrome Headless Shell156.0.8078.4 v1248. Required cases passed: transient getFile .109s/download .143s; exhausted getFile .159s/download .116s. Existing aborted-media-setup identity passed 1.183s, so prior stop/report condition did not recur. New cases below 3s; no duration allowance needed. Final evidence review requested from reviewer.
+
+### rev-34 · 2026-10-29T18:26:27.924Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1449-final
+commit: 8dd1974869fc9b5972521b2f86dc6c16c5c31793
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13940: Original A-13935 exact-head audit confirms 4191 ordinary passes plus 20 item-owned/75 separate site load passes, four retry identities ordinary+5/5 each, prior aborted-setup identity passed. C1–C3 verified. Host gate reuse, browser/platform limits, report-only warnings and absent T3/T4 retained; earlier local timer failure remains unexplained. Coordinator owns integration/enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-29T18:34:05.646Z
+
+Merged e75612f0fd52910aaf93fa634bd7e1aac8ba14a0 onto dev.

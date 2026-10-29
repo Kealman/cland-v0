@@ -2,8 +2,8 @@
 id: T-1445
 kind: task
 title: Fake-droplet tests leak a polling 'npm test' and node pair whenever a run ends without writing the finish file
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T18:20:33.567Z
+updated: 2026-10-29T18:28:56.402Z
+closed: 2026-10-29T18:28:56.402Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13932: fresh A-13924 exact-head 4227 ordinary passes, five changed T3 files/36 identities and all11 native controls plus five positive census diagnostics. C1/C2 refreshed. Host zero refusals/tree-checked reuse confirmed; 75 unrelated site repetitions separate, no task T3 load. Prior-head/failed host-only batch retained; proposed allowances, report-only/incomplete timing and remaining T3/T4 limits preserved. No Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T18:28:56.402Z
+
+Merged 46d96637418cac2b3f5eff7d55543f8e812b52a9 onto dev.

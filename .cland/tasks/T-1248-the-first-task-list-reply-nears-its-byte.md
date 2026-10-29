@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T18:13:59.558Z
+updated: 2026-10-29T18:32:40.553Z
 ---
 
 ## Summary
@@ -26,7 +26,7 @@ T-1204 measured the first `task.list` reply on the copied live tracker on 2026-1
 - [x] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
   - done: impl-1248 · 2026-10-29T17:08:20.011Z
 - [x] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
-  - done: impl-1248 · 2026-10-29T18:12:32.763Z
+  - done: impl-1248 · 2026-10-29T18:31:04.278Z
 
 ## Comments
 
@@ -88,3 +88,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13916: full source clear. M1 bounded coherent traversal capture and M2 owning metadata remain resolved; M3 now retains oldest valid late reply/backoff with one capture across at-most-two attempts, each event recorded once. Overflow still restarts whole traversal. Original byte/legacy/client assertions retained; local 27/27 and native startup receipts only. C1/C2 runtime verification pending exact-head configured evidence, no Reviewer execution.
+
+### rev-34 · 2026-10-29T18:29:19.452Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-evidence1
+commit: 59a967066cd5c227c716926d19f3682a6e52b37a
+scope: evidence
+findings: [{"severity":"medium","text":"M4: exact late first/later-page identity fails load repetitions 1 and 3 at zero client.snapshots assertion (values redacted). Ordinary pass/3 of 5 loads do not establish bounded completion; diagnose the exact traversal receipt and retain assertions before fresh source/verification.","file":"nvim/test/explorer-component.test.ts","line":594}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13946: 3869 ordinary passes plus 38 load passes/2 load failures; run exit1 and interrupted before T3/T4/Web. Exact diagnostics retained without unredacting values or assigning cause. C1 unverified; C2 evidence failed. Fresh source review before any changed-head verification.
+
+Criteria: C2 failed (Late-page client completion/journal proof fails two of five Linux load repetitions at line 594; original A-13942 remains red.).
+
+### rev-34 · 2026-10-29T18:32:40.553Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-source4
+commit: 356d159e2f1615067867e0a039082c54879504dc
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13953: Test-only final-page marker/held-reply correction resolves source aspect of M4; production unchanged. Zero-journal/unique-id/retry bounds and prior controls retained. Decoded recording refresh confined to changed scenario. Old Linux A-13942 remains red; C1/C2 runtime not reverified until corrected-head configured evidence.

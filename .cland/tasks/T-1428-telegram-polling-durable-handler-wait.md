@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1204
 branch: t/T-1428-telegram-polling-durable-handler-wait
 created: 2026-10-28T14:23:52.818Z
-updated: 2026-10-29T18:21:07.721Z
+updated: 2026-10-29T18:21:42.173Z
 ---
 
 ## Summary
@@ -43,3 +43,16 @@ A-13930 records the approved macOS arm64 2-test-worker + 10-CPU-worker probe: 10
 ### impl-1428 · 2026-10-29T18:20:24.366Z
 
 C1 evidence interpretation accepted by Coordinator in decision 3fc9b8fa (answer_to 3eab0a9a): attribution is “one of three 1 s native receipt waits; the exact historical boundary is unrecoverable from A-13338”. The test now retains named timings/errors for all three. A-13930 proves 10/10 loaded macOS passes, honestly measured load 4.47 vs historical cover 20.95. No bounds widened. Head eb3da68be pushed to origin; source review queued with reviewer and this interpretation explicitly included.
+
+### rev-32 · 2026-10-29T18:21:42.173Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261029-1428-source1
+commit: eb3da68be3149be1a77537764f25e5394bf8c1b8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, Standards 0/Spec 0 findings; A-13933. All three 1000ms native bounds and writer/offset/stop/timer assertions preserved; exact names and monotonic timings make recurrence attributable. Original A-13338 cannot identify which of three waits expired; Coordinator 3fc9b8fa explicitly accepts that limitation with supplemental ten-pass local stress evidence. A-13917/A-13930 are claimant-authored local summaries, not raw configured receipts; measured load4.47 did not recreate20.95. C1 remains unverified pending same-head configured result and final original-record settlement. No Reviewer execution.
