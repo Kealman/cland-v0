@@ -37,7 +37,7 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   assert.equal(report.version, VERSION);
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
-  assert.equal(report.steps.length, 13);
+  assert.equal(report.steps.length, 14);
   assert.equal(report.steps.find((s: { name: string }) => s.name === 'accounts').verdict, 'skip');
   assert.equal(report.steps.at(-1).verdict, 'open');
   assert.deepEqual(prompter.asked, []);
@@ -131,7 +131,7 @@ test('setup executable JSON reports open installers without running any harness'
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
   assert.deepEqual(report.steps.map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'skip'], ['hub', 'skip'], ['remote telegram', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'skip'], ['hub', 'skip'], ['remote telegram', 'skip'], ['speech', 'open'], ['aide', 'skip'],
   ]);
   assert.match(result.stderr, /without a terminal/);
 });
@@ -139,7 +139,8 @@ test('setup executable JSON reports open installers without running any harness'
 test('setup retains the CLI root spelling for Codex trust', async t => {
   const root = await tempProject(t);
   const alias = join(root, 'alias');
-  await mkdir(join(root, '.cland'));
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/secrets.toml'), '[speech]\nelevenlabs_key="made_up_existing_speech_key"\n', { mode: 0o600 });
   await writeFile(join(root, '.cland/roles.toml'), `[aide.launch]\nharness = "codex" # the human's favourite, chosen in cland setup\n`);
   await mkdir(join(root, '.codex'));
   await symlink(root, alias);

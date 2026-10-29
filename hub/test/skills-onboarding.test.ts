@@ -313,3 +313,11 @@ test('the onboarding Aide plans imported open GitHub issues in its first release
   assert.equal(item.size, 'S');
   assert.equal(item.status, 'planned');
 });
+
+// T1: the remote tour's speech instructions use shipped commands.
+test('remote tour explains voice notes and the hidden speech key command', async () => {
+  const tour = (await readFile(new URL('TOUR.md', SKILL), 'utf8')).split('## 9. Remote control')[1]!;
+  assert.ok(tour.includes('cland secret set speech.elevenlabs_key'));
+  assert.match(tour, /voice note/i);
+  assert.deepEqual(commandProblems(tour), []);
+});

@@ -11,6 +11,8 @@ import { scriptedPrompter } from './setup-prompter.ts';
 import type { SetupOptions } from '../src/setup/types.ts';
 import type { Choice } from '../src/setup/prompter.ts';
 import type { SetupHub } from '../src/setup/hub.ts';
+import { SPEECH_DATA_USE } from '../src/speech/provider.ts';
+import { readSecretsFile } from '../src/remote/secrets.ts';
 import type { InboxPairing } from '../src/protocol.ts';
 
 function waitingPairing(code: string, messenger: 'telegram' | 'discord' = 'telegram'): InboxPairing {
@@ -22,6 +24,7 @@ function waitingPairing(code: string, messenger: 'telegram' | 'discord' = 'teleg
 function pairingFixture(t: test.TestContext) {
   const f = fixture(t);
   const config = defaultConfig('Remote setup');
+  config.speech.provider = '';
   config.remote.telegram.enabled = true;
   writeFileSync(f.config, renderConfig(config));
   writeFileSync(join(f.root, '.cland/secrets.toml'), '[telegram]\ntoken="123456:made_up_setup_token_abcdefghijk"\n', { mode: 0o600 });
@@ -42,7 +45,9 @@ function fixture(t: test.TestContext) {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, '.cland'));
   const config = join(root, '.cland/config.toml');
-  writeFileSync(config, renderConfig(defaultConfig('Remote setup')));
+  const settings = defaultConfig('Remote setup');
+  settings.speech.provider = '';
+  writeFileSync(config, renderConfig(settings));
   writeFileSync(join(root, '.cland/roles.toml'), '[aide.launch]\nharness="opencode" # the human\'s favourite, chosen in cland setup\n');
   const options: SetupOptions = {
     root, env: fixtureEnvironment(root, {}), interactive: false, yes: false, noAide: true, noAccounts: true,
@@ -86,7 +91,7 @@ test('a terminal Telegram offer stores a hidden token and enables it without sta
     },
   } });
   const lines = result.report.steps;
-  assert.deepEqual(lines.slice(-3).map(row => row.name), ['hub', 'remote telegram', 'aide']);
+  assert.deepEqual(lines.slice(-4).map(row => row.name), ['hub', 'remote telegram', 'speech', 'aide']);
   const line = lines.find(row => row.name === 'remote telegram')!;
   assert.equal(line.verdict, 'open');
   assert.match(line.fix!, /cland hub reload/);
@@ -135,6 +140,7 @@ for (const present of [false, true]) for (const enabled of [false, true]) {
   test(`nonterminal Telegram token=${present} enabled=${enabled} reports only missing work without asking`, async t => {
     const f = fixture(t);
     const config = defaultConfig('Remote setup');
+    config.speech.provider = '';
     config.remote.telegram.enabled = enabled;
     writeFileSync(f.config, renderConfig(config));
     if (present) writeFileSync(join(f.root, '.cland/secrets.toml'), '[telegram]\ntoken="123456:made_up_setup_token_abcdefghijk"\n', { mode: 0o600 });
@@ -165,6 +171,7 @@ test('secret destination preflight refuses unsafe ignore rules before requesting
 test('a stored pairing without a loaded connected remote remains open for reload', async t => {
   const f = fixture(t);
   const config = defaultConfig('Remote setup');
+  config.speech.provider = '';
   config.remote.telegram.enabled = true;
   writeFileSync(f.config, renderConfig(config));
   writeFileSync(join(f.root, '.cland/secrets.toml'), '[telegram]\ntoken="123456:made_up_setup_token_abcdefghijk"\n', { mode: 0o600 });
@@ -222,4 +229,63 @@ test('several waiting codes offer their row texts, filter the messenger and conf
   const line = result.report.steps.find(row => row.name === 'remote telegram')!;
   assert.equal(line.verdict, 'done');
   assert.match(line.detail, /Chosen human \(202\)/);
+});
+
+// T1: the runner owns ordering and hidden input; no provider or platform runs.
+test('setup offers speech data use before hidden input, stores privately and rechecks as ok', async t => {
+  const f = fixture(t);
+  writeFileSync(f.config, renderConfig(defaultConfig('Remote setup')));
+  const key = 'made_up_setup_speech_key';
+  let said = '';
+  const script = scriptedPrompter([
+    { kind: 'confirm', question: 'Set up Telegram remote now?', answer: false },
+    { kind: 'confirm', question: 'Set up ElevenLabs transcription now?', answer: true },
+    { kind: 'secret', question: 'ElevenLabs key:', answer: key },
+  ]);
+  const result = await setup({ ...f.options, interactive: true, yes: true, narrate: text => { said += text; }, prompter: {
+    ...script,
+    secret: async question => {
+      assert.ok(said.includes(SPEECH_DATA_USE.elevenlabs), 'data use precedes hidden input');
+      return script.secret(question);
+    },
+  } });
+  assert.equal(script.left().length, 0, 'all questions consumed');
+  assert.equal(result.report.steps.find(row => row.name === 'speech')?.verdict, 'done');
+  assert.ok(readSecretsFile(f.root)['speech.elevenlabs_key'] === key, 'private key stored');
+  assert.equal((said + JSON.stringify(result)).includes(key), false, 'no key in output');
+  const again = await setup(f.options);
+  assert.equal(again.report.steps.find(row => row.name === 'speech')?.verdict, 'ok');
+});
+
+for (const provider of ['command', '', 'elevenlabs'] as const) test(`speech provider=${provider || 'off'} nonterminal asks nothing and reports actionable state`, async t => {
+  const f = fixture(t);
+  const config = defaultConfig('Remote setup');
+  config.speech.provider = provider;
+  writeFileSync(f.config, renderConfig(config));
+  const result = await setup(f.options);
+  const row = result.report.steps.find(row => row.name === 'speech');
+  assert.equal(row?.verdict, provider === 'elevenlabs' ? 'open' : 'ok');
+  assert.equal(row?.detail, SPEECH_DATA_USE[provider]);
+  assert.equal(row?.fix, provider === 'elevenlabs' ? 'cland secret set speech.elevenlabs_key' : undefined);
+  if (provider !== 'elevenlabs') {
+    const script = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }]);
+    const terminal = await setup({ ...f.options, interactive: true, yes: true, prompter: script });
+    assert.equal(script.asked.length, 1, 'only the messenger was offered');
+    assert.equal(terminal.report.steps.find(row => row.name === 'speech')?.verdict, 'ok');
+  }
+});
+
+test('declining speech defaults to No even with yes and writes nothing', async t => {
+  const f = fixture(t);
+  writeFileSync(f.config, renderConfig(defaultConfig('Remote setup')));
+  const script = scriptedPrompter([
+    { kind: 'confirm', question: 'Set up Telegram remote now?', answer: false },
+    { kind: 'confirm', question: 'Set up ElevenLabs transcription now?', answer: false },
+  ]);
+  const result = await setup({ ...f.options, interactive: true, yes: true, prompter: {
+    ...script, confirm: async (q, def) => { assert.equal(def, false); return script.confirm(q, def); },
+  } });
+  assert.equal(script.left().length, 0);
+  assert.equal(result.report.steps.find(row => row.name === 'speech')?.verdict, 'skip');
+  assert.equal(existsSync(join(f.root, '.cland/secrets.toml')), false);
 });

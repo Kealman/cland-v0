@@ -29,6 +29,14 @@ For a custom unmarked `.cland/.gitignore`, put `/secrets.toml` last among its
 non-comment rules. Writes refuse before requesting input until that protection
 exists; the command preserves the file's bytes.
 
+`cland setup` also offers a missing ElevenLabs key after the messengers, using
+the same preflight, hidden question and private writer as
+`cland secret set speech.elevenlabs_key`. The provider data-use line precedes the
+default-No offer; `--yes` does not accept it. Present resolved keys are `ok`, a
+decline is `skip`, accepted input is `done`, and nonterminal missing keys are
+`open` with the secret command. Command/off providers ask nothing. Reload a
+running hub to apply the key.
+
 `cland setup` offers Telegram after the hub and before the Aide. Its hidden
 question shares `readSecret` and `prepareSecretWrite` with the secret CLI; validate
 the Telegram format before storing. A decline is not persisted. `--yes` does not

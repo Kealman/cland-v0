@@ -28,3 +28,6 @@ The media guards check both pages for composer attachments and inline PNG, JPEG,
 GIF and WebP, validate speech command environment names against its launcher, and
 compare all three data-use lines byte-for-byte with `SPEECH_DATA_USE` read as
 source. No provider runtime dependency is imported into the site's prebuild.
+
+The source guard also requires the setup section to name the hidden ElevenLabs
+key offer and the nonterminal secret command.

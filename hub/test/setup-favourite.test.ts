@@ -21,6 +21,8 @@ async function fixture(t: test.TestContext, installed: HarnessId[] = ['claude-co
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-favourite-')));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, '.cland'));
+  // Whole-run favourite cases keep unrelated optional speech ready.
+  await writeFile(join(root, '.cland/secrets.toml'), '[speech]\nelevenlabs_key="made_up_existing_speech_key"\n', { mode: 0o600 });
   const path = join(root, '.cland', 'roles.toml');
   await writeFile(path, before);
   await writeFile(join(root, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));

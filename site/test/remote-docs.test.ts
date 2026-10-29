@@ -119,3 +119,10 @@ test('web guide names composer file attachments and inline image formats', () =>
   assert.ok(phone.includes('artifacts.max_upload_mb'));
   assert.deepEqual(vocabularyErrors(phone.split('## Threads and asks')[1]!.split('## On your phone')[0]!), []);
 });
+
+test('remote guide explains the setup speech offer and nonterminal command', () => {
+  const setup = source(guidePath).split('### Through setup')[1]!.split('### By hand')[0]!;
+  assert.match(setup, /cland secret set speech.elevenlabs_key/);
+  assert.match(setup, /ElevenLabs/);
+  assert.match(setup, /hidden/);
+});

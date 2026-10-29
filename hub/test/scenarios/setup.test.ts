@@ -21,7 +21,7 @@ const brief = "Run the onboarding skill; project: empty; harnesses: claude-code,
 const allOk = [
   ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'ok'], ['opencode', 'skip'],
   ['claude-code login', 'ok'], ['codex login', 'ok'], ['accounts', 'ok'],
-  ['favourite', 'ok'], ['trust', 'ok'], ['hub', 'ok'], ['remote telegram', 'skip'], ['aide', 'ok'],
+  ['favourite', 'ok'], ['trust', 'ok'], ['hub', 'ok'], ['remote telegram', 'skip'], ['speech', 'ok'], ['aide', 'ok'],
 ];
 
 function stepLines(output: string): string[][] {
@@ -80,6 +80,7 @@ async function prepare(t: TestContext): Promise<SetupMachine> {
   machine.env.TMPDIR = await mkdtemp('/tmp/cland-setup-');
   ownDirectory(t, machine.env.TMPDIR);
   const config = join(machine.project, '.cland/config.toml');
+  await writeFile(join(machine.project, '.cland/secrets.toml'), '[speech]\nelevenlabs_key="made_up_existing_speech_key"\n', { mode: 0o600 });
   const header = (await readFile(config, 'utf8')).split('\n')[0];
   await isolateVerification(machine.project);
   // The generic isolation helper serializes TOML, so retain setup's managed-file mark.
@@ -141,7 +142,7 @@ test('setup provisions a scratch machine, reuses its hub and Aide, and remembers
   assert.deepEqual(stepLines(first.output), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'done'], ['opencode', 'skip'],
     ['claude-code login', 'done'], ['codex login', 'ok'], ['accounts', 'skip'],
-    ['favourite', 'done'], ['trust', 'done'], ['hub', 'done'], ['remote telegram', 'skip'], ['aide', 'done'],
+    ['favourite', 'done'], ['trust', 'done'], ['hub', 'done'], ['remote telegram', 'skip'], ['speech', 'ok'], ['aide', 'done'],
   ]);
   await assert.rejects(readFile(join(machine.env.XDG_CONFIG_HOME!, 'cland/accounts.toml')), { code: 'ENOENT' });
   const roles = parse(await readFile(join(machine.project, '.cland/roles.toml'), 'utf8')) as { aide: { launch: { harness: string } } };

@@ -15,3 +15,6 @@ synthetic session-credential fixture helper. A role assignment plus a name
 alone is not a complete shell fixture. Fresh native-launch environment and
 pre-spoke first-CLI attribution are covered in cli-session-credential.test.ts.
 Retain every config/crew/role/import readback and own-launch-note assertion.
+
+The remote tour stage names voice notes and the hidden speech key command; the
+existing command vocabulary guard validates the command against shipped help.

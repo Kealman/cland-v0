@@ -17,6 +17,8 @@ Run `cland setup`. After the hub step, before the Aide, setup offers Telegram wi
 
 A paired rerun reports `ok`. Declining reports `skip` and is offered again next time. Without a terminal, an untouched remote reports `skip` with its setup commands; a partially configured or unpaired remote reports `open` with what remains. Setup never approves an identity without your confirmation.
 
+After the messenger offers, setup offers an ElevenLabs key only when `[speech] provider` is `elevenlabs` and its resolved key is missing. It shows the same data-use line as `cland remote status` before a default-No offer, even with `--yes`, then reads the key at a hidden prompt. Accepted input is `done`, a decline is `skip`, and a present file or environment key is `ok`. Without a terminal, a missing key is `open` with `cland secret set speech.elevenlabs_key`. The `command` and empty providers print their data-use line and ask nothing. Setup only stores the key; reload a running hub with `cland hub reload` to use it.
+
 ### By hand
 
 1. In Telegram, open **@BotFather**, send `/newbot`, and follow its questions for the name and username. Keep the returned token private. Give each project its own bot: only one consumer may poll a token.

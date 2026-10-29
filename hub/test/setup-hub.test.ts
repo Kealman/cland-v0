@@ -15,6 +15,7 @@ function fixture(t: test.TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'setup-hub-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, '.cland'));
+  writeFileSync(join(root, '.cland/secrets.toml'), '[speech]\nelevenlabs_key="made_up_existing_speech_key"\n', { mode: 0o600 });
   writeFileSync(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "codex"\n');
   const calls: unknown[] = [];
   const client: SetupHub = {
@@ -121,7 +122,7 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   ] });
   const first = await setup({ ...options, harness: 'codex' });
   assert.equal(first.code, 0, JSON.stringify(first.report.steps));
-  assert.deepEqual(first.report.steps.slice(-3).map(s => [s.name, s.verdict]), [['hub', 'done'], ['remote telegram', 'skip'], ['aide', 'done']]);
+  assert.deepEqual(first.report.steps.slice(-4).map(s => [s.name, s.verdict]), [['hub', 'done'], ['remote telegram', 'skip'], ['speech', 'ok'], ['aide', 'done']]);
   assert.deepEqual(calls, ['start', { name: 'aide-1', role: 'aide', harness: 'codex', brief: "Run the onboarding skill; project: empty; harnesses: claude-code, codex; human's harness: codex" }]);
   client.running = async () => ({ pid: 42 });
   client.session = async () => ({ status: 'running' });

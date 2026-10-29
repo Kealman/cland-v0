@@ -142,6 +142,7 @@ test('setup CLI hands over after the summary on each run, including --attach', a
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'setup-handover-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, '.cland'));
+  writeFileSync(join(root, '.cland/secrets.toml'), '[speech]\nelevenlabs_key="made_up_existing_speech_key"\n', { mode: 0o600 });
   const roles = '[aide.launch]\nharness = "opencode" # the human\'s favourite, chosen in cland setup\n';
   writeFileSync(join(root, '.cland/roles.toml'), roles);
   writeFileSync(join(root, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));

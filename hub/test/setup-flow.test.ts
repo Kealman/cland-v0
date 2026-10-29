@@ -18,6 +18,7 @@ function scratch(t: test.TestContext, trusted = true): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'cland-setup-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, '.cland'));
+  writeFileSync(join(root, '.cland/secrets.toml'), '[speech]\nelevenlabs_key="made_up_existing_speech_key"\n', { mode: 0o600 });
   writeFileSync(join(root, '.cland/roles.toml'), `[aide.launch]\nharness = "opencode" # the human's favourite, chosen in cland setup\n`);
   if (trusted) {
     writeFileSync(join(root, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));
@@ -92,7 +93,7 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.equal(code, 1);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'skip'], ['opencode', 'ok'],
-    ['claude-code login', 'open'], ['opencode login', 'skip'], ['accounts', 'ok'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['remote telegram', 'skip'], ['aide', 'skip'],
+    ['claude-code login', 'open'], ['opencode login', 'skip'], ['accounts', 'ok'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['remote telegram', 'skip'], ['speech', 'ok'], ['aide', 'skip'],
   ]);
   assert.equal(report.steps[4]?.fix, 'run: claude auth login');
   assert.equal(report.next, 'cland setup');
@@ -209,7 +210,7 @@ test('the first installed harness makes missing alternatives optional in the fin
   } });
   assert.equal(code, 1); // favourite still needs --harness or --yes without a terminal
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['remote telegram', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['remote telegram', 'skip'], ['speech', 'ok'], ['aide', 'skip'],
   ]);
 });
 
@@ -255,8 +256,8 @@ test('all steps ok exits zero and points to cland; installer folders explain PAT
   } });
   assert.equal(code, 0);
   assert.equal(report.next, 'cland');
-  assert.deepEqual(report.summary, { ok: 10, done: 0, skip: 3, open: 0, fail: 0 });
-  assert.ok(report.steps.slice(0, -3).every(s => s.verdict === 'ok'));
+  assert.deepEqual(report.summary, { ok: 11, done: 0, skip: 3, open: 0, fail: 0 });
+  assert.ok(report.steps.filter(s => !['hub', 'remote telegram', 'speech', 'aide'].includes(s.name)).every(s => s.verdict === 'ok'));
   assert.match(report.steps[1]!.detail, /not on your PATH yet: open a new shell/);
 });
 

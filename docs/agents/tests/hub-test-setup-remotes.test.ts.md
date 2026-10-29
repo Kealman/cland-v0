@@ -23,3 +23,9 @@ Secret comparisons use booleans and fixed messages: never let an assertion print
 input values or a remaining secret-answer script. Narration and reports are
 scanned for the exact synthetic input. Unsafe ignore rules refuse before the hidden question. The raw no-echo and
 terminal-release checks live in `hub/test/setup-prompter.test.ts`.
+
+The speech offer runs after messengers and before the Aide. The scripted runner
+checks data-use narration before hidden input, private persistence and a present-key
+rerun, default-No decline under `--yes`, and nonterminal missing-key commands.
+Command/off providers ask nothing. Existing Telegram cases select off speech to
+isolate their prompts. No paid call or real credential is involved.

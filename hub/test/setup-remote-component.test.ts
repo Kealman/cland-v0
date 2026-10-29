@@ -18,6 +18,7 @@ async function fixture(t: test.TestContext) {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
   const config = defaultConfig('Setup remote');
+  config.speech.provider = '';
   config.verification.lockPath = join(root, 'suite.lock');
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness="opencode" # the human\'s favourite, chosen in cland setup\n');
@@ -60,7 +61,7 @@ test('terminal setup stores a hidden Telegram token, reloads through frames and 
   assert.equal(code, 1, 'unpaired setup stays open');
   assert.ok(/@BotFather/.test(output), 'BotFather guidance is printed');
   assert.ok(/\/newbot/.test(output), 'bot creation command is printed');
-  assert.ok(/ok +hub .*\nopen +remote telegram .*https:\/\/t.me\/setup_fixture_bot.*cland remote approve telegram <code>\ndone +aide /.test(output), 'the remote row names link/approval and sits between hub and Aide');
+  assert.ok(/ok +hub .*\nopen +remote telegram .*https:\/\/t.me\/setup_fixture_bot.*cland remote approve telegram <code>\nok +speech .*\ndone +aide /.test(output), 'the remote row names link/approval and sits between hub and Aide');
   assert.ok(readSecretsFile(f.root)['telegram.token'] === token, 'the hidden value is stored');
   assert.equal(parseConfig(await readFile(join(f.root, '.cland/config.toml'), 'utf8'), 'Setup remote', {}).remote.telegram.enabled, true);
   assert.equal(f.remotes.length, 1);

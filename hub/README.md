@@ -55,7 +55,7 @@ Then run setup in that same project folder:
 cland setup
 ```
 
-Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub, offers Telegram remote setup and starts the Aide.
+Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub, offers Telegram remote setup and the speech key, then starts the Aide.
 
 It checks these steps in order: the initialised project; installed Claude Code,
 Codex and OpenCode; logins for harnesses used by roles; separate signed-in account
@@ -3147,6 +3147,18 @@ result. `src/setup/terminal.ts` runs a child with inherited terminal I/O (stdout
 redirects to stderr for JSON reports), ignores
 SIGINT and SIGQUIT in the parent while the child runs, restores its handlers,
 and returns the child's exit code or 128 plus its signal number.
+
+### Speech in setup
+
+After the messenger offers and before the Aide, setup prints the configured
+provider's `SPEECH_DATA_USE` line, also used by plain `cland remote status`.
+Generated configuration selects ElevenLabs. A resolved file or environment key
+prints `ok`; a missing key without a terminal prints `open` with
+`cland secret set speech.elevenlabs_key`. In a terminal the missing key gets a
+default-No offer even with `--yes`: decline is `skip`; acceptance uses the shared
+secret CLI preflight and hidden reader, stores privately and prints `done`.
+`command` and empty providers print one `ok` line and ask nothing. Setup makes no
+provider call. Apply a stored key to a running hub with `cland hub reload`.
 
 ### Telegram in setup
 
