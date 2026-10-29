@@ -44,11 +44,17 @@ function InboxArea(props: AreaContentProps) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const list = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<string>();
+  const [outcomes, setOutcomes] = useState<ReadonlyMap<string, string>>(new Map());
   const [error, setError] = useState('');
   const remove = async (entry: Entry) => {
     if (pending || !props.connection.live || !props.connection.command || (entry.kind !== 'request' && entry.kind !== 'message')) return;
     setPending(entry.row.id); setError('');
-    try { await props.connection.command(entry.kind === 'request' ? { type: 'inbox.decline', request: entry.row.id } : { type: 'inbox.read', message: entry.row.id }); }
+    try {
+      await props.connection.command(entry.kind === 'request' ? { type: 'inbox.decline', request: entry.row.id } : { type: 'inbox.read', message: entry.row.id });
+      // The successful list reply can remove the row before the pushed departure
+      // supplies its reason and time. Keep our receipt's reason for this visit.
+      setOutcomes(previous => new Map(previous).set(entry.row.id, entry.kind === 'request' ? 'declined' : 'read'));
+    }
     catch (error) { setError(error instanceof Error ? error.message : 'Action failed'); }
     finally { setPending(undefined); }
   };
@@ -146,7 +152,7 @@ function InboxArea(props: AreaContentProps) {
                 <span className={s.glyph}>{info.glyph}</span><span className={s.subject}>{phone && kind === 'plan' ? `${info.subject} · ${info.text}` : info.subject}</span><span className={s.preview}>{phone && entry.kind === 'approval' && entry.row.answerIn === 'tui' && <><span className={s.tui}>answer in Neovim</span> · </>}{phone && kind === 'plan' ? `${entry.row.stages ?? '—'} stages · ${entry.row.lanes ?? '—'} lanes · ${entry.row.items ?? '—'} items` : info.text.split(/\r?\n/)[0]}</span>
                 {kind === 'pairing' && <span className={s.pairingHint}>approve in the terminal or Neovim</span>}<span className={s.sender} data-role={info.role}>{info.sender}</span><time dateTime={row.since} title={row.since}>{age(row.since, now)}</time>
               </button>
-              {folded && <div tabIndex={0} className={s.outcome} data-inbox-outcome title={info.text}>✓ {info.subject} · {departure?.reason ?? 'left Inbox'}{departure && <time dateTime={departure.ts}> · {new Date(departure.ts).toLocaleString()}</time>}</div>}
+              {folded && <div tabIndex={0} className={s.outcome} data-inbox-outcome title={info.text}>✓ {info.subject} · {departure?.reason ?? outcomes.get(row.id) ?? (pending === row.id ? 'settling…' : 'left Inbox')}{departure && <time dateTime={departure.ts}> · {new Date(departure.ts).toLocaleString()}</time>}</div>}
               {entry.kind === 'ask' && showCard && <AskCard id={row.id} topic={entry.row.topic.id} card={card} context="inbox-answer" connection={props.connection} phoneOpen={sheetAsk === row.id} closePhone={() => setSheetAsk(undefined)} sender={entry.row.from} since={entry.row.ts} openThread={() => openEntry(entry)} />}
               {kind === 'approval' && (selected === row.id || entry.row.state === 'closed') && <ApprovalCard record={entry.row} connection={props.connection} phoneOpen={sheetApproval === row.id} closePhone={() => setSheetApproval(undefined)} />}
               {entry.kind === 'pairing' && <PairingDetail row={entry.row} compact={selected !== row.id} />}

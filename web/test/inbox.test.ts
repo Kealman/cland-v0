@@ -94,6 +94,58 @@ test('selected request and message unfold, physical d declines to the sender or 
   });
 });
 
+for (const first of ['reply', 'delta'] as const) test(`own Inbox read outcome survives ${first}-first delivery`, async t => {
+  const fixture = await inboxFixture(t);
+  const message = await fixture.send('Controlled read target');
+  const readAt = fixture.clock.now().toISOString();
+  let actionId = '';
+  let reply: (() => void) | undefined;
+  let delta: (() => void) | undefined;
+  const receipts: string[] = [];
+  await fixture.pageCase(t, async page => {
+    const row = page.locator(`[data-object-id="${message}"]`);
+    await row.click();
+    await page.keyboard.press('d');
+    await until(() => !!reply, { what: 'successful read reply captured', timeoutMs: 3000 });
+    await fixture.clock.advance(250);
+    await until(() => !!delta, { what: 'read departure delta captured', timeoutMs: 3000 });
+    const outcome = row.locator('..').locator('[data-inbox-outcome]');
+    const renderedRead = outcome.filter({ hasText: /read/ }).waitFor({ timeout: 3000 });
+    (first === 'reply' ? reply : delta)!();
+    await renderedRead;
+    assert.match(await outcome.innerText(), /read/, `${first}-first initial outcome; ${receipts.join('; ')}`);
+    (first === 'reply' ? delta : reply)!();
+    await page.locator('[data-inbox-pending]').waitFor({ state: 'detached' });
+    await outcome.locator('time').waitFor();
+    assert.match(await outcome.innerText(), /read/);
+    assert.equal(await outcome.locator('time').getAttribute('dateTime'), readAt);
+    const current = (await fixture.ui.request({ type: 'inbox.list', archive: true })).value as Inbox;
+    assert.equal(current.archive?.find(row => row.id === message)?.reason, 'read');
+    t.diagnostic(receipts.join('; '));
+  }, async page => {
+    await pausePageClock(page, fixture.clock.now());
+    await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      route.onMessage(payload => {
+        const frame = JSON.parse(String(payload));
+        if (frame.type === 'inbox.read') actionId = frame.id;
+        server.send(payload);
+      });
+      server.onMessage(payload => {
+        const frame = JSON.parse(String(payload));
+        if (frame.type === 'result' && frame.id === actionId) {
+          assert.equal(frame.ok, true, frame.error);
+          receipts.push(`captured reply: departures=${JSON.stringify(frame.value.departures ?? [])}`);
+          reply = () => { receipts.push('delivered reply'); route.send(payload); };
+        } else if (actionId && frame.type === 'inbox' && frame.inbox.departures?.some((row: { id: string }) => row.id === message)) {
+          receipts.push(`captured delta: reason=${frame.inbox.departures.find((row: { id: string }) => row.id === message).reason}`);
+          delta = () => { receipts.push('delivered delta'); route.send(payload); };
+        } else route.send(payload);
+      });
+    });
+  });
+});
+
 test('Enter opens an Inbox message at its anchored thread row and a waiting plan in Plan', async t => {
   const fixture = await inboxFixture(t, async root => {
     await seedItem(root, 'R-900000', 'release', 'Inbox release', { version: '99.0.0' });

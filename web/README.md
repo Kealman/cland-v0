@@ -525,6 +525,11 @@ the shared unread count. Failed writes are never replayed automatically.
 
 ## Inbox
 
+A successful Mark read or Decline keeps its `read` or `declined` outcome for the
+current visit, even if the command reply arrives before the departure update.
+The hub's departure supplies the authoritative reason and timestamp when it
+arrives. An unresolved own action shows `settling…` if its row has already left.
+
 Waiting Telegram and Discord pairing codes appear in **Asks and approvals** and
 its count at desktop and phone widths. The row says **approve in the terminal
 or Neovim**. Select it to read the complete identity, code and expiry, and select

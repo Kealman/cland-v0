@@ -42,3 +42,13 @@ where needed so incidental one-second thread read receipts cannot settle action
 targets before the action under test. New passing Web identities need a dated,
 reasoned E-417 allowance only if any platform's sample reaches four seconds;
 batch serial setup before sizing it at roughly 1.5 times the worst sample.
+
+The controlled read-outcome regressions hold the real successful `inbox.read`
+reply and the real departure push separately, then deliver each order with
+physical `d` on the selected row. Pre-arm the bounded rendered `read` label
+receipt before releasing the first frame and keep the second frame held through
+that receipt; element presence alone only proves row removal. The reply has no departure metadata; a successful
+own action still shows `read` immediately, and the subsequent departure supplies
+the authoritative reason and timestamp. Retain both the native frame receipts
+and the final DOM time/archive assertions. Pause the browser clock before
+navigation so incidental thread read marks cannot remove the target first.
