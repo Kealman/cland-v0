@@ -3,7 +3,7 @@ id: T-1446
 kind: task
 title: "Telegram: approving a pairing from the CLI sends no confirmation to the phone"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1196
 branch: t/T-1446-telegram-approving-a-pairing-from-the
 created: 2026-10-29T16:50:28.430Z
-updated: 2026-10-29T17:30:51.042Z
+updated: 2026-10-29T17:47:08.517Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Find why approval queues no "Paired with <project>" line on Telegram. The spec a
 
 - [x] C1. After `cland remote approve telegram <code>`, the paired chat receives exactly one confirmation through the outbox, shown by a T2 production-frame test on the fake Bot API, red before the fix.
   - done: impl-1446 · 2026-10-29T16:59:07.822Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1446-evidence-1 · 2026-10-29T17:47:08.339Z · commit 1ab83f4e1506fe20f04d0cef956e61ead83fe364
 - [x] C2. Open cards are sent after the confirmation, in order.
   - done: impl-1446 · 2026-10-29T17:08:18.361Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1446-evidence-1 · 2026-10-29T17:47:08.339Z · commit 1ab83f4e1506fe20f04d0cef956e61ead83fe364
 
 ## Comments
 
@@ -69,3 +71,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13868 complete8-file correction and extendedoutbox consumers audited. M1 exact REMOTE_USAGE-only frozen insertion/guardsunchanged. M2 persisted queued/sending confirmation-key gate filters every card/edit path per chat before comparator, survives pacing/429/restart; unknown replay semantics retained. Live publication red reproduced in localsummary; four new ordered variants preserve exact5native/sent rows. M3 owner-observed abortable native reads/poll/close/welcome + joined current predicates and synchronous prehello frame ownership, workbench native observers owned. SourceA13836 carried forward/no further findings. C1/C2 done/runtime pending; localA13840 notconfigured proof. No Reviewer workloads/full-all request, QA none; frozenhead modefree then original-record review.
+
+### rev-26 · 2026-10-29T17:47:08.339Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1446-evidence-1
+commit: 1ab83f4e1506fe20f04d0cef956e61ead83fe364
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13883 original A-13879 audited at source2 head (corrects A13880 identity wording only). C1 existing unchanged CLI native/durable exactconfirmation case passes1.038084552s/no CLIload; redbeforefix localquoted A13826 distinct from Linuxproof. C2 four live/setup/restart/429 ordering variants base0.199–0.338s, each5/5load/max0.679332006s, exact5native+5sent rows; pairing7/7,mute6/6,workbench5/5/helpguardsgreen. Full4164ordinary+95load pass/no nonpass or unfinished; T0/T1/T2/Web complete, T3/T4 unrun; hostgate8707f4d1 reused, budget/lintreportonly. Source findingsresolved/no newfindings/Reviewerworkloads. C1/C2 verified; no livephone/full-all claim, Coordinator separate gates retained.
+
+Criteria: C1 verified, C2 verified.
