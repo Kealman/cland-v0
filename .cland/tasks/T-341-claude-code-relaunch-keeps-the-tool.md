@@ -2,8 +2,8 @@
 id: T-341
 kind: task
 title: Claude Code relaunch keeps the tool schemas cached at first launch
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1190
 branch: t/T-341-claude-code-relaunch-keeps-the-tool
 created: 2026-10-13T19:49:24.214Z
-updated: 2026-10-29T16:01:41.785Z
+updated: 2026-10-29T16:02:23.160Z
+closed: 2026-10-29T16:02:23.160Z
 ---
 
 ## Summary
@@ -41,3 +42,11 @@ Use the CLI (`cland task create … --size`), or relaunch with `--fresh` when a 
 ### impl-341 · 2026-10-29T16:01:41.785Z
 
 Diagnosis at initial dev 6a24facf: hub/src/adapters/claude-code.ts #sessionFlags rewrites mcp.json before both launch and --resume; hub/src/spoke/spoke.ts tools/list returns current TOOLS. Existing fake at hub/test/fakes/claude-code/fake-claude.ts connects an MCP client but does not model native persisted ToolSearch/schema caching; a failing fake-cache test would assume the reported bug. Installed native CLI symlink names 2.1.311 (not executed). Official MCP docs document dynamic refresh (https://code.claude.com/docs/en/mcp#dynamic-tool-updates); upstream changelog includes cache invalidation and deferred-tool fixes, but none establishes this exact relaunch behaviour. Native reproduction is required before selecting a fix or claiming fixed elsewhere. Requested Coordinator decision on a sealed native-CLI loopback probe; no actual harness, account, token or platform used. Item currently has no criteria; proposed same-conversation schema update, identity/role/claim preservation and compatibility controls.
+
+### impl-341 · 2026-10-29T16:02:14.673Z
+
+Disposition per Coordinator decision 68a1e2ab (2026-10-29): not reproducible on current dev from the available safe evidence; reopen with a fresh native stale-schema receipt. This is not a verified upstream fix. At dev 6a24facf, the Claude adapter regenerates private MCP config on --resume (hub/src/adapters/claude-code.ts #sessionFlags); spoke tools/list returns current TOOLS (hub/src/spoke/spoke.ts). Installed CLI link names 2.1.311. Official upstream docs describe dynamic tool refresh (https://code.claude.com/docs/en/mcp#dynamic-tool-updates) and changelog records schema-cache/deferred-tool fixes (https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md). Existing fake does not represent the native persisted ToolSearch cache. No native probe, source change, test run, typecheck or verification run was performed; the Coordinator declined the native probe because loopback API configuration does not prevent other external traffic. Supporting artifact A-13741: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13741-t-341-reproduction-boundary-and-current-evidence.md. Coordinator will close with the recorded reason under E-1444 C1. Per the corrected per-item assignment, this session will not start T-1350.
+
+### coord · 2026-10-29T16:02:23.160Z
+
+Closed without a change: not reproducible on current dev. impl-341's findings (A-13741): dev regenerates the private MCP config on `--resume`, and the spoke's `tools/list` returns the current tools. The installed Claude Code CLI is 2.1.311, and upstream documents dynamic tool refresh and cache fixes. A native-CLI probe was declined because the real binary may reach outside services, and only the Coordinator runs on Claude Code now. Reopen with a fresh receipt of a stale tool schema after relaunch.

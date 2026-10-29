@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1189
 branch: t/T-1430-web-inbox-reading-a-message-with-d-can
 created: 2026-10-28T14:41:32.173Z
-updated: 2026-10-29T16:00:30.511Z
+updated: 2026-10-29T16:02:18.265Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ updated: 2026-10-29T16:00:30.511Z
 ## Notes
 
 Shared-defect candidate (flaky-rerun rule: T-1405 gets one resubmit). If it's red again anywhere, it becomes a fix item in 0.3.
+
+## Comments
+
+### impl-1430 · 2026-10-29T16:02:18.265Z
+
+Controlled red on dev 6a24facf8 (macOS, isolated pinned Headless Shell): node --test --test-name-pattern='own Inbox read outcome' web/test/inbox.test.ts. Reply-first fails actual '✓ general · left Inbox', expected /read/; captured successful result has departures=[], captured held delta has reason=read. Delta-first passes. Ranked hypotheses: (1) successful reply applies row removal without departure metadata (predict reply-first red, delta-first green); (2) newer delta generation causes reply metadata loss (predict delta-first red); (3) read is incorrectly persisted as another reason (predict archive/delta reason differs). Receipts support (1), disprove (2)/(3). Production read stores 'read', schedules its metadata-bearing push after 250 fake ms, returns list without departures; connectHub applies that list immediately; InboxArea's fallback labels missing departure 'left Inbox'. No shared wire/authority change is planned.

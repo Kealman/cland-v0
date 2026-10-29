@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1184
 branch: t/T-1177-tap-filters-for-the-events-view-on-the
 created: 2026-10-23T07:00:15.868Z
-updated: 2026-10-29T16:02:06.892Z
+updated: 2026-10-29T16:02:22.349Z
 ---
 
 ## Summary
