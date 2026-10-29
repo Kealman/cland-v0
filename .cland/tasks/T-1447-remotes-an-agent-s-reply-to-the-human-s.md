@@ -3,17 +3,17 @@ id: T-1447
 kind: task
 title: "Remotes: an agent's reply to the human's message arrives unthreaded on Telegram and Discord"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1201
+branch: t/T-1447-remotes-an-agent-s-reply-to-the-human-s
 created: 2026-10-29T17:00:36.038Z
-updated: 2026-10-29T17:02:01.514Z
+updated: 2026-10-29T17:03:22.688Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ When a General message has `replyTo` pointing at a message mapped to a native me
 - [ ] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
 - [ ] C2. The same holds on Discord, with `message_reference` on the fake REST.
 - [ ] C3. A reply target unmapped on a remote, or deleted, still delivers once as a plain message.
+
+## Comments
+
+### impl-1447 · 2026-10-29T17:03:22.688Z
+
+Consumer inventory before optional native-reply changes: General frame producers/readers retain existing Message.replyTo shape; telegram.ts receive plans rich/plain/file payloads consumed by TelegramOutbox and TelegramApi; discord.ts publication calls DiscordOutbox (sendGroup, publication, #enqueue, #deliver) then DiscordApi. RemoteStore native mappings include inbound and outbound records. Tests/QA/docs consumers found via replyTo/reply_parameters/message_reference searches: telegram-{inbound,notices,voice,api,artifacts}, discord-{messages,render,artifacts,inbound-media,cards}, gateway and old payload recovery tests; shipped skills and QA briefs use unchanged frames. Only optional reply fields on existing payloads will be used, with old payloads readable. No public reply/list/schema/authority changes.

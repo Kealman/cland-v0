@@ -3,7 +3,7 @@ id: T-1319
 kind: task
 title: Closing an epic that owns duration allowances strands them with a closed owner and turns the next full run red
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1197
 branch: t/T-1319-closing-an-epic-that-owns-duration
 created: 2026-10-26T01:52:55.592Z
-updated: 2026-10-29T17:01:55.284Z
+updated: 2026-10-29T17:02:28.447Z
 ---
 
 ## Summary

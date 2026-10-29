@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1196
 branch: t/T-1446-telegram-approving-a-pairing-from-the
 created: 2026-10-29T16:50:28.430Z
-updated: 2026-10-29T16:59:08.508Z
+updated: 2026-10-29T17:02:15.385Z
 ---
 
 ## Summary
