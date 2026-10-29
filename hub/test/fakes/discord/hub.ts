@@ -56,5 +56,5 @@ export function discordHubFixtureOwner(t: TestContext, options: {
       return { ...native, root, hub, ui, clock, state, status, history, notices, logs, close: owner.close };
     } catch (error) { await owner.close(); throw error; }
   };
-  return { start, close: owner.close, listening: owner.listening, receipts: owner.receipts, pending: owner.pending, disposal, dbClosed: () => dbClosed };
+  return { start, close: owner.close, listening: owner.listening, receipts: owner.receipts, pending: owner.pending, drainReceipts: owner.drainReceipts, disposal, dbClosed: () => dbClosed };
 }

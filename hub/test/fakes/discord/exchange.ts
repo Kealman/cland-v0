@@ -14,6 +14,13 @@ export function discordExchangeOwner(t: TestContext, options: Parameters<typeof 
   const pending = new Set<Promise<unknown>>();
   const stops: Array<() => void | Promise<void>> = [];
   const drained: Array<() => void> = [];
+  const drainReceipts: Array<{ phase: 'stop' | 'fake' | 'native'; elapsedMs: number; outcome: 'complete' | 'incomplete' }> = [];
+  const measure = async (phase: 'stop' | 'fake' | 'native', action: () => Promise<unknown>) => {
+    const started = performance.now();
+    let outcome: 'complete' | 'incomplete' = 'incomplete';
+    try { await action(); outcome = 'complete'; }
+    finally { drainReceipts.push({ phase, elapsedMs: performance.now() - started, outcome }); }
+  };
   let closing: Promise<void> | undefined;
   let fixture: ReturnType<typeof discordFixtureOwner> | undefined;
   const close = (): Promise<void> => {
@@ -21,12 +28,12 @@ export function discordExchangeOwner(t: TestContext, options: Parameters<typeof 
     const attempt = (async () => {
       abort.abort(new Error('Discord exchange disposed: aborted'));
       const results = await Promise.allSettled([
-        within(Promise.all(stops.map(stop => Promise.resolve().then(stop))), 2000, options.drainClock, () => new Error('Discord exchange stop incomplete')),
-        fixture?.close(),
-        within((async () => { while (pending.size) await Promise.allSettled([...pending]); })(), 2000, options.drainClock, () => new Error('Discord exchange native drainage incomplete')),
+        measure('stop', () => within(Promise.all(stops.map(stop => Promise.resolve().then(stop))), 2000, options.drainClock, () => new Error('Discord exchange stop incomplete'))),
+        measure('fake', async () => { await fixture?.close(); }),
+        measure('native', () => within((async () => { while (pending.size) await Promise.allSettled([...pending]); })(), 2000, options.drainClock, () => new Error('Discord exchange native drainage incomplete'))),
       ]);
       const failures = results.filter(r => r.status === 'rejected').map(r => r.reason);
-      if (failures.length) throw new AggregateError(failures, 'Discord exchange disposal incomplete');
+      if (failures.length) throw new AggregateError(failures, `Discord exchange disposal incomplete: ${JSON.stringify(drainReceipts)}`);
       for (const finish of drained) finish();
     })();
     closing = attempt;
@@ -73,5 +80,5 @@ export function discordExchangeOwner(t: TestContext, options: Parameters<typeof 
     return { fake, api, run, project, signal: abort.signal, close, stop: (action: () => void | Promise<void>) => stops.push(action),
       afterDrain: (action: () => void) => drained.push(action), pending: () => pending.size };
   };
-  return { start, close, run, project, receipts: () => fixture!.receipts(), listening: () => run(() => fixture!.listening()), pending: () => pending.size };
+  return { start, close, run, project, drainReceipts: () => drainReceipts.map(receipt => ({ ...receipt })), receipts: () => fixture!.receipts(), listening: () => run(() => fixture!.listening()), pending: () => pending.size };
 }

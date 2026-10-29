@@ -442,6 +442,10 @@ for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${
   await missing; await owner.close(); await cancelled; await hub.stopped;
   assert.equal(owner.dbClosed(), true);
   assert.deepEqual(owner.disposal, ['hub-stopped', 'store-closed']);
+  const drains = owner.drainReceipts();
+  assert.deepEqual(drains.map(r => r.phase).sort(), ['fake', 'native', 'stop']);
+  assert.ok(drains.every(r => r.outcome === 'complete' && r.elapsedMs >= 0));
+  t.diagnostic(JSON.stringify({ disposal: drains }));
   assert.equal(owner.pending(), 0); assert.equal(clock.pending, 0); assert.equal(setupClock.pending, 0);
   assert.deepEqual(owner.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, observers: 0, held: 0 });
 });

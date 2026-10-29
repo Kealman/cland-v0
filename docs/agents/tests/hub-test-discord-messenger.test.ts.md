@@ -87,6 +87,16 @@ Owned run promises catch rejection immediately, bound operations independently
 of behaviour time, and cancel/drain a held observer and request on any exit.
 Omitted/aborted setup and held-receipt controls use that same disposer and retain
 native closed, zero writer/handler/observer/timer and Store-closed assertions.
+The held-receipt controls also emit `drainReceipts()` for `stop` (hub acquisition
+and shutdown), `fake` (native fake close) and `native` (owned operations). Each
+receipt names complete/incomplete and monotonic elapsed milliseconds for that
+join, excluding fixture setup and the synchronous abort preceding the joins.
+These are concurrent phase times, not additive test or suite wall time.
+Disposal errors retain their AggregateError causes and include only these fixed
+phase names, outcomes and timings; they never capture request data. An incomplete
+phase is missing completion evidence, never a pass. Keep the 2000ms bounds and
+injected-drain-clock retention control until loaded receipts justify a change.
+
 
 REST retry time starts after each exact client `discord-rest-refused` diagnostic
 (route, status and ordinal), in addition to the server request count. From
